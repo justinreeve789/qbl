@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": {
+      "@qbl/shared": ["../../packages/shared/src/index.ts"],
+      "phaser": ["../client/test/fakePhaser.ts"],
+      "@colyseus/sdk": ["../client/test/fakeColyseus.ts"]
+    }
+  },
+  "include": ["src", "test", "../client/test/harness.ts"]
+}

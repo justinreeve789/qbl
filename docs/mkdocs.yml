@@ -1,0 +1,18 @@
+site_name: QBL JSON Documentation
+nav:
+        - Scenarios: scenario.md
+        - Scenes: scene.md
+        - Events: event.md
+        - Actions: action.md
+        - Media: media.md
+        - Characters: character.md
+        - Items: item.md
+        - Variables: variable.md
+        - Conditions: condition.md
+        - Spritemaps: spritemap.md
+        - Labels: label.md
+        - Runtime extensions (spec v2): extensions.md
+        - Save data: session.md
+        - Architecture: architecture.md
+        - HTTP API contract: api.md
+        - Multiplayer protocol: protocol.md

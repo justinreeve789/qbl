@@ -1,0 +1,25 @@
+{
+  "name": "@qbl/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "test": "echo \"server rules are tested in @qbl/shared\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@colyseus/schema": "^5.0.8",
+    "@qbl/shared": "*",
+    "colyseus": "^0.18.0",
+    "express": "^4.21.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "typescript": "^6.0.0"
+  }
+}

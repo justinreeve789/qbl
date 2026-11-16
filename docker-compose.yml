@@ -1,0 +1,106 @@
+# Five containers:
+#   app       Laravel backend (PHP-FPM) + the built Phaser frontend
+#   db        MariaDB
+#   colyseus  multiplayer game server
+#   editor    the scenario editor (a static web application)
+#   apache    web server and reverse proxy; the only published port
+#
+#   docker compose up --build        ->  http://localhost:8080           the game
+#                                        http://localhost:8080/editor    the editor
+#                                        http://localhost:8080/{code}    one scenario, by its 16-letter code
+#
+# The defaults below are for trying it out on your own machine. For anything shared,
+# copy .env.example to .env and set real secrets.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:-}
+      APP_URL: http://localhost:${QBL_HTTP_PORT:-8080}
+      DB_CONNECTION: mariadb
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: qbl
+      DB_USERNAME: qbl
+      DB_PASSWORD: ${DB_PASSWORD:-qbl-local-only}
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      LOG_CHANNEL: stderr
+      QBL_SERVICE_KEY: ${QBL_SERVICE_KEY:-qbl-local-only-service-key}
+      # The seeded demo mission does not require a login, so guests can try it.
+      QBL_ALLOW_GUESTS: ${QBL_ALLOW_GUESTS:-true}
+      # Seeds the Starship Explorer mission the first time. After that it can be edited like any other
+      # scenario and is left alone; "reset" puts the shipped version back. Set QBL_SEED_PASSWORD to
+      # also get demo accounts, including a teacher who can use the editor.
+      QBL_SEED: ${QBL_SEED:-true}
+      QBL_SEED_PASSWORD: ${QBL_SEED_PASSWORD:-}
+      # Files uploaded in the editor.
+      QBL_MEDIA_DIR: /media-data
+    volumes:
+      - public:/shared/public      # the frontend and the demo's media, handed to Apache
+      - media:/media-data          # uploaded media, served by Apache as /media
+      - app-data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: qbl
+      MARIADB_USER: qbl
+      MARIADB_PASSWORD: ${DB_PASSWORD:-qbl-local-only}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-qbl-local-only-root}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+  colyseus:
+    build:
+      context: .
+      dockerfile: docker/colyseus/Dockerfile
+    environment:
+      QBL_BACKEND: api
+      # Laravel is reached through Apache's internal-only port.
+      QBL_API_URL: http://apache:8081
+      QBL_SERVICE_KEY: ${QBL_SERVICE_KEY:-qbl-local-only-service-key}
+      QBL_DEV_MODE: "false"
+    restart: unless-stopped
+
+  editor:
+    build:
+      context: .
+      dockerfile: docker/editor/Dockerfile
+    restart: unless-stopped
+
+  apache:
+    build:
+      context: docker/apache
+    ports:
+      - "${QBL_HTTP_PORT:-8080}:80"
+    volumes:
+      - public:/var/www/public:ro
+      - media:/var/www/media:ro
+    depends_on:
+      - app
+      - colyseus
+      - editor
+    restart: unless-stopped
+
+volumes:
+  public:
+  media:
+  app-data:
+  db-data:

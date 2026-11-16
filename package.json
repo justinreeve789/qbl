@@ -1,0 +1,32 @@
+{
+  "name": "qbl",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "apps/client",
+    "apps/server",
+    "apps/editor"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w @qbl/server\" \"npm run dev -w @qbl/client\"",
+    "build": "npm run build -w @qbl/shared && npm run build -w @qbl/server && npm run build -w @qbl/client && npm run build -w @qbl/editor",
+    "test": "npm run test -w @qbl/shared && npm run test -w @qbl/client",
+    "typecheck": "npm run build -w @qbl/shared && npm run typecheck -w @qbl/server && npm run typecheck -w @qbl/client && npm run typecheck -w @qbl/editor",
+    "validate": "tsx tools/validate-scenario.ts",
+    "seed:export": "php apps/api/bin/export-seed.php starship > scenarios/starship.json && npm run validate -- scenarios/starship.json",
+    "dev:api": "php -S 127.0.0.1:8000 apps/api/dev/server.php",
+    "dev:editor": "concurrently -n api,editor,game -c magenta,cyan,green \"npm run dev:api\" \"npm run dev -w @qbl/editor\" \"npm run dev:authoring -w @qbl/client\"",
+    "test:api": "php apps/api/tests/store.php",
+    "test:editor": "npm run test -w @qbl/editor",
+    "test:all": "npm test && npm run test:api && npm run test:editor"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "paths": {
+      "@qbl/shared": ["../../packages/shared/src/index.ts"],
+      "phaser": ["./test/fakePhaser.ts"],
+      "@colyseus/sdk": ["./test/fakeColyseus.ts"]
+    }
+  },
+  "include": ["src", "test"]
+}

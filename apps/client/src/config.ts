@@ -1,0 +1,28 @@
+const env = import.meta.env;
+const params = new URLSearchParams(window.location.search);
+
+/** Players open /{code}: the scenario's unique 16-letter code. */
+const codeInPath = /^\/([A-Za-z]{16})\/?$/.exec(window.location.pathname)?.[1]?.toLowerCase() ?? null;
+const number = (value: string | null) => (value && /^\d+$/.test(value) ? Number(value) : null);
+
+/** Same-origin paths by default: Apache (or the Vite dev proxy) routes /api and the game socket. */
+export const config = {
+  apiUrl: (env.VITE_API_URL ?? '').replace(/\/+$/, ''),
+  /** Colyseus endpoint. Empty means "this host, under /game". */
+  serverUrl: env.VITE_SERVER_URL ?? `${window.location.origin}/game`,
+  /** guest: pick a name (file backend). login: email and password (Laravel API). */
+  authMode: (env.VITE_AUTH_MODE ?? 'guest') as 'guest' | 'login',
+  /** Which scenario to play: the code in the path, else ?scenario=, else the demo. */
+  scenario: codeInPath ?? params.get('scenario') ?? env.VITE_DEFAULT_SCENARIO ?? 'starshipexplorer',
+  /**
+   * Editor preview: play the unpublished draft of this scenario id, alone, with nothing saved.
+   * Opened by the editor's "Test this scene" button; needs the editor's sign-in.
+   */
+  preview: number(params.get('preview')),
+  /** Start in this scene instead of the start scene or the saved one. */
+  startScene: number(params.get('scene')),
+  group: params.get('group') ?? 'public',
+  /** Play alone without the game server. Used for content previews. */
+  offline: params.has('offline') || params.has('preview'),
+  debug: params.has('debug'),
+};

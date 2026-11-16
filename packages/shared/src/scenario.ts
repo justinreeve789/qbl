@@ -1,0 +1,246 @@
+import type {
+  Action, ActionType, GameEvent, Hotspot, Id, Item, Label, Media, Scenario, Scene, SceneLayer, SpawnPoint,
+} from './types.js';
+
+const ACTION_TYPES: ActionType[] = [
+  'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
+  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait',
+];
+
+/** "Image Fixed", "imageFixed" and "image_fixed" all become "image_fixed". */
+export function normalizeActionType(raw: unknown): ActionType | null {
+  if (typeof raw !== 'string') return null;
+  const key = raw
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  return (ACTION_TYPES as string[]).includes(key) ? (key as ActionType) : null;
+}
+
+function bySequence<T extends { sequence?: number }>(list: T[]): T[] {
+  return list
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => (a.item.sequence ?? a.index) - (b.item.sequence ?? b.index) || a.index - b.index)
+    .map((x) => x.item);
+}
+
+function normalizeEvent<T extends GameEvent>(event: T): T {
+  const actions = bySequence(event.actions ?? []).map((a) => {
+    const type = normalizeActionType(a.type) ?? a.type;
+    return { ...a, type, blocking: a.blocking ?? true } as Action;
+  });
+  return {
+    ...event,
+    overridable: event.overridable ?? false,
+    block_hotspots: event.block_hotspots ?? false,
+    conditions: event.conditions ?? [],
+    actions,
+  };
+}
+
+/** A layer entry may be a SceneLayer or a bare media object. */
+export function layerMediaId(layer: SceneLayer | Media): Id {
+  return 'media_id' in layer ? layer.media_id : layer.id;
+}
+
+/**
+ * Fill in documented defaults, order scenes and actions by sequence and
+ * canonicalise action type names. Returns a new object; the input is untouched.
+ */
+export function normalizeScenario(input: Scenario): Scenario {
+  const scenes = bySequence(input.scenes ?? []).map((scene): Scene => ({
+    ...scene,
+    zoom: scene.zoom ?? 1,
+    show_avatars: scene.show_avatars ?? true,
+    background_media: scene.background_media ?? [],
+    foreground_media: scene.foreground_media ?? [],
+    start_events: (scene.start_events ?? []).map(normalizeEvent),
+    end_events: (scene.end_events ?? []).map(normalizeEvent),
+    indirect_events: (scene.indirect_events ?? []).map(normalizeEvent),
+    hotspots: (scene.hotspots ?? []).map((h) => ({
+      ...normalizeEvent(h),
+      radius: h.radius ?? -1,
+      activate_by_trigger: h.activate_by_trigger ?? false,
+      labels: h.labels ?? [],
+    })),
+    spawn_points: scene.spawn_points ?? [],
+    items: scene.items ?? [],
+    characters: scene.characters ?? [],
+  }));
+
+  // Inline media objects on layers and labels are hoisted into assets.
+  const assets = new Map<Id, Media>();
+  for (const m of input.assets ?? []) assets.set(m.id, m);
+  const hoist = (m: unknown) => {
+    if (m && typeof m === 'object' && 'id' in m && 'type' in m) {
+      const media = m as Media;
+      if (!assets.has(media.id)) assets.set(media.id, media);
+    }
+  };
+  for (const scene of scenes) {
+    for (const l of [...scene.background_media!, ...scene.foreground_media!]) if (!('media_id' in l)) hoist(l);
+    for (const h of scene.hotspots!) for (const label of h.labels!) hoist(label.media);
+  }
+
+  const out: Scenario = {
+    ...input,
+    enable_save_session: input.enable_save_session ?? true,
+    require_login: input.require_login ?? true,
+    allow_groups: input.allow_groups ?? false,
+    default_language: input.default_language ?? 'en-us',
+    chat_mode: input.chat_mode ?? 'emotes',
+    move_speed: input.move_speed ?? 420,
+    global_variables: input.global_variables ?? [],
+    items: input.items ?? [],
+    characters: input.characters ?? [],
+    assets: [...assets.values()].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100)),
+    scenes,
+  };
+  out.jump_targets = computeJumpTargets(out);
+  return out;
+}
+
+export function labelMediaId(label: Label): Id | null {
+  if (label.media == null) return null;
+  return typeof label.media === 'number' ? label.media : label.media.id;
+}
+
+function eventsOf(scene: Scene): GameEvent[] {
+  return [
+    ...(scene.start_events ?? []),
+    ...(scene.end_events ?? []),
+    ...(scene.hotspots ?? []),
+    ...(scene.indirect_events ?? []),
+  ];
+}
+
+function walkActions(scene: Scene, visit: (a: Action) => void): void {
+  const walk = (a: Action) => {
+    visit(a);
+    if (a.type === 'infobox') {
+      for (const cta of a.call_to_actions ?? []) if (cta.action) walk(cta.action as Action);
+    }
+  };
+  for (const e of eventsOf(scene)) for (const a of e.actions) walk(a);
+}
+
+/** Scene ids reachable from each scene through jump actions (including those on infobox buttons). */
+export function computeJumpTargets(scenario: Scenario): Record<string, Id[]> {
+  const out: Record<string, Id[]> = {};
+  for (const scene of scenario.scenes) {
+    const targets = new Set<Id>();
+    walkActions(scene, (a) => {
+      if (a.type === 'jump') targets.add(a.scene_id);
+    });
+    targets.delete(scene.id);
+    out[String(scene.id)] = [...targets];
+  }
+  return out;
+}
+
+/** Every media id a scene needs before it can be shown. */
+export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
+  const ids = new Set<Id>();
+  const add = (id: Id | null | undefined) => {
+    if (id != null) ids.add(id);
+  };
+  for (const l of [...(scene.background_media ?? []), ...(scene.foreground_media ?? [])]) add(layerMediaId(l));
+  for (const h of scene.hotspots ?? []) for (const label of h.labels ?? []) add(labelMediaId(label));
+  walkActions(scene, (a) => add(a.media_id));
+  const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
+  for (const p of scene.items ?? []) add(items.get(p.item_id)?.media_id);
+  const chars = new Map((scenario.characters ?? []).map((c) => [c.id, c]));
+  for (const p of scene.characters ?? []) add(chars.get(p.character_id)?.media_id);
+  return [...ids];
+}
+
+/** Media needed everywhere: avatars, attachable items (they travel with players) and splash screens. */
+export function collectGlobalMediaIds(scenario: Scenario): Id[] {
+  const ids = new Set<Id>(scenario.avatar_media_ids ?? []);
+  for (const item of scenario.items ?? []) {
+    if ((item.vehicle || item.wearable) && item.media_id != null) ids.add(item.media_id);
+  }
+  return [...ids];
+}
+
+export function resolveMediaUrl(scenario: Pick<Scenario, 'asset_base_url'>, media: Media): string | null {
+  const raw = media.url ?? (media.filepath && media.filename ? joinPath(media.filepath, media.filename) : null);
+  if (!raw) return null;
+  // Absolute URLs and site-root paths (uploaded media lives under /media) are used as they are.
+  if (/^(https?:)?\/\//.test(raw) || raw.startsWith('data:') || raw.startsWith('/')) return raw;
+  const base = scenario.asset_base_url ?? '';
+  return joinPath(base, raw);
+}
+
+function joinPath(a: string, b: string): string {
+  if (!a) return b;
+  return `${a.replace(/\/+$/, '')}/${b.replace(/^\/+/, '')}`;
+}
+
+/** Fast lookups over a normalized scenario. */
+export class ScenarioIndex {
+  readonly scenes = new Map<Id, Scene>();
+  readonly media = new Map<Id, Media>();
+  readonly items = new Map<Id, Item>();
+  readonly events = new Map<Id, { event: GameEvent; scene: Scene }>();
+  readonly hotspots = new Map<Id, { hotspot: Hotspot; scene: Scene }>();
+
+  constructor(readonly scenario: Scenario) {
+    for (const m of scenario.assets ?? []) this.media.set(m.id, m);
+    for (const i of scenario.items ?? []) this.items.set(i.id, i);
+    for (const scene of scenario.scenes) {
+      this.scenes.set(scene.id, scene);
+      for (const e of eventsOf(scene)) this.events.set(e.id, { event: e, scene });
+      for (const h of scene.hotspots ?? []) this.hotspots.set(h.id, { hotspot: h, scene });
+    }
+  }
+
+  scene(id: Id): Scene | undefined {
+    return this.scenes.get(id);
+  }
+
+  startScene(): Scene {
+    const s = this.scenes.get(this.scenario.start_scene_id) ?? this.scenario.scenes[0];
+    if (!s) throw new Error('Scenario has no scenes');
+    return s;
+  }
+
+  jumpTargets(sceneId: Id): Id[] {
+    const jt = this.scenario.jump_targets;
+    if (!jt) return [];
+    if (Array.isArray(jt)) return jt.find((x) => x.scene_id === sceneId)?.targets ?? [];
+    return jt[String(sceneId)] ?? [];
+  }
+
+  spawn(scene: Scene, name?: string | null): SpawnPoint | null {
+    const points = scene.spawn_points ?? [];
+    return (
+      points.find((p) => p.name === name) ??
+      points.find((p) => p.name === 'default') ??
+      points[0] ??
+      null
+    );
+  }
+}
+
+/**
+ * World size of a scene from the document alone: explicit width/height,
+ * else the first background layer's display size or media dimensions.
+ * Returns null when the document does not say (the client can still fall
+ * back to the loaded image, but the server cannot).
+ */
+export function sceneSize(scenario: Scenario, scene: Scene): { width: number; height: number } | null {
+  if (scene.width && scene.height) return { width: scene.width, height: scene.height };
+  const layer = scene.background_media?.[0];
+  if (!layer) return null;
+  if ('media_id' in layer && layer.display_width && layer.display_height) {
+    return { width: layer.display_width, height: layer.display_height };
+  }
+  const id = layerMediaId(layer);
+  const media = (scenario.assets ?? []).find((m) => m.id === id) ?? ('media_id' in layer ? undefined : layer);
+  if (media?.width && media?.height) {
+    return { width: media.width * (media.scale_x ?? 1), height: media.height * (media.scale_y ?? 1) };
+  }
+  return null;
+}
