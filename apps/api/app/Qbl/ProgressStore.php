@@ -17,7 +17,7 @@ use PDO;
  */
 class ProgressStore
 {
-    public const KINDS = ['wearable', 'pet', 'animation', 'ability'];
+    public const KINDS = ['wearable', 'pet', 'animation', 'ability', 'move'];
     public const SLOTS = ['head', 'body', 'back', 'hand'];
     public const ANIMATIONS = ['bounce', 'sway', 'pulse', 'float'];
 
@@ -145,7 +145,8 @@ class ProgressStore
             throw new StoreError(404, 'You do not own that.');
         }
         $this->transaction(function () use ($userId, $itemId, $item, $on) {
-            if ($on && $item['kind'] !== 'ability') {
+            // Abilities and moves add up; of everything else one at a time is on.
+            if ($on && ! in_array($item['kind'], ['ability', 'move'], true)) {
                 $same = $item['kind'] === 'wearable' ? ' AND s.`slot` = ?' : '';
                 $params = $item['kind'] === 'wearable' ? [$userId, $item['kind'], $item['slot']] : [$userId, $item['kind']];
                 $this->run("UPDATE `user_items` SET `equipped` = 0 WHERE `user_id` = ? AND `shop_item_id` IN (SELECT s.`id` FROM `shop_items` s WHERE s.`kind` = ?$same)", $params);

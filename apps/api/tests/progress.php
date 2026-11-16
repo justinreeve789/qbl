@@ -115,6 +115,18 @@ same($progress->equip(1, 5, true)['equipped'], [2, 5, $badge['id']], 'abilities 
 same($progress->look(1), '2,5,'.$badge['id'], 'the look is what the game server shows other players');
 same($progress->equip(1, 2, false)['equipped'], [5, $badge['id']], 'and things can be taken off');
 refused(fn () => $progress->equip(2, 1, true), 404, 'nobody can wear what they do not own');
+// Moves are buttons on the player's screen; like abilities, any number can be switched on at once.
+$pdo->exec("INSERT INTO shop_items (id, scenario_id, name, kind, price, settings, active, sequence) VALUES (60, NULL, 'Spin', 'move', 0, '{\"move\":\"spin\"}', 1, 60), (61, NULL, 'Wave', 'move', 0, '{\"move\":\"wave\"}', 1, 61)");
+$progress->buy(1, 60);
+$progress->buy(1, 61);
+$progress->equip(1, 60, true);
+$worn = $progress->equip(1, 61, true)['equipped'];
+check(in_array(60, $worn, true) && in_array(61, $worn, true), 'two moves are on at once');
+same(array_values(array_filter($progress->catalogue(), fn ($i) => $i['id'] === 60))[0]['move'], 'spin', 'a move item names its animation');
+$progress->equip(1, 60, false);
+$progress->equip(1, 61, false);
+$pdo->exec('DELETE FROM user_items WHERE shop_item_id IN (60, 61)');
+$pdo->exec('DELETE FROM shop_items WHERE id IN (60, 61)');
 
 // Withdrawing a scenario's item, and deleting the scenario.
 $scenarios->deleteRow($sid, 'shop_items', $badge['id']);

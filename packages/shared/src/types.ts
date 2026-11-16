@@ -31,9 +31,104 @@ export interface Media {
   params?: Params;
   /** Lower numbers load first. Present on entries of scenario.assets. */
   priority?: number;
+  /**
+   * [ext] The picture is a sprite sheet: a grid of equal frames, numbered from 0 at the top left,
+   * left to right and then down (as on the Spritemaps page).
+   */
+  sheet?: MediaSheet;
+  /** [ext] Named animations over the sheet's frames. Anything drawn with this media can play them. */
+  animations?: MediaAnimation[];
   /** [ext] Pixel size of the file, when known. */
   width?: number;
   height?: number;
+}
+
+// ----------------------------------------------------------- animations
+
+/** [ext] How a sprite sheet is cut into frames. */
+export interface MediaSheet {
+  /** Frames across. */
+  columns: number;
+  /** Frames down. */
+  rows: number;
+  /** How many frames there are, when the last row is not full. Default columns x rows. */
+  count?: number;
+}
+
+/**
+ * [ext] One animation on a sprite sheet. A few names have a meaning of their own: `idle` plays
+ * while the figure stands, `walk` while it moves (mirrored for the other direction unless
+ * `walk_left` and `walk_right` are given). Any other name (`jump`, `dance`...) is played when
+ * an `animate` action or the player asks for it.
+ */
+export interface MediaAnimation {
+  name: string;
+  /** Frame numbers, in the order they are shown. A frame may appear more than once. */
+  frames: number[];
+  /** Milliseconds one pass takes. Default: 100 per frame. */
+  duration?: number;
+  /** Play again from the start when it ends. Default: true for idle and the walks, false for everything else. */
+  repeat?: boolean;
+}
+
+/** Animations a figure plays by itself. */
+export const AUTOMATIC_ANIMATIONS = ['idle', 'walk', 'walk_left', 'walk_right'] as const;
+
+/**
+ * Moves every figure can make, sheet or no sheet: the picture itself hops, turns, ducks, sways
+ * or waves. A sheet animation with the same name is played instead when the figure has one.
+ */
+export const BUILT_IN_MOVES: Record<string, { label: string; icon: string; duration: number; repeat: boolean }> = {
+  jump: { label: 'Jump', icon: '⤴️', duration: 600, repeat: false },
+  spin: { label: 'Spin', icon: '🌀', duration: 700, repeat: false },
+  crouch: { label: 'Crouch', icon: '⤵️', duration: 900, repeat: false },
+  wave: { label: 'Wave', icon: '👋', duration: 1200, repeat: false },
+  dance: { label: 'Dance', icon: '💃', duration: 1600, repeat: true },
+};
+
+export const ANIMATION_NAME = /^[a-z][a-z0-9_]{0,31}$/;
+
+/** The animation of that name on a media's sheet, if it has one. */
+export function findAnimation(media: Pick<Media, 'sheet' | 'animations'> | null | undefined, name: string): MediaAnimation | undefined {
+  return media?.sheet ? media.animations?.find((a) => a.name === name) : undefined;
+}
+
+/** Whether an animation loops: as it says, or else by its name. */
+export function animationRepeats(animation: Pick<MediaAnimation, 'name' | 'repeat'>): boolean {
+  return animation.repeat ?? ((AUTOMATIC_ANIMATIONS as readonly string[]).includes(animation.name) || BUILT_IN_MOVES[animation.name]?.repeat === true);
+}
+
+/**
+ * Which animation a figure shows while standing or walking, and whether the picture is mirrored
+ * for it. `faces` is the way the art looks (default right). Null: the sheet has nothing for
+ * this, so the figure keeps its current frame.
+ */
+export function automaticAnimation(
+  media: Pick<Media, 'sheet' | 'animations'> | null | undefined, moving: boolean, facing: 'left' | 'right', faces: 'left' | 'right' = 'right',
+): { name: string | null; flip: boolean } {
+  const has = (name: string) => findAnimation(media, name) !== undefined;
+  const mirrored = facing !== faces;
+  if (moving) {
+    // A walk drawn for this direction is used as it is; otherwise the other one is mirrored.
+    if (has(`walk_${facing}`)) return { name: `walk_${facing}`, flip: false };
+    if (has('walk')) return { name: 'walk', flip: mirrored };
+    const other = facing === 'left' ? 'walk_right' : 'walk_left';
+    if (has(other)) return { name: other, flip: true };
+  }
+  return { name: has('idle') ? 'idle' : null, flip: mirrored };
+}
+
+/**
+ * [ext] Something a player can do whenever they like, from a button on their screen: jump,
+ * crouch, dance. Shown while its conditions hold, so a scenario can teach a move by setting a
+ * variable. Moves bought in the marketplace are added to these and work in every scenario.
+ */
+export interface Move {
+  /** The animation to play: one on the avatar's sheet, or a built-in move. */
+  animation: string;
+  label?: string;
+  icon?: string;
+  conditions?: Condition[];
 }
 
 // ------------------------------------------------------------ spritemap
@@ -91,6 +186,7 @@ export type ActionType =
   | 'shop'
   | 'dialogue'
   | 'avatar'
+  | 'animate'
   | 'freeze'
   | 'audio'
   | 'cancel'
@@ -246,6 +342,23 @@ export interface AvatarAction extends ActionBase {
 }
 
 /**
+ * [ext] Play an animation on something in the scene: the player's avatar, a placed item or
+ * vehicle, a placed character, or a picture another action is showing. `animation` is a name
+ * from that thing's sprite sheet, or a built-in move. An empty name stops what is playing and
+ * returns the figure to standing and walking.
+ */
+export interface AnimateAction extends ActionBase {
+  type: 'animate';
+  /** Default: the player. */
+  target?: 'player' | 'item' | 'character' | 'action';
+  item_id?: Id;
+  character_id?: Id;
+  /** For `target: "action"`: the id of an image_fixed or spritemap action that is showing. */
+  target_id?: Id;
+  animation: string;
+}
+
+/**
  * [ext] Stop the player from walking, or let them walk again: for a conversation with a
  * character, a cutscene, a countdown. It lasts until a freeze action with `frozen: false`, or
  * until the event that froze the player ends, whichever comes first, so a player can never be
@@ -299,7 +412,7 @@ export interface ShopAction extends ActionBase {
 }
 
 export type Action =
-  | AwardAction | ShopAction | DialogueAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
+  | AnimateAction | AwardAction | ShopAction | DialogueAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
   | VariableAction | VideoAction | WaitAction;
@@ -341,7 +454,7 @@ export interface GameEvent {
 export type EventAudience = 'player' | 'scene';
 
 /** The action types other players are shown when an event's audience is the scene. */
-export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'translate', 'cancel'] as const;
+export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'translate', 'cancel', 'animate'] as const;
 
 export interface Hotspot extends GameEvent {
   position_x?: number | null;
@@ -392,7 +505,7 @@ export interface ScaleArea {
 
 // ------------------------------------------------- progression and shop
 
-export type ShopItemKind = 'wearable' | 'pet' | 'animation' | 'ability';
+export type ShopItemKind = 'wearable' | 'pet' | 'animation' | 'ability' | 'move';
 export type WearableSlot = 'head' | 'body' | 'back' | 'hand';
 /** Ways an avatar can move on the spot. */
 export type AvatarAnimation = 'bounce' | 'sway' | 'pulse' | 'float';
@@ -425,6 +538,8 @@ export interface ShopItem {
    * so a condition can offer a shortcut, a translation or a hidden hotspot to players who have it.
    */
   ability?: string;
+  /** Moves: the animation the player can then play from their screen, in every scenario. */
+  move?: string;
 }
 
 /** A player's stars, XP and rank, and what they own. */
@@ -648,6 +763,8 @@ export interface Scenario {
   move_speed?: number;
   /** [ext] Media ids players can pick as their avatar. */
   avatar_media_ids?: Id[];
+  /** [ext] What players can do from buttons on their screen while the conditions hold: jump, crouch, dance. */
+  moves?: Move[];
   /** [ext] A close-up portrait for an avatar, by the avatar's media id. Shown when the player speaks in portrait dialogue. */
   avatar_portraits?: Record<string, Id>;
   /** [ext] The mission checklist. */

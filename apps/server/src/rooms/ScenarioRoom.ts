@@ -1,7 +1,7 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
   C2S, CloseCodes, normalizeScenario, S2C, validateScenario, World,
-  type ChatBroadcast, type EmoteBroadcast, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions, type MoveMessage,
+  type ChatBroadcast, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions, type MoveMessage,
   type NoticeMessage, type ProgressMessage, type SceneMessage, type ShowBroadcast, type ShowMessage, type SnapMessage, type VariableMessage,
   type WelcomeMessage,
 } from '@qbl/shared';
@@ -99,6 +99,11 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       if (!others?.length) return;
       const out: ShowBroadcast = { session_id: client.sessionId, event_id: Number(msg.event_id), action_id: Number(msg.action_id) };
       for (const c of this.clients) if (others.includes(c.sessionId)) c.send(S2C.Show, out);
+    });
+
+    // A move from the player's screen, or an animate action aimed at their avatar.
+    this.onMessage(C2S.Animate, (client: Client, msg: AnimateMessage) => {
+      this.world.animate(client.sessionId, msg);
     });
 
     this.onMessage(C2S.Avatar, (client: Client, msg: AvatarMessage) => {

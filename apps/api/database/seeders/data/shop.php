@@ -20,5 +20,7 @@ return [
     ['id' => 10, 'name' => 'Bounce', 'description' => 'A spring in your step while you stand around.', 'kind' => 'animation', 'price' => 35, 'image_url' => $img('bounce'), 'settings' => ['animation' => 'bounce']],
     ['id' => 11, 'name' => 'Float', 'description' => 'Hover a little, as if gravity were optional.', 'kind' => 'animation', 'price' => 70, 'image_url' => $img('float'), 'settings' => ['animation' => 'float']],
     ['id' => 12, 'name' => 'Universal translator', 'description' => 'Some signs and creatures can only be understood with one of these.', 'kind' => 'ability', 'price' => 100, 'image_url' => $img('translator'), 'settings' => ['ability' => 'translator']],
+    ['id' => 14, 'name' => 'Spin', 'description' => 'A move for your screen: turn right round on the spot. Works in every mission.', 'kind' => 'move', 'price' => 25, 'image_url' => $img('spin'), 'settings' => ['move' => 'spin']],
+    ['id' => 15, 'name' => 'Wave', 'description' => 'A move for your screen: wave hello to whoever is near.', 'kind' => 'move', 'price' => 15, 'image_url' => $img('wave'), 'settings' => ['move' => 'wave']],
     ['id' => 13, 'name' => 'Field guide', 'description' => 'Unlocks extra notes on plants and animals in missions that have them.', 'kind' => 'ability', 'price' => 60, 'image_url' => $img('field-guide'), 'settings' => ['ability' => 'field_guide']],
 ];

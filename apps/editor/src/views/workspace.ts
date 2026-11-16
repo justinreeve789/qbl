@@ -1,10 +1,10 @@
 import { previewUrl } from '../config';
 import { sceneLabel } from '../describe';
-import { h, redraw } from '../dom';
+import { h, redraw, toast } from '../dom';
 import type { FormContext } from '../fields';
 import type { Store } from '../store';
-import { charactersPage, itemsPage, mediaPage, objectivesPage, shopPage, variablesPage } from './library';
-import { publishPage, scenesPage, settingsPage } from './pages';
+import { charactersPage, itemsPage, mediaPage, movesPage, objectivesPage, shopPage, variablesPage } from './library';
+import { checkAndPublish, publishPage, scenesPage, settingsPage } from './pages';
 import { sceneEditor } from './scene/sceneEditor';
 
 export const TABS = [
@@ -14,6 +14,7 @@ export const TABS = [
   ['items', 'Items', '🎒'],
   ['characters', 'Characters', '🧑‍🚀'],
   ['objectives', 'Objectives', '✅'],
+  ['moves', 'Moves', '🤸'],
   ['shop', 'Shop', '🛍️'],
   ['settings', 'Settings', '⚙️'],
   ['publish', 'Publish', '🚀'],
@@ -37,6 +38,21 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
   const title = h('strong', { class: 'scenario-title' });
   const state = h('a', { class: 'publish-state', href: `${base}/publish` });
   const body = h('main', { class: 'workspace-body' });
+  // Publishing is one click from anywhere in the scenario. If something has to be fixed first,
+  // it goes to the Publish page, which lists what.
+  const publish = h('button', {
+    type: 'button', class: 'primary publish-now', title: 'Check the scenario and make this version the one players get',
+    onclick: async () => {
+      publish.disabled = true;
+      publish.textContent = 'Publishing…';
+      const result = await checkAndPublish(store);
+      publish.disabled = false;
+      publish.textContent = '🚀 Publish';
+      if (result.published) return toast(result.warnings ? `Published. ${result.warnings} warning${result.warnings === 1 ? '' : 's'} worth a look on the Publish page.` : 'Published. Players now get this version.');
+      toast(result.message ?? `Not published: ${result.errors} error${result.errors === 1 ? '' : 's'} to fix first.`, 'error');
+      go(`${base}/publish`);
+    },
+  }, '🚀 Publish');
   let disposeScene: (() => void) | null = null;
 
   const drawHead = () => {
@@ -60,6 +76,8 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
         return charactersPage(ctx);
       case 'objectives':
         return objectivesPage(ctx);
+      case 'moves':
+        return movesPage(ctx);
       case 'shop':
         return shopPage(ctx);
       case 'settings':
@@ -94,7 +112,7 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
     h(
       'div',
       { class: 'workspace-head' },
-      h('div', { class: 'crumbs' }, h('a', { href: '#/' }, 'Scenarios'), ' › ', scene ? h('a', { href: base }, title) : title, scene ? ` › ${sceneLabel(scene)}` : null, state),
+      h('div', { class: 'crumbs' }, h('a', { href: '#/' }, 'Scenarios'), ' › ', scene ? h('a', { href: base }, title) : title, scene ? ` › ${sceneLabel(scene)}` : null, state, h('span', { class: 'spacer' }), publish),
       h('nav', { class: 'tabs', 'aria-label': 'Scenario' },
         ...TABS.map(([key, label, icon]) => h('a', { href: key === 'scenes' ? base : `${base}/${key}`, class: !scene && place.tab === key ? 'current' : scene && key === 'scenes' ? 'parent' : null }, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, icon), label)),
         // The scene editor has its own test button, which starts in that scene.

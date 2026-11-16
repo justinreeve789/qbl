@@ -76,6 +76,9 @@ test('items and characters: define them, with conditions', async () => {
   await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 3);
   // Let players choose the guide picture as their avatar.
   await page.locator('[data-media]', { hasText: 'guide.png' }).locator('text=Players can choose this').click();
+  // Its close-up is cut from the top third and added to the media.
+  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 4);
+  await saved();
 
   await page.click('.tabs >> text=Variables');
   prompts.push('has_ticket');
@@ -97,6 +100,9 @@ test('items and characters: define them, with conditions', async () => {
   await page.waitForSelector('.grid .card');
   await type('.card [data-field=name] input', 'Ferry keeper');
   await page.locator('.card [data-field=media_id] select').selectOption({ label: 'guide.png' });
+  // The character gets a close-up of its own the same way, shown beside its picture.
+  await page.waitForFunction(() => /^\/media\//.test(document.querySelector('.card img.portrait')?.getAttribute('src') ?? '') && document.querySelector('.card img.portrait')?.getAttribute('src') !== document.querySelector('.card img.preview')?.getAttribute('src'));
+  await saved();
 
   const doc = await draft();
   const boat = doc.items![0]!;
@@ -243,9 +249,13 @@ test('media sub-tabs, scenario music and scene music', async () => {
   await page.click('.tabs >> text=Media');
   await page.waitForSelector('.subtabs');
   const tab = (key: string) => page.locator(`.subtabs [data-tab=${key}]`);
+  // The counts settle once anything still being saved has come back.
+  await saved();
+  await page.waitForFunction(() => /Vehicles\s*1/.test(document.querySelector('.subtabs [data-tab=vehicle]')?.textContent ?? ''), null, { timeout: 5000 }).catch(async (err) => { console.log('The vehicle count was wrong. What the page showed, then what is saved:', await page.evaluate(() => [...document.querySelectorAll('.subtabs button')].map((b) => b.textContent).join(' ') + ' || ' + [...document.querySelectorAll('[data-media]')].map((c) => c.getAttribute('data-media') + ':' + c.querySelector('strong')?.textContent).join(',') + ' || ' + document.querySelector('.toasts')?.textContent), JSON.stringify(await draft().then((d) => [d.items, d.avatar_media_ids, d.avatar_portraits, d.characters]))); throw err; });
   assert.match(await tab('background').innerText(), /Backgrounds\s*1/, 'sky.png is a scene layer');
   assert.match(await tab('vehicle').innerText(), /Vehicles\s*1/, 'boat.png belongs to a vehicle');
-  assert.match(await tab('character').innerText(), /NPCs\s*1/, 'guide.png is a character');
+  assert.match(await tab('character').innerText(), /NPCs\s*2/, 'guide.png is a character, and so is the close-up that was cut from it');
+  assert.match(await tab('avatar').innerText(), /Avatars\s*1/, 'the close-up made when guide.png became an avatar');
   await tab('vehicle').click();
   assert.equal(await page.locator('[data-media]').count(), 1);
   await tab('audio').click();
@@ -297,9 +307,9 @@ test('delete a scene, a media file, and then the whole scenario', async () => {
   await page.click('.subtabs [data-tab=all]');
   // By its title: an avatar's card also lists the other pictures, as choices for its portrait.
   await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'boat.png' }) }).locator('text=Delete').click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 4);
+  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 6);
   const doc = await draft();
-  assert.equal(doc.assets!.length, 4);
+  assert.equal(doc.assets!.length, 6);
   assert.equal(doc.items![0]!.media_id, undefined, 'the item is kept, without its picture');
 
   await page.click('.tabs >> text=Settings');

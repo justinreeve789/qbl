@@ -6,6 +6,7 @@ import { ObjectivesFeature } from '../src/features/ObjectivesFeature';
 import { OfflineConnection } from '../src/net/Connection';
 import { PlayScene } from '../src/scenes/PlayScene';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
+import { MovesFeature } from '../src/features/MovesFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
 import type { InfoboxHandle, OverlayHandle, ShopView, UiPort } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
@@ -50,6 +51,14 @@ export class HeadlessUi implements UiPort {
   /** The stars display, as last drawn. */
   hud: { stars: number; xp: number; rank: string } | null = null;
   rewards(state: { stars: number; xp: number; rank: string } | null) { this.hud = state; }
+  account() {}
+  /** The move buttons showing now, and a way to press one. */
+  moveButtons: Array<{ animation: string; label: string; icon: string }> = [];
+  pressMove: (animation: string) => void = () => {};
+  moves(list: Array<{ animation: string; label: string; icon: string }>, onDo: (animation: string) => void) {
+    this.moveButtons = list;
+    this.pressMove = onDo;
+  }
   /** The marketplace, when open: what it shows and the buttons it offers. */
   shopOpen: { view: () => ShopView; on: { buy(id: number): Promise<void>; equip(id: number, on: boolean): Promise<void> }; close(): void } | null = null;
   shop(view: () => ShopView, on: { buy(id: number): Promise<void>; equip(id: number, on: boolean): Promise<void> }) {
@@ -128,6 +137,7 @@ export class Game {
     // Like a preview: an account to try awards and the marketplace with, kept only in memory.
     this.ctx.rewards.pretend();
     new RewardsFeature().start(this.ctx);
+    new MovesFeature().start(this.ctx);
     this.world.registry.set('ctx', this.ctx);
     this.world.mount(this.scene as never);
     this.ctx.vars.onChange(() => this.objectives.refresh(this.ctx));

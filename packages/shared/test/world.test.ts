@@ -185,3 +185,26 @@ test('showing an event to the scene: only its shown actions, only to players in 
   assert.equal(world.show('c', { event_id: 20, action_id: 21 }), null, 'nor from a scene the event is not in');
   assert.equal(world.show('nobody', { event_id: 20, action_id: 21 }), null);
 });
+
+test('avatar animations: asked through the room, checked for shape and haste, ended by walking', () => {
+  const { world, state, clock } = make();
+  world.addPlayer('a', ann, null);
+  const me = () => state.players.get('a')!;
+  assert.equal(me().anim, '');
+  assert.equal(world.animate('a', { name: 'dance' }), true);
+  assert.equal(me().anim, 'dance:1');
+  assert.equal(world.animate('a', { name: 'jump' }), false, 'not more than four a second');
+  clock.now += 300;
+  assert.equal(world.animate('a', { name: 'dance' }), true);
+  assert.equal(me().anim, 'dance:2', 'the same move asked for again is a new value, so it plays again');
+  assert.equal(world.animate('a', { name: 'Drop Table' }), false);
+  assert.equal(world.animate('a', { name: '<b>' }), false);
+  // Walking ends it; so does asking for nothing, which is never rate-limited.
+  clock.now += 1000;
+  assert.equal(world.move('a', { x: 130, y: 400, facing: 'right' }).ok, true);
+  assert.equal(me().anim, '');
+  clock.now += 300;
+  world.animate('a', { name: 'dance' });
+  assert.equal(world.animate('a', { name: '' }), true);
+  assert.equal(me().anim, '');
+});

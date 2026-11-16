@@ -68,6 +68,8 @@ export abstract class GameConnection {
   lookChanged(look: string) { this.send(C2S.Look, { look }); }
   /** An event meant for the whole scene reached this action: the server passes it to the other players there. */
   share(eventId: Id, actionId: Id) { this.send(C2S.Show, { event_id: eventId, action_id: actionId }); }
+  /** Play an animation on this player's avatar, for everyone in the scene. An empty name stops it. */
+  animate(name: string) { this.send(C2S.Animate, { name }); }
   /** Show or hide this player's avatar for everyone in the scene. */
   avatarVisible(visible: boolean) { this.send(C2S.Avatar, { visible }); }
 }
@@ -182,6 +184,9 @@ export class OfflineConnection extends GameConnection {
       case C2S.Show:
         // Nobody else to show it to; kept so a preview and the tests can see what would be sent.
         if (this.world.show(id, payload as ShowMessage)) this.shared.push(payload as ShowMessage);
+        break;
+      case C2S.Animate:
+        this.world.animate(id, payload as { name: string });
         break;
       case C2S.Look:
         this.world.setLook(this.sessionId, (payload as { look: string }).look);

@@ -50,6 +50,14 @@ class AuthController extends Controller
         ]);
     }
 
+    /** Signing out ends this token, so a copy of it left in a browser is worth nothing. */
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
     public function me(Request $request): JsonResponse
     {
         return response()->json(['user' => $request->user()->toQbl()]);

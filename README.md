@@ -165,11 +165,24 @@ It has one full quest, The Wilting Stream:
 
 Five questions are built into the play (why collect a healthy control, what a pH of 3 means, what "no microbes" implies, what cancels an acid, and the final conclusion). Each first answer is recorded in a variable and scored, and every answer gets an explanation. A checklist on screen tracks progress.
 
+One avatar, Sprocket, is a sprite sheet: it has a walk and an idle, a drawn jump and a drawn dance. Every player can jump and crouch from buttons on their screen; the crew's music player teaches the dance, and the button appears. The other avatars are single pictures and make the built-in moves. Captain Vega waves when she greets you.
+
 Three things in it show the storytelling tools. Captain Vega greets each player in a **story box** with her portrait, a conversation only that player sees. Above the spring meadow, any player can push loose boulders onto the cliff path: the **rockfall is shown to everyone in the meadow**, and a **shared variable** closes the shortcut for every player until someone sends the repair drone from the engine room. In the hydroponics bay the seed vault opens only for a player who has greeted all three critters, counted in **each player's own variable**.
 
 Along the way the quest awards stars and XP (16 awards: 56 stars and up to 245 XP, enough for the second rank). The marketplace sells the platform's items and two that exist only on this mission: a patch to wear, and a survey map, an ability that makes a map table appear at the landing site for the players who own it.
 
 All of this is data: scenes, hotspots, events, actions, variables and the checklist in the seed rows. The quest's artwork is placeholder art made by `tools/make-quest-art.py`.
+
+## Animations
+
+- **Any image can be a sprite sheet** with named animations, defined on the Media page: say how many frames across and down, add an animation, and click the frames that make it up. They light up in order and a preview plays them. An **animated PNG** is laid out as a sprite sheet when you upload it.
+- **`idle` and `walk` play by themselves** on avatars, vehicles, items and characters whose picture has them. `walk` is mirrored for the other direction unless you define `walk_left` and `walk_right`.
+- **Anything else is played when asked**: by a "Play an animation" action aimed at the player, an item or vehicle, a character or a picture; or by the player, from a **move** button on their screen.
+- **Moves** are listed on the editor's Moves page. A move with a condition appears when the condition holds, so an event teaches a move by setting one of the player's own variables. Moves bought in the marketplace belong to the account and work in every scenario.
+- **Five built-in moves** (jump, spin, crouch, wave, dance) work on any picture, sheet or not, by moving the picture itself. Frames drawn under the same name are used instead.
+- A player's animation goes through the game server, so everyone in the scene sees it.
+
+See "Animations" in `docs/docs/extensions.md`.
 
 ## Stars, XP, ranks and the marketplace
 
@@ -191,7 +204,10 @@ Open `/editor`, sign in, and create a scenario. It gets its permanent 16-letter 
 - **Library**: media (upload, or by address; filed under backgrounds, characters, avatars, items, vehicles, shop items, sounds, video), variables (each marked as a player's own or shared), items, characters with their portraits, and the objectives checklist.
 - **Shop**: the items only this scenario sells, with their price, picture and what they do.
 - **Test this scene** opens the game on the draft, in that scene, playing alone with nothing saved, so you can check that actions behave. Nothing has to be published first.
-- **Publish** checks the scenario with the validator the game uses, then generates the JSON players get at `/{code}`. Players keep the last published version until you publish again.
+- **Sprite sheets**: on a media card, the sheet is shown with its grid; pick frames for each animation and watch the preview.
+- **Portraits** are shown wherever they are chosen. Making a picture an avatar, or giving a character a picture, makes a close-up from the top third of it; choose another whenever you like.
+- **Actions are reordered by dragging** the grip at the left of each one. The lists in the scene outline are in alphabetical order, and each list, and each part of the inspector, folds away.
+- **Publish** is a button on every page of a scenario, the scene editor included. It checks the scenario with the validator the game uses, then generates the JSON players get at `/{code}`. Players keep the last published version until you publish again.
 
 Everything can be edited and deleted, and every change is saved as it is made. See `apps/editor/README.md`.
 
@@ -214,11 +230,11 @@ Most of this codebase was written in an environment without network access. Comp
 
 **Run and passing**
 
-- `packages/shared`: type-checks cleanly; 32 unit tests cover variables and conditions, placeholders and objectives, geometry and movement limits, normalisation, validation, the event engine, the world rules, and the generated mission.
-- `apps/client`: 18 tests run the real client code (scene, systems, presenters, features, offline connection) against a **fake Phaser** with a manual clock. One plays the whole Wilting Stream quest and checks the stars and XP it earns; others buy and wear marketplace items.
-- `apps/api`: 89 checks on the framework-free PHP classes over SQLite (seeding to JSON, seed-once and reset, codes, publishing, the whole editor API including ownership rules, uploads), 32 more on stars, XP, ranks and the marketplace (`npm run test:progress`), and 17 Laravel feature tests that run the real framework: migrations (fresh, and over a database made by the earlier all-in-one migrations), seeding by command, sign-in with a password and with Google (Google itself replaced by a stand-in), forwarded HTTPS headers, the editor routes, upload, publish, play and the game server's routes.
-- `apps/editor`: 23 tests drive the real editor in headless Chromium against those PHP classes. A scenario is built by clicking, typing and dragging, published, and the published JSON is then played by the game's headless harness.
-- The game's DOM UI (infobox, HTML sanitiser, overlays, checklist, marketplace, story box) was exercised in headless Chromium.
+- `packages/shared`: type-checks cleanly; 34 unit tests cover variables and conditions, placeholders and objectives, geometry and movement limits, normalisation, validation, the event engine, the world rules, and the generated mission.
+- `apps/client`: 20 tests run the real client code (scene, systems, presenters, features, offline connection) against a **fake Phaser** with a manual clock. One plays the whole Wilting Stream quest and checks the stars and XP it earns; others buy and wear marketplace items.
+- `apps/api`: 89 checks on the framework-free PHP classes over SQLite (seeding to JSON, seed-once and reset, codes, publishing, the whole editor API including ownership rules, uploads), 34 more on stars, XP, ranks and the marketplace (`npm run test:progress`), and 18 Laravel feature tests that run the real framework: migrations (fresh, and over a database made by the earlier all-in-one migrations), seeding by command, sign-in with a password and with Google (Google itself replaced by a stand-in), forwarded HTTPS headers, the editor routes, upload, publish, play and the game server's routes.
+- `apps/editor`: 25 tests drive the real editor in headless Chromium against those PHP classes. A scenario is built by clicking, typing and dragging, published, and the published JSON is then played by the game's headless harness.
+- The game's DOM UI (infobox, HTML sanitiser, overlays, checklist, marketplace, story box, move buttons, account menu) was exercised in headless Chromium.
 - Client, server and editor were bundled with esbuild to confirm every import resolves; the Compose file parses; the PHP files pass `php -l`.
 
 **Written against current documentation but never executed**
@@ -227,6 +243,7 @@ Most of this codebase was written in an environment without network access. Comp
 - MariaDB itself has not been exercised from here, only SQLite. Your Docker runs are the MariaDB test.
 - **The Apache configuration, including everything for HTTPS behind a firewall, has never been loaded by an Apache**: there is none in the authoring environment. Laravel's side of it (trusting the forwarded headers) is tested.
 - **Google sign-in has not been run against Google.** The flow is tested with Socialite's stand-in for Google; the real exchange needs your client id and secret.
+- **Animations have not been seen in real Phaser.** The tests check which animation is asked for and when (the fake Phaser records it), and how built-in moves move a picture; how sheets, mirroring and frame timing actually look is for a real run. The animated-PNG reader was tested on one file made for the test.
 - Events shown to the whole scene are tested in the shared rules, the room's rule for passing them on, and the client with a simulated second player, not with two real browsers through Colyseus.
 - The `editor` image, the changes to the Apache configuration (`/editor` proxy, `/media`), the upload limits in `docker/app/php.ini`, and the Vite development wiring for `npm run dev:editor`. `docker compose config` parses.
 - The game's preview path in a real browser (`/?preview=…`): the pieces are tested (the draft endpoint, starting in a given scene), the page that joins them is not.

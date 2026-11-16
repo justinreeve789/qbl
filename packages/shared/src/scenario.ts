@@ -3,7 +3,7 @@ import type {
 } from './types.js';
 
 const ACTION_TYPES: ActionType[] = [
-  'award', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
+  'animate', 'award', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
   'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait',
 ];
 

@@ -77,3 +77,16 @@ export function toast(message: string, kind: 'info' | 'error' = 'info') {
 export function confirmDelete(what: string): boolean {
   return window.confirm(`Delete ${what}? This cannot be undone.`);
 }
+
+/** Which folding groups the author has changed from how they start, so a redraw keeps them that way. */
+const foldState = new Map<string, boolean>();
+
+/**
+ * A group that folds away under its heading, to keep long panels easy to move around in.
+ * `key` names the group across redraws: folding "Labels" on one hotspot keeps it folded on the next.
+ */
+export function fold(key: string, title: Child, openByDefault: boolean, ...children: Child[]): HTMLDetailsElement {
+  const node = h('details', { class: 'fold', open: foldState.get(key) ?? openByDefault, 'data-fold': key }, h('summary', null, title), h('div', { class: 'fold-body' }, ...children));
+  node.addEventListener('toggle', () => foldState.set(key, node.open));
+  return node;
+}

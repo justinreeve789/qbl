@@ -32,8 +32,9 @@ return [
             'chat_mode' => 'emotes',
             'move_speed' => 420,
             'asset_base_url' => '/scenario-assets/starship',
-            'avatar_media_ids' => [101, 102, 103, 104, 105, 106, 107, 108, 109],
-            'avatar_portraits' => ['101' => 111, '102' => 112, '103' => 113, '104' => 114, '105' => 115, '106' => 116, '107' => 117, '108' => 118, '109' => 119],
+            'avatar_media_ids' => [101, 102, 103, 104, 105, 106, 107, 108, 109, 120],
+            'avatar_portraits' => ['101' => 111, '102' => 112, '103' => 113, '104' => 114, '105' => 115, '106' => 116, '107' => 117, '108' => 118, '109' => 119, '120' => 121],
+            'moves' => [['animation' => 'jump'], ['animation' => 'crouch'], ['animation' => 'dance', 'conditions' => [['type' => 'variable', 'variable' => 'learned_dance', 'operator' => '=', 'operand' => 1]]]],
             'music_media_id' => 31,
             'music_volume' => 0.35,
             'objectives' => [
@@ -107,6 +108,8 @@ return [
         ['id' => 117, 'scenario_id' => 1, 'type' => 'image', 'url' => 'portraits/avatar-7.png', 'scale_x' => 1, 'scale_y' => 1, 'width' => 320, 'height' => 320, 'priority' => 30],
         ['id' => 118, 'scenario_id' => 1, 'type' => 'image', 'url' => 'portraits/avatar-8.png', 'scale_x' => 1, 'scale_y' => 1, 'width' => 320, 'height' => 320, 'priority' => 30],
         ['id' => 119, 'scenario_id' => 1, 'type' => 'image', 'url' => 'portraits/avatar-9.png', 'scale_x' => 1, 'scale_y' => 1, 'width' => 320, 'height' => 320, 'priority' => 30],
+        ['id' => 120, 'scenario_id' => 1, 'type' => 'image', 'url' => 'avatars/sprocket-sheet.png', 'scale_x' => 1.35, 'scale_y' => 1.35, 'width' => 720, 'height' => 540, 'priority' => 1, 'params' => ['sheet' => ['columns' => 6, 'rows' => 3], 'animations' => [['name' => 'idle', 'frames' => [0, 1], 'duration' => 900], ['name' => 'walk', 'frames' => [6, 7, 8, 9, 10, 11], 'duration' => 600], ['name' => 'jump', 'frames' => [12, 13, 14, 13, 12], 'duration' => 600, 'repeat' => false], ['name' => 'dance', 'frames' => [15, 16, 17, 16], 'duration' => 700, 'repeat' => true]]]],
+        ['id' => 121, 'scenario_id' => 1, 'type' => 'image', 'url' => 'portraits/sprocket.png', 'scale_x' => 1, 'scale_y' => 1, 'width' => 240, 'height' => 120, 'priority' => 30],
     ],
 
     // What only this mission sells in the marketplace. The platform's own items are in data/shop.php.
@@ -155,6 +158,7 @@ return [
         ['id' => 36, 'scenario_id' => 1, 'variable_name' => 'met_critter_b', 'default_value' => 0, 'scope' => 'player', 'persist' => true],
         ['id' => 37, 'scenario_id' => 1, 'variable_name' => 'met_critter_c', 'default_value' => 0, 'scope' => 'player', 'persist' => true],
         ['id' => 38, 'scenario_id' => 1, 'variable_name' => 'vault_opened', 'default_value' => 0, 'scope' => 'player', 'persist' => true],
+        ['id' => 39, 'scenario_id' => 1, 'variable_name' => 'learned_dance', 'default_value' => 0, 'scope' => 'player', 'persist' => true],
     ],
 
     // Things that are not part of the background.
@@ -301,6 +305,7 @@ return [
         ['id' => 1010, 'scene_id' => 10, 'kind' => 'hotspot', 'shortname' => 'edge-east', 'sequence' => 1, 'overridable' => false, 'block_hotspots' => false, 'position_x' => 2250, 'position_y' => null, 'radius' => 35, 'activate_by_trigger' => false, 'once' => false],
         ['id' => 1020, 'scene_id' => 10, 'kind' => 'hotspot', 'shortname' => 'bunks', 'sequence' => 2, 'overridable' => false, 'block_hotspots' => false, 'position_x' => 920, 'position_y' => 640, 'radius' => 110, 'activate_by_trigger' => true, 'once' => false],
         ['id' => 1030, 'scene_id' => 10, 'kind' => 'hotspot', 'shortname' => 'porthole', 'sequence' => 3, 'overridable' => false, 'block_hotspots' => false, 'position_x' => 1890, 'position_y' => 430, 'radius' => 110, 'activate_by_trigger' => true, 'once' => false],
+        ['id' => 1040, 'scene_id' => 10, 'kind' => 'hotspot', 'shortname' => 'music-player', 'sequence' => 4, 'overridable' => false, 'block_hotspots' => false, 'position_x' => 1400, 'position_y' => 640, 'radius' => 110, 'activate_by_trigger' => true, 'once' => false],
 
         // scene 11
         ['id' => 1101, 'scene_id' => 11, 'kind' => 'start', 'shortname' => 'caption', 'sequence' => 1, 'overridable' => false, 'block_hotspots' => false, 'position_x' => null, 'position_y' => null, 'radius' => null, 'activate_by_trigger' => false, 'once' => false],
@@ -363,12 +368,13 @@ return [
         ['id' => 24201, 'event_id' => 242, 'type' => 'jump', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['scene_id' => 8, 'spawn_point' => 'door']],
         ['id' => 22101, 'event_id' => 221, 'type' => 'infobox', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['content' => '<h3>Mission: The Wilting Stream</h3><p>Samples collected: <strong>{{samples}}/3</strong><br>Tests completed: <strong>{{tests_done}}/6</strong><br>Science score: <strong>{{science_score}}/5</strong></p><p>The sample sites are west of the landing site. The laboratory is through the door on the east side of this room.</p>']],
         ['id' => 24301, 'event_id' => 243, 'type' => 'jump', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['scene_id' => 9, 'spawn_point' => 'near']],
-        ['id' => 25010, 'event_id' => 250, 'type' => 'freeze', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['frozen' => true]],
-        ['id' => 25011, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 2, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'Welcome aboard, {{QBLPlayerName}}! I am Captain Vega. This ship is yours to explore.', 'speaker' => 'character', 'character_id' => 1]],
-        ['id' => 25012, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 3, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'The mission consoles are along the back wall. The laboratory is through the east door, and the observation deck is up the ramp.', 'speaker' => 'character', 'character_id' => 1]],
-        ['id' => 25013, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 4, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'The main corridor, to the south, leads to the crew quarters, the hydroponics bay, the engine room and the marketplace. The lift on the west side takes you back to the planet.', 'speaker' => 'character', 'character_id' => 1]],
-        ['id' => 25014, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 5, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'Thank you, Captain. I will get to work.']],
-        ['id' => 25015, 'event_id' => 250, 'type' => 'freeze', 'sequence' => 6, 'blocking' => true, 'media_id' => null, 'params' => ['frozen' => false]],
+        ['id' => 25020, 'event_id' => 250, 'type' => 'animate', 'sequence' => 1, 'blocking' => false, 'media_id' => null, 'params' => ['target' => 'character', 'character_id' => 1, 'animation' => 'wave']],
+        ['id' => 25010, 'event_id' => 250, 'type' => 'freeze', 'sequence' => 2, 'blocking' => true, 'media_id' => null, 'params' => ['frozen' => true]],
+        ['id' => 25011, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 3, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'Welcome aboard, {{QBLPlayerName}}! I am Captain Vega. This ship is yours to explore.', 'speaker' => 'character', 'character_id' => 1]],
+        ['id' => 25012, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 4, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'The mission consoles are along the back wall. The laboratory is through the east door, and the observation deck is up the ramp.', 'speaker' => 'character', 'character_id' => 1]],
+        ['id' => 25013, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 5, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'The main corridor, to the south, leads to the crew quarters, the hydroponics bay, the engine room and the marketplace. The lift on the west side takes you back to the planet.', 'speaker' => 'character', 'character_id' => 1]],
+        ['id' => 25014, 'event_id' => 250, 'type' => 'dialogue', 'sequence' => 6, 'blocking' => true, 'media_id' => null, 'params' => ['style' => 'portrait', 'text' => 'Thank you, Captain. I will get to work.']],
+        ['id' => 25015, 'event_id' => 250, 'type' => 'freeze', 'sequence' => 7, 'blocking' => true, 'media_id' => null, 'params' => ['frozen' => false]],
         ['id' => 25101, 'event_id' => 251, 'type' => 'variable', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['name' => 'mission', 'operator' => 'set', 'operand' => 'flora']],
         ['id' => 25102, 'event_id' => 251, 'type' => 'variable', 'sequence' => 2, 'blocking' => true, 'media_id' => null, 'params' => ['name' => 'quest_started', 'operator' => 'set', 'operand' => 1]],
         ['id' => 25190, 'event_id' => 251, 'type' => 'award', 'sequence' => 3, 'blocking' => false, 'media_id' => null, 'params' => ['note' => 'Mission accepted', 'xp' => 5]],
@@ -547,6 +553,9 @@ return [
         ['id' => 101001, 'event_id' => 1010, 'type' => 'jump', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['scene_id' => 9, 'spawn_point' => 'left-door']],
         ['id' => 102001, 'event_id' => 1020, 'type' => 'infobox', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['content' => '<h3>Sleeping in space</h3><p>There is no "up" in orbit, so the crew sleep strapped into their bunks to stop themselves drifting off.</p><p>The ship circles the planet many times a day, so the lights are dimmed on a 24-hour timetable to keep everyone\'s body clock steady.</p>']],
         ['id' => 103001, 'event_id' => 1030, 'type' => 'infobox', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['content' => '<h3>The view outside</h3><p>That blue-green disc is the planet you landed on. From up here you can see its day side and its night side at once.</p><p><em>Think about it:</em> the planet turns, so which way does its sunrise line move?</p>']],
+        ['id' => 104001, 'event_id' => 1040, 'type' => 'variable', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['name' => 'learned_dance', 'operator' => 'set', 'operand' => 1]],
+        ['id' => 104002, 'event_id' => 1040, 'type' => 'animate', 'sequence' => 2, 'blocking' => false, 'media_id' => null, 'params' => ['target' => 'player', 'animation' => 'dance']],
+        ['id' => 104003, 'event_id' => 1040, 'type' => 'text_overlay', 'sequence' => 3, 'blocking' => true, 'media_id' => null, 'params' => ['text' => 'The crew’s favourite song comes on, and you pick up the steps. You can dance whenever you like now: look for the Dance button.', 'alignment' => 'bottom center', 'text_font_size' => 26, 'duration' => 5000]],
 
         // scene 11
         ['id' => 110101, 'event_id' => 1101, 'type' => 'text_overlay', 'sequence' => 1, 'blocking' => true, 'media_id' => null, 'params' => ['text' => 'Hydroponics bay', 'alignment' => 'top center', 'text_font_size' => 30, 'duration' => 2500]],
@@ -722,6 +731,8 @@ return [
         ['id' => 43, 'event_id' => 1020, 'type' => 'text', 'position_x' => 920, 'position_y' => 578, 'scale_x' => 1, 'scale_y' => 1, 'text' => 'Sleeping in space', 'media_id' => null],
         ['id' => 44, 'event_id' => 1030, 'type' => 'image', 'position_x' => 1890, 'position_y' => 430, 'scale_x' => 1, 'scale_y' => 1, 'text' => null, 'media_id' => 10],
         ['id' => 45, 'event_id' => 1030, 'type' => 'text', 'position_x' => 1890, 'position_y' => 358, 'scale_x' => 1, 'scale_y' => 1, 'text' => 'The view outside', 'media_id' => null],
+        ['id' => 86, 'event_id' => 1040, 'type' => 'image', 'position_x' => 1400, 'position_y' => 640, 'scale_x' => 1, 'scale_y' => 1, 'text' => null, 'media_id' => 10],
+        ['id' => 87, 'event_id' => 1040, 'type' => 'text', 'position_x' => 1400, 'position_y' => 578, 'scale_x' => 1, 'scale_y' => 1, 'text' => 'Crew music player', 'media_id' => null],
 
         // scene 11
         ['id' => 46, 'event_id' => 1120, 'type' => 'image', 'position_x' => 1125, 'position_y' => 640, 'scale_x' => 1, 'scale_y' => 1, 'text' => null, 'media_id' => 10],

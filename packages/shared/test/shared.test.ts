@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  rankFor, revealAmount, scaleAt, sceneMusic, speedFactorAt,
+  animationRepeats, automaticAnimation, rankFor, revealAmount, scaleAt, sceneMusic, speedFactorAt,
   applyOperator, collectSceneMediaIds, escapeHtml, evaluateObjectives, interpolate, placeholderVariables, MoveBudget, sceneSize, computeJumpTargets, inHotspot, isWalkable,
   nearestWalkable, normalizeActionType, normalizeScenario, resolveMove, ScenarioIndex, SceneEngine,
   testCondition, validateMove, validateScenario, VariableStore, walkContext,
@@ -640,4 +640,40 @@ test('story boxes and audiences are validated', () => {
   assert.match(problems(doc({ audience: 'world' }))[0]!, /audience is "player" or "scene"/);
   assert.match(problems(doc({}, { portrait_media_id: 2 }))[0]!, /Media 2 is audio, expected image/);
   assert.equal(normalizeScenario(doc({}) as never).scenes[0]!.indirect_events![0]!.audience, 'player', 'events are the player\'s own unless they say otherwise');
+});
+
+test('sprite sheets: which animation a figure shows, what a sheet may say, and animate actions', () => {
+  const sheet = (names: string[]) => ({ sheet: { columns: 4, rows: 2 }, animations: names.map((name, i) => ({ name, frames: [i] })) });
+  // Standing shows idle; walking shows the walk, mirrored when the art faces the other way.
+  assert.deepEqual(automaticAnimation(sheet(['idle', 'walk']), false, 'right'), { name: 'idle', flip: false });
+  assert.deepEqual(automaticAnimation(sheet(['idle', 'walk']), true, 'left'), { name: 'walk', flip: true });
+  assert.deepEqual(automaticAnimation(sheet(['idle', 'walk']), true, 'left', 'left'), { name: 'walk', flip: false });
+  // A walk drawn for each direction is used as drawn; one drawn for one direction is mirrored for the other.
+  assert.deepEqual(automaticAnimation(sheet(['walk_left', 'walk_right']), true, 'left'), { name: 'walk_left', flip: false });
+  assert.deepEqual(automaticAnimation(sheet(['walk_right']), true, 'left'), { name: 'walk_right', flip: true });
+  // A single picture has nothing to play and is simply mirrored.
+  assert.deepEqual(automaticAnimation({}, true, 'left'), { name: null, flip: true });
+  assert.equal(animationRepeats({ name: 'walk' }), true);
+  assert.equal(animationRepeats({ name: 'jump' }), false);
+  assert.equal(animationRepeats({ name: 'dance' }), true);
+  assert.equal(animationRepeats({ name: 'dance', repeat: false }), false);
+
+  const doc = (asset: Record<string, unknown>, action?: Record<string, unknown>, moves?: unknown[]) => ({
+    id: 1, shortname: 't', title: 'T', start_scene_id: 1, moves,
+    assets: [{ id: 1, type: 'image', url: 'a.png', ...asset }],
+    items: [{ id: 3, name: 'Rover', media_id: 1 }],
+    scenes: [{ id: 1, width: 100, height: 100, spawn_points: [{ name: 'default', position_x: 50, position_y: 50 }], items: [{ item_id: 3, position_x: 1, position_y: 1 }], indirect_events: [{ id: 10, actions: action ? [{ id: 11, type: 'animate', ...action }] : [] }] }],
+  });
+  const problems = (d: unknown) => [...validateScenario(d).errors, ...validateScenario(d).warnings].map((e) => e.message);
+  const good = { sheet: { columns: 4, rows: 2, count: 7 }, animations: [{ name: 'idle', frames: [0, 1] }, { name: 'drive', frames: [4, 5, 6] }] };
+  assert.deepEqual(problems(doc(good, { target: 'item', item_id: 3, animation: 'drive' }, [{ animation: 'jump' }])), []);
+  assert.match(problems(doc({ animations: good.animations }))[0]!, /need a sprite sheet/);
+  assert.match(problems(doc({ ...good, animations: [{ name: 'idle', frames: [7] }] }))[0]!, /numbered 0 to 6/);
+  assert.match(problems(doc({ ...good, animations: [{ name: 'Idle!', frames: [0] }] }))[0]!, /lowercase letters/);
+  assert.match(problems(doc({ ...good, animations: [good.animations[0], good.animations[0]] }))[0]!, /Duplicate animation "idle"/);
+  assert.match(problems(doc(good, { target: 'item', item_id: 3, animation: 'fly' }))[0]!, /no animation called "fly"/);
+  assert.deepEqual(problems(doc(good, { target: 'item', item_id: 3, animation: 'jump' })), [], 'a built-in move needs no frames');
+  assert.match(problems(doc(good, { target: 'item', item_id: 9, animation: 'drive' }))[0]!, /does not exist/);
+  assert.deepEqual(problems(doc(good, { animation: 'anything_at_all' })), [], 'avatars differ from player to player, so a move for the player is not checked against a sheet');
+  assert.match(problems(doc(good, undefined, [{ animation: 'Moon Walk' }]))[0]!, /A move names an animation/);
 });

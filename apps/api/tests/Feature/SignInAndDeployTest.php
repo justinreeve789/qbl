@@ -171,7 +171,7 @@ class SignInAndDeployTest extends TestCase
         $this->artisan('qbl:seed', ['--password' => 'demo-password'])->assertSuccessful();
 
         $this->getJson('/api/scenarios/starshipexplorer/play')->assertOk();
-        $this->assertSame(15, DB::table('shop_items')->count(), 'thirteen platform items and the mission\'s two');
+        $this->assertSame(17, DB::table('shop_items')->count(), 'fifteen platform items and the mission\'s two');
         $this->postJson('/api/auth/login', ['email' => 'teacher@qbl.test', 'password' => 'demo-password'])->assertOk();
 
         // Run again, edits to the demo are kept; with --reset the shipped version is put back.

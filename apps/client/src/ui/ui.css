@@ -28,6 +28,7 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-avatars button { padding: 8px; border-radius: 12px; border: 2px solid transparent; background: rgba(255, 255, 255, 0.08); cursor: pointer; }
 .qbl-avatars button:hover, .qbl-avatars button:focus-visible { border-color: var(--qbl-accent); outline: none; }
 .qbl-avatars img { width: 100%; height: 110px; object-fit: contain; }
+.qbl-avatar-frame { display: block; width: 74px; height: 110px; margin: 0 auto; background-repeat: no-repeat; background-position: 0 0; }
 
 /* ---------- in-game layer ---------- */
 .qbl-ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
@@ -63,7 +64,8 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-infobox-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; padding: 14px 24px 20px; }
 
 /* mission checklist */
-.qbl-objectives { position: absolute; top: 16px; right: 16px; width: min(320px, 44vw); padding: 12px 14px; border-radius: 12px; background: rgba(12, 23, 78, 0.88); border: 2px solid rgba(255, 255, 255, 0.3); font-size: 0.92rem; }
+/* Below the stars and the account, which have the corner. */
+.qbl-objectives { position: absolute; top: 60px; right: 16px; width: min(320px, 44vw); padding: 12px 14px; border-radius: 12px; background: rgba(12, 23, 78, 0.88); border: 2px solid rgba(255, 255, 255, 0.3); font-size: 0.92rem; }
 .qbl-objectives[hidden] { display: none; }
 .qbl-objectives-title { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.75rem; opacity: 0.8; margin-bottom: 6px; }
 .qbl-objectives ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -146,9 +148,18 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
   .qbl-story-text { font-size: 16px; }
 }
 
-/* Stars, XP and rank: top left, and the door to the marketplace. */
+/* Top right: stars, XP and rank (the door to the marketplace), then who is playing. The top left
+   belongs to the buttons for leaving a vehicle or taking something off. */
+.qbl-corner { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; align-items: flex-start; justify-content: flex-end; flex-wrap: wrap; max-width: calc(100vw - 24px); z-index: 12; }
+.qbl-corner > * { pointer-events: auto; }
+.qbl-account { position: relative; }
+.qbl-account-name { padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(16, 20, 30, 0.82); color: #fff; font: inherit; cursor: pointer; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qbl-account-name:hover { background: rgba(30, 40, 62, 0.95); }
+.qbl-account-menu { position: absolute; top: calc(100% + 6px); right: 0; display: grid; gap: 10px; width: 230px; padding: 12px; border-radius: 12px; background: rgba(16, 20, 30, 0.96); border: 1px solid rgba(255, 255, 255, 0.25); }
+.qbl-account-menu[hidden] { display: none; }
+.qbl-account-note { font-size: 0.85rem; opacity: 0.85; }
 .qbl-rewards {
-  position: absolute; top: 12px; left: 12px; display: flex; gap: 10px; align-items: baseline; padding: 6px 12px; border: 0; border-radius: 999px;
+  display: flex; gap: 10px; align-items: baseline; padding: 6px 12px; border: 0; border-radius: 999px;
   background: rgba(16, 20, 30, 0.82); color: #fff; font: inherit; cursor: pointer; pointer-events: auto;
 }
 .qbl-rewards:hover { background: rgba(30, 40, 62, 0.95); }
@@ -172,3 +183,11 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-shop-tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #7a4fd6; }
 .qbl-shop-message { color: #ffb4ab; margin: 6px 0; }
 .qbl-shop-empty { color: #c5cce0; padding: 24px; text-align: center; }
+
+/* Moves: what the player can do whenever they like (jump, dance), in a row above the chat bar. */
+.qbl-moves { position: absolute; left: 16px; bottom: 84px; display: flex; gap: 8px; flex-wrap: wrap; max-width: 60vw; }
+.qbl-moves[hidden] { display: none; }
+.qbl-move { display: grid; justify-items: center; gap: 1px; min-width: 58px; padding: 6px 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(12, 23, 78, 0.85); color: #fff; font: inherit; cursor: pointer; pointer-events: auto; }
+.qbl-move:hover, .qbl-move:focus-visible { background: rgba(30, 50, 130, 0.95); border-color: #fff; outline: none; }
+.qbl-move-icon { font-size: 1.4rem; line-height: 1.1; }
+.qbl-move-label { font-size: 0.7rem; font-weight: 600; }

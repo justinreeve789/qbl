@@ -1,11 +1,13 @@
 import type { Row, Table } from '../api';
 import { mediaLabel, mediaUrl, params } from '../describe';
-import { confirmDelete, h, toast } from '../dom';
+import { confirmDelete, fold, h, toast } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
 import {
-  CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS, SHOP_ABILITY, SHOP_ANIMATION, SHOP_ITEM_FIELDS, SHOP_SLOT, SHOP_WEARABLE_FIELDS, ITEM_FIELDS, ITEM_SETTINGS_FIELDS, MEDIA_FIELDS, OBJECTIVE_FIELDS, VARIABLE_FIELDS,
+  CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS, MOVE_FIELDS, SHOP_ABILITY, SHOP_ANIMATION, SHOP_MOVE, SHOP_ITEM_FIELDS, SHOP_SLOT, SHOP_WEARABLE_FIELDS, ITEM_FIELDS, ITEM_SETTINGS_FIELDS, MEDIA_FIELDS, OBJECTIVE_FIELDS, VARIABLE_FIELDS,
 } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
+import { sheetEditor } from './sheet';
+import { apngToSheet } from '../apng';
 
 /** The scenario-wide lists: media, variables, items, characters and objectives. */
 
@@ -61,12 +63,35 @@ export function mediaPage(ctx: FormContext): HTMLElement {
     return store.patchSettings({ avatar_portraits: next }, true);
   };
 
+  // Making a picture an avatar gives it a close-up straight away, cut from the top third of the
+  // picture, where the face usually is. It is an ordinary media file, and another can be chosen.
+  const becomeAvatar = async (media: Row, on: boolean) => {
+    const id = media.id;
+    await store.patchSettings({ avatar_media_ids: on ? [...avatars(), id] : avatars().filter((a) => a !== id) }, true);
+    if (!on || portraits()[String(id)] != null) return;
+    const portrait = await cropPortrait(store, media, 'avatar');
+    // Not if one was chosen, or the avatar was taken away again, while the close-up was being made.
+    if (portrait && portraits()[String(id)] == null && avatars().includes(id)) {
+      // Saved quietly: the page is only redrawn if it is still the one showing, so that a form
+      // someone has moved on to is not rebuilt under their hands.
+      await store.patchSettings({ avatar_portraits: { ...portraits(), [String(id)]: portrait.id } });
+      if (document.querySelector(`[data-media="${id}"]`)) store.emit();
+      toast('A close-up portrait was made from the top of the picture. You can choose another.');
+    }
+  };
+
   const file = h('input', { type: 'file', multiple: true, hidden: true, accept: 'image/png,image/jpeg,image/webp,image/gif,audio/*,video/mp4,video/webm' });
   file.addEventListener('change', async () => {
     for (const picked of [...(file.files ?? [])]) {
       try {
-        const row = await store.api.upload(store.scenarioId, picked);
+        // An animated PNG is laid out as a sprite sheet, which is what the game plays.
+        const animated = picked.type === 'image/png' || /\.a?png$/i.test(picked.name) ? await apngToSheet(await picked.arrayBuffer()).catch(() => null) : null;
+        const row = await store.api.upload(store.scenarioId, animated ? new File([animated.blob], picked.name.replace(/\.a?png$/i, '') + '-sheet.png', { type: 'image/png' }) : picked);
         store.bundle.media.push(row);
+        if (animated) {
+          await store.patch('media', row.id, { params: { ...params(row), sheet: { columns: animated.columns, rows: animated.rows, ...(animated.count < animated.columns * animated.rows ? { count: animated.count } : {}) }, animations: [{ name: 'idle', frames: Array.from({ length: animated.count }, (_, i) => i), duration: animated.duration }] } });
+          toast(`${picked.name} is an animated PNG. Its ${animated.count} frames were laid out as a sprite sheet with one animation, “idle”, which you can rename or split.`);
+        }
         // File it under the tab it was uploaded from, until how it is used says otherwise.
         if (mediaTab !== 'all' && mediaTab !== 'audio' && mediaTab !== 'video' && row.type === 'image') void store.patch('media', row.id, { params: { ...params(row), category: mediaTab } });
       } catch (err) {
@@ -106,27 +131,31 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       : h('video', { class: 'preview', src: url, controls: true, preload: 'none' });
     const avatar = h('input', {
       type: 'checkbox', checked: avatars().includes(id),
-      // Structural: an avatar's card gains a portrait picker, and the card may move to another tab.
-      onchange: () => void store.patchSettings({ avatar_media_ids: avatar.checked ? [...avatars(), id] : avatars().filter((a) => a !== id) }, true),
+      onchange: () => void becomeAvatar(media, avatar.checked),
     });
     return h(
       'div',
       { class: 'card', 'data-media': id },
       h('div', { class: 'card-title' }, h('strong', null, mediaLabel(media)), h('span', { class: 'muted' }, `#${id} · ${media.type}`)),
       preview,
-      form(MEDIA_FIELDS, media, (key, value, field) => void store.patch('media', id, { [key]: value }, key === 'url' || field.structural === true), ctx),
       media.type === 'image' ? h('label', { class: 'field check wide' }, avatar, h('span', null, 'Players can choose this as their avatar')) : null,
       avatars().includes(id)
-        ? h('label', { class: 'field wide', 'data-field': 'avatar_portrait' }, h('span', { class: 'field-label' }, 'Close-up portrait'),
-            select(store.rows('media').filter((m) => m.type === 'image' && m.id !== id).map((m) => [String(m.id), mediaLabel(m)] as const), String(portraits()[String(id)] ?? ''),
-              (v) => void setPortrait(id, v), 'None: the avatar itself'),
-            h('small', null, 'Shown when a player with this avatar speaks in a story box.'))
+        ? h('div', { class: 'portrait-pick' },
+            portraitImage(store, portraits()[String(id)] ?? id),
+            h('label', { class: 'field wide', 'data-field': 'avatar_portrait' }, h('span', { class: 'field-label' }, 'Close-up portrait'),
+              select(store.rows('media').filter((m) => m.type === 'image' && m.id !== id).map((m) => [String(m.id), mediaLabel(m)] as const), String(portraits()[String(id)] ?? ''),
+                (v) => void setPortrait(id, v), 'None: the avatar itself'),
+              h('small', null, 'Shown when a player with this avatar speaks in a story box.')))
         : null,
-      media.type === 'image'
-        ? h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Filed under'),
-            select(MEDIA_TABS.filter(([key]) => !['all', 'audio', 'video'].includes(key)).map(([key, label]) => [key, label] as const), String(params(media).category ?? ''),
-              (v) => void store.patch('media', id, { params: withValue(params(store.byId('media', id)!), 'category', v) }, true), `Automatic (${MEDIA_TABS.find(([key]) => key === categories.get(id))?.[1]})`))
-        : null,
+      media.type === 'image' ? fold('media-sheet', `🎞️ Sprite sheet and animations${params(media).sheet ? ` (${((params(media).animations as unknown[] | undefined) ?? []).length})` : ''}`, false, sheetEditor(ctx, media)) : null,
+      // The rest is needed less often, so it starts folded away.
+      fold('media-details', 'Details', false,
+        form(MEDIA_FIELDS, media, (key, value, field) => void store.patch('media', id, { [key]: value }, key === 'url' || field.structural === true), ctx),
+        media.type === 'image'
+          ? h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Filed under'),
+              select(MEDIA_TABS.filter(([key]) => !['all', 'audio', 'video'].includes(key)).map(([key, label]) => [key, label] as const), String(params(media).category ?? ''),
+                (v) => void store.patch('media', id, { params: withValue(params(store.byId('media', id)!), 'category', v) }, true), `Automatic (${MEDIA_TABS.find(([key]) => key === categories.get(id))?.[1]})`))
+          : null),
       h('div', { class: 'row-actions' }, removeButton(ctx, 'media', media, `“${mediaLabel(media)}”. Anything using it will be left without it`)),
     );
   });
@@ -174,11 +203,24 @@ function thingsPage(ctx: FormContext, table: 'items' | 'characters', title: stri
     const url = mediaUrl(store, store.byId('media', thing.media_id as number | null));
     return h(
       'div',
-      { class: 'card' },
+      { class: 'card', 'data-thing': `${table}-${id}` },
       h('div', { class: 'card-title' }, h('strong', null, String(thing.name)), h('span', { class: 'muted' }, `#${id}`)),
-      url ? h('img', { class: 'preview small', src: url, alt: '' }) : null,
-      form(fields, thing, (key, value) => void store.patch(table, id, { [key]: value }, key === 'media_id'), ctx),
-      form(settings, params(thing, 'settings'), (key, value, field) => void store.patch(table, id, { settings: withValue(params(store.byId(table, id)!, 'settings'), key, value, field) }), ctx),
+      table === 'characters'
+        ? h('div', { class: 'portrait-pick' }, url ? h('img', { class: 'preview small', src: url, alt: '' }) : h('div', { class: 'preview small none' }, 'No image'), h('figure', { class: 'portrait-figure' }, portraitImage(store, (params(thing, 'settings').portrait_media_id ?? thing.media_id) as number | null), h('figcaption', null, 'Portrait')))
+        : url ? h('img', { class: 'preview small', src: url, alt: '' }) : null,
+      form(fields, thing, async (key, value) => {
+        await store.patch(table, id, { [key]: value }, key === 'media_id');
+        // A character given a picture gets a close-up cut from the top third of it, unless one was chosen already.
+        if (table !== 'characters' || key !== 'media_id' || value == null || params(store.byId(table, id)!, 'settings').portrait_media_id != null) return;
+        const picture = store.byId('media', value as number);
+        const portrait = picture && (await cropPortrait(store, picture, 'character'));
+        if (portrait && store.byId(table, id) && params(store.byId(table, id)!, 'settings').portrait_media_id == null) {
+          await store.patch(table, id, { settings: { ...params(store.byId(table, id)!, 'settings'), portrait_media_id: portrait.id } });
+          if (document.querySelector(`[data-thing="${table}-${id}"]`)) store.emit();
+          toast('A close-up portrait was made from the top of the picture. You can choose another.');
+        }
+      }, ctx),
+      form(settings, params(thing, 'settings'), (key, value, field) => void store.patch(table, id, { settings: withValue(params(store.byId(table, id)!, 'settings'), key, value, field) }, field.structural === true), ctx),
       rowConditions(ctx, owner, id, 'Present only when', 'Always present.'),
       h('div', { class: 'row-actions' }, removeButton(ctx, table, thing, `the ${noun} “${thing.name}”`)),
     );
@@ -273,6 +315,7 @@ export function shopPage(ctx: FormContext): HTMLElement {
       kind === 'wearable' || kind === 'pet' ? form(SHOP_WEARABLE_FIELDS, params(item, 'settings'), settings, ctx) : null,
       kind === 'animation' ? form([SHOP_ANIMATION], params(item, 'settings'), settings, ctx) : null,
       kind === 'ability' ? form([SHOP_ABILITY], params(item, 'settings'), settings, ctx) : null,
+      kind === 'move' ? form([SHOP_MOVE], params(item, 'settings'), settings, ctx) : null,
       h('div', { class: 'row-actions' }, removeButton(ctx, 'shop_items', item, `“${item.name}”. Players who bought it will lose it, and their stars are not returned`)),
     );
   });
@@ -282,4 +325,73 @@ export function shopPage(ctx: FormContext): HTMLElement {
     [h('button', { type: 'button', class: 'primary', onclick: () => void store.add('shop_items', { name: 'New item', kind: 'wearable', slot: 'head', price: 10 }) }, 'New item')],
     cards.length ? h('div', { class: 'grid' }, ...cards) : none('This scenario sells nothing of its own. Players still see the platform’s items.'),
   );
+}
+
+// --------------------------------------------------------------------- moves
+
+interface MoveRow { animation: string; label?: string; icon?: string; conditions?: ConditionValue[] | null }
+
+/** What players can do from buttons on their screen: jump, crouch, dance. Kept in the scenario's settings. */
+export function movesPage(ctx: FormContext): HTMLElement {
+  const { store } = ctx;
+  const read = () => (store.settings.moves as MoveRow[] | undefined) ?? [];
+  const write = (list: MoveRow[], structural: boolean) => void store.patchSettings({ moves: list.length ? list : null }, structural);
+  const at = (index: number): MoveRow => read()[index] ?? { animation: '' };
+  const replace = (index: number, move: MoveRow, structural = false) => write(read().map((m, i) => (i === index ? move : m)), structural);
+  const cards = read().map((move, index) =>
+    h(
+      'div',
+      { class: 'card', 'data-move': move.animation },
+      form(MOVE_FIELDS, move as unknown as Record<string, unknown>, (key, value, field) => replace(index, withValue({ ...at(index) }, key, value, field) as unknown as MoveRow, key === 'animation'), ctx),
+      inlineConditions(ctx, () => at(index).conditions ?? undefined, (list, structural) => replace(index, withValue({ ...at(index) }, 'conditions', list.length ? list : null) as unknown as MoveRow, structural), 'Offered only when', 'Every player can do this, any time.'),
+      h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete('this move') && write(read().filter((_, i) => i !== index), true) }, 'Delete')),
+    ),
+  );
+  return page(
+    'Moves',
+    'What players can do whenever they like, from buttons on their screen: jump, crouch, dance. A move with a condition appears once the condition holds, so an event can teach one by setting one of the player’s own variables. Moves bought in the marketplace are added to these and follow the player into every scenario. To play an animation at a point in the story instead, use the “Play an animation” action.',
+    [h('button', { type: 'button', class: 'primary', onclick: () => write([...read(), { animation: ['jump', 'crouch', 'dance', 'wave', 'spin'].find((n) => !read().some((m) => m.animation === n)) ?? 'jump' }], true) }, 'New move')],
+    cards.length ? h('div', { class: 'grid' }, ...cards) : none('No moves: players walk, and that is all.'),
+  );
+}
+
+// ----------------------------------------------------------------- portraits
+
+/** The close-up as it will look in a story box. */
+function portraitImage(store: FormContext['store'], mediaId: number | null | undefined): HTMLElement {
+  const url = mediaUrl(store, store.byId('media', mediaId ?? null));
+  return url ? h('img', { class: 'portrait', src: url, alt: 'Close-up portrait' }) : h('div', { class: 'portrait none' }, '?');
+}
+
+/**
+ * Make a close-up from a picture: its top third, where the face usually is, saved as a new image
+ * in the scenario's media. For a sprite sheet it is the top third of the first frame. Returns
+ * null when the picture cannot be read (one on another site that does not allow it), in which
+ * case the picture itself stands in as the portrait.
+ */
+async function cropPortrait(store: FormContext['store'], media: Row, category: 'avatar' | 'character'): Promise<Row | null> {
+  const url = mediaUrl(store, media);
+  if (!url || media.type !== 'image') return null;
+  try {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.src = url;
+    await image.decode();
+    const width = Math.min(image.naturalWidth, Number(params(media).frame_width) || image.naturalWidth);
+    const frame = Math.min(image.naturalHeight, Number(params(media).frame_height) || image.naturalHeight);
+    const height = Math.max(1, Math.round(frame / 3));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d')!.drawImage(image, 0, 0, width, height, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) return null;
+    const name = `${mediaLabel(media).replace(/\.[a-z0-9]+$/i, '')}-portrait.png`;
+    const row = await store.api.upload(store.scenarioId, new File([blob], name, { type: 'image/png' }));
+    store.bundle.media.push(row);
+    await store.patch('media', row.id, { params: { ...params(row), category } });
+    return row;
+  } catch {
+    return null;
+  }
 }

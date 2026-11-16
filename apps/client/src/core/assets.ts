@@ -1,6 +1,6 @@
 import type * as Phaser from 'phaser';
 import {
-  collectGlobalMediaIds, collectSceneMediaIds, resolveMediaUrl,
+  animationRepeats, collectGlobalMediaIds, collectSceneMediaIds, findAnimation, resolveMediaUrl,
   type Id, type Media, type Scene, type Spritemap, type ShopItem } from '@qbl/shared';
 import type { GameContext } from './GameContext';
 
@@ -99,6 +99,23 @@ export function ensureAnimation(scene: Phaser.Scene, sheetKey: string, map: Spri
     });
   }
   return key;
+}
+
+/** The sprite sheet of a media that is one (it says how many frames across and down), or null. */
+export function mediaSheet(scene: Phaser.Scene, media: Media): string | null {
+  if (!media.sheet) return null;
+  return ensureSpritesheet(scene, media.id, { spritemap_tiles_horizontal: media.sheet.columns, spritemap_tiles_vertical: media.sheet.rows, spritemap_tiles_num: media.sheet.count });
+}
+
+/** The Phaser animation for one of a media's named animations, created on first use. Null if it has none of that name. */
+export function mediaAnimation(scene: Phaser.Scene, media: Media, name: string): string | null {
+  const animation = findAnimation(media, name);
+  const sheet = animation ? mediaSheet(scene, media) : null;
+  if (!animation || !sheet) return null;
+  return ensureAnimation(scene, sheet, {
+    spritemap_tiles_horizontal: media.sheet!.columns, spritemap_tiles_vertical: media.sheet!.rows, spritemap_tiles_num: media.sheet!.count,
+    spritemap_tile_sequence: animation.frames, spritemap_duration: animation.duration, spritemap_repeat: animationRepeats(animation),
+  });
 }
 
 /** A simple stand-in figure for scenarios that define no avatar images. */

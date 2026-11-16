@@ -2,10 +2,11 @@ import type * as Phaser from 'phaser';
 import type { ActionHandle, Id, PresentedAction, SceneEngine } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import type { OverlayHandle } from '../ui/UiPort';
+import type { Figure } from '../entities/Figure';
 
 /** Something a running action put on screen, kept so a translate action can animate it. */
 export type Target =
-  | { kind: 'world'; object: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite }
+  | { kind: 'world'; object: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; figure?: Figure }
   | { kind: 'overlay'; overlay: OverlayHandle };
 
 /** What a presenter can use. Implemented by ActionHost. */

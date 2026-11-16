@@ -73,6 +73,23 @@ export class PlayScene extends Phaser.Scene {
       const me = this.runtime.system(LocalPlayerSystem).avatar;
       return { x: me.x, y: me.y, height: me.height };
     };
+    this.host.animateControl = (action, actor) => {
+      const props = this.runtime.system(PropsSystem);
+      const mine = this.runtime.system(LocalPlayerSystem).avatar;
+      if (action.target === 'character') return action.character_id != null ? props.animate('character', action.character_id, action.animation) : null;
+      if (action.target === 'item') {
+        if (action.item_id == null) return null;
+        // On the floor here, or else being worn or ridden: by the player whose event this is, or by anyone in the scene.
+        const worn = (avatar: { animateAttached(id: Id, name: string): number | null } | undefined) => avatar?.animateAttached(action.item_id!, action.animation) ?? null;
+        return props.animate('item', action.item_id, action.animation)
+          ?? worn(actor && actor !== ctx.connection.sessionId ? this.runtime.system(RemotePlayersSystem).get(actor) : mine)
+          ?? worn(mine);
+      }
+      // The player's own avatar: through the room, so everyone sees it. (Another player's reaches us the same way, not here.)
+      if (actor && actor !== ctx.connection.sessionId) return 0;
+      ctx.connection.animate(action.animation);
+      return mine.moveDuration(action.animation);
+    };
     this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);

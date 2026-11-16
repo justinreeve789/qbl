@@ -12,7 +12,8 @@
         106,
         107,
         108,
-        109
+        109,
+        120
     ],
     "avatar_portraits": {
         "101": 111,
@@ -23,8 +24,28 @@
         "106": 116,
         "107": 117,
         "108": 118,
-        "109": 119
+        "109": 119,
+        "120": 121
     },
+    "moves": [
+        {
+            "animation": "jump"
+        },
+        {
+            "animation": "crouch"
+        },
+        {
+            "animation": "dance",
+            "conditions": [
+                {
+                    "type": "variable",
+                    "variable": "learned_dance",
+                    "operator": "=",
+                    "operand": 1
+                }
+            ]
+        }
+    ],
     "music_media_id": 31,
     "music_volume": 0.35,
     "objectives": [
@@ -492,6 +513,14 @@
             "default_value": 0,
             "scope": "player",
             "persist": true
+        },
+        {
+            "id": 39,
+            "scenario_id": 1,
+            "variable_name": "learned_dance",
+            "default_value": 0,
+            "scope": "player",
+            "persist": true
         }
     ],
     "jump_targets": {
@@ -639,6 +668,66 @@
             "scale_x": 0.85,
             "scale_y": 0.85,
             "priority": 1
+        },
+        {
+            "id": 120,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "avatars/sprocket-sheet.png",
+            "scale_x": 1.35,
+            "scale_y": 1.35,
+            "width": 720,
+            "height": 540,
+            "priority": 1,
+            "sheet": {
+                "columns": 6,
+                "rows": 3
+            },
+            "animations": [
+                {
+                    "name": "idle",
+                    "frames": [
+                        0,
+                        1
+                    ],
+                    "duration": 900
+                },
+                {
+                    "name": "walk",
+                    "frames": [
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                    ],
+                    "duration": 600
+                },
+                {
+                    "name": "jump",
+                    "frames": [
+                        12,
+                        13,
+                        14,
+                        13,
+                        12
+                    ],
+                    "duration": 600,
+                    "repeat": false
+                },
+                {
+                    "name": "dance",
+                    "frames": [
+                        15,
+                        16,
+                        17,
+                        16
+                    ],
+                    "duration": 700,
+                    "repeat": true
+                }
+            ]
         },
         {
             "id": 10,
@@ -1149,6 +1238,17 @@
             "scale_y": 1,
             "width": 320,
             "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 121,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/sprocket.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 240,
+            "height": 120,
             "priority": 30
         }
     ],
@@ -2126,11 +2226,21 @@
                     "conditions": [],
                     "actions": [
                         {
+                            "target": "character",
+                            "character_id": 1,
+                            "animation": "wave",
+                            "id": 25020,
+                            "event_id": 250,
+                            "type": "animate",
+                            "sequence": 1,
+                            "blocking": false
+                        },
+                        {
                             "frozen": true,
                             "id": 25010,
                             "event_id": 250,
                             "type": "freeze",
-                            "sequence": 1,
+                            "sequence": 2,
                             "blocking": true
                         },
                         {
@@ -2141,7 +2251,7 @@
                             "id": 25011,
                             "event_id": 250,
                             "type": "dialogue",
-                            "sequence": 2,
+                            "sequence": 3,
                             "blocking": true
                         },
                         {
@@ -2152,7 +2262,7 @@
                             "id": 25012,
                             "event_id": 250,
                             "type": "dialogue",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -2163,7 +2273,7 @@
                             "id": 25013,
                             "event_id": 250,
                             "type": "dialogue",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         },
                         {
@@ -2172,7 +2282,7 @@
                             "id": 25014,
                             "event_id": 250,
                             "type": "dialogue",
-                            "sequence": 5,
+                            "sequence": 6,
                             "blocking": true
                         },
                         {
@@ -2180,7 +2290,7 @@
                             "id": 25015,
                             "event_id": 250,
                             "type": "freeze",
-                            "sequence": 6,
+                            "sequence": 7,
                             "blocking": true
                         }
                     ]
@@ -6318,6 +6428,72 @@
                             "event_id": 1030,
                             "type": "infobox",
                             "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1040,
+                    "shortname": "music-player",
+                    "scene_id": 10,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1400,
+                    "position_y": 640,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 86,
+                            "event_id": 1040,
+                            "type": "image",
+                            "position_x": 1400,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 87,
+                            "event_id": 1040,
+                            "type": "text",
+                            "position_x": 1400,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Crew music player"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "name": "learned_dance",
+                            "operator": "set",
+                            "operand": 1,
+                            "id": 104001,
+                            "event_id": 1040,
+                            "type": "variable",
+                            "sequence": 1,
+                            "blocking": true
+                        },
+                        {
+                            "target": "player",
+                            "animation": "dance",
+                            "id": 104002,
+                            "event_id": 1040,
+                            "type": "animate",
+                            "sequence": 2,
+                            "blocking": false
+                        },
+                        {
+                            "text": "The crew’s favourite song comes on, and you pick up the steps. You can dance whenever you like now: look for the Dance button.",
+                            "alignment": "bottom center",
+                            "text_font_size": 26,
+                            "duration": 5000,
+                            "id": 104003,
+                            "event_id": 1040,
+                            "type": "text_overlay",
+                            "sequence": 3,
                             "blocking": true
                         }
                     ]

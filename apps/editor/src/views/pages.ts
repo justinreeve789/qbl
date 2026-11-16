@@ -92,6 +92,22 @@ export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement
 }
 
 /** Check the scenario with the same validator the game uses, and publish it. */
+/**
+ * Check the scenario with the validator the game uses and, if nothing stops it, publish.
+ * Used by the Publish page and by the Publish button that is on every page.
+ */
+export async function checkAndPublish(store: FormContext['store']): Promise<{ published: boolean; errors: number; warnings: number; message?: string }> {
+  await store.settled();
+  let report;
+  try {
+    report = validateScenario(await store.api.preview(store.scenarioId));
+  } catch (err) {
+    return { published: false, errors: 1, warnings: 0, message: err instanceof Error ? err.message : 'Could not load the scenario.' };
+  }
+  const published = report.ok && (await store.publish());
+  return { published, errors: report.errors.length, warnings: report.warnings.length };
+}
+
 export function publishPage(ctx: FormContext): HTMLElement {
   const { store } = ctx;
   const scenario = store.scenario;

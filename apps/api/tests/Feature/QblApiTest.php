@@ -56,6 +56,22 @@ class QblApiTest extends TestCase
         $this->withToken($token)->getJson('/api/editor/scenarios')->assertOk()->assertJsonPath('scenarios', []);
     }
 
+    public function test_signing_out_ends_the_token_everywhere(): void
+    {
+        $this->teacher();
+        $token = $this->postJson('/api/auth/login', ['email' => 'teacher@example.test', 'password' => 'secret-password'])->assertOk()->json('token');
+        $this->withToken($token)->getJson('/api/me')->assertOk();
+
+        $this->withToken($token)->postJson('/api/auth/logout')->assertOk();
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->getJson('/api/me')->assertUnauthorized();
+        // And signing in again gives a new one that works.
+        $again = $this->postJson('/api/auth/login', ['email' => 'teacher@example.test', 'password' => 'secret-password'])->assertOk()->json('token');
+        $this->app['auth']->forgetGuards();
+        $this->withToken($again)->getJson('/api/me')->assertOk()->assertJsonPath('user.name', 'Teacher');
+    }
+
     public function test_the_editor_is_closed_to_guests_and_students(): void
     {
         $this->getJson('/api/editor/scenarios')->assertUnauthorized();

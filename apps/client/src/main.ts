@@ -119,10 +119,19 @@ function chooseAvatar(scenario: Scenario): Promise<Id | undefined> {
       const b = document.createElement('button');
       b.type = 'button';
       b.setAttribute('aria-label', `Character ${ids.indexOf(id) + 1}`);
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = '';
-      b.appendChild(img);
+      if (media?.sheet) {
+        // A sprite sheet: show its first frame, not the whole sheet.
+        const frame = document.createElement('span');
+        frame.className = 'qbl-avatar-frame';
+        frame.style.backgroundImage = `url("${url}")`;
+        frame.style.backgroundSize = `${media.sheet.columns * 100}% ${media.sheet.rows * 100}%`;
+        b.appendChild(frame);
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        b.appendChild(img);
+      }
       b.addEventListener('click', () => {
         localStorage.setItem(storageKey, String(id));
         resolve(id);
@@ -194,6 +203,16 @@ async function start() {
     await ctx.rewards.connect({ shop: () => api.shop(key), buy: (id) => api.buy(id, key), equip: (id, on) => api.equip(id, on) });
   }
   if (config.preview != null) ctx.rewards.pretend(500);
+  // Signing out leaves the game and comes back to the sign-in screen. Not offered in a preview:
+  // that window shares its sign-in with the editor it was opened from.
+  if (config.preview == null) {
+    ui.account({ name: user.name, guest: user.role === 'guest' }, () => {
+      ctx.saveProgress(true);
+      connection.leave();
+      api.signOut();
+      window.location.reload();
+    });
+  }
   // Session-long features: connection status, chat, the mission checklist, saving progress.
   for (const feature of gameFeatures()) feature.start(ctx);
 

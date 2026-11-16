@@ -93,7 +93,9 @@ export class Api {
     }
   }
 
+  /** Forget who is signed in, here and on the server, so the token stops working everywhere. */
   signOut() {
+    if (this.token) void fetch('/api/auth/logout', { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${this.token}` } }).catch(() => undefined);
     this.token = null;
     localStorage.removeItem(TOKEN_KEY);
   }

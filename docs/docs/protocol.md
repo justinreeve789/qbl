@@ -17,7 +17,7 @@ If the same account joins twice, the earlier connection is closed with code 4103
 
 State the server owns and every client sees (Colyseus schema, `apps/server/src/rooms/state.ts`):
 
-* `players[sessionId]`: `user_id`, `name`, `role`, `avatar`, `scene_id`, `x`, `y`, `facing`, `attachments` (comma-separated item ids), `connected`, `hidden` (an `avatar` action has hidden this player; cleared on every scene change), `look` (comma-separated ids of the marketplace items the player has on; the server reads it from the backend, never from the client).
+* `players[sessionId]`: `user_id`, `name`, `role`, `avatar`, `scene_id`, `x`, `y`, `facing`, `attachments` (comma-separated item ids), `connected`, `hidden` (an `avatar` action has hidden this player; cleared on every scene change), `anim` (the last animation asked of the avatar, as `name:count`; cleared when the player walks or changes scene), `look` (comma-separated ids of the marketplace items the player has on; the server reads it from the backend, never from the client).
 * `items[itemId]`: unique items only. `scene_id`, `x`, `y`, `holder` (a session id, or empty).
 * `vars[name]`: room-scoped variables, JSON-encoded.
 
@@ -36,6 +36,7 @@ Message | Payload | Server behaviour
 `progress` | `{variables, flags, time_elapsed}` | Player-scoped progress to include in the next save.
 `avatar` | `{visible}` | An `avatar` action ran: show or hide the sender's avatar for everyone in the scene.
 `award` | `{action_id}` | An `award` action ran. The server asks the backend to grant it and replies `progress`. Ignored for guests.
+`animate` | `{name}` | Play an animation on the sender's avatar, from a move button or an `animate` action. The name must look like a name; at most four a second. An empty name stops it.
 `show` | `{event_id, action_id}` | An event whose `audience` is `scene` reached this action for the sender. Passed on to the other players in the sender's scene if the action belongs to such an event there and is one of the shown types.
 `look` | `{}` | The player changed what they wear. The server fetches their look from the backend and updates `players[...].look`.
 

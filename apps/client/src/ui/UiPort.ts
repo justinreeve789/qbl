@@ -41,6 +41,10 @@ export interface UiPort {
   portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean }): ActionHandle;
   /** The stars, XP and rank display, with a button that opens the marketplace. Null hides it (guests). */
   rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void): void;
+  /** What the player can do from their screen: one button per move. An empty list hides the row. */
+  moves(list: Array<{ animation: string; label: string; icon: string }>, onDo: (animation: string) => void): void;
+  /** Who is playing, top right, with the way to sign out (or, for a guest, to sign in with an account). Null hides it. */
+  account(who: { name: string; guest: boolean } | null, onSignOut: () => void): void;
   /**
    * The marketplace and wardrobe. `view` is asked again after every purchase or change, so the
    * window always shows the current stars and what is owned and worn.

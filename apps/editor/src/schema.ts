@@ -160,6 +160,24 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'frozen', label: 'The player', kind: 'select', options: [['true', 'Cannot move'], ['false', 'Can move again']], wide: true, hint: 'A freeze ends at a “Can move again” action, when the event that froze the player finishes, or on leaving the scene, whichever comes first. Nobody can be left stuck.' },
     ],
   },
+  animate: {
+    label: 'Play an animation',
+    about: 'Make the player’s avatar, an item, a vehicle or a character jump, dance or do anything its sprite sheet has.',
+    fields: [
+      {
+        key: 'target', label: 'On', kind: 'select', wide: true, structural: true, placeholder: 'The player’s avatar',
+        options: [['item', 'An item or vehicle'], ['character', 'A character in this scene'], ['action', 'A picture another action is showing']],
+        hint: 'The player’s avatar is animated for everyone in the scene. An item being ridden or worn is animated too, wherever it is.',
+      },
+      { key: 'item_id', label: 'Item', kind: 'item' },
+      { key: 'character_id', label: 'Character', kind: 'character' },
+      { key: 'target_id', label: 'Action', kind: 'action' },
+      {
+        key: 'animation', label: 'Animation', kind: 'animation', wide: true,
+        hint: 'A name from the picture’s sprite sheet (define them on the Media page), or a built-in move every picture can make: jump, spin, crouch, wave, dance. Leave empty to stop what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
+      },
+    ],
+  },
   avatar: {
     label: 'Show or hide avatar',
     about: 'Hide the player’s avatar (stepping into a rocket), or show it again.',
@@ -211,7 +229,7 @@ export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: strin
   image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
-  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'],
+  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'],
   variable: ['🔢', STATE],
 };
 
@@ -229,6 +247,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return { text: 'Hello!' };
     case 'freeze':
       return { frozen: true };
+    case 'animate':
+      return { animation: 'jump' };
     case 'avatar':
       return { visible: false, duration: 400 };
     case 'infobox':
@@ -420,7 +440,7 @@ export const SHOP_ITEM_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text' },
   { key: 'price', label: 'Price (stars)', kind: 'number', min: 0, step: 1 },
   { key: 'description', label: 'Description', kind: 'text', wide: true },
-  { key: 'kind', label: 'Kind', kind: 'select', structural: true, options: [['wearable', 'Something to wear'], ['pet', 'A pet that follows the avatar'], ['animation', 'A way the avatar moves'], ['ability', 'An ability']] },
+  { key: 'kind', label: 'Kind', kind: 'select', structural: true, options: [['wearable', 'Something to wear'], ['pet', 'A pet that follows the avatar'], ['animation', 'A way of standing'], ['move', 'A move: a button on the player’s screen'], ['ability', 'An ability']] },
   { key: 'media_id', label: 'Picture', kind: 'media', mediaType: 'image' },
   { key: 'active', label: 'On sale', kind: 'bool', default: true, wide: true, hint: 'Take an item off sale instead of deleting it: players who bought it keep it.' },
 ];
@@ -432,6 +452,7 @@ export const SHOP_WEARABLE_FIELDS: Field[] = [
 ];
 export const SHOP_SLOT: Field = { key: 'slot', label: 'Worn on', kind: 'select', options: [['head', 'Head'], ['body', 'Body'], ['back', 'Back'], ['hand', 'Hand']], hint: 'One item per place can be worn at a time.' };
 export const SHOP_ANIMATION: Field = { key: 'animation', label: 'Movement', kind: 'select', options: [['bounce', 'Bounce'], ['float', 'Float'], ['sway', 'Sway'], ['pulse', 'Pulse']] };
+export const SHOP_MOVE: Field = { key: 'move', label: 'Animation', kind: 'animation', hint: 'What the button plays: a built-in move (jump, spin, crouch, wave, dance), or a name avatars’ sprite sheets define. Bought here, it is only sold in this scenario, but once owned it works in every scenario.' };
 export const SHOP_ABILITY: Field = { key: 'ability', label: 'Ability key', kind: 'text', placeholder: 'translator', hint: 'While a player has this ability equipped, the variable QBLAbility_<key> is 1. Use it in conditions to offer them something extra: a hidden hotspot, a translated sign, a shortcut.' };
 
 export const CHARACTER_FIELDS: Field[] = [
@@ -440,7 +461,14 @@ export const CHARACTER_FIELDS: Field[] = [
 ];
 export const CHARACTER_SETTINGS_FIELDS: Field[] = [
   { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1' },
-  { key: 'portrait_media_id', label: 'Close-up portrait', kind: 'media', mediaType: 'image', hint: 'Shown beside what the character says in a story box. Without one, the character’s ordinary image is used.' },
+  { key: 'portrait_media_id', label: 'Close-up portrait', kind: 'media', mediaType: 'image', structural: true, hint: 'Shown beside what the character says in a story box. Without one, the character’s ordinary image is used.' },
+];
+
+/** Something players can do from a button on their screen while its conditions hold. */
+export const MOVE_FIELDS: Field[] = [
+  { key: 'animation', label: 'Animation', kind: 'animation', hint: 'A built-in move (jump, spin, crouch, wave, dance), or a name from the avatars’ sprite sheets. An avatar that has frames drawn for it plays them; any other makes the built-in move, if there is one of that name.' },
+  { key: 'label', label: 'On the button', kind: 'text', placeholder: 'The animation’s name' },
+  { key: 'icon', label: 'Icon', kind: 'text', placeholder: '✨' },
 ];
 
 export const OBJECTIVE_FIELDS: Field[] = [

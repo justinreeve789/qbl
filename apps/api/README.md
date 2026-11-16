@@ -144,7 +144,7 @@ earlier builds keep working. Do not run `install:api` again.
 
 ## Status
 
-Run and passing here: `tests/store.php` (89 checks), `tests/progress.php` (32 checks), `php artisan test` (17 tests on real Laravel 13 with
+Run and passing here: `tests/store.php` (89 checks), `tests/progress.php` (34 checks), `php artisan test` (18 tests on real Laravel 13 with
 SQLite), and a manual pass over HTTP with `php artisan serve`. Not run here: MariaDB and the Docker image.
 
 ## Stars, XP and the marketplace

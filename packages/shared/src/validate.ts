@@ -1,5 +1,6 @@
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
+import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation } from './types.js';
 import type { Action, Condition, GameEvent, Id, Media, Scenario, Scene } from './types.js';
 import { placeholderVariables } from './text.js';
 import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
@@ -106,6 +107,29 @@ export function validateScenario(doc: unknown): ValidationResult {
   (s.characters ?? []).forEach((c, i) => needMedia(c.media_id, `characters[${i}].media_id`, 'image'));
   (s.characters ?? []).forEach((c, i) => needMedia(c.portrait_media_id, `characters[${i}].portrait_media_id`, 'image'));
   (s.avatar_media_ids ?? []).forEach((id, i) => needMedia(id, `avatar_media_ids[${i}]`, 'image'));
+  // Sprite sheets and the animations defined on them.
+  (s.assets ?? []).forEach((m, i) => {
+    const p = `assets[${i}]`;
+    if (m.animations?.length && !m.sheet) err(`${p}.animations`, 'Animations need a sprite sheet: say how many frames across and down');
+    if (!m.sheet) return;
+    if (m.type !== 'image') err(`${p}.sheet`, 'Only an image can be a sprite sheet');
+    const { columns, rows } = m.sheet;
+    if (!Number.isInteger(columns) || !Number.isInteger(rows) || columns < 1 || rows < 1) return err(`${p}.sheet`, 'A sprite sheet has at least one frame across and one down');
+    const count = m.sheet.count ?? columns * rows;
+    if (count < 1 || count > columns * rows) err(`${p}.sheet.count`, `count is from 1 to ${columns * rows}`);
+    const names = new Set<string>();
+    (m.animations ?? []).forEach((a, ai) => {
+      const ap = `${p}.animations[${ai}]`;
+      if (!ANIMATION_NAME.test(String(a.name))) err(`${ap}.name`, 'An animation name is lowercase letters, digits and underscores, starting with a letter');
+      else if (names.has(a.name)) err(`${ap}.name`, `Duplicate animation "${a.name}"`);
+      names.add(a.name);
+      if (!Array.isArray(a.frames) || a.frames.length === 0) err(`${ap}.frames`, 'An animation needs at least one frame');
+      else if (a.frames.some((f) => !Number.isInteger(f) || f < 0 || f >= count)) err(`${ap}.frames`, `Frames are numbered 0 to ${count - 1}`);
+    });
+  });
+  (s.moves ?? []).forEach((m, i) => {
+    if (!ANIMATION_NAME.test(String(m.animation))) err(`moves[${i}].animation`, 'A move names an animation: lowercase letters, digits and underscores');
+  });
   for (const [avatar, portrait] of Object.entries(s.avatar_portraits ?? {})) needMedia(portrait, `avatar_portraits.${avatar}`, 'image');
 
   if (!scenes.has(s.start_scene_id)) err('start_scene_id', `Scene ${s.start_scene_id} does not exist`);
@@ -134,6 +158,7 @@ export function validateScenario(doc: unknown): ValidationResult {
     }
   };
 
+  (s.moves ?? []).forEach((m, i) => checkConditions(m.conditions, `moves[${i}]`));
   (s.objectives ?? []).forEach((o, i) => {
     const path = `objectives[${i}]`;
     if (!o.text) err(`${path}.text`, 'text is required');
@@ -232,6 +257,33 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'avatar':
         if (typeof a.visible !== 'boolean') err(`${path}.visible`, 'visible must be true or false');
         break;
+      case 'animate': {
+        if (typeof a.animation !== 'string' || (a.animation !== '' && !ANIMATION_NAME.test(a.animation))) {
+          err(`${path}.animation`, 'animation is a name in lowercase letters, digits and underscores, or empty to stop');
+          break;
+        }
+        const target = a.target ?? 'player';
+        // What is being animated, so its sheet can be checked for the name.
+        let picture: Media | undefined;
+        if (target === 'item') {
+          const item = (s.items ?? []).find((i) => i.id === a.item_id);
+          if (!item) err(`${path}.item_id`, 'The item to animate does not exist');
+          picture = item?.media_id != null ? media.get(item.media_id) : undefined;
+        } else if (target === 'character') {
+          if (!(scene.characters ?? []).some((c) => c.character_id === a.character_id)) err(`${path}.character_id`, 'The character to animate is not placed in this scene');
+          const character = (s.characters ?? []).find((c) => c.id === a.character_id);
+          picture = character?.media_id != null ? media.get(character.media_id) : undefined;
+        } else if (target === 'action') {
+          if (a.target_id == null || actionScene.get(a.target_id) !== scene.id) err(`${path}.target_id`, 'The action to animate is not in this scene');
+        } else if (target !== 'player') {
+          err(`${path}.target`, 'target is "player", "item", "character" or "action"');
+        }
+        // Avatars differ from player to player, and an action's picture is its own business; those are not checked.
+        if ((target === 'item' || target === 'character') && a.animation !== '' && !findAnimation(picture, a.animation) && !BUILT_IN_MOVES[a.animation]) {
+          warn(`${path}.animation`, `Its picture has no animation called "${a.animation}", and that is not a built-in move`);
+        }
+        break;
+      }
       case 'wait':
         if (typeof a.duration !== 'number') err(`${path}.duration`, 'duration is required');
         break;

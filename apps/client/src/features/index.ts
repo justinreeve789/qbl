@@ -4,6 +4,7 @@ import { ChatFeature } from './ChatFeature';
 import { ConnectionFeature } from './ConnectionFeature';
 import { ObjectivesFeature } from './ObjectivesFeature';
 import { ProgressFeature } from './ProgressFeature';
+import { MovesFeature } from './MovesFeature';
 import { RewardsFeature } from './RewardsFeature';
 
 /**
@@ -11,5 +12,5 @@ import { RewardsFeature } from './RewardsFeature';
  * To add one, write a GameFeature and add it here.
  */
 export function gameFeatures(): GameFeature[] {
-  return [new ConnectionFeature(), new ChatFeature(), new ObjectivesFeature(), new AttachmentsFeature(), new ProgressFeature(), new RewardsFeature()];
+  return [new ConnectionFeature(), new ChatFeature(), new ObjectivesFeature(), new AttachmentsFeature(), new ProgressFeature(), new RewardsFeature(), new MovesFeature()];
 }

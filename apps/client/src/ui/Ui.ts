@@ -46,7 +46,7 @@ export class Ui implements UiPort {
     this.root = el('div', 'qbl-ui');
     this.banner.hidden = true;
     this.checklist.hidden = true;
-    this.root.append(this.overlays, this.chips, this.checklist, this.hud, this.toasts, this.banner);
+    this.root.append(this.overlays, this.chips, this.corner, this.checklist, this.hud, this.toasts, this.banner);
     parent.appendChild(this.root);
   }
 
@@ -357,7 +357,52 @@ export class Ui implements UiPort {
     this.checklist.replaceChildren(title, ul);
   }
 
+  private movesNode = el('div', 'qbl-moves');
+
+  moves(list: Array<{ animation: string; label: string; icon: string }>, onDo: (animation: string) => void) {
+    if (!this.movesNode.isConnected) this.root.append(this.movesNode);
+    this.movesNode.hidden = list.length === 0;
+    this.movesNode.setAttribute('role', 'toolbar');
+    this.movesNode.setAttribute('aria-label', 'Moves');
+    this.movesNode.replaceChildren(...list.map((move) => {
+      const b = el('button', 'qbl-move');
+      b.type = 'button';
+      b.title = move.label;
+      b.dataset.move = move.animation;
+      b.append(el('span', 'qbl-move-icon', move.icon), el('span', 'qbl-move-label', move.label));
+      b.addEventListener('click', () => onDo(move.animation));
+      return b;
+    }));
+  }
+
   private rewardsNode: HTMLElement | null = null;
+  private accountNode: HTMLElement | null = null;
+  /** Top right: the stars and rank, then who is playing. Kept clear of the top-left buttons (leave a vehicle, take off a hat). */
+  private corner = el('div', 'qbl-corner');
+
+  account(who: { name: string; guest: boolean } | null, onSignOut: () => void) {
+    this.accountNode?.remove();
+    this.accountNode = null;
+    if (!who) return;
+    const node = el('div', 'qbl-account');
+    const toggle = el('button', 'qbl-account-name', `👤 ${who.name}`);
+    toggle.type = 'button';
+    toggle.setAttribute('aria-haspopup', 'true');
+    toggle.setAttribute('aria-expanded', 'false');
+    const menu = el('div', 'qbl-account-menu');
+    menu.hidden = true;
+    const out = el('button', 'qbl-button', who.guest ? 'Sign in with an account' : 'Sign out');
+    out.type = 'button';
+    out.addEventListener('click', onSignOut);
+    menu.append(el('span', 'qbl-account-note', who.guest ? 'You are playing as a guest. Stars and progress are kept for accounts.' : `Signed in as ${who.name}`), out);
+    toggle.addEventListener('click', () => {
+      menu.hidden = !menu.hidden;
+      toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    });
+    node.append(toggle, menu);
+    this.corner.append(node);
+    this.accountNode = node;
+  }
 
   rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void) {
     this.rewardsNode?.remove();
@@ -370,7 +415,7 @@ export class Ui implements UiPort {
     node.append(el('span', 'qbl-stars', `⭐ ${state.stars}`), el('span', 'qbl-rank', state.rank), el('span', 'qbl-xp', `${state.xp} XP · ${toNext}`));
     node.setAttribute('aria-label', `${state.stars} stars. Rank: ${state.rank}. ${state.xp} XP, ${toNext}. Open the marketplace.`);
     node.addEventListener('click', onOpen);
-    this.root.append(node);
+    this.corner.prepend(node);
     this.rewardsNode = node;
   }
 

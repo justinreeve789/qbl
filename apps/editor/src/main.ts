@@ -46,10 +46,10 @@ function show(node: HTMLElement, fill = false) {
 function drawAccount() {
   clear(
     account,
-    user ? h('span', { class: 'muted' }, user.name) : null,
+    user ? h('span', { class: 'who' }, `👤 ${user.name}`) : null,
     user
       ? h('button', {
-          type: 'button', class: 'link',
+          type: 'button', class: 'signout',
           onclick: () => {
             api.signOut();
             user = null;

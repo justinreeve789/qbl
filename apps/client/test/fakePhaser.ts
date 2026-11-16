@@ -46,6 +46,9 @@ export class FakeObject extends Emitter {
   text = '';
   input: { enabled: boolean } | null = null;
   anims = { isPlaying: false };
+  /** The key of the animation last played on it, and how far it is turned. */
+  playing = '';
+  rotation = 0;
 
   constructor(readonly kind: string, readonly key: string = '', x = 0, y = 0) {
     super();
@@ -71,7 +74,9 @@ export class FakeObject extends Emitter {
     const abs = globalThis.Math.abs;
     return { contains: (px: number, py: number) => abs(px - x) <= 32 && abs(py - y) <= 32 };
   }
-  play() { this.anims.isPlaying = true; return this; }
+  play(key?: unknown) { this.anims.isPlaying = true; this.playing = typeof key === 'string' ? key : ''; return this; }
+  stop() { this.anims.isPlaying = false; this.playing = ''; return this; }
+  setRotation(r: number) { this.rotation = r; return this; }
   destroy() { this.destroyed = true; this.removeAllListeners(); }
 }
 
@@ -123,6 +128,8 @@ export class FakeWorld {
   readonly audio = new Set<string>();
   readonly sounds: FakeSound[] = [];
   readonly objects: FakeObject[] = [];
+  /** Animations created so far, by key. */
+  readonly animations = new Map<string, unknown>();
   readonly keys: Record<string, { isDown: boolean }> = {};
   readonly registry = new Map<string, unknown>();
   private pendingRestart: unknown | undefined;
@@ -159,7 +166,7 @@ export class FakeWorld {
     // generateTexture() is swallowed by the proxy, so the default avatar texture is treated as present.
     world.loaded.add('avatar-default');
     scene.cache = { audio: { exists: (k: string) => world.audio.has(k) } };
-    scene.anims = { exists: () => true, create: () => {} };
+    scene.anims = { exists: (k: string) => world.animations.has(k), create: (config: { key: string }) => world.animations.set(config.key, config) };
     scene.sound = {
       add: (k: string, config: object) => {
         const s = new FakeSound(k, config);

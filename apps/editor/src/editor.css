@@ -1,17 +1,17 @@
 /* QBL Editor. Plain CSS, no framework. Colors and sizes are variables at the top. */
 :root {
   /* A dark gray workspace with white text. Change the look here. */
-  --bg: #2b2d31;
-  --surface: #383a40;
-  --surface-2: #303237;
-  --field: #1e1f22;
-  --button: #474a52;
-  --line: #5a5e67;
+  --bg: #1b1d21;
+  --surface: #2f3239;
+  --surface-2: #24272d;
+  --field: #111215;
+  --button: #4b505a;
+  --line: #7d8492;
   --text: #ffffff;
-  --muted: #c9cdd4;
-  --accent: #7db4ff;
+  --muted: #e2e6ed;
+  --accent: #8fc1ff;
   --accent-solid: #2f6fed;
-  --accent-soft: rgba(125, 180, 255, 0.2);
+  --accent-soft: rgba(125, 180, 255, 0.24);
   --accent-text: #ffffff;
   --danger: #ff8b82;
   --ok: #62d992;
@@ -23,7 +23,7 @@
   --blocked: #ff6b6b;
   --radius: 6px;
   color-scheme: dark;
-  font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
 }
@@ -253,3 +253,87 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 
 .login button.google { background: #fff; color: #1f2937; border-color: #fff; }
 .login button.google[hidden] { display: none; }
+
+/* ------------------------------------------------- contrast and structure */
+/* Panels are told apart by a clear edge and a darker page behind them; fields are the darkest thing on a panel. */
+.card { border-color: var(--line); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.outline-pane, .inspector, .workspace-head, .toolbar { background: var(--surface); }
+.outline-pane { border-right: 2px solid var(--line); }
+.inspector { border-left: 2px solid var(--line); }
+input[type='text'], input[type='number'], input[type='email'], input[type='password'], select, textarea { border-color: #8a91a0; }
+input[type='text']:focus, input[type='number']:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); outline: none; }
+.field-label { font-size: 13px; }
+.field small { font-size: 12px; color: #cfd5de; }
+input::placeholder, textarea::placeholder { color: #aab1bd; }
+.tabs a:not(.button) { color: #e2e6ed; }
+.tabs a.current { background: var(--bg); border-bottom-color: var(--warn); }
+.top .who { color: #fff; font-size: 13px; }
+.top button.signout { background: transparent; border-color: #8a91a0; }
+.crumbs .spacer { flex: 1; }
+.publish-now { margin-left: 8px; }
+h2 { font-size: 16px; }
+
+/* Folding groups: in the scene outline, in the inspector, on media cards. */
+details.fold, details.outline-section { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); margin: 0 0 8px; }
+details.fold > summary, details.outline-section > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; cursor: pointer; list-style: none;
+  font-weight: 700; font-size: 13px; color: var(--text); background: #3b3f48; border-radius: var(--radius); border-left: 4px solid var(--tone, var(--warn));
+}
+details.fold[open] > summary, details.outline-section[open] > summary { border-radius: var(--radius) var(--radius) 0 0; border-bottom: 1px solid var(--line); }
+details.fold > summary::-webkit-details-marker, details.outline-section > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after, details.outline-section > summary .outline-title::before { content: '▸'; color: var(--muted); font-size: 12px; }
+details.fold[open] > summary::after { content: '▾'; }
+details.outline-section > summary .outline-title { display: flex; align-items: center; gap: 4px; min-width: 0; }
+details.outline-section > summary .outline-title::before { margin-right: 2px; }
+details.outline-section[open] > summary .outline-title::before { content: '▾'; }
+details.outline-section > summary small { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); font-size: 11px; font-weight: 600; }
+details.outline-section > ul { padding: 4px; margin: 0; }
+.fold-body { padding: 8px; }
+.fold-body > .form:last-child, .fold-body > section:last-child { margin-bottom: 0; }
+.fold .sub-head { margin-top: 0; }
+.outline-item { padding: 4px 6px; }
+.outline-item:hover { background: #454a55; }
+.outline-item.selected { outline: 2px solid #fff; outline-offset: -2px; }
+
+/* Actions: a grip to drag by, and a line showing where the action will land. */
+details.action { background: var(--surface); }
+details.action > summary { background: #3b3f48; border-radius: 0 8px 8px 0; }
+.grip { cursor: grab; color: var(--muted); font-size: 16px; line-height: 1; padding: 2px 2px; border-radius: 4px; user-select: none; flex: none; }
+.grip:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+details.action.dragging { opacity: 0.45; }
+details.action.drop-before { box-shadow: 0 -4px 0 0 var(--warn); }
+details.action.drop-after { box-shadow: 0 4px 0 0 var(--warn); }
+.step { background: #111215; border: 1px solid var(--line); }
+
+/* Portraits, shown as they will look beside what is said. */
+.portrait-pick { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.portrait-pick > .preview { flex: 1; min-width: 0; margin-bottom: 0; }
+.portrait-pick > .field { flex: 1; }
+.portrait { width: 84px; height: 100px; object-fit: cover; object-position: 50% 12%; border-radius: 10px; border: 2px solid #e6c36a; background: var(--field); flex: none; }
+.portrait.none { display: grid; place-items: center; color: var(--muted); font-size: 28px; }
+.portrait-figure { margin: 0; display: grid; justify-items: center; gap: 2px; flex: none; }
+.portrait-figure figcaption { font-size: 11px; color: var(--muted); }
+
+/* The sprite sheet tool: the sheet with a button over every frame, a preview, and the list of animations. */
+.sheet-stage { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.sheet-picture { position: relative; flex: 1; min-width: 0; background: var(--field) repeating-conic-gradient(#23262c 0% 25%, #1a1c21 0% 50%) 0 0 / 16px 16px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.sheet-picture img { display: block; width: 100%; height: auto; }
+.sheet-cells { position: absolute; inset: 0; display: grid; }
+.sheet-cell { position: relative; padding: 0; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 0; background: transparent; min-width: 0; display: block; }
+.sheet-cell:hover:not(:disabled) { background: rgba(125, 180, 255, 0.25); }
+.sheet-cell.in { background: rgba(255, 210, 74, 0.34); border-color: #ffd24a; box-shadow: inset 0 0 0 2px #ffd24a; }
+.sheet-cell:disabled { opacity: 1; cursor: default; }
+.sheet-number { position: absolute; top: 1px; left: 3px; font-size: 10px; color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+.sheet-place { position: absolute; right: 2px; bottom: 2px; padding: 0 5px; border-radius: 999px; background: #ffd24a; color: #1b1d21; font-size: 11px; font-weight: 700; }
+.sheet-preview { width: 92px; flex: none; aspect-ratio: 2 / 3; background-color: var(--field); background-repeat: no-repeat; border: 2px solid #ffd24a; border-radius: var(--radius); }
+.sheet-animations { display: grid; gap: 4px; margin-bottom: 8px; }
+.sheet-animation { display: grid; grid-template-columns: auto minmax(70px, 1fr) 84px 104px minmax(0, 1.2fr) auto; gap: 6px; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius); }
+.sheet-animation.head { font-size: 11px; color: var(--muted); padding-bottom: 0; }
+.sheet-animation.editing { border-color: #ffd24a; background: rgba(255, 210, 74, 0.1); }
+.sheet-frames { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* A media card whose sprite sheet is open takes the whole row, so the sheet and its animations have room. */
+.grid > .card:has(details[data-fold='media-sheet'][open]) { grid-column: 1 / -1; }
+.card:has(details[data-fold='media-sheet'][open]) > .preview { max-height: 120px; }
+.sheet-picture { max-width: 720px; }
+.sheet-preview { width: 120px; }

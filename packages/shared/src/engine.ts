@@ -1,5 +1,5 @@
 import { ScenarioIndex } from './scenario.js';
-import { SHOWN_TO_SCENE, type Action, type AwardAction, type GameEvent, type Hotspot, type Id, type Scene, type TranslateAction } from './types.js';
+import { SHOWN_TO_SCENE, type Action, type AnimateAction, type AwardAction, type GameEvent, type Hotspot, type Id, type Scene, type TranslateAction } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
 /** A running action. `done` settles when it ends on its own or is cancelled. */
@@ -30,6 +30,11 @@ export interface EngineHost {
   translate(action: TranslateAction): ActionHandle | null;
   /** Show or hide the player's avatar, fading over `duration` ms. The handle finishes when the fade does. */
   avatar?(visible: boolean, duration: number): ActionHandle | null;
+  /**
+   * Play an animation on the action's target. The handle finishes when a one-pass animation
+   * does; null when there is nothing to wait for. `actor` as for present().
+   */
+  animate?(action: AnimateAction, actor?: string): ActionHandle | null;
   /** Stop the player from walking (true) or let them walk again (false). */
   freeze?(frozen: boolean): void;
   /** Ask the game server to grant an award action's stars and XP. */
@@ -59,6 +64,8 @@ export function isIndefinite(action: Action): boolean {
 }
 
 export function isShownToScene(action: Action): boolean {
+  // An animation on a player's own avatar reaches everyone through the room state already.
+  if (action.type === 'animate' && (action.target ?? 'player') === 'player') return false;
   return (SHOWN_TO_SCENE as readonly string[]).includes(action.type);
 }
 
@@ -195,6 +202,7 @@ export class SceneEngine {
     }
     let handle: ActionHandle | null;
     if (action.type === 'translate') handle = this.actions.has(action.target_id) ? this.host.translate(action) : null;
+    else if (action.type === 'animate') handle = this.host.animate?.(action, actor) ?? null;
     else handle = this.host.present(action as PresentedAction, this, actor);
     if (!handle) return;
     this.actions.get(action.id)?.cancel();
@@ -299,6 +307,14 @@ export class SceneEngine {
         }
         case 'award': {
           this.host.award?.(action);
+          break;
+        }
+        case 'animate': {
+          const h = this.host.animate?.(action) ?? null;
+          if (h) {
+            this.track(run, action, h);
+            if (action.blocking !== false) await this.wait(run, h);
+          }
           break;
         }
         case 'freeze': {

@@ -134,6 +134,8 @@ export class LocalPlayerSystem implements SceneSystem {
       this.avatar.setAttachments(rec.attachments);
       this.avatar.setConnected(rec.connected);
       this.avatar.setLook(rec.look ?? '');
+      // A move asked for from the screen or by an animate action comes back through the room, as it does for everyone else.
+      this.avatar.setAnimation(rec.anim ?? '');
       if (this.reconcileScene(rec, time)) return;
     }
     this.move(time, delta);
@@ -194,6 +196,8 @@ export class LocalPlayerSystem implements SceneSystem {
       me.setFacing(this.facing);
       me.setPosition(next.x, next.y);
     }
+    // Walking plays the sheet's walk, on the figure and on what it rides.
+    me.setMoving(me.x !== from.x || me.y !== from.y);
 
     // Report at a steady rate while moving, and once more on stopping so everyone agrees on the final spot.
     const s = this.lastSent;

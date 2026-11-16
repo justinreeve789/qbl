@@ -22,19 +22,50 @@ const LOOK: Record<string, readonly [icon: string, tone: string]> = {
   'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Blocked areas': ['🟥', '#c0392b'],
 };
 
+/** Sections the author has folded away. Kept outside the view so a redraw does not open them again. */
+const folded = new Set<string>();
+
+/** A to Z by what is shown, numbers in number order ("Area 2" before "Area 10"). */
+const byName = (a: { text: string }, b: { text: string }) => a.text.localeCompare(b.text, undefined, { numeric: true, sensitivity: 'base' });
+
 /** Everything in the scene as a list: the way to find and select things that are hard to click. */
 export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
   const { store } = model;
   const selected = host.selection();
-  const entry = (selection: Selection, text: string, note?: string) =>
-    h('li', null, h('button', { type: 'button', class: `outline-item${sameSelection(selection, selected) ? ' selected' : ''}`, onclick: () => host.select(selection) }, h('span', null, text), note ? h('small', null, note) : null));
-  const section = (title: string, add: Addable | null, items: HTMLElement[]) =>
-    h(
-      'section',
-      null,
-      h('h3', { style: `--tone:${LOOK[title]?.[1] ?? ''}` }, h('span', null, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, LOOK[title]?.[0] ?? ''), title), add ? h('button', { type: 'button', class: 'icon', title: `Add: ${title.toLowerCase()}`, onclick: () => host.add(add) }, '+') : null),
-      items.length ? h('ul', null, ...items) : null,
+  interface Entry { text: string; node: HTMLElement }
+  const entry = (selection: Selection, text: string, note?: string): Entry => ({
+    text,
+    node: h('li', null, h('button', { type: 'button', class: `outline-item${sameSelection(selection, selected) ? ' selected' : ''}`, onclick: () => host.select(selection) }, h('span', null, text), note ? h('small', null, note) : null)),
+  });
+  /**
+   * One kind of thing in the scene, as a list that folds away. Lists are shown A to Z so a name
+   * is easy to find; layers are the exception, because their order is the order they are drawn in.
+   */
+  const section = (title: string, add: Addable | null, items: Entry[], sort = true) => {
+    const list = sort ? [...items].sort(byName) : items;
+    const node = h(
+      'details',
+      { class: 'outline-section', open: !folded.has(title), 'data-section': title },
+      h(
+        'summary',
+        { style: `--tone:${LOOK[title]?.[1] ?? ''}` },
+        h('span', { class: 'outline-title' }, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, LOOK[title]?.[0] ?? ''), title, h('small', null, String(items.length))),
+        add
+          ? h('button', {
+              type: 'button', class: 'icon', title: `Add: ${title.toLowerCase()}`,
+              onclick: (e: Event) => {
+                e.preventDefault(); // the button is inside the heading that folds the list
+                folded.delete(title);
+                host.add(add);
+              },
+            }, '+')
+          : null,
+      ),
+      list.length ? h('ul', null, ...list.map((i) => i.node)) : null,
     );
+    node.addEventListener('toggle', () => (node.open ? folded.delete(title) : folded.add(title)));
+    return node;
+  };
   const layers = (which: 'background_media' | 'foreground_media') =>
     model.layers(which).map((layer, index) => entry({ kind: 'layer', which, index }, layer.media_id ? mediaLabel(store.byId('media', layer.media_id as number)) : '(no image yet)'));
   const events = (kind: keyof typeof EVENT_KINDS) =>
@@ -48,9 +79,9 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
   return h(
     'nav',
     { class: 'outline', 'aria-label': 'Scene contents' },
-    h('ul', null, entry({ kind: 'scene' }, '⚙️ Scene settings')),
-    section('Background layers', 'background_media', layers('background_media')),
-    section('Foreground layers', 'foreground_media', layers('foreground_media')),
+    h('ul', null, entry({ kind: 'scene' }, '⚙️ Scene settings').node),
+    section('Background layers', 'background_media', layers('background_media'), false),
+    section('Foreground layers', 'foreground_media', layers('foreground_media'), false),
     section('Start events', 'start', events('start')),
     section('Hotspots', 'hotspot-click', events('hotspot')),
     section('Indirect events', 'indirect', events('indirect')),

@@ -18,6 +18,8 @@ export const Player = schema({
   connected: t.boolean(),
   hidden: t.boolean(),
   look: t.string(),
+  /** The animation the avatar was last asked to play, as name:count. */
+  anim: t.string(),
 }, 'Player');
 export type Player = SchemaType<typeof Player>;
 

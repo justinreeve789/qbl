@@ -19,6 +19,10 @@ Body `{ "email": "...", "password": "..." }`. Returns `{ "token": "...", "user":
 
 Body `{ "name": "..." }`. Returns `{ "token": "...", "user": User }` with role `guest`. The Laravel API only offers this when `QBL_ALLOW_GUESTS=true`. A guest token is accepted by the game server only for scenarios with `require_login: false`.
 
+### `POST /api/auth/logout`
+
+Ends the token it is called with, so signing out works everywhere that token was kept. The game and the editor call it from their "Sign out" buttons and then forget the token.
+
 ### `GET /api/auth/providers`
 
 `{ "google": true, "guest": true }`: which optional ways of signing in this installation offers. The sign-in screens show a Google button when `google` is true.

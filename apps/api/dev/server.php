@@ -103,6 +103,9 @@ if ($path === '/api/auth/guest' && $method === 'POST') {
     $name = trim((string) ($body['name'] ?? 'Guest')) ?: 'Guest';
     respond(200, $issue(['id' => random_int(100000, 999999), 'name' => mb_substr($name, 0, 24), 'role' => 'guest']));
 }
+if ($path === '/api/auth/logout' && $method === 'POST') {
+    respond(200, ['ok' => true]);
+}
 if ($path === '/api/me') {
     $user ? respond(200, ['user' => $user]) : respond(401, ['message' => 'Unauthenticated.']);
 }

@@ -34,6 +34,7 @@ export const C2S = {
   Award: 'award',
   Look: 'look',
   Show: 'show',
+  Animate: 'animate',
 } as const;
 
 export const S2C = {
@@ -63,6 +64,8 @@ export interface RewardMessage extends Progress { delta_stars: number; delta_xp:
 export interface ShowMessage { event_id: Id; action_id: Id }
 /** Another player's event is showing this action. `session_id` is who set it off. */
 export interface ShowBroadcast extends ShowMessage { session_id: string }
+/** Play an animation on the sender's avatar, for everyone in their scene. An empty name stops it. */
+export interface AnimateMessage { name: string }
 /** Show or hide the sender's avatar for everyone in their scene. */
 export interface AvatarMessage { visible: boolean }
 /** Sent periodically so the server can save player-scoped progress. */

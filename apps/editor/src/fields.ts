@@ -1,3 +1,4 @@
+import { BUILT_IN_MOVES } from '@qbl/shared';
 import type { Row } from './api';
 import { actionLabel, eventLabel, EVENT_KINDS, mediaLabel, mediaUrl, params, sceneLabel } from './describe';
 import { h, toast } from './dom';
@@ -13,7 +14,7 @@ export type FieldKind =
   | 'value'
   /** A comma-separated list of whole numbers. */
   | 'numbers'
-  | 'media' | 'scene' | 'spawn' | 'event' | 'action' | 'variable' | 'item' | 'character';
+  | 'media' | 'scene' | 'spawn' | 'event' | 'action' | 'variable' | 'item' | 'character' | 'animation';
 
 export interface Field {
   key: string;
@@ -72,6 +73,14 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
         onchange: () => set(input.value.trim() === '' || Number.isNaN(Number(input.value)) ? null : Number(input.value)),
       });
       return wrap(input);
+    }
+    case 'animation': {
+      // Any name can be typed; the list offers the ones this scenario's sprite sheets define and the built-in moves.
+      const names = new Set<string>(Object.keys(BUILT_IN_MOVES));
+      for (const m of ctx.store.rows('media')) for (const a of ((params(m).animations as Array<{ name: string }> | undefined) ?? [])) names.add(a.name);
+      const id = `animations-${Math.random().toString(36).slice(2)}`;
+      const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder ?? 'jump', list: id, onchange: () => set(input.value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_') || null) });
+      return wrap(input, h('datalist', { id }, ...[...names].sort().map((n) => h('option', { value: n }))));
     }
     case 'value': {
       const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder, onchange: () => set(parseValue(input.value)) });

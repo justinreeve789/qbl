@@ -3,7 +3,7 @@ import {
   resolvedHandle,
   type Action, type ActionHandle, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction,
 } from '@qbl/shared';
-import type { AwardAction } from '@qbl/shared';
+import type { AnimateAction, AwardAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import { deferred, type Presenter, type PresenterContext, type PresenterMap, type Target } from './Presenter';
 import { stopMusic } from './presenters/audio';
@@ -54,6 +54,20 @@ export class ActionHost implements EngineHost, PresenterContext {
 
   locate(who: { character_id?: Id; actor?: string }) {
     return this.locateControl?.(who) ?? null;
+  }
+
+  /**
+   * Set by the scene: plays an animation on the player's avatar, a placed item or a character.
+   * Returns how long it lasts in milliseconds (0: it loops, or nothing to wait for), or null if the target is not there.
+   */
+  animateControl: ((action: AnimateAction, actor?: string) => number | null) | null = null;
+
+  animate(action: AnimateAction, actor?: string): ActionHandle | null {
+    const ms = action.target === 'action'
+      ? (action.target_id != null ? (this.targets.get(action.target_id) as { figure?: { play(name: string): number } } | undefined)?.figure?.play(action.animation) : undefined) ?? null
+      : (this.animateControl?.(action, actor) ?? null);
+    if (ms == null) this.warn(`animate ${action.id}: nothing to animate`);
+    return ms != null && ms > 0 ? this.delay(ms) : null;
   }
 
   /** Set by the scene: stops the local player from walking, or lets them walk again. */

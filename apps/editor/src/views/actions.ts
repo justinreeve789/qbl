@@ -9,6 +9,9 @@ import { inlineConditions, rowConditions, type ConditionValue } from './conditio
 /** Which action cards are open. Kept outside the view so a redraw does not close them. */
 const open = new Set<number>();
 
+/** The action being dragged to a new place in its event, if any. */
+let dragging: number | null = null;
+
 /** Columns of the actions table; every other attribute of an action lives in `params`. */
 const COLUMNS = new Set(['media_id', 'blocking']);
 
@@ -121,15 +124,48 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
       ),
     );
 
-    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, `${ACTION_LOOK[type][0]} ${def.label}`), summary), body);
+    // The grip is what is dragged; the card follows it. Dropping on another card puts this action
+    // before or after it, whichever half of that card the pointer is over.
+    const grip = h('span', { class: 'grip', draggable: 'true', title: 'Drag to change the order', 'aria-hidden': 'true' }, '⠿');
+    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, `${ACTION_LOOK[type][0]} ${def.label}`), summary), body);
     card.addEventListener('toggle', () => (card.open ? open.add(id) : open.delete(id)));
+    grip.addEventListener('click', (e) => e.preventDefault());
+    grip.addEventListener('dragstart', (e) => {
+      dragging = id;
+      e.dataTransfer?.setData('text/plain', String(id));
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer?.setDragImage(card, 12, 12);
+      card.classList.add('dragging');
+    });
+    grip.addEventListener('dragend', () => {
+      dragging = null;
+      card.classList.remove('dragging');
+      for (const el of card.parentElement?.querySelectorAll('.drop-before, .drop-after') ?? []) el.classList.remove('drop-before', 'drop-after');
+    });
+    const half = (e: DragEvent) => (e.clientY < card.getBoundingClientRect().top + card.getBoundingClientRect().height / 2 ? 'before' : 'after');
+    card.addEventListener('dragover', (e) => {
+      if (dragging == null || dragging === id) return;
+      e.preventDefault();
+      card.classList.toggle('drop-before', half(e) === 'before');
+      card.classList.toggle('drop-after', half(e) === 'after');
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drop-before', 'drop-after'));
+    card.addEventListener('drop', (e) => {
+      if (dragging == null || dragging === id) return;
+      e.preventDefault();
+      const moved = actions.find((a) => a.id === dragging);
+      const order = actions.filter((a) => a.id !== dragging);
+      if (moved) order.splice(order.indexOf(action) + (half(e) === 'after' ? 1 : 0), 0, moved);
+      dragging = null;
+      reorder(order);
+    });
     return card;
   });
 
   return h(
     'section',
     { class: 'actions' },
-    h('div', { class: 'sub-head' }, h('span', null, `Actions (${actions.length})`), add),
+    h('div', { class: 'sub-head' }, h('span', null, 'Run in this order'), add),
     cards.length ? h('div', null, ...cards) : h('p', { class: 'muted' }, 'This event does nothing yet. Add an action.'),
   );
 }

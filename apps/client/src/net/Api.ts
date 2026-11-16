@@ -105,7 +105,9 @@ export class Api {
     }
   }
 
+  /** Forget who is signed in. The server is told too, so the token stops working everywhere. */
   signOut() {
+    if (this.token) void this.call('POST', '/auth/logout').catch(() => undefined);
     this.remember(null);
   }
 

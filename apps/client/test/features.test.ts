@@ -339,3 +339,110 @@ test('in a preview an award is given once, unless it repeats', async () => {
   g.ctx.rewards.simulate(again); g.ctx.rewards.simulate(again);
   assert.equal(g.ctx.rewards.progress!.stars, 7);
 });
+
+test('a sprite-sheet avatar stands, walks and makes moves; moves are buttons that come and go', async () => {
+  const scenario = loadScenario();
+  scenario.avatar_media_ids = [120];
+  scenario.session = { scene_id: 10 };
+  const g = new Game(scenario);
+  await g.wait(100);
+  const local = g.scene.system(LocalPlayerSystem);
+  const sprite = g.world.objects.find((o) => o.kind === 'sprite' && o.key.startsWith('media-120-ss-6x3'))!;
+  assert.ok(sprite, 'the avatar is drawn from its sheet');
+  assert.match(sprite.playing, /-0\.1-900-loop$/, 'standing: the sheet\'s idle');
+
+  // Walking plays the walk, mirrored for the way it goes; stopping returns to idle.
+  const start = g.position;
+  local.walkTo({ x: start.x - 300, y: start.y });
+  await g.wait(150);
+  assert.match(sprite.playing, /-6\.7\.8\.9\.10\.11-600-loop$/);
+  assert.equal(sprite.flipX, true, 'the art faces right, so walking left mirrors it');
+  await g.wait(2500);
+  assert.match(sprite.playing, /-0\.1-900-loop$/);
+  local.walkTo({ x: start.x, y: start.y });
+  await g.wait(150);
+  assert.equal(sprite.flipX, false);
+  await g.wait(2500);
+
+  // The scenario offers jump and crouch to everyone; dance has to be learned.
+  assert.deepEqual(g.ui.moveButtons.map((m) => [m.animation, m.label]), [['jump', 'Jump'], ['crouch', 'Crouch']]);
+  g.ui.pressMove('jump');
+  await g.wait(50);
+  assert.match(g.ctx.connection.me!.anim, /^jump:\d+$/, 'it goes through the room, so everyone sees it');
+  assert.match(sprite.playing, /-12\.13\.14\.13\.12-600-once$/, 'the jump drawn on the sheet');
+  await g.wait(700);
+  assert.match(sprite.playing, /-0\.1-900-loop$/, 'and back to standing when it ends');
+
+  // Nobody drew a crouch for this avatar, so the picture itself ducks.
+  const tall = sprite.scaleY;
+  await g.wait(300);
+  g.ui.pressMove('crouch');
+  await g.wait(450);
+  assert.ok(sprite.scaleY < tall * 0.8, 'half way through, it is squashed');
+  await g.wait(600);
+  assert.equal(sprite.scaleY, tall);
+
+  // The music player teaches the dance: one of the player's own variables, and a button appears.
+  await g.click(1400, 640);
+  await g.wait(100);
+  assert.equal(g.var('learned_dance'), 1);
+  assert.deepEqual(g.ui.moveButtons.map((m) => m.animation), ['jump', 'crouch', 'dance']);
+  assert.match(sprite.playing, /-15\.16\.17\.16-700-loop$/, 'the event itself started the dance');
+  await g.wait(3000);
+  assert.match(sprite.playing, /-15\.16\.17\.16-700-loop$/, 'a dance goes on');
+  // until the player walks,
+  local.walkTo({ x: start.x - 100, y: start.y });
+  await g.wait(150);
+  assert.equal(g.ctx.connection.me!.anim, '');
+  assert.match(sprite.playing, /-6\.7\.8\.9\.10\.11-600-loop$/);
+  await g.wait(1500);
+  // or presses the button again.
+  g.ui.pressMove('dance');
+  await g.wait(300);
+  assert.match(g.ctx.connection.me!.anim, /^dance:/);
+  g.ui.pressMove('dance');
+  await g.wait(100);
+  assert.equal(g.ctx.connection.me!.anim, '');
+  assert.match(sprite.playing, /-0\.1-900-loop$/);
+});
+
+test('a single picture can make the built-in moves; a move bought in the marketplace is a button everywhere; an event animates a character', async () => {
+  const scenario = loadScenario();
+  scenario.session = { scene_id: 2 };
+  // The platform's catalogue comes from the backend; here one of its moves is put on sale directly.
+  scenario.shop_items!.push({ id: 14, name: 'Spin', kind: 'move', price: 25, move: 'spin' });
+  const g = new Game(scenario);
+  await g.wait(100);
+  const me = g.world.objects.find((o) => o.kind === 'image' && o.key === 'media-101')!;
+  const ground = me.y;
+  g.ui.pressMove('jump');
+  await g.wait(300);
+  assert.ok(me.y < ground - 20, 'half way through a jump the picture is off the ground');
+  await g.wait(400);
+  assert.equal(me.y, ground);
+
+  g.ctx.rewards.pretend(40);
+  assert.ok(!g.ui.moveButtons.some((m) => m.animation === 'spin'));
+  await g.ctx.rewards.buy(14);
+  await g.ctx.rewards.equip(14, true);
+  await g.wait(20);
+  assert.deepEqual(g.ui.moveButtons.find((m) => m.animation === 'spin'), { animation: 'spin', label: 'Spin', icon: '🌀' });
+  g.ui.pressMove('spin');
+  await g.wait(350);
+  assert.ok(me.scaleX < 0, 'half way round, the picture shows its other side');
+  await g.wait(500);
+  assert.ok(me.scaleX > 0);
+
+  // The captain waves as she greets the player.
+  const captain = g.world.objects.find((o) => o.kind === 'image' && o.key === 'media-109' && o !== me)!;
+  const greeting = g.scene.def.indirect_events!.find((e) => e.shortname === 'captain-greeting')!;
+  void (g.scene as any).engine.trigger(greeting);
+  let leaned = 0;
+  for (let i = 0; i < 10; i++) {
+    await g.wait(100);
+    leaned = Math.max(leaned, Math.abs(captain.rotation));
+  }
+  assert.ok(leaned > 0.05, 'she sways as she waves');
+  await g.wait(500);
+  assert.equal(captain.rotation, 0);
+});

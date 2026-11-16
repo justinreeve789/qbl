@@ -34,6 +34,7 @@ export class RemotePlayersSystem implements SceneSystem {
       avatar.setAttachments(rec.attachments);
       avatar.setConnected(rec.connected);
       avatar.setLook(rec.look ?? '');
+      avatar.setAnimation(rec.anim ?? '');
       // An avatar action on their side: the hidden flag arrives through the room state.
       avatar.setShown(!rec.hidden);
       avatar.tick(delta);

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { normalizeScenario, validateScenario, type Scenario } from '@qbl/shared';
@@ -271,6 +272,56 @@ test('stars and a shop: an award in the start event, an item only this scenario 
   await page.click('.subtabs [data-tab=all]');
 });
 
+test('publish from any page, drag actions into a new order, and fold the outline', async () => {
+  // The Publish button is on every page of the scenario, the scene editor included.
+  await page.click('.tabs >> text=Variables');
+  assert.equal(await page.locator('.workspace-head .publish-now').count(), 1);
+  await page.click('.tabs >> text=Scenes');
+  await page.click(`[data-scene="${firstScene}"] >> text=Edit`);
+  await page.waitForSelector('.scene-editor');
+  await page.click('.workspace-head .publish-now');
+  await page.waitForFunction(() => document.querySelector('.publish-state')?.textContent === 'Published');
+  assert.match(await page.innerText('.toasts'), /Published/);
+
+  // The start event's actions: audio, text, award. Drag the award (third) above the audio (first).
+  await page.click('.outline-item >> text=arrive');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 3);
+  const tags = () => page.locator('details.action .tag').allInnerTexts();
+  const before = await tags();
+  assert.match(before[2]!, /Award/);
+  // Fold the cards so all three are in view, as someone reordering would.
+  await page.evaluate(() => document.querySelectorAll<HTMLDetailsElement>('details.action[open]').forEach((d) => (d.open = false)));
+  await page.locator('details.action:nth-of-type(3)').scrollIntoViewIfNeeded();
+  const grip = await page.locator('details.action:nth-of-type(3) .grip').boundingBox();
+  const first = await page.locator('details.action:nth-of-type(1)').boundingBox();
+  await page.mouse.move(grip!.x + grip!.width / 2, grip!.y + grip!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(first!.x + 60, first!.y + first!.height / 2, { steps: 6 });
+  await page.mouse.move(first!.x + 60, first!.y + 3, { steps: 4 });
+  await page.mouse.up();
+  await page.waitForFunction(() => document.querySelector('details.action .tag')?.textContent?.includes('Award'));
+  await saved();
+  assert.deepEqual(await tags(), [before[2], before[0], before[1]]);
+  // Back where it was, with the buttons, which also work from the keyboard.
+  await page.click('details.action:nth-of-type(1) > summary .tag');
+  await page.click('details.action:nth-of-type(1) >> text=↓ Later');
+  await page.waitForFunction(() => document.querySelectorAll('details.action .tag')[1]?.textContent?.includes('Award'));
+  await page.click('details.action:nth-of-type(2) >> text=↓ Later');
+  await page.waitForFunction(() => document.querySelectorAll('details.action .tag')[2]?.textContent?.includes('Award'));
+  await saved();
+  assert.deepEqual(await tags(), before);
+
+  // The outline lists each kind of thing A to Z, and each list folds away and stays folded.
+  const hotspots = await page.locator('[data-section="Hotspots"] .outline-item > span').allInnerTexts();
+  assert.deepEqual(hotspots, [...hotspots].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })));
+  assert.ok(hotspots.length >= 2);
+  await page.click('[data-section="Hotspots"] > summary .outline-title');
+  assert.equal(await page.locator('[data-section="Hotspots"] .outline-item').first().isVisible(), false);
+  await page.click('.outline-item >> text=Scene settings');
+  assert.equal(await page.locator('[data-section="Hotspots"]').getAttribute('open'), null, 'still folded after the outline was redrawn');
+  await page.click('[data-section="Hotspots"] > summary .outline-title');
+});
+
 test('who sees an event, a story box with portraits, and whose a variable is', async () => {
   // A character with a close-up, and a close-up for the avatar.
   await page.click('.tabs >> text=Characters');
@@ -286,9 +337,17 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   const pond = page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'pond.png' }) });
   assert.equal(await pond.locator('[data-field=avatar_portrait]').count(), 0, 'only an avatar has a portrait to choose');
   await pond.locator('label.check >> text=Players can choose this as their avatar').click();
+  // A close-up is made straight away from the top third of the picture, and shown.
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-media] .card-title')].some((t) => t.textContent?.includes('pond-portrait.png')));
   await saved();
+  const made = (await api<{ media: Array<Record<string, unknown>> }>(`/editor/scenarios/${scenarioId}`)).media.find((m) => m.filename === 'pond-portrait.png')!;
+  assert.deepEqual([made.width, made.height], [2400, 267], 'the top third of the 2400 x 800 picture');
+  assert.equal(await pond.locator('[data-field=avatar_portrait] select').inputValue(), String(made.id));
+  assert.match((await pond.locator('img.portrait').getAttribute('src')) ?? '', /^\/media\//, 'the close-up is shown, not only named');
+  // It is only a default: another picture can be chosen.
   await pond.locator('[data-field=avatar_portrait] select').selectOption({ label: 'frog.png' });
   await saved();
+  assert.match((await pond.locator('img.portrait').getAttribute('src')) ?? '', new RegExp(String(await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'frog.png' }) }).locator('img.preview').getAttribute('src')).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
   // The start event: a story box spoken by the character, and the whole event shown to everyone in the scene.
   await page.click('.tabs >> text=Scenes');
@@ -324,6 +383,66 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   assert.equal(bundle.variables.find((v) => v.variable_name === 'frogs_found')!.scope, 'room');
 });
 
+test('animations: an animated PNG becomes a sprite sheet, frames are picked for a new animation, and moves and animate actions use them', async () => {
+  await page.click('.tabs >> text=Media');
+  await page.click('.subtabs [data-tab=all]');
+  const before = await page.locator('[data-media]').count();
+  await page.setInputFiles('.page input[type=file]', [{ name: 'hop.apng', mimeType: 'image/png', buffer: readFileSync(new URL('./fixtures/hop.apng', import.meta.url)) }]);
+  await page.waitForFunction((n) => document.querySelectorAll('[data-media]').length === n + 1, before);
+  await saved();
+  const media = async () => (await api<{ media: Array<Record<string, any>> }>(`/editor/scenarios/${scenarioId}`)).media.find((m) => m.filename === 'hop-sheet.png')!;
+  // Four 40 x 60 frames, laid out two by two, playing at the file's own speed (100 + 100 + 200 + 100 ms).
+  assert.deepEqual([(await media()).width, (await media()).height], [80, 120]);
+  assert.deepEqual((await media()).params.sheet, { columns: 2, rows: 2 });
+  assert.deepEqual((await media()).params.animations, [{ name: 'idle', frames: [0, 1, 2, 3], duration: 500 }]);
+
+  // The sheet tool: add an animation and click the frames that make it up.
+  const card = page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'hop-sheet.png' }) });
+  await card.locator('[data-fold=media-sheet] > summary').click();
+  assert.equal(await card.locator('.sheet-cell').count(), 4);
+  assert.deepEqual(await card.locator('.sheet-cell.in .sheet-place').allInnerTexts(), ['1', '2', '3', '4'], 'the frames of the animation being edited are lit, with their place in it');
+  await card.locator('text=+ Add animation').click();
+  await page.waitForFunction(() => document.querySelectorAll('.sheet-animation[data-animation]').length === 2);
+  assert.equal(await card.locator('.sheet-animation.editing input[type=text]').inputValue(), 'walk', 'the next usual name is offered');
+  await card.locator('.sheet-cell[data-frame="3"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('.sheet-cell.in').length === 1);
+  await card.locator('.sheet-cell[data-frame="1"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('.sheet-cell.in').length === 2);
+  await saved();
+  assert.deepEqual((await media()).params.animations[1], { name: 'walk', frames: [3, 1] });
+  // The preview steps through those frames.
+  const seen = new Set<string>();
+  for (let i = 0; i < 8; i++) {
+    seen.add((await card.locator('.sheet-preview').getAttribute('data-frame')) ?? '');
+    await page.waitForTimeout(60);
+  }
+  assert.deepEqual([...seen].sort(), ['1', '3']);
+
+  // A move for everyone, on the Moves page.
+  await page.click('.tabs >> text=Moves');
+  await page.waitForSelector('text=New move');
+  assert.match(await page.innerText('.page'), /players walk, and that is all/);
+  await page.click('text=New move');
+  await page.waitForSelector('[data-move=jump]');
+  await saved();
+
+  // And an animate action in the hotspot's event.
+  await page.click('.tabs >> text=Scenes');
+  await page.click(`[data-scene="${firstScene}"] >> text=Edit`);
+  await page.click('.outline-item >> text=lily-pad');
+  const count = await page.locator('details.action').count();
+  await inspector('.add-action').selectOption('animate');
+  await page.waitForFunction((n) => document.querySelectorAll('details.action').length === n + 1, count);
+  assert.match(await page.locator('details.action').last().locator('summary').innerText(), /The player: jump/);
+  await page.locator('details.action').last().locator('[data-field=animation] input').fill('dance');
+  await page.locator('details.action').last().locator('[data-field=animation] input').blur();
+  await saved();
+  assert.match(await page.locator('details.action').last().locator('summary').innerText(), /The player: dance/);
+  // It must not hold up the infobox that follows a click on the lily pad.
+  await page.locator('details.action').last().locator('[data-field=blocking] input').uncheck();
+  await saved();
+});
+
 test('publish, then play the published JSON in the game', async () => {
   await page.click('.tabs >> text=Publish');
   await page.click('text=Check and publish');
@@ -355,11 +474,18 @@ test('publish, then play the published JSON in the game', async () => {
   assert.deepEqual(shown, start.actions.filter((a) => a.type !== 'award').map((a) => a.id));
   assert.equal(document.characters![0]!.portrait_media_id, Object.values(document.avatar_portraits!)[0], 'the character and the avatar were both given the frog as a close-up');
 
+  // The sheet and its animations are in the document, and the move is a button on the player's screen.
+  const hop = document.assets!.find((m) => m.filename === 'hop-sheet.png')!;
+  assert.deepEqual(hop.sheet, { columns: 2, rows: 2 });
+  assert.deepEqual(hop.animations!.map((a) => [a.name, a.frames]), [['idle', [0, 1, 2, 3]], ['walk', [3, 1]]]);
+  assert.deepEqual(game.ui.moveButtons.map((m) => m.animation), ['jump']);
+
   await game.click(600, 500);
   assert.match(game.box?.html ?? '', /A frog! You have counted 0\./);
   assert.deepEqual(game.box?.buttons, ['Count the frog']);
   await game.choose('Count the frog');
   assert.equal(game.var('frogs_found'), 1);
+  assert.match(game.ctx.connection.me!.anim, /^dance:/, 'the animate action in the hotspot set the avatar dancing');
   assert.equal(game.ctx.connection.state.vars.get('frogs_found'), '1', 'now a shared variable: it lives in the room, for everyone');
 
   await game.walkOff('right', 'far-bank');

@@ -2,6 +2,7 @@ node_modules/
 dist/
 .data/
 .env
+.idea/
 *.tsbuildinfo
 docs/site/
 apps/api/vendor/

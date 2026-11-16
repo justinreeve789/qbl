@@ -1,6 +1,6 @@
 import type { Row } from '../api';
 import { EVENT_KINDS, params } from '../describe';
-import { confirmDelete, h } from '../dom';
+import { confirmDelete, fold, h } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
 import { EVENT_FIELDS, HOTSPOT_FIELDS, LABEL_FIELDS, LABEL_MEDIA, LABEL_SPRITEMAP, LABEL_TEXT } from '../schema';
 import { actionList } from './actions';
@@ -21,7 +21,8 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
     if (key === 'activate_by_trigger') value = value === 'true';
     void store.patch('events', id, { [key]: value }, field.structural === true);
   };
-  const values = { ...event, activate_by_trigger: String(event.activate_by_trigger === true) };
+  // An event made before audiences existed is the player's own, as it always was.
+  const values = { ...event, audience: event.audience ?? 'player', activate_by_trigger: String(event.activate_by_trigger === true) };
 
   const kindSelect = select(Object.entries(EVENT_KINDS), kind, (next) => {
     const attrs: Record<string, unknown> = { kind: next };
@@ -46,12 +47,12 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
       }, 'Delete'),
     ),
     h('p', { class: 'muted' }, KIND_HELP[kind]),
-    h('div', { class: 'form' }, h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Kind'), kindSelect)),
-    form(EVENT_FIELDS, values, commit, ctx),
-    kind === 'hotspot' ? form(HOTSPOT_FIELDS, values, commit, ctx) : null,
-    rowConditions(ctx, 'event_id', id, 'Runs only when', kind === 'hotspot' ? 'Always active.' : 'Always runs.'),
-    kind === 'hotspot' ? labelList(ctx, event) : null,
-    actionList(ctx, id, refresh),
+    // Each part folds away, so a long event is easy to get around in. What is folded stays folded from event to event.
+    fold('event-settings', '⚙️ Settings', true, h('div', { class: 'form' }, h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Kind'), kindSelect)), form(EVENT_FIELDS, values, commit, ctx)),
+    kind === 'hotspot' ? fold('event-hotspot', '🎯 Where it is and how it fires', true, form(HOTSPOT_FIELDS, values, commit, ctx)) : null,
+    fold('event-conditions', `🔀 Conditions (${store.where('conditions', 'event_id', id).length})`, true, rowConditions(ctx, 'event_id', id, 'Runs only when', kind === 'hotspot' ? 'Always active.' : 'Always runs.')),
+    kind === 'hotspot' ? fold('event-labels', `🏷️ Labels (${store.where('labels', 'event_id', id).length})`, true, labelList(ctx, event)) : null,
+    fold('event-actions', `🎬 Actions (${store.where('actions', 'event_id', id).length})`, true, actionList(ctx, id, refresh)),
   );
 }
 
@@ -94,7 +95,7 @@ function labelList(ctx: FormContext, event: Row): HTMLElement {
   return h(
     'section',
     { class: 'labels' },
-    h('div', { class: 'sub-head' }, h('span', null, `Labels (${labels.length})`), h('button', { type: 'button', class: 'link', onclick: add }, '+ Add label')),
+    h('div', { class: 'sub-head' }, h('span', null, 'Shown in the scene'), h('button', { type: 'button', class: 'link', onclick: add }, '+ Add label')),
     cards.length ? h('div', null, ...cards) : h('p', { class: 'muted' }, 'No labels: players see nothing here until they find it.'),
   );
 }

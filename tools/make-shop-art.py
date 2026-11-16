@@ -84,6 +84,20 @@ for name, colour, glyph in (('bounce', (255, 150, 60), '^'), ('float', (130, 190
     save(img, f'{name}.png', 100, 100)
 print('wrote shop art')
 
+img, d = canvas(120, 120)  # spin: a move
+d.arc(P((18, 18), (102, 102)), 30, 300, fill=(120, 200, 255, 255), width=12 * S)
+d.polygon(P((88, 14), (112, 40), (78, 46)), fill=(120, 200, 255, 255), outline=OUT)
+d.ellipse(P((48, 48), (72, 72)), fill=(255, 214, 74, 255), outline=OUT, width=3 * S)
+save(img, 'spin.png', 120, 120)
+
+img, d = canvas(120, 120)  # wave: a move
+d.rounded_rectangle(P((40, 44), (86, 104)), 16 * S, fill=(255, 205, 150, 255), outline=OUT, width=3 * S)
+for x in (42, 54, 66, 78):
+    d.rounded_rectangle(P((x, 14), (x + 10, 56)), 5 * S, fill=(255, 205, 150, 255), outline=OUT, width=3 * S)
+d.arc(P((90, 20), (116, 60)), 300, 60, fill=(120, 200, 255, 255), width=5 * S)
+d.arc(P((4, 20), (30, 60)), 120, 240, fill=(120, 200, 255, 255), width=5 * S)
+save(img, 'wave.png', 120, 120)
+
 # ---------------------------------------------------------------- mission-specific items
 # Sold only in the Starship Explorer mission, so they live with that scenario's media.
 root = os.path.join(os.path.dirname(__file__), '..', 'scenarios', 'assets', 'starship', 'shop')

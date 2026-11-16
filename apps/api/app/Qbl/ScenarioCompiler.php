@@ -152,6 +152,8 @@ class ScenarioCompiler
 
         $assets = [];
         foreach (self::sorted($rows['media'] ?? [], 'priority') as $m) {
+            // A sprite sheet's grid and its named animations are kept in params and belong to the media itself.
+            $params = self::json($m['params'] ?? null);
             $assets[] = self::strip([
                 'id' => self::int($m['id']),
                 'scenario_id' => $id,
@@ -164,7 +166,9 @@ class ScenarioCompiler
                 'width' => self::intOrNull($m['width'] ?? null),
                 'height' => self::intOrNull($m['height'] ?? null),
                 'priority' => self::int($m['priority'] ?? 100),
-                'params' => self::json($m['params'] ?? null) ?: null,
+                'sheet' => is_array($params['sheet'] ?? null) ? $params['sheet'] : null,
+                'animations' => is_array($params['sheet'] ?? null) && ! empty($params['animations']) ? array_values($params['animations']) : null,
+                'params' => array_diff_key($params, ['sheet' => 1, 'animations' => 1]) ?: null,
             ]);
         }
 

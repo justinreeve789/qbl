@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/auth/guest', [AuthController::class, 'guest'])->middleware('throttle:10,1');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 // Signing in with Google. The browser is sent to the first and comes back to the second.
 Route::get('/auth/providers', [GoogleAuthController::class, 'providers']);

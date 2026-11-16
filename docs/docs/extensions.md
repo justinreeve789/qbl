@@ -198,6 +198,22 @@ The bubble follows the speaker and keeps itself on screen. It sits above them wh
 
 A story conversation is normally the player's own (`audience: player`, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.
 
+### Animate
+
+A new action type, `animate`, plays an animation on something in the scene. See [Animations](#animations) for where animations come from.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+animation | string | | The animation's name: one defined on the target's sprite sheet, or a built-in move (`jump`, `spin`, `crouch`, `wave`, `dance`). Empty: stop what is playing and return to standing and walking.
+target | string | player | `player`: the avatar of the player whose event this is. `item`: an item or vehicle, on the floor of this scene or being worn or ridden. `character`: a character placed in this scene. `action`: a picture that an `image_fixed` action is showing.
+item_id, character_id, target_id | int | | Which item, character or action, for those targets.
+
+```json
+{ "type": "animate", "target": "character", "character_id": 1, "animation": "wave", "blocking": false }
+```
+
+With `blocking` (the default) the sequence waits until a one-pass animation has finished; a looping one never holds it up. An animation on a **player's avatar goes through the game server**, so everyone in the scene sees it, whatever the event's audience. An animation on an item, a character or a picture is shown to the other players only when the event's `audience` is `scene`, like anything else an event shows.
+
 ### Freeze
 
 A new action type, `freeze`, stops the player from walking, or lets them walk again: for a conversation with a character, a cutscene, a countdown.
@@ -335,6 +351,70 @@ scale | decimal | 1.0 | Display scale.
 
 A placement's `event_id` names an indirect event in the same scene that runs when the character is clicked, typically an infobox with what they say.
 
+## Animations
+
+### Sprite sheets and named animations
+
+Any image can be a **sprite sheet**: a grid of equal frames. The media says how the grid is cut and names the animations made of its frames. Whatever is drawn with that media (an avatar, an item, a vehicle, a character, an `image_fixed` picture) can then play them.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+sheet | object | `{ "columns": 6, "rows": 3 }`: frames across and down. `count` may be added when the last row is not full. Frames are numbered from 0 at the top left, left to right and then down, as on the [Spritemaps](spritemap.md) page.
+animations | array | `{ "name", "frames", "duration", "repeat" }`. `frames` are frame numbers in the order they play. `duration` is the milliseconds one pass takes (default 100 per frame). `repeat` says whether it loops (default: by its name, see below).
+
+```json
+{ "id": 120, "type": "image", "url": "avatars/sprocket-sheet.png",
+  "sheet": { "columns": 6, "rows": 3 },
+  "animations": [
+    { "name": "idle", "frames": [0, 1], "duration": 900 },
+    { "name": "walk", "frames": [6, 7, 8, 9, 10, 11], "duration": 600 },
+    { "name": "jump", "frames": [12, 13, 14, 13, 12], "duration": 600, "repeat": false },
+    { "name": "dance", "frames": [15, 16, 17, 16], "duration": 700 }
+  ] }
+```
+
+An **animated PNG** is not played as such. The editor reads its frames when it is uploaded and lays them out as a sprite sheet with one animation at the file's own speed, so the game has one way of animating. The existing `spritemap` action and spritemap labels, which describe their grid themselves, work as before.
+
+### Names that mean something
+
+Name | When it plays
+---- | -------------
+`idle` | By itself, while the figure stands. Loops.
+`walk` | By itself, while the figure moves: an avatar walking, a vehicle being ridden. Loops. It is mirrored for the direction the art does not face.
+`walk_left`, `walk_right` | Used instead of `walk` for that direction, unmirrored. If only one is given, it is mirrored for the other.
+anything else | When an `animate` action or a player's move asks for it. Plays once unless `repeat` is true (`dance` loops by default).
+
+A figure with no sheet, or a sheet without `idle` or `walk`, simply stands and is mirrored to face the way it goes, as before.
+
+### Built-in moves
+
+Five moves need no frames: `jump` (a hop), `spin` (a turn on the spot), `crouch` (a duck), `wave` (a sway from side to side) and `dance` (a looping bounce and sway). The picture itself is moved, so they work on any figure. **Frames win**: when a figure's sheet has an animation of the same name, that is played instead. So `jump` always does something, and looks best where a jump was drawn.
+
+### Moves: what players can do themselves
+
+`moves` on the scenario lists what players can do whenever they like, from buttons on their screen.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+animation | string | The animation or built-in move to play on the player's avatar.
+label, icon | string | What the button shows. Default: the animation's name.
+conditions | array | The button is there only while these hold. Absent: always.
+
+```json
+"moves": [
+  { "animation": "jump" },
+  { "animation": "dance", "conditions": [{ "variable": "learned_dance", "operator": "=", "operand": 1 }] }
+]
+```
+
+This is the "animation inventory": a move a scenario teaches is a player's own variable set by an event, and the button appears when the condition holds. Moves of that kind belong to the scenario. Moves **bought in the marketplace** (shop items of kind `move`) belong to the account: once bought and switched on, their buttons are there in every scenario. A pressed move plays until it ends, or for a looping one until the player walks or presses it again.
+
+Avatars differ, so a move is not tied to one avatar's art: a player whose avatar has `dance` frames dances with them, and any other avatar does the built-in dance. A move that is neither on the avatar's sheet nor built in does nothing for that avatar.
+
+### How animations reach other players
+
+`players[...].anim` in the room state holds the last animation asked of a player's avatar, as `name:count`; clients play it when it changes, and it is cleared when the player walks or changes scene. The server checks the name's shape and how often it is asked (four times a second at most), not whether the player "owns" the move: animations are only something to look at. Walking and standing need no message; every client works them out from the positions it already receives.
+
 ## Stars, XP and the marketplace
 
 Players earn **stars** and **XP** through `award` actions. Stars are spent in the marketplace. XP is never spent: its total decides the player's **rank**. Both are kept on the player's account by the backend and are the same in every scenario.
@@ -360,13 +440,14 @@ Parameter | Type | Description
 --------- | ---- | -----------
 id | int |
 name, description | string |
-kind | string | `wearable`, `pet`, `animation` or `ability`.
+kind | string | `wearable`, `pet`, `animation`, `move` or `ability`.
 price | int | In stars.
 media_id | int | The item's picture, one of the scenario's media. (Platform items have an `image_url` instead.)
 slot | string | Wearables: `head`, `body`, `back` or `hand`. One item per slot is worn at a time.
 scale | decimal | Wearables and pets: height as a fraction of the avatar's height, so an item fits avatars of any size.
 offset_x, offset_y | decimal | Wearables and pets: a nudge forward and down, in avatar heights.
 animation | string | Animations: `bounce`, `float`, `sway` or `pulse`. How the avatar moves while standing.
+move | string | Moves: the animation a button on the player's screen plays, in every scenario. See [Moves](#moves-what-players-can-do-themselves).
 ability | string | Abilities: a key. While equipped, `QBLAbility_<key>` is 1.
 
 ```json
@@ -376,7 +457,7 @@ ability | string | Abilities: a key. While equipped, `QBLAbility_<key>` is 1.
 ]
 ```
 
-A player owns what they buy for good, and chooses what to have on: one wearable per slot, one pet, one animation, and any number of abilities. What a player wears is drawn on their avatar in every scenario and is seen by the other players.
+A player owns what they buy for good, and chooses what to have on: one wearable per slot, one pet, one animation (a way of standing: bounce, float, sway, pulse), and any number of moves and abilities. What a player wears is drawn on their avatar in every scenario and is seen by the other players.
 
 **Abilities do nothing by themselves.** They are a flag scenarios can test, so what an ability unlocks is up to each author: a hotspot only its owners see, an extra line of dialogue, a shortcut. They never change walking speed or how far away a hotspot is revealed. In the demo, the survey map makes a map table appear at the landing site:
 
@@ -409,5 +490,5 @@ These need no special support; they are combinations of the pieces above.
 * `physical` items.
 * `intro_media_portrait_id` / `intro_media_landscape_id` splash screens and `is_intro_scene`.
 * `allow_groups` as a lobby. Groups work (players who join with the same group key share a room, up to `max_players`), but choosing a group is left to whatever launches the game: pass `?group=`.
-* Animated avatars. Avatars are single images mirrored for direction; the marketplace's "animations" move that image (bounce, float, sway, pulse).
+* Animating what an avatar wears along with a sheet animation: worn items follow the figure's position, not its frames.
 * A screen for editing the platform's marketplace catalogue and the ranks.

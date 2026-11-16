@@ -1,8 +1,8 @@
 import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Circle, type WalkContext } from './geometry.js';
 import { isShownToScene } from './engine.js';
-import type { AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage } from './protocol.js';
+import type { AnimateMessage, AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage } from './protocol.js';
 import { sceneSize, ScenarioIndex } from './scenario.js';
-import type { Id, Item, Scenario, Scene, Session, VarValue } from './types.js';
+import { ANIMATION_NAME, type Id, type Item, type Scenario, type Scene, type Session, type VarValue } from './types.js';
 import { applyOperator } from './variables.js';
 
 /** Who is playing. `id` is the stable key for save data. */
@@ -30,6 +30,12 @@ export interface PlayerRec {
   hidden: boolean;
   /** Equipped shop item ids, comma-separated. Drawn on the avatar by every client. */
   look: string;
+  /**
+   * The animation the avatar was last asked to play, as `name:count`, or empty. The count makes
+   * the same move asked for twice two different values, so it plays twice. Cleared when the
+   * player walks or changes scene.
+   */
+  anim: string;
 }
 export interface ItemRec { item_id: number; scene_id: number; x: number; y: number; holder: string }
 export interface MapLike<T> {
@@ -60,6 +66,9 @@ interface Meta {
   user: User;
   budget: MoveBudget;
   progress: ProgressMessage;
+  /** When this player's avatar was last asked to animate, and how many times in all. */
+  lastAnimation: number;
+  animations: number;
 }
 
 /**
@@ -144,6 +153,7 @@ export class World {
     p.attachments = attachments.join(',');
     p.connected = true;
     p.hidden = false;
+    p.anim = '';
     p.look = cleanLook(user.look);
     state.players.set(sessionId, p);
 
@@ -152,7 +162,7 @@ export class World {
       flags: (useSave?.flags ?? []).slice(0, MAX_FLAGS),
       time_elapsed: useSave?.time_elapsed ?? 0,
     };
-    this.meta.set(sessionId, { user, budget: new MoveBudget(this.deps.now()), progress });
+    this.meta.set(sessionId, { user, budget: new MoveBudget(this.deps.now()), progress, lastAnimation: -Infinity, animations: 0 });
     return this.sessionOf(sessionId)!;
   }
 
@@ -203,6 +213,8 @@ export class World {
     const dist = distance({ x: p.x, y: p.y }, { x, y });
     if (!m.budget.spend(this.deps.now(), dist, this.speedOf(p))) return reject();
     if (!isWalkable(this.ctx(p.scene_id), x, y)) return reject();
+    // Walking ends a dance or any other move.
+    if (p.anim && (p.x !== x || p.y !== y)) p.anim = '';
     p.x = x;
     p.y = y;
     p.facing = msg.facing === 'left' ? 'left' : 'right';
@@ -223,6 +235,7 @@ export class World {
     p.y = pos.y;
     // Avatars are shown on arrival. A scene that wants them hidden hides them in a start event.
     p.hidden = false;
+    p.anim = '';
     m.budget.reset(this.deps.now());
     return true;
   }
@@ -243,6 +256,23 @@ export class World {
       if (id !== sessionId && other.scene_id === p.scene_id) others.push(id);
     });
     return others;
+  }
+
+  /**
+   * Play an animation on the player's avatar. It is only something to look at, so the server
+   * checks the name's shape and how often it is asked, not whether the player "has" the move.
+   */
+  animate(sessionId: string, msg: AnimateMessage): boolean {
+    const p = this.deps.state.players.get(sessionId);
+    const m = this.meta.get(sessionId);
+    const name = String(msg?.name ?? '');
+    if (!p || !m || (name !== '' && !ANIMATION_NAME.test(name))) return false;
+    const now = this.deps.now();
+    if (name !== '' && now - m.lastAnimation < 250) return false;
+    m.lastAnimation = now;
+    m.animations++;
+    p.anim = name === '' ? '' : `${name}:${m.animations}`;
+    return true;
   }
 
   setLook(sessionId: string, look: string | undefined): void {

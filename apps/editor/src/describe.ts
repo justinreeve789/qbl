@@ -55,6 +55,12 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       return `${values.speaker === 'character' ? String(store.byId('characters', values.character_id as number | null)?.name ?? 'Character') : 'Player'} ${values.style === 'portrait' ? 'says, in a story box' : 'says'}: ${clip(String(values.text ?? ''))}`;
     case 'freeze':
       return values.frozen === false ? 'Let the player move again' : 'Stop the player from moving';
+    case 'animate': {
+      const who = values.target === 'item' ? String(store.byId('items', values.item_id as number | null)?.name ?? 'An item')
+        : values.target === 'character' ? String(store.byId('characters', values.character_id as number | null)?.name ?? 'A character')
+        : values.target === 'action' ? `Action #${values.target_id ?? '?'}` : 'The player';
+      return values.animation ? `${who}: ${values.animation}` : `${who}: stop animating`;
+    }
     case 'avatar':
       return values.visible === false ? 'Hide the player’s avatar' : 'Show the player’s avatar';
     case 'audio':

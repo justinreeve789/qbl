@@ -22,6 +22,10 @@ It is plain TypeScript and DOM, with no UI framework: a few hundred lines of hel
   (stars and XP) and shop (open the marketplace).
 - **Library**: media (upload or by address, in sub-tabs by what it is used for), variables,
   items, characters, objectives.
+- **Moves**: what players can do from buttons on their screen (jump, crouch, dance), each with
+  optional conditions.
+- **Sprite sheets** (on a media card): frames across and down, named animations, frames picked
+  by clicking the sheet, and a preview. Animated PNGs are converted on upload (`src/apng.ts`).
 - **Shop**: the items only this scenario sells in the marketplace: something to wear, a pet, a
   way of moving, or an ability, with a price in stars. Taking an item off sale keeps it for the
   players who bought it.

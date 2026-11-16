@@ -4,12 +4,17 @@ import {
   type CharacterPlacement, type Circle, type Id, type Item,
 } from '@qbl/shared';
 import { mediaKey } from '../core/assets';
+import { Figure } from '../entities/Figure';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
 
 interface PlacedItem {
   item: Item;
-  image: Phaser.GameObjects.Image;
+  figure: Figure;
+  image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+  /** The size it is drawn at where it lies, and the y of its feet, before a move bends or lifts it. */
+  size: number;
+  feet: number;
   /** Where the scenario placed it. Unique items move; see update(). */
   home: { x: number; y: number };
   exists: boolean;
@@ -35,7 +40,7 @@ export class PropsSystem implements SceneSystem {
   private objects: Phaser.GameObjects.GameObject[] = [];
   private pointerOver = 0;
 
-  private characters = new Map<Id, { image: Phaser.GameObjects.Image; name: string }>();
+  private characters = new Map<Id, { figure: Figure; image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; name: string; size: number; facing: 'left' | 'right'; y: number }>();
 
   constructor(private rt: SceneRuntime) {}
 
@@ -64,16 +69,15 @@ export class PropsSystem implements SceneSystem {
   private place(item: Item, x: number, y: number, visible: boolean) {
     const { scene, zoom, def } = this.rt;
     if (this.items.has(item.id) || item.media_id == null || !scene.textures.exists(mediaKey(item.media_id))) return;
-    const image = scene.add
-      .image(x, y, mediaKey(item.media_id))
-      .setOrigin(0.5, 1)
-      .setScale((item.scale ?? 1) * zoom * scaleAt(def, x, y))
-      .setDepth(y)
-      .setVisible(visible);
+    // A Figure, so that a sheet's idle plays where the item lies and an animate action can reach it.
+    const figure = new Figure(scene, this.rt.ctx.index.media.get(item.media_id), mediaKey(item.media_id), x, y);
+    const size = (item.scale ?? 1) * zoom * scaleAt(def, x, y);
+    const image = figure.object.setOrigin(0.5, 1).setScale(size).setDepth(y).setVisible(visible);
+    image.setFlipX(figure.auto(false, item.art_faces ?? 'right', item.art_faces ?? 'right'));
     if (item.vehicle || item.wearable) {
       this.interactive(image, () => this.rt.system(LocalPlayerSystem).useItem(item, { x: image.x, y: image.y }));
     }
-    this.items.set(item.id, { item, image, home: { x, y }, exists: true });
+    this.items.set(item.id, { item, figure, image, size, feet: y, home: { x, y }, exists: true });
   }
 
   /** True while the pointer is over something clickable; a click is then left to that object. */
@@ -81,7 +85,7 @@ export class PropsSystem implements SceneSystem {
     return this.pointerOver > 0;
   }
 
-  private interactive(object: Phaser.GameObjects.Image, onClick: () => void) {
+  private interactive(object: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite, onClick: () => void) {
     object.setInteractive({ useHandCursor: true });
     object.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => this.pointerOver++);
     object.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => (this.pointerOver = Math.max(0, this.pointerOver - 1)));
@@ -93,13 +97,12 @@ export class PropsSystem implements SceneSystem {
     const character = ctx.scenario.characters?.find((c) => c.id === placement.character_id);
     if (!character || character.media_id == null || !scene.textures.exists(mediaKey(character.media_id))) return;
     if (!testConditions(character.conditions, ctx.vars.get)) return;
-    const image = scene.add
-      .image(placement.position_x, placement.position_y, mediaKey(character.media_id))
-      .setOrigin(0.5, 1)
-      .setScale((character.scale ?? 1) * zoom * scaleAt(def, placement.position_x, placement.position_y))
-      .setFlipX(placement.facing === 'left')
-      .setDepth(placement.position_y);
-    this.characters.set(character.id, { image, name: character.name });
+    const figure = new Figure(scene, ctx.index.media.get(character.media_id), mediaKey(character.media_id), placement.position_x, placement.position_y);
+    const size = (character.scale ?? 1) * zoom * scaleAt(def, placement.position_x, placement.position_y);
+    const facing = placement.facing === 'left' ? 'left' : 'right';
+    const image = figure.object.setOrigin(0.5, 1).setScale(size).setDepth(placement.position_y);
+    image.setFlipX(figure.auto(false, facing));
+    this.characters.set(character.id, { figure, image, name: character.name, size, facing, y: placement.position_y });
     const name = scene.add
       .text(placement.position_x, placement.position_y - image.displayHeight - 6, character.name, NAME_STYLE)
       .setOrigin(0.5, 1)
@@ -118,8 +121,20 @@ export class PropsSystem implements SceneSystem {
     for (const p of this.items.values()) p.exists = testConditions(p.item.conditions, this.rt.ctx.vars.get);
   }
 
-  /** Bring item sprites in line with the room state. */
-  update() {
+  /**
+   * Play an animation on a placed item or character. Returns how long it lasts (0: it loops, or
+   * the name means nothing to it), or null when there is no such thing on the floor here.
+   */
+  animate(what: 'item' | 'character', id: Id, name: string): number | null {
+    const target = what === 'item' ? this.items.get(id) : this.characters.get(id);
+    if (!target || !target.image.visible) return null;
+    return target.figure.play(name);
+  }
+
+  /** Bring item sprites in line with the room state. `delta` advances their animations. */
+  update(_time = 0, delta = 0) {
+    for (const p of this.items.values()) this.pose(p.figure, p.image, p.size, p.feet, delta);
+    for (const c of this.characters.values()) this.pose(c.figure, c.image, c.size, c.y, delta);
     const { state, me } = this.rt.ctx.connection;
     const mine = parseIds(me?.attachments ?? '');
     for (const p of this.items.values()) {
@@ -128,7 +143,11 @@ export class PropsSystem implements SceneSystem {
         const rec = state.items.get(String(p.item.id));
         visible &&= !!rec && rec.holder === '' && rec.scene_id === this.rt.def.id;
         // A unique item lies where it was last put down, at the size that place gives it.
-        if (rec && visible) p.image.setPosition(rec.x, rec.y).setDepth(rec.y).setScale((p.item.scale ?? 1) * this.rt.zoom * scaleAt(this.rt.def, rec.x, rec.y));
+        if (rec && visible) {
+          p.size = (p.item.scale ?? 1) * this.rt.zoom * scaleAt(this.rt.def, rec.x, rec.y);
+          p.feet = rec.y;
+          if (!p.figure.acting) p.image.setPosition(rec.x, rec.y).setDepth(rec.y).setScale(p.size);
+        }
       } else {
         visible &&= !mine.includes(p.item.id);
       }
@@ -138,6 +157,18 @@ export class PropsSystem implements SceneSystem {
         if (!visible) this.pointerOver = 0;
       }
     }
+  }
+
+  /** Advance a figure's animation and bend it as a built-in move asks. `feet` is where it stands. */
+  private pose(figure: Figure, image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite, size: number, feet: number, delta: number) {
+    const was = figure.acting;
+    figure.tick(delta);
+    if (!was && !figure.acting) return;
+    const bend = figure.pose();
+    image.setScale(size * bend.scaleX, size * bend.scaleY).setRotation(bend.lean);
+    image.y = feet - bend.lift * (image.displayHeight || 0);
+    // Back to its idle once a move has ended. Which way it faces does not change.
+    if (!figure.acting) figure.auto(false, 'right');
   }
 
   /** Round obstacles for items that block movement. */
