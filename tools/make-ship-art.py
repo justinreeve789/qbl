@@ -82,6 +82,9 @@ sign(d, (900, 360), 'ENGINE ROOM', 24)
 d.polygon([(250, 430), (430, 480), (430, 802), (250, 969)], fill=(128, 150, 184)); d.polygon([(250, 430), (430, 480), (430, 500), (250, 455)], fill=(60, 70, 90))
 d.polygon([(1550, 430), (1370, 480), (1370, 802), (1550, 969)], fill=(120, 142, 176)); d.polygon([(1550, 430), (1370, 480), (1370, 500), (1550, 455)], fill=(60, 70, 90))
 sign(d, (340, 400), 'CREW', 30); sign(d, (1460, 400), 'HYDROPONICS', 26)
+# A further door on the left, past the crew quarters: the marketplace.
+d.polygon([(500, 440), (600, 448), (600, 645), (500, 737)], fill=(214, 176, 92)); d.polygon([(500, 440), (600, 448), (600, 462), (500, 458)], fill=(60, 70, 90))
+sign(d, (548, 412), 'MARKET', 22, (255, 226, 140))
 img = glow(img, [760, 250, 1040, 420], (40, 60, 90), 60)
 img.save(f'{root}/corridor.jpg', quality=86)
 
@@ -145,4 +148,28 @@ sign(d, (1875, 680), 'OUTPUT', 30, (140, 200, 255))
 sign(d, (1125, 110), 'ENGINE ROOM', 44)
 img = glow(img, [820, 200, 1430, 790], (30, 60, 96), 80)
 img.save(f'{root}/engine-room.jpg', quality=86)
-print('wrote corridor, crew-quarters, hydroponics, engine-room')
+# ------------------------------------------------------------------ marketplace
+img, d = room(W, H, 800, (64, 50, 78), (104, 80, 104), (126, 108, 96), (88, 74, 70), 5)
+for i, (x, awning) in enumerate(((150, (214, 90, 80)), (640, (80, 150, 214)), (1500, (96, 180, 110)))):      # three stalls
+    d.rounded_rectangle([x, 470, x + 420, 800], 14, fill=(72, 58, 60))                                         # counter
+    d.rectangle([x + 16, 250, x + 30, 480], fill=(60, 50, 54)); d.rectangle([x + 390, 250, x + 404, 480], fill=(60, 50, 54))
+    for k in range(6):                                                                                        # striped awning
+        d.polygon([(x - 20 + k * 77, 200), (x + 57 + k * 77, 200), (x + 50 + k * 77, 290), (x - 13 + k * 77, 290)], fill=awning if k % 2 == 0 else (238, 232, 220))
+    d.rectangle([x + 30, 300, x + 390, 470], fill=(40, 34, 48))                                                # shelves behind the counter
+    for sy in (360, 430):
+        d.rectangle([x + 30, sy, x + 390, sy + 8], fill=(96, 80, 84))
+    random.seed(20 + i)
+    for sy in (360, 430):                                                                                     # goods on the shelves
+        for gx in range(x + 50, x + 370, 54):
+            c = random.choice(((240, 200, 80), (230, 110, 96), (110, 180, 240), (150, 220, 140), (220, 150, 230)))
+            if random.random() < 0.5: d.ellipse([gx, sy - 40, gx + 38, sy - 2], fill=c)
+            else: d.rounded_rectangle([gx, sy - 46, gx + 34, sy - 2], 6, fill=c)
+d.rounded_rectangle([1130, 300, 1430, 800], 24, fill=(48, 40, 66))                                             # the wardrobe mirror
+d.rounded_rectangle([1160, 330, 1400, 770], 16, fill=(150, 190, 220)); d.polygon([(1180, 350), (1260, 350), (1200, 750), (1180, 750)], fill=(190, 220, 240))
+sign(d, (1280, 270), 'WARDROBE', 26, (255, 226, 140))
+star = lambda cx, cy, r: [(cx + (r if k % 2 == 0 else r * 0.42) * math.sin(math.radians(k * 36)), cy - (r if k % 2 == 0 else r * 0.42) * math.cos(math.radians(k * 36))) for k in range(10)]
+d.polygon(star(2060, 420, 110), fill=(255, 214, 74)); d.polygon(star(2060, 424, 62), fill=(255, 238, 160))        # a big star on the wall
+sign(d, (1125, 110), 'MARKETPLACE', 44, (255, 226, 140))
+img = glow(img, [1960, 320, 2160, 520], (60, 50, 10), 60)
+img.save(f'{root}/marketplace.jpg', quality=86)
+print('wrote corridor, crew-quarters, hydroponics, engine-room, marketplace')
