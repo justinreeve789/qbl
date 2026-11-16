@@ -11,18 +11,17 @@ if [ -z "$APP_KEY" ]; then
   export APP_KEY
 fi
 
+# The tables are brought up to date on every start. Nothing is seeded here: seeding is done by
+# hand, when you want it:
+#
+#   docker compose exec app php artisan qbl:seed            the marketplace catalogue and the demo mission
+#   docker compose exec app php artisan qbl:seed --reset    put the shipped demo back, replacing edits to it
 php artisan migrate --force
 
 # Files uploaded in the editor go to a volume that Apache serves as /media.
 if [ -n "$QBL_MEDIA_DIR" ]; then
   mkdir -p "$QBL_MEDIA_DIR"
   chown www-data:www-data "$QBL_MEDIA_DIR"
-fi
-
-# Seed the demo mission and publish its JSON. It is seeded once: after that it can be edited like
-# any other scenario, and restarting leaves it alone. QBL_SEED=reset restores the shipped version.
-if [ "${QBL_SEED:-true}" != "false" ]; then
-  php artisan db:seed --force
 fi
 
 # Apache serves the static files (the Phaser game, scenario media) straight from this volume.
