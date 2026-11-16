@@ -3,7 +3,7 @@ import { sceneLabel } from '../describe';
 import { h, redraw } from '../dom';
 import type { FormContext } from '../fields';
 import type { Store } from '../store';
-import { charactersPage, itemsPage, mediaPage, objectivesPage, variablesPage } from './library';
+import { charactersPage, itemsPage, mediaPage, objectivesPage, shopPage, variablesPage } from './library';
 import { publishPage, scenesPage, settingsPage } from './pages';
 import { sceneEditor } from './scene/sceneEditor';
 
@@ -14,6 +14,7 @@ export const TABS = [
   ['items', 'Items', '🎒'],
   ['characters', 'Characters', '🧑‍🚀'],
   ['objectives', 'Objectives', '✅'],
+  ['shop', 'Shop', '🛍️'],
   ['settings', 'Settings', '⚙️'],
   ['publish', 'Publish', '🚀'],
 ] as const;
@@ -59,6 +60,8 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
         return charactersPage(ctx);
       case 'objectives':
         return objectivesPage(ctx);
+      case 'shop':
+        return shopPage(ctx);
       case 'settings':
         return settingsPage(ctx, () => go('#/'));
       case 'publish':

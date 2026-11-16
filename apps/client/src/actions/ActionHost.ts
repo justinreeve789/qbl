@@ -1,8 +1,9 @@
 import type * as Phaser from 'phaser';
 import {
   resolvedHandle,
-  type ActionHandle, type EngineHost, type Id, type PresentedAction, type SceneEngine, type TranslateAction,
+  type Action, type ActionHandle, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction,
 } from '@qbl/shared';
+import type { AwardAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import { deferred, type Presenter, type PresenterContext, type PresenterMap, type Target } from './Presenter';
 import { stopMusic } from './presenters/audio';
@@ -27,14 +28,32 @@ export class ActionHost implements EngineHost, PresenterContext {
 
   // ------------------------------------------------------------ EngineHost
 
-  present(action: PresentedAction, engine: SceneEngine): ActionHandle {
+  present(action: PresentedAction, engine: SceneEngine, actor?: string): ActionHandle {
     this.engine = engine;
     const presenter = this.presenters[action.type] as Presenter<typeof action.type> | undefined;
     if (!presenter) {
       this.warn(`no presenter for action type "${action.type}"`);
       return resolvedHandle();
     }
-    return presenter(action as never, this);
+    return presenter(action as never, this, actor);
+  }
+
+  /** An event for the whole scene reached an action: the other players there are shown it too. */
+  share(event: GameEvent, action: Action) {
+    this.ctx.connection.share(event.id, action.id);
+  }
+
+  /** An award action: the server grants it. Offline there is no server, so the preview shows what it would give. */
+  award(action: AwardAction) {
+    if (this.ctx.connection.online) this.ctx.connection.award(action.id);
+    else this.ctx.previewAward?.(action);
+  }
+
+  /** Set by the scene: finds the player's avatar or a placed character. */
+  locateControl: ((who: { character_id?: Id; actor?: string }) => { x: number; y: number; height: number; name?: string } | null) | null = null;
+
+  locate(who: { character_id?: Id; actor?: string }) {
+    return this.locateControl?.(who) ?? null;
   }
 
   /** Set by the scene: stops the local player from walking, or lets them walk again. */

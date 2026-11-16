@@ -2,12 +2,30 @@ import { ApiError, type Api, type ScenarioSummary, type User } from '../api';
 import { playUrl } from '../config';
 import { clear, h, toast } from '../dom';
 
+const SIGN_IN_PROBLEMS: Record<string, string> = {
+  cancelled: 'Google sign-in was cancelled.',
+  domain: 'That Google account is not from an organisation this site accepts.',
+  unverified: 'Google has not verified that email address yet.',
+  expired: 'That sign-in took too long. Please try again.',
+  failed: 'Google sign-in did not work. Please try again.',
+};
+
 /** Sign-in. The game and the editor share the sign-in, so someone signed in to one is signed in to both. */
 export function loginView(api: Api, done: (user: User) => void): HTMLElement {
   const email = h('input', { type: 'email', name: 'email', autocomplete: 'username', required: true });
   const password = h('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
   const error = h('p', { class: 'issue error', role: 'alert', hidden: true });
   const submit = h('button', { type: 'submit', class: 'primary' }, 'Sign in');
+  // Offered when the server has Google sign-in set up. It leaves the page and comes back signed in.
+  const google = h('button', { type: 'button', class: 'google', hidden: true, onclick: () => window.location.assign(`/api/auth/google/redirect?return=${encodeURIComponent(window.location.pathname)}`) }, 'Sign in with Google');
+  void api.providers().then((p) => (google.hidden = !p.google));
+  // A Google sign-in that did not work comes back with the reason after the #.
+  const problem = /^#signin=([a-z]+)$/.exec(window.location.hash)?.[1];
+  if (problem) {
+    history.replaceState(null, '', window.location.pathname);
+    error.textContent = SIGN_IN_PROBLEMS[problem] ?? SIGN_IN_PROBLEMS.failed!;
+    error.hidden = false;
+  }
   const node = h(
     'form',
     { class: 'login card' },
@@ -17,6 +35,7 @@ export function loginView(api: Api, done: (user: User) => void): HTMLElement {
     h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Password'), password),
     error,
     submit,
+    google,
   );
   node.addEventListener('submit', async (e) => {
     e.preventDefault();

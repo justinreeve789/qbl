@@ -226,6 +226,104 @@ test('deleting a hotspot removes it and what it owned', async () => {
   assert.equal(now.actions.length, before.actions.length - 1);
 });
 
+test('stars and a shop: an award in the start event, an item only this scenario sells', async () => {
+  await page.click('.outline-item >> text=arrive');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 2);
+  await inspector('.add-action').selectOption('award');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 3);
+  assert.match(await page.innerText('details.action:nth-of-type(3) summary'), /\+5 ⭐\s+\+10 XP/, 'a new award starts with something to give');
+  await type('details.action:nth-of-type(3) [data-field=xp] input', '20');
+  await type('details.action:nth-of-type(3) [data-field=note] input', 'You found the pond');
+  await inspector('.add-action').selectOption('shop');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 4);
+  assert.match(await page.innerText('details.action:nth-of-type(4) summary'), /Open the marketplace/);
+  await page.click('details.action:nth-of-type(4) >> text=Delete');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 3);
+  await saved();
+
+  await page.click('.tabs >> text=Shop');
+  assert.match(await page.innerText('.page'), /sells nothing of its own/);
+  await page.click('text=New item');
+  await page.waitForSelector('[data-shop]');
+  const card = (selector: string) => page.locator(`[data-shop] ${selector}`).first();
+  const fill = async (selector: string, value: string) => {
+    await card(selector).fill(value);
+    await card(selector).blur();
+    await saved();
+  };
+  await fill('[data-field=name] input', 'Frog badge');
+  await fill('[data-field=price] input', '3');
+  await card('[data-field=media_id] select').selectOption({ label: 'frog.png' });
+  await saved();
+  assert.equal(await card('[data-field=slot] select').inputValue(), 'head', 'something to wear says where it is worn');
+  await card('[data-field=kind] select').selectOption('ability');
+  await page.waitForSelector('[data-shop] [data-field=ability]');
+  assert.equal(await page.locator('[data-shop] [data-field=slot]').count(), 0, 'an ability is not worn anywhere');
+  await fill('[data-field=ability] input', 'frog_whisperer');
+
+  const { shop_items: items } = await api<{ shop_items: Array<Record<string, unknown>> }>(`/editor/scenarios/${scenarioId}`);
+  assert.equal(items.length, 1);
+  assert.deepEqual([items[0]!.name, items[0]!.kind, items[0]!.price, items[0]!.scenario_id], ['Frog badge', 'ability', 3, scenarioId]);
+
+  await page.click('.tabs >> text=Media');
+  await page.click('.subtabs [data-tab=shop]');
+  assert.match(await page.innerText('.grid'), /frog\.png/, 'its picture is filed under shop items');
+  await page.click('.subtabs [data-tab=all]');
+});
+
+test('who sees an event, a story box with portraits, and whose a variable is', async () => {
+  // A character with a close-up, and a close-up for the avatar.
+  await page.click('.tabs >> text=Characters');
+  await page.click('text=New character');
+  await page.waitForSelector('.card [data-field=portrait_media_id]');
+  const card = page.locator('.card').first();
+  await card.locator('[data-field=name] input').fill('Old Toad');
+  await card.locator('[data-field=name] input').blur();
+  await saved();
+  await card.locator('[data-field=portrait_media_id] select').selectOption({ label: 'frog.png' });
+  await saved();
+  await page.click('.tabs >> text=Media');
+  const pond = page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'pond.png' }) });
+  assert.equal(await pond.locator('[data-field=avatar_portrait]').count(), 0, 'only an avatar has a portrait to choose');
+  await pond.locator('label.check >> text=Players can choose this as their avatar').click();
+  await saved();
+  await pond.locator('[data-field=avatar_portrait] select').selectOption({ label: 'frog.png' });
+  await saved();
+
+  // The start event: a story box spoken by the character, and the whole event shown to everyone in the scene.
+  await page.click('.tabs >> text=Scenes');
+  await page.click(`[data-scene="${firstScene}"] >> text=Edit`);
+  await page.click('.outline-item >> text=arrive');
+  assert.equal(await inspector('[data-field=audience] select').inputValue(), 'player', 'an event is the player\'s own unless it says otherwise');
+  await inspector('[data-field=audience] select').selectOption('scene');
+  await saved();
+  await inspector('.add-action').selectOption('dialogue');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 4);
+  const say = 'details.action:nth-of-type(4)';
+  await inspector(`${say} [data-field=style] select`).selectOption('portrait');
+  await inspector(`${say} [data-field=speaker] select`).selectOption('character');
+  await inspector(`${say} [data-field=character_id] select`).selectOption({ label: 'Old Toad' });
+  await type(`${say} [data-field=text] textarea`, 'Mind the lily pads.');
+  await type(`${say} [data-field=duration] input`, '900');
+  assert.match(await page.innerText(`${say} summary`), /Old Toad says, in a story box: Mind the lily pads\./);
+  await saved();
+
+  // Variables say whose they are, and a shared one is marked wherever it is picked.
+  await page.click('.tabs >> text=Variables');
+  const frogs = page.locator('[data-variable=frogs_found]');
+  assert.match(await frogs.locator('.badge').innerText(), /Each player/);
+  await frogs.locator('[data-field=scope] select').selectOption('room');
+  await saved();
+  assert.match(await page.locator('[data-variable=frogs_found] .badge').innerText(), /Shared/);
+
+  const bundle = await api<{ scenario: { settings: Record<string, unknown> }; events: Array<Record<string, unknown>>; characters: Array<Record<string, unknown>>; variables: Array<Record<string, unknown>> }>(`/editor/scenarios/${scenarioId}`);
+  assert.equal(bundle.events.find((e) => e.shortname === 'arrive')!.audience, 'scene');
+  const frog = (bundle.characters[0]!.settings as { portrait_media_id: number }).portrait_media_id;
+  assert.ok(frog > 0);
+  assert.deepEqual(Object.values(bundle.scenario.settings.avatar_portraits as Record<string, number>), [frog]);
+  assert.equal(bundle.variables.find((v) => v.variable_name === 'frogs_found')!.scope, 'room');
+});
+
 test('publish, then play the published JSON in the game', async () => {
   await page.click('.tabs >> text=Publish');
   await page.click('text=Check and publish');
@@ -246,12 +344,23 @@ test('publish, then play the published JSON in the game', async () => {
   assert.deepEqual(game.position, { x: 1200, y: 667 });
   assert.equal(game.ctx.music?.sound.isPlaying, true, 'the start event started the music');
   assert.ok(game.ui.texts.includes('Welcome to the pond'));
+  await game.wait(5000); // the award comes after the welcome text has had its time on screen
+  assert.deepEqual(game.ui.hud, { stars: 5, xp: 20, rank: 'Cadet', next_rank_xp: 100 }, 'the award in the start event was given');
+  assert.deepEqual(game.ctx.rewards.catalogue.map((i) => [i.name, i.kind, i.price, i.ability]), [['Frog badge', 'ability', 3, 'frog_whisperer']]);
+
+  // The start event is for the whole scene, so what it showed went out to the other players; its award did not.
+  const start = document.scenes[0]!.start_events![0]!;
+  assert.equal(start.audience, 'scene');
+  const shown = (game.ctx.connection as unknown as { shared: Array<{ action_id: number }> }).shared.map((s) => s.action_id);
+  assert.deepEqual(shown, start.actions.filter((a) => a.type !== 'award').map((a) => a.id));
+  assert.equal(document.characters![0]!.portrait_media_id, Object.values(document.avatar_portraits!)[0], 'the character and the avatar were both given the frog as a close-up');
 
   await game.click(600, 500);
   assert.match(game.box?.html ?? '', /A frog! You have counted 0\./);
   assert.deepEqual(game.box?.buttons, ['Count the frog']);
   await game.choose('Count the frog');
   assert.equal(game.var('frogs_found'), 1);
+  assert.equal(game.ctx.connection.state.vars.get('frogs_found'), '1', 'now a shared variable: it lives in the room, for everyone');
 
   await game.walkOff('right', 'far-bank');
   assert.equal(game.ctx.connection.me!.scene_id, secondScene);

@@ -15,7 +15,7 @@ if (PHP_SAPI !== 'cli-server') {
     http_response_code(500);
     exit("This is a development server. Run it with php -S.\n");
 }
-foreach (['StoreError', 'ScenarioCompiler', 'ScenarioStore', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ScenarioStore', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -59,6 +59,12 @@ if ($seeded !== null) {
     $store->publish($seeded);
 }
 
+// The platform's marketplace catalogue, added once, as ShopSeeder does.
+foreach (require __DIR__.'/../database/seeders/data/shop.php' as $sequence => $item) {
+    $pdo->prepare('INSERT OR IGNORE INTO `shop_items` (`id`, `scenario_id`, `name`, `description`, `kind`, `slot`, `price`, `image_url`, `settings`, `active`, `sequence`) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, 1, ?)')
+        ->execute([$item['id'], $item['name'], $item['description'] ?? null, $item['kind'], $item['slot'] ?? null, $item['price'], $item['image_url'] ?? null, json_encode($item['settings'] ?? []), $sequence + 1]);
+}
+
 function respond(int $status, ?array $body): never
 {
     http_response_code($status);
@@ -82,6 +88,10 @@ $issue = function (array $u): array {
     return ['token' => 'dev.'.rtrim(strtr(base64_encode(json_encode($u)), '+/', '-_'), '='), 'user' => $u];
 };
 
+// Google sign-in needs the real backend and Google's servers; the stand-in does not offer it.
+if ($path === '/api/auth/providers') {
+    respond(200, ['google' => false, 'guest' => true]);
+}
 if ($path === '/api/auth/login' && $method === 'POST') {
     $email = strtolower(trim((string) ($body['email'] ?? '')));
     if ($email === '') {
@@ -99,6 +109,32 @@ if ($path === '/api/me') {
 if (preg_match('#^/api/scenarios/([A-Za-z][A-Za-z0-9_-]*)/play$#', $path, $m)) {
     $document = $store->findPublished($m[1]);
     $document ? respond(200, ['scenario' => $document + ['session' => null]]) : respond(404, ['message' => 'Scenario not found.']);
+}
+// Stars, XP and the marketplace, with the same rules as the Laravel app (App\Qbl\ProgressStore).
+// Awards themselves come through the game server, which needs the real backend; here stars start at 100.
+if ($path === '/api/me/progress' || $path === '/api/shop' || preg_match('#^/api/shop/(\d+)/(buy|equip)$#', $path, $m)) {
+    $progress = new App\Qbl\ProgressStore($pdo);
+    $member = $user && $user['role'] !== 'guest';
+    if ($member) {
+        $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$user['id'], $user['name'], "dev{$user['id']}@example.test", $user['role']]);
+    }
+    $scenario = ($key = $_GET['scenario'] ?? $body['scenario'] ?? null) ? $store->findPublished((string) $key) : null;
+    try {
+        if ($path === '/api/shop') {
+            respond(200, ['items' => $progress->catalogue($scenario['id'] ?? null), 'progress' => $member ? $progress->progress($user['id']) : null]);
+        }
+        if (! $user) {
+            respond(401, ['message' => 'Unauthenticated.']);
+        }
+        if ($path === '/api/me/progress') {
+            respond(200, ['progress' => $progress->progress($user['id'])]);
+        }
+        respond(200, ['progress' => $m[2] === 'buy' && $method === 'POST'
+            ? $progress->buy($user['id'], (int) $m[1], $scenario['id'] ?? null)
+            : $progress->equip($user['id'], (int) $m[1], (bool) ($body['equipped'] ?? true))]);
+    } catch (App\Qbl\StoreError $e) {
+        respond($e->status, ['message' => $e->getMessage()]);
+    }
 }
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];

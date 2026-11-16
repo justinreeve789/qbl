@@ -19,6 +19,11 @@ export interface PresenterContext {
   readonly sounds: Set<Phaser.Sound.BaseSound>;
   /** Report media that is missing or not loaded; returns a handle that is already finished. */
   missing(action: PresentedAction): ActionHandle;
+  /**
+   * Where a speaker stands, in scene pixels: a character placed in the scene, or a player (this
+   * one, unless `actor` names another player's session). `y` is their feet.
+   */
+  locate(who: { character_id?: Id; actor?: string }): { x: number; y: number; height: number; name?: string } | null;
   warn(message: string): void;
 }
 
@@ -32,6 +37,8 @@ export interface PresenterContext {
 export type Presenter<T extends PresentedAction['type']> = (
   action: Extract<PresentedAction, { type: T }>,
   pc: PresenterContext,
+  /** Set when the action is being shown from another player's event: that player's session id. */
+  actor?: string,
 ) => ActionHandle;
 
 export type PresenterMap = { [T in PresentedAction['type']]: Presenter<T> };

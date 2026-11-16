@@ -1,3 +1,4 @@
+import { dialogue } from './dialogue';
 import type { PresenterMap } from '../Presenter';
 import { audio } from './audio';
 import { infobox } from './infobox';
@@ -11,9 +12,12 @@ import { imageFixed, spritemap } from './world';
  */
 export const presenters: PresenterMap = {
   audio,
+  dialogue,
   image_fixed: imageFixed,
   image_overlay: imageOverlay,
   infobox,
+  // The marketplace window. The action ends when the player closes it.
+  shop: (_action, pc) => pc.ctx.rewards.openShop(),
   spritemap,
   text_overlay: textOverlay,
   video,

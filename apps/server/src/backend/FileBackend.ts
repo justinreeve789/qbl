@@ -59,6 +59,19 @@ export class FileBackend implements Backend {
     return this.write(`instance-${scenarioId}-${slug(group)}`, data);
   }
 
+  /**
+   * Stars, XP and the marketplace need accounts, and this backend only has guests
+   * (name-only sign-in for development). Awards are therefore never granted here; run the
+   * Laravel API to work on them.
+   */
+  async award(): Promise<null> {
+    return null;
+  }
+
+  async look(): Promise<string> {
+    return '';
+  }
+
   private async read<T>(name: string): Promise<T | null> {
     try {
       return JSON.parse(await readFile(path.join(this.saveDir, `${name}.json`), 'utf8')) as T;

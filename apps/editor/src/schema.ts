@@ -124,6 +124,35 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...scale,
     ],
   },
+  award: {
+    label: 'Award stars or XP',
+    about: 'Give the player stars and XP, or take them away.',
+    fields: [
+      { key: 'stars', label: 'Stars', kind: 'number', step: 1, placeholder: '0', hint: 'Stars are spent in the marketplace. A negative number takes stars away.' },
+      { key: 'xp', label: 'XP', kind: 'number', step: 1, placeholder: '0', hint: 'XP adds up to ranks and is never spent. A negative number takes XP away.' },
+      { key: 'note', label: 'Shown with the award', kind: 'text', wide: true, placeholder: 'Sample collected' },
+      { key: 'repeatable', label: 'Give it every time this runs', kind: 'bool', wide: true, hint: 'Normally a player gets each award once, however often the event runs. Stars and XP belong to the player’s account and carry across all scenarios; guests do not earn them. Put awards in an event, not on an infobox button.' },
+    ],
+  },
+  shop: {
+    label: 'Open the marketplace',
+    about: 'Open the shop where players spend stars and dress their avatar.',
+    fields: [],
+  },
+  dialogue: {
+    label: 'Dialogue',
+    about: 'A speech bubble over the speaker, or a story box with their portrait.',
+    fields: [
+      { key: 'text', label: 'What they say', kind: 'textarea', wide: true, hint: 'Use {{variable_name}} to show a variable.' },
+      {
+        key: 'style', label: 'Shown as', kind: 'select', wide: true, placeholder: 'A speech bubble over the speaker', options: [['portrait', 'A story box with the speaker’s portrait']],
+        hint: 'A bubble stays on screen by moving below or beside the speaker. A story box crosses the bottom of the screen with the speaker’s close-up and name, and waits for the player to continue: for the characters and moments that carry the story. Give characters a portrait on the Characters page, and avatars one on the Media page.',
+      },
+      { key: 'speaker', label: 'Who speaks', kind: 'select', placeholder: 'The player', options: [['character', 'A character']], structural: true },
+      { key: 'character_id', label: 'Character', kind: 'character', hint: 'For a bubble the character must be placed in this scene. A story box can carry a voice from anywhere.' },
+      { key: 'duration', label: 'Stays for (ms)', kind: 'number', min: 0, placeholder: 'Bubble: long enough to read. Story box: until the player continues', hint: 'A click closes it sooner.' },
+    ],
+  },
   freeze: {
     label: 'Freeze or release player',
     about: 'Stop the player from walking (while a character talks), or let them walk again.',
@@ -178,11 +207,11 @@ export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
 /** An icon and a colour for each action type, by what kind of thing it does. */
 const SAY = '#2f6fed', SHOW = '#8e5bd6', SOUND = '#0f9d8a', FLOW = '#c77b12', PLAYER = '#d6457a', STATE = '#3b8f4a';
 export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: string]> = {
-  infobox: ['💬', SAY], text_overlay: ['🔤', SAY],
+  infobox: ['📋', SAY], dialogue: ['💬', SAY], text_overlay: ['🔤', SAY],
   image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
-  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER],
+  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'],
   variable: ['🔢', STATE],
 };
 
@@ -194,6 +223,10 @@ export const ACTION_COMMON: Field[] = [
 /** Starting values for a new action of each type, so it is valid as soon as it is added. */
 export function actionDefaults(type: ActionType): Record<string, unknown> {
   switch (type) {
+    case 'award':
+      return { stars: 5, xp: 10 };
+    case 'dialogue':
+      return { text: 'Hello!' };
     case 'freeze':
       return { frozen: true };
     case 'avatar':
@@ -237,6 +270,8 @@ export const SCENARIO_FIELDS: Field[] = [
 
 /** Kept in the scenario's `settings` column. */
 export const SCENARIO_SETTINGS_FIELDS: Field[] = [
+  { key: 'music_media_id', label: 'Background music', kind: 'media', mediaType: 'audio', hint: 'Plays in every scene that does not have its own. Events can change it with an Audio action marked as background music.' },
+  { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '0.5' },
   { key: 'chat_mode', label: 'Chat', kind: 'select', placeholder: 'Emotes only', options: [['off', 'Off'], ['emotes', 'Emotes only'], ['free', 'Typed messages (filtered)']] },
   { key: 'move_speed', label: 'Walking speed (px per second)', kind: 'number', min: 50, placeholder: '420' },
   { key: 'asset_base_url', label: 'Base address for media', kind: 'text', wide: true, hint: 'Media whose address is not absolute is loaded from here. Uploaded files do not need it.' },
@@ -254,6 +289,12 @@ export const SCENE_FIELDS: Field[] = [
   { key: 'group_id', label: 'Group', kind: 'number', placeholder: 'None' },
   { key: 'show_avatars', label: 'Show avatars', kind: 'bool', default: true },
   { key: 'is_intro_scene', label: 'Intro scene', kind: 'bool' },
+];
+
+/** Kept in the scene's `params` column. */
+export const SCENE_MUSIC_FIELDS: Field[] = [
+  { key: 'music_media_id', label: 'Background music for this scene', kind: 'media', mediaType: 'audio', hint: 'Leave empty to use the scenario’s music (Settings).' },
+  { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'The scenario’s' },
 ];
 
 /** A background or foreground layer (docs/docs/extensions.md). */
@@ -302,6 +343,11 @@ export const EVENT_FIELDS: Field[] = [
   { key: 'shortname', label: 'Name', kind: 'text', wide: true },
   { key: 'overridable', label: 'Another event may interrupt this one', kind: 'bool', wide: true },
   { key: 'block_hotspots', label: 'Hotspots do nothing while this runs', kind: 'bool', wide: true },
+  {
+    key: 'audience', label: 'Who sees it', kind: 'select', wide: true,
+    options: [['player', 'Only the player who sets it off'], ['scene', 'Everyone in the scene']],
+    hint: 'Everyone in the scene: the other players there see and hear its pictures, text, sounds, video and dialogue as they happen. What the event does stays the player’s own: variables, awards, jumps, freezing and infoboxes. A conversation with a character is usually for one player; a rockfall is for everyone.',
+  },
 ];
 
 export const HOTSPOT_FIELDS: Field[] = [
@@ -341,8 +387,11 @@ export const MEDIA_FIELDS: Field[] = [
 export const VARIABLE_FIELDS: Field[] = [
   { key: 'variable_name', label: 'Name', kind: 'text', hint: 'Renaming does not update the conditions and actions that use it.' },
   { key: 'default_value', label: 'Starting value', kind: 'value' },
-  { key: 'scope', label: 'Belongs to', kind: 'select', options: [['player', 'Each player'], ['room', 'Everyone in the room']] },
-  { key: 'persist', label: 'Kept between visits', kind: 'bool', default: true },
+  {
+    key: 'scope', label: 'Whose it is', kind: 'select', structural: true,
+    options: [['player', 'Each player has their own'], ['room', 'Shared: one value for everyone playing together']],
+  },
+  { key: 'persist', label: 'Kept between visits', kind: 'bool', default: true, hint: 'A player’s own variable is kept with their save. A shared one is kept with the group’s game, so it is still set when they come back.' },
 ];
 
 export const ITEM_FIELDS: Field[] = [
@@ -366,11 +415,33 @@ export const ITEM_SETTINGS_FIELDS: Field[] = [
   { key: 'speed_multiplier', label: 'Vehicle speed multiplier', kind: 'number', min: 0.1, step: 0.1, placeholder: '1.5' },
 ];
 
+/** Something this scenario sells in the marketplace, besides the platform's items. */
+export const SHOP_ITEM_FIELDS: Field[] = [
+  { key: 'name', label: 'Name', kind: 'text' },
+  { key: 'price', label: 'Price (stars)', kind: 'number', min: 0, step: 1 },
+  { key: 'description', label: 'Description', kind: 'text', wide: true },
+  { key: 'kind', label: 'Kind', kind: 'select', structural: true, options: [['wearable', 'Something to wear'], ['pet', 'A pet that follows the avatar'], ['animation', 'A way the avatar moves'], ['ability', 'An ability']] },
+  { key: 'media_id', label: 'Picture', kind: 'media', mediaType: 'image' },
+  { key: 'active', label: 'On sale', kind: 'bool', default: true, wide: true, hint: 'Take an item off sale instead of deleting it: players who bought it keep it.' },
+];
+/** Kept in the shop item's `settings` column; which apply depends on the kind. */
+export const SHOP_WEARABLE_FIELDS: Field[] = [
+  { key: 'scale', label: 'Size (of the avatar’s height)', kind: 'number', min: 0.02, step: 0.02, placeholder: '0.3', hint: '0.3 makes it 30% as tall as the avatar, whatever size the avatar is.' },
+  { key: 'offset_x', label: 'Nudge forward', kind: 'number', step: 0.02, placeholder: '0' },
+  { key: 'offset_y', label: 'Nudge down', kind: 'number', step: 0.02, placeholder: '0' },
+];
+export const SHOP_SLOT: Field = { key: 'slot', label: 'Worn on', kind: 'select', options: [['head', 'Head'], ['body', 'Body'], ['back', 'Back'], ['hand', 'Hand']], hint: 'One item per place can be worn at a time.' };
+export const SHOP_ANIMATION: Field = { key: 'animation', label: 'Movement', kind: 'select', options: [['bounce', 'Bounce'], ['float', 'Float'], ['sway', 'Sway'], ['pulse', 'Pulse']] };
+export const SHOP_ABILITY: Field = { key: 'ability', label: 'Ability key', kind: 'text', placeholder: 'translator', hint: 'While a player has this ability equipped, the variable QBLAbility_<key> is 1. Use it in conditions to offer them something extra: a hidden hotspot, a translated sign, a shortcut.' };
+
 export const CHARACTER_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text' },
   { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image' },
 ];
-export const CHARACTER_SETTINGS_FIELDS: Field[] = [{ key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1' }];
+export const CHARACTER_SETTINGS_FIELDS: Field[] = [
+  { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1' },
+  { key: 'portrait_media_id', label: 'Close-up portrait', kind: 'media', mediaType: 'image', hint: 'Shown beside what the character says in a story box. Without one, the character’s ordinary image is used.' },
+];
 
 export const OBJECTIVE_FIELDS: Field[] = [
   { key: 'text', label: 'Text', kind: 'text', wide: true, hint: 'Use {{variable_name}} to show progress, e.g. Collect samples ({{samples}}/3).' },

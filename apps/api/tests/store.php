@@ -7,7 +7,7 @@
  *
  * These are the same classes Laravel uses in production; only the database differs.
  */
-foreach (['StoreError', 'ScenarioCompiler', 'ScenarioStore', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ScenarioStore', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -164,6 +164,9 @@ $action = $body['row'];
 [, $body] = $call('POST', "scenarios/$sid/rows/actions", ['event_id' => $hotspot['id'], 'type' => 'variable', 'params' => ['name' => 'found_frog', 'operator' => 'set', 'operand' => 1]]);
 same([$action['sequence'], $body['row']['sequence']], [1, 2], 'actions are appended in order');
 same($call('POST', "scenarios/$sid/rows/actions", ['event_id' => $hotspot['id'], 'type' => 'explode'])[0], 422, 'unknown action types are refused');
+same($hotspot['audience'], 'player', 'a new event is seen only by the player who sets it off');
+same($call('PATCH', "scenarios/$sid/rows/events/{$hotspot['id']}", ['audience' => 'world'])[0], 422, 'an event is for the player or for the scene, nothing else');
+same($call('PATCH', "scenarios/$sid/rows/events/{$hotspot['id']}", ['audience' => 'scene'])[1]['row']['audience'], 'scene', 'an event can be shown to everyone in the scene');
 [, $body] = $call('POST', "scenarios/$sid/rows/conditions", ['event_id' => $hotspot['id'], 'variable' => 'found_frog', 'operator' => '=', 'operand' => 0]);
 $condition = $body['row'];
 same($condition['operand'], 0, 'a condition\'s operand keeps its type');

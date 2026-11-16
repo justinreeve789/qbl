@@ -28,6 +28,11 @@ class ScenarioStore
             'scenario_id' => 'int', 'type' => 'str', 'filename' => 'str', 'filepath' => 'str', 'url' => 'str', 'scale_x' => 'num', 'scale_y' => 'num',
             'width' => 'int', 'height' => 'int', 'priority' => 'int', 'params' => 'json',
         ],
+        // What this scenario sells in the marketplace. Platform-wide items are rows with no scenario.
+        'shop_items' => [
+            'scenario_id' => 'int', 'name' => 'str', 'description' => 'str', 'kind' => 'str', 'slot' => 'str', 'price' => 'int',
+            'media_id' => 'int', 'image_url' => 'str', 'settings' => 'json', 'active' => 'bool', 'sequence' => 'int',
+        ],
         'variables' => ['scenario_id' => 'int', 'variable_name' => 'str', 'default_value' => 'json', 'scope' => 'str', 'persist' => 'bool'],
         'items' => [
             'scenario_id' => 'int', 'name' => 'str', 'unique' => 'bool', 'physical' => 'bool', 'blocking' => 'bool', 'wearable' => 'bool',
@@ -42,7 +47,7 @@ class ScenarioStore
         'events' => [
             'scene_id' => 'int', 'kind' => 'str', 'shortname' => 'str', 'sequence' => 'int', 'overridable' => 'bool', 'block_hotspots' => 'bool',
             'position_x' => 'num', 'position_y' => 'num', 'radius' => 'num', 'activate_by_trigger' => 'bool', 'once' => 'bool',
-            'reveal_radius' => 'num', 'reveal_full_radius' => 'num',
+            'reveal_radius' => 'num', 'reveal_full_radius' => 'num', 'audience' => 'str',
         ],
         'actions' => ['event_id' => 'int', 'type' => 'str', 'sequence' => 'int', 'blocking' => 'bool', 'media_id' => 'int', 'params' => 'json'],
         'conditions' => [
@@ -56,7 +61,7 @@ class ScenarioStore
     ];
 
     /** Tables that hang off a scenario, parents before children. */
-    public const CONTENT = ['media', 'variables', 'items', 'characters', 'scenes', 'events', 'actions', 'conditions', 'labels'];
+    public const CONTENT = ['media', 'shop_items', 'variables', 'items', 'characters', 'scenes', 'events', 'actions', 'conditions', 'labels'];
 
     /** For tables without a scenario_id: the columns that point at a parent row, and that parent's table. */
     private const PARENTS = [
@@ -70,10 +75,13 @@ class ScenarioStore
         'media.type' => ['audio', 'image', 'video'],
         'variables.scope' => ['player', 'room'],
         'events.kind' => ['start', 'end', 'hotspot', 'indirect'],
+        'events.audience' => ['player', 'scene'],
         'labels.type' => ['text', 'image', 'spritemap'],
+        'shop_items.kind' => ProgressStore::KINDS,
+        'shop_items.slot' => ProgressStore::SLOTS,
         'conditions.operator' => ['=', '!=', '>', '<', '>=', '<='],
         'actions.type' => [
-            'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat', 'run_event', 'spritemap',
+            'award', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat', 'run_event', 'spritemap',
             'text_overlay', 'translate', 'variable', 'video', 'wait',
         ],
     ];
@@ -333,9 +341,13 @@ class ScenarioStore
                 case 'characters':
                     $this->run('DELETE FROM `conditions` WHERE `character_id` = ?', [$rowId]);
                     break;
+                case 'shop_items':
+                    // Players who bought it lose it. Their stars are not refunded: withdraw an item by making it inactive instead.
+                    $this->run('DELETE FROM `user_items` WHERE `shop_item_id` = ?', [$rowId]);
+                    break;
                 case 'media':
                     // Things that used the file keep existing, without it. The validator then points them out.
-                    foreach (['actions', 'labels', 'items', 'characters'] as $user) {
+                    foreach (['actions', 'labels', 'items', 'characters', 'shop_items'] as $user) {
                         $this->run("UPDATE `$user` SET `media_id` = NULL WHERE `media_id` = ?", [$rowId]);
                     }
                     $this->removeUploadedFile($rowId);
@@ -564,6 +576,7 @@ class ScenarioStore
 
         return match ($table) {
             'media' => ['scale_x' => 1, 'scale_y' => 1, 'priority' => 100],
+            'shop_items' => ['name' => 'New item', 'kind' => 'wearable', 'slot' => 'head', 'price' => 10, 'active' => true, 'sequence' => 0],
             'variables' => ['default_value' => 0, 'scope' => 'player', 'persist' => true],
             'items' => ['unique' => false, 'physical' => false, 'blocking' => false, 'wearable' => false, 'vehicle' => false, 'settings' => []],
             'characters' => ['settings' => []],
@@ -578,7 +591,7 @@ class ScenarioStore
                 ],
             ],
             'events' => [
-                'kind' => 'hotspot', 'overridable' => false, 'block_hotspots' => false, 'activate_by_trigger' => true, 'once' => false,
+                'kind' => 'hotspot', 'overridable' => false, 'block_hotspots' => false, 'activate_by_trigger' => true, 'once' => false, 'audience' => 'player',
                 'sequence' => $next('SELECT MAX(`sequence`) AS n FROM `events` WHERE `scene_id` = ? AND `kind` = ?', [$attrs['scene_id'] ?? 0, $attrs['kind'] ?? 'hotspot']),
             ] + (($attrs['kind'] ?? 'hotspot') === 'hotspot' ? ['radius' => 100] : []),
             'actions' => [
@@ -739,8 +752,9 @@ class ScenarioStore
         $sql = [];
         foreach (self::SCHEMA as $table => $columns) {
             $defs = ['`id` INTEGER PRIMARY KEY AUTOINCREMENT'];
-            foreach (array_keys($columns) as $column) {
-                $defs[] = "`$column`";
+            foreach ($columns as $column => $type) {
+                // Typed, so that 2 and "2" compare equal as they do in MariaDB.
+                $defs[] = "`$column`".match ($type) { 'int', 'bool' => ' INTEGER', 'num' => ' NUMERIC', default => '' };
             }
             if ($table === 'scenarios') {
                 array_push($defs, '`code` UNIQUE', '`user_id`', '`document`', '`published_at`');
@@ -748,6 +762,7 @@ class ScenarioStore
             array_push($defs, '`created_at`', '`updated_at`');
             $sql[] = "CREATE TABLE IF NOT EXISTS `$table` (".implode(', ', $defs).')';
         }
+        $sql = array_merge($sql, ProgressStore::sqliteSchema());
         foreach (['scenario_sessions' => '`user_id`', 'scenario_instances' => '`group_key`'] as $table => $key) {
             $sql[] = "CREATE TABLE IF NOT EXISTS `$table` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `scenario_id`, $key, `data`, `created_at`, `updated_at`)";
         }

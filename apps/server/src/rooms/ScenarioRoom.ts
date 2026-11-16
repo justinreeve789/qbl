@@ -1,8 +1,8 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
   C2S, CloseCodes, normalizeScenario, S2C, validateScenario, World,
-  type ChatBroadcast, type EmoteBroadcast, type AvatarMessage, type ItemMessage, type JoinOptions, type MoveMessage,
-  type NoticeMessage, type ProgressMessage, type SceneMessage, type SnapMessage, type VariableMessage,
+  type ChatBroadcast, type EmoteBroadcast, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions, type MoveMessage,
+  type NoticeMessage, type ProgressMessage, type SceneMessage, type ShowBroadcast, type ShowMessage, type SnapMessage, type VariableMessage,
   type WelcomeMessage,
 } from '@qbl/shared';
 import type { Backend, User } from '../backend/Backend.js';
@@ -76,6 +76,29 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       if (!this.world.item(client.sessionId, msg)) {
         this.notice(client, 'item_unavailable', 'That is not available right now.');
       }
+    });
+
+    // An award action ran in the player's browser. The backend decides whether it is granted.
+    this.onMessage(C2S.Award, async (client: Client, msg: AwardMessage) => {
+      const user = this.world.userOf(client.sessionId);
+      if (!user || user.role === 'guest' || !Number.isFinite(Number(msg?.action_id))) return;
+      const result = await services.backend.award(this.world.scenario.id, user.id, Number(msg.action_id)).catch(() => null);
+      if (result) client.send(S2C.Progress, result);
+    });
+
+    // The player changed what they wear in the marketplace. What they wear is read from the backend, not taken on trust.
+    this.onMessage(C2S.Look, async (client: Client) => {
+      const user = this.world.userOf(client.sessionId);
+      if (!user || user.role === 'guest') return;
+      this.world.setLook(client.sessionId, await services.backend.look(user.id).catch(() => ''));
+    });
+
+    // An event meant for the whole scene reached an action: pass it to the other players there.
+    this.onMessage(C2S.Show, (client: Client, msg: ShowMessage) => {
+      const others = this.world.show(client.sessionId, msg);
+      if (!others?.length) return;
+      const out: ShowBroadcast = { session_id: client.sessionId, event_id: Number(msg.event_id), action_id: Number(msg.action_id) };
+      for (const c of this.clients) if (others.includes(c.sessionId)) c.send(S2C.Show, out);
     });
 
     this.onMessage(C2S.Avatar, (client: Client, msg: AvatarMessage) => {

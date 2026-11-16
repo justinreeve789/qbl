@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
-import { png, startSite, type TestSite } from './servers';
+import { png, startSite, wav, type TestSite } from './servers';
 
 /**
  * The rest of what a scene and a scenario can hold, each checked in the JSON the editor's
@@ -226,9 +226,42 @@ test('depth, reveal and avatar visibility: a scale area, a hotspot that appears 
   await page.waitForFunction(() => document.querySelectorAll('details.action').length === 2);
   assert.match(await page.innerText('details.action:nth-of-type(2) summary'), /Stop the player from moving/);
   assert.deepEqual((await draft()).scenes[0]!.hotspots!.at(-1)!.actions.map((a) => a.type), ['avatar', 'freeze']);
+  await inspector('.add-action').selectOption('dialogue');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 3);
+  await inspector('details.action:nth-of-type(3) [data-field=speaker] select').selectOption('character');
+  await inspector('details.action:nth-of-type(3) [data-field=character_id] select').selectOption({ label: 'Ferry keeper' });
+  await type('.inspector details.action:nth-of-type(3) [data-field=text] textarea', 'Mind the gap.');
+  assert.match(await page.innerText('details.action:nth-of-type(3) summary'), /Ferry keeper says: Mind the gap\./);
+  const said = (await draft()).scenes[0]!.hotspots!.at(-1)!.actions.at(-1) as { type: string; text: string; speaker: string; character_id: number };
+  assert.deepEqual([said.type, said.text, said.speaker, said.character_id], ['dialogue', 'Mind the gap.', 'character', (await draft()).characters![0]!.id]);
   await page.click('.outline-item >> text=depth');
   await page.click('.inspector >> text=Delete');
   assert.deepEqual((await draft()).scenes[0]!.scale_areas, []);
+});
+
+test('media sub-tabs, scenario music and scene music', async () => {
+  await page.click('.tabs >> text=Media');
+  await page.waitForSelector('.subtabs');
+  const tab = (key: string) => page.locator(`.subtabs [data-tab=${key}]`);
+  assert.match(await tab('background').innerText(), /Backgrounds\s*1/, 'sky.png is a scene layer');
+  assert.match(await tab('vehicle').innerText(), /Vehicles\s*1/, 'boat.png belongs to a vehicle');
+  assert.match(await tab('character').innerText(), /NPCs\s*1/, 'guide.png is a character');
+  await tab('vehicle').click();
+  assert.equal(await page.locator('[data-media]').count(), 1);
+  await tab('audio').click();
+  await page.setInputFiles('.page input[type=file]', [{ name: 'theme.wav', mimeType: 'audio/wav', buffer: wav() }, { name: 'cave.wav', mimeType: 'audio/wav', buffer: wav() }]);
+  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 2);
+
+  await page.click('.tabs >> text=Settings');
+  await page.locator('[data-field=music_media_id] select').selectOption({ label: 'theme.wav' });
+  await type('[data-field=music_volume] input', '0.4');
+  await page.click('.tabs >> text=Scenes');
+  await page.click('.scene-card >> text=Edit');
+  await page.waitForSelector('.stage-overlay polygon');
+  await inspector('[data-field=music_media_id] select').selectOption({ label: 'cave.wav' });
+  const doc = await draft();
+  const id = (name: string) => doc.assets!.find((m) => m.filename === name)!.id;
+  assert.deepEqual([doc.music_media_id, doc.music_volume, doc.scenes[0]!.music_media_id], [id('theme.wav'), 0.4, id('cave.wav')]);
 });
 
 test('objectives and settings', async () => {
@@ -261,10 +294,12 @@ test('delete a scene, a media file, and then the whole scenario', async () => {
   assert.deepEqual((await draft()).scenes.map((s) => s.id), [sceneId]);
 
   await page.click('.tabs >> text=Media');
-  await page.locator('[data-media]', { hasText: 'boat.png' }).locator('text=Delete').click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 2);
+  await page.click('.subtabs [data-tab=all]');
+  // By its title: an avatar's card also lists the other pictures, as choices for its portrait.
+  await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'boat.png' }) }).locator('text=Delete').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 4);
   const doc = await draft();
-  assert.equal(doc.assets!.length, 2);
+  assert.equal(doc.assets!.length, 4);
   assert.equal(doc.items![0]!.media_id, undefined, 'the item is kept, without its picture');
 
   await page.click('.tabs >> text=Settings');

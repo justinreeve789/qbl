@@ -10,7 +10,8 @@ use Illuminate\Database\Seeder;
  *
  * The rows in data/starship.php go into the same tables the editor writes to, through the same
  * store, and the JSON players get is generated from those tables. From then on the mission can be
- * edited like any other, so seeding again leaves it alone. QBL_SEED=reset puts the shipped version back.
+ * edited like any other, so seeding again leaves it alone. `php artisan qbl:seed --reset` puts the
+ * shipped version back.
  */
 class StarshipSeeder extends Seeder
 {
@@ -18,7 +19,7 @@ class StarshipSeeder extends Seeder
     {
         $id = $store->seedScenario(require __DIR__.'/data/starship.php', config('qbl.seed') === 'reset');
         if ($id === null) {
-            $this->command?->info('Starship Explorer is already in the database and was left as it is. Set QBL_SEED=reset to restore the shipped version.');
+            $this->command?->info('Starship Explorer is already in the database and was left as it is. Run "php artisan qbl:seed --reset" to restore the shipped version.');
 
             return;
         }

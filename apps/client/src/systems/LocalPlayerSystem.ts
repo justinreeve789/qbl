@@ -133,6 +133,7 @@ export class LocalPlayerSystem implements SceneSystem {
     if (rec) {
       this.avatar.setAttachments(rec.attachments);
       this.avatar.setConnected(rec.connected);
+      this.avatar.setLook(rec.look ?? '');
       if (this.reconcileScene(rec, time)) return;
     }
     this.move(time, delta);
@@ -215,6 +216,6 @@ export class LocalPlayerSystem implements SceneSystem {
 function plain(rec: PlayerRec): PlayerRec {
   return {
     user_id: rec.user_id, name: rec.name, role: rec.role, avatar: rec.avatar, scene_id: rec.scene_id,
-    x: rec.x, y: rec.y, facing: rec.facing, attachments: rec.attachments, connected: rec.connected, hidden: rec.hidden,
+    x: rec.x, y: rec.y, facing: rec.facing, attachments: rec.attachments, connected: rec.connected, hidden: rec.hidden, look: rec.look,
   };
 }

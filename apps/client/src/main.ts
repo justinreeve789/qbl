@@ -3,7 +3,7 @@ import { normalizeScenario, resolveMediaUrl, validateScenario, type Id, type Sce
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
-import { Api, ApiError } from './net/Api';
+import { Api, ApiError, takeSignInProblem } from './net/Api';
 import { OfflineConnection, OnlineConnection, type GameConnection } from './net/Connection';
 import { BootScene } from './scenes/BootScene';
 import { PlayScene } from './scenes/PlayScene';
@@ -67,7 +67,15 @@ function signIn(message?: string): Promise<User> {
       error.textContent = '';
       render();
     });
-    form.append(title, fields, error, button, swap);
+    // Offered when the server has Google sign-in set up. It leaves the page and comes back signed in.
+    const google = document.createElement('button');
+    google.type = 'button';
+    google.className = 'qbl-button qbl-google';
+    google.textContent = 'Sign in with Google';
+    google.hidden = true;
+    google.addEventListener('click', () => window.location.assign(api.googleUrl(window.location.pathname + window.location.search)));
+    void api.providers().then((p) => (google.hidden = !p.google));
+    form.append(title, fields, error, button, google, swap);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = new FormData(form);
@@ -144,7 +152,7 @@ async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
   let user = await api.me();
   let message: string | undefined;
   for (;;) {
-    user ??= await signIn(message);
+    user ??= await signIn(message ?? takeSignInProblem());
     show('Loading…');
     try {
       if (config.preview != null) return { scenario: await loadDraft(config.preview), user };
@@ -179,6 +187,13 @@ async function start() {
 
   const ui = new Ui(app);
   const ctx = new GameContext(scenario, user, connection, ui, { debug: config.debug });
+  // Stars, XP and the marketplace belong to an account. A preview gets a pretend account with
+  // stars to try the shop with, so testing a draft never spends or earns anything real.
+  const key = scenario.code ?? scenario.shortname ?? config.scenario;
+  if (user.role !== 'guest') {
+    await ctx.rewards.connect({ shop: () => api.shop(key), buy: (id) => api.buy(id, key), equip: (id, on) => api.equip(id, on) });
+  }
+  if (config.preview != null) ctx.rewards.pretend(500);
   // Session-long features: connection status, chat, the mission checklist, saving progress.
   for (const feature of gameFeatures()) feature.start(ctx);
 

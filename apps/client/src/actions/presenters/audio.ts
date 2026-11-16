@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { resolvedHandle } from '@qbl/shared';
+import { resolvedHandle, type Id } from '@qbl/shared';
 import { mediaKey } from '../../core/assets';
 import type { GameContext } from '../../core/GameContext';
 import { deferred, type Presenter } from '../Presenter';
@@ -11,6 +11,21 @@ export function stopMusic(ctx: GameContext): void {
   ctx.music = null;
   music.sound.stop();
   music.sound.destroy();
+}
+
+/**
+ * Start the music a scene begins with. The same track carries on if it is already playing;
+ * anything else playing as background music is replaced.
+ */
+export function playSceneMusic(scene: Phaser.Scene, ctx: GameContext, mediaId: Id, volume: number) {
+  const key = mediaKey(mediaId);
+  if (!scene.cache.audio.exists(key)) return;
+  const current = ctx.music;
+  if (current && current.mediaId === mediaId && current.sound.isPlaying) return;
+  stopMusic(ctx);
+  const sound = scene.sound.add(key, { volume, loop: true });
+  ctx.music = { sound, mediaId, actionIds: new Set() };
+  sound.play();
 }
 
 export const audio: Presenter<'audio'> = (action, pc) => {

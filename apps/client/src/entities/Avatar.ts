@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
-import { parseIds, type Id, type PlayerRec } from '@qbl/shared';
-import { ensureDefaultAvatar, mediaKey } from '../core/assets';
+import { parseIds, type Id, type PlayerRec, type ShopItem } from '@qbl/shared';
+import { ensureDefaultAvatar, mediaKey, shopTexture } from '../core/assets';
 import { Depth } from '../core/depth';
 import type { GameContext } from '../core/GameContext';
 
@@ -43,6 +43,12 @@ export class Avatar {
   private fadeTarget = 1;
   private fadeMs = 0;
   private connected = true;
+  /** What the avatar wears and the pet that follows it, from the marketplace. */
+  private worn = new Map<Id, { item: ShopItem; image: Phaser.GameObjects.Image }>();
+  private lookKey = '';
+  private move: ShopItem['animation'] | null = null;
+  private clock = 0;
+  private petAt: { x: number; y: number } | null = null;
 
   /**
    * `depth` gives the size factor for something standing at a point, from the scene's scale areas.
@@ -69,6 +75,31 @@ export class Avatar {
     this.layout();
   }
 
+  /**
+   * What the avatar wears: ids of marketplace items, comma-separated, as the room state carries
+   * them. Wearables sit on the figure by slot, a pet follows it, an animation makes it move on
+   * the spot. Abilities are not drawn.
+   */
+  setLook(csv: string) {
+    if (csv === this.lookKey) return;
+    this.lookKey = csv;
+    for (const w of this.worn.values()) w.image.destroy();
+    this.worn.clear();
+    this.move = null;
+    this.petAt = null;
+    for (const id of parseIds(csv)) {
+      const item = this.ctx.rewards.items.get(id);
+      if (!item) continue;
+      if (item.kind === 'animation') this.move = item.animation ?? null;
+      if (item.kind !== 'wearable' && item.kind !== 'pet') continue;
+      const key = shopTexture(item);
+      if (!key || !this.scene.textures.exists(key)) continue;
+      this.worn.set(id, { item, image: this.scene.add.image(this.x, this.y, key).setOrigin(0.5, item.kind === 'pet' ? 1 : 0.5) });
+    }
+    this.applyVisibility();
+    this.layout();
+  }
+
   /** True when the figure cannot be seen: the scene hides avatars, or an avatar action has hidden this one. */
   get invisible(): boolean {
     return this.hidden || this.fade <= 0;
@@ -86,6 +117,11 @@ export class Avatar {
 
   /** Advance a fade in progress. */
   tick(delta: number) {
+    // An animation or a pet keeps moving while the figure stands still.
+    if (this.move || this.petAt || [...this.worn.values()].some((w) => w.item.kind === 'pet')) {
+      this.clock += delta;
+      this.layout(delta);
+    }
     if (this.fade === this.fadeTarget) return;
     const step = this.fadeMs > 0 ? delta / this.fadeMs : 1;
     this.fade = this.fadeTarget > this.fade ? Math.min(1, this.fade + step) : Math.max(0, this.fade - step);
@@ -99,6 +135,7 @@ export class Avatar {
     this.label.setVisible(visible).setAlpha(this.fade);
     if (!visible) this.bubble.setVisible(false);
     for (const img of this.attached.values()) img.setVisible(visible).setAlpha(this.fade);
+    for (const w of this.worn.values()) w.image.setVisible(visible).setAlpha(this.fade);
   }
 
   get height(): number {
@@ -169,10 +206,18 @@ export class Avatar {
     this.layout();
   }
 
-  private layout() {
+  private layout(delta = 0) {
     // Depth: the figure and what it carries shrink or grow together with where it stands.
     const k = this.depth(this.x, this.y);
-    this.sprite.setPosition(this.x, this.y).setDepth(this.y).setScale(this.baseScale * k);
+    this.sprite.setScale(this.baseScale * k);
+    const h = this.sprite.displayHeight || 160 * k;
+    // A bought animation: the figure moves on the spot, and what it wears moves with it.
+    const t = this.clock;
+    const lift = this.move === 'bounce' ? Math.abs(Math.sin(t / 260)) * 0.07 * h : this.move === 'float' ? (0.06 + Math.sin(t / 700) * 0.03) * h : 0;
+    const lean = this.move === 'sway' ? Math.sin(t / 500) * 0.07 : 0;
+    if (this.move === 'pulse') this.sprite.setScale(this.baseScale * k * (1 + Math.sin(t / 400) * 0.04));
+    this.sprite.setPosition(this.x, this.y - lift).setDepth(this.y).setRotation(lean);
+    this.layoutWorn(h, lift, delta);
     const dir = this.facing === 'left' ? -1 : 1;
     for (const [id, img] of this.attached) {
       const item = this.ctx.index.items.get(id)!;
@@ -186,7 +231,34 @@ export class Avatar {
     this.bubble.setPosition(this.x, top - 40);
   }
 
+  /** Where each slot is on the figure: across (towards where it faces) and up, as fractions of its height. */
+  private static readonly SLOTS: Record<string, { x: number; y: number; size: number; behind?: boolean }> = {
+    head: { x: 0, y: 1, size: 0.28 }, body: { x: 0, y: 0.5, size: 0.34 }, back: { x: -0.2, y: 0.56, size: 0.4, behind: true }, hand: { x: 0.3, y: 0.42, size: 0.24 },
+  };
+
+  private layoutWorn(h: number, lift: number, delta: number) {
+    const dir = this.facing === 'left' ? -1 : 1;
+    for (const { item, image } of this.worn.values()) {
+      const size = (item.scale ?? (item.kind === 'pet' ? 0.3 : Avatar.SLOTS[item.slot ?? 'body']!.size)) * h;
+      image.setScale(size / (image.height || 100));
+      if (item.kind === 'pet') {
+        // A pet trails a little behind and catches up when the figure stops.
+        const home = { x: this.x - dir * 0.62 * h, y: this.y + (item.offset_y ?? 0) * h + Math.sin(this.clock / 300) * 0.015 * h };
+        const k = this.petAt && delta > 0 ? 1 - Math.exp(-delta / 220) : 1;
+        const far = this.petAt && Math.hypot(home.x - this.petAt.x, home.y - this.petAt.y) > 6 * h;
+        this.petAt = !this.petAt || far ? home : { x: this.petAt.x + (home.x - this.petAt.x) * k, y: this.petAt.y + (home.y - this.petAt.y) * k };
+        image.setPosition(this.petAt.x, this.petAt.y).setDepth(this.petAt.y).setFlipX(this.petAt.x > this.x);
+        continue;
+      }
+      const slot = Avatar.SLOTS[item.slot ?? 'body']!;
+      image.setPosition(this.x + (slot.x + (item.offset_x ?? 0)) * h * dir, this.y - lift - (slot.y - (item.offset_y ?? 0)) * h);
+      image.setFlipX(dir < 0).setDepth(this.y + (slot.behind ? -0.6 : 0.6));
+    }
+  }
+
   destroy() {
+    for (const w of this.worn.values()) w.image.destroy();
+    this.worn.clear();
     this.bubbleTimer?.remove();
     this.sprite.destroy();
     this.label.destroy();

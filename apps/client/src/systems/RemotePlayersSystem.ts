@@ -33,6 +33,7 @@ export class RemotePlayersSystem implements SceneSystem {
       avatar.setFacing(rec.facing === 'left' ? 'left' : 'right');
       avatar.setAttachments(rec.attachments);
       avatar.setConnected(rec.connected);
+      avatar.setLook(rec.look ?? '');
       // An avatar action on their side: the hidden flag arrives through the room state.
       avatar.setShown(!rec.hidden);
       avatar.tick(delta);

@@ -45,6 +45,14 @@ const clip = (s: string, n = 48) => (s.length > n ? `${s.slice(0, n - 1)}…` : 
 export function actionSummary(store: Store, type: string, values: Record<string, unknown>): string {
   const media = () => mediaLabel(store.byId('media', values.media_id as number | null));
   switch (type) {
+    case 'award': {
+      const part = (n: unknown, unit: string) => (Number(n) ? `${Number(n) > 0 ? '+' : ''}${Number(n)} ${unit}` : '');
+      return [part(values.stars, '⭐'), part(values.xp, 'XP')].filter(Boolean).join('  ') + (values.repeatable ? ' (every time)' : '') || 'Award nothing';
+    }
+    case 'shop':
+      return 'Open the marketplace';
+    case 'dialogue':
+      return `${values.speaker === 'character' ? String(store.byId('characters', values.character_id as number | null)?.name ?? 'Character') : 'Player'} ${values.style === 'portrait' ? 'says, in a story box' : 'says'}: ${clip(String(values.text ?? ''))}`;
     case 'freeze':
       return values.frozen === false ? 'Let the player move again' : 'Stop the player from moving';
     case 'avatar':

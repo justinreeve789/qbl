@@ -17,9 +17,14 @@ It is plain TypeScript and DOM, with no UI framework: a few hundred lines of hel
   "image in scene" and spritemap actions can all be dragged. A scene larger than the screen
   scrolls in the game; "Make the scene that size" sizes a scene to a wide background.
 - **Events**: start, end, hotspot and indirect events, each with conditions and an ordered list
-  of actions. All fourteen action types have a form, including infobox buttons with their own
-  actions and conditions.
-- **Library**: media (upload or by address), variables, items, characters, objectives.
+  of actions. All fourteen action types in the docs have a form, including infobox buttons with
+  their own actions and conditions, and so do the added ones: avatar, freeze, dialogue, award
+  (stars and XP) and shop (open the marketplace).
+- **Library**: media (upload or by address, in sub-tabs by what it is used for), variables,
+  items, characters, objectives.
+- **Shop**: the items only this scenario sells in the marketplace: something to wear, a pet, a
+  way of moving, or an ability, with a price in stars. Taking an item off sale keeps it for the
+  players who bought it.
 - **Test**: "Test this scene" opens the game on the unpublished draft, starting in that scene,
   playing alone with nothing saved. "With outlines" also draws hotspots and walkable areas.
 - **Publish**: checks the scenario with the validator the game uses, then generates the JSON

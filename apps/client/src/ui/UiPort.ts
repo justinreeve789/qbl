@@ -1,3 +1,4 @@
+import type { BubbleAnchor } from './bubble';
 import type { ActionHandle, Alignment, ChatMode, ObjectiveStatus } from '@qbl/shared';
 
 export interface OverlayHandle extends ActionHandle {
@@ -27,6 +28,24 @@ export interface UiPort {
   videoOverlay(url: string, o: { alignment?: Alignment; volume?: number }): OverlayHandle;
   /** `html` is trusted only as far as the sanitiser allows. */
   infobox(html: string, buttons: string[], o: { dismissible: boolean }): InfoboxHandle;
+  /**
+   * A speech bubble that follows a speaker. `anchor` is asked every frame where the speaker is on
+   * the page (null while they are off screen); the bubble places itself so it stays in view.
+   */
+  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null }): ActionHandle;
+  /**
+   * A dialogue box across the bottom of the screen with the speaker's close-up portrait and name.
+   * With `duration` 0 it stays until the player clicks or presses Enter or Space to continue.
+   * `watching`: it comes from another player's event, so it never takes this player's input.
+   */
+  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean }): ActionHandle;
+  /** The stars, XP and rank display, with a button that opens the marketplace. Null hides it (guests). */
+  rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void): void;
+  /**
+   * The marketplace and wardrobe. `view` is asked again after every purchase or change, so the
+   * window always shows the current stars and what is owned and worn.
+   */
+  shop(view: () => ShopView, on: { buy(id: number): Promise<void>; equip(id: number, on: boolean): Promise<void> }): ActionHandle;
   clearOverlays(): void;
 
   chat(mode: ChatMode, send: { text(t: string): void; emote(e: string): void }): void;
@@ -35,4 +54,9 @@ export interface UiPort {
   toast(message: string, ms?: number): void;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null): void;
+}
+
+export interface ShopView {
+  stars: number;
+  items: Array<{ id: number; name: string; description?: string; kind: string; slot?: string; price: number; image: string | null; mission: boolean; owned: boolean; equipped: boolean }>;
 }

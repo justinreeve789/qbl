@@ -8,6 +8,7 @@
  * It runs the same ScenarioCompiler the API uses, so the game server's file
  * backend and the seeded database serve the same document.
  */
+require __DIR__.'/../app/Qbl/ProgressStore.php';
 require __DIR__.'/../app/Qbl/ScenarioCompiler.php';
 
 $name = $argv[1] ?? 'starship';

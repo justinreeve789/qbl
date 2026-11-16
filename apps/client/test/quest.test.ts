@@ -170,6 +170,9 @@ test('The Wilting Stream: a student can play the whole quest from landing to rep
     '[x] Make the contaminated water neutral at the mixing bench',
   ]);
 
+  // Stars and XP came along the way: a sample 3 stars, a test 2, the neutral beaker 10, the report 25.
+  assert.deepEqual(g.ui.hud, { stars: 56, xp: 240, rank: 'Explorer', next_rank_xp: 300 });
+
   // Everything a teacher dashboard would need is in the saved progress.
   g.ctx.saveProgress(true);
   const saved = g.ctx.connection.welcome && (g.ctx.vars.snapshot('player') as Record<string, unknown>);

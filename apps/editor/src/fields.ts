@@ -126,8 +126,10 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     }
     case 'variable': {
       const names = ctx.store.rows('variables').map((v) => String(v.variable_name));
+      const shared = new Set(ctx.store.rows('variables').filter((v) => v.scope === 'room').map((v) => String(v.variable_name)));
       const current = value == null ? '' : String(value);
-      const options = names.map((n) => [n, n] as const).concat(current && !names.includes(current) ? [[current, `${current} (not defined)`]] : [], [[NEW, 'New variable…']]);
+      // A shared variable is marked, so it is plain which actions change things for everyone.
+      const options = names.map((n) => [n, shared.has(n) ? `${n}  (shared by everyone)` : n] as const).concat(current && !names.includes(current) ? [[current, `${current} (not defined)`]] : [], [[NEW, 'New variable…']]);
       const node = select(options, current, async (v) => {
         if (v !== NEW) return set(v === '' ? null : v);
         const name = window.prompt('Name of the new variable (letters, digits and underscores):')?.trim();

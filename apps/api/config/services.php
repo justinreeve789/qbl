@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // Sign in with Google. The address Google sends people back to is this path on APP_URL (in
+    // Docker: QBL_PUBLIC_URL), so set that to the https address people type, and register exactly
+    // https://your-host/api/auth/google/callback with Google.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', '/api/auth/google/callback'),
+    ],
+
 ];

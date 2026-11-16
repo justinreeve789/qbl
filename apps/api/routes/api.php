@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EditorController;
+use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\InternalController;
 use App\Http\Controllers\PlayController;
+use App\Http\Controllers\ProgressController;
 use App\Http\Middleware\ServiceKey;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +14,19 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/auth/guest', [AuthController::class, 'guest'])->middleware('throttle:10,1');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+
+// Signing in with Google. The browser is sent to the first and comes back to the second.
+Route::get('/auth/providers', [GoogleAuthController::class, 'providers']);
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->middleware('throttle:20,1');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('throttle:20,1');
+
+// Stars, XP and the marketplace. Awards are not here: only the game server may grant them.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me/progress', [ProgressController::class, 'show']);
+    Route::get('/shop', [ProgressController::class, 'shop']);
+    Route::post('/shop/{item}/buy', [ProgressController::class, 'buy'])->whereNumber('item');
+    Route::post('/shop/{item}/equip', [ProgressController::class, 'equip'])->whereNumber('item');
+});
 
 // Auth is optional here: scenarios with require_login=false can be played without a token.
 Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');
@@ -24,6 +39,8 @@ Route::prefix('internal')->middleware(ServiceKey::class)->group(function () {
     Route::get('/scenarios/{key}', [InternalController::class, 'scenario'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');
     Route::get('/scenarios/{scenario}/sessions/{user}', [InternalController::class, 'loadSession'])->whereNumber(['scenario', 'user']);
     Route::put('/scenarios/{scenario}/sessions/{user}', [InternalController::class, 'saveSession'])->whereNumber(['scenario', 'user']);
+    Route::post('/scenarios/{scenario}/awards', [InternalController::class, 'award'])->whereNumber('scenario');
+    Route::get('/users/{user}/look', [InternalController::class, 'look'])->whereNumber('user');
     Route::get('/scenarios/{scenario}/instances/{group}', [InternalController::class, 'loadInstance'])->whereNumber('scenario');
     Route::put('/scenarios/{scenario}/instances/{group}', [InternalController::class, 'saveInstance'])->whereNumber('scenario');
 });

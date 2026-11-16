@@ -86,6 +86,10 @@ class ScenarioCompiler
                 'block_hotspots' => self::bool($e['block_hotspots'] ?? false),
                 'conditions' => $conditions['event_id'][$eventId] ?? [],
             ];
+            // Shown to every player in the scene, not only the one who set it off.
+            if (($e['audience'] ?? 'player') === 'scene') {
+                $event['audience'] = 'scene';
+            }
             if ($e['kind'] === 'hotspot') {
                 // Null coordinates are meaningful ("the entire axis"), so they are kept.
                 $event['position_x'] = self::numOrNull($e['position_x'] ?? null);
@@ -135,7 +139,10 @@ class ScenarioCompiler
                 'scale_areas' => $layout['scale_areas'] ?? [],
                 'items' => $layout['items'] ?? [],
                 'characters' => $layout['characters'] ?? [],
-                'params' => self::json($sc['params'] ?? null) ?: null,
+                // The scene's own background music, when it has one, is kept in params.
+                'music_media_id' => self::intOrNull(self::json($sc['params'] ?? null)['music_media_id'] ?? null),
+                'music_volume' => self::numOrNull(self::json($sc['params'] ?? null)['music_volume'] ?? null),
+                'params' => array_diff_key(self::json($sc['params'] ?? null), ['music_media_id' => 1, 'music_volume' => 1]) ?: null,
                 'start_events' => $events[$sceneId]['start_events'] ?? [],
                 'end_events' => $events[$sceneId]['end_events'] ?? [],
                 'hotspots' => $events[$sceneId]['hotspots'] ?? [],
@@ -236,6 +243,8 @@ class ScenarioCompiler
             'global_variables' => $variables,
             'jump_targets' => (object) $jumpTargets,
             'assets' => $assets,
+            // Mission-specific marketplace items. Inactive ones are not sold.
+            'shop_items' => array_values(array_map([ProgressStore::class, 'item'], array_filter($rows['shop_items'] ?? [], fn ($i) => self::bool($i['active'] ?? true)))) ?: null,
             'items' => $items,
             'characters' => $characters,
             'scenes' => $scenes,

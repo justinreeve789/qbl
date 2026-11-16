@@ -240,3 +240,16 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
   .row-card { grid-template-columns: 1fr; }
   .row-card .form { grid-template-columns: 1fr 1fr; }
 }
+
+/* Sub-tabs inside a page (Media). */
+.subtabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.subtabs button { border-radius: 999px; background: var(--surface-2); }
+.subtabs button.current { background: var(--accent-solid); border-color: var(--accent-solid); font-weight: 600; }
+.subtabs small { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); font-size: 11px; }
+
+/* Whose a variable is: each player's own, or shared by everyone playing together. */
+.badge.scope-room { background: rgba(86, 196, 160, 0.18); color: #7fe0c0; margin: 0 0 6px; }
+.badge.scope-player { background: rgba(120, 160, 255, 0.18); color: #a9c4ff; margin: 0 0 6px; }
+
+.login button.google { background: #fff; color: #1f2937; border-color: #fff; }
+.login button.google[hidden] { display: none; }

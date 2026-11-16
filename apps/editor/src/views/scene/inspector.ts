@@ -1,7 +1,7 @@
-import { mediaLabel, mediaUrl, sceneLabel } from '../../describe';
+import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h } from '../../dom';
 import { form, withValue, type Field, type FormContext } from '../../fields';
-import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SPAWN_FIELDS } from '../../schema';
+import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
 
@@ -62,6 +62,7 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
     { class: 'panel' },
     h('div', { class: 'panel-head' }, h('h2', null, 'Scene'), isStart ? h('span', { class: 'badge' }, 'Start scene') : null),
     form(SCENE_FIELDS, scene, commit, ctx),
+    form(SCENE_MUSIC_FIELDS, params(scene), (key, value, field) => void store.patch('scenes', scene.id, { params: withValue(params(store.byId('scenes', scene.id)!), key, value, field) }, key === 'music_media_id'), ctx),
     mismatch
       ? h(
           'p',

@@ -28,7 +28,7 @@ class QblApiTest extends TestCase
 
         $document = $this->getJson('/api/scenarios/starshipexplorer/play')->assertOk()->json('scenario');
         $this->assertSame('starshipexplorer', $document['code']);
-        $this->assertCount(12, $document['scenes']);
+        $this->assertCount(13, $document['scenes']);
 
         $shipped = json_decode(file_get_contents(base_path('../../scenarios/starship.json')), true);
         unset($document['session']);
@@ -112,5 +112,41 @@ class QblApiTest extends TestCase
         $this->getJson('/api/internal/scenarios/starshipexplorer')->assertForbidden();
         $this->getJson('/api/internal/scenarios/starshipexplorer', ['X-QBL-Service-Key' => 'test-service-key'])
             ->assertOk()->assertJsonPath('scenario.code', 'starshipexplorer');
+    }
+
+    public function test_stars_are_awarded_by_the_game_server_and_spent_in_the_marketplace(): void
+    {
+        config(['qbl.service_key' => 'test-service-key']);
+        $this->seed(\Database\Seeders\ShopSeeder::class);
+        $teacher = $this->teacher();
+        $token = $teacher->createToken('test')->plainTextToken;
+        $api = fn () => $this->withToken($token);
+
+        // A scenario with one award of 20 stars and 150 XP, and an item of its own for sale.
+        $scenario = $api()->postJson('/api/editor/scenarios', ['title' => 'Stars'])->json('scenario');
+        $id = $scenario['id'];
+        $scene = $api()->getJson("/api/editor/scenarios/$id")->json('scenes.0');
+        $event = $api()->postJson("/api/editor/scenarios/$id/rows/events", ['scene_id' => $scene['id'], 'kind' => 'start'])->json('row');
+        $award = $api()->postJson("/api/editor/scenarios/$id/rows/actions", ['event_id' => $event['id'], 'type' => 'award', 'params' => ['stars' => 20, 'xp' => 150]])->assertCreated()->json('row');
+        $badge = $api()->postJson("/api/editor/scenarios/$id/rows/shop_items", ['name' => 'Mission badge', 'kind' => 'wearable', 'slot' => 'body', 'price' => 5])->assertCreated()->json('row');
+        $api()->postJson("/api/editor/scenarios/$id/publish")->assertOk();
+
+        $api()->getJson('/api/me/progress')->assertOk()->assertJsonPath('progress.stars', 0)->assertJsonPath('progress.rank', 'Cadet');
+        // Players cannot award themselves: only the game server's route grants stars.
+        $api()->postJson("/api/internal/scenarios/$id/awards", ['user_id' => $teacher->id, 'action_id' => $award['id']])->assertForbidden();
+        $server = ['X-QBL-Service-Key' => 'test-service-key'];
+        $this->postJson("/api/internal/scenarios/$id/awards", ['user_id' => $teacher->id, 'action_id' => $award['id']], $server)
+            ->assertOk()->assertJsonPath('progress.stars', 20)->assertJsonPath('progress.rank', 'Explorer')->assertJsonPath('progress.delta_stars', 20);
+        $this->postJson("/api/internal/scenarios/$id/awards", ['user_id' => $teacher->id, 'action_id' => $award['id']], $server)
+            ->assertOk()->assertJsonPath('progress.stars', 20)->assertJsonPath('progress.already', true);
+
+        $shop = $api()->getJson("/api/shop?scenario={$scenario['code']}")->assertOk();
+        $this->assertSame('Mission badge', $shop->json('items.0.name'));
+        $this->assertSame('Star cap', $shop->json('items.1.name'));
+        $api()->postJson('/api/shop/1/buy')->assertOk()->assertJsonPath('progress.stars', 5);
+        $api()->postJson('/api/shop/2/buy')->assertStatus(422);
+        $api()->postJson("/api/shop/{$badge['id']}/buy", ['scenario' => $scenario['code']])->assertOk()->assertJsonPath('progress.stars', 0);
+        $api()->postJson('/api/shop/1/equip', ['equipped' => true])->assertOk()->assertJsonPath('progress.equipped', [1]);
+        $this->getJson("/api/internal/users/{$teacher->id}/look", $server)->assertOk()->assertJsonPath('look', '1');
     }
 }

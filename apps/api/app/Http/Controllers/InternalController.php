@@ -6,6 +6,8 @@ use App\Models\Scenario;
 use App\Models\ScenarioInstance;
 use App\Models\ScenarioSession;
 use App\Models\User;
+use App\Qbl\ProgressStore;
+use App\Qbl\StoreError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,7 +25,25 @@ class InternalController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        return response()->json(['user' => $user->toQbl()]);
+        // What the player's avatar wears travels with them into the room.
+        $look = $user->role === 'guest' ? '' : app(ProgressStore::class)->look($user->id);
+
+        return response()->json(['user' => $user->toQbl() + ['look' => $look]]);
+    }
+
+    /** An award action ran in a player's browser. It is granted only if the published scenario contains it. */
+    public function award(Request $request, Scenario $scenario, ProgressStore $progress): JsonResponse
+    {
+        try {
+            return response()->json(['progress' => $progress->award((int) $request->input('user_id'), $scenario->id, $scenario->toDocument(), (int) $request->input('action_id'))]);
+        } catch (StoreError $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
+    }
+
+    public function look(User $user, ProgressStore $progress): JsonResponse
+    {
+        return response()->json(['look' => $user->role === 'guest' ? '' : $progress->look($user->id)]);
     }
 
     public function scenario(string $key): JsonResponse

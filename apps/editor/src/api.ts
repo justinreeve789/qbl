@@ -6,7 +6,7 @@ export interface Row {
   [column: string]: unknown;
 }
 
-export type Table = 'media' | 'variables' | 'items' | 'characters' | 'scenes' | 'events' | 'actions' | 'conditions' | 'labels';
+export type Table = 'shop_items' | 'media' | 'variables' | 'items' | 'characters' | 'scenes' | 'events' | 'actions' | 'conditions' | 'labels';
 
 export interface Bundle extends Record<Table, Row[]> {
   scenario: Row;
@@ -63,6 +63,16 @@ export class Api {
       return data as T;
     } finally {
       this.onBusy(--this.pending > 0);
+    }
+  }
+
+  /** Whether the server offers Google sign-in. */
+  async providers(): Promise<{ google: boolean }> {
+    try {
+      const res = await fetch('/api/auth/providers', { headers: { Accept: 'application/json' } });
+      return res.ok ? ((await res.json()) as { google: boolean }) : { google: false };
+    } catch {
+      return { google: false };
     }
   }
 

@@ -1,15 +1,17 @@
 import * as Phaser from 'phaser';
 import {
-  layerMediaId, SceneEngine, sceneSize, walkContext,
+  layerMediaId, SceneEngine, sceneMusic, sceneSize, walkContext,
   type Id, type Point, type Scene, type WalkContext,
 } from '@qbl/shared';
 import { ActionHost } from '../actions/ActionHost';
+import { playSceneMusic } from '../actions/presenters/audio';
 import { mediaKey, queueScene } from '../core/assets';
 import { getContext, type GameContext } from '../core/GameContext';
 import type { PlaySceneData, SceneRuntime, SceneSystem, SceneSystemClass } from '../core/SceneRuntime';
 import { sceneSystems } from '../systems';
 import { LocalPlayerSystem } from '../systems/LocalPlayerSystem';
 import { PropsSystem } from '../systems/PropsSystem';
+import { RemotePlayersSystem } from '../systems/RemotePlayersSystem';
 
 export type { PlaySceneData };
 
@@ -61,6 +63,16 @@ export class PlayScene extends Phaser.Scene {
 
     // The event engine for this visit to the scene.
     this.host = new ActionHost(this, ctx, (sceneId, spawn) => this.jump(sceneId, spawn));
+    this.host.locateControl = (who) => {
+      if (who.character_id != null) return this.runtime.system(PropsSystem).characterAt(who.character_id);
+      // "The player" in another player's event is that player.
+      if (who.actor && who.actor !== ctx.connection.sessionId) {
+        const other = this.runtime.system(RemotePlayersSystem).get(who.actor);
+        return other ? { x: other.x, y: other.y, height: other.height } : null;
+      }
+      const me = this.runtime.system(LocalPlayerSystem).avatar;
+      return { x: me.x, y: me.y, height: me.height };
+    };
     this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);
@@ -93,10 +105,20 @@ export class PlayScene extends Phaser.Scene {
     }
     for (const system of this.systems) system.create?.();
 
-    this.stopWatching = ctx.vars.onChange(() => {
+    const stopVars = ctx.vars.onChange(() => {
       for (const system of this.systems) system.variablesChanged?.();
     });
+    // What other players' events show to the whole scene.
+    const stopShows = ctx.connection.on('show', (m) => engine.watch(m.event_id, m.action_id, m.session_id));
+    this.stopWatching = () => {
+      stopVars();
+      stopShows();
+    };
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+
+    // The scene's own music, or else the scenario's. Start events may then change it.
+    const music = sceneMusic(ctx.scenario, this.def);
+    if (music) playSceneMusic(this, ctx, music.media_id, music.volume);
 
     // Start events run once everything is on screen.
     this.engine.start();

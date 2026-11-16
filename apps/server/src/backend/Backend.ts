@@ -1,4 +1,4 @@
-import type { Id, InstanceData, Scenario, Session, User } from '@qbl/shared';
+import type { Id, InstanceData, RewardMessage, Scenario, Session, User } from '@qbl/shared';
 
 export type { InstanceData, User };
 
@@ -15,6 +15,14 @@ export interface Backend {
   saveSession(scenarioId: Id, userId: string, session: Session): Promise<void>;
   loadInstance(scenarioId: Id, group: string): Promise<InstanceData | null>;
   saveInstance(scenarioId: Id, group: string, data: InstanceData): Promise<void>;
+  /**
+   * Grant an award action's stars and XP to a player. The backend decides: it checks the action
+   * against the published scenario and grants a once-only award once. Null: nothing was granted
+   * (a guest, an unknown action, the backend refusing).
+   */
+  award(scenarioId: Id, userId: string, actionId: Id): Promise<RewardMessage | null>;
+  /** What the player's avatar wears now: equipped shop item ids, comma-separated. */
+  look(userId: string): Promise<string>;
 }
 
 /** Wraps a backend so scenario documents are fetched at most once per TTL. */

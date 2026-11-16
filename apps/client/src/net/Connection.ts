@@ -2,8 +2,8 @@ import { Client, type Room } from '@colyseus/sdk';
 import {
   C2S, ROOM_NAME, S2C, World,
   type ChatBroadcast, type EmoteBroadcast, type Id, type ItemMessage, type ItemRec, type JoinOptions,
-  type MoveMessage, type NoticeMessage, type PlayerRec, type ProgressMessage, type Scenario, type SceneMessage,
-  type SnapMessage, type User, type VariableMessage, type WelcomeMessage, type WorldState,
+  type MoveMessage, type NoticeMessage, type PlayerRec, type ProgressMessage, type RewardMessage, type Scenario, type SceneMessage,
+  type ShowBroadcast, type ShowMessage, type SnapMessage, type User, type VariableMessage, type WelcomeMessage, type WorldState,
 } from '@qbl/shared';
 
 export interface ConnectionEvents {
@@ -11,6 +11,10 @@ export interface ConnectionEvents {
   emote: EmoteBroadcast;
   snap: SnapMessage;
   notice: NoticeMessage;
+  /** The server granted (or declined) an award: the player's new totals and what changed. */
+  reward: RewardMessage;
+  /** Another player's event, meant for the whole scene, reached this action. */
+  show: ShowBroadcast;
   /** Connection lost; the SDK is retrying. */
   drop: void;
   reconnect: void;
@@ -34,7 +38,7 @@ export abstract class GameConnection {
   abstract leave(): void;
 
   private handlers: Handlers = {
-    chat: new Set(), emote: new Set(), snap: new Set(), notice: new Set(),
+    chat: new Set(), emote: new Set(), snap: new Set(), notice: new Set(), reward: new Set(), show: new Set(),
     drop: new Set(), reconnect: new Set(), leave: new Set(),
   };
 
@@ -58,6 +62,12 @@ export abstract class GameConnection {
   variable(msg: VariableMessage) { this.send(C2S.Variable, msg); }
   item(msg: ItemMessage) { this.send(C2S.Item, msg); }
   progress(msg: ProgressMessage) { this.send(C2S.Progress, msg); }
+  /** An award action ran: ask the server to grant it. */
+  award(actionId: Id) { this.send(C2S.Award, { action_id: actionId }); }
+  /** The player changed what they wear. Online the server reads it from the backend; offline it is taken as given. */
+  lookChanged(look: string) { this.send(C2S.Look, { look }); }
+  /** An event meant for the whole scene reached this action: the server passes it to the other players there. */
+  share(eventId: Id, actionId: Id) { this.send(C2S.Show, { event_id: eventId, action_id: actionId }); }
   /** Show or hide this player's avatar for everyone in the scene. */
   avatarVisible(visible: boolean) { this.send(C2S.Avatar, { visible }); }
 }
@@ -72,6 +82,8 @@ export class OnlineConnection extends GameConnection {
     room.onMessage(S2C.Emote, (m: EmoteBroadcast) => this.emit('emote', m));
     room.onMessage(S2C.Snap, (m: SnapMessage) => this.emit('snap', m));
     room.onMessage(S2C.Notice, (m: NoticeMessage) => this.emit('notice', m));
+    room.onMessage(S2C.Progress, (m: RewardMessage) => this.emit('reward', m));
+    room.onMessage(S2C.Show, (m: ShowBroadcast) => this.emit('show', m));
     room.onDrop(() => this.emit('drop', undefined));
     room.onReconnect(() => this.emit('reconnect', undefined));
     room.onLeave((code: number) => this.emit('leave', code));
@@ -134,6 +146,8 @@ export class OfflineConnection extends GameConnection {
     vars: new Map<string, string>(),
   };
   readonly welcome: WelcomeMessage;
+  /** What this player's events would have shown to the rest of the scene. */
+  readonly shared: ShowMessage[] = [];
   private world: World;
 
   constructor(scenario: Scenario, user: User, avatarId?: Id, now: () => number = () => Date.now()) {
@@ -165,6 +179,13 @@ export class OfflineConnection extends GameConnection {
           this.emit('notice', { code: 'item_unavailable', message: 'That is not available right now.' });
         }
         break;
+      case C2S.Show:
+        // Nobody else to show it to; kept so a preview and the tests can see what would be sent.
+        if (this.world.show(id, payload as ShowMessage)) this.shared.push(payload as ShowMessage);
+        break;
+      case C2S.Look:
+        this.world.setLook(this.sessionId, (payload as { look: string }).look);
+        break;
       case C2S.Avatar:
         this.world.setAvatarVisible(this.sessionId, payload as { visible: boolean });
         break;
@@ -184,6 +205,11 @@ export class OfflineConnection extends GameConnection {
   private snap() {
     const p = this.me;
     if (p) this.emit('snap', { x: p.x, y: p.y, scene_id: p.scene_id });
+  }
+
+  /** Another player's shown action arriving, as the server would deliver it. */
+  deliver(show: ShowBroadcast) {
+    this.emit('show', show);
   }
 
   leave() {}

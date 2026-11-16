@@ -1,6 +1,7 @@
 import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type ChatMode, type ObjectiveStatus } from '@qbl/shared';
 import { sanitizeHtml } from './sanitize';
-import type { InfoboxHandle, OverlayHandle, UiPort } from './UiPort';
+import { placeBubble, type BubbleAnchor } from './bubble';
+import type { InfoboxHandle, OverlayHandle, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -71,6 +72,104 @@ export class Ui implements UiPort {
     node.style.color = o.color || 'white';
     if (o.style === 'italic') node.style.fontStyle = 'italic';
     return this.overlay(node, o.duration);
+  }
+
+  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null }): ActionHandle {
+    const node = el('div', 'qbl-bubble');
+    if (o.name) node.append(el('strong', 'qbl-bubble-name', o.name));
+    node.append(el('span', '', text));
+    node.setAttribute('role', 'status');
+    this.root.append(node);
+
+    let frame = 0;
+    let finish!: () => void;
+    const done = new Promise<void>((r) => (finish = r));
+    const follow = () => {
+      const at = o.anchor();
+      node.style.visibility = at ? 'visible' : 'hidden';
+      if (at) {
+        const p = placeBubble(at, { width: node.offsetWidth, height: node.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
+        node.style.left = `${p.left}px`;
+        node.style.top = `${p.top}px`;
+        node.dataset.side = p.side;
+        node.style.setProperty('--tail', `${p.tail}px`);
+      }
+      frame = requestAnimationFrame(follow);
+    };
+    const end = () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      node.remove();
+      finish();
+    };
+    const timer = window.setTimeout(end, o.duration);
+    // A click closes it early, for readers who are done.
+    node.addEventListener('click', end);
+    follow();
+    return { done, cancel: end };
+  }
+
+  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean }): ActionHandle {
+    const node = el('div', `qbl-story${o.watching ? ' watching' : ''}`);
+    const frame = el('div', 'qbl-story-portrait');
+    if (o.portrait) {
+      const img = el('img');
+      img.src = o.portrait;
+      img.alt = '';
+      frame.append(img);
+    } else {
+      frame.append(el('span', '', (o.name ?? '?').slice(0, 1).toUpperCase()));
+    }
+    const body = el('div', 'qbl-story-body');
+    if (o.name) body.append(el('strong', 'qbl-story-name', o.name));
+    const line = el('p', 'qbl-story-text');
+    body.append(line);
+    const more = el('span', 'qbl-story-more', o.duration > 0 ? '' : '▶');
+    body.append(more);
+    node.append(frame, body);
+    node.setAttribute('role', o.watching ? 'status' : 'dialog');
+    node.setAttribute('aria-label', o.name ? `${o.name} says` : 'Dialogue');
+    this.root.append(node);
+
+    // The words arrive a few at a time. A first click shows them all; the next one continues.
+    let shown = 0;
+    const reveal = window.setInterval(() => {
+      shown = Math.min(text.length, shown + 2);
+      line.textContent = text.slice(0, shown);
+      if (shown >= text.length) window.clearInterval(reveal);
+    }, 24);
+    // Screen readers get the whole line at once.
+    line.setAttribute('aria-label', text);
+
+    let timer = 0;
+    const modal = !o.watching;
+    if (modal) this.modals++;
+    const h = handle(() => {
+      window.clearInterval(reveal);
+      window.clearTimeout(timer);
+      window.removeEventListener('keydown', onKey, true);
+      if (modal) this.modals--;
+      node.remove();
+    });
+    const next = () => {
+      if (shown < text.length) {
+        shown = text.length;
+        line.textContent = text;
+        window.clearInterval(reveal);
+      } else {
+        h.finish();
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      e.stopPropagation();
+      next();
+    };
+    node.addEventListener('click', next);
+    if (modal) window.addEventListener('keydown', onKey, true);
+    if (o.duration > 0) timer = window.setTimeout(h.finish, o.duration);
+    return h;
   }
 
   imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number }): OverlayHandle {
@@ -256,6 +355,115 @@ export class Ui implements UiPort {
       ul.appendChild(li);
     }
     this.checklist.replaceChildren(title, ul);
+  }
+
+  private rewardsNode: HTMLElement | null = null;
+
+  rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void) {
+    this.rewardsNode?.remove();
+    this.rewardsNode = null;
+    if (!state) return;
+    const node = el('button', 'qbl-rewards');
+    node.type = 'button';
+    node.title = 'Open the marketplace and your wardrobe';
+    const toNext = state.next_rank_xp == null ? 'top rank' : `${state.next_rank_xp - state.xp} XP to next rank`;
+    node.append(el('span', 'qbl-stars', `⭐ ${state.stars}`), el('span', 'qbl-rank', state.rank), el('span', 'qbl-xp', `${state.xp} XP · ${toNext}`));
+    node.setAttribute('aria-label', `${state.stars} stars. Rank: ${state.rank}. ${state.xp} XP, ${toNext}. Open the marketplace.`);
+    node.addEventListener('click', onOpen);
+    this.root.append(node);
+    this.rewardsNode = node;
+  }
+
+  shop(view: () => ShopView, on: { buy(id: number): Promise<void>; equip(id: number, on: boolean): Promise<void> }): ActionHandle {
+    const backdrop = el('div', 'qbl-backdrop');
+    const box = el('div', 'qbl-shop');
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', 'Marketplace');
+    backdrop.append(box);
+    this.root.append(backdrop);
+    this.modals++;
+    let tab: 'shop' | 'mine' = 'shop';
+    let message = '';
+    let finish!: () => void;
+    const done = new Promise<void>((r) => (finish = r));
+    let open = true;
+    const close = () => {
+      if (!open) return;
+      open = false;
+      this.modals--;
+      backdrop.remove();
+      finish();
+    };
+    const act = async (work: () => Promise<void>) => {
+      message = '';
+      try {
+        await work();
+      } catch (err) {
+        message = err instanceof Error ? err.message : 'That did not work.';
+      }
+      if (open) draw();
+    };
+    const KINDS: Record<string, string> = { wearable: 'To wear', pet: 'Pets', animation: 'Moves', ability: 'Abilities' };
+    const draw = () => {
+      const v = view();
+      box.replaceChildren();
+      const head = el('div', 'qbl-shop-head');
+      const closeButton = el('button', 'qbl-shop-close', '×');
+      closeButton.type = 'button';
+      closeButton.setAttribute('aria-label', 'Close');
+      closeButton.addEventListener('click', close);
+      head.append(el('h2', '', tab === 'shop' ? 'Marketplace' : 'My things'), el('span', 'qbl-stars', `⭐ ${v.stars}`), closeButton);
+      const tabs = el('div', 'qbl-shop-tabs');
+      for (const [key, label] of [['shop', 'Shop'], ['mine', `My things (${v.items.filter((i) => i.owned).length})`]] as const) {
+        const b = el('button', tab === key ? 'current' : '', label);
+        b.type = 'button';
+        b.addEventListener('click', () => {
+          tab = key;
+          draw();
+        });
+        tabs.append(b);
+      }
+      box.append(head, tabs);
+      if (message) box.append(el('p', 'qbl-shop-message', message));
+      const shown = v.items.filter((i) => (tab === 'mine' ? i.owned : true));
+      if (!shown.length) box.append(el('p', 'qbl-shop-empty', tab === 'mine' ? 'Nothing yet. Earn stars in missions and spend them in the shop.' : 'Nothing is for sale right now.'));
+      for (const kind of Object.keys(KINDS)) {
+        const group = shown.filter((i) => i.kind === kind);
+        if (!group.length) continue;
+        box.append(el('h3', '', KINDS[kind]));
+        const grid = el('div', 'qbl-shop-grid');
+        for (const item of group) {
+          const card = el('div', `qbl-shop-item${item.equipped ? ' on' : ''}`);
+          if (item.image) {
+            const img = el('img');
+            img.src = item.image;
+            img.alt = '';
+            card.append(img);
+          }
+          card.append(el('strong', '', item.name));
+          if (item.mission) card.append(el('span', 'qbl-shop-tag', 'This mission'));
+          if (item.description) card.append(el('small', '', item.description));
+          const button = el('button');
+          button.type = 'button';
+          if (!item.owned) {
+            button.textContent = `Buy · ⭐ ${item.price}`;
+            button.disabled = v.stars < item.price;
+            if (button.disabled) button.title = `You need ${item.price - v.stars} more stars`;
+            button.addEventListener('click', () => void act(() => on.buy(item.id)));
+          } else {
+            const verbs = item.kind === 'wearable' ? ['Wear', 'Take off'] : ['Use', 'Stop using'];
+            button.textContent = item.equipped ? verbs[1]! : verbs[0]!;
+            button.addEventListener('click', () => void act(() => on.equip(item.id, !item.equipped)));
+          }
+          card.append(button);
+          grid.append(card);
+        }
+        box.append(grid);
+      }
+    };
+    backdrop.addEventListener('click', (e) => e.target === backdrop && close());
+    draw();
+    return { done, cancel: close };
   }
 
   toast(message: string, ms = 3000) {

@@ -1,4 +1,4 @@
-import type { Id, Scenario, Session } from '@qbl/shared';
+import type { Id, Scenario, Session, RewardMessage } from '@qbl/shared';
 import type { Backend, InstanceData, User } from './Backend.js';
 
 /**
@@ -55,5 +55,16 @@ export class ApiBackend implements Backend {
 
   async saveInstance(scenarioId: Id, group: string, data: InstanceData): Promise<void> {
     await this.call('PUT', `/scenarios/${scenarioId}/instances/${encodeURIComponent(group)}`, { instance: data });
+  }
+
+  async award(scenarioId: Id, userId: string, actionId: Id): Promise<RewardMessage | null> {
+    // Refusals (a guest, an action that is not an award) are answers, not failures.
+    const data = await this.call<{ progress: RewardMessage }>('POST', `/scenarios/${scenarioId}/awards`, { user_id: Number(userId), action_id: actionId }).catch(() => null);
+    return data?.progress ?? null;
+  }
+
+  async look(userId: string): Promise<string> {
+    const data = await this.call<{ look: string }>('GET', `/users/${encodeURIComponent(userId)}/look`).catch(() => null);
+    return data?.look ?? '';
   }
 }

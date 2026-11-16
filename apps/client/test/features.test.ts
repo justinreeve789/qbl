@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { scaleAt } from '@qbl/shared';
+import { OfflineConnection } from '../src/net/Connection';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { Game, loadScenario } from './harness';
 
@@ -106,24 +107,100 @@ test('a vehicle crosses scenes, stays where it is left, and is there for the nex
   assert.equal(g.ctx.connection.me!.attachments, '2');
 });
 
-test('talking to the captain holds the player still until the conversation ends', async () => {
+test('the captain tells her story in a portrait box, to this player only, who cannot walk off meanwhile', async () => {
   const g = await startIn(2);
   const local = g.scene.system(LocalPlayerSystem);
   const greeting = g.scene.def.indirect_events!.find((e) => e.shortname === 'captain-greeting')!;
   void (g.scene as any).engine.trigger(greeting);
   await g.wait(50);
   assert.equal(local.frozen, true);
-  assert.match(g.box?.html ?? '', /Captain Vega/);
+  assert.equal(g.ui.stories.length, 1);
+  const first = g.ui.stories[0]!;
+  assert.equal(first.name, 'Captain Vega');
+  assert.match(first.text, /^Welcome aboard, Tester!/);
+  assert.match(first.portrait ?? '', /portraits\/captain\.png$/, 'her close-up, not her full picture');
+  assert.equal(first.watching, false);
+  assert.deepEqual(g.ui.dialogues, [], 'no bubble: this is the story box');
+
+  // It waits for the reader, however long they take.
+  await g.wait(60_000);
+  assert.equal(g.ui.stories[0], first);
   const before = g.position;
   local.walkTo({ x: before.x + 400, y: before.y });
   await g.wait(500);
   assert.deepEqual(g.position, before, 'cannot walk away mid-conversation');
 
-  await g.dismiss();
+  first.next();
+  await g.wait(20);
+  assert.match(g.ui.stories[0]!.text, /mission consoles/);
+  g.ui.stories[0]!.next();
+  await g.wait(20);
+  g.ui.stories[0]!.next();
+  await g.wait(20);
+  // The player answers, with their own name and their avatar's close-up.
+  assert.equal(g.ui.stories[0]!.name, 'Tester');
+  assert.match(g.ui.stories[0]!.portrait ?? '', /portraits\/avatar-1\.png$/);
+  g.ui.stories[0]!.next();
   await g.wait(50);
+  assert.deepEqual(g.ui.stories, []);
   assert.equal(local.frozen, false);
   await g.walkTo(before.x + 200, before.y);
   assert.notDeepEqual(g.position, before);
+  assert.deepEqual((g.ctx.connection as OfflineConnection).shared, [], 'nothing of the conversation was shown to anyone else');
+});
+
+test('a rockfall is shown to everyone in the scene, and the shared variable closes the path for all', async () => {
+  const g = await startIn(5);
+  const connection = g.ctx.connection as OfflineConnection;
+  assert.equal(g.var('rockfall'), 0);
+  await g.click(1380, 640);
+  assert.match(g.box?.html ?? '', /blocked for everyone/);
+  await g.choose('Give them a push');
+  await g.wait(100);
+  assert.ok(g.ui.texts.some((t) => t.startsWith('RUMBLE!')));
+  assert.deepEqual(connection.shared.map((s) => [s.event_id, s.action_id]), [[553, 55301], [553, 55302], [553, 55303]], 'the text, the boulder and its fall go to the other players; the variable does not');
+  await g.wait(1500);
+  assert.equal(g.var('rockfall'), 1);
+  assert.equal(connection.state.vars.get('rockfall'), '1', 'the variable is the room\'s, so it is the same for every player');
+
+  // The shortcut is gone and the pile is in its place.
+  await g.click(1700, 800);
+  await g.wait(100);
+  assert.equal(g.sceneName, 'spring-meadow');
+  assert.ok(g.ui.texts.some((t) => t.startsWith('Boulders cover the cliff path')));
+
+  // Another player, who was standing in the meadow, is shown the fall without setting anything off themselves.
+  const other = await startIn(5);
+  (other.ctx.connection as OfflineConnection).deliver({ session_id: 'ann', event_id: 553, action_id: 55301 });
+  (other.ctx.connection as OfflineConnection).deliver({ session_id: 'ann', event_id: 553, action_id: 55304 });
+  await other.wait(20);
+  assert.ok(other.ui.texts.some((t) => t.startsWith('RUMBLE!')));
+  assert.equal(other.var('rockfall'), 0, 'being shown an event changes nothing; the shared variable arrives through the room state');
+
+  // The repair drone in the engine room opens it again.
+  const ship = await startIn(12);
+  ship.ctx.vars.apply('rockfall', 'set', 1);
+  await ship.wait(50);
+  await ship.click(1480, 640);
+  await ship.wait(100);
+  assert.equal(ship.var('rockfall'), 0);
+});
+
+test('each player has to greet the critters themselves before the seed vault opens', async () => {
+  const g = await startIn(11);
+  await g.click(300, 560);
+  await g.wait(50);
+  assert.ok(g.ui.texts.some((t) => /say hello to each of them \(0\/3\)/.test(t)));
+  for (const x of [760, 760, 1420, 1830]) {
+    await g.click(x, 790);
+    await g.wait(1700);
+  }
+  assert.equal(g.var('critters_met'), 3, 'greeting the same critter twice counts once');
+  assert.equal(g.ctx.connection.state.vars.has('critters_met'), false, 'a player\'s own variable never enters the shared room state');
+  await g.click(300, 560);
+  await g.wait(50);
+  assert.match(g.box?.html ?? '', /vault slides open for you/);
+  assert.equal(g.var('vault_opened'), 1);
 });
 
 test('in the corridor, distant figures walk slower, but not as slow as their size', async () => {
@@ -135,4 +212,130 @@ test('in the corridor, distant figures walk slower, but not as slow as their siz
   const size = scaleAt(g.scene.def, 900, 720) / scaleAt(g.scene.def, 900, 1100);
   const speed = farSpeed / nearSpeed;
   assert.ok(speed < 1 && speed > size, `size ratio ${size.toFixed(2)}, speed ratio ${speed.toFixed(2)}`);
+});
+
+test('music: the scenario has a default, a scene can have its own, and the same track is never restarted', async () => {
+  const g = await startIn(4); // the rocket pad, which has the planet theme
+  assert.equal(g.ctx.music?.mediaId, 30);
+  const planet = g.ctx.music!.sound;
+  await g.walkOff('left', 'planet-landing');
+  assert.equal(g.ctx.music!.sound, planet, 'the next planet scene has the same music: it carries on');
+  await g.walkOff('right', 'planet-surface');
+  await g.click(1750, 825);
+  await g.hold([], () => g.sceneName === 'control-room');
+  await g.wait(50);
+  assert.equal(g.ctx.music?.mediaId, 31, 'the control room names no music, so the scenario default plays');
+  assert.equal(g.scenario.music_media_id, 31);
+});
+
+test('a speech bubble stays on screen: above, below, or beside the speaker', async () => {
+  const { placeBubble } = await import('../src/ui/bubble');
+  const size = { width: 300, height: 80 };
+  const view = { width: 1000, height: 600 };
+  const above = placeBubble({ x: 500, top: 300, bottom: 420 }, size, view);
+  assert.deepEqual([above.side, above.left, above.top, above.tail], ['above', 350, 206, 150]);
+
+  const top = placeBubble({ x: 500, top: 30, bottom: 150 }, size, view);
+  assert.deepEqual([top.side, top.top], ['below', 164], 'no room above: it goes below');
+
+  const edge = placeBubble({ x: 980, top: 300, bottom: 420 }, size, view);
+  assert.equal(edge.left, 692, 'near the right edge it slides left to stay in view');
+  assert.equal(edge.tail, 282, 'and its tail still points at the speaker');
+
+  const tall = placeBubble({ x: 200, top: 40, bottom: 580, width: 100 }, size, view);
+  assert.deepEqual([tall.side, tall.left], ['right', 264], 'a speaker filling the height: beside them, on the side with room');
+  const tallRight = placeBubble({ x: 900, top: 40, bottom: 580, width: 100 }, size, view);
+  assert.deepEqual([tallRight.side, tallRight.left], ['left', 536]);
+});
+
+test('stars and XP: an award shows on screen, a rank is earned, and the marketplace dresses the avatar', async () => {
+  const scenario = loadScenario();
+  // A mission-specific item and an award, as an author would add them in the editor.
+  scenario.shop_items = [
+    { id: 900, scenario_id: scenario.id, name: 'Mission badge', kind: 'wearable', slot: 'body', price: 30, media_id: 10 },
+    { id: 901, scenario_id: scenario.id, name: 'Bounce', kind: 'animation', price: 10, animation: 'bounce' },
+    { id: 902, scenario_id: scenario.id, name: 'Translator', kind: 'ability', price: 5, ability: 'translator' },
+  ];
+  const room = scenario.scenes.find((s) => s.id === 2)!;
+  room.indirect_events!.push({ id: 9900, actions: [
+    { id: 990001, type: 'award', stars: 40, xp: 120, note: 'Well done', sequence: 1 },
+    { id: 990002, type: 'shop', sequence: 2 },
+    { id: 990003, type: 'award', stars: -15, sequence: 3 },
+  ] } as never);
+  scenario.session = { scene_id: 2 };
+  const g = new Game(scenario);
+  await g.wait(100);
+  assert.deepEqual(g.ui.hud, { stars: 0, xp: 0, rank: 'Cadet', next_rank_xp: 100 });
+  assert.equal(g.var('QBLAbility_translator'), 0);
+
+  void (g.scene as any).engine.trigger(room.indirect_events!.at(-1));
+  await g.wait(50);
+  assert.deepEqual(g.ui.hud, { stars: 40, xp: 120, rank: 'Explorer', next_rank_xp: 300 }, 'the award is on screen and the XP earned a rank');
+  assert.equal(g.var('QBLStars'), 40);
+
+  // The shop action opened the marketplace; the event waits for it to be closed.
+  const shop = g.ui.shopOpen!;
+  assert.deepEqual(shop.view().items.map((i) => [i.name, i.mission, i.owned]), [['Mission badge', true, false], ['Bounce', true, false], ['Translator', true, false]]);
+  await shop.on.buy(900);
+  await shop.on.buy(902);
+  await assert.rejects(shop.on.buy(901), /enough stars/, '5 stars left: not enough for the 10-star item');
+  await shop.on.equip(900, true);
+  await shop.on.equip(902, true);
+  assert.equal(shop.view().stars, 5);
+  await g.wait(50);
+  assert.equal(g.ctx.connection.me!.look, '900,902', 'the room knows what the player wears, so other players see it');
+  assert.equal(g.var('QBLAbility_translator'), 1, 'an equipped ability is a variable scenarios can test');
+  const worn = (avatar(g) as any).worn as Map<number, unknown>;
+  assert.deepEqual([...worn.keys()], [900], 'the badge is drawn on the avatar; abilities are not drawn');
+
+  assert.equal(g.ui.hud!.stars, 5);
+  shop.close();
+  await g.wait(50);
+  assert.equal(g.ui.hud!.stars, 0, 'the event carried on after the shop closed: stars taken away, never below zero');
+});
+
+test('the marketplace is a room on the ship; a mission item bought there opens something on the planet', async () => {
+  const g = await startIn(3);
+  // Without the survey map there is no map table at the landing site.
+  assert.equal(g.var('QBLAbility_stream_map'), 0);
+  await g.click(560, 850);
+  assert.equal(g.box, undefined);
+
+  // Down the corridor, through the door on the left, to the stalls.
+  const ship = await startIn(9);
+  ship.ctx.rewards.pretend(40);
+  await ship.walkTo(640, 700);
+  await ship.hold([], () => ship.sceneName === 'marketplace');
+  await ship.click(850, 640);
+  const shop = ship.ui.shopOpen!;
+  assert.deepEqual(shop.view().items.filter((i) => i.mission).map((i) => [i.name, i.kind, i.price]), [['Wilting Stream patch', 'wearable', 20], ['Stream survey map', 'ability', 15]]);
+  await shop.on.buy(102);
+  await shop.on.equip(102, true);
+  await shop.on.buy(101);
+  await shop.on.equip(101, true);
+  assert.equal(shop.view().stars, 5);
+  shop.close();
+  await ship.wait(50);
+  await ship.click(2060, 620);
+  assert.match(ship.box!.html, /You have <b>5<\/b>/, 'reserved variables can be shown in text');
+  await ship.dismiss();
+  await ship.walkOff('down', 'corridor');
+  assert.deepEqual(ship.position, { x: 700, y: 705 }, 'back in the corridor beside the market door');
+
+  // The map's owner sees the map table.
+  g.ctx.rewards.pretend(15);
+  await g.ctx.rewards.buy(102);
+  await g.ctx.rewards.equip(102, true);
+  await g.wait(50);
+  await g.click(560, 850);
+  assert.match(g.box?.html ?? '', /Stream survey map/);
+});
+
+test('in a preview an award is given once, unless it repeats', async () => {
+  const g = await startIn(2);
+  const once = { id: 1, type: 'award', stars: 5, sequence: 1 } as never;
+  const again = { id: 2, type: 'award', stars: 1, repeatable: true, sequence: 1 } as never;
+  g.ctx.rewards.simulate(once); g.ctx.rewards.simulate(once);
+  g.ctx.rewards.simulate(again); g.ctx.rewards.simulate(again);
+  assert.equal(g.ctx.rewards.progress!.stars, 7);
 });

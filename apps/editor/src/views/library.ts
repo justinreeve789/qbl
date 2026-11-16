@@ -1,9 +1,9 @@
 import type { Row, Table } from '../api';
 import { mediaLabel, mediaUrl, params } from '../describe';
 import { confirmDelete, h, toast } from '../dom';
-import { form, withValue, type Field, type FormContext } from '../fields';
+import { form, select, withValue, type Field, type FormContext } from '../fields';
 import {
-  CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS, ITEM_FIELDS, ITEM_SETTINGS_FIELDS, MEDIA_FIELDS, OBJECTIVE_FIELDS, VARIABLE_FIELDS,
+  CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS, SHOP_ABILITY, SHOP_ANIMATION, SHOP_ITEM_FIELDS, SHOP_SLOT, SHOP_WEARABLE_FIELDS, ITEM_FIELDS, ITEM_SETTINGS_FIELDS, MEDIA_FIELDS, OBJECTIVE_FIELDS, VARIABLE_FIELDS,
 } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 
@@ -19,15 +19,56 @@ const removeButton = (ctx: FormContext, table: Table, row: Row, what: string) =>
 
 // --------------------------------------------------------------------- media
 
+const MEDIA_TABS = [
+  ['all', 'All', '🗂️'], ['background', 'Backgrounds', '🏞️'], ['character', 'NPCs', '🧑‍🚀'], ['avatar', 'Avatars', '👤'],
+  ['item', 'Items', '🎒'], ['vehicle', 'Vehicles', '🚙'], ['audio', 'Sounds and music', '🔊'], ['video', 'Video', '🎬'], ['shop', 'Shop items', '🛍️'], ['other', 'Other images', '🖼️'],
+] as const;
+type MediaTab = (typeof MEDIA_TABS)[number][0];
+/** The sub-tab showing. Kept outside the view so a redraw does not reset it. */
+let mediaTab: MediaTab = 'all';
+
+/**
+ * Which sub-tab a file belongs under. By default this follows how it is used (a scene layer is a
+ * background, a character's picture is an NPC, and so on); a file can also be filed by hand,
+ * which is what puts a fresh upload under the tab it was uploaded from.
+ */
+function mediaCategory(ctx: FormContext, media: Row): Exclude<MediaTab, 'all'> {
+  const { store } = ctx;
+  const chosen = params(media).category as string | undefined;
+  if (chosen && MEDIA_TABS.some(([key]) => key === chosen && key !== 'all')) return chosen as Exclude<MediaTab, 'all'>;
+  if (media.type === 'audio') return 'audio';
+  if (media.type === 'video') return 'video';
+  const id = media.id;
+  const layers = store.rows('scenes').flatMap((s) => [...((s.background_media as Array<Record<string, unknown>> | null) ?? []), ...((s.foreground_media as Array<Record<string, unknown>> | null) ?? [])]);
+  if (layers.some((l) => (l.media_id ?? l.id) === id)) return 'background';
+  if (store.rows('characters').some((c) => c.media_id === id || params(c, 'settings').portrait_media_id === id)) return 'character';
+  if (((store.settings.avatar_media_ids as number[] | undefined) ?? []).includes(id)) return 'avatar';
+  if (Object.values((store.settings.avatar_portraits as Record<string, number> | undefined) ?? {}).includes(id)) return 'avatar';
+  const item = store.rows('items').find((i) => i.media_id === id);
+  if (item) return item.vehicle ? 'vehicle' : 'item';
+  if (store.rows('shop_items').some((i) => i.media_id === id)) return 'shop';
+  return 'other';
+}
+
 export function mediaPage(ctx: FormContext): HTMLElement {
   const { store } = ctx;
   const avatars = () => (store.settings.avatar_media_ids as number[] | undefined) ?? [];
+  const portraits = () => (store.settings.avatar_portraits as Record<string, number> | undefined) ?? {};
+  const setPortrait = (avatarId: number, portraitId: string) => {
+    const next = { ...portraits() };
+    if (portraitId) next[String(avatarId)] = Number(portraitId);
+    else delete next[String(avatarId)];
+    return store.patchSettings({ avatar_portraits: next }, true);
+  };
 
   const file = h('input', { type: 'file', multiple: true, hidden: true, accept: 'image/png,image/jpeg,image/webp,image/gif,audio/*,video/mp4,video/webm' });
   file.addEventListener('change', async () => {
     for (const picked of [...(file.files ?? [])]) {
       try {
-        store.bundle.media.push(await store.api.upload(store.scenarioId, picked));
+        const row = await store.api.upload(store.scenarioId, picked);
+        store.bundle.media.push(row);
+        // File it under the tab it was uploaded from, until how it is used says otherwise.
+        if (mediaTab !== 'all' && mediaTab !== 'audio' && mediaTab !== 'video' && row.type === 'image') void store.patch('media', row.id, { params: { ...params(row), category: mediaTab } });
       } catch (err) {
         toast(`${picked.name}: ${err instanceof Error ? err.message : 'upload failed'}`, 'error');
       }
@@ -44,7 +85,18 @@ export function mediaPage(ctx: FormContext): HTMLElement {
     void store.add('media', { type, url, filename: url.split(/[?#]/)[0]!.split('/').pop() });
   };
 
-  const cards = store.rows('media').map((media) => {
+  const categories = new Map(store.rows('media').map((m) => [m.id, mediaCategory(ctx, m)]));
+  const count = (tab: MediaTab) => (tab === 'all' ? categories.size : [...categories.values()].filter((c) => c === tab).length);
+  const tabs = h('div', { class: 'subtabs', role: 'tablist', 'aria-label': 'Kinds of media' }, ...MEDIA_TABS.map(([key, label, icon]) =>
+    h('button', {
+      type: 'button', role: 'tab', class: mediaTab === key ? 'current' : null, 'aria-selected': String(mediaTab === key), 'data-tab': key,
+      onclick: () => {
+        mediaTab = key;
+        store.emit();
+      },
+    }, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, icon), label, h('small', null, count(key)))));
+
+  const cards = store.rows('media').filter((m) => mediaTab === 'all' || categories.get(m.id) === mediaTab).map((media) => {
     const id = media.id;
     const url = mediaUrl(store, media);
     const preview =
@@ -54,7 +106,8 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       : h('video', { class: 'preview', src: url, controls: true, preload: 'none' });
     const avatar = h('input', {
       type: 'checkbox', checked: avatars().includes(id),
-      onchange: () => void store.patchSettings({ avatar_media_ids: avatar.checked ? [...avatars(), id] : avatars().filter((a) => a !== id) }),
+      // Structural: an avatar's card gains a portrait picker, and the card may move to another tab.
+      onchange: () => void store.patchSettings({ avatar_media_ids: avatar.checked ? [...avatars(), id] : avatars().filter((a) => a !== id) }, true),
     });
     return h(
       'div',
@@ -63,6 +116,17 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       preview,
       form(MEDIA_FIELDS, media, (key, value, field) => void store.patch('media', id, { [key]: value }, key === 'url' || field.structural === true), ctx),
       media.type === 'image' ? h('label', { class: 'field check wide' }, avatar, h('span', null, 'Players can choose this as their avatar')) : null,
+      avatars().includes(id)
+        ? h('label', { class: 'field wide', 'data-field': 'avatar_portrait' }, h('span', { class: 'field-label' }, 'Close-up portrait'),
+            select(store.rows('media').filter((m) => m.type === 'image' && m.id !== id).map((m) => [String(m.id), mediaLabel(m)] as const), String(portraits()[String(id)] ?? ''),
+              (v) => void setPortrait(id, v), 'None: the avatar itself'),
+            h('small', null, 'Shown when a player with this avatar speaks in a story box.'))
+        : null,
+      media.type === 'image'
+        ? h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Filed under'),
+            select(MEDIA_TABS.filter(([key]) => !['all', 'audio', 'video'].includes(key)).map(([key, label]) => [key, label] as const), String(params(media).category ?? ''),
+              (v) => void store.patch('media', id, { params: withValue(params(store.byId('media', id)!), 'category', v) }, true), `Automatic (${MEDIA_TABS.find(([key]) => key === categories.get(id))?.[1]})`))
+        : null,
       h('div', { class: 'row-actions' }, removeButton(ctx, 'media', media, `“${mediaLabel(media)}”. Anything using it will be left without it`)),
     );
   });
@@ -71,7 +135,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
     'Media',
     'The images, sounds and videos the scenario uses. Upload files, or point at files already on the web.',
     [h('button', { type: 'button', class: 'primary', onclick: () => file.click() }, 'Upload files'), h('button', { type: 'button', onclick: addByAddress }, 'Add by address'), file],
-    cards.length ? h('div', { class: 'grid' }, ...cards) : none('No media yet. Upload a background image to get started.'),
+    h('div', null, tabs, cards.length ? h('div', { class: 'grid' }, ...cards) : none(mediaTab === 'all' ? 'No media yet. Upload a background image to get started.' : 'Nothing here yet. Upload a file while this tab is open and it is filed here.')),
   );
 }
 
@@ -86,14 +150,15 @@ export function variablesPage(ctx: FormContext): HTMLElement {
   const rows = store.rows('variables').map((variable) =>
     h(
       'div',
-      { class: 'card row-card' },
-      form(VARIABLE_FIELDS, variable, (key, value) => void store.patch('variables', variable.id, { [key]: value ?? (key === 'default_value' ? 0 : value) }), ctx),
+      { class: 'card row-card', 'data-variable': String(variable.variable_name) },
+      h('span', { class: `badge scope-${variable.scope === 'room' ? 'room' : 'player'}` }, variable.scope === 'room' ? '🌐 Shared' : '👤 Each player'),
+      form(VARIABLE_FIELDS, variable, (key, value, field) => void store.patch('variables', variable.id, { [key]: value ?? (key === 'default_value' ? 0 : value) }, field.structural === true), ctx),
       h('div', { class: 'row-actions' }, removeButton(ctx, 'variables', variable, `the variable “${variable.variable_name}”`)),
     ),
   );
   return page(
     'Variables',
-    'What the scenario remembers: scores, what has been collected, which step of a quest a player is on. Conditions test them and “Variable” actions change them.',
+    'What the scenario remembers. Conditions test variables and “Variable” actions change them. Each one is either a player’s own or shared. A player’s own: every player has a separate value, so one player’s progress does not move another’s (how many animals this player has petted, which step of the quest they are on). Shared: one value for everyone playing together, so when one player changes it, it changes for all of them (the boulders have fallen and the path is blocked for everybody).',
     [h('button', { type: 'button', class: 'primary', onclick: add }, 'New variable')],
     rows.length ? h('div', { class: 'stack' }, ...rows) : none('No variables yet.'),
   );
@@ -184,5 +249,37 @@ export function objectivesPage(ctx: FormContext): HTMLElement {
     'The checklist players see during the mission. Each line is ticked off by variables, so events move the mission along simply by changing them.',
     [h('button', { type: 'button', class: 'primary', onclick: add }, 'New objective')],
     cards.length ? h('div', { class: 'stack' }, ...cards) : none('No objectives: players see no checklist.'),
+  );
+}
+
+// ---------------------------------------------------------------------- shop
+
+/** Mission-specific things for sale. The platform's own catalogue is sold alongside in every scenario. */
+export function shopPage(ctx: FormContext): HTMLElement {
+  const { store } = ctx;
+  const cards = store.rows('shop_items').map((item) => {
+    const id = item.id;
+    const kind = item.kind as string;
+    const url = mediaUrl(store, store.byId('media', item.media_id as number | null));
+    const settings = (key: string, value: unknown, field: Field) => void store.patch('shop_items', id, { settings: withValue(params(store.byId('shop_items', id)!, 'settings'), key, value, field) });
+    const column = (key: string, value: unknown, field: Field) => void store.patch('shop_items', id, { [key]: value }, key === 'media_id' || field.structural === true);
+    return h(
+      'div',
+      { class: 'card', 'data-shop': id },
+      h('div', { class: 'card-title' }, h('strong', null, String(item.name)), h('span', { class: 'badge' }, `⭐ ${item.price}`)),
+      url ? h('img', { class: 'preview small', src: url, alt: '' }) : null,
+      form(SHOP_ITEM_FIELDS, item, column, ctx),
+      kind === 'wearable' ? form([SHOP_SLOT], item, column, ctx) : null,
+      kind === 'wearable' || kind === 'pet' ? form(SHOP_WEARABLE_FIELDS, params(item, 'settings'), settings, ctx) : null,
+      kind === 'animation' ? form([SHOP_ANIMATION], params(item, 'settings'), settings, ctx) : null,
+      kind === 'ability' ? form([SHOP_ABILITY], params(item, 'settings'), settings, ctx) : null,
+      h('div', { class: 'row-actions' }, removeButton(ctx, 'shop_items', item, `“${item.name}”. Players who bought it will lose it, and their stars are not returned`)),
+    );
+  });
+  return page(
+    'Shop',
+    'Things only this scenario sells: a mission badge, a tool for this planet, a pet found here. Players buy them with stars in the marketplace, which also sells the platform’s items everywhere. Add an “Open the marketplace” action to a hotspot to let players in; they can also open it from their stars at any time.',
+    [h('button', { type: 'button', class: 'primary', onclick: () => void store.add('shop_items', { name: 'New item', kind: 'wearable', slot: 'head', price: 10 }) }, 'New item')],
+    cards.length ? h('div', { class: 'grid' }, ...cards) : none('This scenario sells nothing of its own. Players still see the platform’s items.'),
   );
 }

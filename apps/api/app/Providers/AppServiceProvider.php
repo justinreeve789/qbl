@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Qbl\ProgressStore;
 use App\Qbl\ScenarioStore;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -16,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
             config('qbl.media_dir'),
             config('qbl.media_url'),
         ));
+        $this->app->singleton(ProgressStore::class, fn () => new ProgressStore(DB::connection()->getPdo(), config('qbl.ranks')));
     }
 
     public function boot(): void

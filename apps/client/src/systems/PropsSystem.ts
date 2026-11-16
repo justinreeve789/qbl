@@ -35,7 +35,15 @@ export class PropsSystem implements SceneSystem {
   private objects: Phaser.GameObjects.GameObject[] = [];
   private pointerOver = 0;
 
+  private characters = new Map<Id, { image: Phaser.GameObjects.Image; name: string }>();
+
   constructor(private rt: SceneRuntime) {}
+
+  /** Where a placed character stands (feet) and how tall it is drawn, for speech bubbles. */
+  characterAt(characterId: Id): { x: number; y: number; height: number; name: string } | null {
+    const c = this.characters.get(characterId);
+    return c ? { x: c.image.x, y: c.image.y, height: c.image.displayHeight, name: c.name } : null;
+  }
 
   create() {
     const { ctx, def } = this.rt;
@@ -91,6 +99,7 @@ export class PropsSystem implements SceneSystem {
       .setScale((character.scale ?? 1) * zoom * scaleAt(def, placement.position_x, placement.position_y))
       .setFlipX(placement.facing === 'left')
       .setDepth(placement.position_y);
+    this.characters.set(character.id, { image, name: character.name });
     const name = scene.add
       .text(placement.position_x, placement.position_y - image.displayHeight - 6, character.name, NAME_STYLE)
       .setOrigin(0.5, 1)

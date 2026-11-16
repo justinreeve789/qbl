@@ -20,7 +20,8 @@ class AuthController extends Controller
 
         $user = User::where('email', $data['email'])->first();
 
-        if (! $user || $user->role === 'guest' || ! Hash::check($data['password'], $user->password)) {
+        // An account that has only ever signed in with Google has no password to check.
+        if (! $user || $user->role === 'guest' || ! $user->password || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages(['email' => 'These credentials do not match our records.']);
         }
 

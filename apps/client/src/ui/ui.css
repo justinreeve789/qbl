@@ -19,6 +19,8 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-card label { display: grid; gap: 6px; font-size: 0.9rem; }
 .qbl-card input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.25); color: inherit; font: inherit; }
 .qbl-fields { display: grid; gap: 14px; }
+.qbl-google { background: #fff; color: #1f2937; }
+.qbl-google[hidden] { display: none; }
 .qbl-link { border: 0; background: none; color: #bfe0ff; font: inherit; font-size: 0.9rem; text-decoration: underline; cursor: pointer; justify-self: start; padding: 0; }
 .qbl-link[hidden] { display: none; }
 .qbl-error { margin: 0; min-height: 1.2em; color: #ffb4b4; font-size: 0.9rem; }
@@ -97,3 +99,76 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-infobox-body th, .qbl-infobox-body td { padding: 6px 8px; border: 1px solid rgba(255, 255, 255, 0.35); text-align: left; vertical-align: top; }
 .qbl-infobox-body th { background: rgba(255, 255, 255, 0.12); }
 .qbl-infobox-body img { border-radius: 8px; display: block; margin: 0 auto; height: auto; }
+
+/* Speech bubbles for dialogue actions. Placed by ui/bubble.ts so they stay on screen. */
+.qbl-bubble {
+  position: fixed; z-index: 30; max-width: min(340px, 80vw); padding: 10px 14px; border-radius: 14px;
+  background: #fff; color: #1b1f27; font-size: 16px; line-height: 1.35; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: auto; cursor: pointer; white-space: pre-wrap;
+}
+.qbl-bubble-name { display: block; font-size: 12px; color: #4b5563; margin-bottom: 2px; }
+.qbl-bubble::after { content: ''; position: absolute; width: 14px; height: 14px; background: #fff; transform: rotate(45deg); }
+.qbl-bubble[data-side='above']::after { left: calc(var(--tail) - 7px); bottom: -6px; }
+.qbl-bubble[data-side='below']::after { left: calc(var(--tail) - 7px); top: -6px; }
+.qbl-bubble[data-side='right']::after { top: calc(var(--tail) - 7px); left: -6px; }
+.qbl-bubble[data-side='left']::after { top: calc(var(--tail) - 7px); right: -6px; }
+
+/* Portrait dialogue: a story box across the bottom of the screen, the speaker's close-up standing on its edge. */
+.qbl-story {
+  position: absolute; left: 50%; bottom: 22px; z-index: 32; transform: translateX(-50%); box-sizing: border-box;
+  width: min(820px, 94vw); min-height: 132px; padding: 20px 26px 22px 178px; border-radius: 18px;
+  background: linear-gradient(180deg, rgba(27, 33, 58, 0.97), rgba(13, 16, 32, 0.97)); color: #fff;
+  border: 2px solid #e6c36a; box-shadow: 0 0 0 4px rgba(13, 16, 32, 0.9), 0 14px 40px rgba(0, 0, 0, 0.55);
+  pointer-events: auto; cursor: pointer; animation: qbl-story-in 0.22s ease-out;
+}
+@keyframes qbl-story-in { from { opacity: 0; transform: translate(-50%, 16px); } }
+.qbl-story-portrait {
+  position: absolute; left: 22px; bottom: 18px; width: 136px; height: 164px; overflow: hidden; border-radius: 14px;
+  background: radial-gradient(circle at 50% 30%, #4a5a94, #1b2140); border: 2px solid #e6c36a; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  display: grid; place-items: center; font-size: 64px; font-weight: 700; color: rgba(255, 255, 255, 0.7);
+}
+.qbl-story-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.qbl-story-name {
+  display: inline-block; margin: -34px 0 10px -6px; padding: 4px 14px; border-radius: 999px; transform: translateY(-4px);
+  background: #e6c36a; color: #1b1f27; font-size: 15px; letter-spacing: 0.02em;
+}
+.qbl-story-text { margin: 0; min-height: 3.9em; font-size: 19px; line-height: 1.45; white-space: pre-wrap; }
+.qbl-story-more { position: absolute; right: 20px; bottom: 12px; color: #e6c36a; font-size: 15px; animation: qbl-story-more 1s ease-in-out infinite; }
+@keyframes qbl-story-more { 50% { transform: translateX(4px); opacity: 0.5; } }
+/* Someone else's conversation, seen in passing: smaller, out of the way, and it never takes a click it was not given. */
+.qbl-story.watching { bottom: auto; top: 64px; width: min(560px, 80vw); min-height: 96px; padding: 14px 18px 14px 112px; opacity: 0.94; }
+.qbl-story.watching .qbl-story-portrait { left: 14px; bottom: 12px; width: 84px; height: 96px; font-size: 40px; }
+.qbl-story.watching .qbl-story-text { font-size: 15px; min-height: 0; }
+.qbl-story.watching .qbl-story-name { margin-top: -26px; font-size: 13px; }
+@media (max-width: 560px) {
+  .qbl-story { padding-left: 118px; min-height: 110px; }
+  .qbl-story-portrait { width: 86px; height: 104px; left: 14px; }
+  .qbl-story-text { font-size: 16px; }
+}
+
+/* Stars, XP and rank: top left, and the door to the marketplace. */
+.qbl-rewards {
+  position: absolute; top: 12px; left: 12px; display: flex; gap: 10px; align-items: baseline; padding: 6px 12px; border: 0; border-radius: 999px;
+  background: rgba(16, 20, 30, 0.82); color: #fff; font: inherit; cursor: pointer; pointer-events: auto;
+}
+.qbl-rewards:hover { background: rgba(30, 40, 62, 0.95); }
+.qbl-stars { font-weight: 700; color: #ffd24a; }
+.qbl-rank { font-weight: 600; }
+.qbl-xp { font-size: 12px; opacity: 0.8; }
+.qbl-shop { width: min(860px, 94vw); max-height: 86vh; overflow: auto; padding: 16px 20px 20px; border-radius: 14px; background: #1f2430; color: #fff; pointer-events: auto; }
+.qbl-shop-head { display: flex; align-items: center; gap: 14px; }
+.qbl-shop-head h2 { margin: 0; flex: 1; font-size: 22px; }
+.qbl-shop-close { border: 0; background: none; color: #fff; font-size: 26px; cursor: pointer; }
+.qbl-shop-tabs { display: flex; gap: 6px; margin: 10px 0; }
+.qbl-shop-tabs button, .qbl-shop-item button { border: 0; border-radius: 999px; padding: 6px 14px; background: #343c4f; color: #fff; font: inherit; cursor: pointer; }
+.qbl-shop-tabs button.current, .qbl-shop-item button:not(:disabled) { background: #2f6fed; }
+.qbl-shop-item button:disabled { opacity: 0.5; cursor: default; }
+.qbl-shop h3 { margin: 14px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #b9c2d6; }
+.qbl-shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.qbl-shop-item { display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; padding: 12px; border-radius: 12px; background: #2a3141; border: 2px solid transparent; }
+.qbl-shop-item.on { border-color: #ffd24a; }
+.qbl-shop-item img { width: 84px; height: 84px; object-fit: contain; }
+.qbl-shop-item small { color: #c5cce0; font-size: 12px; flex: 1; }
+.qbl-shop-tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: #7a4fd6; }
+.qbl-shop-message { color: #ffb4ab; margin: 6px 0; }
+.qbl-shop-empty { color: #c5cce0; padding: 24px; text-align: center; }

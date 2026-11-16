@@ -6,7 +6,8 @@ import { ObjectivesFeature } from '../src/features/ObjectivesFeature';
 import { OfflineConnection } from '../src/net/Connection';
 import { PlayScene } from '../src/scenes/PlayScene';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
-import type { InfoboxHandle, OverlayHandle, UiPort } from '../src/ui/UiPort';
+import { RewardsFeature } from '../src/features/RewardsFeature';
+import type { InfoboxHandle, OverlayHandle, ShopView, UiPort } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
@@ -45,6 +46,36 @@ export class HeadlessUi implements UiPort {
     };
     if (duration && duration > 0) this.world.schedule(duration, end);
     return { done, cancel: end, transition() {} };
+  }
+  /** The stars display, as last drawn. */
+  hud: { stars: number; xp: number; rank: string } | null = null;
+  rewards(state: { stars: number; xp: number; rank: string } | null) { this.hud = state; }
+  /** The marketplace, when open: what it shows and the buttons it offers. */
+  shopOpen: { view: () => ShopView; on: { buy(id: number): Promise<void>; equip(id: number, on: boolean): Promise<void> }; close(): void } | null = null;
+  shop(view: () => ShopView, on: { buy(id: number): Promise<void>; equip(id: number, on: boolean): Promise<void> }) {
+    let finish!: () => void;
+    const done = new Promise<void>((r) => (finish = r));
+    const close = () => { this.shopOpen = null; finish(); };
+    this.shopOpen = { view, on, close };
+    return { done, cancel: close };
+  }
+  /** Lines of dialogue showing now, as "speaker: text". */
+  dialogues: string[] = [];
+  dialogue(text: string, o: { name?: string; duration: number }) { return this.overlay(this.dialogues, `${o.name ?? 'player'}: ${text}`, o.duration); }
+  /** Portrait boxes showing now. `next()` is the player clicking to continue. */
+  stories: Array<{ name?: string; text: string; portrait?: string; watching: boolean; next(): void }> = [];
+  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean }) {
+    let finish!: () => void;
+    const done = new Promise<void>((r) => (finish = r));
+    const entry = { name: o.name, text, portrait: o.portrait, watching: !!o.watching, next: () => end() };
+    const end = () => {
+      const i = this.stories.indexOf(entry);
+      if (i >= 0) this.stories.splice(i, 1);
+      finish();
+    };
+    this.stories.push(entry);
+    if (o.duration > 0) this.world.schedule(o.duration, end);
+    return { done, cancel: end };
   }
   textOverlay(text: string, o: { duration?: number }) { return this.overlay(this.texts, text, o.duration); }
   imageOverlay(url: string, o: { duration?: number }) { return this.overlay(this.images, url, o.duration); }
@@ -94,6 +125,9 @@ export class Game {
   constructor(readonly scenario: Scenario = loadScenario(), user: User = { id: 'u1', name: 'Tester', role: 'student' }) {
     const connection = new OfflineConnection(scenario, user, scenario.avatar_media_ids?.[0], () => this.world.now);
     this.ctx = new GameContext(scenario, user, connection, this.ui);
+    // Like a preview: an account to try awards and the marketplace with, kept only in memory.
+    this.ctx.rewards.pretend();
+    new RewardsFeature().start(this.ctx);
     this.world.registry.set('ctx', this.ctx);
     this.world.mount(this.scene as never);
     this.ctx.vars.onChange(() => this.objectives.refresh(this.ctx));

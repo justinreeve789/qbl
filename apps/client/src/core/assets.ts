@@ -1,8 +1,7 @@
 import type * as Phaser from 'phaser';
 import {
   collectGlobalMediaIds, collectSceneMediaIds, resolveMediaUrl,
-  type Id, type Media, type Scene, type Spritemap,
-} from '@qbl/shared';
+  type Id, type Media, type Scene, type Spritemap, type ShopItem } from '@qbl/shared';
 import type { GameContext } from './GameContext';
 
 export const mediaKey = (id: Id) => `media-${id}`;
@@ -31,8 +30,25 @@ export function queueMedia(scene: Phaser.Scene, ctx: GameContext, ids: Id[]): nu
 }
 
 /** Queue what a scene needs to be shown, plus media that travels with players. */
+/** The texture a shop item is drawn with: one of the scenario's media, or its own picture. */
+export function shopTexture(item: ShopItem): string | null {
+  if (item.media_id != null) return mediaKey(item.media_id);
+  return item.image_url ? `shop:${item.id}` : null;
+}
+
+/** Pictures of everything the marketplace sells, so avatars can wear them in any scene. */
+function queueShop(scene: Phaser.Scene, ctx: GameContext): number {
+  let queued = 0;
+  for (const item of ctx.rewards.items.values()) {
+    if (item.media_id != null || !item.image_url || scene.textures.exists(`shop:${item.id}`)) continue;
+    scene.load.image(`shop:${item.id}`, item.image_url);
+    queued++;
+  }
+  return queued;
+}
+
 export function queueScene(scene: Phaser.Scene, ctx: GameContext, target: Scene): number {
-  return queueMedia(scene, ctx, [...collectGlobalMediaIds(ctx.scenario), ...collectSceneMediaIds(ctx.scenario, target)]);
+  return queueShop(scene, ctx) + queueMedia(scene, ctx, [...collectGlobalMediaIds(ctx.scenario), ...collectSceneMediaIds(ctx.scenario, target)]);
 }
 
 /** Load in the background everything reachable from a scene, so the next jump is instant. */

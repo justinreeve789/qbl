@@ -1,8 +1,10 @@
+import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
   escapeHtml, interpolate, resolveMediaUrl, ScenarioIndex, VariableStore,
   type Id, type Scenario, type User, type VarValue,
 } from '@qbl/shared';
+import type { AwardAction } from '@qbl/shared';
 import type { GameConnection } from '../net/Connection';
 import type { UiPort } from '../ui/UiPort';
 
@@ -27,6 +29,12 @@ export class GameContext {
   private baseElapsed: number;
   private dirty = false;
 
+  /** Offline only: what to do with an award when there is no server to grant it. Set by the rewards feature. */
+  previewAward: ((action: AwardAction) => void) | null = null;
+
+  /** Stars, XP, rank, belongings and the marketplace. */
+  readonly rewards: Rewards;
+
   constructor(
     readonly scenario: Scenario,
     readonly user: User,
@@ -35,6 +43,7 @@ export class GameContext {
     readonly options: GameOptions = { debug: false },
   ) {
     this.index = new ScenarioIndex(scenario);
+    this.rewards = new Rewards(scenario.shop_items);
     const session = connection.welcome.session;
     this.vars = new VariableStore(scenario.global_variables, session.variables ?? {});
     this.flags = new Set(session.flags ?? []);
