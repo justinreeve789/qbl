@@ -24,6 +24,10 @@ const scenario: Scenario = normalizeScenario({
       spawn_points: [{ name: 'default', position_x: 100, position_y: 400 }, { name: 'east', position_x: 900, position_y: 400 }],
       // The east edge: a walk-in hotspot spanning the whole y-axis whose action jumps to scene 2.
       hotspots: [{ id: 10, position_x: 1000, position_y: null, radius: 20, actions: [{ id: 11, type: 'jump', scene_id: 2, spawn_point: 'west' }] }],
+      indirect_events: [
+        { id: 20, audience: 'scene', actions: [{ id: 21, type: 'text_overlay', text: 'Rumble' }, { id: 22, type: 'variable', name: 'door', operator: 'set', operand: 'open' }] },
+        { id: 30, actions: [{ id: 31, type: 'text_overlay', text: 'Mine' }] },
+      ],
       items: [
         { item_id: 1, position_x: 200, position_y: 400 },
         { item_id: 2, position_x: 150, position_y: 450 },
@@ -166,4 +170,18 @@ test('items: reach, unique ownership, one vehicle, dropping, speed', () => {
   const next = make(world.instanceData());
   assert.deepEqual([next.state.items.get('1')!.scene_id, next.state.items.get('1')!.x], [2, 50]);
   assert.equal(world.findSessionByUser('u2'), 'b');
+});
+
+test('showing an event to the scene: only its shown actions, only to players in the same scene', () => {
+  const { world } = make();
+  const cat: User = { id: 'u3', name: 'Cat', role: 'student' };
+  world.addPlayer('a', ann, null);
+  world.addPlayer('b', bob, null);
+  world.addPlayer('c', cat, { scene_id: 2, position: { x: 50, y: 450 }, variables: {}, flags: [], time_elapsed: 0 } as never);
+  assert.deepEqual(world.show('a', { event_id: 20, action_id: 21 }), ['b'], 'Cat is in another scene');
+  assert.equal(world.show('a', { event_id: 20, action_id: 22 }), null, 'a variable action is not something to show');
+  assert.equal(world.show('a', { event_id: 30, action_id: 31 }), null, 'a private event cannot be pushed onto others');
+  assert.equal(world.show('a', { event_id: 20, action_id: 31 }), null, 'the action must belong to the event');
+  assert.equal(world.show('c', { event_id: 20, action_id: 21 }), null, 'nor from a scene the event is not in');
+  assert.equal(world.show('nobody', { event_id: 20, action_id: 21 }), null);
 });

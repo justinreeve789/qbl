@@ -2,7 +2,7 @@
 **/dist
 .data
 .git
-docs
+docs/site
 apps/api/vendor
 apps/api/.env
 apps/api/database/*.sqlite

@@ -13,7 +13,12 @@ export const RESERVED_VARIABLES = [
   'QBLSceneId',
   'QBLPlayerName',
   'QBLPlayerCount',
+  'QBLStars',
+  'QBLXp',
+  'QBLRank',
 ] as const;
+/** `QBLAbility_<key>` is 1 while the player has a marketplace ability with that key equipped, else 0. */
+export const ABILITY_PREFIX = 'QBLAbility_';
 export type ReservedVariable = (typeof RESERVED_VARIABLES)[number];
 
 export function isReserved(name: string): boolean {
@@ -130,6 +135,8 @@ export class VariableStore {
   get = (name: string): VarValue | undefined => {
     const provider = this.providers.get(name);
     if (provider) return provider();
+    // An ability nobody sells here is simply one the player does not have.
+    if (name.startsWith(ABILITY_PREFIX)) return 0;
     return this.values.get(name);
   };
 

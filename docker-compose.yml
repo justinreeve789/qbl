@@ -1,13 +1,22 @@
-# Five containers:
+# Six containers:
 #   app       Laravel backend (PHP-FPM) + the built Phaser frontend
 #   db        MariaDB
 #   colyseus  multiplayer game server
 #   editor    the scenario editor (a static web application)
+#   docs      the documentation (a static site built with MkDocs)
 #   apache    web server and reverse proxy; the only published port
 #
-#   docker compose up --build        ->  http://localhost:8080           the game
+#   docker compose up --build        ->  http://localhost:8080           the game (after seeding, below)
 #                                        http://localhost:8080/editor    the editor
+#                                        http://localhost:8080/docs      the documentation
 #                                        http://localhost:8080/{code}    one scenario, by its 16-letter code
+#
+#   docker compose exec app php artisan qbl:seed     seeds the marketplace and the demo mission.
+#                                                    Nothing is seeded automatically.
+#
+# Every container speaks plain HTTP. For HTTPS, put a TLS-terminating firewall or load balancer
+# in front of the one published port, have it send X-Forwarded-Proto and X-Forwarded-For, and
+# set QBL_PUBLIC_URL to the https address. See "HTTPS" in the README.
 #
 # The defaults below are for trying it out on your own machine. For anything shared,
 # copy .env.example to .env and set real secrets.
@@ -20,7 +29,10 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_KEY: ${APP_KEY:-}
-      APP_URL: http://localhost:${QBL_HTTP_PORT:-8080}
+      # The address people type. With HTTPS at the firewall this is the https one.
+      APP_URL: ${QBL_PUBLIC_URL:-http://localhost:${QBL_HTTP_PORT:-8080}}
+      # Whose X-Forwarded-* headers Laravel believes: the firewall, and the Docker network Apache is on.
+      TRUSTED_PROXIES: ${QBL_TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1}
       DB_CONNECTION: mariadb
       DB_HOST: db
       DB_PORT: 3306
@@ -33,11 +45,14 @@ services:
       QBL_SERVICE_KEY: ${QBL_SERVICE_KEY:-qbl-local-only-service-key}
       # The seeded demo mission does not require a login, so guests can try it.
       QBL_ALLOW_GUESTS: ${QBL_ALLOW_GUESTS:-true}
-      # Seeds the Starship Explorer mission the first time. After that it can be edited like any other
-      # scenario and is left alone; "reset" puts the shipped version back. Set QBL_SEED_PASSWORD to
-      # also get demo accounts, including a teacher who can use the editor.
-      QBL_SEED: ${QBL_SEED:-true}
+      # Used by "php artisan qbl:seed": when set, it also creates demo accounts with this password,
+      # including a teacher who can use the editor.
       QBL_SEED_PASSWORD: ${QBL_SEED_PASSWORD:-}
+      # Sign in with Google: on when both are set. See "Google sign-in" in the README.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      QBL_GOOGLE_DOMAINS: ${QBL_GOOGLE_DOMAINS:-}
+      QBL_GOOGLE_TEACHER_DOMAINS: ${QBL_GOOGLE_TEACHER_DOMAINS:-}
       # Files uploaded in the editor.
       QBL_MEDIA_DIR: /media-data
     volumes:
@@ -85,11 +100,19 @@ services:
       dockerfile: docker/editor/Dockerfile
     restart: unless-stopped
 
+  docs:
+    build:
+      context: .
+      dockerfile: docker/docs/Dockerfile
+    restart: unless-stopped
+
   apache:
     build:
       context: docker/apache
     ports:
-      - "${QBL_HTTP_PORT:-8080}:80"
+      # Plain HTTP. In production point the firewall at this port, and bind it to an address only
+      # the firewall can reach (QBL_HTTP_BIND=10.0.0.5, or 127.0.0.1 when the firewall is on this host).
+      - "${QBL_HTTP_BIND:-0.0.0.0}:${QBL_HTTP_PORT:-8080}:80"
     volumes:
       - public:/var/www/public:ro
       - media:/var/www/media:ro
@@ -97,6 +120,7 @@ services:
       - app
       - colyseus
       - editor
+      - docs
     restart: unless-stopped
 
 volumes:

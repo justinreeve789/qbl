@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  revealAmount, scaleAt, speedFactorAt,
+  rankFor, revealAmount, scaleAt, sceneMusic, speedFactorAt,
   applyOperator, collectSceneMediaIds, escapeHtml, evaluateObjectives, interpolate, placeholderVariables, MoveBudget, sceneSize, computeJumpTargets, inHotspot, isWalkable,
   nearestWalkable, normalizeActionType, normalizeScenario, resolveMove, ScenarioIndex, SceneEngine,
   testCondition, validateMove, validateScenario, VariableStore, walkContext,
@@ -43,8 +43,12 @@ class FakeHost implements EngineHost {
       },
     };
   }
-  present(action: Action): ActionHandle {
-    this.log.push(`present:${action.id}`);
+  shared: number[] = [];
+  share(_event: GameEvent, action: Action) {
+    this.shared.push(action.id);
+  }
+  present(action: Action, _engine?: unknown, actor?: string): ActionHandle {
+    this.log.push(actor ? `present:${action.id}:from:${actor}` : `present:${action.id}`);
     const ms = this.durations[action.id] ?? ('duration' in action && action.duration ? action.duration : Infinity);
     return this.timed(ms, String(action.id));
   }
@@ -439,14 +443,14 @@ test('starship scenario (generated from seed data): valid, edges and music in ev
     }
     // Every scene has music: a start event with a repeating, persistent audio action.
     const music = scene.start_events!.flatMap((e) => e.actions).find((a) => a.type === 'audio' && a.persist && a.repeat);
-    assert.ok(music, `${scene.shortname} starts background music`);
+    assert.ok(music || sceneMusic(scenario, scene), `${scene.shortname} has background music, its own or the scenario's`);
   }
   const targets = computeJumpTargets(scenario);
   const sorted = Object.fromEntries(Object.entries(targets).map(([k, v]) => [k, [...v].sort((a, b) => a - b)]));
   // Landing site 3 <-> rocket pad 4 <-> control room 2 <-> deck 1 and lab 8; the stream runs 3 <-> marsh 7 <-> gully 6 <-> meadow 5.
   assert.deepEqual(sorted, {
-    '1': [2], '2': [1, 4, 8, 9], '3': [4, 7], '4': [2, 3], '5': [6], '6': [5, 7], '7': [3, 6], '8': [2],
-    '9': [2, 10, 11, 12], '10': [9], '11': [9], '12': [9],
+    '1': [2], '2': [1, 4, 8, 9], '3': [4, 7], '4': [2, 3], '5': [3, 6], '6': [5, 7], '7': [3, 6], '8': [2],
+    '9': [2, 10, 11, 12, 13], '10': [9], '11': [9], '12': [9], '13': [9],
   });
 
   // The rocket pad: the start event stands the rocket up, the hotspot launches it and jumps to the ship.
@@ -549,4 +553,91 @@ test('freeze stops the player until unfrozen, and never outlives the event that 
   assert.equal(host.frozen, true);
   await host.advance(200);
   assert.equal(host.frozen, false);
+});
+
+test('ranks come from XP', () => {
+  assert.deepEqual(rankFor(0), { rank: 'Cadet', next_rank_xp: 100 });
+  assert.deepEqual(rankFor(99), { rank: 'Cadet', next_rank_xp: 100 });
+  assert.deepEqual(rankFor(100), { rank: 'Explorer', next_rank_xp: 300 });
+  assert.deepEqual(rankFor(99_999), { rank: 'Admiral', next_rank_xp: null });
+  assert.deepEqual(rankFor(50, [{ xp: 0, name: 'New' }, { xp: 40, name: 'Old hand' }]), { rank: 'Old hand', next_rank_xp: null });
+});
+
+test('awards and abilities are checked: an award on a button is not given, an ability must be sold somewhere', async () => {
+  const { readFileSync } = await import('node:fs');
+  const scenario = JSON.parse(readFileSync(new URL('../../../scenarios/starship.json', import.meta.url), 'utf8')) as Scenario;
+  const all = (doc: unknown) => [...validateScenario(doc).errors, ...validateScenario(doc).warnings].map((i) => i.message);
+  assert.deepEqual(all(scenario), [], 'the demo has no errors or warnings');
+  const awards = scenario.scenes.flatMap((s) => [...(s.hotspots ?? []), ...(s.indirect_events ?? [])]).flatMap((e) => e.actions).filter((a) => a.type === 'award');
+  assert.equal(awards.length, 17);
+  assert.ok(awards.every((a) => !(a as { repeatable?: boolean }).repeatable), 'each is given once per student');
+
+  const room = scenario.scenes.find((s) => s.id === 2)!;
+  room.hotspots![0]!.actions.push({ id: 999901, type: 'infobox', content: 'Hi', sequence: 99, call_to_actions: [{ text: 'Claim', action: { type: 'award', stars: 5 } }] } as never);
+  room.hotspots![0]!.conditions = [{ variable: 'QBLAbility_stream_map', operator: '=', operand: 1 }, { variable: 'QBLAbility_wings', operator: '=', operand: 1 }];
+  const messages = all(scenario);
+  assert.equal(messages.length, 2, messages.join('|'));
+  assert.match(messages.join('|'), /No item in this scenario's shop gives the ability "wings"/);
+  assert.match(messages.join('|'), /An award on a button is not given/);
+  assert.equal(new VariableStore([]).get('QBLAbility_wings'), 0, 'an ability nobody has is 0, not unknown');
+});
+
+test('an event for the whole scene shares what it shows, and nothing else', async () => {
+  const actions = [
+    { id: 1, type: 'text_overlay', text: 'Rumble!', duration: 1000, blocking: false },
+    { id: 2, type: 'image_fixed', media_id: 1, position_x: 0, position_y: 0, duration: 2000, blocking: false },
+    { id: 3, type: 'translate', target_id: 2, position_y: 100, duration: 500 },
+    { id: 4, type: 'variable', name: 'n', operator: '+', operand: 1 },
+    { id: 5, type: 'infobox', content: 'Only for me', blocking: false },
+    { id: 6, type: 'text_overlay', text: 'Hidden', duration: 100, conditions: [{ variable: 'n', operator: '=', operand: 99 }] },
+    { id: 7, type: 'cancel', action_id: 2 },
+  ];
+  const scene = { indirect_events: [ev(10, actions, { audience: 'scene' }), ev(20, [{ id: 21, type: 'text_overlay', text: 'Mine', duration: 100 }])] };
+  const vars = [{ variable_name: 'n', default_value: 0 }];
+
+  // The player who sets it off: everything runs, and what others should see is passed on as it happens.
+  const actor = setup(scene, vars);
+  void actor.engine.triggerById(10);
+  await actor.host.advance(600);
+  assert.deepEqual(actor.host.shared, [1, 2, 3, 7], 'not the variable, not the infobox, not the action whose condition failed');
+  assert.equal(actor.store.get('n'), 1);
+  void actor.engine.triggerById(20);
+  await actor.host.advance(200);
+  assert.deepEqual(actor.host.shared, [1, 2, 3, 7], 'an ordinary event is the player\'s own');
+
+  // Another player in the scene: shown the same things, with nothing of theirs changed.
+  const watcher = setup(scene, vars);
+  watcher.engine.watch(10, 1, 'ann');
+  watcher.engine.watch(10, 2, 'ann');
+  watcher.engine.watch(10, 3, 'ann');
+  assert.deepEqual(watcher.host.log, ['present:1:from:ann', 'present:2:from:ann']);
+  watcher.engine.watch(10, 4, 'ann');
+  watcher.engine.watch(10, 5, 'ann');
+  assert.equal(watcher.store.get('n'), 0, 'a watcher\'s variables are never touched');
+  assert.equal(watcher.host.log.length, 2, 'and they get no infobox');
+  watcher.engine.watch(10, 7, 'ann');
+  assert.ok(watcher.host.log.includes('cancel:2'), 'a cancel reaches what the watcher was shown');
+  watcher.engine.watch(20, 21, 'ann');
+  watcher.engine.watch(99, 1, 'ann');
+  assert.equal(watcher.host.log.filter((l) => l.startsWith('present')).length, 2, 'actions of private or unknown events are refused');
+  assert.equal(watcher.engine.isRunning(10), false, 'watching does not run the event: hotspots stay free');
+});
+
+test('story boxes and audiences are validated', () => {
+  const doc = (event: Record<string, unknown>, character: Record<string, unknown> = {}) => ({
+    id: 1, shortname: 't', title: 'T', start_scene_id: 1,
+    assets: [{ id: 1, type: 'image', url: 'a.png' }, { id: 2, type: 'audio', url: 'a.mp3' }],
+    characters: [{ id: 5, name: 'Vega', media_id: 1, ...character }],
+    avatar_media_ids: [1], avatar_portraits: { '1': 1 },
+    scenes: [{ id: 1, width: 100, height: 100, indirect_events: [{ id: 10, actions: [], ...event }] }],
+  });
+  const problems = (d: unknown) => validateScenario(d).errors.map((e) => `${e.path}: ${e.message}`);
+  const say = (extra: Record<string, unknown>) => ({ actions: [{ id: 11, type: 'dialogue', text: 'Hi', speaker: 'character', character_id: 5, ...extra }] });
+  assert.deepEqual(problems(doc(say({ style: 'portrait' }), { portrait_media_id: 1 })), [], 'a story box can carry a voice from a character who is not in the scene');
+  assert.match(problems(doc(say({})))[0]!, /not placed in this scene/, 'a bubble needs someone to hang over');
+  assert.match(problems(doc(say({ style: 'portrait', character_id: 6 })))[0]!, /does not exist/);
+  assert.match(problems(doc(say({ style: 'hologram' })))[0]!, /style is "bubble" or "portrait"/);
+  assert.match(problems(doc({ audience: 'world' }))[0]!, /audience is "player" or "scene"/);
+  assert.match(problems(doc({}, { portrait_media_id: 2 }))[0]!, /Media 2 is audio, expected image/);
+  assert.equal(normalizeScenario(doc({}) as never).scenes[0]!.indirect_events![0]!.audience, 'player', 'events are the player\'s own unless they say otherwise');
 });

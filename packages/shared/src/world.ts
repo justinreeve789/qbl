@@ -1,5 +1,6 @@
 import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Circle, type WalkContext } from './geometry.js';
-import type { AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, VariableMessage } from './protocol.js';
+import { isShownToScene } from './engine.js';
+import type { AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage } from './protocol.js';
 import { sceneSize, ScenarioIndex } from './scenario.js';
 import type { Id, Item, Scenario, Scene, Session, VarValue } from './types.js';
 import { applyOperator } from './variables.js';
@@ -10,6 +11,8 @@ export interface User {
   name: string;
   role: 'student' | 'teacher' | 'admin' | 'guest';
   avatar_media_id?: Id;
+  /** Ids of the shop items the player has equipped, comma-separated: what their avatar wears. */
+  look?: string;
 }
 
 /** State shared by everyone in one group's instance of a scenario. */
@@ -25,6 +28,8 @@ export interface PlayerRec {
   x: number; y: number; facing: string; attachments: string; connected: boolean;
   /** True while an avatar action has hidden this player. Cleared on every scene change. */
   hidden: boolean;
+  /** Equipped shop item ids, comma-separated. Drawn on the avatar by every client. */
+  look: string;
 }
 export interface ItemRec { item_id: number; scene_id: number; x: number; y: number; holder: string }
 export interface MapLike<T> {
@@ -139,6 +144,7 @@ export class World {
     p.attachments = attachments.join(',');
     p.connected = true;
     p.hidden = false;
+    p.look = cleanLook(user.look);
     state.players.set(sessionId, p);
 
     const progress: ProgressMessage = {
@@ -219,6 +225,29 @@ export class World {
     p.hidden = false;
     m.budget.reset(this.deps.now());
     return true;
+  }
+
+  /** The player changed what they wear. `look` comes from the backend, never from the client. */
+  /**
+   * May this player show this action to the others in their scene? Only an action of an event
+   * whose audience is the scene, in the scene the player is in. Returns the session ids to tell.
+   */
+  show(sessionId: string, msg: ShowMessage): string[] | null {
+    const p = this.deps.state.players.get(sessionId);
+    const found = this.index.events.get(Number(msg?.event_id));
+    if (!p || !found || found.scene.id !== p.scene_id || found.event.audience !== 'scene') return null;
+    const action = found.event.actions.find((a) => a.id === Number(msg.action_id));
+    if (!action || !isShownToScene(action)) return null;
+    const others: string[] = [];
+    this.deps.state.players.forEach((other, id) => {
+      if (id !== sessionId && other.scene_id === p.scene_id) others.push(id);
+    });
+    return others;
+  }
+
+  setLook(sessionId: string, look: string | undefined): void {
+    const p = this.deps.state.players.get(sessionId);
+    if (p) p.look = cleanLook(look);
   }
 
   /** An avatar action: show or hide this player's avatar for everyone in the scene. */
@@ -397,4 +426,9 @@ function decode(raw: string | undefined): VarValue | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Keep a look string to what it should be: a short list of ids. */
+function cleanLook(look: string | undefined): string {
+  return parseIds(look ?? '').slice(0, 12).join(',');
 }

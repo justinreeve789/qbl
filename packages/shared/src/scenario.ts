@@ -3,7 +3,7 @@ import type {
 } from './types.js';
 
 const ACTION_TYPES: ActionType[] = [
-  'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
+  'award', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
   'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait',
 ];
 
@@ -34,6 +34,7 @@ function normalizeEvent<T extends GameEvent>(event: T): T {
     ...event,
     overridable: event.overridable ?? false,
     block_hotspots: event.block_hotspots ?? false,
+    audience: event.audience === 'scene' ? 'scene' : 'player',
     conditions: event.conditions ?? [],
     actions,
   };
@@ -148,6 +149,7 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
     if (id != null) ids.add(id);
   };
   for (const l of [...(scene.background_media ?? []), ...(scene.foreground_media ?? [])]) add(layerMediaId(l));
+  add(scene.music_media_id);
   for (const h of scene.hotspots ?? []) for (const label of h.labels ?? []) add(labelMediaId(label));
   walkActions(scene, (a) => add(a.media_id));
   const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
@@ -160,6 +162,9 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
 /** Media needed everywhere: avatars, attachable items (they travel with players) and splash screens. */
 export function collectGlobalMediaIds(scenario: Scenario): Id[] {
   const ids = new Set<Id>(scenario.avatar_media_ids ?? []);
+  if (scenario.music_media_id != null) ids.add(scenario.music_media_id);
+  // What players wear travels with them, so a scenario's shop pictures are needed everywhere.
+  for (const item of scenario.shop_items ?? []) if (item.media_id != null) ids.add(item.media_id);
   for (const item of scenario.items ?? []) {
     if ((item.vehicle || item.wearable) && item.media_id != null) ids.add(item.media_id);
   }
@@ -245,4 +250,26 @@ export function sceneSize(scenario: Scenario, scene: Scene): { width: number; he
     return { width: media.width * (media.scale_x ?? 1), height: media.height * (media.scale_y ?? 1) };
   }
   return null;
+}
+
+/**
+ * The background music a scene starts with: its own, or else the scenario's. Events can change
+ * the music afterwards with a persistent audio action; the next scene starts with its own again.
+ */
+export function sceneMusic(
+  scenario: Pick<Scenario, 'music_media_id' | 'music_volume'>,
+  scene: Pick<Scene, 'music_media_id' | 'music_volume' | 'start_events'>,
+): { media_id: Id; volume: number } | null {
+  if (scene.music_media_id != null) return { media_id: scene.music_media_id, volume: scene.music_volume ?? scenario.music_volume ?? 0.5 };
+  // A scene whose start events start background music is choosing its own that way. Starting the
+  // scenario's first would cut off and restart the track every time the scene is entered.
+  const startsItsOwn = (scene.start_events ?? []).some((e) => e.actions.some((a) => a.type === 'audio' && a.persist));
+  if (startsItsOwn) return null;
+  if (scenario.music_media_id != null) return { media_id: scenario.music_media_id, volume: scenario.music_volume ?? 0.5 };
+  return null;
+}
+
+/** How long a line of dialogue stays up when its action gives no duration: time to read it. */
+export function dialogueDuration(text: string): number {
+  return Math.min(12_000, 1800 + text.length * 55);
 }

@@ -2,7 +2,7 @@ import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
 import type { Action, Condition, GameEvent, Id, Media, Scenario, Scene } from './types.js';
 import { placeholderVariables } from './text.js';
-import { isReserved, RESERVED_VARIABLES } from './variables.js';
+import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
 
 export interface Issue {
   level: 'error' | 'warning';
@@ -104,10 +104,13 @@ export function validateScenario(doc: unknown): ValidationResult {
 
   (s.items ?? []).forEach((it, i) => needMedia(it.media_id, `items[${i}].media_id`, 'image'));
   (s.characters ?? []).forEach((c, i) => needMedia(c.media_id, `characters[${i}].media_id`, 'image'));
+  (s.characters ?? []).forEach((c, i) => needMedia(c.portrait_media_id, `characters[${i}].portrait_media_id`, 'image'));
   (s.avatar_media_ids ?? []).forEach((id, i) => needMedia(id, `avatar_media_ids[${i}]`, 'image'));
+  for (const [avatar, portrait] of Object.entries(s.avatar_portraits ?? {})) needMedia(portrait, `avatar_portraits.${avatar}`, 'image');
 
   if (!scenes.has(s.start_scene_id)) err('start_scene_id', `Scene ${s.start_scene_id} does not exist`);
 
+  const abilities = new Set((s.shop_items ?? []).map((i) => i.ability).filter(Boolean) as string[]);
   const checkConditions = (conds: Condition[] | undefined, path: string) => {
     (conds ?? []).forEach((c, i) => {
       const p = `${path}.conditions[${i}]`;
@@ -115,7 +118,10 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (!CONDITION_OPS.includes(c.operator)) err(p, `Unknown operator "${c.operator}"`);
       if (!c.variable) err(p, 'variable is required');
       else if (isReserved(c.variable)) {
-        if (!(RESERVED_VARIABLES as readonly string[]).includes(c.variable)) warn(p, `Unknown reserved variable "${c.variable}"`);
+        // QBLAbility_<key> is 1 while the player has a marketplace ability with that key equipped.
+        if (c.variable.startsWith(ABILITY_PREFIX)) {
+          if (!abilities.has(c.variable.slice(ABILITY_PREFIX.length))) warn(p, `No item in this scenario's shop gives the ability "${c.variable.slice(ABILITY_PREFIX.length)}"; it must come from the platform's catalogue`);
+        } else if (!(RESERVED_VARIABLES as readonly string[]).includes(c.variable)) warn(p, `Unknown reserved variable "${c.variable}"`);
       } else if (!variables.has(c.variable)) err(p, `Variable "${c.variable}" is not declared in global_variables`);
     });
   };
@@ -151,6 +157,7 @@ export function validateScenario(doc: unknown): ValidationResult {
     eachEvent(scene, si, (e, path) => {
       eventIds.push([e.id, path]);
       eventScene.set(e.id, scene.id);
+      if (e.audience != null && e.audience !== 'player' && e.audience !== 'scene') err(`${path}.audience`, 'audience is "player" or "scene"');
       (e.actions ?? []).forEach((a, ai) => {
         actionIds.push([a.id, `${path}.actions[${ai}]`]);
         actionScene.set(a.id, scene.id);
@@ -202,6 +209,22 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (isReserved(a.name ?? '')) warn(`${path}.name`, 'Reserved variables are maintained by the runtime; this action will be ignored');
         else if (!variables.has(a.name)) err(`${path}.name`, `Variable "${a.name}" is not declared in global_variables`);
         if (a.operator !== 'random' && a.operand === undefined) err(`${path}.operand`, 'operand is required');
+        break;
+      case 'award':
+        if (typeof a.stars !== 'number' && typeof a.xp !== 'number') err(path, 'An award needs stars, XP or both');
+        // Awards are checked by the backend against the events' actions, which a button's action is not part of.
+        if (inCta) warn(path, 'An award on a button is not given. Put it in an event and have the button run that event');
+        break;
+      case 'dialogue':
+        if (typeof a.text !== 'string' || a.text === '') err(`${path}.text`, 'text is required');
+        else checkText(a.text, `${path}.text`);
+        if (a.style != null && a.style !== 'bubble' && a.style !== 'portrait') err(`${path}.style`, 'style is "bubble" or "portrait"');
+        // A bubble needs someone to hang over; a portrait box can carry a voice from anywhere (a call from the ship).
+        if (a.speaker === 'character' && a.style === 'portrait') {
+          if (!characters.has(a.character_id as Id)) err(`${path}.character_id`, 'The speaking character does not exist');
+        } else if (a.speaker === 'character' && !(scene.characters ?? []).some((c) => c.character_id === a.character_id)) {
+          err(`${path}.character_id`, 'The speaking character is not placed in this scene');
+        }
         break;
       case 'freeze':
         if (typeof a.frozen !== 'boolean') err(`${path}.frozen`, 'frozen must be true or false');

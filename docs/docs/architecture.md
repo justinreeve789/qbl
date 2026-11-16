@@ -13,7 +13,7 @@
                                                   db  <------------+  (Docker network only)
 ```
 
-Docker runs five containers: `app` (Laravel and the built Phaser frontend), `db` (MariaDB), `colyseus`, `editor` and `apache`. The Phaser build is copied into Laravel's `public/` directory; Apache serves those files from a shared volume and forwards PHP requests to FPM. Any path Apache has no file for loads the game, which is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
+Docker runs six containers: `app` (Laravel and the built Phaser frontend), `db` (MariaDB), `colyseus`, `editor`, `docs` (this documentation, built with MkDocs and served at `/docs`) and `apache`. The Phaser build is copied into Laravel's `public/` directory; Apache serves those files from a shared volume and forwards PHP requests to FPM. Any path Apache has no file for loads the game, which is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
 
 The `editor` container is static files behind its own small Apache, reached through the front one at `/editor`. It holds no data and no secrets; everything it does is a call to `/api/editor`. Because the game and the editor share an address, they share a sign-in, and the editor's "Test this scene" can open the game on a draft.
 
@@ -68,7 +68,8 @@ Module | Responsibility
 `systems/*` | One concern each: layers, props, local player, remote players, hotspots, speech, camera, preloading, debug overlay. `systems/index.ts` is the list.
 `actions/ActionHost.ts` | The engine's link to Phaser and the UI.
 `actions/presenters/*` | One presenter per action type; `index.ts` is the registry.
-`features/*` | Session-long features: mission checklist, chat, connection status, attachments, progress saving.
+`features/*` | Session-long features: mission checklist, chat, connection status, attachments, progress saving, and stars, XP and the marketplace (`RewardsFeature`).
+`core/Rewards.ts` | The player's stars, XP, rank and marketplace items as the game knows them; talks to the API for purchases and pretends in a preview.
 `entities/Avatar.ts` | A player figure with name, speech bubble and attachments.
 `core/assets.ts` | Media loading, preloading of jump targets, sprite sheets.
 `ui/UiPort.ts`, `ui/Ui.ts` | The interface the game uses for on-screen UI, and its HTML implementation.

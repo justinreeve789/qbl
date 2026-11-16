@@ -3,6 +3,7 @@
  * Continuous state (positions, attachments, shared variables) travels
  * through the synchronized room state instead; see apps/server/src/rooms/state.ts.
  */
+import type { Progress } from './types.js';
 import type { Id, Session, VarValue, VariableOperator } from './types.js';
 
 export const ROOM_NAME = 'scenario';
@@ -30,6 +31,9 @@ export const C2S = {
   Item: 'item',
   Progress: 'progress',
   Avatar: 'avatar',
+  Award: 'award',
+  Look: 'look',
+  Show: 'show',
 } as const;
 
 export const S2C = {
@@ -38,6 +42,8 @@ export const S2C = {
   Emote: 'emote',
   Snap: 'snap',
   Notice: 'notice',
+  Progress: 'progress',
+  Show: 'show',
 } as const;
 
 export interface MoveMessage { x: number; y: number; facing: 'left' | 'right' }
@@ -46,6 +52,17 @@ export interface ChatMessage { text: string }
 export interface EmoteMessage { emoji: string }
 export interface VariableMessage { name: string; operator: VariableOperator; operand?: VarValue }
 export interface ItemMessage { item_id: Id; action: 'attach' | 'detach' }
+/** An award action ran on the sender's side. The server checks it against the scenario before granting it. */
+export interface AwardMessage { action_id: Id }
+/** The server's answer to an award: the player's new totals, and what changed. */
+export interface RewardMessage extends Progress { delta_stars: number; delta_xp: number; note?: string; rank_up?: boolean }
+/**
+ * An event whose audience is the scene reached one of its actions on the sender's side. The server
+ * checks the action belongs to such an event in the sender's scene and passes it to the other players there.
+ */
+export interface ShowMessage { event_id: Id; action_id: Id }
+/** Another player's event is showing this action. `session_id` is who set it off. */
+export interface ShowBroadcast extends ShowMessage { session_id: string }
 /** Show or hide the sender's avatar for everyone in their scene. */
 export interface AvatarMessage { visible: boolean }
 /** Sent periodically so the server can save player-scoped progress. */

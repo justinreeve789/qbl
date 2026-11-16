@@ -1,5 +1,5 @@
 import { ScenarioIndex } from './scenario.js';
-import type { Action, GameEvent, Hotspot, Id, Scene, TranslateAction } from './types.js';
+import { SHOWN_TO_SCENE, type Action, type AwardAction, type GameEvent, type Hotspot, type Id, type Scene, type TranslateAction } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
 /** A running action. `done` settles when it ends on its own or is cancelled. */
@@ -10,7 +10,7 @@ export interface ActionHandle {
 
 export type PresentedAction = Extract<
   Action,
-  { type: 'audio' | 'image_fixed' | 'image_overlay' | 'infobox' | 'spritemap' | 'text_overlay' | 'video' }
+  { type: 'audio' | 'dialogue' | 'shop' | 'image_fixed' | 'image_overlay' | 'infobox' | 'spritemap' | 'text_overlay' | 'video' }
 >;
 
 /**
@@ -19,14 +19,21 @@ export type PresentedAction = Extract<
  * renderer, the network or real timers.
  */
 export interface EngineHost {
-  /** Show or play a media action. */
-  present(action: PresentedAction, engine: SceneEngine): ActionHandle;
+  /**
+   * Show or play a media action. `actor` is set when the action comes from another player's
+   * event (audience: scene): their session id, so "the player" in it means them.
+   */
+  present(action: PresentedAction, engine: SceneEngine, actor?: string): ActionHandle;
+  /** An event shown to the whole scene reached this action: tell the other players. */
+  share?(event: GameEvent, action: Action): void;
   /** Tween a running action's display object. Return null if the target is gone. */
   translate(action: TranslateAction): ActionHandle | null;
   /** Show or hide the player's avatar, fading over `duration` ms. The handle finishes when the fade does. */
   avatar?(visible: boolean, duration: number): ActionHandle | null;
   /** Stop the player from walking (true) or let them walk again (false). */
   freeze?(frozen: boolean): void;
+  /** Ask the game server to grant an award action's stars and XP. */
+  award?(action: AwardAction): void;
   delay(ms: number): ActionHandle;
   /** Leave the current scene. Called after end events have finished. */
   jump(sceneId: Id, spawnPoint?: string): void;
@@ -49,6 +56,10 @@ export function isIndefinite(action: Action): boolean {
     default:
       return false;
   }
+}
+
+export function isShownToScene(action: Action): boolean {
+  return (SHOWN_TO_SCENE as readonly string[]).includes(action.type);
 }
 
 /** A repeat with no wait in its loop is paced at roughly one pass per frame. */
@@ -168,6 +179,32 @@ export class SceneEngine {
     return this.trigger(event);
   }
 
+  /**
+   * Another player's event (audience: scene) reached this action: show it here too. Only what is
+   * seen and heard is taken; nothing here changes this player's variables, position or progress.
+   */
+  watch(eventId: Id, actionId: Id, actor: string): void {
+    if (this.stopped || this.leaving) return;
+    const found = this.index.events.get(eventId);
+    if (!found || found.scene.id !== this.scene.id || found.event.audience !== 'scene') return;
+    const action = found.event.actions.find((a) => a.id === actionId);
+    if (!action || !isShownToScene(action)) return;
+    if (action.type === 'cancel') {
+      this.cancelAction(action.action_id);
+      return;
+    }
+    let handle: ActionHandle | null;
+    if (action.type === 'translate') handle = this.actions.has(action.target_id) ? this.host.translate(action) : null;
+    else handle = this.host.present(action as PresentedAction, this, actor);
+    if (!handle) return;
+    this.actions.get(action.id)?.cancel();
+    this.actions.set(action.id, handle);
+    const h = handle;
+    void h.done.finally(() => {
+      if (this.actions.get(action.id) === h) this.actions.delete(action.id);
+    });
+  }
+
   /** Events that have frozen the player and are still running. */
   private frozenBy = new Set<Id>();
 
@@ -224,6 +261,7 @@ export class SceneEngine {
       const action = actions[i]!;
       i++;
       if (!testConditions(action.conditions, this.vars.get)) continue;
+      if (run.event.audience === 'scene' && isShownToScene(action)) this.host.share?.(run.event, action);
 
       switch (action.type) {
         case 'repeat': {
@@ -257,6 +295,10 @@ export class SceneEngine {
             this.track(run, action, h);
             if (action.blocking !== false) await this.wait(run, h);
           }
+          break;
+        }
+        case 'award': {
+          this.host.award?.(action);
           break;
         }
         case 'freeze': {

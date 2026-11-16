@@ -19,6 +19,22 @@ Body `{ "email": "...", "password": "..." }`. Returns `{ "token": "...", "user":
 
 Body `{ "name": "..." }`. Returns `{ "token": "...", "user": User }` with role `guest`. The Laravel API only offers this when `QBL_ALLOW_GUESTS=true`. A guest token is accepted by the game server only for scenarios with `require_login: false`.
 
+### `GET /api/auth/providers`
+
+`{ "google": true, "guest": true }`: which optional ways of signing in this installation offers. The sign-in screens show a Google button when `google` is true.
+
+### Signing in with Google
+
+Google sign-in is on when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. It is a redirect flow, not a JSON call:
+
+1. The sign-in screen sends the browser to `GET /api/auth/google/redirect?return=/editor/`. `return` is a path on this site to come back to; anything else is replaced with `/`.
+2. Google asks the person and sends the browser to `GET /api/auth/google/callback` (register this address with Google: `https://your-host/api/auth/google/callback`. It is built from `APP_URL`).
+3. The API finds the account by Google's id for it, or joins an existing account with the same verified address, or creates a new one. It issues a token and answers with a small page that stores the token where the game and the editor look for it (`localStorage["qbl.token"]`) and goes to `return`. The token is never put in an address.
+
+If nobody is signed in, the browser is sent to `return` with the reason after the `#`: `#signin=cancelled`, `domain` (the address is not at an accepted domain), `unverified`, `expired` or `failed`.
+
+New accounts are students. `QBL_GOOGLE_DOMAINS` limits who may sign in to those domains; accounts at `QBL_GOOGLE_TEACHER_DOMAINS` start as teachers. An account that has only ever signed in with Google has no password.
+
 ### `GET /api/me`
 
 Returns `{ "user": User }` or 401.
@@ -28,6 +44,23 @@ Returns `{ "user": User }` or 401.
 `{code}` is the scenario's unique 16-letter code, the same one players have in their address bar (`/{code}`). A shortname is accepted too.
 
 Returns `{ "scenario": Scenario }`: the published scenario document with the caller's save data in `scenario.session` (null if none). Returns 401 when the scenario has `require_login: true` and there is no valid token, and 404 for an unknown or unpublished scenario.
+
+### Stars, XP and the marketplace
+
+All need a token except `GET /api/shop`. Guests are answered 403: stars and XP need an account.
+
+Endpoint | Body | Returns
+-------- | ---- | -------
+`GET /api/me/progress` | | `{ "progress": Progress }`
+`GET /api/shop?scenario={code}` | | `{ "items": ShopItem[], "progress": Progress or null }`: the platform's items plus that scenario's own
+`POST /api/shop/{item}/buy` | `{ "scenario": "{code}" }` | `{ "progress": Progress }`. 422 without enough stars, 409 if already owned, 404 if the item is not sold in that scenario
+`POST /api/shop/{item}/equip` | `{ "equipped": true }` | `{ "progress": Progress }`. Putting something on takes off what was in its place
+
+```json
+{ "stars": 56, "xp": 240, "rank": "Explorer", "next_rank_xp": 300, "owned": [1, 102], "equipped": [102] }
+```
+
+`ShopItem` is described under [Stars, XP and the marketplace](extensions.md#stars-xp-and-the-marketplace). There is no public endpoint that gives stars: awards come only through the game server (below).
 
 ### User
 
@@ -49,6 +82,8 @@ Endpoint | Body | Returns
 `PUT /scenarios/{id}/sessions/{userId}` | `{ "session": Session }` | 204
 `GET /scenarios/{id}/instances/{group}` | | `{ "instance": InstanceData or null }`
 `PUT /scenarios/{id}/instances/{group}` | `{ "instance": InstanceData }` | 204
+`POST /scenarios/{id}/awards` | `{ "user_id": 12, "action_id": 72090 }` | `Progress` plus `delta_stars`, `delta_xp`, `note`, `rank_up`. The action must be an `award` in the published document; a once-only award already given changes nothing. 403 for a guest
+`GET /users/{id}/look` | | `{ "look": "1,102" }`: the ids of what the player has on, for other players to see
 
 `Session` and `InstanceData` are described on the [Save data](session.md) page.
 
