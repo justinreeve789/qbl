@@ -33,9 +33,11 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 # The repository holds only what differs from a stock Laravel application (apps/api/overlay).
 # This creates the skeleton and lays the overlay on top.
+# install:api publishes Sanctum's migration under a name containing the build time, which would make
+# every rebuild try to create the token table again. It is removed; the overlay has one with a fixed name.
 RUN composer create-project --no-interaction --prefer-dist laravel/laravel . "${LARAVEL_VERSION}" \
     && php artisan install:api --no-interaction \
-    && rm -f database/database.sqlite
+    && rm -f database/database.sqlite database/migrations/*_create_personal_access_tokens_table.php
 COPY apps/api/overlay/ /app/
 RUN composer dump-autoload --optimize
 

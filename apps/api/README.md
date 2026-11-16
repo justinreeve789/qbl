@@ -5,6 +5,7 @@
 | File | Purpose |
 | ---- | ------- |
 | `database/migrations/*` | The QBL tables: scenarios (with the unique 16-letter `code`), media, variables, items, characters, scenes, events, actions, conditions, labels, plus saves |
+| `database/migrations/*_create_personal_access_tokens_table.php` | Sanctum's token table under a fixed file name. `install:api` publishes it under a name containing the build time, which would re-run on every rebuild; the Dockerfile removes that copy |
 | `database/seeders/data/starship.php` | Seed rows for the demo mission, Starship Explorer |
 | `database/seeders/*Seeder.php` | Seed the demo once and publish its JSON; optional demo accounts |
 | `app/Qbl/ScenarioStore.php` | Reads and writes scenarios as rows: seeding, the editor's create/update/delete, uploads, codes, publishing. Plain PHP over PDO |
