@@ -445,7 +445,8 @@
         "2": [
             4,
             1,
-            8
+            8,
+            9
         ],
         "1": [
             2
@@ -463,6 +464,21 @@
         ],
         "8": [
             2
+        ],
+        "9": [
+            2,
+            10,
+            11,
+            12
+        ],
+        "10": [
+            9
+        ],
+        "11": [
+            9
+        ],
+        "12": [
+            9
         ]
     },
     "assets": [
@@ -762,6 +778,50 @@
             "priority": 20
         },
         {
+            "id": 14,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "backgrounds/corridor.jpg",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 1800,
+            "height": 1200,
+            "priority": 22
+        },
+        {
+            "id": 15,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "backgrounds/crew-quarters.jpg",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 2250,
+            "height": 1200,
+            "priority": 24
+        },
+        {
+            "id": 16,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "backgrounds/hydroponics.jpg",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 2250,
+            "height": 1200,
+            "priority": 24
+        },
+        {
+            "id": 17,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "backgrounds/engine-room.jpg",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 2250,
+            "height": 1200,
+            "priority": 24
+        },
+        {
             "id": 40,
             "scenario_id": 1,
             "type": "image",
@@ -932,6 +992,7 @@
                     "position_y": 1000
                 }
             ],
+            "scale_areas": [],
             "items": [
                 {
                     "item_id": 1,
@@ -1132,6 +1193,7 @@
                     "facing": "left"
                 }
             ],
+            "scale_areas": [],
             "items": [],
             "characters": [],
             "start_events": [
@@ -1237,6 +1299,8 @@
                     "position_y": 525,
                     "radius": 60,
                     "activate_by_trigger": true,
+                    "reveal_radius": 760,
+                    "reveal_full_radius": 430,
                     "labels": [
                         {
                             "id": 1,
@@ -1295,6 +1359,15 @@
                     ],
                     "actions": [
                         {
+                            "visible": false,
+                            "duration": 400,
+                            "id": 4208,
+                            "event_id": 420,
+                            "type": "avatar",
+                            "sequence": 1,
+                            "blocking": true
+                        },
+                        {
                             "position_x": 1750,
                             "position_y": 1081,
                             "scale_x": 0.3,
@@ -1304,7 +1377,7 @@
                             "id": 4201,
                             "event_id": 420,
                             "type": "image_fixed",
-                            "sequence": 1,
+                            "sequence": 2,
                             "blocking": true,
                             "media_id": 12
                         },
@@ -1316,7 +1389,7 @@
                             "id": 4202,
                             "event_id": 420,
                             "type": "text_overlay",
-                            "sequence": 2,
+                            "sequence": 3,
                             "blocking": true
                         },
                         {
@@ -1324,7 +1397,7 @@
                             "id": 4207,
                             "event_id": 420,
                             "type": "audio",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": false,
                             "media_id": 32
                         },
@@ -1335,7 +1408,7 @@
                             "id": 4203,
                             "event_id": 420,
                             "type": "translate",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": false
                         },
                         {
@@ -1345,7 +1418,7 @@
                             "id": 4204,
                             "event_id": 420,
                             "type": "translate",
-                            "sequence": 5,
+                            "sequence": 6,
                             "blocking": true
                         },
                         {
@@ -1355,7 +1428,7 @@
                             "id": 4205,
                             "event_id": 420,
                             "type": "variable",
-                            "sequence": 6,
+                            "sequence": 7,
                             "blocking": true
                         },
                         {
@@ -1364,7 +1437,7 @@
                             "id": 4206,
                             "event_id": 420,
                             "type": "jump",
-                            "sequence": 7,
+                            "sequence": 8,
                             "blocking": true
                         }
                     ]
@@ -1438,8 +1511,14 @@
                     "position_x": 2090,
                     "position_y": 1000,
                     "facing": "left"
+                },
+                {
+                    "name": "south",
+                    "position_x": 1050,
+                    "position_y": 1110
                 }
             ],
+            "scale_areas": [],
             "items": [],
             "characters": [
                 {
@@ -1717,6 +1796,41 @@
                             "blocking": true
                         }
                     ]
+                },
+                {
+                    "id": 243,
+                    "shortname": "edge-south",
+                    "scene_id": 2,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": null,
+                    "position_y": 1200,
+                    "radius": 25,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 37,
+                            "event_id": 243,
+                            "type": "text",
+                            "position_x": 1050,
+                            "position_y": 1165,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "▼ Main corridor"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 9,
+                            "spawn_point": "near",
+                            "id": 24301,
+                            "event_id": 243,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
                 }
             ],
             "indirect_events": [
@@ -1729,7 +1843,7 @@
                     "conditions": [],
                     "actions": [
                         {
-                            "content": "<p><strong>Captain Vega:</strong> Welcome aboard! The mission consoles are along the back wall. The laboratory is through the east door, the observation deck is up the ramp, and the lift on the west side takes you back to the planet.</p>",
+                            "content": "<p><strong>Captain Vega:</strong> Welcome aboard! The mission consoles are along the back wall. The laboratory is through the east door, the observation deck is up the ramp, and the lift on the west side takes you back to the planet. The main corridor, to the south, leads to the crew quarters, the hydroponics bay and the engine room.</p>",
                             "id": 2501,
                             "event_id": 250,
                             "type": "infobox",
@@ -1884,6 +1998,7 @@
                     "position_y": 780
                 }
             ],
+            "scale_areas": [],
             "items": [
                 {
                     "item_id": 2,
@@ -2019,6 +2134,7 @@
                     "position_y": 1000
                 }
             ],
+            "scale_areas": [],
             "items": [],
             "characters": [],
             "start_events": [
@@ -2336,6 +2452,7 @@
                     "position_y": 1070
                 }
             ],
+            "scale_areas": [],
             "items": [],
             "characters": [],
             "start_events": [
@@ -2675,6 +2792,7 @@
                     "facing": "left"
                 }
             ],
+            "scale_areas": [],
             "items": [],
             "characters": [],
             "start_events": [
@@ -3158,6 +3276,7 @@
                     "position_y": 1620
                 }
             ],
+            "scale_areas": [],
             "items": [],
             "characters": [],
             "start_events": [
@@ -5097,6 +5216,1004 @@
                     ]
                 }
             ]
+        },
+        {
+            "id": 9,
+            "shortname": "corridor",
+            "scenario_id": 1,
+            "sequence": 9,
+            "subtitle": "Starship: main corridor",
+            "is_intro_scene": false,
+            "zoom": 1,
+            "show_avatars": true,
+            "width": 1800,
+            "height": 1200,
+            "background_media": [
+                {
+                    "media_id": 14,
+                    "display_width": 1800,
+                    "display_height": 1200
+                }
+            ],
+            "foreground_media": [],
+            "walkable_areas": [
+                [
+                    {
+                        "x": 60,
+                        "y": 1200
+                    },
+                    {
+                        "x": 1740,
+                        "y": 1200
+                    },
+                    {
+                        "x": 1110,
+                        "y": 600
+                    },
+                    {
+                        "x": 690,
+                        "y": 600
+                    }
+                ]
+            ],
+            "blocked_areas": [],
+            "spawn_points": [
+                {
+                    "name": "near",
+                    "position_x": 900,
+                    "position_y": 1100
+                },
+                {
+                    "name": "left-door",
+                    "position_x": 520,
+                    "position_y": 880
+                },
+                {
+                    "name": "right-door",
+                    "position_x": 1280,
+                    "position_y": 880,
+                    "facing": "left"
+                },
+                {
+                    "name": "far",
+                    "position_x": 900,
+                    "position_y": 700
+                }
+            ],
+            "scale_areas": [
+                {
+                    "name": "corridor depth",
+                    "x": 0,
+                    "y": 580,
+                    "width": 1800,
+                    "height": 620,
+                    "scale_top": 40,
+                    "scale_bottom": 100
+                }
+            ],
+            "items": [],
+            "characters": [],
+            "start_events": [
+                {
+                    "id": 900,
+                    "shortname": "music",
+                    "scene_id": 9,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "volume": 0.35,
+                            "repeat": true,
+                            "persist": true,
+                            "id": 90001,
+                            "event_id": 900,
+                            "type": "audio",
+                            "sequence": 1,
+                            "blocking": false,
+                            "media_id": 31
+                        }
+                    ]
+                },
+                {
+                    "id": 901,
+                    "shortname": "caption",
+                    "scene_id": 9,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "text": "Main corridor",
+                            "alignment": "top center",
+                            "text_font_size": 30,
+                            "duration": 2500,
+                            "id": 90101,
+                            "event_id": 901,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "end_events": [],
+            "hotspots": [
+                {
+                    "id": 910,
+                    "shortname": "edge-south",
+                    "scene_id": 9,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": null,
+                    "position_y": 1200,
+                    "radius": 25,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 38,
+                            "event_id": 910,
+                            "type": "text",
+                            "position_x": 900,
+                            "position_y": 1165,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "▼ Control room"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 2,
+                            "spawn_point": "south",
+                            "id": 91001,
+                            "event_id": 910,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 911,
+                    "shortname": "door-crew",
+                    "scene_id": 9,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 400,
+                    "position_y": 880,
+                    "radius": 60,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 39,
+                            "event_id": 911,
+                            "type": "text",
+                            "position_x": 340,
+                            "position_y": 520,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Crew quarters"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 10,
+                            "spawn_point": "door",
+                            "id": 91101,
+                            "event_id": 911,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 912,
+                    "shortname": "door-hydroponics",
+                    "scene_id": 9,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1400,
+                    "position_y": 880,
+                    "radius": 60,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 40,
+                            "event_id": 912,
+                            "type": "text",
+                            "position_x": 1460,
+                            "position_y": 520,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Hydroponics bay"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 11,
+                            "spawn_point": "door",
+                            "id": 91201,
+                            "event_id": 912,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 913,
+                    "shortname": "door-engine",
+                    "scene_id": 9,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 900,
+                    "position_y": 605,
+                    "radius": 45,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 41,
+                            "event_id": 913,
+                            "type": "text",
+                            "position_x": 900,
+                            "position_y": 300,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Engine room"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 12,
+                            "spawn_point": "door",
+                            "id": 91301,
+                            "event_id": 913,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "indirect_events": []
+        },
+        {
+            "id": 10,
+            "shortname": "crew-quarters",
+            "scenario_id": 1,
+            "sequence": 10,
+            "subtitle": "Starship: crew quarters",
+            "is_intro_scene": false,
+            "zoom": 1,
+            "show_avatars": true,
+            "width": 2250,
+            "height": 1200,
+            "background_media": [
+                {
+                    "media_id": 15,
+                    "display_width": 2250,
+                    "display_height": 1200
+                }
+            ],
+            "foreground_media": [],
+            "walkable_areas": [
+                [
+                    {
+                        "x": 0,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 1200
+                    },
+                    {
+                        "x": 0,
+                        "y": 1200
+                    }
+                ]
+            ],
+            "blocked_areas": [],
+            "spawn_points": [
+                {
+                    "name": "door",
+                    "position_x": 2090,
+                    "position_y": 1000,
+                    "facing": "left"
+                }
+            ],
+            "scale_areas": [],
+            "items": [],
+            "characters": [],
+            "start_events": [
+                {
+                    "id": 1000,
+                    "shortname": "music",
+                    "scene_id": 10,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "volume": 0.35,
+                            "repeat": true,
+                            "persist": true,
+                            "id": 100001,
+                            "event_id": 1000,
+                            "type": "audio",
+                            "sequence": 1,
+                            "blocking": false,
+                            "media_id": 31
+                        }
+                    ]
+                },
+                {
+                    "id": 1001,
+                    "shortname": "caption",
+                    "scene_id": 10,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "text": "Crew quarters",
+                            "alignment": "top center",
+                            "text_font_size": 30,
+                            "duration": 2500,
+                            "id": 100101,
+                            "event_id": 1001,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "end_events": [],
+            "hotspots": [
+                {
+                    "id": 1010,
+                    "shortname": "edge-east",
+                    "scene_id": 10,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 2250,
+                    "position_y": null,
+                    "radius": 35,
+                    "activate_by_trigger": false,
+                    "labels": [],
+                    "actions": [
+                        {
+                            "scene_id": 9,
+                            "spawn_point": "left-door",
+                            "id": 101001,
+                            "event_id": 1010,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1020,
+                    "shortname": "bunks",
+                    "scene_id": 10,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 920,
+                    "position_y": 640,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 42,
+                            "event_id": 1020,
+                            "type": "image",
+                            "position_x": 920,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 43,
+                            "event_id": 1020,
+                            "type": "text",
+                            "position_x": 920,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Sleeping in space"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Sleeping in space</h3><p>There is no \"up\" in orbit, so the crew sleep strapped into their bunks to stop themselves drifting off.</p><p>The ship circles the planet many times a day, so the lights are dimmed on a 24-hour timetable to keep everyone's body clock steady.</p>",
+                            "id": 102001,
+                            "event_id": 1020,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1030,
+                    "shortname": "porthole",
+                    "scene_id": 10,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1890,
+                    "position_y": 430,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 44,
+                            "event_id": 1030,
+                            "type": "image",
+                            "position_x": 1890,
+                            "position_y": 430,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 45,
+                            "event_id": 1030,
+                            "type": "text",
+                            "position_x": 1890,
+                            "position_y": 358,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "The view outside"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>The view outside</h3><p>That blue-green disc is the planet you landed on. From up here you can see its day side and its night side at once.</p><p><em>Think about it:</em> the planet turns, so which way does its sunrise line move?</p>",
+                            "id": 103001,
+                            "event_id": 1030,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "indirect_events": []
+        },
+        {
+            "id": 11,
+            "shortname": "hydroponics",
+            "scenario_id": 1,
+            "sequence": 11,
+            "subtitle": "Starship: hydroponics bay",
+            "is_intro_scene": false,
+            "zoom": 1,
+            "show_avatars": true,
+            "width": 2250,
+            "height": 1200,
+            "background_media": [
+                {
+                    "media_id": 16,
+                    "display_width": 2250,
+                    "display_height": 1200
+                }
+            ],
+            "foreground_media": [],
+            "walkable_areas": [
+                [
+                    {
+                        "x": 0,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 1200
+                    },
+                    {
+                        "x": 0,
+                        "y": 1200
+                    }
+                ]
+            ],
+            "blocked_areas": [],
+            "spawn_points": [
+                {
+                    "name": "door",
+                    "position_x": 160,
+                    "position_y": 1000
+                }
+            ],
+            "scale_areas": [],
+            "items": [],
+            "characters": [],
+            "start_events": [
+                {
+                    "id": 1100,
+                    "shortname": "music",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "volume": 0.35,
+                            "repeat": true,
+                            "persist": true,
+                            "id": 110001,
+                            "event_id": 1100,
+                            "type": "audio",
+                            "sequence": 1,
+                            "blocking": false,
+                            "media_id": 31
+                        }
+                    ]
+                },
+                {
+                    "id": 1101,
+                    "shortname": "caption",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "text": "Hydroponics bay",
+                            "alignment": "top center",
+                            "text_font_size": 30,
+                            "duration": 2500,
+                            "id": 110101,
+                            "event_id": 1101,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "end_events": [],
+            "hotspots": [
+                {
+                    "id": 1110,
+                    "shortname": "edge-west",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 0,
+                    "position_y": null,
+                    "radius": 35,
+                    "activate_by_trigger": false,
+                    "labels": [],
+                    "actions": [
+                        {
+                            "scene_id": 9,
+                            "spawn_point": "right-door",
+                            "id": 111001,
+                            "event_id": 1110,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1120,
+                    "shortname": "grow-racks",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1125,
+                    "position_y": 640,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 46,
+                            "event_id": 1120,
+                            "type": "image",
+                            "position_x": 1125,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 47,
+                            "event_id": 1120,
+                            "type": "text",
+                            "position_x": 1125,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Plants without soil"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Plants without soil</h3><p>These plants grow with their roots in water. Everything they would take from soil is dissolved in it.</p><p>The ship keeps this water at about <strong>pH 6</strong>, close to neutral. Remember that number: it tells you what healthy plants are used to.</p>",
+                            "id": 112001,
+                            "event_id": 1120,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1130,
+                    "shortname": "grow-lights",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 560,
+                    "position_y": 250,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 48,
+                            "event_id": 1130,
+                            "type": "image",
+                            "position_x": 560,
+                            "position_y": 250,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 49,
+                            "event_id": 1130,
+                            "type": "text",
+                            "position_x": 560,
+                            "position_y": 268,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Why the lights are purple"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Why the lights are purple</h3><p>Leaves use mostly red and blue light to make food from water and carbon dioxide. Mixing red and blue lamps looks purple to us.</p><p>The plants return the favour: they give off the oxygen the crew breathes.</p>",
+                            "id": 113001,
+                            "event_id": 1130,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1140,
+                    "shortname": "water-tank",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 2120,
+                    "position_y": 470,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 50,
+                            "event_id": 1140,
+                            "type": "image",
+                            "position_x": 2120,
+                            "position_y": 470,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 51,
+                            "event_id": 1140,
+                            "type": "text",
+                            "position_x": 2120,
+                            "position_y": 408,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Nothing is wasted"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Nothing is wasted</h3><p>Water the plants do not use drains back into this tank, is cleaned, and goes round again.</p>",
+                            "id": 114001,
+                            "event_id": 1140,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "indirect_events": []
+        },
+        {
+            "id": 12,
+            "shortname": "engine-room",
+            "scenario_id": 1,
+            "sequence": 12,
+            "subtitle": "Starship: engine room",
+            "is_intro_scene": false,
+            "zoom": 1,
+            "show_avatars": true,
+            "width": 2250,
+            "height": 1200,
+            "background_media": [
+                {
+                    "media_id": 17,
+                    "display_width": 2250,
+                    "display_height": 1200
+                }
+            ],
+            "foreground_media": [],
+            "walkable_areas": [
+                [
+                    {
+                        "x": 0,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 1200
+                    },
+                    {
+                        "x": 0,
+                        "y": 1200
+                    }
+                ]
+            ],
+            "blocked_areas": [],
+            "spawn_points": [
+                {
+                    "name": "door",
+                    "position_x": 1125,
+                    "position_y": 1090
+                }
+            ],
+            "scale_areas": [],
+            "items": [],
+            "characters": [],
+            "start_events": [
+                {
+                    "id": 1200,
+                    "shortname": "music",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "volume": 0.5,
+                            "repeat": true,
+                            "persist": true,
+                            "id": 120001,
+                            "event_id": 1200,
+                            "type": "audio",
+                            "sequence": 1,
+                            "blocking": false,
+                            "media_id": 31
+                        }
+                    ]
+                },
+                {
+                    "id": 1201,
+                    "shortname": "caption",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "text": "Engine room",
+                            "alignment": "top center",
+                            "text_font_size": 30,
+                            "duration": 2500,
+                            "id": 120101,
+                            "event_id": 1201,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "end_events": [],
+            "hotspots": [
+                {
+                    "id": 1210,
+                    "shortname": "edge-south",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": null,
+                    "position_y": 1200,
+                    "radius": 25,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 52,
+                            "event_id": 1210,
+                            "type": "text",
+                            "position_x": 1125,
+                            "position_y": 1165,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "▼ Main corridor"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 9,
+                            "spawn_point": "far",
+                            "id": 121001,
+                            "event_id": 1210,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1220,
+                    "shortname": "reactor",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1125,
+                    "position_y": 495,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 53,
+                            "event_id": 1220,
+                            "type": "image",
+                            "position_x": 1125,
+                            "position_y": 495,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 54,
+                            "event_id": 1220,
+                            "type": "text",
+                            "position_x": 1125,
+                            "position_y": 238,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "The reactor"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>The reactor</h3><p>The glow is hot gas held in place by magnets, so it never touches the walls. It turns a tiny amount of fuel into a great deal of energy.</p><p>Energy is never made from nothing. Here it changes form: from fuel, to heat, to electricity for the whole ship.</p>",
+                            "id": 122001,
+                            "event_id": 1220,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1230,
+                    "shortname": "control-desk",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 380,
+                    "position_y": 640,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 55,
+                            "event_id": 1230,
+                            "type": "image",
+                            "position_x": 380,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 56,
+                            "event_id": 1230,
+                            "type": "text",
+                            "position_x": 380,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Keeping it steady"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Keeping it steady</h3><p>The green line shows the reactor's output over the last hour. The engineers want it flat: steady power, no surprises.</p>",
+                            "id": 123001,
+                            "event_id": 1230,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1240,
+                    "shortname": "coolant-pipes",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1810,
+                    "position_y": 380,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 57,
+                            "event_id": 1240,
+                            "type": "image",
+                            "position_x": 1810,
+                            "position_y": 380,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 58,
+                            "event_id": 1240,
+                            "type": "text",
+                            "position_x": 1810,
+                            "position_y": 268,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Three pipes, three jobs"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Three pipes, three jobs</h3><p>Orange carries heat away from the reactor, blue brings cooled liquid back, and grey is the spare.</p><p>If the heat had nowhere to go, the reactor would have to shut down.</p>",
+                            "id": 124001,
+                            "event_id": 1240,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "indirect_events": []
         }
     ]
 }

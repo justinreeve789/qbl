@@ -1,3 +1,4 @@
+import { scaleAt, type ScaleArea } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -142,6 +143,7 @@ export class SceneCanvas {
     const shapes: SVGElement[] = [];
     const top: SVGElement[] = []; // handles of the selected thing, drawn over everything else
 
+    this.drawScaleAreas(selected, u, shapes, top);
     this.drawAreas('walkable_areas', selected, u, shapes, top);
     this.drawAreas('blocked_areas', selected, u, shapes, top);
     for (const event of this.model.events('hotspot')) this.drawHotspot(event, selected, u, W, H, shapes, top);
@@ -235,6 +237,52 @@ export class SceneCanvas {
     });
   }
 
+  // ------------------------------------------------------------- scale areas
+
+  /**
+   * Boxes in which things are drawn smaller towards one edge. Each shows the size at its top and
+   * bottom edges as a pair of figures, so the gradient can be judged against the artwork.
+   */
+  private drawScaleAreas(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
+    const areas = this.model.layout<ScaleArea>('scale_areas');
+    areas.forEach((area, index) => {
+      const selection: Selection = { kind: 'scale', index };
+      const isSelected = sameSelection(selection, selected);
+      const commit = () => void this.model.setLayout('scale_areas', areas);
+      const start = { x: area.x, y: area.y, width: area.width, height: area.height };
+      shapes.push(
+        s('rect', {
+          class: `scale-area${isSelected ? ' selected' : ''}`, x: area.x, y: area.y, width: area.width, height: area.height,
+          onpointerdown: (e: PointerEvent) =>
+            this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(area, { x: start.x + to.x - from.x, y: start.y + to.y - from.y }), end: commit } : undefined),
+        }),
+      );
+      // A figure as tall as a typical avatar (160 px at full size) at each edge.
+      const figure = (percent: number, feetY: number, cx: number) => {
+        const hgt = 160 * (percent / 100);
+        return s('g', { class: 'scale-figure' },
+          s('rect', { x: cx - hgt * 0.16, y: feetY - hgt * 0.72, width: hgt * 0.32, height: hgt * 0.72, rx: hgt * 0.1 }),
+          s('circle', { cx, cy: feetY - hgt * 0.86, r: hgt * 0.14 }),
+          s('text', { class: 'shape-name', x: cx + hgt * 0.2 + 6 * u, y: feetY - hgt / 2, 'font-size': 12 * u, 'dominant-baseline': 'middle' }, `${percent}%`));
+      };
+      const cx = area.x + Math.min(area.width / 2, 90 * u + 60);
+      shapes.push(figure(Number(area.scale_top), area.y + Math.max(0, 160 * (Number(area.scale_top) / 100)), cx), figure(Number(area.scale_bottom), area.y + area.height, cx));
+      shapes.push(s('text', { class: 'shape-name', x: area.x + area.width - 8 * u, y: area.y + 16 * u, 'font-size': 12 * u, 'text-anchor': 'end' }, area.name || `Scale area ${index + 1}`));
+      if (!isSelected) return;
+      // Corner handles resize the box.
+      const corners: Array<[number, number, (to: Point) => void]> = [
+        [area.x, area.y, (to) => Object.assign(area, { x: Math.min(to.x, start.x + start.width - 20), y: Math.min(to.y, start.y + start.height - 20), width: Math.max(20, start.x + start.width - to.x), height: Math.max(20, start.y + start.height - to.y) })],
+        [area.x + area.width, area.y + area.height, (to) => Object.assign(area, { width: Math.max(20, to.x - start.x), height: Math.max(20, to.y - start.y) })],
+      ];
+      for (const [hx, hy, resize] of corners) {
+        top.push(s('rect', {
+          class: 'handle', x: hx - 6 * u, y: hy - 6 * u, width: 12 * u, height: 12 * u,
+          onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => resize(to), end: commit }),
+        }, s('title', null, 'Drag to resize')));
+      }
+    });
+  }
+
   // ---------------------------------------------------------------- hotspots
 
   private drawHotspot(event: Row, selected: Selection, u: number, W: number, H: number, shapes: SVGElement[], top: SVGElement[]) {
@@ -274,6 +322,13 @@ export class SceneCanvas {
       handleAt = { x: x + r, y: H / 2 };
       resize = (to) => (event.radius = Math.max(4, Math.abs(to.x - x)));
     } else {
+      // Hotspots that only appear when the avatar is near: the distance at which they start to
+      // show, and the distance at which they are fully visible.
+      const outer = Number(event.reveal_radius ?? 0);
+      if (outer > 0) {
+        const inner = Math.min(outer, Number(event.reveal_full_radius ?? outer / 2));
+        shapes.push(s('circle', { class: 'reveal-ring', cx: x, cy: y, r: outer }), s('circle', { class: 'reveal-ring full', cx: x, cy: y, r: inner }));
+      }
       shapes.push(s('circle', { class: cls, cx: x, cy: y, r, onpointerdown: press }));
       // Under the circle, so the name does not sit on top of the hotspot's own label.
       labelAt = { x, y: y + r + 10 * u };
@@ -355,7 +410,9 @@ export class SceneCanvas {
       const y = Number(placement.position_y ?? 0);
       const url = mediaUrl(store, store.byId('media', thing?.media_id as number | null));
       const size = url ? this.natural(url) : null;
-      const scale = Number(params(thing ?? ({} as Row), 'settings').scale ?? 1);
+      // Drawn at the size the game will draw it: its own scale, times the scale area it stands in.
+      const depth = scaleAt({ scale_areas: this.model.layout<ScaleArea>('scale_areas') }, x, y);
+      const scale = Number(params(thing ?? ({} as Row), 'settings').scale ?? 1) * depth;
       const group = s('g', {
         class: `placement ${which}${sameSelection(selection, selected) ? ' selected' : ''}`,
         onpointerdown: (e: PointerEvent) => this.begin(e, selection, this.moveBag(placement, () => this.model.setLayout(which, placements))),

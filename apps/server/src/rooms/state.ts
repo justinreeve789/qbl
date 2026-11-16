@@ -16,6 +16,7 @@ export const Player = schema({
   attachments: t.string(),
   /** False while the connection is dropped and the seat is held for reconnection. */
   connected: t.boolean(),
+  hidden: t.boolean(),
 }, 'Player');
 export type Player = SchemaType<typeof Player>;
 

@@ -1,4 +1,4 @@
-import type { Point, Scene } from './types.js';
+import type { Hotspot, Point, Scene } from './types.js';
 
 export interface Circle { x: number; y: number; radius: number }
 
@@ -140,4 +140,38 @@ export class MoveBudget {
     this.last = now;
     this.budget = 0;
   }
+}
+
+// ------------------------------------------------------------ depth and reveal
+
+/**
+ * How large something standing at (x, y) is drawn, as a factor of its normal size (1 = unchanged),
+ * from the scene's scale areas. The same function sizes avatars, items and characters, in the
+ * game and in the editor.
+ */
+export function scaleAt(scene: Pick<Scene, 'scale_areas'>, x: number, y: number): number {
+  for (const a of scene.scale_areas ?? []) {
+    if (x < a.x || x > a.x + a.width || y < a.y || y > a.y + a.height) continue;
+    const t = a.height > 0 ? (y - a.y) / a.height : 1;
+    const percent = a.scale_top + (a.scale_bottom - a.scale_top) * t;
+    return Math.max(0.05, percent / 100);
+  }
+  return 1;
+}
+
+/**
+ * How visible a hotspot is to an avatar at (x, y): 0 beyond its reveal radius, 1 within its
+ * full radius, and in proportion in between. A hotspot without a reveal radius is always 1.
+ * A coordinate the hotspot leaves empty (it spans that axis) does not count towards the distance.
+ */
+export function revealAmount(hotspot: Pick<Hotspot, 'position_x' | 'position_y' | 'reveal_radius' | 'reveal_full_radius'>, x: number, y: number): number {
+  const outer = hotspot.reveal_radius;
+  if (outer == null || outer <= 0) return 1;
+  const inner = Math.min(outer, Math.max(0, hotspot.reveal_full_radius ?? outer / 2));
+  const dx = hotspot.position_x == null ? 0 : x - hotspot.position_x;
+  const dy = hotspot.position_y == null ? 0 : y - hotspot.position_y;
+  const distance = Math.hypot(dx, dy);
+  if (distance >= outer) return 0;
+  if (distance <= inner) return 1;
+  return (outer - distance) / (outer - inner);
 }

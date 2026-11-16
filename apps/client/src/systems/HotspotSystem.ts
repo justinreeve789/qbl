@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { inHotspot, labelMediaId, type Hotspot, type Label } from '@qbl/shared';
+import { inHotspot, labelMediaId, revealAmount, type Hotspot, type Label } from '@qbl/shared';
 import { ensureAnimation, ensureSpritesheet, mediaKey } from '../core/assets';
 import { Depth } from '../core/depth';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
@@ -13,6 +13,8 @@ interface Entry {
   /** Walk-in hotspots fire on entry; this remembers whether the avatar is already inside. */
   inside: boolean;
   available: boolean;
+  /** 0 to 1: how visible the hotspot is from where the avatar stands (always 1 without a reveal radius). */
+  reveal: number;
 }
 
 const LABEL_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -40,7 +42,7 @@ export class HotspotSystem implements SceneSystem {
   create() {
     for (const hotspot of this.rt.def.hotspots ?? []) {
       const labels = (hotspot.labels ?? []).map((l) => this.createLabel(l, hotspot)).filter((l) => l != null);
-      this.entries.push({ hotspot, labels, inside: false, available: false });
+      this.entries.push({ hotspot, labels, inside: false, available: false, reveal: hotspot.reveal_radius ? 0 : 1 });
     }
     this.variablesChanged();
     this.rt.scene.time.addEvent({ delay: REFRESH_MS, loop: true, callback: () => this.variablesChanged() });
@@ -82,7 +84,7 @@ export class HotspotSystem implements SceneSystem {
     for (const e of this.entries) {
       e.available = this.rt.engine.hotspotAvailable(e.hotspot);
       for (const l of e.labels) {
-        l.object.setVisible(e.available);
+        l.object.setVisible(e.available && e.reveal > 0);
         // Text labels may contain {{variable}} placeholders.
         if (l.text?.includes('{{')) (l.object as Phaser.GameObjects.Text).setText(this.rt.ctx.text(l.text));
       }
@@ -91,14 +93,15 @@ export class HotspotSystem implements SceneSystem {
 
   /** Is there a clickable hotspot under this world point? Used for the pointer cursor. */
   clickableAt(x: number, y: number): boolean {
-    return this.entries.some((e) => e.available && e.hotspot.activate_by_trigger && this.hit(e, x, y));
+    return this.entries.some((e) => e.available && e.reveal > 0 && e.hotspot.activate_by_trigger && this.hit(e, x, y));
   }
 
   /** Fire every click hotspot under the point. Returns true if any fired. */
   click(x: number, y: number): boolean {
     let fired = false;
     for (const e of this.entries) {
-      if (!e.hotspot.activate_by_trigger || !this.hit(e, x, y)) continue;
+      // A hotspot that has not been revealed yet is not there to click.
+      if (!e.hotspot.activate_by_trigger || e.reveal <= 0 || !this.hit(e, x, y)) continue;
       if (this.fire(e)) fired = true;
     }
     return fired;
@@ -108,6 +111,7 @@ export class HotspotSystem implements SceneSystem {
     if (this.rt.leaving) return;
     const { x, y } = this.rt.system(LocalPlayerSystem).position;
     for (const e of this.entries) {
+      if (e.hotspot.reveal_radius) this.reveal(e, revealAmount(e.hotspot, x, y));
       if (e.hotspot.activate_by_trigger) continue;
       const inside = inHotspot(e.hotspot, x, y);
       // Fires once on entering. If it could not fire yet (hotspots blocked, conditions unmet) it keeps
@@ -115,6 +119,13 @@ export class HotspotSystem implements SceneSystem {
       if (!inside) e.inside = false;
       else if (!e.inside && (this.rt.engine.isRunning(e.hotspot.id) || this.fire(e))) e.inside = true;
     }
+  }
+
+  /** Hotspots with a reveal radius fade in as the avatar comes near and out as it leaves. */
+  private reveal(e: Entry, amount: number) {
+    if (amount === e.reveal) return;
+    e.reveal = amount;
+    for (const l of e.labels) l.object.setAlpha(amount).setVisible(e.available && amount > 0);
   }
 
   private hit(e: Entry, x: number, y: number): boolean {

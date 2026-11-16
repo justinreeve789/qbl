@@ -58,6 +58,8 @@ export abstract class GameConnection {
   variable(msg: VariableMessage) { this.send(C2S.Variable, msg); }
   item(msg: ItemMessage) { this.send(C2S.Item, msg); }
   progress(msg: ProgressMessage) { this.send(C2S.Progress, msg); }
+  /** Show or hide this player's avatar for everyone in the scene. */
+  avatarVisible(visible: boolean) { this.send(C2S.Avatar, { visible }); }
 }
 
 /** A Colyseus room on the game server. */
@@ -162,6 +164,9 @@ export class OfflineConnection extends GameConnection {
         if (!this.world.item(id, payload as ItemMessage)) {
           this.emit('notice', { code: 'item_unavailable', message: 'That is not available right now.' });
         }
+        break;
+      case C2S.Avatar:
+        this.world.setAvatarVisible(this.sessionId, payload as { visible: boolean });
         break;
       case C2S.Progress:
         this.world.progress(id, payload as ProgressMessage);

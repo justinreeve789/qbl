@@ -36,9 +36,22 @@ export class Avatar {
   private attachedKey = '';
   private baseScale: number;
   private facing: 'left' | 'right' = 'right';
+  /** The scene does not show avatars at all (`show_avatars` off). */
   private hidden = false;
+  /** 1 when shown, 0 when an avatar action has hidden it; in between while fading. */
+  private fade = 1;
+  private fadeTarget = 1;
+  private fadeMs = 0;
+  private connected = true;
 
-  constructor(private scene: Phaser.Scene, private ctx: GameContext, rec: PlayerRec, private zoom: number, readonly isLocal: boolean) {
+  /**
+   * `depth` gives the size factor for something standing at a point, from the scene's scale areas.
+   * It applies to the figure and to everything it wears or rides.
+   */
+  constructor(
+    private scene: Phaser.Scene, private ctx: GameContext, rec: PlayerRec, private zoom: number, readonly isLocal: boolean,
+    private depth: (x: number, y: number) => number = () => 1,
+  ) {
     this.x = rec.x;
     this.y = rec.y;
     const media = ctx.index.media.get(rec.avatar);
@@ -50,7 +63,42 @@ export class Avatar {
     this.setFacing(rec.facing === 'left' ? 'left' : 'right');
     this.setAttachments(rec.attachments);
     this.setConnected(rec.connected);
+    // Someone already hidden when they come into view starts hidden, without a fade.
+    if (rec.hidden) this.fade = this.fadeTarget = 0;
+    this.applyVisibility();
     this.layout();
+  }
+
+  /** True when the figure cannot be seen: the scene hides avatars, or an avatar action has hidden this one. */
+  get invisible(): boolean {
+    return this.hidden || this.fade <= 0;
+  }
+
+  /** Show or hide the figure (an avatar action), fading over `duration` ms. Call tick() each frame. */
+  setShown(shown: boolean, duration = 250) {
+    this.fadeTarget = shown ? 1 : 0;
+    this.fadeMs = duration;
+    if (duration <= 0) {
+      this.fade = this.fadeTarget;
+      this.applyVisibility();
+    }
+  }
+
+  /** Advance a fade in progress. */
+  tick(delta: number) {
+    if (this.fade === this.fadeTarget) return;
+    const step = this.fadeMs > 0 ? delta / this.fadeMs : 1;
+    this.fade = this.fadeTarget > this.fade ? Math.min(1, this.fade + step) : Math.max(0, this.fade - step);
+    this.applyVisibility();
+  }
+
+  private applyVisibility() {
+    const visible = !this.invisible;
+    const alpha = this.fade * (this.connected ? 1 : 0.45);
+    this.sprite.setVisible(visible).setAlpha(alpha);
+    this.label.setVisible(visible).setAlpha(this.fade);
+    if (!visible) this.bubble.setVisible(false);
+    for (const img of this.attached.values()) img.setVisible(visible).setAlpha(this.fade);
   }
 
   get height(): number {
@@ -82,14 +130,13 @@ export class Avatar {
   /** Hide the figure in scenes with show_avatars off; it still has a position for the camera and hotspots. */
   setVisible(visible: boolean) {
     this.hidden = !visible;
-    this.sprite.setVisible(visible);
-    this.label.setVisible(visible);
-    if (!visible) this.bubble.setVisible(false);
-    for (const img of this.attached.values()) img.setVisible(visible);
+    this.applyVisibility();
   }
 
   setConnected(connected: boolean) {
-    this.sprite.setAlpha(connected ? 1 : 0.45);
+    if (connected === this.connected) return;
+    this.connected = connected;
+    this.applyVisibility();
   }
 
   setAttachments(csv: string) {
@@ -107,13 +154,14 @@ export class Avatar {
       const item = this.ctx.index.items.get(id);
       if (!item || item.media_id == null || !this.scene.textures.exists(mediaKey(item.media_id))) continue;
       const img = this.scene.add.image(this.x, this.y, mediaKey(item.media_id)).setOrigin(0.5, 1).setScale((item.scale ?? 1) * this.zoom);
-      this.attached.set(id, img.setVisible(!this.hidden));
+      this.attached.set(id, img);
     }
+    this.applyVisibility();
     this.layout();
   }
 
   say(text: string) {
-    if (this.hidden) return;
+    if (this.invisible) return;
     this.bubble.setText(text).setVisible(true);
     this.bubbleTimer?.remove();
     const ms = Math.min(3500 + text.length * 125, 15_000);
@@ -122,11 +170,14 @@ export class Avatar {
   }
 
   private layout() {
-    this.sprite.setPosition(this.x, this.y).setDepth(this.y);
+    // Depth: the figure and what it carries shrink or grow together with where it stands.
+    const k = this.depth(this.x, this.y);
+    this.sprite.setPosition(this.x, this.y).setDepth(this.y).setScale(this.baseScale * k);
     const dir = this.facing === 'left' ? -1 : 1;
     for (const [id, img] of this.attached) {
       const item = this.ctx.index.items.get(id)!;
-      img.setPosition(this.x + (item.attach_offset_x ?? 0) * dir * this.zoom, this.y + (item.attach_offset_y ?? 0) * this.zoom);
+      img.setScale((item.scale ?? 1) * this.zoom * k);
+      img.setPosition(this.x + (item.attach_offset_x ?? 0) * dir * this.zoom * k, this.y + (item.attach_offset_y ?? 0) * this.zoom * k);
       img.setFlipX((this.facing === 'left') !== (item.art_faces === 'left'));
       img.setDepth(this.y + (item.attach_layer === 'behind' ? -0.5 : 0.5));
     }

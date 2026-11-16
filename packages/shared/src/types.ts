@@ -87,6 +87,7 @@ export interface Variable {
 // -------------------------------------------------------------- actions
 
 export type ActionType =
+  | 'avatar'
   | 'audio'
   | 'cancel'
   | 'image_fixed'
@@ -228,8 +229,20 @@ export interface WaitAction extends ActionBase {
   duration: number;
 }
 
+/**
+ * [ext] Show or hide the player's own avatar. Every player in the scene sees the change, because
+ * it goes through the game server. Avatars are shown again whenever a player enters a scene, so a
+ * scene that wants them hidden says so in a start event.
+ */
+export interface AvatarAction extends ActionBase {
+  type: 'avatar';
+  visible: boolean;
+  /** Fade time in milliseconds. 0 or absent: at once. */
+  duration?: number;
+}
+
 export type Action =
-  | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
+  | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
   | VariableAction | VideoAction | WaitAction;
@@ -271,6 +284,35 @@ export interface Hotspot extends GameEvent {
   labels?: Label[];
   /** [ext] For walk-in hotspots: fire once per visit to the scene instead of on every entry. */
   once?: boolean;
+  /**
+   * [ext] The hotspot is only there when the player's avatar is near. Beyond this distance from its
+   * position (scene pixels) its labels are invisible and it cannot be clicked. Absent: always there.
+   */
+  reveal_radius?: number | null;
+  /**
+   * [ext] The distance at which the hotspot is fully visible. Between here and `reveal_radius` its
+   * labels fade in and out with the avatar's distance. Absent: half of `reveal_radius`.
+   */
+  reveal_full_radius?: number | null;
+}
+
+/**
+ * [ext] A box of the scene with a size gradient. Whatever stands in it is drawn at `scale_top`
+ * percent of its normal size at the box's top edge and `scale_bottom` percent at its bottom edge,
+ * and in proportion in between: with 60 and 100, an avatar walking up the screen shrinks as if
+ * walking away. It is separate from walkable areas so that it also covers things placed where
+ * nobody can walk. Where boxes overlap, the first one listed applies.
+ */
+export interface ScaleArea {
+  name?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Percent of normal size at the top edge. 100 is unchanged. */
+  scale_top: number;
+  /** Percent of normal size at the bottom edge. */
+  scale_bottom: number;
 }
 
 // ----------------------------------------------------- items/characters
@@ -386,6 +428,8 @@ export interface Scene {
   blocked_areas?: Point[][];
   /** [ext] The spawn point named "default" is used when none is requested. */
   spawn_points?: SpawnPoint[];
+  /** [ext] Boxes in which avatars, what they wear or ride, items and characters are drawn smaller or larger, for depth. */
+  scale_areas?: ScaleArea[];
   items?: ItemPlacement[];
   characters?: CharacterPlacement[];
 }

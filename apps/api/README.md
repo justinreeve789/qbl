@@ -1,6 +1,14 @@
 # QBL API (Laravel)
 
-`overlay/` contains only what QBL adds to a stock Laravel application:
+A complete Laravel 13 application. Open this folder in your IDE and run `composer install` once so
+the framework in `vendor/` is indexed.
+
+    cd apps/api
+    composer install
+    cp .env.example .env && php artisan key:generate     # only for running it outside Docker
+    php artisan test
+
+What QBL adds to stock Laravel:
 
 | File | Purpose |
 | ---- | ------- |
@@ -17,12 +25,13 @@
 | `app/Console/Commands/*` | `qbl:publish [code-or-shortname] [--print]`, `qbl:user <email> <name> [--role=]` |
 | `config/qbl.php` | `QBL_SERVICE_KEY`, `QBL_ALLOW_GUESTS`, `QBL_SEED`, `QBL_MEDIA_DIR`, `QBL_MEDIA_URL` |
 
-Outside the overlay:
+Beside the framework's usual folders:
 
 | File | Purpose |
 | ---- | ------- |
 | `bin/export-seed.php` | Runs the compiler on the seed data with no Laravel or database and prints the JSON |
-| `tests/store.php` | Tests the three `app/Qbl` classes over SQLite: `npm run test:api` |
+| `tests/store.php` | Tests the three `app/Qbl` classes over SQLite, with no framework: `npm run test:api` |
+| `tests/Feature/QblApiTest.php` | The same API through real Laravel: `php artisan test` |
 | `dev/server.php` | A stand-in API for developing and testing the editor without Docker: `npm run dev:api`. Not for deployment |
 
 ## Why three plain PHP classes
@@ -73,12 +82,22 @@ docker compose exec app php artisan qbl:user you@example.org "Your Name" --role=
 Teachers can edit their own scenarios and the shared samples that have no owner (the seeded demo). Admins can
 edit everything. Students and guests cannot use the editor API at all.
 
+## What was removed from the stock skeleton
+
+Laravel's own front-end scaffolding (`package.json`, `vite.config.js`, `resources/js`, `resources/css`, the
+welcome page), because the game and the editor are separate applications; `routes/web.php` answers with a line
+of JSON. The skeleton's `AGENTS.md`, `CLAUDE.md`, changelog and GitHub workflow files were also left out.
+
+## Sanctum's migration
+
+`php artisan install:api` publishes the token-table migration under a file name containing the current time.
+This repository has it under a fixed name, and it leaves an existing table alone, so databases created by
+earlier builds keep working. Do not run `install:api` again.
+
 ## Status
 
-`ScenarioStore`, `EditorApi`, `ScenarioCompiler`, the seed data, the tests and the dev server have been run.
-Everything that needs the framework (migration, service provider, seeders, controllers, commands, the Docker
-image) was written without network access; it has been built and started, but treat the thin Laravel glue
-around the editor API as new.
+Run and passing here: `tests/store.php` (86 checks), `php artisan test` (8 tests on real Laravel 13 with
+SQLite), and a manual pass over HTTP with `php artisan serve`. Not run here: MariaDB and the Docker image.
 
 ## Not here yet
 

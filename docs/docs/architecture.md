@@ -27,7 +27,7 @@ Path | What it is
 `apps/server` | Colyseus game server. `ScenarioRoom` is a thin adapter around the shared `World`; `backend/` hides whether data comes from files or the API.
 `apps/client` | Phaser client. One data-driven `PlayScene` plays every scene of every scenario.
 `apps/editor` | The scenario editor: TypeScript and DOM, no framework. Forms are generated from lists of fields in `schema.ts`. See `apps/editor/README.md`.
-`apps/api` | Laravel overlay: the QBL tables, seed data for the demo mission, the store the editor and the seeder write through, the compiler that generates scenario JSON from the tables, and the controllers implementing the API contract.
+`apps/api` | The Laravel application: the QBL tables, seed data for the demo mission, the store the editor and the seeder write through, the compiler that generates scenario JSON from the tables, and the controllers implementing the API contract.
 `scenarios` | Scenario JSON and media for the file backend. `starship.json` is generated from the API's seed data (`npm run seed:export`); do not edit it by hand.
 `docs` | This documentation.
 `docker` | Dockerfiles for the app, colyseus, editor and apache containers, the app entrypoint and the Apache configuration.

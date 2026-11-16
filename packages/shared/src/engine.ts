@@ -23,6 +23,8 @@ export interface EngineHost {
   present(action: PresentedAction, engine: SceneEngine): ActionHandle;
   /** Tween a running action's display object. Return null if the target is gone. */
   translate(action: TranslateAction): ActionHandle | null;
+  /** Show or hide the player's avatar, fading over `duration` ms. The handle finishes when the fade does. */
+  avatar?(visible: boolean, duration: number): ActionHandle | null;
   delay(ms: number): ActionHandle;
   /** Leave the current scene. Called after end events have finished. */
   jump(sceneId: Id, spawnPoint?: string): void;
@@ -245,6 +247,14 @@ export class SceneEngine {
         case 'wait': {
           if (action.duration > 0) {
             const h = this.host.delay(action.duration);
+            this.track(run, action, h);
+            if (action.blocking !== false) await this.wait(run, h);
+          }
+          break;
+        }
+        case 'avatar': {
+          const h = this.host.avatar?.(action.visible !== false, Math.max(0, Number(action.duration ?? 0)));
+          if (h) {
             this.track(run, action, h);
             if (action.blocking !== false) await this.wait(run, h);
           }

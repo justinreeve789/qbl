@@ -172,6 +172,12 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .area.walkable { fill: rgba(31, 157, 85, 0.14); stroke: var(--walkable); }
 .area.blocked { fill: rgba(214, 69, 69, 0.28); stroke: var(--blocked); }
 .area.selected { stroke-width: 3; stroke-dasharray: 6 4; }
+.scale-area { fill: rgba(255, 210, 74, 0.07); stroke: #ffd24a; stroke-width: 1.5; stroke-dasharray: 2 5; cursor: pointer; }
+.scale-area.selected { stroke-width: 3; stroke-dasharray: 8 5; cursor: move; fill: rgba(255, 210, 74, 0.12); }
+.scale-figure { pointer-events: none; }
+.scale-figure rect, .scale-figure circle { fill: rgba(255, 210, 74, 0.55); stroke: #1a1a1a; stroke-width: 1; }
+.reveal-ring { fill: none; stroke: var(--click); stroke-width: 1.5; stroke-dasharray: 3 7; pointer-events: none; }
+.reveal-ring.full { stroke-dasharray: 10 6; }
 .hotspot { stroke-width: 1.5; cursor: move; }
 .hotspot.click { fill: rgba(47, 125, 225, 0.22); stroke: var(--click); }
 .hotspot.walk { fill: rgba(224, 122, 18, 0.22); stroke: var(--walk); }

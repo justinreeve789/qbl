@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import {
-  blockingRadius, parseIds, testConditions,
+  blockingRadius, parseIds, scaleAt, testConditions,
   type CharacterPlacement, type Circle, type Id, type Item,
 } from '@qbl/shared';
 import { mediaKey } from '../core/assets';
@@ -54,12 +54,12 @@ export class PropsSystem implements SceneSystem {
   }
 
   private place(item: Item, x: number, y: number, visible: boolean) {
-    const { scene, zoom } = this.rt;
+    const { scene, zoom, def } = this.rt;
     if (this.items.has(item.id) || item.media_id == null || !scene.textures.exists(mediaKey(item.media_id))) return;
     const image = scene.add
       .image(x, y, mediaKey(item.media_id))
       .setOrigin(0.5, 1)
-      .setScale((item.scale ?? 1) * zoom)
+      .setScale((item.scale ?? 1) * zoom * scaleAt(def, x, y))
       .setDepth(y)
       .setVisible(visible);
     if (item.vehicle || item.wearable) {
@@ -81,14 +81,14 @@ export class PropsSystem implements SceneSystem {
   }
 
   private character(placement: CharacterPlacement) {
-    const { ctx, scene, zoom, engine } = this.rt;
+    const { ctx, scene, zoom, engine, def } = this.rt;
     const character = ctx.scenario.characters?.find((c) => c.id === placement.character_id);
     if (!character || character.media_id == null || !scene.textures.exists(mediaKey(character.media_id))) return;
     if (!testConditions(character.conditions, ctx.vars.get)) return;
     const image = scene.add
       .image(placement.position_x, placement.position_y, mediaKey(character.media_id))
       .setOrigin(0.5, 1)
-      .setScale((character.scale ?? 1) * zoom)
+      .setScale((character.scale ?? 1) * zoom * scaleAt(def, placement.position_x, placement.position_y))
       .setFlipX(placement.facing === 'left')
       .setDepth(placement.position_y);
     const name = scene.add
@@ -118,7 +118,8 @@ export class PropsSystem implements SceneSystem {
       if (p.item.unique) {
         const rec = state.items.get(String(p.item.id));
         visible &&= !!rec && rec.holder === '' && rec.scene_id === this.rt.def.id;
-        if (rec && visible) p.image.setPosition(rec.x, rec.y).setDepth(rec.y);
+        // A unique item lies where it was last put down, at the size that place gives it.
+        if (rec && visible) p.image.setPosition(rec.x, rec.y).setDepth(rec.y).setScale((p.item.scale ?? 1) * this.rt.zoom * scaleAt(this.rt.def, rec.x, rec.y));
       } else {
         visible &&= !mine.includes(p.item.id);
       }

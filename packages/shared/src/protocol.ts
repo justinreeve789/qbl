@@ -29,6 +29,7 @@ export const C2S = {
   Variable: 'var',
   Item: 'item',
   Progress: 'progress',
+  Avatar: 'avatar',
 } as const;
 
 export const S2C = {
@@ -45,6 +46,8 @@ export interface ChatMessage { text: string }
 export interface EmoteMessage { emoji: string }
 export interface VariableMessage { name: string; operator: VariableOperator; operand?: VarValue }
 export interface ItemMessage { item_id: Id; action: 'attach' | 'detach' }
+/** Show or hide the sender's avatar for everyone in their scene. */
+export interface AvatarMessage { visible: boolean }
 /** Sent periodically so the server can save player-scoped progress. */
 export interface ProgressMessage {
   variables: Record<string, VarValue>;

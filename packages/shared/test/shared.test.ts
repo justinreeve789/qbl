@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  revealAmount, scaleAt,
   applyOperator, collectSceneMediaIds, escapeHtml, evaluateObjectives, interpolate, placeholderVariables, MoveBudget, sceneSize, computeJumpTargets, inHotspot, isWalkable,
   nearestWalkable, normalizeActionType, normalizeScenario, resolveMove, ScenarioIndex, SceneEngine,
   testCondition, validateMove, validateScenario, VariableStore, walkContext,
@@ -16,6 +17,11 @@ class FakeHost implements EngineHost {
   jumps: Array<[number, string | undefined]> = [];
   private timers: Array<{ at: number; fire: () => void }> = [];
   durations: Record<number, number> = {};
+
+  avatar(visible: boolean, duration: number): ActionHandle {
+    this.log.push(`avatar:${visible ? 'show' : 'hide'}`);
+    return this.timed(duration);
+  }
 
   private timed(ms: number, label?: string): ActionHandle {
     let finish!: () => void;
@@ -432,7 +438,10 @@ test('starship scenario (generated from seed data): valid, edges and music in ev
   const targets = computeJumpTargets(scenario);
   const sorted = Object.fromEntries(Object.entries(targets).map(([k, v]) => [k, [...v].sort((a, b) => a - b)]));
   // Landing site 3 <-> rocket pad 4 <-> control room 2 <-> deck 1 and lab 8; the stream runs 3 <-> marsh 7 <-> gully 6 <-> meadow 5.
-  assert.deepEqual(sorted, { '1': [2], '2': [1, 4, 8], '3': [4, 7], '4': [2, 3], '5': [6], '6': [5, 7], '7': [3, 6], '8': [2] });
+  assert.deepEqual(sorted, {
+    '1': [2], '2': [1, 4, 8, 9], '3': [4, 7], '4': [2, 3], '5': [6], '6': [5, 7], '7': [3, 6], '8': [2],
+    '9': [2, 10, 11, 12], '10': [9], '11': [9], '12': [9],
+  });
 
   // The rocket pad: the start event stands the rocket up, the hotspot launches it and jumps to the ship.
   const store = new VariableStore(scenario.global_variables);
@@ -444,6 +453,9 @@ test('starship scenario (generated from seed data): valid, edges and music in ev
   assert.ok(host.log.includes('present:4001'), 'the rocket is standing on the pad');
   const rocket = pad.hotspots!.find((h) => h.shortname === 'rocket')!;
   assert.ok(engine.triggerHotspot(rocket));
+  await host.advance(0);
+  assert.deepEqual(host.log.filter((l) => l.startsWith('avatar') || l === 'present:4201'), ['avatar:hide'], 'the avatar steps into the rocket before anything else happens');
+  await host.advance(400);
   await host.advance(1199);
   assert.ok(engine.hotspotsBlocked, 'other hotspots are locked during the countdown');
   assert.equal(engine.triggerHotspot(pad.hotspots![0]!), false);
@@ -475,4 +487,25 @@ test('starship scenario (generated from seed data): valid, edges and music in ev
   if (infobox.type === 'infobox') await Promise.race([control.runAction(infobox.call_to_actions![0]!.action!), flush()]);
   assert.equal(store.get('mission'), 'flora');
   assert.deepEqual(sent, [['missions_started', '+', 1]]);
+});
+
+test('scale areas size things by where they stand', () => {
+  const scene = { scale_areas: [{ x: 0, y: 400, width: 1000, height: 400, scale_top: 60, scale_bottom: 100 }, { x: 0, y: 0, width: 2000, height: 2000, scale_top: 200, scale_bottom: 200 }] };
+  assert.equal(scaleAt(scene, 500, 800), 1);
+  assert.equal(scaleAt(scene, 500, 400), 0.6);
+  assert.equal(scaleAt(scene, 500, 600), 0.8);
+  assert.equal(scaleAt(scene, 1500, 600), 2, 'outside the first box, the next one that contains the point applies');
+  assert.equal(scaleAt({}, 500, 600), 1);
+  assert.equal(scaleAt({ scale_areas: [] }, 5000, 5000), 1);
+});
+
+test('a hotspot with a reveal radius fades in as the avatar approaches', () => {
+  const spot = { position_x: 1000, position_y: 500, reveal_radius: 400, reveal_full_radius: 100 };
+  assert.equal(revealAmount(spot, 1500, 500), 0);
+  assert.equal(revealAmount(spot, 1400, 500), 0);
+  assert.equal(revealAmount(spot, 1250, 500), 0.5);
+  assert.equal(revealAmount(spot, 1050, 500), 1);
+  assert.equal(revealAmount({ position_x: 1000, position_y: 500 }, 9000, 9000), 1, 'no reveal radius: always there');
+  assert.equal(revealAmount({ position_x: 1000, position_y: 500, reveal_radius: 400 }, 1300, 500), 0.5, 'full radius defaults to half');
+  assert.equal(revealAmount({ position_x: null, position_y: 500, reveal_radius: 200, reveal_full_radius: 0 }, 9000, 600), 0.5, 'an empty coordinate does not count');
 });

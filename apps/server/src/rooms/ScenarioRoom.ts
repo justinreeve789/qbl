@@ -1,7 +1,7 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
   C2S, CloseCodes, normalizeScenario, S2C, validateScenario, World,
-  type ChatBroadcast, type EmoteBroadcast, type ItemMessage, type JoinOptions, type MoveMessage,
+  type ChatBroadcast, type EmoteBroadcast, type AvatarMessage, type ItemMessage, type JoinOptions, type MoveMessage,
   type NoticeMessage, type ProgressMessage, type SceneMessage, type SnapMessage, type VariableMessage,
   type WelcomeMessage,
 } from '@qbl/shared';
@@ -76,6 +76,10 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       if (!this.world.item(client.sessionId, msg)) {
         this.notice(client, 'item_unavailable', 'That is not available right now.');
       }
+    });
+
+    this.onMessage(C2S.Avatar, (client: Client, msg: AvatarMessage) => {
+      this.world.setAvatarVisible(client.sessionId, msg);
     });
 
     this.onMessage(C2S.Progress, (client: Client, msg: ProgressMessage) => {

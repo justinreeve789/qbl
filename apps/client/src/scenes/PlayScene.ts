@@ -8,6 +8,7 @@ import { mediaKey, queueScene } from '../core/assets';
 import { getContext, type GameContext } from '../core/GameContext';
 import type { PlaySceneData, SceneRuntime, SceneSystem, SceneSystemClass } from '../core/SceneRuntime';
 import { sceneSystems } from '../systems';
+import { LocalPlayerSystem } from '../systems/LocalPlayerSystem';
 import { PropsSystem } from '../systems/PropsSystem';
 
 export type { PlaySceneData };
@@ -60,6 +61,7 @@ export class PlayScene extends Phaser.Scene {
 
     // The event engine for this visit to the scene.
     this.host = new ActionHost(this, ctx, (sceneId, spawn) => this.jump(sceneId, spawn));
+    this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);
     const def = this.def;
     const engine = this.engine;

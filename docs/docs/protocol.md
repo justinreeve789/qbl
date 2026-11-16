@@ -17,7 +17,7 @@ If the same account joins twice, the earlier connection is closed with code 4103
 
 State the server owns and every client sees (Colyseus schema, `apps/server/src/rooms/state.ts`):
 
-* `players[sessionId]`: `user_id`, `name`, `role`, `avatar`, `scene_id`, `x`, `y`, `facing`, `attachments` (comma-separated item ids), `connected`.
+* `players[sessionId]`: `user_id`, `name`, `role`, `avatar`, `scene_id`, `x`, `y`, `facing`, `attachments` (comma-separated item ids), `connected`, `hidden` (an `avatar` action has hidden this player; cleared on every scene change).
 * `items[itemId]`: unique items only. `scene_id`, `x`, `y`, `holder` (a session id, or empty).
 * `vars[name]`: room-scoped variables, JSON-encoded.
 
@@ -34,6 +34,7 @@ Message | Payload | Server behaviour
 `emote` | `{emoji}` | Must be in the allowed list; rate limited. Not available when `chat_mode` is `off`.
 `chat` | `{text}` | Only when `chat_mode` is `free`. Cleaned, length-limited and rate limited.
 `progress` | `{variables, flags, time_elapsed}` | Player-scoped progress to include in the next save.
+`avatar` | `{visible}` | An `avatar` action ran: show or hide the sender's avatar for everyone in the scene.
 
 ## Server to client
 

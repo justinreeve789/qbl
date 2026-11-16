@@ -97,7 +97,11 @@ test('scene changes follow jump targets and land on the spawn point', () => {
   world.addPlayer('a', ann, null);
   assert.equal(world.changeScene('a', { scene_id: 3 }), false, 'scene 3 is not reachable from scene 1');
   assert.equal(world.changeScene('a', { scene_id: 99 }), false);
+  assert.equal(world.setAvatarVisible('a', { visible: false }), true);
+  assert.equal(state.players.get('a')!.hidden, true, 'an avatar action hides the player for everyone');
+  assert.equal(world.setAvatarVisible('a', { visible: 'no' as unknown as boolean }), false);
   assert.equal(world.changeScene('a', { scene_id: 2, spawn_point: 'west' }), true);
+  assert.equal(state.players.get('a')!.hidden, false, 'and arriving in a scene shows them again');
   const a = state.players.get('a')!;
   assert.deepEqual([a.scene_id, a.x, a.y], [2, 50, 450]);
 });

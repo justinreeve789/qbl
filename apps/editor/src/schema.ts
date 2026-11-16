@@ -124,6 +124,14 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...scale,
     ],
   },
+  avatar: {
+    label: 'Show or hide avatar',
+    about: 'Hide the player’s avatar (stepping into a rocket), or show it again.',
+    fields: [
+      { key: 'visible', label: 'The avatar is', kind: 'select', options: [['false', 'Hidden'], ['true', 'Shown']], wide: true, hint: 'Everyone in the scene sees the change. Avatars are always shown again on arriving in a scene, so to keep them hidden in a scene, hide them in one of its start events.' },
+      { key: 'duration', label: 'Fade (ms)', kind: 'number', min: 0, placeholder: 'At once' },
+    ],
+  },
   wait: {
     label: 'Wait',
     about: 'Pause before the next action.',
@@ -168,6 +176,8 @@ export const ACTION_COMMON: Field[] = [
 /** Starting values for a new action of each type, so it is valid as soon as it is added. */
 export function actionDefaults(type: ActionType): Record<string, unknown> {
   switch (type) {
+    case 'avatar':
+      return { visible: false, duration: 400 };
     case 'infobox':
       return { content: '<p>Text…</p>' };
     case 'variable':
@@ -245,6 +255,17 @@ export const SPAWN_FIELDS: Field[] = [
   ...position,
 ];
 
+/** A box in which things are drawn smaller or larger depending on how far up it they stand. */
+export const SCALE_AREA_FIELDS: Field[] = [
+  { key: 'name', label: 'Name', kind: 'text', wide: true },
+  { key: 'scale_top', label: 'Size at the top edge (%)', kind: 'number', min: 1, hint: '100 is normal size. 50 draws things half size, as if far away.' },
+  { key: 'scale_bottom', label: 'Size at the bottom edge (%)', kind: 'number', min: 1, hint: 'In between, the size changes evenly from one to the other.' },
+  { key: 'x', label: 'Left', kind: 'number' },
+  { key: 'y', label: 'Top', kind: 'number' },
+  { key: 'width', label: 'Width', kind: 'number', min: 1 },
+  { key: 'height', label: 'Height', kind: 'number', min: 1 },
+];
+
 export const ITEM_PLACEMENT_FIELDS: Field[] = [{ key: 'item_id', label: 'Item', kind: 'item', wide: true }, ...position];
 
 export const CHARACTER_PLACEMENT_FIELDS: Field[] = [
@@ -271,6 +292,8 @@ export const HOTSPOT_FIELDS: Field[] = [
   { key: 'position_y', label: 'Y', kind: 'number', placeholder: 'Whole height', hint: 'Empty: the hotspot spans the whole height, for a left or right edge.' },
   { key: 'radius', label: 'Radius (px)', kind: 'number', min: -1, hint: '-1 covers the whole scene.' },
   { key: 'once', label: 'Walk-in only: fire once per visit to the scene', kind: 'bool', wide: true },
+  { key: 'reveal_radius', label: 'Appears within (px)', kind: 'number', min: 1, placeholder: 'Always there', hint: 'The hotspot is invisible and cannot be clicked until the player’s avatar is this close. Drawn as the outer dashed ring.' },
+  { key: 'reveal_full_radius', label: 'Fully visible within (px)', kind: 'number', min: 0, placeholder: 'Half of that', hint: 'Between the two distances its labels fade in and out. The inner dashed ring.' },
 ];
 
 export const LABEL_FIELDS: Field[] = [

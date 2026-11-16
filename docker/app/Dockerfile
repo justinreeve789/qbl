@@ -24,22 +24,19 @@ RUN npm exec --workspace @qbl/client -- vite build
 
 # ---- 2. Laravel + the frontend in its public directory -------------------------------
 FROM php:8.4-fpm-alpine
-ARG LARAVEL_VERSION=^13.0
 
 RUN apk add --no-cache git unzip \
     && docker-php-ext-install pdo_mysql opcache
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
-# The repository holds only what differs from a stock Laravel application (apps/api/overlay).
-# This creates the skeleton and lays the overlay on top.
-# install:api publishes Sanctum's migration under a name containing the build time, which would make
-# every rebuild try to create the token table again. It is removed; the overlay has one with a fixed name.
-RUN composer create-project --no-interaction --prefer-dist laravel/laravel . "${LARAVEL_VERSION}" \
-    && php artisan install:api --no-interaction \
-    && rm -f database/database.sqlite database/migrations/*_create_personal_access_tokens_table.php
-COPY apps/api/overlay/ /app/
-RUN composer dump-autoload --optimize
+# apps/api is a complete Laravel application. Dependencies come from its composer.lock, so every
+# build installs the same versions. They are installed before the code is copied so that this
+# layer is reused until composer.json or composer.lock changes.
+COPY apps/api/composer.json apps/api/composer.lock ./
+RUN composer install --no-interaction --no-dev --prefer-dist --no-scripts --no-autoloader
+COPY apps/api/ /app/
+RUN composer dump-autoload --optimize --no-dev
 
 # The game: index.html and its bundles sit beside Laravel's index.php, and scenario media beside them.
 COPY --from=frontend /repo/apps/client/dist/ /app/public/

@@ -37,6 +37,15 @@ export class ActionHost implements EngineHost, PresenterContext {
     return presenter(action as never, this);
   }
 
+  /** Set by the scene: shows or hides the local player's avatar. */
+  avatarControl: ((visible: boolean, duration: number) => void) | null = null;
+
+  avatar(visible: boolean, duration: number): ActionHandle | null {
+    if (!this.avatarControl) return null;
+    this.avatarControl(visible, duration);
+    return duration > 0 ? this.delay(duration) : null;
+  }
+
   translate(action: TranslateAction): ActionHandle | null {
     const target = this.targets.get(action.target_id);
     if (!target) return null;

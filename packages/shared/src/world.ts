@@ -1,5 +1,5 @@
 import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Circle, type WalkContext } from './geometry.js';
-import type { ItemMessage, MoveMessage, ProgressMessage, SceneMessage, VariableMessage } from './protocol.js';
+import type { AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, VariableMessage } from './protocol.js';
 import { sceneSize, ScenarioIndex } from './scenario.js';
 import type { Id, Item, Scenario, Scene, Session, VarValue } from './types.js';
 import { applyOperator } from './variables.js';
@@ -23,6 +23,8 @@ export interface InstanceData {
 export interface PlayerRec {
   user_id: string; name: string; role: string; avatar: number; scene_id: number;
   x: number; y: number; facing: string; attachments: string; connected: boolean;
+  /** True while an avatar action has hidden this player. Cleared on every scene change. */
+  hidden: boolean;
 }
 export interface ItemRec { item_id: number; scene_id: number; x: number; y: number; holder: string }
 export interface MapLike<T> {
@@ -136,6 +138,7 @@ export class World {
     p.facing = 'right';
     p.attachments = attachments.join(',');
     p.connected = true;
+    p.hidden = false;
     state.players.set(sessionId, p);
 
     const progress: ProgressMessage = {
@@ -212,7 +215,17 @@ export class World {
     p.scene_id = target.id;
     p.x = pos.x;
     p.y = pos.y;
+    // Avatars are shown on arrival. A scene that wants them hidden hides them in a start event.
+    p.hidden = false;
     m.budget.reset(this.deps.now());
+    return true;
+  }
+
+  /** An avatar action: show or hide this player's avatar for everyone in the scene. */
+  setAvatarVisible(sessionId: string, msg: AvatarMessage): boolean {
+    const p = this.deps.state.players.get(sessionId);
+    if (!p || typeof msg?.visible !== 'boolean') return false;
+    p.hidden = !msg.visible;
     return true;
   }
 

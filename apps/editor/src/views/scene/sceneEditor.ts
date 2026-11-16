@@ -23,6 +23,7 @@ const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['character', 'Character'],
   ['walkable_areas', 'Walkable area'],
   ['blocked_areas', 'Blocked area'],
+  ['scale_areas', 'Scale area (depth)'],
   ['background_media', 'Background layer'],
   ['foreground_media', 'Foreground layer'],
 ];
@@ -100,7 +101,7 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
     toast(target ? `Players who walk off the ${side} edge go to “${sceneLabel(target)}”. Change the scene and arrival point in the jump action.` : 'Add another scene, then choose it in the jump action.');
   }
 
-  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas', entry: unknown, kind: Selection['kind']) {
+  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas', entry: unknown, kind: Selection['kind']) {
     const list = model.layout(key);
     await model.setLayout(key, [...list, entry], true);
     const index = list.length;
@@ -145,6 +146,13 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
         const half = what === 'walkable_areas' ? 300 : 100;
         const corners = [[-half, -half / 2], [half, -half / 2], [half, half / 2], [-half, half / 2]].map(([dx, dy]) => ({ x: at.x + dx!, y: at.y + dy! }));
         return void addToLayout(what, corners, 'area');
+      }
+      case 'scale_areas': {
+        // By default: the walkable part of the scene, half size at the top and full size at the bottom.
+        const { width, height } = canvas.size();
+        const ys = model.layout<Point[]>('walkable_areas').flat().map((p) => p.y);
+        const y0 = ys.length ? Math.min(...ys) : Math.round(height / 2);
+        return void addToLayout('scale_areas', { name: 'depth', x: 0, y: y0, width, height: height - y0, scale_top: 50, scale_bottom: 100 }, 'scale');
       }
       case 'background_media':
       case 'foreground_media': {

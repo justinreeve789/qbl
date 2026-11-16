@@ -190,6 +190,39 @@ test('spawn points, a placed item, and a character that runs an event when click
   assert.deepEqual((await draft()).scenes[0]!.spawn_points!.map((p) => p.name), ['default']);
 });
 
+test('depth, reveal and avatar visibility: a scale area, a hotspot that appears when near, a hide action', async () => {
+  await page.selectOption('.add-menu', 'scale_areas');
+  await page.waitForSelector('.stage-overlay rect.scale-area.selected');
+  await type('.inspector [data-field=scale_top] input', '40');
+  await type('.inspector [data-field=height] input', '300');
+  await dragBy('.stage-overlay rect.handle >> nth=1', 0, 20); // the bottom-right corner
+  let scene = (await draft()).scenes[0]!;
+  const area = scene.scale_areas![0]!;
+  assert.deepEqual([area.scale_top, area.scale_bottom, area.x], [40, 100, 0]);
+  assert.ok(area.height > 300, 'dragging the corner made the box taller');
+
+  await page.selectOption('.add-menu', 'hotspot-click');
+  await page.waitForFunction(() => document.querySelector('.outline-item.selected')?.textContent?.startsWith('Hotspot'));
+  await type('.inspector [data-field=reveal_radius] input', '500');
+  await type('.inspector [data-field=reveal_full_radius] input', '200');
+  await page.waitForSelector('.stage-overlay circle.reveal-ring.full');
+  await inspector('.add-action').selectOption('avatar');
+  await page.waitForSelector('details.action[open]');
+  assert.match(await page.innerText('details.action summary'), /Hide the player’s avatar/);
+  await inspector('details.action [data-field=visible] select').selectOption('true');
+  await saved();
+  assert.match(await page.innerText('details.action summary'), /Show the player’s avatar/);
+
+  scene = (await draft()).scenes[0]!;
+  const spot = scene.hotspots!.at(-1)!;
+  assert.deepEqual([spot.reveal_radius, spot.reveal_full_radius], [500, 200]);
+  assert.deepEqual([spot.actions[0]!.type, (spot.actions[0] as { visible: boolean }).visible], ['avatar', true]);
+
+  await page.click('.outline-item >> text=depth');
+  await page.click('.inspector >> text=Delete');
+  assert.deepEqual((await draft()).scenes[0]!.scale_areas, []);
+});
+
 test('objectives and settings', async () => {
   await page.click('.tabs >> text=Objectives');
   await page.click('text=New objective');

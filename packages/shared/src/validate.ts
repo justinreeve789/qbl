@@ -203,6 +203,9 @@ export function validateScenario(doc: unknown): ValidationResult {
         else if (!variables.has(a.name)) err(`${path}.name`, `Variable "${a.name}" is not declared in global_variables`);
         if (a.operator !== 'random' && a.operand === undefined) err(`${path}.operand`, 'operand is required');
         break;
+      case 'avatar':
+        if (typeof a.visible !== 'boolean') err(`${path}.visible`, 'visible must be true or false');
+        break;
       case 'wait':
         if (typeof a.duration !== 'number') err(`${path}.duration`, 'duration is required');
         break;
@@ -250,6 +253,20 @@ export function validateScenario(doc: unknown): ValidationResult {
       });
     }
     const names = new Set<string>();
+    (scene.scale_areas ?? []).forEach((a, ai) => {
+      const p = `${sp}.scale_areas[${ai}]`;
+      if (!(a.width > 0) || !(a.height > 0)) err(p, 'A scale area needs a width and a height');
+      for (const key of ['scale_top', 'scale_bottom'] as const) {
+        if (typeof a[key] !== 'number' || a[key] <= 0) err(`${p}.${key}`, `${key} is a percentage greater than 0`);
+        else if (a[key] > 400) warn(`${p}.${key}`, `${key} is ${a[key]}%, which is very large`);
+      }
+    });
+    (scene.hotspots ?? []).forEach((h, hi) => {
+      if (h.reveal_radius == null) return;
+      const p = `${sp}.hotspots[${hi}]`;
+      if (h.position_x == null && h.position_y == null) warn(p, 'reveal_radius has no effect on a hotspot without a position');
+      if (h.reveal_full_radius != null && h.reveal_full_radius > h.reveal_radius) warn(`${p}.reveal_full_radius`, 'reveal_full_radius is larger than reveal_radius');
+    });
     (scene.spawn_points ?? []).forEach((p, pi) => {
       if (names.has(p.name)) err(`${sp}.spawn_points[${pi}]`, `Duplicate spawn point "${p.name}"`);
       names.add(p.name);

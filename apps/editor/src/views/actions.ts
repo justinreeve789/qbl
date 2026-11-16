@@ -60,6 +60,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     refresh.push(describe);
 
     const commit = (key: string, value: unknown, field: Field) => {
+      if (type === 'avatar' && key === 'visible') value = value === 'true';
       if (COLUMNS.has(key)) void store.patch('actions', id, { [key]: value }, key === 'media_id');
       else void store.patch('actions', id, { params: withValue(params(current()), key, value, field) }, field.structural === true);
     };
@@ -85,7 +86,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
           h('small', null, def.about),
         ),
       ),
-      form(def.fields, actionValues(action), commit, ctx),
+      form(def.fields, type === 'avatar' ? { ...actionValues(action), visible: String(params(action).visible !== false) } : actionValues(action), commit, ctx),
       type === 'infobox'
         ? buttonsEditor(
             ctx,
@@ -149,8 +150,10 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
     const type = (cta.action?.type as ActionType | undefined) ?? '';
     const def = type ? ACTIONS[type] : null;
     const label = h('input', { type: 'text', value: cta.text ?? '', placeholder: 'Button text', 'aria-label': 'Button text', onchange: () => replace(index, { ...at(index), text: label.value }) });
-    const commit = (key: string, value: unknown, field: Field) =>
+    const commit = (key: string, value: unknown, field: Field) => {
+      if (type === 'avatar' && key === 'visible') value = value === 'true';
       replace(index, { ...at(index), action: { ...withValue(at(index).action ?? {}, key, value, field), type } }, key === 'media_id' || field.structural === true);
+    };
 
     return h(
       'div',
@@ -165,7 +168,7 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
         }, 'Just close the box'),
         h('button', { type: 'button', class: 'icon', title: 'Remove button', onclick: () => write(read().filter((_, i) => i !== index), true) }, '×'),
       ),
-      def ? form(def.fields, cta.action ?? {}, commit, ctx) : null,
+      def ? form(def.fields, type === 'avatar' ? { ...cta.action, visible: String(cta.action?.visible !== false) } : (cta.action ?? {}), commit, ctx) : null,
       type === 'infobox'
         ? buttonsEditor(
             ctx,

@@ -19,7 +19,8 @@
     "dev:editor": "concurrently -n api,editor,game -c magenta,cyan,green \"npm run dev:api\" \"npm run dev -w @qbl/editor\" \"npm run dev:authoring -w @qbl/client\"",
     "test:api": "php apps/api/tests/store.php",
     "test:editor": "npm run test -w @qbl/editor",
-    "test:all": "npm test && npm run test:api && npm run test:editor"
+    "test:all": "npm test && npm run test:api && npm run test:editor",
+    "test:laravel": "cd apps/api && php artisan test"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",

@@ -8,10 +8,10 @@
  * It runs the same ScenarioCompiler the API uses, so the game server's file
  * backend and the seeded database serve the same document.
  */
-require __DIR__.'/../overlay/app/Qbl/ScenarioCompiler.php';
+require __DIR__.'/../app/Qbl/ScenarioCompiler.php';
 
 $name = $argv[1] ?? 'starship';
-$file = __DIR__."/../overlay/database/seeders/data/{$name}.php";
+$file = __DIR__."/../database/seeders/data/{$name}.php";
 if (! preg_match('/^[a-z0-9_-]+$/i', $name) || ! is_file($file)) {
     fwrite(STDERR, "No seed data named \"{$name}\".\n");
     exit(1);

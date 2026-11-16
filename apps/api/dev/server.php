@@ -16,7 +16,7 @@ if (PHP_SAPI !== 'cli-server') {
     exit("This is a development server. Run it with php -S.\n");
 }
 foreach (['StoreError', 'ScenarioCompiler', 'ScenarioStore', 'EditorApi'] as $class) {
-    require __DIR__."/../overlay/app/Qbl/$class.php";
+    require __DIR__."/../app/Qbl/$class.php";
 }
 
 use App\Qbl\EditorApi;
@@ -54,7 +54,7 @@ foreach (ScenarioStore::sqliteSchema() as $sql) {
     $pdo->exec($sql);
 }
 // First run: seed the demo mission exactly as the Laravel seeder does. After that it is left alone.
-$seeded = $store->seedScenario(require __DIR__.'/../overlay/database/seeders/data/starship.php');
+$seeded = $store->seedScenario(require __DIR__.'/../database/seeders/data/starship.php');
 if ($seeded !== null) {
     $store->publish($seeded);
 }

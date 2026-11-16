@@ -8,7 +8,7 @@
  * These are the same classes Laravel uses in production; only the database differs.
  */
 foreach (['StoreError', 'ScenarioCompiler', 'ScenarioStore', 'EditorApi'] as $class) {
-    require __DIR__."/../overlay/app/Qbl/$class.php";
+    require __DIR__."/../app/Qbl/$class.php";
 }
 
 use App\Qbl\EditorApi;
@@ -41,7 +41,7 @@ $store = new ScenarioStore($pdo, $mediaDir, '/media');
 foreach (ScenarioStore::sqliteSchema() as $sql) {
     $pdo->exec($sql);
 }
-$seed = require __DIR__.'/../overlay/database/seeders/data/starship.php';
+$seed = require __DIR__.'/../database/seeders/data/starship.php';
 
 // ------------------------------------------------------------------ seeding -> JSON
 $id = $store->replaceScenario($seed);
@@ -231,7 +231,10 @@ same([$body['scenario']['code'], $body['scenario']['title']], [$mine['code'], 'R
 same($store->findPublished('starshipexplorer')['id'] ?? null, 1, 'and the demo is still what its code opens');
 
 // Deleting a scenario removes all of it and nothing else.
+[, $body] = $call('POST', "scenarios/$sid/media/upload", [], null, ['file' => ['tmp_name' => $png, 'name' => 'left-behind.png']]);
+check(is_file("$mediaDir/{$body['row']['filepath']}"), 'a scenario with an uploaded file');
 same($call('DELETE', "scenarios/$sid")[0], 204, 'a scenario can be deleted');
+check(! is_dir("$mediaDir/$sid"), 'which removes its uploaded files from disk');
 same($call('GET', "scenarios/$sid")[0], 404, 'and is gone');
 same($counts(), $before, 'leaving the other scenario untouched');
 

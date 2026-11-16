@@ -1,7 +1,7 @@
 import { mediaLabel, mediaUrl, sceneLabel } from '../../describe';
 import { confirmDelete, h } from '../../dom';
 import { form, withValue, type Field, type FormContext } from '../../fields';
-import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCENE_FIELDS, SPAWN_FIELDS } from '../../schema';
+import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
 
@@ -34,6 +34,10 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
       return listPanel(model, ctx, 'items', selection.index, 'Item in this scene', 'An item from the scenario’s Items list, placed here. Its position is where it stands: the middle of its bottom edge.', ITEM_PLACEMENT_FIELDS, host);
     case 'character':
       return listPanel(model, ctx, 'characters', selection.index, 'Character in this scene', 'A character from the scenario’s Characters list, placed here. Clicking it can run an indirect event.', CHARACTER_PLACEMENT_FIELDS, host);
+    case 'scale':
+      return listPanel(model, ctx, 'scale_areas', selection.index, 'Scale area',
+        'A box in which avatars, what they wear or ride, items and characters are drawn smaller or larger depending on how far up the box they stand. Use it for depth: a path or corridor leading away from the viewer. It is separate from walkable areas, so it also sizes things placed where nobody can walk. Click the box again to drag it; drag its corners to resize it. Where boxes overlap, the first in the list applies.',
+        SCALE_AREA_FIELDS, host);
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
   }

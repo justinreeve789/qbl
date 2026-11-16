@@ -75,6 +75,23 @@ parallax | decimal | 1 | Camera scroll factor. 1 moves with the world, 0 stays f
 
 Backgrounds draw in order behind everything; foregrounds draw in order in front of avatars.
 
+### Scale areas
+
+`scale_areas` is a list of boxes that give a scene depth. Whatever stands in a box is drawn at `scale_top` percent of its normal size at the box's top edge and `scale_bottom` percent at its bottom edge, and in proportion in between. It applies to avatars, to what they wear or ride, and to items and characters, by where their feet are.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+name | string | A label for the editor.
+x, y, width, height | int | The box, in scene pixels.
+scale_top | decimal | Percent of normal size at the top edge. 100 is unchanged.
+scale_bottom | decimal | Percent of normal size at the bottom edge.
+
+```json
+"scale_areas": [{ "name": "corridor depth", "x": 0, "y": 580, "width": 1800, "height": 620, "scale_top": 40, "scale_bottom": 100 }]
+```
+
+Scale areas are separate from walkable areas on purpose: a crate at the far end of a room should be small even though nobody can walk there. Outside every box things are drawn at normal size. Where boxes overlap, the first one listed applies. Scale areas change how things are drawn only; walking speed, hotspot radii and blocking radii are unaffected.
+
 ### Spawn points
 
 Parameter | Type | Default | Description
@@ -112,6 +129,10 @@ The spawn point a jump arrives at must not be inside a walk-in hotspot that jump
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 once | bool | false | Fire only once per player, ever. Remembered in the save data.
+reveal_radius | decimal | | The hotspot is only there when the player's avatar is within this many scene pixels of its position. Further away, its labels are invisible and it cannot be clicked. Absent: it is always there.
+reveal_full_radius | decimal | half of reveal_radius | Within this distance the hotspot is fully visible. Between the two distances its labels fade in as the avatar approaches and out as it leaves.
+
+The reveal distance is measured from each player's own avatar, so a hotspot can be visible to one player and not yet to another. A coordinate the hotspot leaves empty does not count towards the distance. Walk-in hotspots still fire by their `radius` alone.
 
 `overridable` is implemented as: when any event starts, every running event flagged `overridable` is stopped where it is. Events not flagged always run to the end.
 
@@ -120,6 +141,21 @@ once | bool | false | Fire only once per player, ever. Remembered in the save da
 Action `type` values are matched loosely: `Image Fixed`, `imageFixed` and `image_fixed` are the same. The canonical names are `audio`, `cancel`, `image_fixed`, `image_overlay`, `infobox`, `jump`, `repeat`, `run_event`, `spritemap`, `text_overlay`, `translate`, `variable`, `video` and `wait`.
 
 Actions may carry their own `conditions` array (the Conditions page allows this; the Actions page did not list it). An action whose conditions fail is skipped.
+
+### Avatar
+
+A new action type, `avatar`, shows or hides the player's own avatar.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+visible | bool | | `false` hides the avatar, `true` shows it.
+duration | int | 0 | Fade time in milliseconds.
+
+```json
+{ "type": "avatar", "visible": false, "duration": 400 }
+```
+
+The change goes through the game server, so every player in the scene sees it. A hidden player can still walk and use hotspots. Avatars are **always shown again when a player arrives in a scene**: to keep them hidden in a scene, hide them in one of its start events. The demo's rocket hides the avatar as the player steps aboard, and the player reappears in the control room. (The scene attribute `show_avatars: false` from the base docs still hides every avatar in a scene, for everyone, for the whole visit.)
 
 Addition | Applies to | Description
 -------- | ---------- | -----------

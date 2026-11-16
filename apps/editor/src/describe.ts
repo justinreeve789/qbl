@@ -45,6 +45,8 @@ const clip = (s: string, n = 48) => (s.length > n ? `${s.slice(0, n - 1)}…` : 
 export function actionSummary(store: Store, type: string, values: Record<string, unknown>): string {
   const media = () => mediaLabel(store.byId('media', values.media_id as number | null));
   switch (type) {
+    case 'avatar':
+      return values.visible === false ? 'Hide the player’s avatar' : 'Show the player’s avatar';
     case 'audio':
       return `Play ${media()}${values.persist ? ' as music' : ''}`;
     case 'cancel':

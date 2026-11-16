@@ -3,3 +3,8 @@
 .data
 .git
 docs
+apps/api/vendor
+apps/api/.env
+apps/api/database/*.sqlite
+apps/api/storage/logs/*.log
+apps/api/storage/app/media

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { nearestWalkable, parseIds, resolveMove, stepToward, type Item, type PlayerRec, type Point } from '@qbl/shared';
+import { nearestWalkable, parseIds, resolveMove, scaleAt, stepToward, type Item, type PlayerRec, type Point } from '@qbl/shared';
 import { Avatar } from '../entities/Avatar';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { HotspotSystem } from './HotspotSystem';
@@ -36,7 +36,7 @@ export class LocalPlayerSystem implements SceneSystem {
     const rec = ctx.connection.me!;
     const start = this.rt.startPosition ?? { x: rec.x, y: rec.y };
     const safe = nearestWalkable(this.rt.walk(), start) ?? start;
-    this.avatar = new Avatar(scene, ctx, { ...plain(rec), x: safe.x, y: safe.y }, zoom, true);
+    this.avatar = new Avatar(scene, ctx, { ...plain(rec), x: safe.x, y: safe.y, hidden: false }, zoom, true, (x, y) => scaleAt(def, x, y));
     this.facing = rec.facing === 'left' ? 'left' : 'right';
     this.lastSent = { x: safe.x, y: safe.y, facing: this.facing, at: 0 };
     if (def.show_avatars === false) this.avatar.setVisible(false);
@@ -107,7 +107,17 @@ export class LocalPlayerSystem implements SceneSystem {
 
   // -------------------------------------------------------------- update
 
+  /**
+   * An avatar action: show or hide the player's own figure. The game server is told, so everyone
+   * else in the scene sees the same. The player can still walk and use hotspots while hidden.
+   */
+  setAvatarVisible(visible: boolean, duration: number) {
+    this.avatar.setShown(visible, duration);
+    this.rt.ctx.connection.avatarVisible(visible);
+  }
+
   update(time: number, delta: number) {
+    this.avatar.tick(delta);
     if (this.rt.leaving) return;
     const rec = this.rt.ctx.connection.me;
     if (rec) {
@@ -193,6 +203,6 @@ export class LocalPlayerSystem implements SceneSystem {
 function plain(rec: PlayerRec): PlayerRec {
   return {
     user_id: rec.user_id, name: rec.name, role: rec.role, avatar: rec.avatar, scene_id: rec.scene_id,
-    x: rec.x, y: rec.y, facing: rec.facing, attachments: rec.attachments, connected: rec.connected,
+    x: rec.x, y: rec.y, facing: rec.facing, attachments: rec.attachments, connected: rec.connected, hidden: rec.hidden,
   };
 }
