@@ -14,6 +14,19 @@
         108,
         109
     ],
+    "avatar_portraits": {
+        "101": 111,
+        "102": 112,
+        "103": 113,
+        "104": 114,
+        "105": 115,
+        "106": 116,
+        "107": 117,
+        "108": 118,
+        "109": 119
+    },
+    "music_media_id": 31,
+    "music_volume": 0.35,
     "objectives": [
         {
             "id": "accept",
@@ -431,6 +444,54 @@
             "default_value": 0,
             "scope": "player",
             "persist": true
+        },
+        {
+            "id": 33,
+            "scenario_id": 1,
+            "variable_name": "rockfall",
+            "default_value": 0,
+            "scope": "room",
+            "persist": true
+        },
+        {
+            "id": 34,
+            "scenario_id": 1,
+            "variable_name": "critters_met",
+            "default_value": 0,
+            "scope": "player",
+            "persist": true
+        },
+        {
+            "id": 35,
+            "scenario_id": 1,
+            "variable_name": "met_critter_a",
+            "default_value": 0,
+            "scope": "player",
+            "persist": true
+        },
+        {
+            "id": 36,
+            "scenario_id": 1,
+            "variable_name": "met_critter_b",
+            "default_value": 0,
+            "scope": "player",
+            "persist": true
+        },
+        {
+            "id": 37,
+            "scenario_id": 1,
+            "variable_name": "met_critter_c",
+            "default_value": 0,
+            "scope": "player",
+            "persist": true
+        },
+        {
+            "id": 38,
+            "scenario_id": 1,
+            "variable_name": "vault_opened",
+            "default_value": 0,
+            "scope": "player",
+            "persist": true
         }
     ],
     "jump_targets": {
@@ -460,7 +521,8 @@
             5
         ],
         "5": [
-            6
+            6,
+            3
         ],
         "8": [
             2
@@ -469,7 +531,8 @@
             2,
             10,
             11,
-            12
+            12,
+            13
         ],
         "10": [
             9
@@ -478,6 +541,9 @@
             9
         ],
         "12": [
+            9
+        ],
+        "13": [
             9
         ]
     },
@@ -822,6 +888,17 @@
             "priority": 24
         },
         {
+            "id": 18,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "backgrounds/marketplace.jpg",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 2250,
+            "height": 1200,
+            "priority": 24
+        },
+        {
             "id": 40,
             "scenario_id": 1,
             "type": "image",
@@ -886,6 +963,218 @@
             "width": 380,
             "height": 380,
             "priority": 30
+        },
+        {
+            "id": 46,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "shop/mission-patch.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 110,
+            "height": 110,
+            "priority": 30
+        },
+        {
+            "id": 47,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "shop/survey-map.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 130,
+            "height": 100,
+            "priority": 30
+        },
+        {
+            "id": 48,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "objects/boulders.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 300,
+            "height": 190,
+            "priority": 30
+        },
+        {
+            "id": 49,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "objects/boulder.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 120,
+            "height": 110,
+            "priority": 30
+        },
+        {
+            "id": 50,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "objects/critter-a.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 110,
+            "height": 96,
+            "priority": 30
+        },
+        {
+            "id": 51,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "objects/critter-b.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 110,
+            "height": 96,
+            "priority": 30
+        },
+        {
+            "id": 52,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "objects/critter-c.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 110,
+            "height": 96,
+            "priority": 30
+        },
+        {
+            "id": 110,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/captain.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 111,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-1.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 112,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-2.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 113,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-3.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 114,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-4.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 115,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-5.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 116,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-6.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 117,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-7.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 118,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-8.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        },
+        {
+            "id": 119,
+            "scenario_id": 1,
+            "type": "image",
+            "url": "portraits/avatar-9.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 320,
+            "height": 320,
+            "priority": 30
+        }
+    ],
+    "shop_items": [
+        {
+            "scale": 0.14,
+            "offset_x": 0.06,
+            "offset_y": -0.08,
+            "id": 101,
+            "scenario_id": 1,
+            "name": "Wilting Stream patch",
+            "description": "Worn by the stream survey team. Only sold on this mission.",
+            "kind": "wearable",
+            "slot": "body",
+            "price": 20,
+            "media_id": 46
+        },
+        {
+            "ability": "stream_map",
+            "id": 102,
+            "scenario_id": 1,
+            "name": "Stream survey map",
+            "description": "Marks the three sample sites. With it, a map table appears at the landing site.",
+            "kind": "ability",
+            "price": 15,
+            "media_id": 47
         }
     ],
     "items": [
@@ -927,6 +1216,7 @@
     "characters": [
         {
             "scale": 0.85,
+            "portrait_media_id": 110,
             "id": 1,
             "scenario_id": 1,
             "name": "Captain Vega",
@@ -1001,28 +1291,9 @@
                 }
             ],
             "characters": [],
+            "music_media_id": 30,
+            "music_volume": 0.5,
             "start_events": [
-                {
-                    "id": 301,
-                    "shortname": "music",
-                    "scene_id": 3,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.5,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 3011,
-                            "event_id": 301,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 30
-                        }
-                    ]
-                },
                 {
                     "id": 300,
                     "shortname": "welcome",
@@ -1130,6 +1401,59 @@
                             "blocking": true
                         }
                     ]
+                },
+                {
+                    "id": 330,
+                    "shortname": "survey-map",
+                    "scene_id": 3,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 2,
+                            "event_id": 330,
+                            "type": "variable",
+                            "variable": "QBLAbility_stream_map",
+                            "operator": "=",
+                            "operand": 1
+                        }
+                    ],
+                    "position_x": 560,
+                    "position_y": 850,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 67,
+                            "event_id": 330,
+                            "type": "image",
+                            "position_x": 560,
+                            "position_y": 850,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 68,
+                            "event_id": 330,
+                            "type": "text",
+                            "position_x": 560,
+                            "position_y": 788,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Survey map"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Stream survey map</h3><p>{{media:47}}</p><p>The stream runs from west to east. Walking west from here you reach, in order:</p><ol><li><b>The wilting marsh</b>, where the stream ends and the plants look worst.</li><li><b>The lander gully</b>, where an old lander lies beside the water.</li><li><b>The spring meadow</b>, where the stream begins.</li></ol><p>Take one sample at each site. A scientist would ask: what is different upstream and downstream of the lander?</p>",
+                            "id": 33001,
+                            "event_id": 330,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
                 }
             ],
             "indirect_events": []
@@ -1196,28 +1520,9 @@
             "scale_areas": [],
             "items": [],
             "characters": [],
+            "music_media_id": 30,
+            "music_volume": 0.5,
             "start_events": [
-                {
-                    "id": 401,
-                    "shortname": "music",
-                    "scene_id": 4,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.5,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 4011,
-                            "event_id": 401,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 30
-                        }
-                    ]
-                },
                 {
                     "id": 400,
                     "shortname": "place-rocket",
@@ -1528,29 +1833,7 @@
                     "event_id": 250
                 }
             ],
-            "start_events": [
-                {
-                    "id": 200,
-                    "shortname": "music",
-                    "scene_id": 2,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.45,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 2001,
-                            "event_id": 200,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 31
-                        }
-                    ]
-                }
-            ],
+            "start_events": [],
             "end_events": [],
             "hotspots": [
                 {
@@ -1643,7 +1926,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 2,
+                            "id": 3,
                             "event_id": 220,
                             "type": "variable",
                             "variable": "quest_started",
@@ -1762,7 +2045,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 3,
+                            "id": 4,
                             "event_id": 221,
                             "type": "variable",
                             "variable": "quest_started",
@@ -1844,26 +2127,60 @@
                     "actions": [
                         {
                             "frozen": true,
-                            "id": 2502,
+                            "id": 25010,
                             "event_id": 250,
                             "type": "freeze",
                             "sequence": 1,
                             "blocking": true
                         },
                         {
-                            "content": "<p><strong>Captain Vega:</strong> Welcome aboard! The mission consoles are along the back wall. The laboratory is through the east door, the observation deck is up the ramp, and the lift on the west side takes you back to the planet. The main corridor, to the south, leads to the crew quarters, the hydroponics bay and the engine room.</p>",
-                            "id": 2501,
+                            "style": "portrait",
+                            "text": "Welcome aboard, {{QBLPlayerName}}! I am Captain Vega. This ship is yours to explore.",
+                            "speaker": "character",
+                            "character_id": 1,
+                            "id": 25011,
                             "event_id": 250,
-                            "type": "infobox",
+                            "type": "dialogue",
                             "sequence": 2,
                             "blocking": true
                         },
                         {
+                            "style": "portrait",
+                            "text": "The mission consoles are along the back wall. The laboratory is through the east door, and the observation deck is up the ramp.",
+                            "speaker": "character",
+                            "character_id": 1,
+                            "id": 25012,
+                            "event_id": 250,
+                            "type": "dialogue",
+                            "sequence": 3,
+                            "blocking": true
+                        },
+                        {
+                            "style": "portrait",
+                            "text": "The main corridor, to the south, leads to the crew quarters, the hydroponics bay, the engine room and the marketplace. The lift on the west side takes you back to the planet.",
+                            "speaker": "character",
+                            "character_id": 1,
+                            "id": 25013,
+                            "event_id": 250,
+                            "type": "dialogue",
+                            "sequence": 4,
+                            "blocking": true
+                        },
+                        {
+                            "style": "portrait",
+                            "text": "Thank you, Captain. I will get to work.",
+                            "id": 25014,
+                            "event_id": 250,
+                            "type": "dialogue",
+                            "sequence": 5,
+                            "blocking": true
+                        },
+                        {
                             "frozen": false,
-                            "id": 2503,
+                            "id": 25015,
                             "event_id": 250,
                             "type": "freeze",
-                            "sequence": 3,
+                            "sequence": 6,
                             "blocking": true
                         }
                     ]
@@ -1897,13 +2214,22 @@
                             "blocking": true
                         },
                         {
+                            "note": "Mission accepted",
+                            "xp": 5,
+                            "id": 25190,
+                            "event_id": 251,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "name": "missions_started",
                             "operator": "+",
                             "operand": 1,
                             "id": 25103,
                             "event_id": 251,
                             "type": "variable",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -1911,7 +2237,7 @@
                             "id": 25104,
                             "event_id": 251,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -2025,27 +2351,6 @@
             "characters": [],
             "start_events": [
                 {
-                    "id": 101,
-                    "shortname": "music",
-                    "scene_id": 1,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.3,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 1011,
-                            "event_id": 101,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 31
-                        }
-                    ]
-                },
-                {
                     "id": 100,
                     "shortname": "deck-caption",
                     "scene_id": 1,
@@ -2153,28 +2458,9 @@
             "scale_areas": [],
             "items": [],
             "characters": [],
+            "music_media_id": 30,
+            "music_volume": 0.5,
             "start_events": [
-                {
-                    "id": 700,
-                    "shortname": "music",
-                    "scene_id": 7,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.5,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 70001,
-                            "event_id": 700,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 30
-                        }
-                    ]
-                },
                 {
                     "id": 701,
                     "shortname": "caption",
@@ -2283,7 +2569,7 @@
                     "block_hotspots": true,
                     "conditions": [
                         {
-                            "id": 4,
+                            "id": 5,
                             "event_id": 720,
                             "type": "variable",
                             "variable": "quest_started",
@@ -2291,7 +2577,7 @@
                             "operand": 1
                         },
                         {
-                            "id": 5,
+                            "id": 6,
                             "event_id": 720,
                             "type": "variable",
                             "variable": "sample_marsh",
@@ -2357,11 +2643,21 @@
                             "blocking": true
                         },
                         {
+                            "note": "Sample collected",
+                            "stars": 3,
+                            "xp": 10,
+                            "id": 72090,
+                            "event_id": 720,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Sample: marsh plant</h3><p>You snip a few leaves and seal them in a jar with some water from the stream beside the plant.</p><p><strong>What you observe:</strong> The leaves are limp and brown with yellow spots. The stream water here is cloudy and has a sharp, sour smell.</p>",
                             "id": 72003,
                             "event_id": 720,
                             "type": "infobox",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         }
                     ]
@@ -2374,7 +2670,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 6,
+                            "id": 7,
                             "event_id": 721,
                             "type": "variable",
                             "variable": "quest_started",
@@ -2471,28 +2767,9 @@
             "scale_areas": [],
             "items": [],
             "characters": [],
+            "music_media_id": 30,
+            "music_volume": 0.5,
             "start_events": [
-                {
-                    "id": 600,
-                    "shortname": "music",
-                    "scene_id": 6,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.5,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 60001,
-                            "event_id": 600,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 30
-                        }
-                    ]
-                },
                 {
                     "id": 601,
                     "shortname": "caption",
@@ -2628,7 +2905,7 @@
                     "block_hotspots": true,
                     "conditions": [
                         {
-                            "id": 7,
+                            "id": 8,
                             "event_id": 630,
                             "type": "variable",
                             "variable": "quest_started",
@@ -2636,7 +2913,7 @@
                             "operand": 1
                         },
                         {
-                            "id": 8,
+                            "id": 9,
                             "event_id": 630,
                             "type": "variable",
                             "variable": "sample_gully",
@@ -2702,11 +2979,21 @@
                             "blocking": true
                         },
                         {
+                            "note": "Sample collected",
+                            "stars": 3,
+                            "xp": 10,
+                            "id": 63090,
+                            "event_id": 630,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Sample: gully plant</h3><p>You snip a few leaves and seal them in a jar with some water from the stream beside the plant.</p><p><strong>What you observe:</strong> This plant is just downstream of the old lander. It is the most badly wilted you have seen, and the water around its roots is cloudy.</p>",
                             "id": 63003,
                             "event_id": 630,
                             "type": "infobox",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         }
                     ]
@@ -2719,7 +3006,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 9,
+                            "id": 10,
                             "event_id": 631,
                             "type": "variable",
                             "variable": "quest_started",
@@ -2811,28 +3098,9 @@
             "scale_areas": [],
             "items": [],
             "characters": [],
+            "music_media_id": 30,
+            "music_volume": 0.5,
             "start_events": [
-                {
-                    "id": 500,
-                    "shortname": "music",
-                    "scene_id": 5,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.5,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 50001,
-                            "event_id": 500,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 30
-                        }
-                    ]
-                },
                 {
                     "id": 501,
                     "shortname": "caption",
@@ -2934,7 +3202,7 @@
                     "block_hotspots": true,
                     "conditions": [
                         {
-                            "id": 10,
+                            "id": 11,
                             "event_id": 530,
                             "type": "variable",
                             "variable": "quest_started",
@@ -2942,7 +3210,7 @@
                             "operand": 1
                         },
                         {
-                            "id": 11,
+                            "id": 12,
                             "event_id": 530,
                             "type": "variable",
                             "variable": "sample_meadow",
@@ -3008,11 +3276,21 @@
                             "blocking": true
                         },
                         {
+                            "note": "Sample collected",
+                            "stars": 3,
+                            "xp": 10,
+                            "id": 53090,
+                            "event_id": 530,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Sample: meadow plant</h3><p>You snip a few leaves and seal them in a jar with some water from the stream beside the plant.</p><p><strong>What you observe:</strong> The leaves are firm and bright, and the stream water here is clear. This plant looks healthy.</p>",
                             "id": 53003,
                             "event_id": 530,
                             "type": "infobox",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -3020,11 +3298,11 @@
                             "id": 53004,
                             "event_id": 530,
                             "type": "run_event",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 12,
+                                    "id": 13,
                                     "action_id": 53004,
                                     "type": "variable",
                                     "variable": "q_control",
@@ -3043,7 +3321,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 13,
+                            "id": 14,
                             "event_id": 531,
                             "type": "variable",
                             "variable": "quest_started",
@@ -3076,6 +3354,185 @@
                             "id": 53101,
                             "event_id": 531,
                             "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 550,
+                    "shortname": "cliff-path",
+                    "scene_id": 5,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 15,
+                            "event_id": 550,
+                            "type": "variable",
+                            "variable": "rockfall",
+                            "operator": "=",
+                            "operand": 0
+                        }
+                    ],
+                    "position_x": 1700,
+                    "position_y": 800,
+                    "radius": 120,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 69,
+                            "event_id": 550,
+                            "type": "image",
+                            "position_x": 1700,
+                            "position_y": 800,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 70,
+                            "event_id": 550,
+                            "type": "text",
+                            "position_x": 1700,
+                            "position_y": 738,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Cliff path: shortcut to the landing site"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 3,
+                            "spawn_point": "default",
+                            "id": 55001,
+                            "event_id": 550,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 551,
+                    "shortname": "cliff-path-blocked",
+                    "scene_id": 5,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 16,
+                            "event_id": 551,
+                            "type": "variable",
+                            "variable": "rockfall",
+                            "operator": "=",
+                            "operand": 1
+                        }
+                    ],
+                    "position_x": 1700,
+                    "position_y": 800,
+                    "radius": 120,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 71,
+                            "event_id": 551,
+                            "type": "image",
+                            "position_x": 1700,
+                            "position_y": 790,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 48
+                        },
+                        {
+                            "id": 72,
+                            "event_id": 551,
+                            "type": "text",
+                            "position_x": 1700,
+                            "position_y": 668,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "The cliff path is buried"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "text": "Boulders cover the cliff path. Nobody can use it until the repair drone in the engine room clears it.",
+                            "alignment": "bottom center",
+                            "text_font_size": 26,
+                            "duration": 4500,
+                            "id": 55101,
+                            "event_id": 551,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 552,
+                    "shortname": "loose-boulders",
+                    "scene_id": 5,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 17,
+                            "event_id": 552,
+                            "type": "variable",
+                            "variable": "rockfall",
+                            "operator": "=",
+                            "operand": 0
+                        }
+                    ],
+                    "position_x": 1380,
+                    "position_y": 640,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 73,
+                            "event_id": 552,
+                            "type": "image",
+                            "position_x": 1380,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 74,
+                            "event_id": 552,
+                            "type": "text",
+                            "position_x": 1380,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Loose boulders"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Loose boulders</h3><p>A stack of boulders sits above the cliff path. It would not take much to send them down.</p><p><em>If they fall, the path is blocked for everyone, not only for you.</em></p>",
+                            "call_to_actions": [
+                                {
+                                    "text": "Give them a push",
+                                    "action": {
+                                        "type": "run_event",
+                                        "target_event_id": 553
+                                    }
+                                },
+                                {
+                                    "text": "Leave them alone",
+                                    "action": {
+                                        "type": "wait",
+                                        "duration": 1
+                                    }
+                                }
+                            ],
+                            "id": 55201,
+                            "event_id": 552,
+                            "type": "infobox",
                             "sequence": 1,
                             "blocking": true
                         }
@@ -3182,11 +3639,20 @@
                             "blocking": true
                         },
                         {
+                            "note": "Good thinking",
+                            "xp": 5,
+                            "id": 54290,
+                            "event_id": 542,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Correct!</h3><p>Exactly. A healthy sample is a <strong>control</strong>. Whatever differs between it and the sick plants is a clue to the cause.</p>",
                             "id": 54203,
                             "event_id": 542,
                             "type": "infobox",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         }
                     ]
@@ -3215,6 +3681,60 @@
                             "event_id": 543,
                             "type": "infobox",
                             "sequence": 2,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 553,
+                    "shortname": "rockfall",
+                    "scene_id": 5,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "audience": "scene",
+                    "actions": [
+                        {
+                            "text": "RUMBLE! Boulders crash down across the cliff path.",
+                            "alignment": "top center",
+                            "text_font_size": 34,
+                            "duration": 3000,
+                            "id": 55301,
+                            "event_id": 553,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": false
+                        },
+                        {
+                            "position_x": 1500,
+                            "position_y": 560,
+                            "duration": 1000,
+                            "id": 55302,
+                            "event_id": 553,
+                            "type": "image_fixed",
+                            "sequence": 2,
+                            "blocking": false,
+                            "media_id": 49
+                        },
+                        {
+                            "target_id": 55302,
+                            "position_x": 1700,
+                            "position_y": 780,
+                            "duration": 800,
+                            "id": 55303,
+                            "event_id": 553,
+                            "type": "translate",
+                            "sequence": 3,
+                            "blocking": true
+                        },
+                        {
+                            "name": "rockfall",
+                            "operator": "set",
+                            "operand": 1,
+                            "id": 55304,
+                            "event_id": 553,
+                            "type": "variable",
+                            "sequence": 4,
                             "blocking": true
                         }
                     ]
@@ -3297,27 +3817,6 @@
             "characters": [],
             "start_events": [
                 {
-                    "id": 800,
-                    "shortname": "music",
-                    "scene_id": 8,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.4,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 80001,
-                            "event_id": 800,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 31
-                        }
-                    ]
-                },
-                {
                     "id": 801,
                     "shortname": "caption",
                     "scene_id": 8,
@@ -3347,7 +3846,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 14,
+                            "id": 18,
                             "event_id": 802,
                             "type": "variable",
                             "variable": "quest_started",
@@ -3355,7 +3854,7 @@
                             "operand": 1
                         },
                         {
-                            "id": 15,
+                            "id": 19,
                             "event_id": 802,
                             "type": "variable",
                             "variable": "samples",
@@ -3363,7 +3862,7 @@
                             "operand": 3
                         },
                         {
-                            "id": 16,
+                            "id": 20,
                             "event_id": 802,
                             "type": "variable",
                             "variable": "lab_visited",
@@ -3400,7 +3899,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 17,
+                            "id": 21,
                             "event_id": 803,
                             "type": "variable",
                             "variable": "quest_started",
@@ -3408,7 +3907,7 @@
                             "operand": 1
                         },
                         {
-                            "id": 18,
+                            "id": 22,
                             "event_id": 803,
                             "type": "variable",
                             "variable": "samples",
@@ -3465,7 +3964,7 @@
                     "block_hotspots": true,
                     "conditions": [
                         {
-                            "id": 19,
+                            "id": 23,
                             "event_id": 820,
                             "type": "variable",
                             "variable": "lab_visited",
@@ -3509,7 +4008,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 20,
+                                    "id": 24,
                                     "action_id": 82001,
                                     "type": "variable",
                                     "variable": "q_ph",
@@ -3546,7 +4045,7 @@
                     "block_hotspots": true,
                     "conditions": [
                         {
-                            "id": 21,
+                            "id": 25,
                             "event_id": 830,
                             "type": "variable",
                             "variable": "lab_visited",
@@ -3608,7 +4107,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 22,
+                                    "id": 26,
                                     "action_id": 83003,
                                     "type": "variable",
                                     "variable": "scope_tests",
@@ -3616,7 +4115,7 @@
                                     "operand": 3
                                 },
                                 {
-                                    "id": 23,
+                                    "id": 27,
                                     "action_id": 83003,
                                     "type": "variable",
                                     "variable": "q_cells",
@@ -3635,7 +4134,7 @@
                     "block_hotspots": true,
                     "conditions": [
                         {
-                            "id": 24,
+                            "id": 28,
                             "event_id": 840,
                             "type": "variable",
                             "variable": "lab_visited",
@@ -3679,7 +4178,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 25,
+                                    "id": 29,
                                     "action_id": 84001,
                                     "type": "variable",
                                     "variable": "q_base",
@@ -3716,7 +4215,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 26,
+                            "id": 30,
                             "event_id": 850,
                             "type": "variable",
                             "variable": "lab_visited",
@@ -3769,7 +4268,7 @@
                     "block_hotspots": true,
                     "conditions": [
                         {
-                            "id": 27,
+                            "id": 31,
                             "event_id": 860,
                             "type": "variable",
                             "variable": "tests_done",
@@ -3777,7 +4276,7 @@
                             "operand": 6
                         },
                         {
-                            "id": 28,
+                            "id": 32,
                             "event_id": 860,
                             "type": "variable",
                             "variable": "quest_solved",
@@ -3830,7 +4329,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 29,
+                            "id": 33,
                             "event_id": 865,
                             "type": "variable",
                             "variable": "tests_done",
@@ -3876,7 +4375,7 @@
                     "block_hotspots": false,
                     "conditions": [
                         {
-                            "id": 30,
+                            "id": 34,
                             "event_id": 866,
                             "type": "variable",
                             "variable": "quest_solved",
@@ -3994,7 +4493,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 31,
+                                    "id": 35,
                                     "action_id": 82501,
                                     "type": "variable",
                                     "variable": "ph_tests",
@@ -4012,7 +4511,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 32,
+                                    "id": 36,
                                     "action_id": 82502,
                                     "type": "variable",
                                     "variable": "ph_tests",
@@ -4032,7 +4531,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 33,
+                                    "id": 37,
                                     "action_id": 82503,
                                     "type": "variable",
                                     "variable": "ph_tests",
@@ -4049,7 +4548,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 34,
+                                    "id": 38,
                                     "action_id": 82504,
                                     "type": "variable",
                                     "variable": "ph_menu",
@@ -4089,13 +4588,23 @@
                             "blocking": true
                         },
                         {
+                            "note": "pH test done",
+                            "stars": 2,
+                            "xp": 10,
+                            "id": 82690,
+                            "event_id": 826,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "name": "tests_done",
                             "operator": "+",
                             "operand": 1,
                             "id": 82603,
                             "event_id": 826,
                             "type": "variable",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -4103,7 +4612,7 @@
                             "id": 82604,
                             "event_id": 826,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -4137,13 +4646,23 @@
                             "blocking": true
                         },
                         {
+                            "note": "pH test done",
+                            "stars": 2,
+                            "xp": 10,
+                            "id": 82790,
+                            "event_id": 827,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "name": "tests_done",
                             "operator": "+",
                             "operand": 1,
                             "id": 82703,
                             "event_id": 827,
                             "type": "variable",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -4151,7 +4670,7 @@
                             "id": 82704,
                             "event_id": 827,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -4185,13 +4704,23 @@
                             "blocking": true
                         },
                         {
+                            "note": "pH test done",
+                            "stars": 2,
+                            "xp": 10,
+                            "id": 82890,
+                            "event_id": 828,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "name": "tests_done",
                             "operator": "+",
                             "operand": 1,
                             "id": 82803,
                             "event_id": 828,
                             "type": "variable",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -4199,7 +4728,7 @@
                             "id": 82804,
                             "event_id": 828,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -4275,11 +4804,20 @@
                             "blocking": true
                         },
                         {
+                            "note": "Good thinking",
+                            "xp": 5,
+                            "id": 82290,
+                            "event_id": 822,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Correct!</h3><p>Right. Numbers <strong>below 7 are acids</strong>, and the lower the number, the stronger the acid. Lemon juice is about 2.</p>",
                             "id": 82203,
                             "event_id": 822,
                             "type": "infobox",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         }
                     ]
@@ -4411,7 +4949,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 35,
+                                    "id": 39,
                                     "action_id": 83501,
                                     "type": "variable",
                                     "variable": "scope_tests",
@@ -4429,7 +4967,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 36,
+                                    "id": 40,
                                     "action_id": 83502,
                                     "type": "variable",
                                     "variable": "scope_tests",
@@ -4449,7 +4987,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 37,
+                                    "id": 41,
                                     "action_id": 83503,
                                     "type": "variable",
                                     "variable": "scope_tests",
@@ -4466,7 +5004,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 38,
+                                    "id": 42,
                                     "action_id": 83504,
                                     "type": "variable",
                                     "variable": "scope_menu",
@@ -4506,13 +5044,23 @@
                             "blocking": true
                         },
                         {
+                            "note": "Sample examined",
+                            "stars": 2,
+                            "xp": 10,
+                            "id": 83690,
+                            "event_id": 836,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "name": "tests_done",
                             "operator": "+",
                             "operand": 1,
                             "id": 83603,
                             "event_id": 836,
                             "type": "variable",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -4520,7 +5068,7 @@
                             "id": 83604,
                             "event_id": 836,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -4554,13 +5102,23 @@
                             "blocking": true
                         },
                         {
+                            "note": "Sample examined",
+                            "stars": 2,
+                            "xp": 10,
+                            "id": 83790,
+                            "event_id": 837,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "name": "tests_done",
                             "operator": "+",
                             "operand": 1,
                             "id": 83703,
                             "event_id": 837,
                             "type": "variable",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -4568,7 +5126,7 @@
                             "id": 83704,
                             "event_id": 837,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -4602,13 +5160,23 @@
                             "blocking": true
                         },
                         {
+                            "note": "Sample examined",
+                            "stars": 2,
+                            "xp": 10,
+                            "id": 83890,
+                            "event_id": 838,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "name": "tests_done",
                             "operator": "+",
                             "operand": 1,
                             "id": 83803,
                             "event_id": 838,
                             "type": "variable",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         },
                         {
@@ -4616,7 +5184,7 @@
                             "id": 83804,
                             "event_id": 838,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -4720,11 +5288,20 @@
                             "blocking": true
                         },
                         {
+                            "note": "Good thinking",
+                            "xp": 5,
+                            "id": 83390,
+                            "event_id": 833,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Correct!</h3><p>Yes. With no microbes present, an infection is unlikely. The damage is more likely caused by something in the <strong>environment</strong>, such as the water the plants are growing in.</p>",
                             "id": 83303,
                             "event_id": 833,
                             "type": "infobox",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         }
                     ]
@@ -4856,11 +5433,20 @@
                             "blocking": true
                         },
                         {
+                            "note": "Good thinking",
+                            "xp": 5,
+                            "id": 84390,
+                            "event_id": 843,
+                            "type": "award",
+                            "sequence": 3,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Correct!</h3><p>Right. A <strong>base</strong> cancels out an acid. Scientists call this <strong>neutralising</strong>. Now test your prediction.</p>",
                             "id": 84303,
                             "event_id": 843,
                             "type": "infobox",
-                            "sequence": 3,
+                            "sequence": 4,
                             "blocking": true
                         }
                     ]
@@ -4962,7 +5548,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 39,
+                                    "id": 43,
                                     "action_id": 84502,
                                     "type": "variable",
                                     "variable": "beaker_ph",
@@ -4970,7 +5556,7 @@
                                     "operand": 7
                                 },
                                 {
-                                    "id": 40,
+                                    "id": 44,
                                     "action_id": 84502,
                                     "type": "variable",
                                     "variable": "neutralised",
@@ -4978,7 +5564,7 @@
                                     "operand": 0
                                 },
                                 {
-                                    "id": 41,
+                                    "id": 45,
                                     "action_id": 84502,
                                     "type": "variable",
                                     "variable": "beaker_done",
@@ -4998,8 +5584,28 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 42,
+                                    "id": 46,
                                     "action_id": 84503,
+                                    "type": "variable",
+                                    "variable": "beaker_ph",
+                                    "operator": "=",
+                                    "operand": 7
+                                }
+                            ]
+                        },
+                        {
+                            "note": "Water made neutral",
+                            "stars": 10,
+                            "xp": 30,
+                            "id": 84590,
+                            "event_id": 845,
+                            "type": "award",
+                            "sequence": 4,
+                            "blocking": false,
+                            "conditions": [
+                                {
+                                    "id": 47,
+                                    "action_id": 84590,
                                     "type": "variable",
                                     "variable": "beaker_ph",
                                     "operator": "=",
@@ -5011,11 +5617,11 @@
                             "id": 84504,
                             "event_id": 845,
                             "type": "repeat",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 43,
+                                    "id": 48,
                                     "action_id": 84504,
                                     "type": "variable",
                                     "variable": "beaker_done",
@@ -5086,7 +5692,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 44,
+                                    "id": 49,
                                     "action_id": 86201,
                                     "type": "variable",
                                     "variable": "q_source",
@@ -5134,7 +5740,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 45,
+                                    "id": 50,
                                     "action_id": 86301,
                                     "type": "variable",
                                     "variable": "q_source",
@@ -5154,7 +5760,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 46,
+                                    "id": 51,
                                     "action_id": 86302,
                                     "type": "variable",
                                     "variable": "source_tries",
@@ -5174,11 +5780,21 @@
                             "blocking": true
                         },
                         {
+                            "note": "Mission complete",
+                            "stars": 25,
+                            "xp": 100,
+                            "id": 86390,
+                            "event_id": 863,
+                            "type": "award",
+                            "sequence": 4,
+                            "blocking": false
+                        },
+                        {
                             "content": "<h3>Mystery solved</h3><p>The evidence fits together:</p><ul><li>Upstream of the lander the water is neutral and the plants are healthy.</li><li>Just below the lander the water is strongly acidic and the plants are worst.</li><li>Further downstream the acid is weaker, and the plants are sick but less so.</li><li>No microbes were found, so it is not an infection.</li></ul><p>The cracked power cell is leaking acid into the stream. A repair crew is on its way.</p><p><strong>Science score: {{science_score}} out of 5.</strong></p>",
                             "id": 86304,
                             "event_id": 863,
                             "type": "infobox",
-                            "sequence": 4,
+                            "sequence": 5,
                             "blocking": true
                         }
                     ]
@@ -5202,7 +5818,7 @@
                             "blocking": true,
                             "conditions": [
                                 {
-                                    "id": 47,
+                                    "id": 52,
                                     "action_id": 86401,
                                     "type": "variable",
                                     "variable": "q_source",
@@ -5294,6 +5910,11 @@
                     "name": "far",
                     "position_x": 900,
                     "position_y": 700
+                },
+                {
+                    "name": "market-door",
+                    "position_x": 700,
+                    "position_y": 705
                 }
             ],
             "scale_areas": [
@@ -5311,27 +5932,6 @@
             "items": [],
             "characters": [],
             "start_events": [
-                {
-                    "id": 900,
-                    "shortname": "music",
-                    "scene_id": 9,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.35,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 90001,
-                            "event_id": 900,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 31
-                        }
-                    ]
-                },
                 {
                     "id": 901,
                     "shortname": "caption",
@@ -5495,6 +6095,41 @@
                             "blocking": true
                         }
                     ]
+                },
+                {
+                    "id": 914,
+                    "shortname": "door-market",
+                    "scene_id": 9,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 620,
+                    "position_y": 690,
+                    "radius": 40,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 66,
+                            "event_id": 914,
+                            "type": "text",
+                            "position_x": 548,
+                            "position_y": 470,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Marketplace"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 13,
+                            "spawn_point": "door",
+                            "id": 91401,
+                            "event_id": 914,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
                 }
             ],
             "indirect_events": []
@@ -5551,27 +6186,6 @@
             "items": [],
             "characters": [],
             "start_events": [
-                {
-                    "id": 1000,
-                    "shortname": "music",
-                    "scene_id": 10,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.35,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 100001,
-                            "event_id": 1000,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 31
-                        }
-                    ]
-                },
                 {
                     "id": 1001,
                     "shortname": "caption",
@@ -5763,27 +6377,6 @@
             "characters": [],
             "start_events": [
                 {
-                    "id": 1100,
-                    "shortname": "music",
-                    "scene_id": 11,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.35,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 110001,
-                            "event_id": 1100,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 31
-                        }
-                    ]
-                },
-                {
                     "id": 1101,
                     "shortname": "caption",
                     "scene_id": 11,
@@ -5962,6 +6555,330 @@
                             "blocking": true
                         }
                     ]
+                },
+                {
+                    "id": 1150,
+                    "shortname": "critter-a",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 760,
+                    "position_y": 790,
+                    "radius": 90,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 79,
+                            "event_id": 1150,
+                            "type": "image",
+                            "position_x": 760,
+                            "position_y": 790,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 50
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "name": "critters_met",
+                            "operator": "+",
+                            "operand": 1,
+                            "id": 115001,
+                            "event_id": 1150,
+                            "type": "variable",
+                            "sequence": 1,
+                            "blocking": true,
+                            "conditions": [
+                                {
+                                    "id": 53,
+                                    "action_id": 115001,
+                                    "type": "variable",
+                                    "variable": "met_critter_a",
+                                    "operator": "=",
+                                    "operand": 0
+                                }
+                            ]
+                        },
+                        {
+                            "name": "met_critter_a",
+                            "operator": "set",
+                            "operand": 1,
+                            "id": 115002,
+                            "event_id": 1150,
+                            "type": "variable",
+                            "sequence": 2,
+                            "blocking": true
+                        },
+                        {
+                            "text": "Hello, Sprout!",
+                            "duration": 1600,
+                            "id": 115003,
+                            "event_id": 1150,
+                            "type": "dialogue",
+                            "sequence": 3,
+                            "blocking": false
+                        }
+                    ]
+                },
+                {
+                    "id": 1151,
+                    "shortname": "critter-b",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1420,
+                    "position_y": 790,
+                    "radius": 90,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 80,
+                            "event_id": 1151,
+                            "type": "image",
+                            "position_x": 1420,
+                            "position_y": 790,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 51
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "name": "critters_met",
+                            "operator": "+",
+                            "operand": 1,
+                            "id": 115101,
+                            "event_id": 1151,
+                            "type": "variable",
+                            "sequence": 1,
+                            "blocking": true,
+                            "conditions": [
+                                {
+                                    "id": 54,
+                                    "action_id": 115101,
+                                    "type": "variable",
+                                    "variable": "met_critter_b",
+                                    "operator": "=",
+                                    "operand": 0
+                                }
+                            ]
+                        },
+                        {
+                            "name": "met_critter_b",
+                            "operator": "set",
+                            "operand": 1,
+                            "id": 115102,
+                            "event_id": 1151,
+                            "type": "variable",
+                            "sequence": 2,
+                            "blocking": true
+                        },
+                        {
+                            "text": "Hello, Ember!",
+                            "duration": 1600,
+                            "id": 115103,
+                            "event_id": 1151,
+                            "type": "dialogue",
+                            "sequence": 3,
+                            "blocking": false
+                        }
+                    ]
+                },
+                {
+                    "id": 1152,
+                    "shortname": "critter-c",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1830,
+                    "position_y": 790,
+                    "radius": 90,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 81,
+                            "event_id": 1152,
+                            "type": "image",
+                            "position_x": 1830,
+                            "position_y": 790,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 52
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "name": "critters_met",
+                            "operator": "+",
+                            "operand": 1,
+                            "id": 115201,
+                            "event_id": 1152,
+                            "type": "variable",
+                            "sequence": 1,
+                            "blocking": true,
+                            "conditions": [
+                                {
+                                    "id": 55,
+                                    "action_id": 115201,
+                                    "type": "variable",
+                                    "variable": "met_critter_c",
+                                    "operator": "=",
+                                    "operand": 0
+                                }
+                            ]
+                        },
+                        {
+                            "name": "met_critter_c",
+                            "operator": "set",
+                            "operand": 1,
+                            "id": 115202,
+                            "event_id": 1152,
+                            "type": "variable",
+                            "sequence": 2,
+                            "blocking": true
+                        },
+                        {
+                            "text": "Hello, Violet!",
+                            "duration": 1600,
+                            "id": 115203,
+                            "event_id": 1152,
+                            "type": "dialogue",
+                            "sequence": 3,
+                            "blocking": false
+                        }
+                    ]
+                },
+                {
+                    "id": 1160,
+                    "shortname": "seed-vault-shut",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 56,
+                            "event_id": 1160,
+                            "type": "variable",
+                            "variable": "critters_met",
+                            "operator": "<",
+                            "operand": 3
+                        }
+                    ],
+                    "position_x": 300,
+                    "position_y": 560,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 82,
+                            "event_id": 1160,
+                            "type": "image",
+                            "position_x": 300,
+                            "position_y": 560,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 83,
+                            "event_id": 1160,
+                            "type": "text",
+                            "position_x": 300,
+                            "position_y": 498,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Seed vault"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "text": "The seed vault stays shut. The bay’s three critters do not know you yet: say hello to each of them ({{critters_met}}/3).",
+                            "alignment": "bottom center",
+                            "text_font_size": 26,
+                            "duration": 4500,
+                            "id": 116001,
+                            "event_id": 1160,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1161,
+                    "shortname": "seed-vault",
+                    "scene_id": 11,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 57,
+                            "event_id": 1161,
+                            "type": "variable",
+                            "variable": "critters_met",
+                            "operator": ">=",
+                            "operand": 3
+                        }
+                    ],
+                    "position_x": 300,
+                    "position_y": 560,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 84,
+                            "event_id": 1161,
+                            "type": "image",
+                            "position_x": 300,
+                            "position_y": 560,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 85,
+                            "event_id": 1161,
+                            "type": "text",
+                            "position_x": 300,
+                            "position_y": 498,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Seed vault"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "name": "vault_opened",
+                            "operator": "set",
+                            "operand": 1,
+                            "id": 116101,
+                            "event_id": 1161,
+                            "type": "variable",
+                            "sequence": 1,
+                            "blocking": true
+                        },
+                        {
+                            "stars": 5,
+                            "xp": 15,
+                            "note": "Friend of the bay",
+                            "id": 116102,
+                            "event_id": 1161,
+                            "type": "award",
+                            "sequence": 2,
+                            "blocking": false
+                        },
+                        {
+                            "content": "<h3>Seed vault</h3><p>The critters chirp, and the vault slides open for you. Inside are seeds from every world the ship has visited, kept cold and dry until they are needed.</p><p>Each explorer has to make friends with the critters themselves: your friend’s greeting does not open the vault for you.</p>",
+                            "id": 116103,
+                            "event_id": 1161,
+                            "type": "infobox",
+                            "sequence": 3,
+                            "blocking": true
+                        }
+                    ]
                 }
             ],
             "indirect_events": []
@@ -6017,27 +6934,6 @@
             "items": [],
             "characters": [],
             "start_events": [
-                {
-                    "id": 1200,
-                    "shortname": "music",
-                    "scene_id": 12,
-                    "overridable": false,
-                    "block_hotspots": false,
-                    "conditions": [],
-                    "actions": [
-                        {
-                            "volume": 0.5,
-                            "repeat": true,
-                            "persist": true,
-                            "id": 120001,
-                            "event_id": 1200,
-                            "type": "audio",
-                            "sequence": 1,
-                            "blocking": false,
-                            "media_id": 31
-                        }
-                    ]
-                },
                 {
                     "id": 1201,
                     "shortname": "caption",
@@ -6223,6 +7119,371 @@
                             "content": "<h3>Three pipes, three jobs</h3><p>Orange carries heat away from the reactor, blue brings cooled liquid back, and grey is the spare.</p><p>If the heat had nowhere to go, the reactor would have to shut down.</p>",
                             "id": 124001,
                             "event_id": 1240,
+                            "type": "infobox",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1250,
+                    "shortname": "repair-drone",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 58,
+                            "event_id": 1250,
+                            "type": "variable",
+                            "variable": "rockfall",
+                            "operator": "=",
+                            "operand": 1
+                        }
+                    ],
+                    "position_x": 1480,
+                    "position_y": 640,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 75,
+                            "event_id": 1250,
+                            "type": "image",
+                            "position_x": 1480,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 76,
+                            "event_id": 1250,
+                            "type": "text",
+                            "position_x": 1480,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Repair drone: path blocked!"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "name": "rockfall",
+                            "operator": "set",
+                            "operand": 0,
+                            "id": 125001,
+                            "event_id": 1250,
+                            "type": "variable",
+                            "sequence": 1,
+                            "blocking": true
+                        },
+                        {
+                            "text": "The repair drone sets off for the spring meadow. The cliff path is open again, for everyone.",
+                            "alignment": "bottom center",
+                            "text_font_size": 26,
+                            "duration": 4500,
+                            "id": 125002,
+                            "event_id": 1250,
+                            "type": "text_overlay",
+                            "sequence": 2,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1251,
+                    "shortname": "repair-drone-idle",
+                    "scene_id": 12,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [
+                        {
+                            "id": 59,
+                            "event_id": 1251,
+                            "type": "variable",
+                            "variable": "rockfall",
+                            "operator": "=",
+                            "operand": 0
+                        }
+                    ],
+                    "position_x": 1480,
+                    "position_y": 640,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 77,
+                            "event_id": 1251,
+                            "type": "image",
+                            "position_x": 1480,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 78,
+                            "event_id": 1251,
+                            "type": "text",
+                            "position_x": 1480,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Repair drone"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "text": "The repair drone is idle. Nothing on the planet needs clearing.",
+                            "alignment": "bottom center",
+                            "text_font_size": 26,
+                            "duration": 3500,
+                            "id": 125101,
+                            "event_id": 1251,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "indirect_events": []
+        },
+        {
+            "id": 13,
+            "shortname": "marketplace",
+            "scenario_id": 1,
+            "sequence": 13,
+            "subtitle": "Starship: marketplace",
+            "is_intro_scene": false,
+            "zoom": 1,
+            "show_avatars": true,
+            "width": 2250,
+            "height": 1200,
+            "background_media": [
+                {
+                    "media_id": 18,
+                    "display_width": 2250,
+                    "display_height": 1200
+                }
+            ],
+            "foreground_media": [],
+            "walkable_areas": [
+                [
+                    {
+                        "x": 0,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 820
+                    },
+                    {
+                        "x": 2250,
+                        "y": 1200
+                    },
+                    {
+                        "x": 0,
+                        "y": 1200
+                    }
+                ]
+            ],
+            "blocked_areas": [],
+            "spawn_points": [
+                {
+                    "name": "door",
+                    "position_x": 1125,
+                    "position_y": 1090
+                }
+            ],
+            "scale_areas": [],
+            "items": [],
+            "characters": [],
+            "start_events": [
+                {
+                    "id": 1301,
+                    "shortname": "caption",
+                    "scene_id": 13,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "actions": [
+                        {
+                            "text": "Marketplace",
+                            "alignment": "top center",
+                            "text_font_size": 30,
+                            "duration": 2500,
+                            "id": 130101,
+                            "event_id": 1301,
+                            "type": "text_overlay",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                }
+            ],
+            "end_events": [],
+            "hotspots": [
+                {
+                    "id": 1310,
+                    "shortname": "edge-south",
+                    "scene_id": 13,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": null,
+                    "position_y": 1200,
+                    "radius": 25,
+                    "activate_by_trigger": false,
+                    "labels": [
+                        {
+                            "id": 59,
+                            "event_id": 1310,
+                            "type": "text",
+                            "position_x": 1125,
+                            "position_y": 1165,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "▼ Main corridor"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "scene_id": 9,
+                            "spawn_point": "market-door",
+                            "id": 131001,
+                            "event_id": 1310,
+                            "type": "jump",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1320,
+                    "shortname": "stalls",
+                    "scene_id": 13,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 850,
+                    "position_y": 640,
+                    "radius": 120,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 60,
+                            "event_id": 1320,
+                            "type": "image",
+                            "position_x": 850,
+                            "position_y": 640,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 61,
+                            "event_id": 1320,
+                            "type": "text",
+                            "position_x": 850,
+                            "position_y": 578,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Browse the stalls"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "id": 132001,
+                            "event_id": 1320,
+                            "type": "shop",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1330,
+                    "shortname": "wardrobe",
+                    "scene_id": 13,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 1280,
+                    "position_y": 560,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 62,
+                            "event_id": 1330,
+                            "type": "image",
+                            "position_x": 1280,
+                            "position_y": 560,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 63,
+                            "event_id": 1330,
+                            "type": "text",
+                            "position_x": 1280,
+                            "position_y": 498,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Change what you wear"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "id": 133001,
+                            "event_id": 1330,
+                            "type": "shop",
+                            "sequence": 1,
+                            "blocking": true
+                        }
+                    ]
+                },
+                {
+                    "id": 1340,
+                    "shortname": "stars-and-ranks",
+                    "scene_id": 13,
+                    "overridable": false,
+                    "block_hotspots": false,
+                    "conditions": [],
+                    "position_x": 2060,
+                    "position_y": 620,
+                    "radius": 110,
+                    "activate_by_trigger": true,
+                    "labels": [
+                        {
+                            "id": 64,
+                            "event_id": 1340,
+                            "type": "image",
+                            "position_x": 2060,
+                            "position_y": 620,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "media": 10
+                        },
+                        {
+                            "id": 65,
+                            "event_id": 1340,
+                            "type": "text",
+                            "position_x": 2060,
+                            "position_y": 558,
+                            "scale_x": 1,
+                            "scale_y": 1,
+                            "text": "Stars and ranks"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "content": "<h3>Stars and ranks</h3><p><b>Stars</b> are earned on missions and spent here, on things to wear, pets, new ways to move and abilities. You have <b>{{QBLStars}}</b>.</p><p><b>XP</b> is experience. It is never spent: it adds up, and as it grows you rise through the ranks. You have <b>{{QBLXp}}</b> XP.</p><p>Your rank: <b>{{QBLRank}}</b>. Both stars and XP stay with your account from mission to mission, so you need to be signed in to earn them.</p>",
+                            "id": 134001,
+                            "event_id": 1340,
                             "type": "infobox",
                             "sequence": 1,
                             "blocking": true
