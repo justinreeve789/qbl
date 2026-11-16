@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  revealAmount, scaleAt,
+  revealAmount, scaleAt, speedFactorAt,
   applyOperator, collectSceneMediaIds, escapeHtml, evaluateObjectives, interpolate, placeholderVariables, MoveBudget, sceneSize, computeJumpTargets, inHotspot, isWalkable,
   nearestWalkable, normalizeActionType, normalizeScenario, resolveMove, ScenarioIndex, SceneEngine,
   testCondition, validateMove, validateScenario, VariableStore, walkContext,
@@ -17,6 +17,12 @@ class FakeHost implements EngineHost {
   jumps: Array<[number, string | undefined]> = [];
   private timers: Array<{ at: number; fire: () => void }> = [];
   durations: Record<number, number> = {};
+
+  frozen = false;
+  freeze(frozen: boolean) {
+    this.frozen = frozen;
+    this.log.push(frozen ? 'freeze' : 'unfreeze');
+  }
 
   avatar(visible: boolean, duration: number): ActionHandle {
     this.log.push(`avatar:${visible ? 'show' : 'hide'}`);
@@ -508,4 +514,39 @@ test('a hotspot with a reveal radius fades in as the avatar approaches', () => {
   assert.equal(revealAmount({ position_x: 1000, position_y: 500 }, 9000, 9000), 1, 'no reveal radius: always there');
   assert.equal(revealAmount({ position_x: 1000, position_y: 500, reveal_radius: 400 }, 1300, 500), 0.5, 'full radius defaults to half');
   assert.equal(revealAmount({ position_x: null, position_y: 500, reveal_radius: 200, reveal_full_radius: 0 }, 9000, 600), 0.5, 'an empty coordinate does not count');
+});
+
+test('walking speed follows size in a scale area, as much as the area says', () => {
+  const area = { x: 0, y: 0, width: 1000, height: 1000, scale_top: 40, scale_bottom: 100 };
+  assert.equal(speedFactorAt({ scale_areas: [area] }, 500, 0), 0.4, 'by default, one to one');
+  assert.equal(speedFactorAt({ scale_areas: [{ ...area, speed_effect: 0 }] }, 500, 0), 1, 'off');
+  assert.equal(speedFactorAt({ scale_areas: [{ ...area, speed_effect: 50 }] }, 500, 0), 0.7, 'half way: small figures move a little faster than their size');
+  assert.equal(speedFactorAt({ scale_areas: [area] }, 500, 1000), 1);
+  assert.equal(speedFactorAt({ scale_areas: [area] }, 5000, 5000), 1, 'outside every area');
+});
+
+test('vehicles are always unique: one object that stays where it is left', () => {
+  const scenario = normalizeScenario({ id: 1, scenes: [], items: [{ id: 1, name: 'cart', vehicle: true }, { id: 2, name: 'hat', wearable: true }] } as never);
+  assert.deepEqual(scenario.items!.map((i) => Boolean(i.unique)), [true, false]);
+});
+
+test('freeze stops the player until unfrozen, and never outlives the event that froze them', async () => {
+  const { engine, host } = setup({});
+  void engine.trigger(ev(1, [
+    { id: 1, type: 'freeze', frozen: true },
+    { id: 2, type: 'wait', duration: 1000 },
+    { id: 3, type: 'freeze', frozen: false },
+    { id: 4, type: 'wait', duration: 1000 },
+  ]));
+  await host.advance(500);
+  assert.equal(host.frozen, true);
+  await host.advance(600);
+  assert.equal(host.frozen, false, 'the unfreeze action releases the player while the event carries on');
+
+  // An author forgets to unfreeze: the player is released when the event ends.
+  void engine.trigger(ev(2, [{ id: 5, type: 'freeze', frozen: true }, { id: 6, type: 'wait', duration: 300 }]));
+  await host.advance(200);
+  assert.equal(host.frozen, true);
+  await host.advance(200);
+  assert.equal(host.frozen, false);
 });

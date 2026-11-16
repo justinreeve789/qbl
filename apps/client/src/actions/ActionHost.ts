@@ -37,6 +37,13 @@ export class ActionHost implements EngineHost, PresenterContext {
     return presenter(action as never, this);
   }
 
+  /** Set by the scene: stops the local player from walking, or lets them walk again. */
+  freezeControl: ((frozen: boolean) => void) | null = null;
+
+  freeze(frozen: boolean) {
+    this.freezeControl?.(frozen);
+  }
+
   /** Set by the scene: shows or hides the local player's avatar. */
   avatarControl: ((visible: boolean, duration: number) => void) | null = null;
 

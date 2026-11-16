@@ -14,6 +14,14 @@ export type Addable =
   | 'edge-left' | 'edge-right' | 'edge-top' | 'edge-bottom'
   | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas';
 
+/** An icon and a colour for each kind of thing a scene holds. */
+const LOOK: Record<string, readonly [icon: string, tone: string]> = {
+  'Background layers': ['🏞️', '#8e5bd6'], 'Foreground layers': ['🌿', '#8e5bd6'],
+  'Start events': ['▶️', '#c77b12'], 'Hotspots': ['🎯', '#2f6fed'], 'Indirect events': ['🔁', '#c77b12'], 'End events': ['⏹️', '#c77b12'],
+  'Spawn points': ['🚩', '#d9a400'], 'Items here': ['🎒', '#d6457a'], 'Characters here': ['🧑‍🚀', '#d6457a'],
+  'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Blocked areas': ['🟥', '#c0392b'],
+};
+
 /** Everything in the scene as a list: the way to find and select things that are hard to click. */
 export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
   const { store } = model;
@@ -24,7 +32,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     h(
       'section',
       null,
-      h('h3', null, h('span', null, title), add ? h('button', { type: 'button', class: 'icon', title: `Add: ${title.toLowerCase()}`, onclick: () => host.add(add) }, '+') : null),
+      h('h3', { style: `--tone:${LOOK[title]?.[1] ?? ''}` }, h('span', null, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, LOOK[title]?.[0] ?? ''), title), add ? h('button', { type: 'button', class: 'icon', title: `Add: ${title.toLowerCase()}`, onclick: () => host.add(add) }, '+') : null),
       items.length ? h('ul', null, ...items) : null,
     );
   const layers = (which: 'background_media' | 'foreground_media') =>
@@ -40,7 +48,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
   return h(
     'nav',
     { class: 'outline', 'aria-label': 'Scene contents' },
-    h('ul', null, entry({ kind: 'scene' }, 'Scene settings')),
+    h('ul', null, entry({ kind: 'scene' }, '⚙️ Scene settings')),
     section('Background layers', 'background_media', layers('background_media')),
     section('Foreground layers', 'foreground_media', layers('foreground_media')),
     section('Start events', 'start', events('start')),

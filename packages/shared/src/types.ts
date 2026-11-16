@@ -88,6 +88,7 @@ export interface Variable {
 
 export type ActionType =
   | 'avatar'
+  | 'freeze'
   | 'audio'
   | 'cancel'
   | 'image_fixed'
@@ -241,8 +242,19 @@ export interface AvatarAction extends ActionBase {
   duration?: number;
 }
 
+/**
+ * [ext] Stop the player from walking, or let them walk again: for a conversation with a
+ * character, a cutscene, a countdown. It lasts until a freeze action with `frozen: false`, or
+ * until the event that froze the player ends, whichever comes first, so a player can never be
+ * left stuck. Leaving the scene also ends it.
+ */
+export interface FreezeAction extends ActionBase {
+  type: 'freeze';
+  frozen: boolean;
+}
+
 export type Action =
-  | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
+  | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
   | VariableAction | VideoAction | WaitAction;
@@ -313,6 +325,13 @@ export interface ScaleArea {
   scale_top: number;
   /** Percent of normal size at the bottom edge. */
   scale_bottom: number;
+  /**
+   * How much walking speed follows size, in percent. 100 (the default): one to one, so a figure
+   * drawn at half size walks at half speed and looks right. 0: speed is not affected. In between,
+   * distant figures cover ground a little faster than their size suggests, which saves players
+   * time without looking like they are racing around.
+   */
+  speed_effect?: number;
 }
 
 // ----------------------------------------------------- items/characters

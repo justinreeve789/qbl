@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { nearestWalkable, parseIds, resolveMove, scaleAt, stepToward, type Item, type PlayerRec, type Point } from '@qbl/shared';
+import { nearestWalkable, parseIds, resolveMove, scaleAt, speedFactorAt, stepToward, type Item, type PlayerRec, type Point } from '@qbl/shared';
 import { Avatar } from '../entities/Avatar';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { HotspotSystem } from './HotspotSystem';
@@ -68,6 +68,7 @@ export class LocalPlayerSystem implements SceneSystem {
 
   /** Walk toward a point (the nearest walkable spot to it). */
   walkTo(point: Point) {
+    if (this.frozen) return;
     this.walkTarget = nearestWalkable(this.rt.walk(), point, 200, 10) ?? null;
   }
 
@@ -111,6 +112,15 @@ export class LocalPlayerSystem implements SceneSystem {
    * An avatar action: show or hide the player's own figure. The game server is told, so everyone
    * else in the scene sees the same. The player can still walk and use hotspots while hidden.
    */
+  /** True while a freeze action holds the player in place. */
+  frozen = false;
+
+  /** A freeze action: the player cannot walk until released. Hotspots can still be clicked. */
+  setFrozen(frozen: boolean) {
+    this.frozen = frozen;
+    if (frozen) this.walkTarget = null;
+  }
+
   setAvatarVisible(visible: boolean, duration: number) {
     this.avatar.setShown(visible, duration);
     this.rt.ctx.connection.avatarVisible(visible);
@@ -150,7 +160,9 @@ export class LocalPlayerSystem implements SceneSystem {
       const item = ctx.index.items.get(id);
       if (item?.vehicle) multiplier = Math.max(multiplier, item.speed_multiplier ?? 1.5);
     }
-    return (ctx.scenario.move_speed ?? 420) * multiplier;
+    // In a scale area, figures drawn smaller also walk slower, by as much as the area's speed effect says.
+    const depth = speedFactorAt(this.rt.def, this.avatar.x, this.avatar.y);
+    return (ctx.scenario.move_speed ?? 420) * multiplier * depth;
   }
 
   private move(time: number, delta: number) {
@@ -159,7 +171,7 @@ export class LocalPlayerSystem implements SceneSystem {
     const step = (this.speed() * Math.min(delta, 100)) / 1000;
     let to: Point | null = null;
 
-    if (!this.rt.ctx.ui.capturesInput) {
+    if (!this.rt.ctx.ui.capturesInput && !this.frozen) {
       const k = this.keys;
       const dx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
       const dy = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0);

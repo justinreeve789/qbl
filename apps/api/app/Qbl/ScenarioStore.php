@@ -73,7 +73,7 @@ class ScenarioStore
         'labels.type' => ['text', 'image', 'spritemap'],
         'conditions.operator' => ['=', '!=', '>', '<', '>=', '<='],
         'actions.type' => [
-            'avatar', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat', 'run_event', 'spritemap',
+            'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat', 'run_event', 'spritemap',
             'text_overlay', 'translate', 'variable', 'video', 'wait',
         ],
     ];

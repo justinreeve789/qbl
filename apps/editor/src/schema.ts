@@ -124,6 +124,13 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...scale,
     ],
   },
+  freeze: {
+    label: 'Freeze or release player',
+    about: 'Stop the player from walking (while a character talks), or let them walk again.',
+    fields: [
+      { key: 'frozen', label: 'The player', kind: 'select', options: [['true', 'Cannot move'], ['false', 'Can move again']], wide: true, hint: 'A freeze ends at a “Can move again” action, when the event that froze the player finishes, or on leaving the scene, whichever comes first. Nobody can be left stuck.' },
+    ],
+  },
   avatar: {
     label: 'Show or hide avatar',
     about: 'Hide the player’s avatar (stepping into a rocket), or show it again.',
@@ -168,6 +175,17 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
 
 export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
 
+/** An icon and a colour for each action type, by what kind of thing it does. */
+const SAY = '#2f6fed', SHOW = '#8e5bd6', SOUND = '#0f9d8a', FLOW = '#c77b12', PLAYER = '#d6457a', STATE = '#3b8f4a';
+export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: string]> = {
+  infobox: ['💬', SAY], text_overlay: ['🔤', SAY],
+  image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
+  audio: ['🔊', SOUND],
+  jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
+  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER],
+  variable: ['🔢', STATE],
+};
+
 /** Attributes every action row has. */
 export const ACTION_COMMON: Field[] = [
   { key: 'blocking', label: 'Wait for this to finish before the next action', kind: 'bool', default: true, wide: true },
@@ -176,6 +194,8 @@ export const ACTION_COMMON: Field[] = [
 /** Starting values for a new action of each type, so it is valid as soon as it is added. */
 export function actionDefaults(type: ActionType): Record<string, unknown> {
   switch (type) {
+    case 'freeze':
+      return { frozen: true };
     case 'avatar':
       return { visible: false, duration: 400 };
     case 'infobox':
@@ -260,6 +280,7 @@ export const SCALE_AREA_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text', wide: true },
   { key: 'scale_top', label: 'Size at the top edge (%)', kind: 'number', min: 1, hint: '100 is normal size. 50 draws things half size, as if far away.' },
   { key: 'scale_bottom', label: 'Size at the bottom edge (%)', kind: 'number', min: 1, hint: 'In between, the size changes evenly from one to the other.' },
+  { key: 'speed_effect', label: 'Walking speed follows size (%)', kind: 'number', min: 0, max: 100, placeholder: '100', wide: true, hint: '100: one to one, so a half-size figure walks at half speed. 0: speed is not affected. Around 50 to 70 lets distant figures cover ground a little faster without looking like they are racing.' },
   { key: 'x', label: 'Left', kind: 'number' },
   { key: 'y', label: 'Top', kind: 'number' },
   { key: 'width', label: 'Width', kind: 'number', min: 1 },
@@ -331,7 +352,7 @@ export const ITEM_FIELDS: Field[] = [
   { key: 'physical', label: 'Physical: it sits in the scene', kind: 'bool', wide: true },
   { key: 'blocking', label: 'Blocking: avatars walk around it', kind: 'bool', wide: true },
   { key: 'wearable', label: 'Wearable', kind: 'bool' },
-  { key: 'vehicle', label: 'Vehicle', kind: 'bool' },
+  { key: 'vehicle', label: 'Vehicle', kind: 'bool', hint: 'A vehicle is always one object: it goes where it is driven, stays where it is left, and anyone can then use it.' },
 ];
 
 /** Kept in the item's `settings` column. */

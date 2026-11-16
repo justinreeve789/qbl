@@ -219,6 +219,14 @@ test('depth, reveal and avatar visibility: a scale area, a hotspot that appears 
   assert.deepEqual([spot.actions[0]!.type, (spot.actions[0] as { visible: boolean }).visible], ['avatar', true]);
 
   await page.click('.outline-item >> text=depth');
+  await type('.inspector [data-field=speed_effect] input', '60');
+  assert.equal((await draft()).scenes[0]!.scale_areas![0]!.speed_effect, 60);
+  await page.click('.outline-item >> text=Hotspot');
+  await inspector('.add-action').selectOption('freeze');
+  await page.waitForFunction(() => document.querySelectorAll('details.action').length === 2);
+  assert.match(await page.innerText('details.action:nth-of-type(2) summary'), /Stop the player from moving/);
+  assert.deepEqual((await draft()).scenes[0]!.hotspots!.at(-1)!.actions.map((a) => a.type), ['avatar', 'freeze']);
+  await page.click('.outline-item >> text=depth');
   await page.click('.inspector >> text=Delete');
   assert.deepEqual((await draft()).scenes[0]!.scale_areas, []);
 });

@@ -74,3 +74,65 @@ test('the corridor: avatars shrink with distance, and its doors lead to the new 
   assert.deepEqual(g.position, { x: 1050, y: 1110 });
   await g.walkOff('down', 'corridor');
 });
+
+test('a vehicle crosses scenes, stays where it is left, and is there for the next player', async () => {
+  const g = await startIn(1); // the observation deck, where the UFO starts
+  const ufo = g.ctx.index.items.get(2)!;
+  assert.equal(ufo.unique, true, 'vehicles are single objects in the world');
+  const record = () => g.ctx.connection.state.items.get('2')!;
+  assert.deepEqual([record().scene_id, record().holder], [1, '']);
+
+  await g.walkTo(180, 860);
+  g.ctx.connection.item({ item_id: 2, action: 'attach' });
+  await g.wait(50);
+  assert.equal(g.ctx.connection.me!.attachments, '2');
+
+  await g.walkOff('down', 'control-room');
+  assert.equal(g.ctx.connection.me!.attachments, '2', 'still riding it in the next scene');
+  await g.walkTo(1400, 1000);
+  g.ctx.connection.item({ item_id: 2, action: 'detach' });
+  await g.wait(50);
+  assert.deepEqual([record().scene_id, record().holder], [2, ''], 'it now stands in the control room, free for anyone');
+  assert.ok(Math.hypot(record().x - g.position.x, record().y - g.position.y) < 15, 'where its rider got out');
+
+  // It is no longer on the observation deck, and can be boarded again where it was left.
+  await g.walkTo(1000, 1000);
+  g.ctx.connection.item({ item_id: 2, action: 'attach' });
+  await g.wait(50);
+  assert.equal(g.ctx.connection.me!.attachments, '', 'too far away to climb in');
+  await g.walkTo(1380, 1000);
+  g.ctx.connection.item({ item_id: 2, action: 'attach' });
+  await g.wait(50);
+  assert.equal(g.ctx.connection.me!.attachments, '2');
+});
+
+test('talking to the captain holds the player still until the conversation ends', async () => {
+  const g = await startIn(2);
+  const local = g.scene.system(LocalPlayerSystem);
+  const greeting = g.scene.def.indirect_events!.find((e) => e.shortname === 'captain-greeting')!;
+  void (g.scene as any).engine.trigger(greeting);
+  await g.wait(50);
+  assert.equal(local.frozen, true);
+  assert.match(g.box?.html ?? '', /Captain Vega/);
+  const before = g.position;
+  local.walkTo({ x: before.x + 400, y: before.y });
+  await g.wait(500);
+  assert.deepEqual(g.position, before, 'cannot walk away mid-conversation');
+
+  await g.dismiss();
+  await g.wait(50);
+  assert.equal(local.frozen, false);
+  await g.walkTo(before.x + 200, before.y);
+  assert.notDeepEqual(g.position, before);
+});
+
+test('in the corridor, distant figures walk slower, but not as slow as their size', async () => {
+  const g = await startIn(9);
+  const local = g.scene.system(LocalPlayerSystem) as any;
+  const nearSpeed = local.speed() as number;
+  await g.walkTo(900, 720);
+  const farSpeed = local.speed() as number;
+  const size = scaleAt(g.scene.def, 900, 720) / scaleAt(g.scene.def, 900, 1100);
+  const speed = farSpeed / nearSpeed;
+  assert.ok(speed < 1 && speed > size, `size ratio ${size.toFixed(2)}, speed ratio ${speed.toFixed(2)}`);
+});

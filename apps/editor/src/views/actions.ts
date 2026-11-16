@@ -3,7 +3,7 @@ import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
 import { confirmDelete, h } from '../dom';
 import { form, select, withValue, type Field, type FormContext, type Values } from '../fields';
-import { ACTION_COMMON, ACTION_TYPES, ACTIONS, actionDefaults } from '../schema';
+import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 
 /** Which action cards are open. Kept outside the view so a redraw does not close them. */
@@ -12,7 +12,14 @@ const open = new Set<number>();
 /** Columns of the actions table; every other attribute of an action lives in `params`. */
 const COLUMNS = new Set(['media_id', 'blocking']);
 
-const typeOptions = ACTION_TYPES.map((t) => [t, ACTIONS[t].label] as const);
+/** Yes/no attributes that are shown as a choice between two named states. */
+function choice(type: string, values: Record<string, unknown>): Record<string, string> {
+  if (type === 'avatar') return { visible: String(values.visible !== false) };
+  if (type === 'freeze') return { frozen: String(values.frozen !== false) };
+  return {};
+}
+
+const typeOptions = ACTION_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${ACTIONS[t].label}`] as const);
 
 export function sortedActions(ctx: FormContext, eventId: number): Row[] {
   return ctx.store.where('actions', 'event_id', eventId).sort((a, b) => Number(a.sequence) - Number(b.sequence) || a.id - b.id);
@@ -26,7 +33,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
   const { store } = ctx;
   const actions = sortedActions(ctx, eventId);
 
-  const add = select(ACTION_TYPES.map((t) => [t, `${ACTIONS[t].label}: ${ACTIONS[t].about}`] as const), '', async (type) => {
+  const add = select(ACTION_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${ACTIONS[t].label}: ${ACTIONS[t].about}`] as const), '', async (type) => {
     add.value = '';
     if (!type) return;
     const sequence = actions.reduce((max, a) => Math.max(max, Number(a.sequence)), 0) + 1;
@@ -60,7 +67,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     refresh.push(describe);
 
     const commit = (key: string, value: unknown, field: Field) => {
-      if (type === 'avatar' && key === 'visible') value = value === 'true';
+      if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
       if (COLUMNS.has(key)) void store.patch('actions', id, { [key]: value }, key === 'media_id');
       else void store.patch('actions', id, { params: withValue(params(current()), key, value, field) }, field.structural === true);
     };
@@ -86,7 +93,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
           h('small', null, def.about),
         ),
       ),
-      form(def.fields, type === 'avatar' ? { ...actionValues(action), visible: String(params(action).visible !== false) } : actionValues(action), commit, ctx),
+      form(def.fields, { ...actionValues(action), ...choice(type, params(action)) }, commit, ctx),
       type === 'infobox'
         ? buttonsEditor(
             ctx,
@@ -114,7 +121,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
       ),
     );
 
-    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id) }, h('summary', null, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, def.label), summary), body);
+    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, `${ACTION_LOOK[type][0]} ${def.label}`), summary), body);
     card.addEventListener('toggle', () => (card.open ? open.add(id) : open.delete(id)));
     return card;
   });
@@ -151,7 +158,7 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
     const def = type ? ACTIONS[type] : null;
     const label = h('input', { type: 'text', value: cta.text ?? '', placeholder: 'Button text', 'aria-label': 'Button text', onchange: () => replace(index, { ...at(index), text: label.value }) });
     const commit = (key: string, value: unknown, field: Field) => {
-      if (type === 'avatar' && key === 'visible') value = value === 'true';
+      if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
       replace(index, { ...at(index), action: { ...withValue(at(index).action ?? {}, key, value, field), type } }, key === 'media_id' || field.structural === true);
     };
 
@@ -168,7 +175,7 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
         }, 'Just close the box'),
         h('button', { type: 'button', class: 'icon', title: 'Remove button', onclick: () => write(read().filter((_, i) => i !== index), true) }, '×'),
       ),
-      def ? form(def.fields, type === 'avatar' ? { ...cta.action, visible: String(cta.action?.visible !== false) } : (cta.action ?? {}), commit, ctx) : null,
+      def ? form(def.fields, { ...cta.action, ...choice(type, cta.action ?? {}) }, commit, ctx) : null,
       type === 'infobox'
         ? buttonsEditor(
             ctx,

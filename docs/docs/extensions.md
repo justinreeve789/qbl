@@ -85,12 +85,13 @@ name | string | A label for the editor.
 x, y, width, height | int | The box, in scene pixels.
 scale_top | decimal | Percent of normal size at the top edge. 100 is unchanged.
 scale_bottom | decimal | Percent of normal size at the bottom edge.
+speed_effect | decimal | How much walking speed follows size, 0 to 100. Default 100: one to one, so a figure drawn at half size walks at half speed. 0: speed is unaffected. A value such as 60 lets distant figures cover ground a little faster than their size suggests without looking like they are racing.
 
 ```json
 "scale_areas": [{ "name": "corridor depth", "x": 0, "y": 580, "width": 1800, "height": 620, "scale_top": 40, "scale_bottom": 100 }]
 ```
 
-Scale areas are separate from walkable areas on purpose: a crate at the far end of a room should be small even though nobody can walk there. Outside every box things are drawn at normal size. Where boxes overlap, the first one listed applies. Scale areas change how things are drawn only; walking speed, hotspot radii and blocking radii are unaffected.
+Scale areas are separate from walkable areas on purpose: a crate at the far end of a room should be small even though nobody can walk there. Outside every box things are drawn at normal size. Where boxes overlap, the first one listed applies. Scale areas change how things are drawn and, through `speed_effect`, how fast avatars walk. Hotspot radii, reach and blocking radii stay in scene pixels. The game server's speed limit is the full walking speed, so slowing down in a scale area never conflicts with it.
 
 ### Spawn points
 
@@ -141,6 +142,20 @@ The reveal distance is measured from each player's own avatar, so a hotspot can 
 Action `type` values are matched loosely: `Image Fixed`, `imageFixed` and `image_fixed` are the same. The canonical names are `audio`, `cancel`, `image_fixed`, `image_overlay`, `infobox`, `jump`, `repeat`, `run_event`, `spritemap`, `text_overlay`, `translate`, `variable`, `video` and `wait`.
 
 Actions may carry their own `conditions` array (the Conditions page allows this; the Actions page did not list it). An action whose conditions fail is skipped.
+
+### Freeze
+
+A new action type, `freeze`, stops the player from walking, or lets them walk again: for a conversation with a character, a cutscene, a countdown.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+frozen | bool | `true`: the player cannot move. `false`: they can again.
+
+```json
+{ "type": "freeze", "frozen": true }
+```
+
+A freeze ends at a `freeze` action with `frozen: false`, **or when the event that froze the player finishes**, or on leaving the scene, whichever comes first, so a player can never be left stuck by a missing action. While frozen a player can still click hotspots and infobox buttons. The demo freezes the player while Captain Vega is speaking.
 
 ### Avatar
 
@@ -209,6 +224,10 @@ Items are positioned by the bottom centre of their image, like avatars.
 * `unique: false`: every player has their own. It disappears from the floor for the player using it and is saved with that player.
 
 `blocking` is implemented. `physical` (pushable objects) is **not implemented yet**.
+
+### Vehicles are single objects
+
+A vehicle is always `unique`, whatever the document says: there is one of it in the room. It goes with whoever is riding it, across scenes. When the rider gets out it stays in that scene at that spot, where any player can climb in. Where vehicles were left is part of the room's saved data, so a vehicle left on the planet is still on the planet next lesson.
 
 ## Characters
 

@@ -25,6 +25,8 @@ export interface EngineHost {
   translate(action: TranslateAction): ActionHandle | null;
   /** Show or hide the player's avatar, fading over `duration` ms. The handle finishes when the fade does. */
   avatar?(visible: boolean, duration: number): ActionHandle | null;
+  /** Stop the player from walking (true) or let them walk again (false). */
+  freeze?(frozen: boolean): void;
   delay(ms: number): ActionHandle;
   /** Leave the current scene. Called after end events have finished. */
   jump(sceneId: Id, spawnPoint?: string): void;
@@ -153,6 +155,8 @@ export class SceneEngine {
       .catch((err) => this.host.warn?.(`event ${event.id} failed: ${String(err)}`))
       .finally(() => {
         if (this.runs.get(event.id) === run) this.runs.delete(event.id);
+        // A freeze never outlives the event that asked for it, so nobody is left unable to move.
+        if (this.frozenBy.delete(event.id) && this.frozenBy.size === 0) this.host.freeze?.(false);
       });
     return run.finished;
   }
@@ -163,6 +167,9 @@ export class SceneEngine {
     const event: GameEvent = { id: this.adHocId--, actions: [{ ...action, id, blocking: true } as Action] };
     return this.trigger(event);
   }
+
+  /** Events that have frozen the player and are still running. */
+  private frozenBy = new Set<Id>();
 
   cancelAction(actionId: Id): void {
     this.actions.get(actionId)?.cancel();
@@ -250,6 +257,12 @@ export class SceneEngine {
             this.track(run, action, h);
             if (action.blocking !== false) await this.wait(run, h);
           }
+          break;
+        }
+        case 'freeze': {
+          if (action.frozen !== false) this.frozenBy.add(run.event.id);
+          else this.frozenBy.clear();
+          this.host.freeze?.(action.frozen !== false);
           break;
         }
         case 'avatar': {

@@ -3,7 +3,7 @@ import type {
 } from './types.js';
 
 const ACTION_TYPES: ActionType[] = [
-  'avatar', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
+  'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
   'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait',
 ];
 
@@ -92,7 +92,9 @@ export function normalizeScenario(input: Scenario): Scenario {
     chat_mode: input.chat_mode ?? 'emotes',
     move_speed: input.move_speed ?? 420,
     global_variables: input.global_variables ?? [],
-    items: input.items ?? [],
+    // A vehicle is one object in the world: it goes where it is driven, stays where it is left, and
+    // whoever finds it there can use it. That is what `unique` means, so every vehicle is unique.
+    items: (input.items ?? []).map((item) => (item.vehicle && !item.unique ? { ...item, unique: true } : item)),
     characters: input.characters ?? [],
     assets: [...assets.values()].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100)),
     scenes,

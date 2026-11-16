@@ -122,7 +122,7 @@ Open `/editor`, sign in, and create a scenario. It gets its permanent 16-letter 
 
 - **Scenes** are drawn to scale with everything in them. Add background and foreground layers (stretched to the scene, or repeated with a drift and parallax), walkable and blocked areas, spawn points, items and characters, and drag any of them into place. A scene larger than the screen scrolls as players walk.
 - **Depth and discovery**: scale areas draw avatars, vehicles and items smaller towards the back of a scene; a hotspot can be given a distance within which it fades into view.
-- **Events**: start, end, hotspot and indirect events, each with conditions and an ordered list of actions. Every action type in the docs has a form, as does the added `avatar` action that hides or shows the player. "Exit along the left edge" and its siblings create the walk-in hotspot and jump action that move players between scenes.
+- **Events**: start, end, hotspot and indirect events, each with conditions and an ordered list of actions. Every action type in the docs has a form, as do the added `avatar` action (hide or show the player) and `freeze` action (hold the player still, for a conversation). "Exit along the left edge" and its siblings create the walk-in hotspot and jump action that move players between scenes.
 - **Library**: media (upload, or by address), variables, items, characters and the objectives checklist.
 - **Test this scene** opens the game on the draft, in that scene, playing alone with nothing saved, so you can check that actions behave. Nothing has to be published first.
 - **Publish** checks the scenario with the validator the game uses, then generates the JSON players get at `/{code}`. Players keep the last published version until you publish again.
@@ -148,8 +148,8 @@ Most of this codebase was written in an environment without network access. Comp
 
 **Run and passing**
 
-- `packages/shared`: type-checks cleanly; 24 unit tests cover variables and conditions, placeholders and objectives, geometry and movement limits, normalisation, validation, the event engine, the world rules, and the generated mission.
-- `apps/client`: 8 tests run the real client code (scene, systems, presenters, features, offline connection) against a **fake Phaser** with a manual clock. One plays the whole Wilting Stream quest; one starts a preview in a chosen scene.
+- `packages/shared`: type-checks cleanly; 27 unit tests cover variables and conditions, placeholders and objectives, geometry and movement limits, normalisation, validation, the event engine, the world rules, and the generated mission.
+- `apps/client`: 11 tests run the real client code (scene, systems, presenters, features, offline connection) against a **fake Phaser** with a manual clock. One plays the whole Wilting Stream quest; one starts a preview in a chosen scene.
 - `apps/api`: 86 checks on the framework-free PHP classes over SQLite (seeding to JSON, seed-once and reset, codes, publishing, the whole editor API including ownership rules, uploads), and 8 Laravel feature tests that run the real framework: migrations, the seeder, sign-in, the editor routes, upload, publish, play and the game server's routes.
 - `apps/editor`: 20 tests drive the real editor in headless Chromium against those PHP classes. A scenario is built by clicking, typing and dragging, published, and the published JSON is then played by the game's headless harness.
 - The game's DOM UI (infobox, HTML sanitiser, overlays, checklist) was exercised in headless Chromium.

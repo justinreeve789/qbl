@@ -203,6 +203,9 @@ export function validateScenario(doc: unknown): ValidationResult {
         else if (!variables.has(a.name)) err(`${path}.name`, `Variable "${a.name}" is not declared in global_variables`);
         if (a.operator !== 'random' && a.operand === undefined) err(`${path}.operand`, 'operand is required');
         break;
+      case 'freeze':
+        if (typeof a.frozen !== 'boolean') err(`${path}.frozen`, 'frozen must be true or false');
+        break;
       case 'avatar':
         if (typeof a.visible !== 'boolean') err(`${path}.visible`, 'visible must be true or false');
         break;
@@ -260,6 +263,7 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (typeof a[key] !== 'number' || a[key] <= 0) err(`${p}.${key}`, `${key} is a percentage greater than 0`);
         else if (a[key] > 400) warn(`${p}.${key}`, `${key} is ${a[key]}%, which is very large`);
       }
+      if (a.speed_effect != null && (a.speed_effect < 0 || a.speed_effect > 100)) err(`${p}.speed_effect`, 'speed_effect is a percentage from 0 to 100');
     });
     (scene.hotspots ?? []).forEach((h, hi) => {
       if (h.reveal_radius == null) return;

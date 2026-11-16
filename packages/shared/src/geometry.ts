@@ -150,13 +150,28 @@ export class MoveBudget {
  * game and in the editor.
  */
 export function scaleAt(scene: Pick<Scene, 'scale_areas'>, x: number, y: number): number {
+  return depthAt(scene, x, y).scale;
+}
+
+/**
+ * How fast something at (x, y) walks, as a factor of its normal speed. With a scale area's
+ * `speed_effect` at 100 this equals the size factor, so small, distant figures cross the same
+ * stretch of floor in the same number of steps as near ones. Lower values let distant figures
+ * move faster than their size suggests.
+ */
+export function speedFactorAt(scene: Pick<Scene, 'scale_areas'>, x: number, y: number): number {
+  const { scale, effect } = depthAt(scene, x, y);
+  return 1 - effect * (1 - scale);
+}
+
+function depthAt(scene: Pick<Scene, 'scale_areas'>, x: number, y: number): { scale: number; effect: number } {
   for (const a of scene.scale_areas ?? []) {
     if (x < a.x || x > a.x + a.width || y < a.y || y > a.y + a.height) continue;
     const t = a.height > 0 ? (y - a.y) / a.height : 1;
     const percent = a.scale_top + (a.scale_bottom - a.scale_top) * t;
-    return Math.max(0.05, percent / 100);
+    return { scale: Math.max(0.05, percent / 100), effect: Math.min(1, Math.max(0, (a.speed_effect ?? 100) / 100)) };
   }
-  return 1;
+  return { scale: 1, effect: 0 };
 }
 
 /**

@@ -916,7 +916,7 @@
             "id": 2,
             "scenario_id": 1,
             "name": "UFO",
-            "unique": false,
+            "unique": true,
             "physical": false,
             "blocking": false,
             "wearable": false,
@@ -1843,11 +1843,27 @@
                     "conditions": [],
                     "actions": [
                         {
+                            "frozen": true,
+                            "id": 2502,
+                            "event_id": 250,
+                            "type": "freeze",
+                            "sequence": 1,
+                            "blocking": true
+                        },
+                        {
                             "content": "<p><strong>Captain Vega:</strong> Welcome aboard! The mission consoles are along the back wall. The laboratory is through the east door, the observation deck is up the ramp, and the lift on the west side takes you back to the planet. The main corridor, to the south, leads to the crew quarters, the hydroponics bay and the engine room.</p>",
                             "id": 2501,
                             "event_id": 250,
                             "type": "infobox",
-                            "sequence": 1,
+                            "sequence": 2,
+                            "blocking": true
+                        },
+                        {
+                            "frozen": false,
+                            "id": 2503,
+                            "event_id": 250,
+                            "type": "freeze",
+                            "sequence": 3,
                             "blocking": true
                         }
                     ]
@@ -5288,7 +5304,8 @@
                     "width": 1800,
                     "height": 620,
                     "scale_top": 40,
-                    "scale_bottom": 100
+                    "scale_bottom": 100,
+                    "speed_effect": 60
                 }
             ],
             "items": [],

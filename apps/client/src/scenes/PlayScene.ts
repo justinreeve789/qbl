@@ -61,6 +61,7 @@ export class PlayScene extends Phaser.Scene {
 
     // The event engine for this visit to the scene.
     this.host = new ActionHost(this, ctx, (sceneId, spawn) => this.jump(sceneId, spawn));
+    this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);
     const def = this.def;
