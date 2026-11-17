@@ -9,6 +9,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(AvatarSeeder::class);
         $this->call(ShopSeeder::class);
         $this->call(StarshipSeeder::class);
 
