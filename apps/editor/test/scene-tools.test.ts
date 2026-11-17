@@ -74,10 +74,8 @@ test('items and characters: define them, with conditions', async () => {
     { name: 'guide.png', mimeType: 'image/png', buffer: png(80, 160, [200, 80, 120]) },
   ]);
   await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 3);
-  // Let players choose the guide picture as their avatar.
-  await page.locator('[data-media]', { hasText: 'guide.png' }).locator('text=Players can choose this').click();
-  // Its close-up is cut from the top third and added to the media.
-  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 4);
+  // Avatars are the platform's, the same in every scenario, so a scenario's pictures are not offered as avatars.
+  assert.equal(await page.locator('text=Players can choose this').count(), 0);
   await saved();
 
   await page.click('.tabs >> text=Variables');
@@ -100,7 +98,7 @@ test('items and characters: define them, with conditions', async () => {
   await page.waitForSelector('.grid .card');
   await type('.card [data-field=name] input', 'Ferry keeper');
   await page.locator('.card [data-field=media_id] select').selectOption({ label: 'guide.png' });
-  // The character gets a close-up of its own the same way, shown beside its picture.
+  // The character gets a close-up of its own, cut from the top third of its picture and shown beside it.
   await page.waitForFunction(() => /^\/media\//.test(document.querySelector('.card img.portrait')?.getAttribute('src') ?? '') && document.querySelector('.card img.portrait')?.getAttribute('src') !== document.querySelector('.card img.preview')?.getAttribute('src'));
   await saved();
 
@@ -109,7 +107,7 @@ test('items and characters: define them, with conditions', async () => {
   assert.deepEqual([boat.name, boat.vehicle, boat.speed_multiplier, boat.conditions?.length], ['rowing boat', true, 1.4, 1]);
   assert.equal(boat.conditions![0]!.variable, 'has_ticket');
   assert.equal(doc.characters![0]!.name, 'Ferry keeper');
-  assert.deepEqual(doc.avatar_media_ids, [doc.assets!.find((m) => m.filename === 'guide.png')!.id]);
+  assert.ok(doc.avatar_media_ids!.length > 0 && doc.avatar_media_ids!.every((id) => id >= 900000), 'the avatars in a preview are the platform\'s, not pictures of this scenario');
 });
 
 test('layers: a repeated, drifting sky behind and a foreground in front', async () => {
@@ -255,7 +253,7 @@ test('media sub-tabs, scenario music and scene music', async () => {
   assert.match(await tab('background').innerText(), /Backgrounds\s*1/, 'sky.png is a scene layer');
   assert.match(await tab('vehicle').innerText(), /Vehicles\s*1/, 'boat.png belongs to a vehicle');
   assert.match(await tab('character').innerText(), /NPCs\s*2/, 'guide.png is a character, and so is the close-up that was cut from it');
-  assert.match(await tab('avatar').innerText(), /Avatars\s*1/, 'the close-up made when guide.png became an avatar');
+  assert.equal(await tab('avatar').count(), 0, 'there is no avatars tab: avatars are not a scenario\'s');
   await tab('vehicle').click();
   assert.equal(await page.locator('[data-media]').count(), 1);
   await tab('audio').click();
@@ -305,11 +303,11 @@ test('delete a scene, a media file, and then the whole scenario', async () => {
 
   await page.click('.tabs >> text=Media');
   await page.click('.subtabs [data-tab=all]');
-  // By its title: an avatar's card also lists the other pictures, as choices for its portrait.
   await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'boat.png' }) }).locator('text=Delete').click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 6);
+  await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 5);
   const doc = await draft();
-  assert.equal(doc.assets!.length, 6);
+  // Not counting the platform's avatars, which every scenario is served with.
+  assert.equal(doc.assets!.filter((m) => m.id < 900000).length, 5);
   assert.equal(doc.items![0]!.media_id, undefined, 'the item is kept, without its picture');
 
   await page.click('.tabs >> text=Settings');

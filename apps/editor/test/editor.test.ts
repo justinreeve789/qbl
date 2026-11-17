@@ -323,7 +323,7 @@ test('publish from any page, drag actions into a new order, and fold the outline
 });
 
 test('who sees an event, a story box with portraits, and whose a variable is', async () => {
-  // A character with a close-up, and a close-up for the avatar.
+  // A character with a close-up.
   await page.click('.tabs >> text=Characters');
   await page.click('text=New character');
   await page.waitForSelector('.card [data-field=portrait_media_id]');
@@ -334,20 +334,7 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   await card.locator('[data-field=portrait_media_id] select').selectOption({ label: 'frog.png' });
   await saved();
   await page.click('.tabs >> text=Media');
-  const pond = page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'pond.png' }) });
-  assert.equal(await pond.locator('[data-field=avatar_portrait]').count(), 0, 'only an avatar has a portrait to choose');
-  await pond.locator('label.check >> text=Players can choose this as their avatar').click();
-  // A close-up is made straight away from the top third of the picture, and shown.
-  await page.waitForFunction(() => [...document.querySelectorAll('[data-media] .card-title')].some((t) => t.textContent?.includes('pond-portrait.png')));
-  await saved();
-  const made = (await api<{ media: Array<Record<string, unknown>> }>(`/editor/scenarios/${scenarioId}`)).media.find((m) => m.filename === 'pond-portrait.png')!;
-  assert.deepEqual([made.width, made.height], [2400, 267], 'the top third of the 2400 x 800 picture');
-  assert.equal(await pond.locator('[data-field=avatar_portrait] select').inputValue(), String(made.id));
-  assert.match((await pond.locator('img.portrait').getAttribute('src')) ?? '', /^\/media\//, 'the close-up is shown, not only named');
-  // It is only a default: another picture can be chosen.
-  await pond.locator('[data-field=avatar_portrait] select').selectOption({ label: 'frog.png' });
-  await saved();
-  assert.match((await pond.locator('img.portrait').getAttribute('src')) ?? '', new RegExp(String(await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'frog.png' }) }).locator('img.preview').getAttribute('src')).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(await page.locator('text=Players can choose this as their avatar').count(), 0, 'avatars are the platform\'s: a scenario does not choose them');
 
   // The start event: a story box spoken by the character, and the whole event shown to everyone in the scene.
   await page.click('.tabs >> text=Scenes');
@@ -379,7 +366,6 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   assert.equal(bundle.events.find((e) => e.shortname === 'arrive')!.audience, 'scene');
   const frog = (bundle.characters[0]!.settings as { portrait_media_id: number }).portrait_media_id;
   assert.ok(frog > 0);
-  assert.deepEqual(Object.values(bundle.scenario.settings.avatar_portraits as Record<string, number>), [frog]);
   assert.equal(bundle.variables.find((v) => v.variable_name === 'frogs_found')!.scope, 'room');
 });
 
@@ -472,7 +458,7 @@ test('publish, then play the published JSON in the game', async () => {
   assert.equal(start.audience, 'scene');
   const shown = (game.ctx.connection as unknown as { shared: Array<{ action_id: number }> }).shared.map((s) => s.action_id);
   assert.deepEqual(shown, start.actions.filter((a) => a.type !== 'award').map((a) => a.id));
-  assert.equal(document.characters![0]!.portrait_media_id, Object.values(document.avatar_portraits!)[0], 'the character and the avatar were both given the frog as a close-up');
+  assert.ok(document.characters![0]!.portrait_media_id, 'the character has its close-up');
 
   // The sheet and its animations are in the document, and the move is a button on the player's screen.
   const hop = document.assets!.find((m) => m.filename === 'hop-sheet.png')!;

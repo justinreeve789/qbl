@@ -22,7 +22,7 @@ const removeButton = (ctx: FormContext, table: Table, row: Row, what: string) =>
 // --------------------------------------------------------------------- media
 
 const MEDIA_TABS = [
-  ['all', 'All', '🗂️'], ['background', 'Backgrounds', '🏞️'], ['character', 'NPCs', '🧑‍🚀'], ['avatar', 'Avatars', '👤'],
+  ['all', 'All', '🗂️'], ['background', 'Backgrounds', '🏞️'], ['character', 'NPCs', '🧑‍🚀'],
   ['item', 'Items', '🎒'], ['vehicle', 'Vehicles', '🚙'], ['audio', 'Sounds and music', '🔊'], ['video', 'Video', '🎬'], ['shop', 'Shop items', '🛍️'], ['other', 'Other images', '🖼️'],
 ] as const;
 type MediaTab = (typeof MEDIA_TABS)[number][0];
@@ -44,8 +44,6 @@ function mediaCategory(ctx: FormContext, media: Row): Exclude<MediaTab, 'all'> {
   const layers = store.rows('scenes').flatMap((s) => [...((s.background_media as Array<Record<string, unknown>> | null) ?? []), ...((s.foreground_media as Array<Record<string, unknown>> | null) ?? [])]);
   if (layers.some((l) => (l.media_id ?? l.id) === id)) return 'background';
   if (store.rows('characters').some((c) => c.media_id === id || params(c, 'settings').portrait_media_id === id)) return 'character';
-  if (((store.settings.avatar_media_ids as number[] | undefined) ?? []).includes(id)) return 'avatar';
-  if (Object.values((store.settings.avatar_portraits as Record<string, number> | undefined) ?? {}).includes(id)) return 'avatar';
   const item = store.rows('items').find((i) => i.media_id === id);
   if (item) return item.vehicle ? 'vehicle' : 'item';
   if (store.rows('shop_items').some((i) => i.media_id === id)) return 'shop';
@@ -54,32 +52,6 @@ function mediaCategory(ctx: FormContext, media: Row): Exclude<MediaTab, 'all'> {
 
 export function mediaPage(ctx: FormContext): HTMLElement {
   const { store } = ctx;
-  const avatars = () => (store.settings.avatar_media_ids as number[] | undefined) ?? [];
-  const portraits = () => (store.settings.avatar_portraits as Record<string, number> | undefined) ?? {};
-  const setPortrait = (avatarId: number, portraitId: string) => {
-    const next = { ...portraits() };
-    if (portraitId) next[String(avatarId)] = Number(portraitId);
-    else delete next[String(avatarId)];
-    return store.patchSettings({ avatar_portraits: next }, true);
-  };
-
-  // Making a picture an avatar gives it a close-up straight away, cut from the top third of the
-  // picture, where the face usually is. It is an ordinary media file, and another can be chosen.
-  const becomeAvatar = async (media: Row, on: boolean) => {
-    const id = media.id;
-    await store.patchSettings({ avatar_media_ids: on ? [...avatars(), id] : avatars().filter((a) => a !== id) }, true);
-    if (!on || portraits()[String(id)] != null) return;
-    const portrait = await cropPortrait(store, media, 'avatar');
-    // Not if one was chosen, or the avatar was taken away again, while the close-up was being made.
-    if (portrait && portraits()[String(id)] == null && avatars().includes(id)) {
-      // Saved quietly: the page is only redrawn if it is still the one showing, so that a form
-      // someone has moved on to is not rebuilt under their hands.
-      await store.patchSettings({ avatar_portraits: { ...portraits(), [String(id)]: portrait.id } });
-      if (document.querySelector(`[data-media="${id}"]`)) store.emit();
-      toast('A close-up portrait was made from the top of the picture. You can choose another.');
-    }
-  };
-
   const file = h('input', { type: 'file', multiple: true, hidden: true, accept: 'image/png,image/jpeg,image/webp,image/gif,audio/*,video/mp4,video/webm' });
   file.addEventListener('change', async () => {
     for (const picked of [...(file.files ?? [])]) {
@@ -129,24 +101,11 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       : media.type === 'image' ? h('img', { class: 'preview', src: url, alt: '', loading: 'lazy' })
       : media.type === 'audio' ? h('audio', { class: 'preview', src: url, controls: true, preload: 'none' })
       : h('video', { class: 'preview', src: url, controls: true, preload: 'none' });
-    const avatar = h('input', {
-      type: 'checkbox', checked: avatars().includes(id),
-      onchange: () => void becomeAvatar(media, avatar.checked),
-    });
     return h(
       'div',
       { class: 'card', 'data-media': id },
       h('div', { class: 'card-title' }, h('strong', null, mediaLabel(media)), h('span', { class: 'muted' }, `#${id} · ${media.type}`)),
       preview,
-      media.type === 'image' ? h('label', { class: 'field check wide' }, avatar, h('span', null, 'Players can choose this as their avatar')) : null,
-      avatars().includes(id)
-        ? h('div', { class: 'portrait-pick' },
-            portraitImage(store, portraits()[String(id)] ?? id),
-            h('label', { class: 'field wide', 'data-field': 'avatar_portrait' }, h('span', { class: 'field-label' }, 'Close-up portrait'),
-              select(store.rows('media').filter((m) => m.type === 'image' && m.id !== id).map((m) => [String(m.id), mediaLabel(m)] as const), String(portraits()[String(id)] ?? ''),
-                (v) => void setPortrait(id, v), 'None: the avatar itself'),
-              h('small', null, 'Shown when a player with this avatar speaks in a story box.')))
-        : null,
       media.type === 'image' ? fold('media-sheet', `🎞️ Sprite sheet and animations${params(media).sheet ? ` (${((params(media).animations as unknown[] | undefined) ?? []).length})` : ''}`, false, sheetEditor(ctx, media)) : null,
       // The rest is needed less often, so it starts folded away.
       fold('media-details', 'Details', false,
@@ -369,7 +328,7 @@ function portraitImage(store: FormContext['store'], mediaId: number | null | und
  * null when the picture cannot be read (one on another site that does not allow it), in which
  * case the picture itself stands in as the portrait.
  */
-async function cropPortrait(store: FormContext['store'], media: Row, category: 'avatar' | 'character'): Promise<Row | null> {
+async function cropPortrait(store: FormContext['store'], media: Row, category: 'character'): Promise<Row | null> {
   const url = mediaUrl(store, media);
   if (!url || media.type !== 'image') return null;
   try {

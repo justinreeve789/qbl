@@ -1,6 +1,6 @@
 # QBL editor
 
-The web application allows content creators to build scenarios. It is served at
+The web application teachers and content creators use to build scenarios. It is served at
 `/editor/` from its own container and talks to the Laravel API under `/api/editor`.
 
 It is plain TypeScript and DOM, with no UI framework: a few hundred lines of helpers

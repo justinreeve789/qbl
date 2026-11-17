@@ -2,12 +2,14 @@ import { Api, ApiError, type User } from './api';
 import { clear, h, toast } from './dom';
 import './editor.css';
 import { Store } from './store';
+import { classesView } from './views/classes';
 import { loginView, scenarioListView } from './views/home';
 import { TABS, workspace, type Tab } from './views/workspace';
 
 /**
  * The editor. Addresses are kept in the fragment so the server needs no rules for them:
  *   #/                       the scenarios you can edit
+ *   #/classes                your students, and the missions assigned to them
  *   #/s/{id}                 one scenario: its scenes
  *   #/s/{id}/{tab}           media, variables, items, characters, objectives, settings, publish
  *   #/s/{id}/scene/{scene}   the scene editor
@@ -17,7 +19,7 @@ const root = document.getElementById('app')!;
 const saving = h('span', { class: 'saving', 'aria-live': 'polite' });
 const account = h('div', { class: 'account' });
 const view = h('div', { class: 'view' });
-root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QBL Editor'), saving, h('span', { class: 'spacer' }), account), view);
+root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QBL Editor'), h('nav', { class: 'top-nav' }, h('a', { href: '#/' }, 'Scenarios'), h('a', { href: '#/classes' }, 'Classes')), saving, h('span', { class: 'spacer' }), account), view);
 
 let hideSaved = 0;
 api.onBusy = (busy) => {
@@ -73,6 +75,8 @@ async function route() {
   if (user.role !== 'teacher' && user.role !== 'admin') {
     return show(h('div', { class: 'center' }, h('div', { class: 'card' }, h('h1', null, 'QBL Editor'), h('p', null, 'The editor is for teachers and content creators. This account can play scenarios but not edit them.'))));
   }
+
+  if (window.location.hash === '#/classes') return show(classesView(api));
 
   const match = /^#\/s\/(\d+)(?:\/(?:scene\/(\d+)|([a-z]+)))?$/.exec(window.location.hash);
   if (!match) return show(scenarioListView(api, (id) => go(`#/s/${id}`)));

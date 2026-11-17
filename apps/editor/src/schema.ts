@@ -292,6 +292,11 @@ export const SCENARIO_FIELDS: Field[] = [
 export const SCENARIO_SETTINGS_FIELDS: Field[] = [
   { key: 'music_media_id', label: 'Background music', kind: 'media', mediaType: 'audio', hint: 'Plays in every scene that does not have its own. Events can change it with an Audio action marked as background music.' },
   { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '0.5' },
+  {
+    key: 'visibility', label: 'Who can play it', kind: 'select', placeholder: 'Everyone: it is on every player’s missions page', wide: true,
+    options: [['public', 'Everyone: it is on every player’s missions page'], ['private', 'Only students it is assigned to']],
+    hint: 'A private mission is run by a teacher: it appears only for the students it was assigned to on the Classes page, and only its owner can assign it. This applies as soon as it is changed, without publishing.',
+  },
   { key: 'chat_mode', label: 'Chat', kind: 'select', placeholder: 'Emotes only', options: [['off', 'Off'], ['emotes', 'Emotes only'], ['free', 'Typed messages (filtered)']] },
   { key: 'move_speed', label: 'Walking speed (px per second)', kind: 'number', min: 50, placeholder: '420' },
   { key: 'asset_base_url', label: 'Base address for media', kind: 'text', wide: true, hint: 'Media whose address is not absolute is loaded from here. Uploaded files do not need it.' },

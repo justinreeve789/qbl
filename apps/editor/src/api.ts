@@ -28,6 +28,47 @@ export interface ScenarioSummary {
   updated_at: string | null;
 }
 
+export interface Student {
+  id: number;
+  name: string;
+  email: string;
+}
+
+/** A published scenario a teacher can assign. */
+export interface MissionSummary {
+  id: number;
+  code: string;
+  title: string;
+  subtitle?: string | null;
+  visibility: 'public' | 'private';
+}
+
+export interface Team {
+  id?: number;
+  name: string;
+  /** The team's instance of the scenario, as the address players open carries it (?group=). */
+  group?: string;
+  student_ids: number[];
+}
+
+export interface Assignment {
+  id: number;
+  scenario: MissionSummary | null;
+  /** UTC, "2026-12-01 15:00:00", or null for no due date. */
+  due_at: string | null;
+  note: string | null;
+  group: string;
+  students: Array<Student & { team_id: number | null }>;
+  teams: Team[];
+}
+
+export interface AssignmentDraft {
+  student_ids: number[];
+  due_at: string | null;
+  note: string | null;
+  teams: Team[];
+}
+
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
@@ -111,6 +152,16 @@ export class Api {
   deleteRow = (id: number, table: Table, rowId: number) => this.call<void>('DELETE', `/editor/scenarios/${id}/rows/${table}/${rowId}`);
   preview = async (id: number) => (await this.call<{ scenario: Scenario }>('GET', `/editor/scenarios/${id}/preview`)).scenario;
   publish = async (id: number) => (await this.call<{ scenario: Row }>('POST', `/editor/scenarios/${id}/publish`)).scenario;
+
+  // Classes: a teacher's students and the missions given to them. The routes are documented in App\Qbl\ClassApi.
+  students = async () => (await this.call<{ students: Student[] }>('GET', '/teach/students')).students;
+  addStudent = async (email: string) => (await this.call<{ student: Student }>('POST', '/teach/students', { email })).student;
+  removeStudent = (id: number) => this.call<void>('DELETE', `/teach/students/${id}`);
+  assignable = async () => (await this.call<{ scenarios: MissionSummary[] }>('GET', '/teach/scenarios')).scenarios;
+  assignments = async () => (await this.call<{ assignments: Assignment[] }>('GET', '/teach/assignments')).assignments;
+  assign = async (attrs: AssignmentDraft & { scenario_id: number }) => (await this.call<{ assignment: Assignment }>('POST', '/teach/assignments', attrs)).assignment;
+  updateAssignment = async (id: number, attrs: Partial<AssignmentDraft>) => (await this.call<{ assignment: Assignment }>('PUT', `/teach/assignments/${id}`, attrs)).assignment;
+  unassign = (id: number) => this.call<void>('DELETE', `/teach/assignments/${id}`);
 
   async upload(id: number, file: File): Promise<Row> {
     const form = new FormData();
