@@ -6,6 +6,7 @@ use App\Models\Scenario;
 use App\Models\ScenarioInstance;
 use App\Models\ScenarioSession;
 use App\Models\User;
+use App\Qbl\ClassStore;
 use App\Qbl\ProgressStore;
 use App\Qbl\StoreError;
 use Illuminate\Http\JsonResponse;
@@ -53,9 +54,16 @@ class InternalController extends Controller
         return response()->json(['scenario' => $scenario->toDocument()]);
     }
 
-    public function loadSession(Scenario $scenario, User $user): JsonResponse
+    /** May this player join this instance (`?group=`) of the scenario? Teams and assignments are for their members. */
+    public function access(Request $request, Scenario $scenario, User $user, ClassStore $classes): JsonResponse
     {
-        $data = ScenarioSession::where('scenario_id', $scenario->id)->where('user_id', $user->id)->value('data');
+        return response()->json(['allowed' => $classes->mayJoin($user->id, $user->role, $scenario->id, self::group($request))]);
+    }
+
+    /** A player's save in one instance of a scenario: `?group=`, the public instance if not given. */
+    public function loadSession(Request $request, Scenario $scenario, User $user): JsonResponse
+    {
+        $data = ScenarioSession::where('scenario_id', $scenario->id)->where('user_id', $user->id)->where('group_key', self::group($request))->value('data');
 
         return response()->json(['session' => $data]);
     }
@@ -65,7 +73,7 @@ class InternalController extends Controller
         $data = $request->validate(['session' => ['required', 'array']]);
 
         ScenarioSession::updateOrCreate(
-            ['scenario_id' => $scenario->id, 'user_id' => $user->id],
+            ['scenario_id' => $scenario->id, 'user_id' => $user->id, 'group_key' => self::group($request)],
             ['data' => $data['session']],
         );
 
@@ -89,5 +97,10 @@ class InternalController extends Controller
         );
 
         return response()->noContent();
+    }
+
+    private static function group(Request $request): string
+    {
+        return substr((string) $request->query('group', 'public'), 0, 64) ?: 'public';
     }
 }

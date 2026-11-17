@@ -1,0 +1,176 @@
+<?php
+
+/**
+ * Tests for classes, assignments, teams, missions and the platform avatars
+ * (App\Qbl\ClassStore, ClassApi, Avatars), over SQLite.
+ *
+ *   php apps/api/tests/classes.php
+ */
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore'] as $class) {
+    require __DIR__."/../app/Qbl/$class.php";
+}
+
+use App\Qbl\Avatars;
+use App\Qbl\ClassApi;
+use App\Qbl\ClassStore;
+use App\Qbl\ScenarioStore;
+use App\Qbl\StoreError;
+
+$checks = 0;
+$failures = 0;
+function check(bool $ok, string $what): void
+{
+    global $checks, $failures;
+    $checks++;
+    if (! $ok) {
+        $failures++;
+        fwrite(STDERR, "FAIL: $what\n");
+    }
+}
+function same(mixed $actual, mixed $expected, string $what): void
+{
+    check($actual === $expected, $what.' (got '.json_encode($actual).', expected '.json_encode($expected).')');
+}
+function refused(callable $work, int $status, string $what): void
+{
+    try {
+        $work();
+        check(false, $what);
+    } catch (StoreError $e) {
+        same($e->status, $status, $what);
+    }
+}
+
+$pdo = new PDO('sqlite::memory:');
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+foreach (ScenarioStore::sqliteSchema() as $sql) {
+    $pdo->exec($sql);
+}
+$scenarios = new ScenarioStore($pdo);
+$classes = new ClassStore($pdo);
+$pdo->exec("INSERT INTO users (id, name, email, role) VALUES
+    (1, 'Ms Tan', 'tan@school.test', 'teacher'), (2, 'Mr Ito', 'ito@school.test', 'teacher'),
+    (11, 'Ann', 'ann@school.test', 'student'), (12, 'Ben', 'Ben@School.test', 'student'), (13, 'Cy', 'cy@school.test', 'student'), (14, 'Dee', 'dee@school.test', 'student'),
+    (20, 'Guest', NULL, 'guest'), (30, 'Root', 'root@school.test', 'admin')");
+
+// Three scenarios: a public one, a private one of Ms Tan's, and a draft.
+$open = $scenarios->createScenario(['title' => 'Open Day'], 2);
+$scenarios->publish((int) $open['id']);
+$own = $scenarios->createScenario(['title' => 'Tan Special'], 1);
+$scenarios->updateScenario((int) $own['id'], ['settings' => ['visibility' => 'private'] + ($own['settings'] ?? [])]);
+$scenarios->publish((int) $own['id']);
+$draft = $scenarios->createScenario(['title' => 'Draft'], 1);
+[$openId, $ownId, $draftId] = [(int) $open['id'], (int) $own['id'], (int) $draft['id']];
+
+// ---- students
+same($classes->students(1), [], 'a teacher starts with no students');
+same($classes->addStudent(1, ' ANN@school.test ')['id'], 11, 'a student is added by the address they sign in with, however it is typed');
+$classes->addStudent(1, 'ben@school.test');
+$classes->addStudent(1, 'cy@school.test');
+$classes->addStudent(1, 'ann@school.test');
+same(array_column($classes->students(1), 'name'), ['Ann', 'Ben', 'Cy'], 'adding a student twice adds them once');
+$classes->addStudent(2, 'ann@school.test');
+same(array_column($classes->students(2), 'id'), [11], 'a student can have two teachers');
+refused(fn () => $classes->addStudent(1, 'nobody@school.test'), 404, 'someone who has never signed in cannot be added');
+refused(fn () => $classes->addStudent(1, 'tan@school.test'), 422, 'a teacher is not their own student');
+
+// ---- what can be assigned
+same(array_column($classes->assignable(1), 'title'), ['Open Day', 'Tan Special'], 'a teacher can assign public scenarios and their own private ones, but not drafts');
+same(array_column($classes->assignable(2), 'title'), ['Open Day'], "another teacher's private scenario is not offered");
+same(count($classes->assignable(30, true)), 2, 'an admin can assign any published scenario');
+
+// ---- assignments
+$a = $classes->assign(1, $ownId, [11, 12, 13], '2026-12-01 15:00', 'Read chapter 4 first');
+same([$a['scenario']['title'], $a['due_at'], $a['note'], $a['group'], array_column($a['students'], 'id'), $a['teams']], ['Tan Special', '2026-12-01 15:00:00', 'Read chapter 4 first', 'a'.$a['id'], [11, 12, 13], []], 'an assignment has a scenario, students, a due date and a note');
+refused(fn () => $classes->assign(1, $ownId, [14]), 422, "a mission can only go to the teacher's own students");
+refused(fn () => $classes->assign(1, $draftId, [11]), 422, 'a draft cannot be assigned');
+refused(fn () => $classes->assign(2, $ownId, [11]), 422, "nor can another teacher's private scenario");
+refused(fn () => $classes->assign(1, $ownId, [11], 'next Blursday'), 422, 'a due date must be a date');
+$b = $classes->assign(2, $openId, [11]);
+same($b['due_at'], null, 'a due date is optional');
+
+// ---- missions: public ones plus assigned ones
+$m = $classes->missions(11);
+same(array_map(fn ($x) => [$x['title'], $x['kind'], $x['group']], $m), [['Tan Special', 'assigned', 'a'.$a['id']], ['Open Day', 'assigned', 'a'.$b['id']], ['Open Day', 'public', 'public']], 'a student sees what was assigned (soonest due first), then the public missions');
+same([$m[0]['teacher'], $m[0]['due_at'], $m[0]['note'], $m[0]['team'], $m[0]['started_at']], ['Ms Tan', '2026-12-01 15:00:00', 'Read chapter 4 first', null, null], 'an assigned mission says who gave it, when it is due, and that it has not been started');
+same(array_map(fn ($x) => [$x['title'], $x['kind']], $classes->missions(14)), [['Open Day', 'public']], 'a student with no teacher sees the public missions only: private ones stay hidden');
+same(array_column($classes->missions(20), 'kind'), ['public'], 'so does a guest');
+$pdo->prepare("INSERT INTO scenario_sessions (scenario_id, user_id, group_key, data, updated_at) VALUES (?, 11, ?, '{}', '2026-11-17 09:00:00')")->execute([$ownId, 'a'.$a['id']]);
+same($classes->missions(11)[0]['started_at'], '2026-11-17 09:00:00', 'a mission that has a save is marked as started');
+
+// ---- teams: each is its own instance
+$a = $classes->update(1, $a['id'], ['teams' => [['name' => 'Comets', 'student_ids' => [11, 12]], ['name' => 'Quasars', 'student_ids' => [13]]]]);
+[$comets, $quasars] = $a['teams'];
+same([$comets['name'], $comets['student_ids'], $comets['group'], $quasars['student_ids']], ['Comets', [11, 12], 't'.$comets['id'], [13]], 'students are put into teams');
+$m = $classes->missions(11)[0];
+same([$m['team'], $m['group'], $m['started_at']], ['Comets', 't'.$comets['id'], null], "a student in a team plays in the team's instance, which starts fresh");
+$a = $classes->update(1, $a['id'], ['teams' => [['id' => $comets['id'], 'name' => 'Comets!', 'student_ids' => [11]], ['id' => $quasars['id'], 'name' => 'Quasars', 'student_ids' => [13]]]]);
+same([$a['teams'][0]['id'], $a['teams'][0]['name'], $a['teams'][0]['student_ids']], [$comets['id'], 'Comets!', [11]], 'a team keeps its instance when it is renamed or its members change');
+same($classes->missions(12)[0]['group'], 'a'.$a['id'], "a student in no team plays in the assignment's own instance");
+$a = $classes->update(1, $a['id'], ['due_at' => null]);
+same([$a['due_at'], $a['note'], count($a['teams'])], [null, 'Read chapter 4 first', 2], 'changing the due date leaves the rest alone');
+$a = $classes->update(1, $a['id'], ['student_ids' => [11, 13]]);
+same([array_column($a['students'], 'id'), $a['teams'][0]['student_ids']], [[11, 13], [11]], 'changing the students keeps the teams of those who stay');
+refused(fn () => $classes->update(2, $a['id'], ['note' => 'mine now']), 404, "a teacher cannot change another teacher's assignment");
+
+// ---- who may join which instance
+$join = fn (int $user, string $role, int $scenario, string $group) => $classes->mayJoin($user, $role, $scenario, $group);
+same($join(14, 'student', $openId, 'public'), true, 'anyone may play a public mission');
+same($join(20, 'guest', $openId, 'lunch-club'), true, 'and an open group of one');
+same($join(14, 'student', $ownId, 'public'), false, 'a private mission is not open to all');
+same($join(11, 'student', $ownId, 't'.$comets['id']), true, 'a team member may join their team');
+same($join(13, 'student', $ownId, 't'.$comets['id']), false, 'but not another team');
+same($join(11, 'student', $ownId, 'a'.$a['id']), false, "nor the assignment's own instance, once in a team");
+same($join(12, 'student', $ownId, 'a'.$a['id']), false, 'a student taken off the assignment may no longer join');
+same($join(1, 'teacher', $ownId, 't'.$quasars['id']), true, 'the teacher may look in on any of their teams');
+same($join(2, 'teacher', $ownId, 't'.$quasars['id']), false, 'another teacher may not');
+same($join(30, 'admin', $ownId, 't'.$quasars['id']), true, 'an admin may');
+same($join(11, 'student', $openId, 't'.$comets['id']), false, 'a team belongs to one scenario');
+same($join(11, 'student', $openId, 'a'.$b['id']), true, "a student may join the other teacher's assignment");
+same($join(11, 'student', 99999, 'public'), false, 'there is nothing to join in a scenario that does not exist');
+
+// ---- leaving
+$classes->removeStudent(1, 11);
+same([array_column($classes->students(1), 'id'), array_column($classes->assignments(1)[0]['students'], 'id')], [[12, 13], [13]], "a removed student leaves the teacher's assignments too");
+same(array_map(fn ($x) => $x['kind'], $classes->missions(11)), ['assigned', 'public'], "but keeps the other teacher's");
+$classes->unassign(1, $a['id']);
+same([$classes->assignments(1), $pdo->query('SELECT COUNT(*) FROM teams')->fetchColumn() == 0], [[], true], 'deleting an assignment removes its teams');
+
+// ---- the platform's avatars
+$document = ['assets' => [['id' => 5, 'type' => 'image', 'url' => 'bg.png'], ['id' => 6, 'type' => 'image', 'url' => 'old-avatar.png']], 'avatar_media_ids' => [6], 'avatar_portraits' => []];
+same(Avatars::inject($pdo, $document), $document, 'with no platform avatars a scenario keeps its own');
+$pdo->exec("INSERT INTO avatars (id, name, image_url, portrait_url, settings, active, sequence) VALUES
+    (1, 'Nova', '/a/nova.png', '/p/nova.png', '{\"scale\":0.85}', 1, 2),
+    (2, 'Sprocket', '/a/sprocket.png', NULL, '{\"scale\":1.35,\"sheet\":{\"columns\":6,\"rows\":3},\"animations\":[{\"name\":\"walk\",\"frames\":[6,7]}]}', 1, 1),
+    (3, 'Retired', '/a/old.png', NULL, NULL, 0, 3)");
+$out = Avatars::inject($pdo, $document);
+same([$out['avatar_media_ids'], $out['avatar_portraits']], [[900002, 900001], ['900001' => 950001]], 'the platform avatars replace the scenario\'s, in order, without retired ones');
+$byId = array_column($out['assets'], null, 'id');
+same([$byId[900001]['url'], $byId[900001]['scale_x'], $byId[950001]['url'], $byId[900002]['sheet'], $byId[900002]['animations'][0]['name'], isset($byId[5])], ['/a/nova.png', 0.85, '/p/nova.png', ['columns' => 6, 'rows' => 3], 'walk', true], 'each arrives as an image with its portrait, size, sheet and animations; the scenario\'s own media stays');
+same(Avatars::inject($pdo, $out), $out, 'adding them twice changes nothing');
+
+// ---- over HTTP
+$api = new ClassApi($pdo);
+$ann = ['id' => 11, 'name' => 'Ann', 'role' => 'student'];
+$tan = ['id' => 1, 'name' => 'Ms Tan', 'role' => 'teacher'];
+same($api->handle('GET', 'missions', [], null)[0], 401, 'missions need a sign-in');
+same(array_column($api->handle('GET', 'missions', [], $ann)[1]['missions'], 'kind'), ['assigned', 'public'], 'GET missions lists them');
+same($api->handle('GET', 'teach/students', [], $ann)[0], 403, 'students cannot use the teacher routes');
+[$status, $body] = $api->handle('POST', 'teach/students', ['email' => 'dee@school.test'], $tan);
+same([$status, $body['student']['name']], [201, 'Dee'], 'POST teach/students adds a student');
+[$status, $body] = $api->handle('POST', 'teach/assignments', ['scenario_id' => $openId, 'student_ids' => [14, 13], 'due_at' => '2026-12-24', 'teams' => [['name' => 'A', 'student_ids' => [14]]]], $tan);
+same([$status, $body['assignment']['due_at'], $body['assignment']['teams'][0]['student_ids']], [201, '2026-12-24 00:00:00', [14]], 'POST teach/assignments assigns, with teams');
+$id = $body['assignment']['id'];
+same($api->handle('PUT', "teach/assignments/$id", ['note' => 'Bring a pencil'], $tan)[1]['assignment']['note'], 'Bring a pencil', 'PUT changes it');
+same($api->handle('PUT', "teach/assignments/$id", ['note' => 'x'], ['id' => 2, 'role' => 'teacher'])[0], 404, 'only for its own teacher');
+same($api->handle('DELETE', "teach/assignments/$id", [], $tan)[0], 204, 'DELETE removes it');
+same($api->handle('DELETE', 'teach/students/14', [], $tan)[0], 204, 'DELETE teach/students removes a student');
+same($api->handle('GET', 'teach/nonsense', [], $tan)[0], 404, 'unknown routes are 404');
+[$status, $body] = $api->handle('GET', 'avatars', [], $ann);
+same([array_column($body['avatars'], 'name'), $body['avatar_media_id']], [['Sprocket', 'Nova'], null], 'GET avatars lists the set; nothing is chosen yet');
+same($api->handle('PUT', 'me/avatar', ['avatar_media_id' => 6], $ann)[0], 422, "a scenario's own picture cannot be chosen as an avatar");
+same($api->handle('PUT', 'me/avatar', ['avatar_media_id' => 900001], $ann)[1], ['avatar_media_id' => 900001], 'PUT me/avatar chooses one');
+same($api->handle('GET', 'avatars', [], $ann)[1]['avatar_media_id'], 900001, 'and it is remembered');
+
+echo $failures ? "$failures of $checks checks FAILED\n" : "classes: all $checks checks passed\n";
+exit($failures ? 1 : 0);

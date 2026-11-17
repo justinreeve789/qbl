@@ -15,7 +15,7 @@ if (PHP_SAPI !== 'cli-server') {
     http_response_code(500);
     exit("This is a development server. Run it with php -S.\n");
 }
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ScenarioStore', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -65,6 +65,12 @@ foreach (require __DIR__.'/../database/seeders/data/shop.php' as $sequence => $i
         ->execute([$item['id'], $item['name'], $item['description'] ?? null, $item['kind'], $item['slot'] ?? null, $item['price'], $item['image_url'] ?? null, json_encode($item['settings'] ?? []), $sequence + 1]);
 }
 
+// The platform's avatars, added once, as AvatarSeeder does.
+foreach (require __DIR__.'/../database/seeders/data/avatars.php' as $sequence => $avatar) {
+    $pdo->prepare('INSERT OR IGNORE INTO `avatars` (`id`, `name`, `image_url`, `portrait_url`, `settings`, `active`, `sequence`) VALUES (?, ?, ?, ?, ?, 1, ?)')
+        ->execute([$avatar['id'], $avatar['name'], $avatar['image_url'], $avatar['portrait_url'] ?? null, json_encode($avatar['settings'] ?? []), $sequence + 1]);
+}
+
 function respond(int $status, ?array $body): never
 {
     http_response_code($status);
@@ -97,7 +103,11 @@ if ($path === '/api/auth/login' && $method === 'POST') {
     if ($email === '') {
         respond(422, ['message' => 'Enter an email address.']);
     }
-    respond(200, $issue(['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'role' => str_starts_with($email, 'admin') ? 'admin' : 'teacher']));
+    // Anyone can sign in with any address. One starting "admin" is an admin, "student" a student, and the rest teachers.
+    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'role' => str_starts_with($email, 'admin') ? 'admin' : (str_starts_with($email, 'student') ? 'student' : 'teacher')];
+    // Kept as a row, so a teacher can add the student to a class by this address.
+    $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, $account['role']]);
+    respond(200, $issue($account));
 }
 if ($path === '/api/auth/guest' && $method === 'POST') {
     $name = trim((string) ($body['name'] ?? 'Guest')) ?: 'Guest';
@@ -107,11 +117,32 @@ if ($path === '/api/auth/logout' && $method === 'POST') {
     respond(200, ['ok' => true]);
 }
 if ($path === '/api/me') {
-    $user ? respond(200, ['user' => $user]) : respond(401, ['message' => 'Unauthenticated.']);
+    if (! $user) {
+        respond(401, ['message' => 'Unauthenticated.']);
+    }
+    $chosen = $pdo->prepare('SELECT `avatar_media_id` FROM `users` WHERE `id` = ?');
+    $chosen->execute([$user['id']]);
+    respond(200, ['user' => array_filter($user + ['avatar_media_id' => (int) $chosen->fetchColumn() ?: null], fn ($v) => $v !== null)]);
+}
+// Missions, avatars and the teacher's classes, with the same rules as the Laravel app (App\Qbl\ClassApi).
+if (preg_match('#^/api/(missions|avatars|me/avatar|teach(/.*)?)$#', $path, $m)) {
+    if ($user && $user['role'] === 'guest') {
+        // Guests are not rows here until they need to be.
+        $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `role`) VALUES (?, ?, ?)')->execute([$user['id'], $user['name'], 'guest']);
+    }
+    respond(...(new App\Qbl\ClassApi($pdo))->handle($method, $m[1], $body, $user));
 }
 if (preg_match('#^/api/scenarios/([A-Za-z][A-Za-z0-9_-]*)/play$#', $path, $m)) {
     $document = $store->findPublished($m[1]);
-    $document ? respond(200, ['scenario' => $document + ['session' => null]]) : respond(404, ['message' => 'Scenario not found.']);
+    if (! $document) {
+        respond(404, ['message' => 'Scenario not found.']);
+    }
+    // Teams and assignments are for their members, as in the Laravel app. Saves need the game server and the real backend.
+    $group = substr((string) ($_GET['group'] ?? 'public'), 0, 64) ?: 'public';
+    if ($user ? ! (new App\Qbl\ClassStore($pdo))->mayJoin((int) $user['id'], (string) $user['role'], (int) $document['id'], $group) : $group !== 'public') {
+        respond(403, ['message' => 'You are not in that team.']);
+    }
+    respond(200, ['scenario' => App\Qbl\Avatars::inject($pdo, $document) + ['session' => null]]);
 }
 // Stars, XP and the marketplace, with the same rules as the Laravel app (App\Qbl\ProgressStore).
 // Awards themselves come through the game server, which needs the real backend; here stars start at 100.
@@ -119,6 +150,7 @@ if ($path === '/api/me/progress' || $path === '/api/shop' || preg_match('#^/api/
     $progress = new App\Qbl\ProgressStore($pdo);
     $member = $user && $user['role'] !== 'guest';
     if ($member) {
+        // Normally there since sign-in; this covers tokens issued before accounts were kept as rows.
         $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$user['id'], $user['name'], "dev{$user['id']}@example.test", $user['role']]);
     }
     $scenario = ($key = $_GET['scenario'] ?? $body['scenario'] ?? null) ? $store->findPublished((string) $key) : null;

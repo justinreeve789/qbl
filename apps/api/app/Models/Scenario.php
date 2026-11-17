@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Qbl\Avatars;
 use App\Qbl\ScenarioStore;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 
 class Scenario extends Model
@@ -43,6 +45,7 @@ class Scenario extends Model
     public function toDocument(): array
     {
         // The code comes from the row, so documents published before codes existed carry it too.
-        return array_merge($this->document, ['code' => $this->code]);
+        // The avatars are the platform's, the same in every scenario, so they are added here rather than published.
+        return Avatars::inject(DB::connection()->getPdo(), array_merge($this->document, ['code' => $this->code]));
     }
 }

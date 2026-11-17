@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Qbl\ClassApi;
+use App\Qbl\ClassStore;
 use App\Qbl\ProgressStore;
 use App\Qbl\ScenarioStore;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
             config('qbl.media_dir'),
             config('qbl.media_url'),
         ));
+        $this->app->singleton(ClassStore::class, fn () => new ClassStore(DB::connection()->getPdo()));
+        $this->app->singleton(ClassApi::class, fn () => new ClassApi(DB::connection()->getPdo()));
         $this->app->singleton(ProgressStore::class, fn () => new ProgressStore(DB::connection()->getPdo(), config('qbl.ranks')));
     }
 

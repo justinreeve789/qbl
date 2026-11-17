@@ -77,7 +77,8 @@ class EditorApi
         }
 
         if ($rest === ['preview'] && $method === 'GET') {
-            return [200, ['scenario' => $this->store->compile($id)]];
+            // As players will get it: with the platform's avatars.
+            return [200, ['scenario' => Avatars::inject($this->store->pdo(), $this->store->compile($id))]];
         }
         if ($rest === ['publish'] && $method === 'POST') {
             $this->store->publish($id);

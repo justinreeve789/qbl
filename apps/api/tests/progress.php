@@ -5,7 +5,7 @@
  *
  *   php apps/api/tests/progress.php
  */
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ScenarioStore'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 

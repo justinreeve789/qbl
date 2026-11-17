@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClassController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\InternalController;
@@ -29,6 +30,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/shop/{item}/equip', [ProgressController::class, 'equip'])->whereNumber('item');
 });
 
+// Missions, avatars and the teacher's classes. One controller hands these to App\Qbl\ClassApi, which lists the routes.
+Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|me/avatar|teach(/.*)?')->middleware('auth:sanctum');
+
 // Auth is optional here: scenarios with require_login=false can be played without a token.
 Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');
 
@@ -38,6 +42,7 @@ Route::any('/editor/{path?}', EditorController::class)->where('path', '.*')->mid
 Route::prefix('internal')->middleware(ServiceKey::class)->group(function () {
     Route::post('/auth/verify', [InternalController::class, 'verify']);
     Route::get('/scenarios/{key}', [InternalController::class, 'scenario'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');
+    Route::get('/scenarios/{scenario}/access/{user}', [InternalController::class, 'access'])->whereNumber(['scenario', 'user']);
     Route::get('/scenarios/{scenario}/sessions/{user}', [InternalController::class, 'loadSession'])->whereNumber(['scenario', 'user']);
     Route::put('/scenarios/{scenario}/sessions/{user}', [InternalController::class, 'saveSession'])->whereNumber(['scenario', 'user']);
     Route::post('/scenarios/{scenario}/awards', [InternalController::class, 'award'])->whereNumber('scenario');

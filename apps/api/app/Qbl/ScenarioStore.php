@@ -105,6 +105,12 @@ class ScenarioStore
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
 
+    /** The connection, for the classes beside this one that read the same database. */
+    public function pdo(): PDO
+    {
+        return $this->pdo;
+    }
+
     // =================================================================== reading
 
     /** Everything ScenarioCompiler needs for one scenario, as the database returns it. */
@@ -763,8 +769,9 @@ class ScenarioStore
             $sql[] = "CREATE TABLE IF NOT EXISTS `$table` (".implode(', ', $defs).')';
         }
         $sql = array_merge($sql, ProgressStore::sqliteSchema());
-        foreach (['scenario_sessions' => '`user_id`', 'scenario_instances' => '`group_key`'] as $table => $key) {
-            $sql[] = "CREATE TABLE IF NOT EXISTS `$table` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `scenario_id`, $key, `data`, `created_at`, `updated_at`)";
+        $sql = array_merge($sql, ClassStore::sqliteSchema(), Avatars::sqliteSchema());
+        foreach (['scenario_sessions' => "`user_id` INTEGER, `group_key` DEFAULT 'public'", 'scenario_instances' => '`group_key`'] as $table => $key) {
+            $sql[] = "CREATE TABLE IF NOT EXISTS `$table` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `scenario_id` INTEGER, $key, `data`, `created_at`, `updated_at`)";
         }
 
         return $sql;
