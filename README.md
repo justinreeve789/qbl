@@ -1,6 +1,6 @@
 # Quest Lab
 
-A multiplayer, educational virtual world platform in the spirit of Animal Jam and Club Penguin. Students are space explorers aboard an intergalactic starship, which serves as a hub from which new scenarios (missions) are launched, under a teacher's direction. A robust scenario editor allows content creators to create new missions, which reward students with stars and experience points. Stars can be used to purchase gear, pets, clothing, vehicles, and more. Players advance in rank aboard the starship as they earn experience points.
+A multiplayer, educational virtual world platform in the spirit of Animal Jam and Club Penguin. Students are space explorers aboard an intergalactic starship, which serves as a hub from which new scenarios (missions) are launched, under a teacher's facilitation. A robust scenario editor allows content creators to create new missions, which reward students with stars, experience points, and badges. Stars can be used to purchase gear, pets, clothing, vehicles, and more. Players advance in rank aboard the starship as they earn experience points. Badges are displayed in students' profiles for bragging rights.
 
 ```
 packages/shared   scenario types, validator, event engine, world rules, protocol (TypeScript, unit-tested)
