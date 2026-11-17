@@ -11,8 +11,14 @@ export interface Backend {
   getScenario(shortname: string): Promise<Scenario>;
   /** Resolve a bearer token to a user, or null if it is not valid. */
   verifyToken(token: string): Promise<User | null>;
-  loadSession(scenarioId: Id, userId: string): Promise<Session | null>;
-  saveSession(scenarioId: Id, userId: string, session: Session): Promise<void>;
+  /**
+   * May this player join this instance of the scenario? An instance is named by its group:
+   * "public", an assignment's ("a12") or a team's ("t7"). Teams are for their members.
+   */
+  mayJoin(scenarioId: Id, user: User, group: string): Promise<boolean>;
+  /** A player's save belongs to one instance: their team's game is not their public one. */
+  loadSession(scenarioId: Id, userId: string, group: string): Promise<Session | null>;
+  saveSession(scenarioId: Id, userId: string, group: string, session: Session): Promise<void>;
   loadInstance(scenarioId: Id, group: string): Promise<InstanceData | null>;
   saveInstance(scenarioId: Id, group: string, data: InstanceData): Promise<void>;
   /**

@@ -1,5 +1,6 @@
 import type { Progress, Scenario, ShopItem, User } from '@qbl/shared';
 import { config } from '../config';
+import type { AvatarChoice, Mission } from '../home';
 
 const TOKEN_KEY = 'qbl.token';
 
@@ -62,7 +63,7 @@ export class Api {
       const data = (await res.json().catch(() => null)) as { message?: string } | null;
       throw new ApiError(res.status, data?.message ?? `Request failed (${res.status})`);
     }
-    return (await res.json()) as T;
+    return (res.status === 204 ? null : await res.json()) as T;
   }
 
   async guest(name: string): Promise<User> {
@@ -129,8 +130,33 @@ export class Api {
     return (await this.call<{ progress: Progress }>('POST', `/shop/${itemId}/equip`, { equipped })).progress;
   }
 
-  /** The scenario document, with this player's save data in `session`. */
-  async play(shortname: string): Promise<Scenario> {
-    return (await this.call<{ scenario: Scenario }>('GET', `/scenarios/${encodeURIComponent(shortname)}/play`)).scenario;
+  /** The scenario document, with this player's save data for that instance (group) of it in `session`. */
+  async play(shortname: string, group = 'public'): Promise<Scenario> {
+    const query = group === 'public' ? '' : `?group=${encodeURIComponent(group)}`;
+    return (await this.call<{ scenario: Scenario }>('GET', `/scenarios/${encodeURIComponent(shortname)}/play${query}`)).scenario;
+  }
+
+  /** What the player can play: public missions and those assigned to them. Null where the backend has no such list. */
+  async missions(): Promise<Mission[] | null> {
+    try {
+      return (await this.call<{ missions: Mission[] }>('GET', '/missions')).missions;
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 404 || err.status === 405)) return null;
+      throw err;
+    }
+  }
+
+  /** The platform's avatars and which one the player has chosen. Empty where there are none. */
+  async avatars(): Promise<{ avatars: AvatarChoice[]; avatar_media_id: number | null }> {
+    try {
+      return await this.call('GET', '/avatars');
+    } catch {
+      return { avatars: [], avatar_media_id: null };
+    }
+  }
+
+  /** Remember the player's avatar on their account, so it is theirs in every scenario. */
+  async setAvatar(mediaId: number): Promise<void> {
+    await this.call('PUT', '/me/avatar', { avatar_media_id: mediaId });
   }
 }

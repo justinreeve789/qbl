@@ -67,7 +67,7 @@ function mountFileApi(app: Express) {
         return;
       }
       const session = user && scenario.enable_save_session
-        ? await services.backend.loadSession(scenario.id, user.id)
+        ? await services.backend.loadSession(scenario.id, user.id, String(req.query.group ?? 'public').slice(0, 64) || 'public')
         : null;
       res.json({ scenario: { ...scenario, session } });
     } catch {

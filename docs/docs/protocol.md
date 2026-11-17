@@ -9,7 +9,7 @@ Option | Description
 scenario | Scenario shortname.
 group | Group key. Defaults to `public`.
 token | API bearer token. Required.
-avatar_media_id | Chosen avatar; must be in the scenario's `avatar_media_ids`.
+avatar_media_id | Chosen avatar; must be in the scenario's `avatar_media_ids`. If absent, the avatar saved on the account is used.
 
 If the same account joins twice, the earlier connection is closed with code 4103.
 

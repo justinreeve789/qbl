@@ -137,7 +137,11 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       const user = await services.backend.verifyToken(String(token));
       // With the real API, guest tokens are only good for scenarios that do not require a login.
       const guestBlocked = user?.role === 'guest' && config.backend === 'api' && this.world.scenario.require_login !== false;
-      if (user && !guestBlocked) return user;
+      if (user && !guestBlocked) {
+        // A team's or an assignment's instance is for its members (and their teacher).
+        if (!(await services.backend.mayJoin(this.world.scenario.id, user, this.group).catch(() => false))) throw new Error('You are not in that team.');
+        return user;
+      }
     }
     throw new Error('Please sign in to join this scenario.');
   }
@@ -153,7 +157,7 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
 
     const scenario = this.world.scenario;
     const saved = scenario.enable_save_session !== false
-      ? await services.backend.loadSession(scenario.id, user.id).catch(() => null)
+      ? await services.backend.loadSession(scenario.id, user.id, this.group).catch(() => null)
       : null;
     const session = this.world.addPlayer(client.sessionId, user, saved, Number(options?.avatar_media_id) || undefined);
     const welcome: WelcomeMessage = {
@@ -214,7 +218,7 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     const session = this.world.sessionOf(sessionId);
     if (!user || !session) return;
     try {
-      await services.backend.saveSession(this.world.scenario.id, user.id, session);
+      await services.backend.saveSession(this.world.scenario.id, user.id, this.group, session);
     } catch (err) {
       console.error(`[${this.roomId}] could not save session for ${user.id}:`, err);
     }

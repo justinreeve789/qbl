@@ -47,7 +47,49 @@ Returns `{ "user": User }` or 401.
 
 `{code}` is the scenario's unique 16-letter code, the same one players have in their address bar (`/{code}`). A shortname is accepted too.
 
-Returns `{ "scenario": Scenario }`: the published scenario document with the caller's save data in `scenario.session` (null if none). Returns 401 when the scenario has `require_login: true` and there is no valid token, and 404 for an unknown or unpublished scenario.
+Returns `{ "scenario": Scenario }`: the published scenario document with the caller's save data in `scenario.session` (null if none). Returns 401 when the scenario has `require_login: true` (or is private) and there is no valid token, and 404 for an unknown or unpublished scenario.
+
+`?group=` names the instance being joined (`public` if absent, `a12` for an assignment, `t7` for a team; see [Classes, missions and teams](classes.md)). The save returned is the caller's save in that instance. 403 if the caller does not belong to it, or if the scenario is private and was not assigned to them.
+
+The document's avatars (`avatar_media_ids`, `avatar_portraits` and their images in `assets`) are the platform's, added as the document is served.
+
+### Missions and avatars
+
+All need a token.
+
+Endpoint | Body | Returns
+-------- | ---- | -------
+`GET /api/missions` | | `{ "missions": [Mission] }`: every public scenario, and everything assigned to the caller (assigned first, soonest due first)
+`GET /api/avatars` | | `{ "avatars": [{ media_id, name, image_url, portrait_url, sheet }], "avatar_media_id": 900004 or null }`
+`PUT /api/me/avatar` | `{ "avatar_media_id": 900004 }` | The same. 422 if it is not one of the platform's avatars
+
+```json
+{
+  "id": 1, "code": "starshipexplorer", "title": "Starship Explorer", "subtitle": null, "description": "...",
+  "image": "/scenario-assets/starship/backgrounds/bridge.png", "visibility": "public",
+  "kind": "assigned", "group": "t7", "assignment_id": 12, "teacher": "Ms Tan", "team": "Comets",
+  "due_at": "2026-12-01 15:00:00", "note": "Read chapter 4 first", "started_at": null
+}
+```
+
+`kind` is `public` or `assigned`. A player opens a mission at `/{code}?group={group}`. `image` is the background of the scenario's first scene. Times are UTC. `started_at` is when the caller's save in that instance was last written, or null. The fields from `assignment_id` to `note` are only on assigned missions.
+
+### Classes (teachers and admins)
+
+Under `/api/teach`; 403 for anyone else.
+
+Endpoint | Body | Returns
+-------- | ---- | -------
+`GET /students` | | `{ "students": [{ id, name, email }] }`
+`POST /students` | `{ "email": "..." }` | 201 `{ "student": {...} }`. 404 if nobody has signed in with that address
+`DELETE /students/{id}` | | 204. The student also leaves this teacher's assignments
+`GET /scenarios` | | `{ "scenarios": [...] }`: published scenarios the caller can assign (public ones and their own; all of them for an admin)
+`GET /assignments` | | `{ "assignments": [Assignment] }`
+`POST /assignments` | `{ "scenario_id", "student_ids": [], "due_at"?, "note"?, "teams"?: [{ "name", "student_ids": [] }] }` | 201 `{ "assignment": Assignment }`
+`PUT /assignments/{id}` | Any of `due_at`, `note`, `student_ids`, `teams` (give a team's `id` to keep its instance) | `{ "assignment": Assignment }`
+`DELETE /assignments/{id}` | | 204
+
+An `Assignment` is `{ id, scenario, due_at, note, group, students: [{ id, name, email, team_id }], teams: [{ id, name, group, student_ids }] }`.
 
 ### Stars, XP and the marketplace
 
@@ -82,8 +124,9 @@ Endpoint | Body | Returns
 -------- | ---- | -------
 `POST /auth/verify` | `{ "token": "..." }` | `{ "user": User }`, or 401 if the token is not valid
 `GET /scenarios/{code}` | | `{ "scenario": Scenario }` (no session), or 404. A shortname is accepted too
-`GET /scenarios/{id}/sessions/{userId}` | | `{ "session": Session or null }`
-`PUT /scenarios/{id}/sessions/{userId}` | `{ "session": Session }` | 204
+`GET /scenarios/{id}/access/{userId}?group=` | | `{ "allowed": true }` if the player may join that instance: asked before a player is let into a room
+`GET /scenarios/{id}/sessions/{userId}?group=` | | `{ "session": Session or null }`: the player's save in that instance (`public` if no group is given)
+`PUT /scenarios/{id}/sessions/{userId}?group=` | `{ "session": Session }` | 204
 `GET /scenarios/{id}/instances/{group}` | | `{ "instance": InstanceData or null }`
 `PUT /scenarios/{id}/instances/{group}` | `{ "instance": InstanceData }` | 204
 `POST /scenarios/{id}/awards` | `{ "user_id": 12, "action_id": 72090 }` | `Progress` plus `delta_stars`, `delta_xp`, `note`, `rank_up`. The action must be an `award` in the published document; a once-only award already given changes nothing. 403 for a guest

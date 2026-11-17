@@ -46,11 +46,17 @@ export class FileBackend implements Backend {
     return { id: `guest-${id}`, name, role: 'guest' };
   }
 
-  loadSession(scenarioId: Id, userId: string): Promise<Session | null> {
-    return this.read<Session>(`session-${scenarioId}-${userId}`);
+  /** There are no classes or teams without the API: any group is an open one. */
+  async mayJoin(): Promise<boolean> {
+    return true;
   }
-  saveSession(scenarioId: Id, userId: string, session: Session): Promise<void> {
-    return this.write(`session-${scenarioId}-${userId}`, session);
+
+  // The public instance keeps the file name saves had before instances had saves of their own.
+  loadSession(scenarioId: Id, userId: string, group: string): Promise<Session | null> {
+    return this.read<Session>(`session-${scenarioId}-${userId}${group === 'public' ? '' : `-${slug(group)}`}`);
+  }
+  saveSession(scenarioId: Id, userId: string, group: string, session: Session): Promise<void> {
+    return this.write(`session-${scenarioId}-${userId}${group === 'public' ? '' : `-${slug(group)}`}`, session);
   }
   loadInstance(scenarioId: Id, group: string): Promise<InstanceData | null> {
     return this.read<InstanceData>(`instance-${scenarioId}-${slug(group)}`);

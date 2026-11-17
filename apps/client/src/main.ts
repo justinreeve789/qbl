@@ -3,6 +3,7 @@ import { normalizeScenario, resolveMediaUrl, validateScenario, type Id, type Sce
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
+import { buildHome } from './home';
 import { Api, ApiError, takeSignInProblem } from './net/Api';
 import { OfflineConnection, OnlineConnection, type GameConnection } from './net/Connection';
 import { BootScene } from './scenes/BootScene';
@@ -98,12 +99,27 @@ function signIn(message?: string): Promise<User> {
   });
 }
 
-/** Let the player pick one of the scenario's avatars. Remembers the choice per scenario. */
-function chooseAvatar(scenario: Scenario): Promise<Id | undefined> {
+const AVATAR_KEY = 'qbl.avatar';
+
+/** Keep the player's choice of avatar: on their account, and in this browser for guests. */
+function rememberAvatar(user: User, id: Id) {
+  try {
+    localStorage.setItem(AVATAR_KEY, String(id));
+  } catch {
+    /* ignore */
+  }
+  if (user.role !== 'guest') void api.setAvatar(Number(id)).catch(() => undefined);
+}
+
+/**
+ * The player's avatar. Avatars belong to the platform, not the scenario, so the one chosen
+ * before (kept on the account) is used everywhere; the player is only asked the first time.
+ */
+function chooseAvatar(scenario: Scenario, user: User): Promise<Id | undefined> {
   const ids = scenario.avatar_media_ids ?? [];
   if (ids.length <= 1) return Promise.resolve(ids[0]);
-  const storageKey = `qbl.avatar.${scenario.shortname}`;
-  const remembered = Number(localStorage.getItem(storageKey));
+  if (user.avatar_media_id != null && ids.includes(user.avatar_media_id)) return Promise.resolve(user.avatar_media_id);
+  const remembered = Number(localStorage.getItem(AVATAR_KEY));
   if (ids.includes(remembered)) return Promise.resolve(remembered);
   return new Promise((resolve) => {
     const card = document.createElement('div');
@@ -118,7 +134,7 @@ function chooseAvatar(scenario: Scenario): Promise<Id | undefined> {
       if (!url) continue;
       const b = document.createElement('button');
       b.type = 'button';
-      b.setAttribute('aria-label', `Character ${ids.indexOf(id) + 1}`);
+      b.setAttribute('aria-label', media?.filename ?? `Character ${ids.indexOf(id) + 1}`);
       if (media?.sheet) {
         // A sprite sheet: show its first frame, not the whole sheet.
         const frame = document.createElement('span');
@@ -133,7 +149,7 @@ function chooseAvatar(scenario: Scenario): Promise<Id | undefined> {
         b.appendChild(img);
       }
       b.addEventListener('click', () => {
-        localStorage.setItem(storageKey, String(id));
+        rememberAvatar(user, id);
         resolve(id);
       });
       grid.appendChild(b);
@@ -141,6 +157,33 @@ function chooseAvatar(scenario: Scenario): Promise<Id | undefined> {
     card.append(title, grid);
     show(card);
   });
+}
+
+/**
+ * The missions page, shown when no scenario was asked for. Choosing a mission opens its own
+ * address, so this never returns once the page is up. False: this backend has no missions
+ * to list (the file backend), and the default scenario should be played instead.
+ */
+async function showHome(user: User): Promise<boolean> {
+  const missions = await api.missions();
+  if (!missions) return false;
+  const { avatars, avatar_media_id } = await api.avatars();
+  const remembered = Number(localStorage.getItem(AVATAR_KEY)) || null;
+  document.title = 'Missions';
+  gate.classList.add('home');
+  gate.removeAttribute('role');
+  show(buildHome({
+    user,
+    missions,
+    avatars,
+    avatarId: avatar_media_id ?? remembered,
+    onAvatar: (id) => rememberAvatar(user, id),
+    onSignOut: () => {
+      api.signOut();
+      window.location.reload();
+    },
+  }));
+  return true;
 }
 
 /** Fetch a draft from the editor API and refuse to play one the validator rejects, saying why. */
@@ -165,9 +208,12 @@ async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
     show('Loading…');
     try {
       if (config.preview != null) return { scenario: await loadDraft(config.preview), user };
-      return { scenario: normalizeScenario(await api.play(config.scenario)), user };
+      // With no scenario asked for, the player chooses one from their missions; that page takes over from here.
+      if (config.home && (await showHome(user))) return new Promise(() => undefined);
+      return { scenario: normalizeScenario(await api.play(config.scenario, config.group)), user };
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
+        gate.classList.remove('home');
         api.signOut();
         user = null;
         message = 'Please sign in to play this scenario.';
@@ -181,7 +227,7 @@ async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
 async function start() {
   const { scenario, user } = await loadScenario();
   document.title = scenario.title;
-  const avatarId = await chooseAvatar(scenario);
+  const avatarId = await chooseAvatar(scenario, user);
   show('Joining…');
 
   const connection: GameConnection = config.offline

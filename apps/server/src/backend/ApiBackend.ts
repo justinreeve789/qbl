@@ -39,13 +39,18 @@ export class ApiBackend implements Backend {
     return { ...data.user, id: String(data.user.id) };
   }
 
-  async loadSession(scenarioId: Id, userId: string): Promise<Session | null> {
-    const data = await this.call<{ session: Session | null }>('GET', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}`);
+  async mayJoin(scenarioId: Id, user: User, group: string): Promise<boolean> {
+    const data = await this.call<{ allowed: boolean }>('GET', `/scenarios/${scenarioId}/access/${encodeURIComponent(user.id)}?group=${encodeURIComponent(group)}`);
+    return data?.allowed === true;
+  }
+
+  async loadSession(scenarioId: Id, userId: string, group: string): Promise<Session | null> {
+    const data = await this.call<{ session: Session | null }>('GET', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}?group=${encodeURIComponent(group)}`);
     return data?.session ?? null;
   }
 
-  async saveSession(scenarioId: Id, userId: string, session: Session): Promise<void> {
-    await this.call('PUT', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}`, { session });
+  async saveSession(scenarioId: Id, userId: string, group: string, session: Session): Promise<void> {
+    await this.call('PUT', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}?group=${encodeURIComponent(group)}`, { session });
   }
 
   async loadInstance(scenarioId: Id, group: string): Promise<InstanceData | null> {

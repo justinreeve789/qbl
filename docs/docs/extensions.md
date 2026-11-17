@@ -15,9 +15,10 @@ code | string | | The scenario's unique 16-letter code (lowercase `a` to `z`). I
 items | array | | Item definitions (see [Items](item.md)). Scenes place them with `scenes[].items`.
 characters | array | | Character definitions (see [Characters](character.md)). Scenes place them with `scenes[].characters`.
 asset_base_url | string | | Prefix for media `url` values that are neither absolute nor rooted. A `url` that starts with `/` (such as `/media/12/ab12….png`, a file uploaded in the editor) is used as it is.
+visibility | string | public | `public`: on every player's missions page. `private`: only for students a teacher assigned it to.
 chat_mode | string | emotes | `off`: no chat. `emotes`: a fixed set of emoji only. `free`: typed text, filtered by the game server.
 move_speed | decimal | 420 | Avatar walking speed in scene pixels per second.
-avatar_media_ids | array | | Image media ids players may choose as their avatar. The first is the default.
+avatar_media_ids | array | | Image media ids players may choose as their avatar. The first is the default. With the Laravel API these are the platform's avatars, the same in every scenario, added when the document is served (media ids from 900000); a scenario does not set them. See [Classes, missions and teams](classes.md).
 avatar_portraits | object | | A close-up portrait for an avatar: `{"<avatar media id>": <portrait media id>}`. Shown when a player with that avatar speaks in a story box. An avatar without one is shown by its ordinary picture.
 objectives | array | | The mission checklist shown to the player. See below.
 music_media_id | int | | Background music for the scenario: it plays in every scene that does not have music of its own.

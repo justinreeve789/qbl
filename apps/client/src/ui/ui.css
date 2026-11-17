@@ -191,3 +191,39 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-move:hover, .qbl-move:focus-visible { background: rgba(30, 50, 130, 0.95); border-color: #fff; outline: none; }
 .qbl-move-icon { font-size: 1.4rem; line-height: 1.1; }
 .qbl-move-label { font-size: 0.7rem; font-weight: 600; }
+
+/* ---------- the missions page ---------- */
+#gate.home { display: block; overflow-y: auto; text-align: left; white-space: normal; padding: 0; }
+.qbl-home { max-width: 1120px; margin: 0 auto; padding: 28px 24px 56px; }
+.qbl-home-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.qbl-home-who { display: flex; align-items: center; gap: 16px; }
+.qbl-home-who h1 { margin: 0; font-size: 1.6rem; }
+.qbl-home-who p { margin: 4px 0 0; opacity: 0.75; font-size: 0.95rem; }
+.qbl-home-face { width: 72px; height: 72px; padding: 6px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.08); cursor: pointer; overflow: hidden; }
+.qbl-home-face[hidden] { display: none; }
+.qbl-home-face:hover, .qbl-home-face:focus-visible { border-color: var(--qbl-accent); outline: none; }
+.qbl-home-face img { width: 100%; height: 100%; object-fit: contain; }
+.qbl-home-face .qbl-avatar-frame { width: 40px; height: 60px; }
+.qbl-home-picker { margin: 0 0 24px; padding: 18px 20px; border-radius: 16px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.15); }
+.qbl-home-picker[hidden] { display: none; }
+.qbl-home-picker h2 { margin: 0; font-size: 1.1rem; }
+.qbl-home-picker p { margin: 4px 0 14px; opacity: 0.75; font-size: 0.9rem; }
+.qbl-avatars button[aria-pressed='true'] { border-color: #ffd34d; }
+.qbl-home-section h2 { margin: 28px 0 12px; font-size: 1.05rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.8; }
+.qbl-missions { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.qbl-mission { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: rgba(255, 255, 255, 0.07); border: 2px solid rgba(255, 255, 255, 0.14); color: inherit; text-decoration: none; transition: transform 0.15s, border-color 0.15s; }
+.qbl-mission:hover, .qbl-mission:focus-visible { transform: translateY(-3px); border-color: var(--qbl-accent); outline: none; }
+.qbl-mission.assigned { border-color: rgba(255, 211, 77, 0.55); }
+.qbl-mission-art { aspect-ratio: 16 / 9; background: linear-gradient(135deg, #0b2b8a, #2f8fd6) center / cover no-repeat; }
+.qbl-mission-body { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 16px; flex: 1; }
+.qbl-mission-body h3 { margin: 0; font-size: 1.15rem; }
+.qbl-mission-about { margin: 0; font-size: 0.9rem; opacity: 0.8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.qbl-mission-note { margin: 0; font-size: 0.85rem; font-style: italic; opacity: 0.85; }
+.qbl-mission-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.qbl-tag { padding: 3px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: rgba(255, 255, 255, 0.14); }
+.qbl-tag.team { background: #5b3fc4; }
+.qbl-tag.due { background: #ffd34d; color: #2b2100; }
+.qbl-tag.late { background: #d64545; }
+.qbl-mission-go { margin-top: auto; align-self: flex-start; padding: 8px 18px; border-radius: 10px; background: var(--qbl-accent); font-weight: 700; }
+.qbl-home-empty { margin-top: 40px; text-align: center; opacity: 0.8; }
+@media (prefers-reduced-motion: reduce) { .qbl-mission { transition: none; } }
