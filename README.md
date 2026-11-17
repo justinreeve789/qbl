@@ -1,6 +1,6 @@
-# Quest-Based Learning
+# Quest Lab
 
-A multiplayer, walk-around educational game in the spirit of Club Penguin. Every scenario is a JSON document: the client builds scenes, hotspots and events from it, and a Colyseus server keeps players in sync. Teachers and content creators build scenarios in a browser editor; players open one at `/{code}`, its unique 16-letter code.
+A multiplayer, educational virtual world platform in the spirit of Animal Jam and Club Penguin. Students are space explorers aboard an intergalactic starship, which serves as a hub from which new scenarios (missions) are launched, under a teacher's direction. A robust scenario editor allows content creators to create new missions, which reward students with stars and experience points. Stars can be used to purchase gear, pets, clothing, vehicles, and more. Players advance in rank aboard the starship as they earn experience points.
 
 ```
 packages/shared   scenario types, validator, event engine, world rules, protocol (TypeScript, unit-tested)
@@ -78,15 +78,11 @@ The first is safe to run again: a demo that is already there is left as it is, a
 docker compose exec app php artisan qbl:user you@example.org "Your Name" --role=teacher
 ```
 
-**Upgrading a database from an earlier build.** `docker compose up --build` is enough: migrations run on start and are written so that tables and columns that already exist are left alone. Changes to the shipped demo arrive only when you run `qbl:seed --reset`.
+**Upgrading a database from an earlier build.** `docker compose up --build` is enough: migrations run on start and are written so that tables and columns that already exist are left alone. Changes to the demo occur only when you run `qbl:seed --reset`.
 
 ### HTTPS
 
 Every container speaks plain HTTP, including the one published port. For HTTPS, TLS ends at your firewall or load balancer, which forwards to that port:
-
-```
-browser ──https/wss──▶ firewall (certificate) ──http/ws──▶ apache :80 ──▶ app, colyseus, editor, docs
-```
 
 What the firewall has to do:
 
@@ -123,7 +119,7 @@ How the pieces connect:
 
 - Apache reads the frontend and the demo's media from a volume that `app` fills from its `public/` directory on each start.
 - Files uploaded in the editor are written by `app` to a `media` volume, which Apache serves read-only as `/media`.
-- The editor container holds no data. It is static files; everything it does goes through `/api/editor`, where Laravel checks who is asking.
+- The editor container holds no data. It is static files; everything it does goes through the Laravel API at `/api/editor`.
 - Colyseus calls Laravel's `/api/internal` routes through a second Apache port (8081) that exists only on the Docker network. The public port answers 404 for `/api/internal`.
 
 Other commands:
@@ -141,7 +137,7 @@ npm run build
 
 ## How a mission is put together
 
-A **scenario** is a whole mission a group of students goes on together. It contains **scenes**. Each scene has a background, and **events** made of **actions** that run in order: start events when the scene loads, end events just before leaving, hotspots, and indirect events run by other actions. All of it is in `docs/docs`.
+A **scenario** is a whole mission a group of students goes on together. It contains **scenes**. Each scene has a background, and **events** made of **actions** that run in order: start events when the scene loads, end events just before leaving, hotspots, and indirect events run by other actions. Each scenario is represented by a JSON file that loads when the player launches. See `docs/docs` for the complete specification.
 
 - **Moving between scenes** is a `jump` action. Scene edges are walk-in hotspots that span one axis (a null `position_x` or `position_y`) and jump when an avatar reaches them.
 - **Background music** is an `audio` action with `repeat` and `persist` in a scene's start events. It carries on across scenes that use the same track and changes when a scene starts a different one.
@@ -222,36 +218,9 @@ The demo mission, **Starship Explorer**, is seed data: rows for those tables in 
 
 Both paths play the same document. `npm run test:api` checks that JSON generated from the seeded database equals JSON generated from the seed rows, that `scenarios/starship.json` is current, that seeding again does not disturb an edited scenario, and that seeding refuses to overwrite rows belonging to another scenario.
 
-The demo's music and rocket sound are synthesised by `tools/make-demo-audio.py`, so the repo contains no third-party audio.
+The demo's music and rocket sound are synthesised by `tools/make-demo-audio.py`.
 
-## What has and has not been run
-
-Most of this codebase was written in an environment without network access. Composer has since been run there, so the Laravel application is real and tested; `npm install` and `docker build` have not.
-
-**Run and passing**
-
-- `packages/shared`: type-checks cleanly; 34 unit tests cover variables and conditions, placeholders and objectives, geometry and movement limits, normalisation, validation, the event engine, the world rules, and the generated mission.
-- `apps/client`: 20 tests run the real client code (scene, systems, presenters, features, offline connection) against a **fake Phaser** with a manual clock. One plays the whole Wilting Stream quest and checks the stars and XP it earns; others buy and wear marketplace items.
-- `apps/api`: 89 checks on the framework-free PHP classes over SQLite (seeding to JSON, seed-once and reset, codes, publishing, the whole editor API including ownership rules, uploads), 34 more on stars, XP, ranks and the marketplace (`npm run test:progress`), and 18 Laravel feature tests that run the real framework: migrations (fresh, and over a database made by the earlier all-in-one migrations), seeding by command, sign-in with a password and with Google (Google itself replaced by a stand-in), forwarded HTTPS headers, the editor routes, upload, publish, play and the game server's routes.
-- `apps/editor`: 25 tests drive the real editor in headless Chromium against those PHP classes. A scenario is built by clicking, typing and dragging, published, and the published JSON is then played by the game's headless harness.
-- The game's DOM UI (infobox, HTML sanitiser, overlays, checklist, marketplace, story box, move buttons, account menu) was exercised in headless Chromium.
-- Client, server and editor were bundled with esbuild to confirm every import resolves; the Compose file parses; the PHP files pass `php -l`.
-
-**Written against current documentation but never executed**
-
-- Nothing here has run against **real Phaser 4** or **Colyseus 0.18** in this environment. The client tests use a fake Phaser that accepts any call, so they prove the game's logic, not that Phaser accepts each call.
-- MariaDB itself has not been exercised from here, only SQLite. Your Docker runs are the MariaDB test.
-- **The Apache configuration, including everything for HTTPS behind a firewall, has never been loaded by an Apache**: there is none in the authoring environment. Laravel's side of it (trusting the forwarded headers) is tested.
-- **Google sign-in has not been run against Google.** The flow is tested with Socialite's stand-in for Google; the real exchange needs your client id and secret.
-- **Animations have not been seen in real Phaser.** The tests check which animation is asked for and when (the fake Phaser records it), and how built-in moves move a picture; how sheets, mirroring and frame timing actually look is for a real run. The animated-PNG reader was tested on one file made for the test.
-- Events shown to the whole scene are tested in the shared rules, the room's rule for passing them on, and the client with a simulated second player, not with two real browsers through Colyseus.
-- The `editor` image, the changes to the Apache configuration (`/editor` proxy, `/media`), the upload limits in `docker/app/php.ini`, and the Vite development wiring for `npm run dev:editor`. `docker compose config` parses.
-- The game's preview path in a real browser (`/?preview=…`): the pieces are tested (the draft endpoint, starting in a given scene), the page that joins them is not.
-- No `package-lock.json` exists yet. Commit the one `npm install` creates, then change `npm install` to `npm ci` in the Dockerfiles.
-
-Game positions for the ported demo scenes were converted from the demo's code by arithmetic, not by eye. Open a scene in the editor to adjust walkable areas and positions against the artwork.
-
-## Next
+## Roadmap
 
 1. Editor: undo, copying events and scenes, drawing areas by clicking, a rich-text field for infobox content, sharing a scenario between authors.
 2. Accounts: classes and groups, roles beyond a `role` column, a group-picking lobby.
