@@ -224,8 +224,8 @@ test('music: the scenario has a default, a scene can have its own, and the same 
   await g.click(1750, 825);
   await g.hold([], () => g.sceneName === 'control-room');
   await g.wait(50);
-  assert.equal(g.ctx.music?.mediaId, 31, 'the control room names no music, so the scenario default plays');
-  assert.equal(g.scenario.music_media_id, 31);
+  assert.equal(g.ctx.music?.mediaId, 362, 'the control room names no music, so the scenario default plays');
+  assert.equal(g.scenario.music_media_id, 362);
 });
 
 test('a speech bubble stays on screen: above, below, or beside the speaker', async () => {

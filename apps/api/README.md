@@ -14,8 +14,8 @@ What QBL adds to stock Laravel:
 | ---- | ------- |
 | `database/migrations/*` | One file per table, then one per later change. See "Migrations" below |
 | `database/migrations/*_create_personal_access_tokens_table.php` | Sanctum's token table under a fixed file name. `install:api` publishes it under a name containing the build time, which would re-run on every rebuild; the Dockerfile removes that copy |
-| `database/seeders/data/starship.php` | Seed rows for the demo mission, Starship Explorer |
-| `database/seeders/*Seeder.php` | Seed the catalogue and the demo once and publish its JSON; optional demo accounts. Run by hand: `php artisan qbl:seed` |
+| `database/seeders/scenarios/*.zip` | Scenarios shipped with the application, as the editor exports them. `starship-explorer.zip` is the demo mission, Starship Explorer |
+| `database/seeders/*Seeder.php` | Seed the avatars, the catalogue and the shipped scenarios once and publish their JSON; optional demo accounts. Run by hand: `php artisan qbl:seed` |
 | `app/Qbl/ScenarioStore.php` | Reads and writes scenarios as rows: seeding, the editor's create/update/delete, uploads, codes, publishing. Plain PHP over PDO |
 | `app/Qbl/EditorApi.php` | The editor's routes and who may use them. Plain PHP |
 | `app/Qbl/ScenarioCompiler.php` | Generates the scenario JSON from table rows. Plain PHP |
@@ -36,7 +36,7 @@ Beside the framework's usual folders:
 
 | File | Purpose |
 | ---- | ------- |
-| `bin/export-seed.php` | Runs the compiler on the seed data with no Laravel or database and prints the JSON |
+| `bin/export-seed.php` | Seeds a shipped ZIP into an in-memory SQLite database and prints its published JSON for the file backend, copying its uploaded files beside the scenario's other assets (`npm run seed:export`) |
 | `tests/store.php` | Tests the three `app/Qbl` classes over SQLite, with no framework: `npm run test:api` |
 | `tests/progress.php` | Tests stars, XP and the marketplace the same way: `npm run test:progress` |
 | `tests/generation.php` | Tests the AI mission generator end to end with a stand-in model and placeholder pictures: `npm run test:generation` |
@@ -76,19 +76,25 @@ existing database therefore records the new files and changes no data. New chang
 Seeding is never automatic. Starting the container runs `migrate` only.
 
 ```sh
-php artisan qbl:seed                      # the marketplace catalogue and the demo mission
+php artisan qbl:seed                      # the avatars, the marketplace catalogue and the demo mission
 php artisan qbl:seed --reset              # put the shipped demo back, replacing edits to it
 php artisan qbl:seed --password=secret    # also teacher@qbl.test, student1@qbl.test, student2@qbl.test
 ```
 
-`qbl:seed` runs `db:seed`: `ShopSeeder` adds each platform item once, by id, and `StarshipSeeder` calls
-`ScenarioStore::seedScenario()` with the rows in `data/starship.php`, then publishes. The rows go into the
-same tables the editor writes to, and the JSON players get is generated from those tables.
+`qbl:seed` runs `db:seed`: `AvatarSeeder` and `ShopSeeder` add each platform avatar and item once, by id, and
+`ShippedScenarioSeeder` imports every ZIP in `database/seeders/scenarios` (the demo is `starship-explorer.zip`)
+through `ScenarioArchive::seed()`, then publishes it. A shipped ZIP is exactly what the editor's "Export as ZIP"
+makes, so to change the demo: edit it in the editor, export it, and replace the ZIP. Its rows go into the same
+tables the editor writes to, its uploaded files into the media directory, and the JSON players get is generated
+from those tables.
 
-- The demo is seeded **once**. If it is already in the database it is left as it is, so edits made to it in
-  the editor are kept. `--reset` replaces it with the shipped version (players' saves and what they own are kept).
-- Seed rows carry their own ids, because actions refer to each other by id. Seeding refuses, and changes
-  nothing, if any of those ids already belongs to another scenario.
+- A shipped scenario is seeded **once**. If it is already in the database (by id or code) it is left as it is, so
+  edits made to it in the editor are kept. `--reset` replaces it with the shipped version (players' saves and what
+  they own are kept).
+- Unlike the editor's "Import a ZIP", seeding keeps the code and the ids the scenario was exported with, so it is
+  the same scenario everywhere and links to its scenes keep working. Seeding refuses, and changes nothing, if any
+  of those ids already belongs to another scenario. Its uploaded files keep their names too.
+- It also keeps the scenario's own avatar lists, which are used where the platform has no avatars.
 
 ## Signing in
 

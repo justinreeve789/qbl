@@ -14,7 +14,7 @@
     "test": "npm run test -w @qbl/shared && npm run test -w @qbl/client",
     "typecheck": "npm run build -w @qbl/shared && npm run typecheck -w @qbl/server && npm run typecheck -w @qbl/client && npm run typecheck -w @qbl/editor",
     "validate": "tsx tools/validate-scenario.ts",
-    "seed:export": "php apps/api/bin/export-seed.php starship > scenarios/starship.json && npm run validate -- scenarios/starship.json",
+    "seed:export": "php apps/api/bin/export-seed.php starship-explorer > scenarios/starship.json && npm run validate -- scenarios/starship.json",
     "dev:api": "php -S 127.0.0.1:8000 apps/api/dev/server.php",
     "dev:editor": "concurrently -n api,editor,game -c magenta,cyan,green \"npm run dev:api\" \"npm run dev -w @qbl/editor\" \"npm run dev:authoring -w @qbl/client\"",
     "test:api": "php apps/api/tests/store.php",

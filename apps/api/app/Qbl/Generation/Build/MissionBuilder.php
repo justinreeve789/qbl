@@ -6,7 +6,7 @@ use App\Qbl\Generation\GenerationError;
 
 /**
  * Turns a mission blueprint and its pictures into rows of the QBL tables (the shape of
- * database/seeders/data/starship.php), which ScenarioCompiler makes into the scenario document.
+ * ScenarioStore::bundle()), which ScenarioCompiler makes into the scenario document.
  *
  * Every interaction becomes events and actions by one of the patterns in docs/docs/extensions.md
  * ("Patterns"), so what the language model wrote is never trusted to be valid JSON for the runtime:

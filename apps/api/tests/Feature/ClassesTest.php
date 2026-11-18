@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Scenario;
 use App\Models\User;
 use Database\Seeders\AvatarSeeder;
-use Database\Seeders\StarshipSeeder;
+use Database\Seeders\ShippedScenarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,7 +32,7 @@ class ClassesTest extends TestCase
 
     public function test_a_teacher_assigns_a_mission_to_teams_and_each_team_has_its_own_game(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
         config(['qbl.service_key' => 'k']);
         $internal = ['X-QBL-Service-Key' => 'k'];
         $teacher = $this->user('Teacher', 'teacher');
@@ -79,7 +79,7 @@ class ClassesTest extends TestCase
 
     public function test_a_private_mission_is_only_for_those_it_was_assigned_to(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
         $scenario = Scenario::first();
         $scenario->update(['settings' => ['visibility' => 'private'] + $scenario->settings, 'require_login' => false]);
         $teacher = $this->user('Teacher', 'teacher');
@@ -99,7 +99,7 @@ class ClassesTest extends TestCase
 
     public function test_avatars_are_the_platforms_and_follow_the_player_into_every_scenario(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
         $before = $this->getJson('/api/scenarios/starshipexplorer/play')->json('scenario.avatar_media_ids');
         $this->assertSame(101, $before[0], 'with no platform avatars the scenario keeps its own');
 

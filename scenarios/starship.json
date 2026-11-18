@@ -46,8 +46,8 @@
             ]
         }
     ],
-    "music_media_id": 31,
-    "music_volume": 0.35,
+    "music_media_id": 362,
+    "music_volume": 0.1,
     "scene_groups": [
         {
             "id": 1,
@@ -769,6 +769,66 @@
             ]
         },
         {
+            "id": 358,
+            "scenario_id": 1,
+            "type": "image",
+            "filename": "Alien Farms",
+            "url": "uploads/c565c5b4517d0c098f1b6ceb.webp",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 3946,
+            "height": 2124,
+            "priority": 1,
+            "params": {
+                "category": "background"
+            }
+        },
+        {
+            "id": 359,
+            "scenario_id": 1,
+            "type": "image",
+            "filename": "Alien Village",
+            "url": "uploads/a9bb1faf7369327054f1ce06.png",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 4096,
+            "height": 2341,
+            "priority": 1,
+            "params": {
+                "category": "background"
+            }
+        },
+        {
+            "id": 360,
+            "scenario_id": 1,
+            "type": "image",
+            "filename": "Inside Hovel",
+            "url": "uploads/d53542386d029408369ac4ec.jpg",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 4096,
+            "height": 2286,
+            "priority": 1,
+            "params": {
+                "category": "background"
+            }
+        },
+        {
+            "id": 361,
+            "scenario_id": 1,
+            "type": "image",
+            "filename": "Purple Alien Village",
+            "url": "uploads/4d5d48bb2878c409a04a7be2.webp",
+            "scale_x": 1,
+            "scale_y": 1,
+            "width": 3946,
+            "height": 2124,
+            "priority": 1,
+            "params": {
+                "category": "background"
+            }
+        },
+        {
             "id": 10,
             "scenario_id": 1,
             "type": "image",
@@ -892,6 +952,16 @@
             "scenario_id": 1,
             "type": "audio",
             "url": "audio/rocket-launch.wav",
+            "scale_x": 1,
+            "scale_y": 1,
+            "priority": 10
+        },
+        {
+            "id": 362,
+            "scenario_id": 1,
+            "type": "audio",
+            "filename": "Justin K. Reeve - Dreams of Terra.mp3",
+            "url": "uploads/51d80dda82ce1bfd5406c9bd.mp3",
             "scale_x": 1,
             "scale_y": 1,
             "priority": 10
@@ -1360,6 +1430,12 @@
             "scenario_id": 1,
             "name": "Captain Vega",
             "media_id": 109
+        },
+        {
+            "portrait_media_id": 16,
+            "id": 6,
+            "scenario_id": 1,
+            "name": "Pip"
         }
     ],
     "scenes": [
@@ -1968,13 +2044,33 @@
                     "position_y": 1110
                 }
             ],
-            "scale_areas": [],
+            "scale_areas": [
+                {
+                    "name": "depth",
+                    "x": 0,
+                    "y": 953,
+                    "width": 2250,
+                    "height": 247,
+                    "scale_top": 80,
+                    "scale_bottom": 100
+                },
+                {
+                    "name": "depth",
+                    "x": -6,
+                    "y": 767,
+                    "width": 2255,
+                    "height": 187,
+                    "scale_top": 10,
+                    "scale_bottom": 80,
+                    "speed_effect": 100
+                }
+            ],
             "items": [],
             "characters": [
                 {
                     "character_id": 1,
-                    "position_x": 650,
-                    "position_y": 960,
+                    "position_x": 715,
+                    "position_y": 955,
                     "event_id": 250
                 }
             ],
@@ -1988,7 +2084,7 @@
                     "overridable": false,
                     "block_hotspots": false,
                     "conditions": [],
-                    "position_x": 0,
+                    "position_x": -5,
                     "position_y": null,
                     "radius": 150,
                     "activate_by_trigger": false,
@@ -2168,9 +2264,9 @@
                     "overridable": false,
                     "block_hotspots": false,
                     "conditions": [],
-                    "position_x": 2250,
+                    "position_x": 2235,
                     "position_y": null,
-                    "radius": 35,
+                    "radius": 60,
                     "activate_by_trigger": false,
                     "labels": [],
                     "actions": [
@@ -2294,10 +2390,10 @@
                         },
                         {
                             "style": "portrait",
-                            "narrate": true,
                             "text": "Welcome aboard, {{QBLPlayerName}}! I am Captain Vega. This ship is yours to explore.",
                             "speaker": "character",
                             "character_id": 1,
+                            "narrate": true,
                             "id": 25011,
                             "event_id": 250,
                             "type": "dialogue",
@@ -2306,10 +2402,10 @@
                         },
                         {
                             "style": "portrait",
-                            "narrate": true,
                             "text": "The mission consoles are along the back wall. The laboratory is through the east door, and the observation deck is up the ramp.",
                             "speaker": "character",
                             "character_id": 1,
+                            "narrate": true,
                             "id": 25012,
                             "event_id": 250,
                             "type": "dialogue",
@@ -2318,10 +2414,10 @@
                         },
                         {
                             "style": "portrait",
-                            "narrate": true,
                             "text": "The main corridor, to the south, leads to the crew quarters, the hydroponics bay, the engine room and the marketplace. The lift on the west side takes you back to the planet.",
                             "speaker": "character",
                             "character_id": 1,
+                            "narrate": true,
                             "id": 25013,
                             "event_id": 250,
                             "type": "dialogue",
@@ -2330,8 +2426,8 @@
                         },
                         {
                             "style": "portrait",
-                            "narrate": true,
                             "text": "Thank you, Captain. I will get to work.",
+                            "narrate": true,
                             "id": 25014,
                             "event_id": 250,
                             "type": "dialogue",
@@ -2504,7 +2600,17 @@
                     "position_y": 780
                 }
             ],
-            "scale_areas": [],
+            "scale_areas": [
+                {
+                    "name": "depth",
+                    "x": 0,
+                    "y": 600,
+                    "width": 2048,
+                    "height": 300,
+                    "scale_top": 75,
+                    "scale_bottom": 75
+                }
+            ],
             "items": [
                 {
                     "item_id": 2,

@@ -9,7 +9,7 @@ apps/client       Phaser 4 client (Vite): systems, action presenters and feature
 apps/editor       the scenario editor (TypeScript, no framework); see apps/editor/README.md
 apps/api          the Laravel application: QBL tables, seed data, JSON generation, editor API, logins, saves
 docker            Dockerfiles and config for the app, colyseus, editor and apache containers
-scenarios         scenario JSON + media for local play; starship.json is generated from the seed data
+scenarios         scenario JSON + media for local play; starship.json is generated from the shipped demo ZIP
 docs              the QBL JSON docs plus pages for everything added
 tools             scenario validator CLI
 ```
@@ -132,7 +132,7 @@ npm run test:generation                    # the AI mission generator, with a st
 npm run test:laravel                       # the same API through real Laravel (needs `composer install` in apps/api)
 npm run test:editor                        # the editor in a headless browser (needs PHP; once: npx playwright install chromium)
 npm run validate -- scenarios/starship.json    # check a scenario document
-npm run seed:export                        # regenerate scenarios/starship.json from the seed data (needs PHP)
+npm run seed:export                        # regenerate scenarios/starship.json from the demo's ZIP (needs PHP with SQLite and zip)
 npm run typecheck
 npm run build
 ```
@@ -225,12 +225,12 @@ Everything can be edited and deleted, and every change is saved as it is made. S
 
 The database holds a scenario as rows: scenes, events, actions, conditions, labels, media, variables, items and characters, as in the docs. `ScenarioCompiler` generates the scenario JSON from those rows. Publishing stores the generated document; that is what players and the game server get.
 
-The demo mission, **Starship Explorer**, is seed data: rows for those tables in `apps/api/database/seeders/data/starship.php`.
+The demo mission, **Starship Explorer**, is shipped as a scenario ZIP, the same file the editor's "Export as ZIP" makes: `apps/api/database/seeders/scenarios/starship-explorer.zip`. To change the demo, edit it in the editor, export it, and replace that file (then run `npm run seed:export`).
 
-- With the Laravel API, `StarshipSeeder` puts the rows into the tables through the same store the editor writes through, then publishes. This happens when you run `php artisan qbl:seed`, never by itself. The scenario is seeded once; after that it can be edited like any other, and seeding again leaves it alone. `qbl:seed --reset` puts the shipped version back.
-- Without Laravel, `npm run seed:export` runs the same compiler from the command line (PHP only, no database) and writes `scenarios/starship.json` for the game server's file backend.
+- With the Laravel API, `ShippedScenarioSeeder` imports every ZIP in that folder through `ScenarioArchive`, into the tables the editor writes to, keeping the code and ids it was exported with, then publishes. This happens when you run `php artisan qbl:seed`, never by itself. The scenario is seeded once; after that it can be edited like any other, and seeding again leaves it alone. `qbl:seed --reset` puts the shipped version back.
+- Without Laravel, `npm run seed:export` does the same into an in-memory SQLite database and writes `scenarios/starship.json` for the game server's file backend. That backend has no `/media`, so the files uploaded for the demo are copied to `scenarios/assets/starship/uploads`, and the JSON points there.
 
-Both paths play the same document. `npm run test:api` checks that JSON generated from the seeded database equals JSON generated from the seed rows, that `scenarios/starship.json` is current, that seeding again does not disturb an edited scenario, and that seeding refuses to overwrite rows belonging to another scenario.
+Both paths play the same document. `npm run test:api` checks that JSON generated from the seeded database is the ZIP's `scenario.json`, that `scenarios/starship.json` and its uploads are current, that seeding again does not disturb an edited scenario, and that seeding refuses to overwrite rows belonging to another scenario.
 
 The demo's music and rocket sound are synthesised by `tools/make-demo-audio.py`.
 

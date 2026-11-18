@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Database\Seeders\StarshipSeeder;
+use Database\Seeders\ShippedScenarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -30,7 +30,7 @@ class ReportsTest extends TestCase
 
     public function test_the_game_server_logs_what_students_do_and_the_teacher_reads_the_report(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
         config(['qbl.service_key' => 'k']);
         $internal = ['X-QBL-Service-Key' => 'k'];
         $teacher = $this->user('Teacher', 'teacher');
@@ -82,7 +82,7 @@ class ReportsTest extends TestCase
 
     public function test_an_award_can_give_a_badge_which_shows_on_the_players_profile(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
         config(['qbl.service_key' => 'k']);
         $internal = ['X-QBL-Service-Key' => 'k'];
         $ann = $this->user('Ann', 'student');

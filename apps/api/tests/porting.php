@@ -111,9 +111,8 @@ $teacher = ['id' => 1, 'name' => 'Ms Tan', 'role' => 'teacher'];
 $other = ['id' => 2, 'name' => 'Mr Ito', 'role' => 'teacher'];
 
 // ---- the decompiler is the compiler backwards
-$seed = require __DIR__.'/../database/seeders/data/starship.php';
-$demo = ScenarioCompiler::compile($seed);
-$demo = json_decode(json_encode($demo), true);
+$shipped = ScenarioArchive::SHIPPED.'/starship-explorer.zip';
+$demo = ScenarioArchive::read($shipped, fn (array $rows, callable $fileFor, array $document) => $document);
 $again = json_decode(json_encode(ScenarioCompiler::compile(ScenarioDecompiler::rows($demo))), true);
 $expected = $demo;
 unset($expected['avatar_media_ids'], $expected['avatar_portraits']);
@@ -139,7 +138,7 @@ $bare = ScenarioDecompiler::rows(['title' => 'Bare', 'scenes' => [['shortname' =
 same([count($bare['scenes']), $bare['events'][0]['kind'], $bare['actions'][0]['type'], $bare['actions'][0]['params'], $bare['scenario']['start_scene_id'] === $bare['scenes'][0]['id']], [1, 'hotspot', 'text_overlay', ['text' => 'Hi'], true], 'a hand-written document without ids becomes rows with ids of their own');
 
 // ---- importing rows gives everything a new id and follows every reference
-$store->seedScenario($seed);
+(new ScenarioArchive($store))->seed($shipped);
 $store->publish(1);
 $copyId = $store->importRows($store->bundle(1), 1, ['title' => 'Second ship']);
 $original = json_decode(json_encode($store->compile(1)), true);

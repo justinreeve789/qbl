@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(AvatarSeeder::class);
         $this->call(ShopSeeder::class);
-        $this->call(StarshipSeeder::class);
+        $this->call(ShippedScenarioSeeder::class);
 
         // Demo accounts are only created when a password is supplied; nothing is seeded with a known password.
         $password = config('qbl.seed_password');
