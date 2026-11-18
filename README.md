@@ -55,11 +55,22 @@ Players open a scenario at `/{code}`. Other URL parameters:
 | `?debug` | Draw walkable areas, spawn points and hotspot areas (including scene edges) |
 
 ## SSL
-To set up an SSL cert, use certbot. For example:
+To set up an SSL cert, use certbot. Its standalone mode needs port 80, which the `edge` container holds, so stop that first:
 
 ```sh
-certbot certonly -d questlab.cc -m admin@questlab.cc --agree-tos --redirect
+docker compose stop edge
+sudo certbot certonly --standalone -d dev.questlab.cc -m admin@questlab.cc --agree-tos
 ```
+
+Then name the certificate in `.env` and start `edge` again (`docker compose up -d edge`):
+
+```sh
+QBL_CERTS_DIR=/etc/letsencrypt
+QBL_TLS_CERT=/etc/letsencrypt/live/dev.questlab.cc/fullchain.pem
+QBL_TLS_KEY=/etc/letsencrypt/live/dev.questlab.cc/privkey.pem
+```
+
+For renewals (certbot's hooks to stop, restart and start `edge`) and the alternative of letting `edge` fetch a certificate itself, see [HTTPS](#https).
 
 ## Docker
 
