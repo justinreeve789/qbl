@@ -196,7 +196,17 @@ class AssetDirector
             $refs = [$sheet, ...$this->style->anchorsFor('strip')];
             $prompt = $this->style->prompt('strip', "$name ".self::MOTION[$animation], $refs, ['frames' => $count], $notes, $this->images->transparency(), $accents);
             $this->say("Drawing $name: $animation ($count frames), attempt $attempt");
-            $raw = $this->images->generate($prompt, $refs, $aspect, $this->images->transparency(), ['kind' => 'strip', 'frames' => $count, 'animation' => $animation, 'label' => $name]);
+            try {
+                $raw = $this->images->generate($prompt, $refs, $aspect, $this->images->transparency(), ['kind' => 'strip', 'frames' => $count, 'animation' => $animation, 'label' => $name]);
+            } catch (GenerationError $e) {
+                // One animation that cannot be drawn is not worth the run: the built-in move stands in.
+                $attempts[] = ['attempt' => $attempt, 'problem' => $e->getMessage()];
+                if ($this->images instanceof Providers\OfflineImageGenerator) {
+                    break;
+                }
+
+                continue;
+            }
             $im = $this->cut(ImageTools::load($raw));
             $boxes = ImageTools::figures($im);
             if (count($boxes) !== $count) {

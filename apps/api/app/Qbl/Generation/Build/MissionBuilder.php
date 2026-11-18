@@ -338,12 +338,16 @@ class MissionBuilder
             $this->action($label, 'run_event', ['target_event_id' => $dispatcher]);
         }
 
-        // ---- the scene's interactions
-        foreach ($this->interactions as $ik => $it) {
-            if ($it['scene'] !== $key || $it['type'] === 'talk') {
-                continue;
-            }
-            $this->interaction($sceneId, $key, $ik, $it, $xs["int:$ik"], $ground);
+        // ---- the scene's interactions. Labels of neighbours that would overlap alternate in height.
+        $here = array_filter($this->interactions, fn ($it) => $it['scene'] === $key && $it['type'] !== 'talk');
+        uksort($here, fn ($a, $b) => $xs["int:$a"] <=> $xs["int:$b"]);
+        $previous = null;
+        foreach ($here as $ik => $it) {
+            $x = $xs["int:$ik"];
+            $width = self::labelWidth($it['label']);
+            $raise = $previous && ! $previous[2] && $x - $previous[0] < ($width + $previous[1]) / 2 + 20;
+            $this->interaction($sceneId, $key, $ik, $it, $x, $ground, $raise);
+            $previous = [$x, $width, $raise];
         }
 
         $this->rows['scenes'][$sceneIndex]['layout'] = [
@@ -358,14 +362,14 @@ class MissionBuilder
 
     // ================================================================== interactions
 
-    private function interaction(int $sceneId, string $sceneKey, string $key, array $it, int $x, int $ground): void
+    private function interaction(int $sceneId, string $sceneKey, string $key, array $it, int $x, int $ground, bool $raise = false): void
     {
         // Something to see and click: the interaction's item, or the style's marker for interactions without one.
         [$mediaId, $asset] = $this->itemMedia[$it['item'] ?? '__marker'] ?? $this->itemMedia['__marker'] ?? [null, null];
-        $high = ! empty($it['high']);
         $h = $asset ? (int) $asset['height'] : 0;
-        // On the floor line at the back of the walkable area, or up on a wall.
-        $cy = $high ? (int) ($ground * 0.55) : ($asset ? $ground - (int) ($h / 2) + 30 : $ground - 40);
+        // Standing on the floor line at the back of the walkable area. ("high" is not used: the background
+        // is drawn separately, so there may be no wall or shelf at that spot, and the thing would float.)
+        $cy = $asset ? $ground - (int) ($h / 2) + 30 : $ground - 40;
         $radius = $asset ? (int) max(80, min(170, max($asset['width'], $h) / 2 + 20)) : 90;
         $requires = [];
         foreach ($it['requires'] ?? [] as $r) {
@@ -374,11 +378,12 @@ class MissionBuilder
         $notDone = $it['type'] === 'team_task' ? [] : [$this->cond("done_$key", '=', 0)];
 
         // What it looks like: the item, if it has one, and its label above.
-        $labels = function (int $event) use ($mediaId, $x, $cy, $h, $it) {
+        $labels = function (int $event) use ($mediaId, $x, $cy, $h, $it, $raise) {
             if ($mediaId) {
                 $this->label($event, 'image', $x, $cy, mediaId: $mediaId);
             }
-            $this->label($event, 'text', $x, $cy - (int) max(50, $h / 2 + 30), text: $it['label']);
+            // Raised a line when the label beside it would otherwise run into it.
+            $this->label($event, 'text', $x, $cy - (int) max(50, $h / 2 + 30) - ($raise ? 50 : 0), text: $it['label']);
         };
 
         switch ($it['type']) {
@@ -886,6 +891,12 @@ class MissionBuilder
         }
 
         return array_combine($keys, $xs);
+    }
+
+    /** Roughly how wide a text label is drawn, in scene pixels. */
+    public static function labelWidth(string $text): int
+    {
+        return 14 * mb_strlen($text) + 24;
     }
 
     private static function html(array $info): string

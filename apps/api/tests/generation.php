@@ -31,6 +31,14 @@ use App\Qbl\Generation\Http\HttpResponse;
 use App\Qbl\Generation\Llm\AnthropicModel;
 use App\Qbl\ScenarioStore;
 
+// A warning or notice is a failure here (Laravel turns them into exceptions).
+set_error_handler(function (int $no, string $message, string $file, int $line) {
+    if (! (error_reporting() & $no)) {
+        return false; // silenced with @, as Laravel also leaves it
+    }
+    throw new ErrorException($message, 0, $no, $file, $line);
+});
+
 spl_autoload_register(function (string $class) {
     if (str_starts_with($class, 'App\\') && is_file($file = __DIR__.'/../app/'.str_replace('\\', '/', substr($class, 4)).'.php')) {
         require $file;
@@ -281,6 +289,28 @@ check(str_contains(json_encode($team['actions']), '/2)'), 'with 2 to 6 players, 
 $objectives = array_column($doc['objectives'], 'text', 'id');
 same($objectives['samples'], 'Collect pollen in the orchard ({{count_samples}}/2)', 'a step of several shows its count');
 same($objectives['report'], 'Report to Keeper Ama', 'the last objective is the report');
+$overlaps = [];
+foreach ($doc['scenes'] as $scene) {
+    $texts = [];
+    foreach ($scene['hotspots'] as $h) {
+        if (preg_match('/-(closed|locked|waiting)$|^label-|^exit-/', $h['shortname'] ?? '')) {
+            continue;
+        }
+        foreach ($h['labels'] as $l) {
+            if ($l['type'] === 'text') {
+                $texts[] = $l;
+            }
+        }
+    }
+    foreach ($texts as $i => $a) {
+        foreach (array_slice($texts, $i + 1) as $b) {
+            if (abs($a['position_y'] - $b['position_y']) < 30 && abs($a['position_x'] - $b['position_x']) < (MissionBuilder::labelWidth($a['text']) + MissionBuilder::labelWidth($b['text'])) / 2) {
+                $overlaps[] = "{$scene['shortname']}: {$a['text']} / {$b['text']}";
+            }
+        }
+    }
+}
+same($overlaps, [], 'no two labels in a scene overlap');
 check(isset($byShort['landing/report']), 'the guide has a report conversation');
 same(array_column($doc['characters'], 'name'), ['Keeper Ama', 'Pip'], 'characters keep their names');
 
