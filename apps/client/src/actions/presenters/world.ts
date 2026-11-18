@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import type { ActionHandle, Id } from '@qbl/shared';
+import type { ActionHandle, Id, WorldLayer } from '@qbl/shared';
 import { ensureAnimation, ensureSpritesheet, mediaKey } from '../../core/assets';
 import { Depth } from '../../core/depth';
 import { Figure } from '../../entities/Figure';
@@ -33,6 +33,11 @@ function worldHandle(
   return handle;
 }
 
+/** Draw order for a picture an action places: over everything, among the figures by its y, or behind them all. */
+function layerDepth(layer: WorldLayer | undefined, y: number): number {
+  return layer === 'sorted' ? y : layer === 'behind' ? Depth.floor + 10 : Depth.fixed;
+}
+
 export const imageFixed: Presenter<'image_fixed'> = (action, pc) => {
   const key = action.media_id != null ? mediaKey(action.media_id) : '';
   if (!pc.scene.textures.exists(key)) return pc.missing(action);
@@ -42,7 +47,7 @@ export const imageFixed: Presenter<'image_fixed'> = (action, pc) => {
   figure.auto(false, 'right');
   const image = figure.object
     .setScale((action.scale_x ?? 1) * (media?.scale_x ?? 1), (action.scale_y ?? 1) * (media?.scale_y ?? 1))
-    .setDepth(action.layer === 'sorted' ? action.position_y : Depth.fixed);
+    .setDepth(layerDepth(action.layer, action.position_y));
   return worldHandle(pc, action.id, image, action.duration, media?.sheet ? figure : undefined);
 };
 
@@ -52,7 +57,7 @@ export const spritemap: Presenter<'spritemap'> = (action, pc) => {
   const sprite = pc.scene.add
     .sprite(action.position_x ?? 0, action.position_y ?? 0, sheet, action.spritemap_tile_sequence?.[0] ?? 0)
     .setScale(action.scale_x ?? 1, action.scale_y ?? 1)
-    .setDepth(action.layer === 'sorted' ? (action.position_y ?? 0) : Depth.fixed);
+    .setDepth(layerDepth(action.layer, action.position_y ?? 0));
   const handle = worldHandle(pc, action.id, sprite);
   sprite.play(ensureAnimation(pc.scene, sheet, action));
   // A non-repeating spritemap disappears after its final tile.

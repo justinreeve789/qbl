@@ -3,7 +3,7 @@ import {
   resolvedHandle,
   type Action, type ActionHandle, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction,
 } from '@qbl/shared';
-import type { AnimateAction, AwardAction } from '@qbl/shared';
+import type { AnimateAction, AwardAction, GlossaryAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import { deferred, type Presenter, type PresenterContext, type PresenterMap, type Target } from './Presenter';
 import { stopMusic } from './presenters/audio';
@@ -47,6 +47,17 @@ export class ActionHost implements EngineHost, PresenterContext {
   award(action: AwardAction) {
     if (this.ctx.connection.online) this.ctx.connection.award(action.id);
     else this.ctx.previewAward?.(action);
+  }
+
+  /** A glossary action: the player has a new word. Told once; a word they already have is not announced again. */
+  glossary(action: GlossaryAction) {
+    const entry = this.ctx.learn(action.entry_id);
+    if (entry && action.quiet !== true) this.ctx.ui.toast(`New word in your glossary: ${entry.term}`, 4000);
+  }
+
+  /** A hotspot fired: a line for the activity log, so a report can say what the player tried. */
+  started(event: GameEvent, hotspot: boolean) {
+    if (hotspot) this.ctx.track({ type: 'hotspot', ref: String(event.id), label: event.shortname });
   }
 
   /** Set by the scene: finds the player's avatar or a placed character. */

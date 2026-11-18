@@ -35,7 +35,8 @@ Players open a scenario at `/{code}`. Other URL parameters:
 | --------- | ------ |
 | `?scenario=starshipexplorer` | Which scenario to play, by code or shortname, when the path has no code |
 | `?preview=12&scene=40` | Play the unpublished draft of scenario 12, starting in scene 40. This is what the editor's "Test this scene" opens; it needs the editor's sign-in |
-| `?group=red-team` | Players with the same group share a room |
+| `?group=red-team` | The instance to play in: players with the same group share its variables, items and saves |
+| `?party=class-5b` | With the file backend, to try teams out: groups with the same party are in one room and meet in scenes that are not limited to teams (`?group=red&party=5b`, `?group=blue&party=5b`). With the API, the room comes from the assignment |
 | `?offline` | Single-player, no game server needed (for previews) |
 | `?debug` | Draw walkable areas, spawn points and hotspot areas (including scene edges) |
 

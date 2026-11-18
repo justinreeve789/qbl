@@ -1,0 +1,179 @@
+import assert from 'node:assert/strict';
+import { after, before, test } from 'node:test';
+import { chromium, type Browser, type Page } from 'playwright';
+import type { Scenario } from '@qbl/shared';
+import { startSite, type TestSite } from './servers';
+
+/**
+ * The glossary, scene groups and team limits, shadow spots, placement of labels, and the
+ * teacher's report, in a real browser against the real backend classes.
+ */
+let site: TestSite;
+let browser: Browser;
+let page: Page;
+let id = 0;
+const errors: string[] = [];
+
+before(async () => {
+  site = await startSite();
+  browser = await chromium.launch();
+  page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  page.on('dialog', (d) => void d.accept());
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errors.push(m.text()));
+  // A student who has signed in once, for the class.
+  await fetch(`${site.url}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'student.ann@example.test', password: 'x' }) });
+
+  await page.goto(`${site.url}/editor/`);
+  await page.fill('input[type=email]', 'author@example.test');
+  await page.fill('input[type=password]', 'anything');
+  await page.click('button[type=submit]');
+  await page.waitForSelector('[data-scenario]');
+  await page.click('button:has-text("New scenario")');
+  await page.fill('[data-dialog=new-scenario] input[name=title]', 'Additions');
+  await page.check('[data-dialog=new-scenario] input[value=empty]');
+  await page.click('[data-dialog=new-scenario] button[type=submit]');
+  await page.waitForSelector('.scene-card');
+  id = Number(/#\/s\/(\d+)/.exec(page.url())![1]);
+});
+
+after(async () => {
+  await browser?.close();
+  await site?.close();
+});
+
+const saved = () => page.waitForFunction(() => !document.querySelector('.saving')?.textContent?.includes('Saving'));
+async function type(selector: string, value: string) {
+  const input = page.locator(selector).first();
+  await input.fill(value);
+  await input.blur();
+  await saved();
+}
+/** The scenario JSON as the game would get it now. */
+async function draft(): Promise<Scenario> {
+  await saved();
+  const token = await page.evaluate(() => localStorage.getItem('qbl.token'));
+  const res = await fetch(`${site.url}/api/editor/scenarios/${id}/preview`, { headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(res.status, 200);
+  return ((await res.json()) as { scenario: Scenario }).scenario;
+}
+
+test('the glossary page: words, and which are there from the start', async () => {
+  await page.click('.tabs a[data-tab=glossary]');
+  await page.waitForSelector('.page h1:has-text("Glossary")');
+  await page.click('button:has-text("New word")');
+  await page.waitForSelector('[data-word]');
+  await type('[data-word] [data-field=term] input', 'pH');
+  await type('[data-word] [data-field=definition] textarea', 'How acidic or basic water is.');
+  assert.match(await page.innerText('[data-word] .muted'), /No action gives this word yet/);
+  await page.check('[data-word] [data-field=initial] input');
+  await page.waitForFunction(() => document.querySelector('[data-word] .muted')?.textContent?.includes('from the start'));
+  assert.deepEqual((await draft()).glossary, [{ id: 'word-1', term: 'pH', definition: 'How acidic or basic water is.', initial: true }]);
+});
+
+test('scene groups: a group limited to teams, and a scene that says otherwise', async () => {
+  await page.click('.tabs a[data-tab=scenes]');
+  await page.waitForSelector('[data-card=scene-groups]');
+  assert.match(await page.innerText('.scene-card .scene-group'), /Everyone/);
+  await page.click('[data-card=scene-groups] button:has-text("New group")');
+  await page.waitForSelector('[data-group]');
+  await type('[data-group] [data-field=name] input', 'Planet');
+  await page.check('[data-group] [data-field=team_only] input');
+  await saved();
+  await page.locator('.scene-card .scene-group select').selectOption({ label: 'Planet' });
+  await page.waitForFunction(() => document.querySelector('.scene-card .scene-group')?.textContent?.includes('Own team only'));
+  let d = await draft();
+  assert.deepEqual(d.scene_groups, [{ id: 1, name: 'Planet', team_only: true }]);
+  assert.equal(d.scenes[0]!.group_id, 1);
+  assert.equal(d.scenes[0]!.team_only, undefined, 'the scene itself says nothing: its group decides');
+
+  // In the scene's own settings: this one shows everyone after all.
+  await page.click('.scene-card button:has-text("Edit")');
+  await page.waitForSelector('.inspector [data-field=team_only]');
+  await page.locator('.inspector [data-field=team_only] select').selectOption('false');
+  d = await draft();
+  assert.equal(d.scenes[0]!.team_only, false);
+  await page.locator('.inspector [data-field=team_only] select').selectOption('');
+  assert.equal((await draft()).scenes[0]!.team_only, undefined, 'and back to what the group says');
+});
+
+test('a shadow spot is added to the scene, drawn, and edited', async () => {
+  await page.locator('select:has(option[value=shadow_spots])').selectOption('shadow_spots');
+  await page.waitForSelector('svg .shadow-spot.selected');
+  await type('.inspector [data-field=strength] input', '80');
+  await type('.inspector [data-field=radius] input', '200');
+  const spots = (await draft()).scenes[0]!.shadow_spots!;
+  assert.equal(spots.length, 1);
+  assert.deepEqual([spots[0]!.radius, spots[0]!.radius_y, spots[0]!.strength, spots[0]!.name], [200, 70, 80, 'shade']);
+  assert.match(await page.innerText('.outline'), /Shadow spots/);
+});
+
+test('a hotspot label can be background, or a solid object players walk around', async () => {
+  await page.locator('select:has(option[value=shadow_spots])').selectOption('hotspot-click');
+  await page.click('text=+ Add label');
+  await page.waitForSelector('.inspector [data-field=placement]');
+  await page.locator('.inspector [data-field=placement] select').first().selectOption('background');
+  let label = (await draft()).scenes[0]!.hotspots![0]!.labels![0]!;
+  assert.equal(label.placement, 'background');
+  // Pictures can be solid; the first label of a new hotspot is text, so make it a picture.
+  await page.locator('.inspector .card.flat [data-field=type] select').first().selectOption('image');
+  await page.waitForSelector('.inspector [data-field=solid]');
+  await page.check('.inspector [data-field=solid] input');
+  await page.waitForSelector('.inspector [data-field=solid_radius]');
+  await type('.inspector [data-field=solid_radius] input', '90');
+  label = (await draft()).scenes[0]!.hotspots![0]!.labels![0]!;
+  assert.deepEqual([label.solid, label.solid_radius], [true, 90]);
+});
+
+test('a glossary action and a narrated dialogue are offered among the actions', async () => {
+  const d = await draft();
+  const token = await page.evaluate(() => localStorage.getItem('qbl.token'));
+  const event = d.scenes[0]!.hotspots![0]!.id;
+  for (const [type, params] of [['glossary', { entry_id: 'word-1' }], ['dialogue', { text: 'Hello', narrate: true }], ['award', { stars: 1, badge: 'First steps' }]] as const) {
+    const res = await fetch(`${site.url}/api/editor/scenarios/${id}/rows/actions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ event_id: event, type, params }) });
+    assert.equal(res.status, 201, `${type}: ${await res.text()}`);
+  }
+  await page.reload();
+  await page.waitForSelector('.outline');
+  await page.click('.outline >> text=Hotspots');
+  const actions = (await draft()).scenes[0]!.hotspots![0]!.actions;
+  assert.deepEqual(actions.slice(-3).map((a) => a.type), ['glossary', 'dialogue', 'award']);
+  assert.equal((actions.at(-2) as { narrate?: boolean }).narrate, true);
+  assert.equal((actions.at(-1) as { badge?: string }).badge, 'First steps');
+});
+
+test('the report on an assignment: students, summary and the message log', async () => {
+  await page.click('.top-nav >> text=Classes');
+  await page.waitForSelector('[data-card=students]');
+  await page.fill('[data-form=add-student] input', 'student.ann@example.test');
+  await page.click('[data-form=add-student] button');
+  await page.waitForFunction(() => document.querySelector('[data-card=students]')?.textContent?.includes('student.ann@example.test'));
+  await page.click('button:has-text("Assign a mission")');
+  const form = page.locator('[data-form=new-assignment]');
+  await form.locator('select[aria-label=Mission]').selectOption({ label: 'Starship Explorer' });
+  await form.locator('input[type=checkbox]').first().check();
+  await form.locator('button[type=submit]').click();
+  await page.waitForSelector('[data-assignment]');
+
+  await page.click('[data-assignment] [data-action=report]');
+  await page.waitForSelector('[data-card=report] .report-table');
+  assert.match(await page.innerText('[data-card=report] h2'), /Report: Starship Explorer/);
+  assert.match(await page.innerText('.report-summary'), /0\/1\s*students have started/);
+  const row = page.locator('.report-table tr[data-student]');
+  assert.equal(await row.count(), 1);
+  assert.match(await row.innerText(), /Not started/);
+  await row.locator('button.link').click();
+  await page.waitForSelector('.report-detail');
+  assert.doesNotMatch(await page.innerText('.report-detail'), /\{\{/, 'placeholders in objective text are not shown raw');
+  assert.match(await page.innerText('.report-detail'), /Objectives[\s\S]*Questions[\s\S]*Where they went/i);
+
+  await page.click('[data-card=report] .tabs >> text=Messages');
+  await page.waitForSelector('[data-card=report] .empty');
+  assert.match(await page.innerText('[data-card=report] .empty'), /No messages have been sent/);
+  await page.click('button:has-text("Back to classes")');
+  await page.waitForSelector('[data-assignment]');
+});
+
+test('nothing went wrong in the browser along the way', () => {
+  assert.deepEqual(errors, []);
+});

@@ -31,7 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Missions, avatars and the teacher's classes. One controller hands these to App\Qbl\ClassApi, which lists the routes.
-Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|me/avatar|teach(/.*)?')->middleware('auth:sanctum');
+Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|me/avatar|players/[0-9]+/profile|teach(/.*)?')->middleware('auth:sanctum');
 
 // Auth is optional here: scenarios with require_login=false can be played without a token.
 Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');
@@ -47,6 +47,9 @@ Route::prefix('internal')->middleware(ServiceKey::class)->group(function () {
     Route::put('/scenarios/{scenario}/sessions/{user}', [InternalController::class, 'saveSession'])->whereNumber(['scenario', 'user']);
     Route::post('/scenarios/{scenario}/awards', [InternalController::class, 'award'])->whereNumber('scenario');
     Route::get('/users/{user}/look', [InternalController::class, 'look'])->whereNumber('user');
+    // What players did and said, written in batches by the game server.
+    Route::post('/scenarios/{scenario}/activity', [InternalController::class, 'logActivity'])->whereNumber('scenario');
+    Route::post('/scenarios/{scenario}/messages', [InternalController::class, 'logMessages'])->whereNumber('scenario');
     Route::get('/scenarios/{scenario}/instances/{group}', [InternalController::class, 'loadInstance'])->whereNumber('scenario');
     Route::put('/scenarios/{scenario}/instances/{group}', [InternalController::class, 'saveInstance'])->whereNumber('scenario');
 });

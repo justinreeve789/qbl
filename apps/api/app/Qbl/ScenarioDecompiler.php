@@ -19,7 +19,7 @@ class ScenarioDecompiler
     private const NOT_SETTINGS = [
         'id', 'code', 'shortname', 'title', 'subtitle', 'description', 'user_id', 'start_scene_id', 'enable_save_session', 'require_login',
         'allow_groups', 'max_players', 'default_language', 'intro_media_portrait_id', 'intro_media_landscape_id', 'global_variables',
-        'jump_targets', 'assets', 'shop_items', 'items', 'characters', 'scenes', 'session',
+        'jump_targets', 'assets', 'shop_items', 'items', 'characters', 'scenes', 'session', 'instance',
     ];
 
     private int $next = 0;
@@ -94,7 +94,7 @@ class ScenarioDecompiler
         foreach (array_values($d['scenes']) as $index => $s) {
             $sceneId = $this->id($s);
             $params = (array) ($s['params'] ?? []);
-            foreach (['music_media_id', 'music_volume'] as $key) {
+            foreach (['music_media_id', 'music_volume', 'team_only'] as $key) {
                 if (isset($s[$key])) {
                     $params[$key] = $s[$key];
                 }
@@ -106,7 +106,7 @@ class ScenarioDecompiler
                 'background_media' => $s['background_media'] ?? [], 'foreground_media' => $s['foreground_media'] ?? [],
                 'layout' => array_filter([
                     'walkable_areas' => $s['walkable_areas'] ?? [], 'blocked_areas' => $s['blocked_areas'] ?? [], 'spawn_points' => $s['spawn_points'] ?? [],
-                    'scale_areas' => $s['scale_areas'] ?? null, 'items' => $s['items'] ?? [], 'characters' => $s['characters'] ?? [],
+                    'scale_areas' => $s['scale_areas'] ?? null, 'shadow_spots' => $s['shadow_spots'] ?? null, 'items' => $s['items'] ?? [], 'characters' => $s['characters'] ?? [],
                 ], fn ($v) => $v !== null),
                 'params' => $params ?: null,
             ];

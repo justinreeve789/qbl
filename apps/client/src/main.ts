@@ -9,6 +9,8 @@ import { OfflineConnection, OnlineConnection, type GameConnection } from './net/
 import { BootScene } from './scenes/BootScene';
 import { PlayScene } from './scenes/PlayScene';
 import { Ui } from './ui/Ui';
+// Twemoji Awesome: the one set every icon in the interface is drawn from (see ui/icons.ts).
+import '../../../packages/shared/assets/twemoji-awesome.css';
 import './ui/ui.css';
 
 const app = document.getElementById('app')!;
@@ -210,7 +212,7 @@ async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
       if (config.preview != null) return { scenario: await loadDraft(config.preview), user };
       // With no scenario asked for, the player chooses one from their missions; that page takes over from here.
       if (config.home && (await showHome(user))) return new Promise(() => undefined);
-      return { scenario: normalizeScenario(await api.play(config.scenario, config.group)), user };
+      return { scenario: normalizeScenario(await api.play(config.scenario, config.group, config.party)), user };
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         gate.classList.remove('home');
@@ -235,6 +237,8 @@ async function start() {
     : await OnlineConnection.join(config.serverUrl, {
         scenario: scenario.code ?? scenario.shortname,
         group: config.group,
+        // The room this instance belongs to, as the API named it: teams of one assignment share a room.
+        party: scenario.instance?.party ?? config.party ?? config.group,
         token: api.token ?? undefined,
         name: user.name,
         avatar_media_id: avatarId,
@@ -249,6 +253,8 @@ async function start() {
     await ctx.rewards.connect({ shop: () => api.shop(key), buy: (id) => api.buy(id, key), equip: (id, on) => api.equip(id, on) });
   }
   if (config.preview != null) ctx.rewards.pretend(500);
+  // Other players' profiles come from the API, which a preview and the standalone game server do not have.
+  if (!config.offline) ctx.fetchProfile = (userId) => api.profile(userId);
   // Signing out leaves the game and comes back to the sign-in screen. Not offered in a preview:
   // that window shares its sign-in with the editor it was opened from.
   if (config.preview == null) {

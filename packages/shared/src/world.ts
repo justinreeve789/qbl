@@ -1,7 +1,7 @@
 import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Circle, type WalkContext } from './geometry.js';
 import { isShownToScene } from './engine.js';
 import type { AnimateMessage, AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage } from './protocol.js';
-import { sceneSize, ScenarioIndex } from './scenario.js';
+import { sceneSize, sceneTeamOnly, ScenarioIndex } from './scenario.js';
 import { ANIMATION_NAME, type Id, type Item, type Scenario, type Scene, type Session, type VarValue } from './types.js';
 import { applyOperator } from './variables.js';
 
@@ -26,6 +26,11 @@ export interface InstanceData {
 export interface PlayerRec {
   user_id: string; name: string; role: string; avatar: number; scene_id: number;
   x: number; y: number; facing: string; attachments: string; connected: boolean;
+  /**
+   * The instance the player is in (a team's, an assignment's, or `public`). Players of several
+   * teams can be in one room; scenes limited to a team show a player only those with the same value.
+   */
+  team?: string;
   /** True while an avatar action has hidden this player. Cleared on every scene change. */
   hidden: boolean;
   /** Equipped shop item ids, comma-separated. Drawn on the avatar by every client. */
@@ -83,7 +88,11 @@ export class World {
   private staticObstacles = new Map<Id, Circle[]>();
   dirty = false;
 
-  constructor(readonly scenario: Scenario, private deps: WorldDeps, instance: InstanceData | null = null) {
+  /**
+   * `team` names the instance this world is: several can run side by side in one room, each over
+   * its own shared variables and items (see `scopedMap`) and the room's one list of players.
+   */
+  constructor(readonly scenario: Scenario, private deps: WorldDeps, instance: InstanceData | null = null, readonly team = '') {
     this.index = new ScenarioIndex(scenario);
     const { state } = deps;
 
@@ -152,6 +161,7 @@ export class World {
     p.facing = 'right';
     p.attachments = attachments.join(',');
     p.connected = true;
+    p.team = this.team;
     p.hidden = false;
     p.anim = '';
     p.look = cleanLook(user.look);
@@ -251,11 +261,28 @@ export class World {
     if (!p || !found || found.scene.id !== p.scene_id || found.event.audience !== 'scene') return null;
     const action = found.event.actions.find((a) => a.id === Number(msg.action_id));
     if (!action || !isShownToScene(action)) return null;
+    return this.audience(sessionId);
+  }
+
+  /**
+   * The other players who can see this one: those in the same scene, and, where the scene is
+   * limited to teams, in the same team. They are who a chat message or a shown event reaches.
+   */
+  audience(sessionId: string): string[] {
+    const p = this.deps.state.players.get(sessionId);
+    const scene = p ? this.index.scene(p.scene_id) : undefined;
+    if (!p || !scene) return [];
+    const teamOnly = sceneTeamOnly(this.scenario, scene);
     const others: string[] = [];
     this.deps.state.players.forEach((other, id) => {
-      if (id !== sessionId && other.scene_id === p.scene_id) others.push(id);
+      if (id !== sessionId && canSee(p, other, teamOnly)) others.push(id);
     });
     return others;
+  }
+
+  /** How many players are in this instance. */
+  get playerCount(): number {
+    return this.meta.size;
   }
 
   /**
@@ -438,6 +465,30 @@ export class World {
  */
 function blocksForEveryone(item: Item): boolean {
   return item.blocking === true && !(item.conditions && item.conditions.length > 0);
+}
+
+/** Whether two players are shown to each other: same scene, and the same team where the scene asks for it. */
+export function canSee(a: Pick<PlayerRec, 'scene_id' | 'team'>, b: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
+  return a.scene_id === b.scene_id && (!teamOnly || (a.team ?? '') === (b.team ?? ''));
+}
+
+const SCOPE_SEPARATOR = '|';
+
+/**
+ * One team's part of a map shared by a whole room: keys are stored as `team|key`. With it each
+ * team's World, and each client, reads and writes its own shared variables and items as if it
+ * had the map to itself.
+ */
+export function scopedMap<T>(map: MapLike<T>, scope: string): MapLike<T> {
+  const prefix = `${scope}${SCOPE_SEPARATOR}`;
+  return {
+    get: (key) => map.get(prefix + key),
+    set: (key, value) => map.set(prefix + key, value),
+    delete: (key) => map.delete(prefix + key),
+    forEach: (cb) => map.forEach((value, key) => {
+      if (key.startsWith(prefix)) cb(value, key.slice(prefix.length));
+    }),
+  };
 }
 
 export function blockingRadius(item: Item): number {

@@ -1,5 +1,7 @@
 import { Api, ApiError, type User } from './api';
 import { clear, h, toast } from './dom';
+// Twemoji Awesome: the one set every icon in the interface is drawn from (see icons.ts).
+import '../../../packages/shared/assets/twemoji-awesome.css';
 import './editor.css';
 import { Store } from './store';
 import { classesView } from './views/classes';

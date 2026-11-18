@@ -1,9 +1,10 @@
 import * as Phaser from 'phaser';
 import {
-  blockingRadius, parseIds, scaleAt, testConditions,
+  blockingRadius, parseIds, scaleAt, shadeAt, shadeTint, testConditions,
   type CharacterPlacement, type Circle, type Id, type Item,
 } from '@qbl/shared';
 import { mediaKey } from '../core/assets';
+import { Depth } from '../core/depth';
 import { Figure } from '../entities/Figure';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
@@ -72,12 +73,18 @@ export class PropsSystem implements SceneSystem {
     // A Figure, so that a sheet's idle plays where the item lies and an animate action can reach it.
     const figure = new Figure(scene, this.rt.ctx.index.media.get(item.media_id), mediaKey(item.media_id), x, y);
     const size = (item.scale ?? 1) * zoom * scaleAt(def, x, y);
-    const image = figure.object.setOrigin(0.5, 1).setScale(size).setDepth(y).setVisible(visible);
+    const image = figure.object.setOrigin(0.5, 1).setScale(size).setDepth(this.depthOf(item, y)).setVisible(visible);
+    image.setTint(shadeTint(shadeAt(def, x, y)));
     image.setFlipX(figure.auto(false, item.art_faces ?? 'right', item.art_faces ?? 'right'));
     if (item.vehicle || item.wearable) {
       this.interactive(image, () => this.rt.system(LocalPlayerSystem).useItem(item, { x: image.x, y: image.y }));
     }
     this.items.set(item.id, { item, figure, image, size, feet: y, home: { x, y }, exists: true });
+  }
+
+  /** An item lying on the floor as part of the background is under everyone's feet; otherwise it stands among the players. */
+  private depthOf(item: Item, y: number): number {
+    return item.placement === 'background' ? Depth.floor + 30 : y;
   }
 
   /** True while the pointer is over something clickable; a click is then left to that object. */
@@ -101,6 +108,8 @@ export class PropsSystem implements SceneSystem {
     const size = (character.scale ?? 1) * zoom * scaleAt(def, placement.position_x, placement.position_y);
     const facing = placement.facing === 'left' ? 'left' : 'right';
     const image = figure.object.setOrigin(0.5, 1).setScale(size).setDepth(placement.position_y);
+    // A character standing in the shade is as dark as a player would be there.
+    image.setTint(shadeTint(shadeAt(def, placement.position_x, placement.position_y)));
     image.setFlipX(figure.auto(false, facing));
     this.characters.set(character.id, { figure, image, name: character.name, size, facing, y: placement.position_y });
     const name = scene.add
@@ -146,7 +155,7 @@ export class PropsSystem implements SceneSystem {
         if (rec && visible) {
           p.size = (p.item.scale ?? 1) * this.rt.zoom * scaleAt(this.rt.def, rec.x, rec.y);
           p.feet = rec.y;
-          if (!p.figure.acting) p.image.setPosition(rec.x, rec.y).setDepth(rec.y).setScale(p.size);
+          if (!p.figure.acting) p.image.setPosition(rec.x, rec.y).setDepth(this.depthOf(p.item, rec.y)).setScale(p.size).setTint(shadeTint(shadeAt(this.rt.def, rec.x, rec.y)));
         }
       } else {
         visible &&= !mine.includes(p.item.id);

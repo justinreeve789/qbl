@@ -1,3 +1,4 @@
+import { emojiIcon } from '../../icons';
 import { EVENT_KINDS, eventLabel, mediaLabel } from '../../describe';
 import { h } from '../../dom';
 import { sameSelection, type Point, type SceneModel, type Selection } from './model';
@@ -12,14 +13,14 @@ export type Addable =
   | 'background_media' | 'foreground_media'
   | 'start' | 'end' | 'indirect' | 'hotspot-click' | 'hotspot-walk'
   | 'edge-left' | 'edge-right' | 'edge-top' | 'edge-bottom'
-  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas';
+  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots';
 
 /** An icon and a colour for each kind of thing a scene holds. */
 const LOOK: Record<string, readonly [icon: string, tone: string]> = {
   'Background layers': ['🏞️', '#8e5bd6'], 'Foreground layers': ['🌿', '#8e5bd6'],
   'Start events': ['▶️', '#c77b12'], 'Hotspots': ['🎯', '#2f6fed'], 'Indirect events': ['🔁', '#c77b12'], 'End events': ['⏹️', '#c77b12'],
   'Spawn points': ['🚩', '#d9a400'], 'Items here': ['🎒', '#d6457a'], 'Characters here': ['🧑‍🚀', '#d6457a'],
-  'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Blocked areas': ['🟥', '#c0392b'],
+  'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Shadow spots': ['🌑', '#5b6b8c'], 'Blocked areas': ['🟥', '#c0392b'],
 };
 
 /** Sections the author has folded away. Kept outside the view so a redraw does not open them again. */
@@ -49,7 +50,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
       h(
         'summary',
         { style: `--tone:${LOOK[title]?.[1] ?? ''}` },
-        h('span', { class: 'outline-title' }, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, LOOK[title]?.[0] ?? ''), title, h('small', null, String(items.length))),
+        h('span', { class: 'outline-title' }, LOOK[title] ? emojiIcon(LOOK[title][0]) : null, title, h('small', null, String(items.length))),
         add
           ? h('button', {
               type: 'button', class: 'icon', title: `Add: ${title.toLowerCase()}`,
@@ -91,6 +92,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     section('Characters here', 'character', model.layout('characters').map((p, index) => entry({ kind: 'character', index }, name('characters', p.character_id)))),
     section('Walkable areas', 'walkable_areas', model.layout<Point[]>('walkable_areas').map((a, index) => entry({ kind: 'area', which: 'walkable_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
     section('Scale areas', 'scale_areas', model.layout('scale_areas').map((a, index) => entry({ kind: 'scale', index }, String(a.name || `Scale area ${index + 1}`), `${a.scale_top}% → ${a.scale_bottom}%`))),
+    section('Shadow spots', 'shadow_spots', model.layout('shadow_spots').map((a, index) => entry({ kind: 'shadow', index }, String(a.name || `Shadow ${index + 1}`), `${a.strength ?? 60}%`))),
     section('Blocked areas', 'blocked_areas', model.layout<Point[]>('blocked_areas').map((a, index) => entry({ kind: 'area', which: 'blocked_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
   );
 }

@@ -7,7 +7,8 @@ The client joins a Colyseus room named `scenario`. Rooms are matched on `scenari
 Option | Description
 ------ | -----------
 scenario | Scenario shortname.
-group | Group key. Defaults to `public`.
+group | The instance to play in: `public`, an assignment's (`a12`) or a team's (`t7`). Defaults to `public`.
+party | The room to join. Rooms are matched on `scenario` and `party`: the teams of one assignment share a room (the assignment's key), so they can meet in scenes that are not limited to a team. Defaults to the group. The backend says which party an instance belongs to (`instance.party` in the play document) and the server refuses any other.
 token | API bearer token. Required.
 avatar_media_id | Chosen avatar; must be in the scenario's `avatar_media_ids`. If absent, the avatar saved on the account is used.
 
@@ -18,10 +19,10 @@ If the same account joins twice, the earlier connection is closed with code 4103
 State the server owns and every client sees (Colyseus schema, `apps/server/src/rooms/state.ts`):
 
 * `players[sessionId]`: `user_id`, `name`, `role`, `avatar`, `scene_id`, `x`, `y`, `facing`, `attachments` (comma-separated item ids), `connected`, `hidden` (an `avatar` action has hidden this player; cleared on every scene change), `anim` (the last animation asked of the avatar, as `name:count`; cleared when the player walks or changes scene), `look` (comma-separated ids of the marketplace items the player has on; the server reads it from the backend, never from the client).
-* `items[itemId]`: unique items only. `scene_id`, `x`, `y`, `holder` (a session id, or empty).
-* `vars[name]`: room-scoped variables, JSON-encoded.
+* `items["team|itemId"]`: unique items only, one set per team. `scene_id`, `x`, `y`, `holder` (a session id, or empty).
+* `vars["team|name"]`: shared variables, JSON-encoded, one set per team.
 
-Clients draw the players whose `scene_id` matches their own.
+`players[...].team` is the instance a player is in. A room holds every instance of its party; each is its own `World` over its own part of `items` and `vars` (keys are prefixed with the team's key), and clients read their own team's part. Clients draw the players whose `scene_id` matches their own, and where the scene is limited to teams (`team_only`, on the scene or its group) only those with the same `team`.
 
 ## Client to server
 
@@ -39,18 +40,23 @@ Message | Payload | Server behaviour
 `animate` | `{name}` | Play an animation on the sender's avatar, from a move button or an `animate` action. The name must look like a name; at most four a second. An empty name stops it.
 `show` | `{event_id, action_id}` | An event whose `audience` is `scene` reached this action for the sender. Passed on to the other players in the sender's scene if the action belongs to such an event there and is one of the shown types.
 `look` | `{}` | The player changed what they wear. The server fetches their look from the backend and updates `players[...].look`.
+`whisper` | `{to, text}` | A private message for the player with that session id, anywhere in the room. Only when the scenario's `private_messages` is on. Cleaned and rate limited like chat, delivered to both ends, and logged.
+`track` | `{type, ref?, label?, value?}` | Something for the activity log: `hotspot`, `choice`, `objective`, `glossary` or `narration`. The server adds who, where and when; at most five a second.
+
+`emote`, `chat` and `show` reach the players who can see the sender: those in the same scene, and only the sender's team where the scene is limited to teams. Every `emote`, `chat` and `whisper` is written to the message log; joins, leaves, scene changes and awards are written to the activity log by the server itself. Both are handed to the backend in batches every few seconds.
 
 ## Server to client
 
 Message | Payload | Meaning
 ------- | ------- | -------
-`welcome` | `{session_id, session, chat_mode}` | Sent on join with the save data to start from.
+`welcome` | `{session_id, session, chat_mode, team: {key, name?}, private_messages}` | Sent on join with the save data to start from, the instance the player is in, and whether private messages are allowed.
+`whisper` | `{from, to, from_name, to_name, text, at}` | A private message, sent to both ends.
 `snap` | `{x, y, scene_id}` | A move was refused; return to this position.
 `chat` | `{session_id, text}` |
 `emote` | `{session_id, emoji}` |
 `notice` | `{code, message}` | Something to tell the player, e.g. an item is taken.
 `show` | `{session_id, event_id, action_id}` | Another player's event is showing this action. The client presents it and changes nothing else.
-`progress` | `{stars, xp, rank, next_rank_xp, owned, equipped, delta_stars, delta_xp, note?, rank_up?}` | The result of an award: the player's new totals and what changed.
+`progress` | `{stars, xp, rank, next_rank_xp, owned, equipped, delta_stars, delta_xp, note?, rank_up?, badge?}` | The result of an award: the player's new totals, what changed, and the badge if one was earned.
 
 ## Trust model
 

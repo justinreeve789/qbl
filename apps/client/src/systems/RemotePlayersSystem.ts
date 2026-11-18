@@ -1,4 +1,4 @@
-import { scaleAt } from '@qbl/shared';
+import { scaleAt, shadeAt } from '@qbl/shared';
 import { Avatar } from '../entities/Avatar';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 
@@ -12,8 +12,15 @@ export class RemotePlayersSystem implements SceneSystem {
 
   constructor(private rt: SceneRuntime) {}
 
+  private pointerOver = 0;
+
   get(sessionId: string): Avatar | undefined {
     return this.avatars.get(sessionId);
+  }
+
+  /** True while the pointer is over another player: a click then opens their profile instead of walking there. */
+  get hovering(): boolean {
+    return this.pointerOver > 0;
   }
 
   update(_time: number, delta: number) {
@@ -22,12 +29,19 @@ export class RemotePlayersSystem implements SceneSystem {
     const { state, sessionId } = ctx.connection;
     const seen = new Set<string>();
     state.players.forEach((rec, id) => {
-      if (id === sessionId || rec.scene_id !== def.id) return;
+      // Others in this scene, and only teammates where the scene (or its group) is limited to teams.
+      if (id === sessionId || rec.scene_id !== def.id || !ctx.sees(rec)) return;
       seen.add(id);
       let avatar = this.avatars.get(id);
       if (!avatar) {
-        avatar = new Avatar(scene, ctx, rec, zoom, false, (x, y) => scaleAt(def, x, y));
+        avatar = new Avatar(scene, ctx, rec, zoom, false, (x, y) => scaleAt(def, x, y), (x, y) => shadeAt(def, x, y));
         this.avatars.set(id, avatar);
+        avatar.onPointer(
+          () => {
+            if (!ctx.ui.capturesInput && !this.rt.leaving) ctx.showProfile?.(id);
+          },
+          (over) => (this.pointerOver = Math.max(0, this.pointerOver + (over ? 1 : -1))),
+        );
       }
       avatar.approach(rec.x, rec.y, delta);
       avatar.setFacing(rec.facing === 'left' ? 'left' : 'right');
@@ -43,6 +57,8 @@ export class RemotePlayersSystem implements SceneSystem {
       if (!seen.has(id)) {
         avatar.destroy();
         this.avatars.delete(id);
+        // It may have gone from under the pointer, and would then never report the pointer leaving.
+        this.pointerOver = 0;
       }
     }
   }

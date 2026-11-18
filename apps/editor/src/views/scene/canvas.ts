@@ -1,4 +1,4 @@
-import { scaleAt, type ScaleArea } from '@qbl/shared';
+import { scaleAt, type ScaleArea, type ShadowSpot } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -144,6 +144,7 @@ export class SceneCanvas {
     const top: SVGElement[] = []; // handles of the selected thing, drawn over everything else
 
     this.drawScaleAreas(selected, u, shapes, top);
+    this.drawShadowSpots(selected, u, shapes, top);
     this.drawAreas('walkable_areas', selected, u, shapes, top);
     this.drawAreas('blocked_areas', selected, u, shapes, top);
     for (const event of this.model.events('hotspot')) this.drawHotspot(event, selected, u, W, H, shapes, top);
@@ -234,6 +235,47 @@ export class SceneCanvas {
           }, s('title', null, 'Drag to move. Double-click to remove this corner.')),
         );
       });
+    });
+  }
+
+  // ------------------------------------------------------------ shadow spots
+
+  /**
+   * Patches of shade. Each is drawn as it darkens a figure: deepest in the middle, fading out to
+   * its edge. The selected one can be dragged, and resized by the handles on its right and bottom.
+   */
+  private drawShadowSpots(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
+    const spots = this.model.layout<ShadowSpot>('shadow_spots');
+    spots.forEach((spot, index) => {
+      const selection: Selection = { kind: 'shadow', index };
+      const isSelected = sameSelection(selection, selected);
+      const commit = () => void this.model.setLayout('shadow_spots', spots);
+      const start = { x: spot.x, y: spot.y };
+      const ry = Number(spot.radius_y ?? spot.radius);
+      const strength = Math.min(1, Math.max(0, Number(spot.strength ?? 60) / 100));
+      // Three rings give the look of the falloff without a gradient per spot.
+      for (const [k, share] of [[1, 0.3], [0.66, 0.3], [0.33, 0.4]] as const) {
+        shapes.push(s('ellipse', { class: 'shadow-spot-shade', cx: spot.x, cy: spot.y, rx: spot.radius * k, ry: ry * k, 'fill-opacity': strength * share * 0.8 }));
+      }
+      shapes.push(
+        s('ellipse', {
+          class: `shadow-spot${isSelected ? ' selected' : ''}`, cx: spot.x, cy: spot.y, rx: spot.radius, ry,
+          onpointerdown: (e: PointerEvent) =>
+            this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(spot, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
+        }, s('title', null, spot.name || `Shadow ${index + 1}`)),
+        s('text', { class: 'shape-name', x: spot.x, y: spot.y, 'font-size': 12 * u, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, spot.name || `Shadow ${index + 1}`),
+      );
+      if (!isSelected) return;
+      const handles: Array<[number, number, string, (to: Point) => void]> = [
+        [spot.x + spot.radius, spot.y, 'Drag to change how far it reaches across', (to) => Object.assign(spot, { radius: Math.max(10, Math.round(Math.abs(to.x - spot.x))) })],
+        [spot.x, spot.y + ry, 'Drag to change how far it reaches up and down', (to) => Object.assign(spot, { radius_y: Math.max(10, Math.round(Math.abs(to.y - spot.y))) })],
+      ];
+      for (const [hx, hy, title, resize] of handles) {
+        top.push(s('rect', {
+          class: 'handle', x: hx - 6 * u, y: hy - 6 * u, width: 12 * u, height: 12 * u,
+          onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => resize(to), end: commit }),
+        }, s('title', null, title)));
+      }
     });
   }
 

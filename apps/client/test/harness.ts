@@ -8,7 +8,7 @@ import { PlayScene } from '../src/scenes/PlayScene';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { MovesFeature } from '../src/features/MovesFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
-import type { InfoboxHandle, OverlayHandle, ShopView, UiPort } from '../src/ui/UiPort';
+import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
@@ -70,10 +70,19 @@ export class HeadlessUi implements UiPort {
   }
   /** Lines of dialogue showing now, as "speaker: text". */
   dialogues: string[] = [];
-  dialogue(text: string, o: { name?: string; duration: number }) { return this.overlay(this.dialogues, `${o.name ?? 'player'}: ${text}`, o.duration); }
+  /** Everything that was read aloud, in order: the text and how it was to sound. */
+  spoken: Array<{ text: string; speak: SpeakOptions }> = [];
+  private say(text: string, speak?: SpeakOptions) {
+    if (speak) this.spoken.push({ text, speak });
+  }
+  dialogue(text: string, o: { name?: string; duration: number; speak?: SpeakOptions }) {
+    this.say(text, o.speak);
+    return this.overlay(this.dialogues, `${o.name ?? 'player'}: ${text}`, o.duration);
+  }
   /** Portrait boxes showing now. `next()` is the player clicking to continue. */
   stories: Array<{ name?: string; text: string; portrait?: string; watching: boolean; next(): void }> = [];
-  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean }) {
+  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean; speak?: SpeakOptions }) {
+    this.say(text, o.speak);
     let finish!: () => void;
     const done = new Promise<void>((r) => (finish = r));
     const entry = { name: o.name, text, portrait: o.portrait, watching: !!o.watching, next: () => end() };
@@ -86,11 +95,15 @@ export class HeadlessUi implements UiPort {
     if (o.duration > 0) this.world.schedule(o.duration, end);
     return { done, cancel: end };
   }
-  textOverlay(text: string, o: { duration?: number }) { return this.overlay(this.texts, text, o.duration); }
+  textOverlay(text: string, o: { duration?: number; speak?: SpeakOptions }) {
+    this.say(text, o.speak);
+    return this.overlay(this.texts, text, o.duration);
+  }
   imageOverlay(url: string, o: { duration?: number }) { return this.overlay(this.images, url, o.duration); }
   videoOverlay(url: string) { return this.overlay(this.images, url, 1); }
 
-  infobox(html: string, buttons: string[], o: { dismissible: boolean }): InfoboxHandle {
+  infobox(html: string, buttons: string[], o: { dismissible: boolean; speak?: SpeakOptions }): InfoboxHandle {
+    this.say(html, o.speak);
     let resolve!: (i: number | null) => void;
     const choice = new Promise<number | null>((r) => (resolve = r));
     const box: OpenInfobox = {
@@ -112,6 +125,35 @@ export class HeadlessUi implements UiPort {
   }
   clearOverlays() { this.texts = []; this.images = []; }
   chat() {}
+  /** The players list as last drawn, and what clicking a name or its message button does. */
+  playerList: PlayerRow[] = [];
+  onPlayer: { profile(id: string): void; message?(id: string): void } = { profile() {} };
+  players(list: PlayerRow[], on: { profile(id: string): void; message?(id: string): void }) {
+    this.playerList = list;
+    this.onPlayer = on;
+  }
+  /** The messages panel: how it is set up, every line shown, and which conversation was opened. */
+  messagingSetup: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;
+  lines: ChatLine[] = [];
+  openedThread: { thread: string; name: string } | null = null;
+  messaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) { this.messagingSetup = o; }
+  message(line: ChatLine) { this.lines.push(line); }
+  openMessages(thread: string, name: string) { this.openedThread = { thread, name }; }
+  /** The glossary as last drawn, and the word that was marked new. */
+  words: GlossaryRow[] = [];
+  freshWord: string | undefined;
+  glossary(list: GlossaryRow[], fresh?: string) {
+    this.words = list;
+    this.freshWord = fresh;
+  }
+  /** The profile card showing, if one is open. */
+  profileCard: { view: ProfileView; on: { message?(): void } } | null = null;
+  profile(view: ProfileView, on: { message?(): void } = {}) {
+    const card = (this.profileCard = { view, on });
+    return { update: (v: ProfileView) => void (card.view = v), close: () => void (this.profileCard = null) };
+  }
+  narrationOffered = false;
+  narration(available: boolean) { this.narrationOffered = available; }
   attachments() {}
   objectives(list: ObjectiveStatus[]) { this.checklist = list; }
   toast(message: string) { this.toasts.push(message); }

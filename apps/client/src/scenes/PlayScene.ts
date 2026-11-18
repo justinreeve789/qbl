@@ -9,6 +9,7 @@ import { mediaKey, queueScene } from '../core/assets';
 import { getContext, type GameContext } from '../core/GameContext';
 import type { PlaySceneData, SceneRuntime, SceneSystem, SceneSystemClass } from '../core/SceneRuntime';
 import { sceneSystems } from '../systems';
+import { HotspotSystem } from '../systems/HotspotSystem';
 import { LocalPlayerSystem } from '../systems/LocalPlayerSystem';
 import { PropsSystem } from '../systems/PropsSystem';
 import { RemotePlayersSystem } from '../systems/RemotePlayersSystem';
@@ -156,7 +157,8 @@ export class PlayScene extends Phaser.Scene {
 
   walk(): WalkContext {
     const props = this.byClass.get(PropsSystem) as PropsSystem | undefined;
-    return walkContext(this.def, this.size, props?.obstacles() ?? []);
+    const hotspots = this.byClass.get(HotspotSystem) as HotspotSystem | undefined;
+    return walkContext(this.def, this.size, [...(props?.obstacles() ?? []), ...(hotspots?.obstacles() ?? [])]);
   }
 
   restart(data: PlaySceneData) {

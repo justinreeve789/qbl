@@ -1,5 +1,8 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, ChatMode, ObjectiveStatus } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, ChatMode, ObjectiveStatus } from '@qbl/shared';
+import type { SpeakOptions } from './Narrator';
+
+export type { SpeakOptions };
 
 export interface OverlayHandle extends ActionHandle {
   /** Animate the overlay (used by translate actions). */
@@ -23,22 +26,23 @@ export interface UiPort {
   readonly videoPlaying: boolean;
   readonly videoTime: number;
 
-  textOverlay(text: string, o: { alignment?: Alignment; size?: number; color?: string; style?: string; duration?: number }): OverlayHandle;
+  /** `speak`, here and on the other text below: read it aloud, highlighting each word as it is spoken. */
+  textOverlay(text: string, o: { alignment?: Alignment; size?: number; color?: string; style?: string; duration?: number; speak?: SpeakOptions }): OverlayHandle;
   imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number }): OverlayHandle;
   videoOverlay(url: string, o: { alignment?: Alignment; volume?: number }): OverlayHandle;
   /** `html` is trusted only as far as the sanitiser allows. */
-  infobox(html: string, buttons: string[], o: { dismissible: boolean }): InfoboxHandle;
+  infobox(html: string, buttons: string[], o: { dismissible: boolean; speak?: SpeakOptions }): InfoboxHandle;
   /**
    * A speech bubble that follows a speaker. `anchor` is asked every frame where the speaker is on
    * the page (null while they are off screen); the bubble places itself so it stays in view.
    */
-  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null }): ActionHandle;
+  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null; speak?: SpeakOptions }): ActionHandle;
   /**
    * A dialogue box across the bottom of the screen with the speaker's close-up portrait and name.
    * With `duration` 0 it stays until the player clicks or presses Enter or Space to continue.
    * `watching`: it comes from another player's event, so it never takes this player's input.
    */
-  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean }): ActionHandle;
+  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle;
   /** The stars, XP and rank display, with a button that opens the marketplace. Null hides it (guests). */
   rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void): void;
   /** What the player can do from their screen: one button per move. An empty list hides the row. */
@@ -55,9 +59,80 @@ export interface UiPort {
   chat(mode: ChatMode, send: { text(t: string): void; emote(e: string): void }): void;
   attachments(items: Array<{ id: number; name: string }>, onRemove: (id: number) => void): void;
   objectives(list: ObjectiveStatus[]): void;
+  /**
+   * Who else is playing: the people in the scenario, with where they are. `on.profile` opens a
+   * player's profile; `on.message`, when private messages are allowed, starts writing to them.
+   */
+  players(list: PlayerRow[], on: { profile(id: string): void; message?(id: string): void }): void;
+  /**
+   * The messages panel: whether what is said in the scene can be typed there, and whether
+   * players can be written to privately. `send` gets the thread (`scene`, or a player's
+   * session id) and the text. Null: there is no messages panel.
+   */
+  messaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null): void;
+  /** A message to show in its thread: something said in the scene, or a private message either way. */
+  message(line: ChatLine): void;
+  /** Open the conversation with one player, ready to type in. */
+  openMessages(thread: string, name: string): void;
+  /** The player's glossary. `fresh` is the id of a word just added, to be marked as new. */
+  glossary(list: GlossaryRow[], fresh?: string): void;
+  /**
+   * A player's profile card: their avatar as it is dressed, rank, stars, XP and badges. It can
+   * be opened with what is known at once and filled in when the rest arrives (`update`).
+   */
+  profile(view: ProfileView, on?: { message?(): void }): { update(view: ProfileView): void; close(): void };
+  /** Offer the read-aloud switch: the scenario has text that is read aloud. */
+  narration(available: boolean): void;
   toast(message: string, ms?: number): void;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null): void;
+}
+
+/** One line of the players list. `id` is the player's session id. */
+export interface PlayerRow {
+  id: string;
+  name: string;
+  me: boolean;
+  /** In this player's team (always true when there are no teams). */
+  teammate: boolean;
+  /** The team's name, where teams have names. */
+  team?: string;
+  /** In the same scene, and shown there. */
+  here: boolean;
+  /** Otherwise, where they are: the scene's name. */
+  where?: string;
+  connected: boolean;
+}
+
+export interface ChatLine {
+  /** `scene` for what was said out loud, or the session id of the other player in a private conversation. */
+  thread: string;
+  threadName: string;
+  /** Who wrote it, by name. */
+  from: string;
+  mine: boolean;
+  text: string;
+  at: number;
+}
+
+export interface GlossaryRow { id: string; term: string; definition: string; image?: string | null }
+
+export interface ProfileView {
+  name: string;
+  /** Still fetching the rest. */
+  loading?: boolean;
+  /** A guest has no account: no rank, stars or badges to show. */
+  guest?: boolean;
+  team?: string;
+  rank?: string;
+  stars?: number;
+  xp?: number;
+  nextRankXp?: number | null;
+  badges?: Badge[];
+  /** The avatar's picture, and its grid when the picture is a sprite sheet (the first frame is shown). */
+  avatar: { url: string | null; sheet?: { columns: number; rows: number } };
+  /** What the avatar has on: wearables by slot, and a pet. */
+  worn: Array<{ name: string; url: string; kind: string; slot?: string }>;
 }
 
 export interface ShopView {

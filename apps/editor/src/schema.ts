@@ -20,8 +20,17 @@ const scale: Field[] = [
 const duration = (hint: string): Field => ({ key: 'duration', label: 'Duration (ms)', kind: 'number', min: 0, placeholder: 'Until cancelled', hint });
 const layer: Field = {
   key: 'layer', label: 'Drawn', kind: 'select', placeholder: 'Above avatars',
-  options: [['above', 'Above avatars'], ['sorted', 'Among avatars, by Y']],
+  options: [['above', 'Above avatars'], ['sorted', 'Among avatars, by Y'], ['behind', 'Behind avatars: part of the background']],
 };
+
+/** Reading a text aloud: these two go on every action that shows text. */
+const narration: Field[] = [
+  {
+    key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'As the scenario’s setting says', options: [['true', 'Yes: read this aloud'], ['false', 'No: never read this aloud']],
+    hint: 'The browser’s voice reads the text and each word lights up as it is spoken. Players can switch reading aloud off for themselves. A character’s voice (pitch, pace) is set on the Characters page.',
+  },
+  { key: 'narration_media_id', label: 'Recording to play instead', kind: 'media', mediaType: 'audio', placeholder: 'The browser’s voice', hint: 'A recording of this text. The words are then lit at an even pace over its length.' },
+];
 
 const spritemap: Field[] = [
   { key: 'spritemap_tiles_num', label: 'Tiles in total', kind: 'number', min: 1 },
@@ -50,6 +59,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     fields: [
       { key: 'content', label: 'Content (HTML)', kind: 'html', wide: true, hint: 'Use {{variable_name}} to show a variable and {{media:ID}} for an image.' },
       { key: 'dismissible', label: 'Can be closed without choosing a button', kind: 'bool', default: true, wide: true },
+      ...narration,
     ],
   },
   jump: {
@@ -92,6 +102,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'text_font_size', label: 'Font size (px)', kind: 'number', min: 6 },
       { key: 'text_font_color', label: 'Color', kind: 'color' },
       { key: 'text_font_style', label: 'Style', kind: 'text', placeholder: 'bold, italic…' },
+      ...narration,
     ],
   },
   image_overlay: {
@@ -131,7 +142,18 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'stars', label: 'Stars', kind: 'number', step: 1, placeholder: '0', hint: 'Stars are spent in the marketplace. A negative number takes stars away.' },
       { key: 'xp', label: 'XP', kind: 'number', step: 1, placeholder: '0', hint: 'XP adds up to ranks and is never spent. A negative number takes XP away.' },
       { key: 'note', label: 'Shown with the award', kind: 'text', wide: true, placeholder: 'Sample collected' },
+      { key: 'badge', label: 'Badge that comes with it', kind: 'text', placeholder: 'No badge', hint: 'A badge is earned once and is shown on the player’s profile, where other players can see it.' },
+      { key: 'badge_media_id', label: 'Badge picture', kind: 'media', mediaType: 'image' },
+      { key: 'badge_description', label: 'What the badge is for', kind: 'text', wide: true, placeholder: 'Found out why the stream wilted' },
       { key: 'repeatable', label: 'Give it every time this runs', kind: 'bool', wide: true, hint: 'Normally a player gets each award once, however often the event runs. Stars and XP belong to the player’s account and carry across all scenarios; guests do not earn them. Put awards in an event, not on an infobox button.' },
+    ],
+  },
+  glossary: {
+    label: 'Add a glossary word',
+    about: 'Give the player a word and its meaning, where they meet it.',
+    fields: [
+      { key: 'entry_id', label: 'Word', kind: 'glossary', wide: true, hint: 'Words are defined on the Glossary page. A word marked “from the start” needs no action. A player gets each word once.' },
+      { key: 'quiet', label: 'Add it without telling the player', kind: 'bool', wide: true },
     ],
   },
   shop: {
@@ -150,7 +172,8 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       },
       { key: 'speaker', label: 'Who speaks', kind: 'select', placeholder: 'The player', options: [['character', 'A character']], structural: true },
       { key: 'character_id', label: 'Character', kind: 'character', hint: 'For a bubble the character must be placed in this scene. A story box can carry a voice from anywhere.' },
-      { key: 'duration', label: 'Stays for (ms)', kind: 'number', min: 0, placeholder: 'Bubble: long enough to read. Story box: until the player continues', hint: 'A click closes it sooner.' },
+      { key: 'duration', label: 'Stays for (ms)', kind: 'number', min: 0, placeholder: 'Bubble: long enough to read. Story box: until the player continues', hint: 'A click closes it sooner. Read aloud, a bubble stays until the voice has finished.' },
+      ...narration,
     ],
   },
   freeze: {
@@ -229,7 +252,7 @@ export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: strin
   image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
-  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'],
+  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'], glossary: ['📖', STATE],
   variable: ['🔢', STATE],
 };
 
@@ -243,6 +266,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
   switch (type) {
     case 'award':
       return { stars: 5, xp: 10 };
+    case 'glossary':
+      return {};
     case 'dialogue':
       return { text: 'Hello!' };
     case 'freeze':
@@ -298,6 +323,14 @@ export const SCENARIO_SETTINGS_FIELDS: Field[] = [
     hint: 'A private mission is run by a teacher: it appears only for the students it was assigned to on the Classes page, and only its owner can assign it. This applies as soon as it is changed, without publishing.',
   },
   { key: 'chat_mode', label: 'Chat', kind: 'select', placeholder: 'Emotes only', options: [['off', 'Off'], ['emotes', 'Emotes only'], ['free', 'Typed messages (filtered)']] },
+  {
+    key: 'private_messages', label: 'Players can send each other private messages', kind: 'bool', wide: true,
+    hint: 'A typed message for one other player, wherever in the scenario they are. Private messages are filtered like chat, and every message, private or not, is kept: a teacher can read them on the Classes page.',
+  },
+  {
+    key: 'narration', label: 'Read text aloud', kind: 'select', placeholder: 'Only where an action says so', options: [['on', 'Everything: dialogue, infoboxes and text overlays'], ['off', 'Only where an action says so']], wide: true,
+    hint: 'The browser’s own voice reads the text and highlights each word as it is spoken. It needs no recordings. Any action can say otherwise for itself, and players can switch it off.',
+  },
   { key: 'move_speed', label: 'Walking speed (px per second)', kind: 'number', min: 50, placeholder: '420' },
   { key: 'asset_base_url', label: 'Base address for media', kind: 'text', wide: true, hint: 'Media whose address is not absolute is loaded from here. Uploaded files do not need it.' },
 ];
@@ -311,7 +344,7 @@ export const SCENE_FIELDS: Field[] = [
   { key: 'width', label: 'Width (px)', kind: 'number', min: 1, placeholder: 'Background width', hint: 'A scene wider or taller than the screen scrolls as the avatar walks.' },
   { key: 'height', label: 'Height (px)', kind: 'number', min: 1, placeholder: 'Background height' },
   { key: 'zoom', label: 'Zoom', kind: 'number', min: 0.1, step: 0.05, placeholder: '1' },
-  { key: 'group_id', label: 'Group', kind: 'number', placeholder: 'None' },
+  { key: 'group_id', label: 'Group', kind: 'group', placeholder: 'None', hint: 'Scenes that belong together: the rooms of the starship, the places on a planet. Groups are made on the Scenes page.' },
   { key: 'show_avatars', label: 'Show avatars', kind: 'bool', default: true },
   { key: 'is_intro_scene', label: 'Intro scene', kind: 'bool' },
 ];
@@ -320,6 +353,21 @@ export const SCENE_FIELDS: Field[] = [
 export const SCENE_MUSIC_FIELDS: Field[] = [
   { key: 'music_media_id', label: 'Background music for this scene', kind: 'media', mediaType: 'audio', hint: 'Leave empty to use the scenario’s music (Settings).' },
   { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'The scenario’s' },
+  {
+    key: 'team_only', label: 'Who players see here', kind: 'tristate', wide: true, placeholder: 'As the scene’s group says (everyone, if it has none)',
+    options: [['true', 'Only their own team'], ['false', 'Everyone playing, whatever their team']],
+    hint: 'When a teacher puts students into teams, a scene limited to teams shows each player only their teammates, so a small room does not feel crowded. A meeting place such as an observation deck shows everyone. Shared variables and items are always the team’s own.',
+  },
+];
+
+/** A patch of shade on the floor: figures walking through it darken, most at its centre. */
+export const SHADOW_SPOT_FIELDS: Field[] = [
+  { key: 'name', label: 'Name', kind: 'text', wide: true },
+  { key: 'x', label: 'Centre X', kind: 'number' },
+  { key: 'y', label: 'Centre Y', kind: 'number' },
+  { key: 'radius', label: 'Radius (px)', kind: 'number', min: 1, hint: 'How far the shade reaches across.' },
+  { key: 'radius_y', label: 'Radius up and down (px)', kind: 'number', min: 1, placeholder: 'The same', hint: 'Smaller than the radius for a shadow lying on the floor, seen at an angle.' },
+  { key: 'strength', label: 'Darkness at the centre (%)', kind: 'number', min: 0, max: 100, placeholder: '60', wide: true, hint: 'A figure at the centre is darkened by this much; towards the edge the shade fades to nothing. Put spots where the picture already shows shade: under a tree, behind a pillar, in a doorway.' },
 ];
 
 /** A background or foreground layer (docs/docs/extensions.md). */
@@ -392,6 +440,20 @@ export const LABEL_FIELDS: Field[] = [
   { key: 'type', label: 'Kind', kind: 'select', structural: true, options: [['text', 'Text'], ['image', 'Image'], ['spritemap', 'Spritemap']] },
   ...position,
   ...scale,
+  {
+    key: 'placement', label: 'Where it stands', kind: 'select', wide: true, placeholder: 'Background: players are always in front of it',
+    options: [
+      ['background', 'Background: players are always in front of it'],
+      ['object', 'Object: players walk behind it and in front of it'],
+      ['front', 'In front of everything, players included'],
+    ],
+    hint: 'A label is behind the players unless you choose otherwise, wherever they walk. An object stands on its bottom edge: a player lower on the screen is drawn in front of it, one higher up behind it.',
+  },
+];
+/** For pictures that are objects: whether players have to walk around them. Kept in the label's params. */
+export const LABEL_SOLID: Field[] = [
+  { key: 'solid', label: 'Solid: players walk around it', kind: 'bool', structural: true, hint: 'Players cannot walk through it and are led around it. It stops being in the way when its hotspot’s conditions no longer hold (a rock that has been cleared). How it is drawn is still “Where it stands”.' },
+  { key: 'solid_radius', label: 'Size of the obstacle (px)', kind: 'number', min: 1, placeholder: 'A third of its width', hint: 'The radius of the circle at its base that cannot be walked on.' },
 ];
 export const LABEL_TEXT: Field = { key: 'text', label: 'Text', kind: 'text', wide: true };
 export const LABEL_MEDIA: Field = { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true };
@@ -432,6 +494,10 @@ export const ITEM_FIELDS: Field[] = [
 /** Kept in the item's `settings` column. */
 export const ITEM_SETTINGS_FIELDS: Field[] = [
   { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1' },
+  {
+    key: 'placement', label: 'Where it stands', kind: 'select', placeholder: 'An object: players walk behind and in front of it',
+    options: [['object', 'An object: players walk behind and in front of it'], ['background', 'On the floor: players always walk over it']],
+  },
   { key: 'blocking_radius', label: 'Blocking radius (px)', kind: 'number', min: 1, placeholder: 'A third of its width' },
   { key: 'attach_offset_x', label: 'Worn or ridden: offset X', kind: 'number', placeholder: '0' },
   { key: 'attach_offset_y', label: 'Offset Y', kind: 'number', placeholder: '0' },
@@ -466,6 +532,9 @@ export const CHARACTER_FIELDS: Field[] = [
 ];
 export const CHARACTER_SETTINGS_FIELDS: Field[] = [
   { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1' },
+  { key: 'voice_pitch', label: 'Voice: pitch (0 to 2)', kind: 'number', min: 0, max: 2, step: 0.1, placeholder: '1', hint: 'How the character sounds when its lines are read aloud. Lower is deeper.' },
+  { key: 'voice_rate', label: 'Voice: pace (0.5 to 2)', kind: 'number', min: 0.5, max: 2, step: 0.1, placeholder: '1' },
+  { key: 'voice_name', label: 'Voice: prefer one called', kind: 'text', placeholder: 'Any', hint: 'Part of the name of a voice on the player’s device, such as “female”, “Daniel” or “Google UK”. Devices differ: where no voice matches, the default one reads.' },
   { key: 'portrait_media_id', label: 'Close-up portrait', kind: 'media', mediaType: 'image', structural: true, hint: 'Shown beside what the character says in a story box. Without one, the character’s ordinary image is used.' },
 ];
 

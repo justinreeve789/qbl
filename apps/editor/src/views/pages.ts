@@ -4,6 +4,7 @@ import { mediaUrl, params, sceneLabel } from '../describe';
 import { clear, confirmDelete, h, toast, help } from '../dom';
 import { form, withValue, type FormContext } from '../fields';
 import { SCENARIO_FIELDS, SCENARIO_SETTINGS_FIELDS } from '../schema';
+import { sceneGroupControl, sceneGroupsCard } from './glossary';
 
 /** The scenario's own pages: its scenes, its settings, and checking and publishing it. */
 
@@ -36,6 +37,7 @@ export function scenesPage(ctx: FormContext, open: (sceneId: number) => void): H
       { class: 'card scene-card', 'data-scene': scene.id },
       h('button', { type: 'button', class: 'thumb-button', onclick: () => open(scene.id), 'aria-label': `Edit ${sceneLabel(scene)}` }, url ? h('img', { src: url, alt: '', loading: 'lazy' }) : h('span', { class: 'muted' }, 'No background yet')),
       h('div', { class: 'card-title' }, h('strong', null, sceneLabel(scene)), scene.id === start ? h('span', { class: 'badge' }, 'Start scene') : null),
+      sceneGroupControl(ctx, scene),
       h('p', { class: 'muted' }, String(scene.subtitle ?? ''), h('br'), `${scene.width ?? '?'} × ${scene.height ?? '?'} px · ${hotspots} hotspot${hotspots === 1 ? '' : 's'} · ${events.length - hotspots} other event${events.length - hotspots === 1 ? '' : 's'} · ${spawns} spawn point${spawns === 1 ? '' : 's'}`),
       h(
         'div',
@@ -62,6 +64,7 @@ export function scenesPage(ctx: FormContext, open: (sceneId: number) => void): H
       h('div', null, h('h1', null, 'Scenes', help('The places that make up the mission. Players move between them through jump actions, usually on a hotspot along an edge.'))),
       h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'primary', onclick: add }, 'New scene')),
     ),
+    sceneGroupsCard(ctx),
     h('div', { class: 'grid' }, ...cards),
   );
 }

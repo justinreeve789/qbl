@@ -3,7 +3,7 @@
  * Continuous state (positions, attachments, shared variables) travels
  * through the synchronized room state instead; see apps/server/src/rooms/state.ts.
  */
-import type { Progress } from './types.js';
+import type { Badge, Progress } from './types.js';
 import type { Id, Session, VarValue, VariableOperator } from './types.js';
 
 export const ROOM_NAME = 'scenario';
@@ -12,8 +12,16 @@ export const ROOM_NAME = 'scenario';
 export interface JoinOptions {
   /** Scenario shortname. Rooms are matched on scenario + group. */
   scenario: string;
-  /** Group/instance key. Players with the same key share a room. */
+  /**
+   * The instance the player plays in: their team's (`t7`), their assignment's (`a12`) or `public`.
+   * Shared variables and save data belong to it.
+   */
   group?: string;
+  /**
+   * The room to join: everyone with the same party is in one room, so the teams of one assignment
+   * can meet in scenes that are not limited to a team. Default: the group, a room of its own.
+   */
+  party?: string;
   /** API bearer token. */
   token?: string;
   /** Display name for guests when the scenario does not require login. */
@@ -35,6 +43,8 @@ export const C2S = {
   Look: 'look',
   Show: 'show',
   Animate: 'animate',
+  Whisper: 'whisper',
+  Track: 'track',
 } as const;
 
 export const S2C = {
@@ -45,6 +55,7 @@ export const S2C = {
   Notice: 'notice',
   Progress: 'progress',
   Show: 'show',
+  Whisper: 'whisper',
 } as const;
 
 export interface MoveMessage { x: number; y: number; facing: 'left' | 'right' }
@@ -56,7 +67,7 @@ export interface ItemMessage { item_id: Id; action: 'attach' | 'detach' }
 /** An award action ran on the sender's side. The server checks it against the scenario before granting it. */
 export interface AwardMessage { action_id: Id }
 /** The server's answer to an award: the player's new totals, and what changed. */
-export interface RewardMessage extends Progress { delta_stars: number; delta_xp: number; note?: string; rank_up?: boolean }
+export interface RewardMessage extends Progress { delta_stars: number; delta_xp: number; note?: string; rank_up?: boolean; badge?: Badge }
 /**
  * An event whose audience is the scene reached one of its actions on the sender's side. The server
  * checks the action belongs to such an event in the sender's scene and passes it to the other players there.
@@ -80,6 +91,56 @@ export interface WelcomeMessage {
   /** Authoritative save data: where to start and what the player had. */
   session: Session;
   chat_mode: 'off' | 'emotes' | 'free';
+  /** The instance this player is in, and what it is called ("Red team") when it has a name. */
+  team?: { key: string; name?: string };
+  /** Players may send each other private messages here. */
+  private_messages?: boolean;
+}
+
+/** A typed message for one other player, named by their session id. */
+export interface WhisperMessage { to: string; text: string }
+/** A private message as both ends receive it. */
+export interface WhisperBroadcast { from: string; to: string; from_name: string; to_name: string; text: string; at: number }
+
+/**
+ * Something the player did, for the teacher's reports: a hotspot used, an answer chosen, an
+ * objective completed, a word learned. Kept small; the server adds who, where and when.
+ */
+export interface TrackMessage {
+  type: TrackType;
+  /** The event, action, objective or glossary entry concerned. */
+  ref?: string;
+  /** A few words: the hotspot's name, the answer's text. */
+  label?: string;
+  value?: number;
+}
+export const TRACK_TYPES = ['hotspot', 'choice', 'objective', 'glossary', 'narration'] as const;
+export type TrackType = (typeof TRACK_TYPES)[number];
+
+/** One line of the activity log, as the game server hands it to the backend. */
+export interface ActivityEntry {
+  user_id: string;
+  group: string;
+  scene_id: Id | null;
+  type: TrackType | 'join' | 'leave' | 'scene' | 'award';
+  ref?: string;
+  label?: string;
+  value?: number;
+  at: string;
+}
+
+/** One message, as the game server hands it to the backend to keep for auditing. */
+export interface MessageEntry {
+  user_id: string;
+  name: string;
+  group: string;
+  scene_id: Id | null;
+  kind: 'chat' | 'emote' | 'private';
+  /** For a private message: who it was for. */
+  to_user_id?: string;
+  to_name?: string;
+  text: string;
+  at: string;
 }
 export interface ChatBroadcast { session_id: string; text: string }
 export interface EmoteBroadcast { session_id: string; emoji: string }

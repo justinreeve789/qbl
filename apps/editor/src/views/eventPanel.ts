@@ -2,7 +2,7 @@ import type { Row } from '../api';
 import { EVENT_KINDS, params } from '../describe';
 import { confirmDelete, fold, h, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
-import { EVENT_FIELDS, HOTSPOT_FIELDS, LABEL_FIELDS, LABEL_MEDIA, LABEL_SPRITEMAP, LABEL_TEXT } from '../schema';
+import { EVENT_FIELDS, HOTSPOT_FIELDS, LABEL_FIELDS, LABEL_MEDIA, LABEL_SOLID, LABEL_SPRITEMAP, LABEL_TEXT } from '../schema';
 import { actionList } from './actions';
 import { rowConditions } from './conditions';
 
@@ -72,7 +72,7 @@ function labelList(ctx: FormContext, event: Row): HTMLElement {
     const type = label.type as string;
     const commit = (key: string, value: unknown, field: Field) => {
       if (LABEL_COLUMNS.has(key)) void store.patch('labels', id, { [key]: value }, key === 'media_id' || field.structural === true);
-      else void store.patch('labels', id, { params: withValue(params(store.byId('labels', id)!), key, value, field) });
+      else void store.patch('labels', id, { params: withValue(params(store.byId('labels', id)!), key, value, field) }, field.structural === true);
     };
     const values = { ...params(label), ...label };
     return h(
@@ -81,6 +81,8 @@ function labelList(ctx: FormContext, event: Row): HTMLElement {
       form(LABEL_FIELDS, values, commit, ctx),
       type === 'text' ? form([LABEL_TEXT], values, commit, ctx) : form([LABEL_MEDIA], values, commit, ctx),
       type === 'spritemap' ? form(LABEL_SPRITEMAP, values, commit, ctx) : null,
+      // A picture can be something players walk around.
+      type === 'text' ? null : form(values.solid === true ? LABEL_SOLID : LABEL_SOLID.slice(0, 1), values, commit, ctx),
       h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete('this label') && void store.remove('labels', id) }, 'Delete label')),
     );
   });

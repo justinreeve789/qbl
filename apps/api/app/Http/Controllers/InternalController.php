@@ -6,6 +6,7 @@ use App\Models\Scenario;
 use App\Models\ScenarioInstance;
 use App\Models\ScenarioSession;
 use App\Models\User;
+use App\Qbl\ActivityStore;
 use App\Qbl\ClassStore;
 use App\Qbl\ProgressStore;
 use App\Qbl\StoreError;
@@ -33,10 +34,19 @@ class InternalController extends Controller
     }
 
     /** An award action ran in a player's browser. It is granted only if the published scenario contains it. */
-    public function award(Request $request, Scenario $scenario, ProgressStore $progress): JsonResponse
+    public function award(Request $request, Scenario $scenario, ProgressStore $progress, ActivityStore $activity): JsonResponse
     {
         try {
-            return response()->json(['progress' => $progress->award((int) $request->input('user_id'), $scenario->id, $scenario->toDocument(), (int) $request->input('action_id'))]);
+            $document = $scenario->toDocument();
+            $userId = (int) $request->input('user_id');
+            $result = $progress->award($userId, $scenario->id, $document, (int) $request->input('action_id'));
+            // An award can carry a badge, which a player earns once and others see on their profile.
+            $action = ProgressStore::findAward($document, (int) $request->input('action_id'));
+            if ($action && ($badge = $activity->grantBadge($userId, $scenario->id, $document, $action))) {
+                $result['badge'] = $badge;
+            }
+
+            return response()->json(['progress' => $result]);
         } catch (StoreError $e) {
             return response()->json(['message' => $e->getMessage()], $e->status);
         }
@@ -57,7 +67,20 @@ class InternalController extends Controller
     /** May this player join this instance (`?group=`) of the scenario? Teams and assignments are for their members. */
     public function access(Request $request, Scenario $scenario, User $user, ClassStore $classes): JsonResponse
     {
-        return response()->json(['allowed' => $classes->mayJoin($user->id, $user->role, $scenario->id, self::group($request))]);
+        // Besides yes or no: the room the instance belongs to (teams of an assignment share one) and the team's name.
+        return response()->json($classes->access($user->id, $user->role, $scenario->id, self::group($request)));
+    }
+
+    /** Lines for the activity log, from which teachers' reports are made. */
+    public function logActivity(Request $request, Scenario $scenario, ActivityStore $activity): JsonResponse
+    {
+        return response()->json(['kept' => $activity->logActivity($scenario->id, (array) $request->input('entries', []))]);
+    }
+
+    /** Messages players sent, in a scene or privately, kept for auditing. */
+    public function logMessages(Request $request, Scenario $scenario, ActivityStore $activity): JsonResponse
+    {
+        return response()->json(['kept' => $activity->logMessages($scenario->id, (array) $request->input('entries', []))]);
     }
 
     /** A player's save in one instance of a scenario: `?group=`, the public instance if not given. */

@@ -48,6 +48,45 @@
     ],
     "music_media_id": 31,
     "music_volume": 0.35,
+    "scene_groups": [
+        {
+            "id": 1,
+            "name": "Starship"
+        },
+        {
+            "id": 2,
+            "name": "Planet",
+            "team_only": true
+        }
+    ],
+    "glossary": [
+        {
+            "id": "contamination",
+            "term": "Contamination",
+            "definition": "Something harmful that has got into water, soil or air where it does not belong.",
+            "initial": true
+        },
+        {
+            "id": "sample",
+            "term": "Sample",
+            "definition": "A small part of something, collected so that it can be tested."
+        },
+        {
+            "id": "ph",
+            "term": "pH",
+            "definition": "A number from 0 to 14 that says how acidic or basic a liquid is. Pure water is 7; lower is more acidic."
+        },
+        {
+            "id": "cell",
+            "term": "Cell",
+            "definition": "The tiny building block that every living thing is made of. Cells can only be seen with a microscope."
+        },
+        {
+            "id": "hydroponics",
+            "term": "Hydroponics",
+            "definition": "Growing plants with their roots in water that carries their food, instead of in soil."
+        }
+    ],
     "objectives": [
         {
             "id": "accept",
@@ -1329,6 +1368,7 @@
             "shortname": "planet-landing",
             "scenario_id": 1,
             "sequence": 1,
+            "group_id": 2,
             "subtitle": "Landing site",
             "is_intro_scene": false,
             "zoom": 1,
@@ -1524,6 +1564,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 67,
                             "event_id": 330,
                             "type": "image",
@@ -1563,6 +1604,7 @@
             "shortname": "planet-surface",
             "scenario_id": 1,
             "sequence": 2,
+            "group_id": 2,
             "subtitle": "Rocket pad",
             "is_intro_scene": false,
             "zoom": 1,
@@ -1708,6 +1750,7 @@
                     "reveal_full_radius": 430,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 1,
                             "event_id": 410,
                             "type": "image",
@@ -1742,6 +1785,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 2,
                             "event_id": 420,
                             "type": "image",
@@ -1855,6 +1899,7 @@
             "shortname": "control-room",
             "scenario_id": 1,
             "sequence": 3,
+            "group_id": 1,
             "subtitle": "Starship control room",
             "is_intro_scene": false,
             "zoom": 1,
@@ -1997,6 +2042,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 4,
                             "event_id": 210,
                             "type": "image",
@@ -2040,6 +2086,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 5,
                             "event_id": 220,
                             "type": "image",
@@ -2083,6 +2130,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 6,
                             "event_id": 230,
                             "type": "image",
@@ -2159,6 +2207,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 7,
                             "event_id": 221,
                             "type": "image",
@@ -2245,6 +2294,7 @@
                         },
                         {
                             "style": "portrait",
+                            "narrate": true,
                             "text": "Welcome aboard, {{QBLPlayerName}}! I am Captain Vega. This ship is yours to explore.",
                             "speaker": "character",
                             "character_id": 1,
@@ -2256,6 +2306,7 @@
                         },
                         {
                             "style": "portrait",
+                            "narrate": true,
                             "text": "The mission consoles are along the back wall. The laboratory is through the east door, and the observation deck is up the ramp.",
                             "speaker": "character",
                             "character_id": 1,
@@ -2267,6 +2318,7 @@
                         },
                         {
                             "style": "portrait",
+                            "narrate": true,
                             "text": "The main corridor, to the south, leads to the crew quarters, the hydroponics bay, the engine room and the marketplace. The lift on the west side takes you back to the planet.",
                             "speaker": "character",
                             "character_id": 1,
@@ -2278,6 +2330,7 @@
                         },
                         {
                             "style": "portrait",
+                            "narrate": true,
                             "text": "Thank you, Captain. I will get to work.",
                             "id": 25014,
                             "event_id": 250,
@@ -2400,6 +2453,7 @@
             "shortname": "observation-deck",
             "scenario_id": 1,
             "sequence": 4,
+            "group_id": 1,
             "subtitle": "Observation deck",
             "is_intro_scene": false,
             "zoom": 1,
@@ -2517,6 +2571,7 @@
             "shortname": "wilting-marsh",
             "scenario_id": 1,
             "sequence": 5,
+            "group_id": 2,
             "subtitle": "Wilting Marsh",
             "is_intro_scene": false,
             "zoom": 1,
@@ -2711,6 +2766,7 @@
                             "media": 23
                         },
                         {
+                            "placement": "background",
                             "id": 9,
                             "event_id": 720,
                             "type": "image",
@@ -2732,6 +2788,14 @@
                         }
                     ],
                     "actions": [
+                        {
+                            "entry_id": "sample",
+                            "id": 72091,
+                            "event_id": 720,
+                            "type": "glossary",
+                            "sequence": 0,
+                            "blocking": false
+                        },
                         {
                             "name": "sample_marsh",
                             "operator": "set",
@@ -2826,6 +2890,7 @@
             "shortname": "lander-gully",
             "scenario_id": 1,
             "sequence": 6,
+            "group_id": 2,
             "subtitle": "Lander Gully",
             "is_intro_scene": false,
             "zoom": 1,
@@ -2966,6 +3031,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 12,
                             "event_id": 620,
                             "type": "image",
@@ -3047,6 +3113,7 @@
                             "media": 23
                         },
                         {
+                            "placement": "background",
                             "id": 15,
                             "event_id": 630,
                             "type": "image",
@@ -3162,6 +3229,7 @@
             "shortname": "spring-meadow",
             "scenario_id": 1,
             "sequence": 7,
+            "group_id": 2,
             "subtitle": "Spring Meadow",
             "is_intro_scene": false,
             "zoom": 1,
@@ -3273,6 +3341,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 18,
                             "event_id": 520,
                             "type": "image",
@@ -3344,6 +3413,7 @@
                             "media": 22
                         },
                         {
+                            "placement": "background",
                             "id": 21,
                             "event_id": 530,
                             "type": "image",
@@ -3491,6 +3561,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 69,
                             "event_id": 550,
                             "type": "image",
@@ -3545,6 +3616,8 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "solid": true,
+                            "solid_radius": 110,
                             "id": 71,
                             "event_id": 551,
                             "type": "image",
@@ -3601,6 +3674,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 73,
                             "event_id": 552,
                             "type": "image",
@@ -3856,6 +3930,7 @@
             "shortname": "laboratory",
             "scenario_id": 1,
             "sequence": 8,
+            "group_id": 1,
             "subtitle": "Science laboratory",
             "is_intro_scene": false,
             "zoom": 1.3,
@@ -3923,6 +3998,7 @@
                 }
             ],
             "scale_areas": [],
+            "team_only": true,
             "items": [],
             "characters": [],
             "start_events": [
@@ -4088,6 +4164,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 24,
                             "event_id": 820,
                             "type": "image",
@@ -4109,6 +4186,14 @@
                         }
                     ],
                     "actions": [
+                        {
+                            "entry_id": "ph",
+                            "id": 82090,
+                            "event_id": 820,
+                            "type": "glossary",
+                            "sequence": 0,
+                            "blocking": false
+                        },
                         {
                             "target_event_id": 821,
                             "id": 82001,
@@ -4169,6 +4254,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 26,
                             "event_id": 830,
                             "type": "image",
@@ -4190,6 +4276,14 @@
                         }
                     ],
                     "actions": [
+                        {
+                            "entry_id": "cell",
+                            "id": 83090,
+                            "event_id": 830,
+                            "type": "glossary",
+                            "sequence": 0,
+                            "blocking": false
+                        },
                         {
                             "name": "scope_menu",
                             "operator": "set",
@@ -4258,6 +4352,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 28,
                             "event_id": 840,
                             "type": "image",
@@ -4339,6 +4434,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 30,
                             "event_id": 850,
                             "type": "image",
@@ -4400,6 +4496,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 32,
                             "event_id": 860,
                             "type": "image",
@@ -4499,6 +4596,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 35,
                             "event_id": 866,
                             "type": "image",
@@ -5964,6 +6062,7 @@
             "shortname": "corridor",
             "scenario_id": 1,
             "sequence": 9,
+            "group_id": 1,
             "subtitle": "Starship: main corridor",
             "is_intro_scene": false,
             "zoom": 1,
@@ -6249,6 +6348,7 @@
             "shortname": "crew-quarters",
             "scenario_id": 1,
             "sequence": 10,
+            "group_id": 1,
             "subtitle": "Starship: crew quarters",
             "is_intro_scene": false,
             "zoom": 1,
@@ -6357,6 +6457,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 42,
                             "event_id": 1020,
                             "type": "image",
@@ -6401,6 +6502,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 44,
                             "event_id": 1030,
                             "type": "image",
@@ -6445,6 +6547,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 86,
                             "event_id": 1040,
                             "type": "image",
@@ -6506,6 +6609,7 @@
             "shortname": "hydroponics",
             "scenario_id": 1,
             "sequence": 11,
+            "group_id": 1,
             "subtitle": "Starship: hydroponics bay",
             "is_intro_scene": false,
             "zoom": 1,
@@ -6613,6 +6717,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 46,
                             "event_id": 1120,
                             "type": "image",
@@ -6634,6 +6739,14 @@
                         }
                     ],
                     "actions": [
+                        {
+                            "entry_id": "hydroponics",
+                            "id": 112090,
+                            "event_id": 1120,
+                            "type": "glossary",
+                            "sequence": 0,
+                            "blocking": false
+                        },
                         {
                             "content": "<h3>Plants without soil</h3><p>These plants grow with their roots in water. Everything they would take from soil is dissolved in it.</p><p>The ship keeps this water at about <strong>pH 6</strong>, close to neutral. Remember that number: it tells you what healthy plants are used to.</p>",
                             "id": 112001,
@@ -6657,6 +6770,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 48,
                             "event_id": 1130,
                             "type": "image",
@@ -6701,6 +6815,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 50,
                             "event_id": 1140,
                             "type": "image",
@@ -6949,6 +7064,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 82,
                             "event_id": 1160,
                             "type": "image",
@@ -7005,6 +7121,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 84,
                             "event_id": 1161,
                             "type": "image",
@@ -7064,6 +7181,7 @@
             "shortname": "engine-room",
             "scenario_id": 1,
             "sequence": 12,
+            "group_id": 1,
             "subtitle": "Starship: engine room",
             "is_intro_scene": false,
             "zoom": 1,
@@ -7182,6 +7300,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 53,
                             "event_id": 1220,
                             "type": "image",
@@ -7226,6 +7345,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 55,
                             "event_id": 1230,
                             "type": "image",
@@ -7270,6 +7390,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 57,
                             "event_id": 1240,
                             "type": "image",
@@ -7323,6 +7444,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 75,
                             "event_id": 1250,
                             "type": "image",
@@ -7389,6 +7511,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 77,
                             "event_id": 1251,
                             "type": "image",
@@ -7431,6 +7554,7 @@
             "shortname": "marketplace",
             "scenario_id": 1,
             "sequence": 13,
+            "group_id": 1,
             "subtitle": "Starship: marketplace",
             "is_intro_scene": false,
             "zoom": 1,
@@ -7549,6 +7673,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 60,
                             "event_id": 1320,
                             "type": "image",
@@ -7592,6 +7717,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 62,
                             "event_id": 1330,
                             "type": "image",
@@ -7635,6 +7761,7 @@
                     "activate_by_trigger": true,
                     "labels": [
                         {
+                            "placement": "background",
                             "id": 64,
                             "event_id": 1340,
                             "type": "image",

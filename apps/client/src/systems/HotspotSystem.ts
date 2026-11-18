@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { inHotspot, labelMediaId, revealAmount, type Hotspot, type Label } from '@qbl/shared';
+import { inHotspot, labelMediaId, labelPlacement, revealAmount, type Circle, type Hotspot, type Label } from '@qbl/shared';
 import { ensureAnimation, ensureSpritesheet, mediaKey } from '../core/assets';
 import { Depth } from '../core/depth';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
@@ -9,7 +9,7 @@ type LabelObject = Phaser.GameObjects.Text | Phaser.GameObjects.Image | Phaser.G
 
 interface Entry {
   hotspot: Hotspot;
-  labels: Array<{ object: LabelObject; animation?: string; text?: string }>;
+  labels: Array<{ object: LabelObject; animation?: string; text?: string; solid?: number }>;
   /** Walk-in hotspots fire on entry; this remembers whether the avatar is already inside. */
   inside: boolean;
   available: boolean;
@@ -55,7 +55,7 @@ export class HotspotSystem implements SceneSystem {
     if (label.type === 'text') {
       const text = label.text ?? '';
       const object = scene.add.text(label.position_x, label.position_y, ctx.text(text), LABEL_STYLE).setOrigin(0.5).setScale(sx, sy);
-      return { object: object.setDepth(Depth.label), text };
+      return { object: this.stand(object, label), text };
     }
     const id = labelMediaId(label);
     if (id == null || !scene.textures.exists(mediaKey(id))) return null;
@@ -63,20 +63,60 @@ export class HotspotSystem implements SceneSystem {
     if (label.type === 'spritemap') {
       const sheet = ensureSpritesheet(scene, id, label);
       if (!sheet) return null;
-      const object = scene.add.sprite(label.position_x, label.position_y, sheet, label.spritemap_tile_sequence?.[0] ?? 0).setScale(sx, sy).setDepth(Depth.label);
+      const object = scene.add.sprite(label.position_x, label.position_y, sheet, label.spritemap_tile_sequence?.[0] ?? 0).setScale(sx, sy);
       const animation = ensureAnimation(scene, sheet, label);
       if (label.spritemap_show_first_as_fixed === false) object.play(animation);
-      return { object, animation };
+      return { object: this.stand(object, label), animation, solid: this.solidRadius(object, label) };
     }
     const object = scene.add
       .image(label.position_x, label.position_y, mediaKey(id))
-      .setScale(sx * (media?.scale_x ?? 1), sy * (media?.scale_y ?? 1))
-      .setDepth(Depth.label);
-    if (hotspot.activate_by_trigger) {
+      .setScale(sx * (media?.scale_x ?? 1), sy * (media?.scale_y ?? 1));
+    this.stand(object, label);
+    const solid = this.solidRadius(object, label);
+    // Something players walk around holds still; a pulse would make its edge move under their feet.
+    if (hotspot.activate_by_trigger && solid == null) {
       // A gentle pulse marks things that can be clicked.
       scene.tweens.add({ targets: object, scaleX: object.scaleX * 1.12, scaleY: object.scaleY * 1.12, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
-    return { object };
+    return { object, solid };
+  }
+
+  /**
+   * Give a label its place among the players. Unless it says otherwise it is part of the
+   * background: every player is drawn in front of it, wherever they stand. A label that asks to
+   * be an object stands on its bottom edge (whoever is lower on the screen is in front of it,
+   * whoever is higher behind it), and one that asks for the front floats over the whole scene.
+   */
+  private stand<T extends LabelObject>(object: T, label: Label): T {
+    const placement = labelPlacement(label);
+    if (placement === 'front') object.setDepth(Depth.label);
+    else if (placement === 'background') object.setDepth(Depth.floor + 20);
+    else object.setDepth(label.position_y + object.displayHeight / 2);
+    return object;
+  }
+
+  /** How wide the obstacle of a solid label is, or undefined when players walk through it. */
+  private solidRadius(object: LabelObject, label: Label): number | undefined {
+    if (!label.solid) return undefined;
+    return label.solid_radius != null && label.solid_radius > 0 ? label.solid_radius : object.displayWidth * 0.35;
+  }
+
+  /**
+   * Round obstacles for solid labels that are there right now: a rock that has been cleared
+   * away (its hotspot's conditions no longer hold) no longer blocks. The circle sits at the
+   * picture's base, a little up from its bottom edge, so a player can stand just in front.
+   */
+  obstacles(): Circle[] {
+    const out: Circle[] = [];
+    for (const e of this.entries) {
+      if (!e.available) continue;
+      for (const l of e.labels) {
+        if (l.solid == null) continue;
+        const base = l.object.y + l.object.displayHeight / 2;
+        out.push({ x: l.object.x, y: base - l.solid * 0.6, radius: l.solid });
+      }
+    }
+    return out;
   }
 
   /** Re-evaluate conditions. Hotspots whose conditions fail show nothing and cannot fire. */

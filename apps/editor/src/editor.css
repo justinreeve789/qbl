@@ -189,6 +189,9 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .area.blocked { fill: rgba(214, 69, 69, 0.28); stroke: var(--blocked); }
 .area.selected { stroke-width: 3; stroke-dasharray: 6 4; }
 .scale-area { fill: rgba(255, 210, 74, 0.07); stroke: #ffd24a; stroke-width: 1.5; stroke-dasharray: 2 5; cursor: pointer; }
+.shadow-spot { fill: transparent; stroke: #9aa0ff; stroke-width: 1.5; stroke-dasharray: 3 4; cursor: pointer; }
+.shadow-spot.selected { stroke-width: 3; stroke-dasharray: none; cursor: move; }
+.shadow-spot-shade { fill: #05060f; pointer-events: none; }
 .scale-area.selected { stroke-width: 3; stroke-dasharray: 8 5; cursor: move; fill: rgba(255, 210, 74, 0.12); }
 .scale-figure { pointer-events: none; }
 .scale-figure rect, .scale-figure circle { fill: rgba(255, 210, 74, 0.55); stroke: #1a1a1a; stroke-width: 1; }
@@ -380,3 +383,31 @@ dialog.modal .field { margin-bottom: 14px; }
 .choice strong { display: block; }
 .choice span span { color: var(--muted); font-size: 12.5px; }
 .card.other { border-top-color: #6b7a99; }
+
+/* Icons: Twemoji, through the Twemoji Awesome stylesheet (src/icons.ts). */
+.icon-label.twa { font-size: 1.15em; margin: 0 0.3em 0 0; font-style: normal; }
+
+/* Scene groups and who is seen in a scene */
+.scene-group { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.scene-group select { flex: 1; min-width: 0; }
+.badge.team { background: rgba(120, 160, 255, 0.18); color: #a9c4ff; }
+
+/* Reports */
+.report-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.report-stat { padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); }
+.report-stat strong { display: block; font-size: 22px; }
+.report-stat span { font-size: 12px; opacity: 0.75; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.report-table th, .report-table td { padding: 7px 8px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+.report-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; white-space: nowrap; }
+.report-table td.num, .report-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.report-table tr.detail td { background: rgba(127, 127, 127, 0.07); }
+.report-table button.link { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.report-bar { display: inline-block; width: 70px; height: 7px; border-radius: 4px; background: rgba(127, 127, 127, 0.25); overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.report-bar i { display: block; height: 100%; background: #3b8f4a; }
+.report-scroll { overflow-x: auto; }
+.report-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.report-detail h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.7; }
+.report-detail ul { margin: 0; padding-left: 18px; }
+.message-log { max-height: 480px; overflow: auto; }
+.message-log .private { font-style: italic; }

@@ -1,5 +1,5 @@
-import type { Id, Scenario, Session, RewardMessage } from '@qbl/shared';
-import type { Backend, InstanceData, User } from './Backend.js';
+import type { ActivityEntry, Id, MessageEntry, Scenario, Session, RewardMessage } from '@qbl/shared';
+import type { Access, Backend, InstanceData, User } from './Backend.js';
 
 /**
  * Talks to the QBL Laravel API's internal endpoints. Every request carries
@@ -39,9 +39,18 @@ export class ApiBackend implements Backend {
     return { ...data.user, id: String(data.user.id) };
   }
 
-  async mayJoin(scenarioId: Id, user: User, group: string): Promise<boolean> {
-    const data = await this.call<{ allowed: boolean }>('GET', `/scenarios/${scenarioId}/access/${encodeURIComponent(user.id)}?group=${encodeURIComponent(group)}`);
-    return data?.allowed === true;
+  async mayJoin(scenarioId: Id, user: User, group: string): Promise<Access> {
+    const data = await this.call<{ allowed: boolean; party?: string; team_name?: string }>('GET', `/scenarios/${scenarioId}/access/${encodeURIComponent(user.id)}?group=${encodeURIComponent(group)}`);
+    // An API from before teams shared a room does not name one: each instance is then its own.
+    return { allowed: data?.allowed === true, party: data?.party ?? group, team_name: data?.team_name };
+  }
+
+  async logActivity(scenarioId: Id, entries: ActivityEntry[]): Promise<void> {
+    await this.call('POST', `/scenarios/${scenarioId}/activity`, { entries });
+  }
+
+  async logMessages(scenarioId: Id, entries: MessageEntry[]): Promise<void> {
+    await this.call('POST', `/scenarios/${scenarioId}/messages`, { entries });
   }
 
   async loadSession(scenarioId: Id, userId: string, group: string): Promise<Session | null> {

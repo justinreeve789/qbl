@@ -1,4 +1,4 @@
-import type { Progress, Scenario, ShopItem, User } from '@qbl/shared';
+import type { PlayerProfile, Progress, Scenario, ShopItem, User } from '@qbl/shared';
 import { config } from '../config';
 import type { AvatarChoice, Mission } from '../home';
 
@@ -131,9 +131,19 @@ export class Api {
   }
 
   /** The scenario document, with this player's save data for that instance (group) of it in `session`. */
-  async play(shortname: string, group = 'public'): Promise<Scenario> {
-    const query = group === 'public' ? '' : `?group=${encodeURIComponent(group)}`;
+  async play(shortname: string, group = 'public', party?: string | null): Promise<Scenario> {
+    const query = group === 'public' && !party ? '' : `?group=${encodeURIComponent(group)}${party ? `&party=${encodeURIComponent(party)}` : ''}`;
     return (await this.call<{ scenario: Scenario }>('GET', `/scenarios/${encodeURIComponent(shortname)}/play${query}`)).scenario;
+  }
+
+  /** What others may see of a player: avatar, look, rank, stars, XP and badges. Null where there are no profiles, or none for them. */
+  async profile(userId: string): Promise<PlayerProfile | null> {
+    if (!/^\d+$/.test(userId)) return null;
+    try {
+      return (await this.call<{ profile: PlayerProfile }>('GET', `/players/${userId}/profile`)).profile;
+    } catch {
+      return null;
+    }
   }
 
   /** What the player can play: public missions and those assigned to them. Null where the backend has no such list. */

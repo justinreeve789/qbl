@@ -31,7 +31,9 @@ class QblApiTest extends TestCase
         $this->assertCount(13, $document['scenes']);
 
         $shipped = json_decode(file_get_contents(base_path('../../scenarios/starship.json')), true);
-        unset($document['session']);
+        // Added as the document is served: the caller's save, and the instance they are about to join.
+        $this->assertSame(['group' => 'public', 'party' => 'public'], $document['instance']);
+        unset($document['session'], $document['instance']);
         $this->assertEquals($shipped, $document, 'The seeded, published JSON is the one shipped in scenarios/starship.json.');
     }
 

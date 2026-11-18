@@ -8,6 +8,7 @@ import {
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 import { sheetEditor } from './sheet';
 import { apngToSheet } from '../apng';
+import { emojiIcon } from '../icons';
 
 /** The scenario-wide lists: media, variables, items, characters and objectives. */
 
@@ -91,7 +92,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
         mediaTab = key;
         store.emit();
       },
-    }, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, icon), label, h('small', null, count(key)))));
+    }, emojiIcon(icon), label, h('small', null, count(key)))));
 
   const cards = store.rows('media').filter((m) => mediaTab === 'all' || categories.get(m.id) === mediaTab).map((media) => {
     const id = media.id;
