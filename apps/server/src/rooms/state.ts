@@ -18,6 +18,8 @@ export const Player = schema({
   connected: t.boolean(),
   /** The instance the player is in: their team's key, their assignment's, or "public". */
   team: t.string(),
+  /** What that team is called, or "" for an assignment's or the public instance. */
+  team_name: t.string(),
   hidden: t.boolean(),
   look: t.string(),
   /** The animation the avatar was last asked to play, as name:count. */

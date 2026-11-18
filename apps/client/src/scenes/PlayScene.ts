@@ -127,7 +127,12 @@ export class PlayScene extends Phaser.Scene {
       for (const system of this.systems) system.variablesChanged?.();
     });
     // What other players' events show to the whole scene.
-    const stopShows = ctx.connection.on('show', (m) => engine.watch(m.event_id, m.action_id, m.session_id));
+    const stopShows = ctx.connection.on('show', (m) => {
+      // Not from a team a teacher has switched off.
+      const from = ctx.connection.state.players.get(m.session_id);
+      if (from && !ctx.sees(from)) return;
+      engine.watch(m.event_id, m.action_id, m.session_id);
+    });
     this.stopWatching = () => {
       stopVars();
       stopShows();

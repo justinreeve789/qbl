@@ -89,7 +89,7 @@ function room() {
     state: { players: state.players, items: scopedMap(state.items, team), vars: scopedMap(state.vars, team) },
     now: () => clock.now, newPlayer: () => ({}) as PlayerRec, newItem: () => ({}) as ItemRec,
   }, null, team);
-  return { state, clock, red: world('t1'), blue: world('t2') };
+  return { state, clock, red: world('t1'), blue: world('t2'), whole: world('a1') };
 }
 const user = (id: string): User => ({ id, name: id, role: 'student' });
 
@@ -134,6 +134,36 @@ test('teams meet where a scene allows it and are alone where it does not', () =>
   assert.equal(canSee(r1, b1, true), false);
   assert.equal(canSee(r1, b1, false), true);
   assert.equal(canSee(r1, { ...b1, scene_id: 3 }, false), false);
+});
+
+test('a teacher sees every team where a scene is limited to teams; students do not see the teacher', () => {
+  const { state, clock, red, blue, whole } = room();
+  red.teamName = 'Red';
+  red.addPlayer('r1', user('r1'), null);
+  red.addPlayer('r2', user('r2'), null);
+  blue.addPlayer('b1', user('b1'), null);
+  // The teacher looks in from the assignment's own instance: in the teams' room, in no team's game.
+  whole.addPlayer('teach', { id: 'teach', name: 'Ms T', role: 'teacher' }, null);
+  assert.equal(state.players.get('r1')!.team_name, 'Red');
+  assert.equal(state.players.get('b1')!.team_name, '');
+
+  clock.now += 1000;
+  for (const [w, id] of [[red, 'r1'], [red, 'r2'], [blue, 'b1'], [whole, 'teach']] as const) assert.ok(w.changeScene(id, { scene_id: 2 }));
+  const [r1, b1, teacher] = [state.players.get('r1')!, state.players.get('b1')!, state.players.get('teach')!];
+  // The teacher sees both teams; neither team sees the other, nor the teacher.
+  assert.equal(canSee(teacher, r1, true), true);
+  assert.equal(canSee(teacher, b1, true), true);
+  assert.equal(canSee(r1, teacher, true), false);
+  assert.equal(canSee(b1, r1, true), false);
+  // What a student says or shows reaches their team and the teacher, not the other team.
+  assert.deepEqual(red.audience('r1').sort(), ['r2', 'teach']);
+  assert.deepEqual(blue.audience('b1'), ['teach']);
+  assert.deepEqual(red.show('r1', { event_id: 40, action_id: 41 })!.sort(), ['r2', 'teach']);
+  // What the teacher says reaches nobody here: no team sees them.
+  assert.deepEqual(whole.audience('teach'), []);
+  // An admin is treated as a teacher; a teacher still sees only their own scene.
+  assert.equal(canSee({ ...teacher, role: 'admin' }, b1, true), true);
+  assert.equal(canSee(teacher, { ...b1, scene_id: 3 }, true), false);
 });
 
 test('read-aloud words: where they are, which one a voice has reached, and an even pace', () => {

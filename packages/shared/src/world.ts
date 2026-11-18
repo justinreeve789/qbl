@@ -31,6 +31,8 @@ export interface PlayerRec {
    * teams can be in one room; scenes limited to a team show a player only those with the same value.
    */
   team?: string;
+  /** What the player's team is called ("Comets"), or empty where the instance has no name. */
+  team_name?: string;
   /** True while an avatar action has hidden this player. Cleared on every scene change. */
   hidden: boolean;
   /** Equipped shop item ids, comma-separated. Drawn on the avatar by every client. */
@@ -92,6 +94,9 @@ export class World {
    * `team` names the instance this world is: several can run side by side in one room, each over
    * its own shared variables and items (see `scopedMap`) and the room's one list of players.
    */
+  /** What this instance's team is called, when it is a named team. Copied onto its players. */
+  teamName = '';
+
   constructor(readonly scenario: Scenario, private deps: WorldDeps, instance: InstanceData | null = null, readonly team = '') {
     this.index = new ScenarioIndex(scenario);
     const { state } = deps;
@@ -162,6 +167,7 @@ export class World {
     p.attachments = attachments.join(',');
     p.connected = true;
     p.team = this.team;
+    p.team_name = this.teamName;
     p.hidden = false;
     p.anim = '';
     p.look = cleanLook(user.look);
@@ -266,7 +272,8 @@ export class World {
 
   /**
    * The other players who can see this one: those in the same scene, and, where the scene is
-   * limited to teams, in the same team. They are who a chat message or a shown event reaches.
+   * limited to teams, in the same team, or a teacher or admin (who sees every team). They are
+   * who a chat message or a shown event reaches.
    */
   audience(sessionId: string): string[] {
     const p = this.deps.state.players.get(sessionId);
@@ -275,7 +282,7 @@ export class World {
     const teamOnly = sceneTeamOnly(this.scenario, scene);
     const others: string[] = [];
     this.deps.state.players.forEach((other, id) => {
-      if (id !== sessionId && canSee(p, other, teamOnly)) others.push(id);
+      if (id !== sessionId && canSee(other, p, teamOnly)) others.push(id);
     });
     return others;
   }
@@ -467,9 +474,18 @@ function blocksForEveryone(item: Item): boolean {
   return item.blocking === true && !(item.conditions && item.conditions.length > 0);
 }
 
-/** Whether two players are shown to each other: same scene, and the same team where the scene asks for it. */
-export function canSee(a: Pick<PlayerRec, 'scene_id' | 'team'>, b: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
-  return a.scene_id === b.scene_id && (!teamOnly || (a.team ?? '') === (b.team ?? ''));
+/** Teachers and admins: in a scene limited to teams they still see every team. */
+export function isStaff(role: string | undefined): boolean {
+  return role === 'teacher' || role === 'admin';
+}
+
+/**
+ * Whether `viewer` is shown `subject`: they are in the same scene and, where the scene is
+ * limited to teams, in the same team. A teacher or admin sees every team there; students
+ * still see only their own (so they see a teacher only one who joined their team's game).
+ */
+export function canSee(viewer: Pick<PlayerRec, 'scene_id' | 'team'> & { role?: string }, subject: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
+  return viewer.scene_id === subject.scene_id && (!teamOnly || isStaff(viewer.role) || (viewer.team ?? '') === (subject.team ?? ''));
 }
 
 const SCOPE_SEPARATOR = '|';

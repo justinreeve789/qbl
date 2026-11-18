@@ -304,14 +304,20 @@ test('publish from any page, drag actions into a new order, and fold the outline
   await page.waitForFunction(() => document.querySelector('details.action .tag')?.textContent?.includes('Award'));
   await saved();
   assert.deepEqual(await tags(), [before[2], before[0], before[1]]);
-  // Back where it was, with the buttons, which also work from the keyboard.
-  await page.click('details.action:nth-of-type(1) > summary .tag');
-  await page.click('details.action:nth-of-type(1) >> text=↓ Later');
-  await page.waitForFunction(() => document.querySelectorAll('details.action .tag')[1]?.textContent?.includes('Award'));
-  await page.click('details.action:nth-of-type(2) >> text=↓ Later');
+  // Back where it was: dragged below the last card. Dragging is the only way; there are no
+  // "Earlier" / "Later" buttons any more.
+  const grip2 = await page.locator('details.action:nth-of-type(1) .grip').boundingBox();
+  const last = await page.locator('details.action:nth-of-type(3)').boundingBox();
+  await page.mouse.move(grip2!.x + grip2!.width / 2, grip2!.y + grip2!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(last!.x + 60, last!.y + last!.height / 2, { steps: 6 });
+  await page.mouse.move(last!.x + 60, last!.y + last!.height - 3, { steps: 4 });
+  await page.mouse.up();
   await page.waitForFunction(() => document.querySelectorAll('details.action .tag')[2]?.textContent?.includes('Award'));
   await saved();
   assert.deepEqual(await tags(), before);
+  await page.click('details.action:nth-of-type(1) > summary .tag');
+  assert.equal(await page.locator('details.action button', { hasText: /Earlier|Later/ }).count(), 0);
 
   // The outline lists each kind of thing A to Z, and each list folds away and stays folded.
   const hotspots = await page.locator('[data-section="Hotspots"] .outline-item > span').allInnerTexts();

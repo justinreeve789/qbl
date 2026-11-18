@@ -64,6 +64,8 @@ export interface UiPort {
    * player's profile; `on.message`, when private messages are allowed, starts writing to them.
    */
   players(list: PlayerRow[], on: { profile(id: string): void; message?(id: string): void }): void;
+  /** A teacher's teams in a scene limited to teams, to show or hide. Null: none to offer. */
+  teams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void): void;
   /**
    * The messages panel: whether what is said in the scene can be typed there, and whether
    * players can be written to privately. `send` gets the thread (`scene`, or a player's
@@ -102,6 +104,18 @@ export interface PlayerRow {
   /** Otherwise, where they are: the scene's name. */
   where?: string;
   connected: boolean;
+}
+
+/** One team in the scene a teacher is looking at. */
+export interface TeamRow {
+  /** The team's instance key (`t7`, `a12`, `public`). */
+  key: string;
+  name: string;
+  /** Its players in this scene, and in the whole game. */
+  here: number;
+  total: number;
+  /** Whether its players are shown. */
+  shown: boolean;
 }
 
 export interface ChatLine {

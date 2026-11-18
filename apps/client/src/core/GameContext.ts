@@ -1,7 +1,7 @@
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
-  canSee, escapeHtml, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
+  canSee, escapeHtml, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
   type GlossaryEntry, type Id, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
 } from '@qbl/shared';
 import type { AwardAction } from '@qbl/shared';
@@ -78,13 +78,35 @@ export class GameContext {
 
   /**
    * Whether another player is shown to this one: they are in the same scene, and, where the
-   * scene is limited to teams (by itself or by its group), in the same team.
+   * scene is limited to teams (by itself or by its group), in the same team. A teacher or admin
+   * sees every team there, less the teams they have switched off (see `hiddenTeams`).
    */
   sees(other: Pick<PlayerRec, 'scene_id' | 'team'>): boolean {
     const me = this.connection.me;
     const scene = me ? this.index.scene(me.scene_id) : undefined;
-    return !!me && !!scene && canSee(me, other, sceneTeamOnly(this.scenario, scene));
+    if (!me || !scene) return false;
+    const teamOnly = sceneTeamOnly(this.scenario, scene);
+    if (!canSee(me, other, teamOnly)) return false;
+    return !(teamOnly && this.staff && this.hiddenTeams.has(other.team ?? ''));
   }
+
+  /** A teacher or admin: in scenes limited to teams they see every team, and can choose which. */
+  get staff(): boolean {
+    return isStaff(this.connection.me?.role);
+  }
+
+  /** Whether the scene this player is in shows each player only their own team. */
+  get teamOnlyHere(): boolean {
+    const me = this.connection.me;
+    const scene = me ? this.index.scene(me.scene_id) : undefined;
+    return !!scene && sceneTeamOnly(this.scenario, scene);
+  }
+
+  /**
+   * The teams (by key) a teacher has switched off in scenes limited to teams: their players, and
+   * what those players say and do, are not shown. Empty, the default, shows every team.
+   */
+  readonly hiddenTeams = new Set<string>();
 
   /** Set by the players feature: open the profile of the player with this session id. */
   showProfile: ((sessionId: string) => void) | null = null;

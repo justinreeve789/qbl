@@ -212,6 +212,8 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     const scenario = this.scenario;
     const world = await this.instance(group);
     if (team_name) this.teamNames.set(group, team_name);
+    // Its players carry the team's name, so a teacher looking in can tell the teams apart.
+    world.teamName = this.teamNames.get(group) ?? '';
     const saved = scenario.enable_save_session !== false
       ? await services.backend.loadSession(scenario.id, user.id, group).catch(() => null)
       : null;

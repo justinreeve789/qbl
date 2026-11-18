@@ -112,6 +112,15 @@ export interface HomeOptions {
  * The page a player lands on: every mission they can play. Assigned ones first (a teacher gave
  * them, perhaps with a due date and a team), then the ones open to everyone.
  */
+/** What the missions page says about who is signed in, where it explains what is (not) listed. */
+export function whoNotice(role: string): string | null {
+  if (role === 'guest') return 'You are playing as a guest. Sign in with your own account to see the missions your teacher assigned you.';
+  if (role === 'teacher' || role === 'admin') {
+    return 'You are signed in as a teacher. Students see the missions you assign when they sign in with their own accounts; the game and the editor share one sign-in in each browser. To watch a class, use "Look in" on Classes in the editor.';
+  }
+  return null;
+}
+
 export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   const { user, missions, avatars } = options;
   let avatarId = options.avatarId;
@@ -138,6 +147,11 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   out.addEventListener('click', () => options.onSignOut());
   header.append(who, out);
   page.appendChild(header);
+
+  // Missions a teacher assigns reach a student's own account. Say so where the page would
+  // otherwise look as if they were missing: a guest, or a teacher who opened the game.
+  const notice = whoNotice(user.role);
+  if (notice) page.appendChild(el('p', 'qbl-home-notice', notice));
 
   // The character picker opens under the header and closes once one is chosen.
   const picker = el('section', 'qbl-home-picker');

@@ -4,7 +4,7 @@ import { placeBubble, type BubbleAnchor } from './bubble';
 import { icon } from './icons';
 import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
-import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, ShopView, UiPort } from './UiPort';
+import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -362,6 +362,10 @@ export class Ui implements UiPort {
 
   players(list: PlayerRow[], on: { profile(id: string): void; message?(id: string): void }) {
     this.sidebar.setPlayers(list, on);
+  }
+
+  teams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void) {
+    this.sidebar.setTeams(list, onToggle);
   }
 
   messaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) {

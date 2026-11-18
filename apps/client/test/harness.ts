@@ -8,7 +8,7 @@ import { PlayScene } from '../src/scenes/PlayScene';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { MovesFeature } from '../src/features/MovesFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
-import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
+import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
@@ -131,6 +131,13 @@ export class HeadlessUi implements UiPort {
   players(list: PlayerRow[], on: { profile(id: string): void; message?(id: string): void }) {
     this.playerList = list;
     this.onPlayer = on;
+  }
+  /** The teams box as last drawn (null: not offered), and what ticking a box does. */
+  teamList: TeamRow[] | null = null;
+  onTeam: (key: string, shown: boolean) => void = () => {};
+  teams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void) {
+    this.teamList = list;
+    this.onTeam = onToggle;
   }
   /** The messages panel: how it is set up, every line shown, and which conversation was opened. */
   messagingSetup: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;

@@ -244,7 +244,7 @@ export class OfflineConnection extends GameConnection {
   addPlayer(sessionId: string, rec: Partial<PlayerRec> & Pick<PlayerRec, 'name' | 'scene_id'>) {
     this.state.players.set(sessionId, {
       user_id: sessionId, role: 'student', avatar: this.me?.avatar ?? 0, x: 0, y: 0, facing: 'right', attachments: '', connected: true,
-      team: '', hidden: false, look: '', anim: '', ...rec,
+      team: '', team_name: '', hidden: false, look: '', anim: '', ...rec,
     });
   }
 

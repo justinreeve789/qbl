@@ -1,14 +1,15 @@
 import { CHAT_MAX_LENGTH, type IconName, type ObjectiveStatus } from '@qbl/shared';
 import { emojiIcon, icon } from './icons';
-import type { ChatLine, GlossaryRow, PlayerRow } from './UiPort';
+import type { ChatLine, GlossaryRow, PlayerRow, TeamRow } from './UiPort';
 
-export type SidebarTab = 'mission' | 'bag' | 'moves' | 'players' | 'messages' | 'glossary';
+export type SidebarTab = 'mission' | 'bag' | 'moves' | 'players' | 'teams' | 'messages' | 'glossary';
 
 const TABS: Array<{ key: SidebarTab; label: string; icon: IconName }> = [
   { key: 'mission', label: 'Mission', icon: 'mission' },
   { key: 'bag', label: 'Inventory', icon: 'bag' },
   { key: 'moves', label: 'Moves and emotes', icon: 'moves' },
   { key: 'players', label: 'Players', icon: 'players' },
+  { key: 'teams', label: 'Teams in this scene', icon: 'team' },
   { key: 'messages', label: 'Messages', icon: 'messages' },
   { key: 'glossary', label: 'Glossary', icon: 'glossary' },
 ];
@@ -57,6 +58,8 @@ export class Sidebar {
   private emotes: string[] = [];
   private onEmote: (emoji: string) => void = () => {};
   private playerRows: PlayerRow[] = [];
+  private teamRows: TeamRow[] = [];
+  private onTeam: (key: string, shown: boolean) => void = () => {};
   private onPlayer: { profile(id: string): void; message?(id: string): void } = { profile() {} };
   private messaging: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;
   private threads = new Map<string, Thread>();
@@ -190,6 +193,19 @@ export class Sidebar {
     this.draw('players');
   }
 
+  /**
+   * For a teacher in a scene limited to teams: the teams there, each with a box to show or hide
+   * its players. Null: not offered (a student, or a scene every team shares).
+   */
+  setTeams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void) {
+    this.teamRows = list ?? [];
+    this.onTeam = onToggle;
+    this.offer('teams', list != null);
+    const hidden = this.teamRows.filter((t) => !t.shown).length;
+    this.count('teams', hidden, `${hidden} team${hidden === 1 ? '' : 's'} hidden`);
+    this.draw('teams');
+  }
+
   setMessaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) {
     this.messaging = o;
     this.offer('messages', o != null && (o.scene || o.private));
@@ -296,6 +312,8 @@ export class Sidebar {
         return this.movesAndEmotes();
       case 'players':
         return [this.players()];
+      case 'teams':
+        return this.teams();
       case 'messages':
         return this.messages();
       case 'glossary':
@@ -401,6 +419,31 @@ export class Sidebar {
       list.append(li);
     }
     return list;
+  }
+
+  private teams(): HTMLElement[] {
+    const intro = el('p', 'qbl-sidebar-note', 'Students here see only their own team. You see every team: untick one to hide its players and what they say and do.');
+    if (!this.teamRows.length) return [intro, el('p', 'qbl-sidebar-empty', 'Nobody is playing yet.')];
+    const list = el('ul', 'qbl-teams');
+    for (const t of this.teamRows) {
+      const li = el('li', t.shown ? '' : 'off');
+      const label = el('label', 'qbl-team');
+      const box = el('input');
+      box.type = 'checkbox';
+      box.checked = t.shown;
+      box.dataset.team = t.key;
+      box.addEventListener('change', () => this.onTeam(t.key, box.checked));
+      const what = el('span', 'qbl-team-text');
+      what.append(el('strong', '', t.name), el('small', '', `${t.here} here · ${t.total} playing`));
+      label.append(box, what);
+      li.append(label);
+      list.append(li);
+    }
+    const all = el('button', 'qbl-chip', 'Show every team');
+    all.type = 'button';
+    all.disabled = this.teamRows.every((t) => t.shown);
+    all.addEventListener('click', () => this.teamRows.filter((t) => !t.shown).forEach((t) => this.onTeam(t.key, true)));
+    return [intro, list, all];
   }
 
   private messages(): HTMLElement[] {

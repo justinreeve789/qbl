@@ -6,6 +6,7 @@ import { playerRows } from '../src/features/PlayersFeature';
 import { ChatFeature } from '../src/features/ChatFeature';
 import { GlossaryFeature } from '../src/features/GlossaryFeature';
 import { PlayersFeature } from '../src/features/PlayersFeature';
+import { TeamsFeature, teamRows } from '../src/features/TeamsFeature';
 import type { OfflineConnection } from '../src/net/Connection';
 import { HotspotSystem } from '../src/systems/HotspotSystem';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
@@ -261,4 +262,51 @@ test('in a scene limited to teams a player sees only their own team', async () =
   assert.ok(remote().get('ben'), 'the teammate is there');
   assert.equal(remote().get('dee'), undefined, 'the other team is not shown');
   assert.deepEqual(playerRows(g.ctx).map((p) => [p.name, p.here]), [['Tester', false], ['Ben', true], ['Dee', false]], 'though the players list still says where they are');
+  assert.equal(teamRows(g.ctx), null, 'a student has no teams to choose from');
+});
+
+test('a teacher sees every team in a scene limited to teams, and can hide a team and all it does', async () => {
+  const g = new Game(mission(), { id: 'u9', name: 'Ms T', role: 'teacher' });
+  const teams = new TeamsFeature();
+  for (const feature of [new ChatFeature(), teams]) stops.push(feature.start(g.ctx));
+  await g.wait(100);
+  const room = offline(g);
+  room.addPlayer('ann', { name: 'Ann', scene_id: 1, x: 500, y: 450, team: 't1', team_name: 'Red' });
+  room.addPlayer('dee', { name: 'Dee', scene_id: 1, x: 700, y: 450, team: 't2', team_name: 'Blue' });
+  await g.wait(100);
+  teams.refresh();
+  assert.equal(g.ui.teamList, null, 'on the deck every team sees every other: nothing to choose');
+
+  local(g).walkTo({ x: 1188, y: 400 });
+  await g.hold([], () => g.sceneName === 'lab');
+  room.state.players.get('ann')!.scene_id = 2;
+  room.state.players.get('dee')!.scene_id = 2;
+  await g.wait(100);
+  teams.refresh();
+  const remote = () => g.scene.system(RemotePlayersSystem);
+  assert.ok(remote().get('ann') && remote().get('dee'), 'in the lab the teacher still sees both teams');
+  assert.deepEqual(g.ui.teamList!.map((t) => [t.key, t.name, t.here, t.total, t.shown]), [['t2', 'Blue', 1, 1, true], ['t1', 'Red', 1, 1, true]]);
+
+  // Untick Blue: Dee goes, and what Dee says and shows the scene is not shown either.
+  g.ui.onTeam('t2', false);
+  await g.wait(50);
+  assert.ok(remote().get('ann'));
+  assert.equal(remote().get('dee'), undefined);
+  assert.equal(g.ui.teamList!.find((t) => t.key === 't2')!.shown, false);
+  const say = (from: string, text: string) => (room as any).emit('chat', { session_id: from, text });
+  say('dee', 'blue here');
+  say('ann', 'red here');
+  assert.deepEqual(g.ui.lines.map((l) => [l.from, l.text]), [['Ann', 'red here']]);
+
+  // Tick it again and Dee is back.
+  g.ui.onTeam('t2', true);
+  await g.wait(50);
+  assert.ok(remote().get('dee'));
+  say('dee', 'still here');
+  assert.deepEqual(g.ui.lines.map((l) => l.from), ['Ann', 'Dee']);
+
+  // Back on the deck there is nothing to choose again.
+  room.state.players.get('local')!.scene_id = 1;
+  teams.refresh();
+  assert.equal(g.ui.teamList, null);
 });

@@ -31,6 +31,8 @@ export class ChatFeature implements GameFeature {
       connection.on('chat', (m) => {
         const from = connection.state.players.get(m.session_id);
         const mine = m.session_id === connection.sessionId;
+        // Not from a team a teacher has switched off.
+        if (!mine && from && !ctx.sees(from)) return;
         ui.message({ thread: SCENE_THREAD, threadName: 'Everyone here', from: from?.name ?? 'Someone', mine, text: m.text, at: Date.now() });
       }),
       connection.on('whisper', (m) => {
