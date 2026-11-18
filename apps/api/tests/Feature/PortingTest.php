@@ -57,7 +57,8 @@ class PortingTest extends TestCase
         $zip = new \ZipArchive;
         $zip->open($path);
         $this->assertNotFalse($zip->locateName('scenario.json'));
-        $this->assertSame(3, $zip->numFiles, 'scenario.json, the README and the one uploaded file');
+        // The demo's own five uploaded files came with the copy.
+        $this->assertSame(8, $zip->numFiles, 'scenario.json, the README, the demo\'s five uploaded files and the one uploaded here');
         $zip->close();
 
         $upload = new UploadedFile($path, 'backup.zip', 'application/zip', null, true);
@@ -66,7 +67,9 @@ class PortingTest extends TestCase
         $bundle = $this->withToken($token)->getJson("/api/editor/scenarios/{$imported['id']}")->json();
         $this->assertCount(13, $bundle['scenes']);
         $uploaded = array_values(array_filter($bundle['media'], fn ($m) => $m['filepath'] !== null));
-        $this->assertCount(1, $uploaded);
-        $this->assertFileExists(config('qbl.media_dir').'/'.$uploaded[0]['filepath']);
+        $this->assertCount(6, $uploaded);
+        foreach ($uploaded as $media) {
+            $this->assertFileExists(config('qbl.media_dir').'/'.$media['filepath']);
+        }
     }
 }
