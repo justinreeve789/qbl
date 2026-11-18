@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Qbl\Generation\Art\ImageTools;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\GenerationFactory;
 use Illuminate\Console\Command;
@@ -41,7 +42,8 @@ class ArtStyleCommand extends Command
                 }
                 $target = $style->anchorPath($m[1]);
                 @mkdir(dirname($target), 0775, true);
-                copy($file, $target);
+                // Anchors go with every request: 1600 pixels across is plenty to show the style, and far smaller.
+                file_put_contents($target, ImageTools::png(ImageTools::fit(ImageTools::load((string) file_get_contents($file)), 1600, 1600)));
                 $this->info("Approved {$m[1]}: $target");
             }
 
