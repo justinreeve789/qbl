@@ -41,13 +41,13 @@ function mission(over: Partial<Scenario> = {}): Scenario {
           {
             id: 10, shortname: 'rock', position_x: 600, position_y: 400, radius: 60, activate_by_trigger: true,
             conditions: [{ variable: 'rock_there', operator: '=', operand: 1 }],
-            labels: [{ type: 'image', media: 2, position_x: 600, position_y: 400, solid: true, solid_radius: 80 }],
+            labels: [{ type: 'image', media: 2, position_x: 600, position_y: 400, solid: true, solid_radius: 80 }, { type: 'image', media: 2, position_x: 640, position_y: 380, placement: 'object' }],
             actions: [{ id: 11, type: 'variable', name: 'rock_there', operator: 'set', operand: 0 }],
           },
           // A floor marking and its caption.
           {
             id: 20, shortname: 'console', position_x: 1000, position_y: 300, radius: 50, activate_by_trigger: true,
-            labels: [{ type: 'image', media: 3, position_x: 1000, position_y: 300, placement: 'background' }, { type: 'text', text: 'Console', position_x: 1000, position_y: 240 }],
+            labels: [{ type: 'image', media: 3, position_x: 1000, position_y: 300 }, { type: 'text', text: 'Console', position_x: 1000, position_y: 240 }, { type: 'text', text: 'Sign', position_x: 1000, position_y: 200, placement: 'front' }],
             actions: [
               { id: 21, type: 'glossary', entry_id: 'algae' },
               { id: 22, type: 'dialogue', speaker: 'character', character_id: 1, text: 'Algae make their own food.', blocking: false },
@@ -87,23 +87,30 @@ const labelsOf = (g: Game, hotspotId: number) => ((g.scene.system(HotspotSystem)
 const local = (g: Game) => g.scene.system(LocalPlayerSystem);
 const offline = (g: Game) => g.ctx.connection as OfflineConnection;
 
-test('things stand where they should: an object among the players, a marking under them, text over all', async () => {
+test('hotspot labels are behind the player wherever the player walks, unless a label asks otherwise', async () => {
   const g = await play();
-  const [rock] = labelsOf(g, 10);
-  const [marking, caption] = labelsOf(g, 20);
-  // The rock stands on its bottom edge: half its height below its centre.
-  assert.equal(rock.depth, 400 + rock.displayHeight / 2);
-  assert.ok(marking.depth < 0 && marking.depth > Depth.background + 100, 'the marking is above the background and below every figure');
-  assert.equal(caption.depth, Depth.label);
-
+  const [rock, crate] = labelsOf(g, 10);
+  const [marking, caption, sign] = labelsOf(g, 20);
   const me = (local(g).avatar as any).sprite;
-  // In front of the rock (lower on the screen) the player is drawn over it; behind it, under it.
-  local(g).avatar.setPosition(600, rock.depth + 20);
-  assert.ok(me.depth > rock.depth);
-  local(g).avatar.setPosition(600, 300);
-  assert.ok(me.depth < rock.depth);
-  // Wherever the player stands they are in front of the floor marking.
-  assert.ok(me.depth > marking.depth);
+  // Pictures, text and even a solid rock: all part of the background by default.
+  for (const label of [rock, marking, caption]) {
+    assert.ok(label.depth < 0 && label.depth > Depth.background + 100, 'above the background layers, below every figure');
+  }
+  // From the top of the walkable floor to the bottom, and right on top of each label, the player is in front.
+  for (const y of [250, 300, 400, 464, 500, 600]) {
+    for (const x of [600, 1000]) {
+      local(g).avatar.setPosition(x, y);
+      for (const label of [rock, marking, caption]) assert.ok(me.depth > label.depth, `in front at ${x},${y}`);
+    }
+  }
+
+  // A label that asks to be an object stands on its bottom edge; one that asks for the front is over everything.
+  assert.equal(crate.depth, 380 + crate.displayHeight / 2);
+  local(g).avatar.setPosition(640, crate.depth + 20);
+  assert.ok(me.depth > crate.depth);
+  local(g).avatar.setPosition(640, 300);
+  assert.ok(me.depth < crate.depth);
+  assert.equal(sign.depth, Depth.label);
 });
 
 test('a solid object is walked around, and no longer in the way once it is gone', async () => {

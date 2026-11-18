@@ -70,11 +70,11 @@ test('shade is deepest at the centre of a spot and gone at its edge', () => {
   assert.equal(shadeTint(1), 0x000000);
 });
 
-test('pictures stand among the players and text floats in front, unless a label says otherwise', () => {
-  assert.equal(labelPlacement({ type: 'image' }), 'object');
-  assert.equal(labelPlacement({ type: 'spritemap' }), 'object');
-  assert.equal(labelPlacement({ type: 'text' }), 'front');
-  assert.equal(labelPlacement({ type: 'image', placement: 'background' }), 'background');
+test('a label is behind the players unless it says otherwise', () => {
+  assert.equal(labelPlacement({}), 'background');
+  assert.equal(labelPlacement({ placement: 'background' }), 'background');
+  assert.equal(labelPlacement({ placement: 'object' }), 'object');
+  assert.equal(labelPlacement({ placement: 'front' }), 'front');
 });
 
 test('the glossary holds the starting words and those the player has been given', () => {

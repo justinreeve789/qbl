@@ -114,10 +114,13 @@ export function sceneTeamOnly(scenario: Pick<Scenario, 'scene_groups'>, scene: P
   return group?.team_only === true;
 }
 
-/** Where a hotspot label stands relative to the players: as it says, or by its kind. */
-export function labelPlacement(label: Pick<Label, 'placement' | 'type'>): Placement {
-  if (label.placement === 'background' || label.placement === 'object' || label.placement === 'front') return label.placement;
-  return label.type === 'text' ? 'front' : 'object';
+/**
+ * Where a hotspot label stands relative to the players. Unless it says otherwise a label is part
+ * of the background: players are always drawn in front of it, wherever they walk.
+ */
+export function labelPlacement(label: Pick<Label, 'placement'>): Placement {
+  if (label.placement === 'object' || label.placement === 'front') return label.placement;
+  return 'background';
 }
 
 /** The glossary entries a player has: those there from the start and those their flags record. */

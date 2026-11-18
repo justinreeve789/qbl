@@ -85,7 +85,7 @@ Place | Drawn | Use it for
 
 What decides it:
 
-* **Hotspot labels**: `placement` on the label. Default: `object` for pictures (image and spritemap labels), `front` for text. A picture stands on its **bottom edge**: that is the line players are sorted against.
+* **Hotspot labels**: `placement` on the label. Default: `background`, for pictures and text alike, so **players are always drawn in front of a hotspot's labels, wherever they walk**. A label that should be walked behind says `object`; it then stands on its **bottom edge**, the line players are sorted against. `front` draws it over everything.
 * **Items**: `placement` on the item, `object` (default) or `background`. An item stands at its position, the middle of its bottom edge.
 * **Characters and avatars** are always objects.
 * **`image_fixed` and `spritemap` actions**: `layer`, which is `above` (default: over everything), `sorted` (among the players, by `position_y`) or `behind` (part of the background).
@@ -95,8 +95,8 @@ A label can also be **solid**: players cannot walk through it and are led around
 
 Parameter | Applies to | Default | Description
 --------- | ---------- | ------- | -----------
-placement | label | by kind | `background`, `object` or `front`.
-solid | picture label | false | Players walk around it. A solid label is always an object.
+placement | label | background | `background`, `object` or `front`.
+solid | picture label | false | Players walk around it. This does not change how it is drawn: add `"placement": "object"` if players should also pass behind it.
 solid_radius | picture label | 35% of its width | Radius of the obstacle, a circle at the picture's base.
 placement | item | object | `object` or `background`.
 
@@ -104,7 +104,7 @@ placement | item | object | `object` or `background`.
 { "type": "image", "media": 48, "position_x": 1700, "position_y": 790, "solid": true, "solid_radius": 110 }
 ```
 
-A solid label blocks only while its hotspot is there: when the hotspot's conditions stop holding (the boulders have been cleared) the picture goes and so does the obstacle. Items block with `blocking` and `blocking_radius`, as before. In the demo the hotspot icons are `background` and the fallen boulders on the cliff path are solid.
+A solid label blocks only while its hotspot is there: when the hotspot's conditions stop holding (the boulders have been cleared) the picture goes and so does the obstacle. Items block with `blocking` and `blocking_radius`, as before. In the demo every label is in the background, and the fallen boulders on the cliff path are also solid.
 
 ### Walking around things
 

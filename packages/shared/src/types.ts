@@ -474,13 +474,14 @@ export interface Label extends Spritemap {
   /** A media id, or an inline media object. */
   media?: Id | Media | null;
   /**
-   * [ext] Where the label stands relative to the players. Default: `object` for pictures (they are
-   * sorted among the players by their bottom edge) and `front` for text.
+   * [ext] Where the label stands relative to the players. Default: `background`, so players are
+   * always drawn in front of it, wherever they walk. `object` sorts it among the players by its
+   * bottom edge; `front` draws it over everything.
    */
   placement?: Placement;
   /**
-   * [ext] For `placement: "object"`: players cannot walk through it and are led around it.
-   * The obstacle is a circle at the picture's base.
+   * [ext] Players cannot walk through it and are led around it. The obstacle is a circle at the
+   * picture's base. It does not change how the label is drawn: that is `placement`.
    */
   solid?: boolean;
   /** [ext] Radius of that obstacle in scene pixels. Default: 35% of the picture's width. */

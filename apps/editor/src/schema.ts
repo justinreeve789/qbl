@@ -441,18 +441,18 @@ export const LABEL_FIELDS: Field[] = [
   ...position,
   ...scale,
   {
-    key: 'placement', label: 'Where it stands', kind: 'select', wide: true, placeholder: 'Pictures: an object among the players. Text: in front of everything',
+    key: 'placement', label: 'Where it stands', kind: 'select', wide: true, placeholder: 'Background: players are always in front of it',
     options: [
-      ['background', 'Background: players always walk in front of it'],
+      ['background', 'Background: players are always in front of it'],
       ['object', 'Object: players walk behind it and in front of it'],
-      ['front', 'In front of everything'],
+      ['front', 'In front of everything, players included'],
     ],
-    hint: 'Background suits a hotspot’s icon, a marking on the floor, a sign on the far wall. An object stands on its bottom edge: a player lower on the screen is drawn in front of it, one higher up behind it.',
+    hint: 'A label is behind the players unless you choose otherwise, wherever they walk. An object stands on its bottom edge: a player lower on the screen is drawn in front of it, one higher up behind it.',
   },
 ];
 /** For pictures that are objects: whether players have to walk around them. Kept in the label's params. */
 export const LABEL_SOLID: Field[] = [
-  { key: 'solid', label: 'Solid: players walk around it', kind: 'bool', structural: true, hint: 'Players cannot walk through it and are led around it. It stops being in the way when its hotspot’s conditions no longer hold (a rock that has been cleared).' },
+  { key: 'solid', label: 'Solid: players walk around it', kind: 'bool', structural: true, hint: 'Players cannot walk through it and are led around it. It stops being in the way when its hotspot’s conditions no longer hold (a rock that has been cleared). How it is drawn is still “Where it stands”.' },
   { key: 'solid_radius', label: 'Size of the obstacle (px)', kind: 'number', min: 1, placeholder: 'A third of its width', hint: 'The radius of the circle at its base that cannot be walked on.' },
 ];
 export const LABEL_TEXT: Field = { key: 'text', label: 'Text', kind: 'text', wide: true };

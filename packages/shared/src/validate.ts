@@ -377,7 +377,6 @@ export function validateScenario(doc: unknown): ValidationResult {
         const lp = `${sp}.hotspots[${hi}].labels[${li}]`;
         if (label.placement != null && !['background', 'object', 'front'].includes(label.placement)) err(`${lp}.placement`, 'placement is "background", "object" or "front"');
         if (label.solid && label.type === 'text') warn(`${lp}.solid`, 'Only picture labels can be solid');
-        if (label.solid && label.placement != null && label.placement !== 'object') warn(`${lp}.solid`, 'A solid label is an object: its placement is ignored');
       });
     });
     (scene.hotspots ?? []).forEach((h, hi) => {
