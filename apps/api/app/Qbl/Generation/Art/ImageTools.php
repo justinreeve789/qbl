@@ -118,7 +118,7 @@ final class ImageTools
      * of such pixels) go, and so do pixels very close to it anywhere (the gap between an arm and a body).
      * Edge pixels are softened and have the key colour's tint taken out of them.
      */
-    public static function chromaKey(GdImage $src, array $key, int $near = 120, int $exact = 70): GdImage
+    public static function chromaKey(GdImage $src, array $key, int $near = 120, int $exact = 70, bool $anywhere = true): GdImage
     {
         $im = self::copy($src);
         $w = imagesx($im);
@@ -159,9 +159,12 @@ final class ImageTools
                 }
             }
         }
-        foreach ($dist as $i => $d) {
-            if ($d < $exact) {
-                $gone[$i] = true;
+        // Only for a true chroma colour: a white or grey background must not take the whites of the eyes with it.
+        if ($anywhere) {
+            foreach ($dist as $i => $d) {
+                if ($d < $exact) {
+                    $gone[$i] = true;
+                }
             }
         }
         $clear = imagecolorallocatealpha($im, 0, 0, 0, 127);
@@ -206,6 +209,103 @@ final class ImageTools
                 [$r, $g, $b] = $n ? [intdiv($sum[0], $n), intdiv($sum[1], $n), intdiv($sum[2], $n)] : [($c >> 16) & 255, ($c >> 8) & 255, $c & 255];
                 imagesetpixel($im, $x, $y, imagecolorallocatealpha($im, $r, $g, $b, min(127, $alpha)));
             }
+        }
+
+        return $im;
+    }
+
+    /**
+     * The colour a picture was drawn on, if its border is one flat colour (at least 85% of border pixels
+     * within a small distance of their median), else null. Image models do not always use the chroma
+     * colour they were asked for; this finds what they used instead.
+     */
+    public static function borderColour(GdImage $im): ?array
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $samples = [];
+        $step = max(1, intdiv($w + $h, 400));
+        for ($x = 0; $x < $w; $x += $step) {
+            $samples[] = imagecolorat($im, $x, 0);
+            $samples[] = imagecolorat($im, $x, $h - 1);
+        }
+        for ($y = 0; $y < $h; $y += $step) {
+            $samples[] = imagecolorat($im, 0, $y);
+            $samples[] = imagecolorat($im, $w - 1, $y);
+        }
+        $channel = function (int $shift) use ($samples) {
+            $v = array_map(fn ($c) => ($c >> $shift) & 255, $samples);
+            sort($v);
+
+            return $v[intdiv(count($v), 2)];
+        };
+        $median = [$channel(16), $channel(8), $channel(0)];
+        $close = 0;
+        foreach ($samples as $c) {
+            $d = sqrt(((($c >> 16) & 255) - $median[0]) ** 2 + ((($c >> 8) & 255) - $median[1]) ** 2 + (($c & 255) - $median[2]) ** 2);
+            $close += $d < 40 ? 1 : 0;
+        }
+
+        return $close >= 0.85 * count($samples) ? $median : null;
+    }
+
+    /**
+     * Take the key colour's tint out of the edge of a cut-out: within $band pixels of the removed
+     * background, a pixel tinted towards the key (a glow or soft shadow drawn on it) is made partly
+     * see-through and has the tint removed. For a magenta key the tint is red and blue above green.
+     */
+    public static function despill(GdImage $src, array $key, int $band = 4): GdImage
+    {
+        $im = self::copy($src);
+        $w = imagesx($im);
+        $h = imagesy($im);
+        // Which channels the key is strong in: magenta = red and blue; green = green.
+        $strong = array_keys(array_filter($key, fn ($v) => $v > 160));
+        $weak = array_keys(array_filter($key, fn ($v) => $v < 90));
+        if (! $strong || ! $weak) {
+            return $im; // not a saturated key colour; nothing to take out
+        }
+        $near = [];
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                if (((imagecolorat($im, $x, $y) >> 24) & 0x7F) >= 120) {
+                    $near[$y * $w + $x] = 0;
+                }
+            }
+        }
+        $frontier = array_keys($near);
+        for ($d = 1; $d <= $band; $d++) {
+            $next = [];
+            foreach ($frontier as $i) {
+                $x = $i % $w;
+                foreach ([$x > 0 ? $i - 1 : -1, $x < $w - 1 ? $i + 1 : -1, $i - $w, $i + $w] as $n) {
+                    if ($n >= 0 && $n < $w * $h && ! isset($near[$n])) {
+                        $near[$n] = $d;
+                        $next[] = $n;
+                    }
+                }
+            }
+            $frontier = $next;
+        }
+        foreach ($near as $i => $d) {
+            if ($d === 0) {
+                continue;
+            }
+            $x = $i % $w;
+            $y = intdiv($i, $w);
+            $c = imagecolorat($im, $x, $y);
+            $rgb = [($c >> 16) & 255, ($c >> 8) & 255, $c & 255];
+            $spill = min(array_map(fn ($k) => $rgb[$k], $strong)) - max(array_map(fn ($k) => $rgb[$k], $weak));
+            if ($spill <= 25) {
+                continue;
+            }
+            foreach ($strong as $k) {
+                $rgb[$k] = max(0, $rgb[$k] - (int) ($spill * 0.8));
+            }
+            $alpha = ($c >> 24) & 0x7F;
+            // Strongest at the edge, fading over the band.
+            $alpha = min(127, $alpha + (int) (127 * min(1, $spill / 160) * (1 - ($d - 1) / $band)));
+            imagesetpixel($im, $x, $y, ($alpha << 24) | ($rgb[0] << 16) | ($rgb[1] << 8) | $rgb[2]);
         }
 
         return $im;

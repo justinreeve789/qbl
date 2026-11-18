@@ -397,7 +397,18 @@ class AssetDirector
             $im = ImageTools::fit($im, 1600, 1600);
         }
 
-        return ImageTools::hasTransparentBackground($im) ? $im : ImageTools::chromaKey($im, $this->style->chroma());
+        if (ImageTools::hasTransparentBackground($im)) {
+            return $im;
+        }
+        $chroma = $this->style->chroma();
+        $border = ImageTools::borderColour($im);
+        // Drawn on the chroma colour, as asked: key it out everywhere, then take its tint off the edges.
+        if (! $border || sqrt(array_sum(array_map(fn ($a, $b) => ($a - $b) ** 2, $border, $chroma))) < 90) {
+            return ImageTools::despill(ImageTools::chromaKey($im, $chroma), $chroma);
+        }
+
+        // Drawn on some other flat colour (often white): remove only what touches the border.
+        return ImageTools::chromaKey($im, $border, 60, 0, anywhere: false);
     }
 
     // ===================================================================== records

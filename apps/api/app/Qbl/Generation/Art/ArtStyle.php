@@ -162,7 +162,7 @@ final class ArtStyle
         if (self::cutout($kind)) {
             $parts[] = $nativeTransparency
                 ? 'BACKGROUND: fully transparent. No ground, floor, shadow or scenery behind the subject.'
-                : "BACKGROUND: a perfectly flat, solid {$b['chroma']} fill from edge to edge, with no ground, floor shadow, gradient, vignette or scenery. Do not use this colour, or anything close to it, anywhere in the subject.";
+                : "BACKGROUND: a perfectly flat, solid {$b['chroma']} fill from edge to edge, with no ground, floor shadow, gradient, vignette or scenery. Do not use this colour, or anything close to it, anywhere in the subject. No glow, halo, shadow or light spilling from the subject onto the background.";
         }
 
         if ($references) {
