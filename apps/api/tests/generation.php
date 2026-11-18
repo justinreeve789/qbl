@@ -31,6 +31,14 @@ use App\Qbl\Generation\Http\HttpResponse;
 use App\Qbl\Generation\Llm\AnthropicModel;
 use App\Qbl\ScenarioStore;
 
+// A warning or notice is a failure here (Laravel turns them into exceptions).
+set_error_handler(function (int $no, string $message, string $file, int $line) {
+    if (! (error_reporting() & $no)) {
+        return false; // silenced with @, as Laravel also leaves it
+    }
+    throw new ErrorException($message, 0, $no, $file, $line);
+});
+
 spl_autoload_register(function (string $class) {
     if (str_starts_with($class, 'App\\') && is_file($file = __DIR__.'/../app/'.str_replace('\\', '/', substr($class, 4)).'.php')) {
         require $file;
@@ -117,6 +125,7 @@ $placeholder = new PlaceholderImageGenerator($style->chroma(), array_values($sty
 $strip = ImageTools::chromaKey(ImageTools::load($placeholder->generate('', [], '21:9', false, ['kind' => 'strip', 'frames' => 6, 'animation' => 'walk'])), $style->chroma());
 check(ImageTools::hasTransparentBackground($strip), 'the chroma background is cut out');
 same(count(ImageTools::figures($strip)), 6, 'six figures are found in a six-frame strip');
+same(count(ImageTools::figureCrops($strip)), 6, 'and cut out as six frames');
 $magenta = ImageTools::load($placeholder->generate('', [], '1:1', false, ['kind' => 'item']));
 same((imagecolorat(ImageTools::chromaKey($magenta, $style->chroma()), 5, 5) >> 24) & 0x7F, 127, 'a corner of a cut-out is fully transparent');
 $pulled = ImageTools::pullToPalette(ImageTools::load($placeholder->generate('', [], '16:9', false, ['kind' => 'background'])), $style->palette(), 0.5);
@@ -143,12 +152,36 @@ final class Recorded implements HttpClient
 $png = ImageTools::png(ImageTools::blank(4, 4));
 $ref = new Reference($png, 'style anchor (character)');
 
-$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => 'thinking'], ['type' => 'tool_use', 'name' => 'answer', 'input' => ['ok' => true]]], 'stop_reason' => 'tool_use']))]);
-$answer = (new AnthropicModel($http, 'key', 'claude-test'))->structured('sys', ['look', ['image' => $png]], 'answer', ['type' => 'object']);
-same($answer, ['ok' => true], 'Claude\'s answer is taken from its tool call');
-same($http->sent[0]['body']['tool_choice'], ['type' => 'tool', 'name' => 'answer'], 'Claude is required to answer with the tool');
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{"ok": true}']], 'stop_reason' => 'end_turn']))]);
+$answer = (new AnthropicModel($http, 'key', 'claude-test'))->structured('sys', ['look', ['image' => $png]], 'answer', ['type' => 'object', 'properties' => ['n' => ['type' => 'integer', 'minimum' => 0, 'description' => 'How many'], 'list' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 5, 'items' => ['type' => 'string', 'pattern' => '^[a-z]+$']]]]);
+same($answer, ['ok' => true], 'Claude\'s answer is read as JSON from its text block');
+$format = $http->sent[0]['body']['output_config']['format'] ?? [];
+same($format['type'] ?? null, 'json_schema', 'Claude is asked for structured output with the schema');
+same($format['schema']['additionalProperties'] ?? null, false, 'objects in the schema forbid other properties');
+check(! isset($format['schema']['properties']['n']['minimum']) && str_contains($format['schema']['properties']['n']['description'], 'minimum: 0'), 'bounds structured outputs do not accept move into the description');
+same([$format['schema']['properties']['list']['minItems'] ?? null, isset($format['schema']['properties']['list']['maxItems']), isset($format['schema']['properties']['list']['items']['pattern'])], [1, false, false], 'item counts above 1 and patterns are taken out');
 same($http->sent[0]['body']['messages'][0]['content'][1]['source']['type'] ?? null, 'base64', 'pictures go to Claude as base64');
 same($http->sent[0]['headers']['x-api-key'], 'key', 'with the key in x-api-key');
+$http = new Recorded([
+    new HttpResponse(400, json_encode(['type' => 'error', 'error' => ['type' => 'invalid_request_error', 'message' => 'The compiled grammar is too large, which would cause performance issues.']])),
+    new HttpResponse(200, json_encode(['content' => [['type' => 'tool_use', 'name' => 'big_answer', 'input' => ['big' => true]]], 'stop_reason' => 'tool_use'])),
+    new HttpResponse(200, json_encode(['content' => [['type' => 'tool_use', 'name' => 'big_answer', 'input' => ['again' => true]]], 'stop_reason' => 'tool_use'])),
+]);
+$big = new AnthropicModel($http, 'key');
+same($big->structured('sys', ['x'], 'big_answer', ['type' => 'object']), ['big' => true], 'a schema too large for a strict grammar is answered through a tool');
+same([$http->sent[1]['body']['tool_choice'] ?? null, isset($http->sent[1]['body']['output_config'])], [['type' => 'auto'], false], 'with tool_choice auto (forcing is not allowed)');
+same($big->structured('sys', ['x'], 'big_answer', ['type' => 'object']), ['again' => true], 'and the next request for it goes straight to the tool');
+same(count($http->sent), 3, 'without trying the grammar again');
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{"ok": tr']], 'stop_reason' => 'max_tokens']))]);
+check((function () use ($http) {
+    try {
+        (new AnthropicModel($http, 'key'))->structured('sys', ['x'], 'answer', ['type' => 'object'], 10);
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), 'ran out of room');
+    }
+
+    return false;
+})(), 'an answer cut off by max_tokens is reported as such');
 
 $http = new Recorded([new HttpResponse(200, json_encode(['candidates' => [['content' => ['parts' => [['text' => 'here'], ['inlineData' => ['mimeType' => 'image/png', 'data' => base64_encode($png)]]]]]]]))]);
 same((new GeminiImageGenerator($http, 'gkey', 'gemini-test'))->generate('draw', [$ref], '21:9', false), $png, 'Gemini\'s picture is read from inlineData');
@@ -256,6 +289,28 @@ check(str_contains(json_encode($team['actions']), '/2)'), 'with 2 to 6 players, 
 $objectives = array_column($doc['objectives'], 'text', 'id');
 same($objectives['samples'], 'Collect pollen in the orchard ({{count_samples}}/2)', 'a step of several shows its count');
 same($objectives['report'], 'Report to Keeper Ama', 'the last objective is the report');
+$overlaps = [];
+foreach ($doc['scenes'] as $scene) {
+    $texts = [];
+    foreach ($scene['hotspots'] as $h) {
+        if (preg_match('/-(closed|locked|waiting)$|^label-|^exit-/', $h['shortname'] ?? '')) {
+            continue;
+        }
+        foreach ($h['labels'] as $l) {
+            if ($l['type'] === 'text') {
+                $texts[] = $l;
+            }
+        }
+    }
+    foreach ($texts as $i => $a) {
+        foreach (array_slice($texts, $i + 1) as $b) {
+            if (abs($a['position_y'] - $b['position_y']) < 30 && abs($a['position_x'] - $b['position_x']) < (MissionBuilder::labelWidth($a['text']) + MissionBuilder::labelWidth($b['text'])) / 2) {
+                $overlaps[] = "{$scene['shortname']}: {$a['text']} / {$b['text']}";
+            }
+        }
+    }
+}
+same($overlaps, [], 'no two labels in a scene overlap');
 check(isset($byShort['landing/report']), 'the guide has a report conversation');
 same(array_column($doc['characters'], 'name'), ['Keeper Ama', 'Pip'], 'characters keep their names');
 

@@ -137,7 +137,7 @@ class AssetDirector
         $wanted = array_unique(['idle', 'walk', ...array_values(array_intersect($c['gestures'] ?? [], array_keys(self::ANIMATIONS)))]);
         foreach ($wanted as $name) {
             [$count, $duration, $loops] = self::ANIMATIONS[$name];
-            $frames = $this->strip($key, $c['name'], $name, $count, $sheetRef, $accents);
+            $frames = $this->strip($key, "{$c['name']} ({$c['appearance']})", $name, $count, $sheetRef, $accents);
             if ($frames === null) {
                 continue; // the built-in moves cover anything not drawn
             }
@@ -196,16 +196,28 @@ class AssetDirector
             $refs = [$sheet, ...$this->style->anchorsFor('strip')];
             $prompt = $this->style->prompt('strip', "$name ".self::MOTION[$animation], $refs, ['frames' => $count], $notes, $this->images->transparency(), $accents);
             $this->say("Drawing $name: $animation ($count frames), attempt $attempt");
-            $raw = $this->images->generate($prompt, $refs, $aspect, $this->images->transparency(), ['kind' => 'strip', 'frames' => $count, 'animation' => $animation, 'label' => $name]);
+            try {
+                $raw = $this->images->generate($prompt, $refs, $aspect, $this->images->transparency(), ['kind' => 'strip', 'frames' => $count, 'animation' => $animation, 'label' => $name]);
+            } catch (GenerationError $e) {
+                // One animation that cannot be drawn is not worth the run: the built-in move stands in.
+                $attempts[] = ['attempt' => $attempt, 'problem' => $e->getMessage()];
+                if ($this->images instanceof Providers\OfflineImageGenerator) {
+                    break;
+                }
+
+                continue;
+            }
             $im = $this->cut(ImageTools::load($raw));
             $boxes = ImageTools::figures($im);
             if (count($boxes) !== $count) {
+                // Kept for looking at: why a strip was refused is easier to see than to read.
+                file_put_contents("{$this->workDir}/assets/".self::file($assetKey)."-rejected-$attempt.png", $raw);
                 $attempts[] = ['attempt' => $attempt, 'problem' => 'found '.count($boxes)." figures, not $count"];
                 $notes = ["Draw exactly $count separate full-body figures in one row, clearly apart, none overlapping, none cut off"];
 
                 continue;
             }
-            $frames = array_map(fn ($b) => ImageTools::crop($im, ...$b), $boxes);
+            $frames = ImageTools::figureCrops($im);
             $png = ImageTools::png($im);
             $verdict = $this->judge?->judge('strip', $png, $this->style->anchorsFor('strip'), [$sheet], "$count animation frames of $name: $animation", ["show exactly $count frames of the same character as the character sheet", 'frames side by side, same size, feet on one baseline']);
             $attempts[] = ['attempt' => $attempt] + ($verdict ? ['score' => $verdict['score'], 'problems' => $verdict['problems']] : []);
@@ -300,7 +312,7 @@ class AssetDirector
         $key = "bg:{$scene['key']}";
         if (($cache = $this->cached($key)) && ! empty($cache['asset'])) {
             if (! $this->sceneLook) {
-                $this->sceneLook = new Reference((string) file_get_contents($cache['asset']['path']), 'another scene of this same mission: match its look, colours and level of detail');
+                $this->sceneLook = new Reference((string) file_get_contents($cache['asset']['path']), 'another scene of this same mission, but a DIFFERENT place: match how it is painted (colours, light, level of detail), not its buildings, layout, landmarks or sky');
             }
 
             return $cache['asset'];
@@ -334,7 +346,7 @@ class AssetDirector
 
             return [$im, null];
         }, jpeg: true);
-        $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), 'another scene of this same mission: match its look, colours and level of detail', 'image/jpeg');
+        $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), 'another scene of this same mission, but a DIFFERENT place: match how it is painted (colours, light, level of detail), not its buildings, layout, landmarks or sky', 'image/jpeg');
 
         return $result;
     }
@@ -397,7 +409,18 @@ class AssetDirector
             $im = ImageTools::fit($im, 1600, 1600);
         }
 
-        return ImageTools::hasTransparentBackground($im) ? $im : ImageTools::chromaKey($im, $this->style->chroma());
+        if (ImageTools::hasTransparentBackground($im)) {
+            return $im;
+        }
+        $chroma = $this->style->chroma();
+        $border = ImageTools::borderColour($im);
+        // Drawn on the chroma colour, as asked: key it out everywhere, then take its tint off the edges.
+        if (! $border || sqrt(array_sum(array_map(fn ($a, $b) => ($a - $b) ** 2, $border, $chroma))) < 90) {
+            return ImageTools::despill(ImageTools::chromaKey($im, $chroma), $chroma);
+        }
+
+        // Drawn on some other flat colour (often white): remove only what touches the border.
+        return ImageTools::chromaKey($im, $border, 60, 0, anywhere: false);
     }
 
     // ===================================================================== records

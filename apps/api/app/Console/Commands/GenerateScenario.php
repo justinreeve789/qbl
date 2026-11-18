@@ -30,6 +30,7 @@ class GenerateScenario extends Command
         {--images= : Image driver: gemini, openai, scenario or placeholder}
         {--attempts= : Attempts per picture before the best is kept}
         {--no-judge : Do not have each picture checked against the style anchors}
+        {--offline : Draw nothing new: finish with the pictures the run already has (with --resume)}
         {--without-anchors : Go ahead even though the art style has no approved anchors}
         {--design-only : Stop after the blueprint (no pictures; cheap, to review the plan)}
         {--no-import : Make the ZIP but do not import it}
@@ -87,7 +88,7 @@ class GenerateScenario extends Command
 
             $generator = $factory->generator([
                 'style' => $this->option('style'),
-                'images' => $this->option('images'),
+                'images' => $this->option('offline') ? 'offline' : $this->option('images'),
                 'judge' => $this->option('no-judge') ? false : null,
                 'attempts' => $this->option('attempts') ? (int) $this->option('attempts') : null,
                 'anchors_required' => ! $this->option('without-anchors') && ! $this->option('design-only'),

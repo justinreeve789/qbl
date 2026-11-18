@@ -27,7 +27,12 @@ class MissionDesigner
         $blueprint = $this->llm->structured($this->system(), [$brief], 'mission_blueprint', $schema, 32000);
         $blueprint = self::tidy($blueprint);
         for ($round = 1; ; $round++) {
-            $errors = BlueprintValidator::errors($blueprint, $objectiveIds);
+            try {
+                $errors = BlueprintValidator::errors($blueprint, $objectiveIds);
+            } catch (\TypeError|\ErrorException|\ValueError $e) {
+                // Not even the right shape (the tool route is not enforced token by token).
+                $errors = ['The blueprint does not follow the schema: '.$e->getMessage().'. Give every field the type the schema says.'];
+            }
             if (! $errors) {
                 return $blueprint;
             }
@@ -131,19 +136,31 @@ class MissionDesigner
             $b[$list] = array_values(array_filter($b[$list] ?? [], 'is_array'));
         }
         foreach ($b['interactions'] as &$it) {
-            $it['requires'] = array_values(array_unique(array_filter((array) ($it['requires'] ?? []), 'is_string')));
-            foreach (['item', 'character', 'after', 'locked_hint'] as $k) {
-                if (isset($it[$k]) && $it[$k] === '') {
+            $it['requires'] = array_values(array_unique(array_filter((array) ($it['requires'] ?? []), fn ($r) => is_string($r) && $r !== '')));
+            foreach (['item', 'character', 'after', 'locked_hint', 'dialogue', 'x'] as $k) {
+                if (isset($it[$k]) && ($it[$k] === '' || $it[$k] === [] || ($k === 'x' && ! $it[$k]))) {
                     unset($it[$k]);
                 }
             }
+            // An award of nothing is no award.
+            if (isset($it['award']) && empty($it['award']['stars']) && empty($it['award']['xp'])) {
+                unset($it['award']);
+            }
         }
         unset($it);
+        foreach ($b['steps'] as &$step) {
+            if (($step['after'] ?? null) === '') {
+                unset($step['after']);
+            }
+        }
+        unset($step);
         foreach ($b['scenes'] as &$s) {
             $s['exits'] = array_values(array_filter($s['exits'] ?? [], 'is_array'));
             foreach ($s['exits'] as &$x) {
-                if (($x['requires'] ?? null) === '') {
-                    unset($x['requires']);
+                foreach (['requires', 'locked_message'] as $k) {
+                    if (($x[$k] ?? null) === '') {
+                        unset($x[$k]);
+                    }
                 }
             }
             unset($x);

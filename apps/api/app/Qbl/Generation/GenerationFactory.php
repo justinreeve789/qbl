@@ -6,6 +6,7 @@ use App\Qbl\Generation\Art\ArtStyle;
 use App\Qbl\Generation\Art\AssetDirector;
 use App\Qbl\Generation\Art\ImageGenerator;
 use App\Qbl\Generation\Art\Providers\GeminiImageGenerator;
+use App\Qbl\Generation\Art\Providers\OfflineImageGenerator;
 use App\Qbl\Generation\Art\Providers\OpenAiImageGenerator;
 use App\Qbl\Generation\Art\Providers\PlaceholderImageGenerator;
 use App\Qbl\Generation\Art\Providers\ScenarioImageGenerator;
@@ -94,8 +95,9 @@ class GenerationFactory
             'gemini' => new GeminiImageGenerator($this->http, $c('api_key'), $c('model', 'gemini-3-pro-image'), $c('base_url', 'https://generativelanguage.googleapis.com/v1beta'), $c('image_size', '2K')),
             'openai' => new OpenAiImageGenerator($this->http, $c('api_key'), $c('model', 'gpt-image-2'), $c('quality', 'high'), $c('base_url', 'https://api.openai.com/v1')),
             'scenario' => new ScenarioImageGenerator($this->http, $c('api_key'), $c('api_secret'), $c('model_id'), $c('base_url', 'https://api.cloud.scenario.com/v1')),
+            'offline' => new OfflineImageGenerator,
             'placeholder' => new PlaceholderImageGenerator(($style ?? $this->style())->chroma(), array_values(($style ?? $this->style())->palette())),
-            default => throw new GenerationError("Unknown image driver \"$driver\": use gemini, openai, scenario or placeholder."),
+            default => throw new GenerationError("Unknown image driver \"$driver\": use gemini, openai, scenario, placeholder or offline."),
         };
     }
 
@@ -106,7 +108,7 @@ class GenerationFactory
     {
         $style = $this->style($options['style'] ?? null);
         $driver = $options['images'] ?? (string) $this->config('images.driver', 'gemini');
-        $placeholder = $driver === 'placeholder' && ! $this->images;
+        $placeholder = in_array($driver, ['placeholder', 'offline'], true) && ! $this->images;
         if (($options['anchors_required'] ?? true) && ! $placeholder && count($style->anchors()) === 0) {
             throw new GenerationError("The art style \"{$style->key}\" has no approved anchor pictures yet, and they are what keeps every picture in one style. Make them first: php artisan qbl:art-style {$style->key} --bootstrap (then --approve). To go ahead without them, pass --without-anchors.");
         }

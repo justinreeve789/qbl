@@ -95,17 +95,24 @@ final class ArtStyle
     /** Which anchors are sent with each kind of picture, most relevant first. */
     public function anchorsFor(string $kind): array
     {
+        // What else is in an anchor gets copied, not just its style: a character anchor beside a character
+        // sheet is a second person the model may draw instead, and an environment anchor becomes a backdrop
+        // painted behind a cut-out. So cut-outs never get the environment, and frames and portraits (whose
+        // own approved sheet carries the style) get only the props, which has no one and nowhere in it.
         $roles = match ($kind) {
             'background' => ['environment', 'character'],
-            'character', 'strip' => ['character', 'environment'],
-            'portrait' => ['portrait', 'character'],
-            'item', 'vehicle', 'badge' => ['props', 'character'],
-            default => ['character'],
+            'character' => ['character', 'props'],
+            'strip', 'portrait' => ['props'],
+            'item', 'vehicle', 'badge' => ['props'],
+            default => ['props'],
         };
         $out = [];
         foreach ($roles as $role) {
             if (is_file($path = $this->anchorPath($role))) {
-                $out[] = new Reference((string) file_get_contents($path), "style anchor ($role): match its style exactly, not its content");
+                $out[] = new Reference((string) file_get_contents($path), match ($role) {
+                    'character', 'portrait' => "style anchor ($role): a DIFFERENT character, shown only for how characters are drawn. Do not copy their face, hair, body, clothes, colours or belongings",
+                    default => "style anchor ($role): match how it is painted, not what it shows",
+                });
             }
         }
 
@@ -162,7 +169,7 @@ final class ArtStyle
         if (self::cutout($kind)) {
             $parts[] = $nativeTransparency
                 ? 'BACKGROUND: fully transparent. No ground, floor, shadow or scenery behind the subject.'
-                : "BACKGROUND: a perfectly flat, solid {$b['chroma']} fill from edge to edge, with no ground, floor shadow, gradient, vignette or scenery. Do not use this colour, or anything close to it, anywhere in the subject.";
+                : "BACKGROUND: a perfectly flat, solid {$b['chroma']} fill from edge to edge, with no ground, floor shadow, gradient, vignette or scenery. Do not use this colour, or anything close to it, anywhere in the subject. No glow, halo, shadow or light spilling from the subject onto the background.";
         }
 
         if ($references) {
