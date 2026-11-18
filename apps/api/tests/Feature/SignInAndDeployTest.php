@@ -119,7 +119,7 @@ class SignInAndDeployTest extends TestCase
     {
         $this->withGoogle(['qbl.google.domains' => ['school.example', 'staff.school.example'], 'qbl.google.teacher_domains' => ['staff.school.example']]);
 
-        $this->finish($this->googleAccount('g-1', 'kid@elsewhere.example'), $this->begin('/'))->assertRedirect('/#signin=domain');
+        $this->finish($this->googleAccount('g-1', 'kid@elsewhere.example'), $this->begin('/missions'))->assertRedirect('/missions#signin=domain');
         $this->assertSame(0, User::count());
 
         $this->finish($this->googleAccount('g-2', 'kid@school.example'), $this->begin())->assertOk();
@@ -135,12 +135,12 @@ class SignInAndDeployTest extends TestCase
         // Nor one that arrives with no sign-in under way at all.
         $this->newRequest();
         Socialite::fake('google', $this->googleAccount('g-1', 'a@b.example'));
-        $this->get('/api/auth/google/callback?code=abc&state=anything')->assertRedirect('/#signin=expired');
+        $this->get('/api/auth/google/callback?code=abc&state=anything')->assertRedirect('/missions#signin=expired');
         $this->assertSame(0, User::count());
 
         // The way back is always a page of this site.
         foreach (['//evil.example/x', 'https://evil.example', '/\\evil.example', 'javascript:alert(1)'] as $return) {
-            $this->finish($this->googleAccount('g-9', 'z@b.example'), $this->begin($return))->assertOk()->assertSee('location.replace("/")', false);
+            $this->finish($this->googleAccount('g-9', 'z@b.example'), $this->begin($return))->assertOk()->assertSee('location.replace("/missions")', false);
         }
     }
 
@@ -158,9 +158,38 @@ class SignInAndDeployTest extends TestCase
         $this->assertSame('https://qbl.school.example/api/auth/google/callback', $query['redirect_uri']);
         $this->assertTrue($secure($response));
 
-        // From anywhere else the same headers are not believed: the request is what it is, plain http.
+        // With an http public address (a local try-out), the headers are believed only from a trusted
+        // address: from anywhere else the request is what it is, plain http.
+        config(['app.url' => 'http://localhost:8080']);
         $response = $this->newRequest()->withServerVariables(['REMOTE_ADDR' => '203.0.113.50'])->withHeaders($forwarded)->get('http://apache/api/auth/google/redirect');
         $this->assertFalse($secure($response));
+    }
+
+    public function test_an_https_public_address_is_used_whatever_the_firewall_sends(): void
+    {
+        // QBL_PUBLIC_URL=https://dev.questlab.cc (a trailing slash is fine). The firewall sends no
+        // X-Forwarded-* headers at all and passes its own idea of the host: still https, still that name.
+        $this->withGoogle(['app.url' => 'https://dev.questlab.cc/']);
+        $cookie = fn ($response) => collect($response->headers->getCookies())->firstWhere(fn ($c) => $c->getName() === 'qbl_google');
+        $redirectUri = function ($response) {
+            parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
+
+            return $query['redirect_uri'];
+        };
+
+        $response = $this->newRequest()->get('http://10.0.0.5:8080/api/auth/google/redirect?return=/missions');
+        $this->assertSame('https://dev.questlab.cc/api/auth/google/callback', $redirectUri($response));
+        $this->assertTrue($cookie($response)->isSecure());
+
+        // A failed sign-in goes back to the public address too.
+        $this->newRequest();
+        $this->get('http://10.0.0.5:8080/api/auth/google/callback?state=anything')->assertRedirect('https://dev.questlab.cc/missions#signin=expired');
+
+        // A trusted firewall that says this visitor came by plain http: the cookie is not https-only
+        // (the browser would drop it), but every address still names the https site.
+        $response = $this->newRequest()->withHeaders(['X-Forwarded-Proto' => 'http'])->get('http://10.0.0.5:8080/api/auth/google/redirect');
+        $this->assertSame('https://dev.questlab.cc/api/auth/google/callback', $redirectUri($response));
+        $this->assertFalse($cookie($response)->isSecure());
     }
 
     public function test_nothing_is_seeded_until_the_command_is_run(): void

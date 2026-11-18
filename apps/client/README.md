@@ -3,10 +3,22 @@
 A Phaser 4 game that plays any QBL scenario. Nothing in here knows about a particular mission: scenes,
 hotspots, events and the mission checklist all come from the scenario JSON.
 
+This package also builds the marketing page. Vite builds two pages:
+
+| Page | Served at | What it is |
+| ---- | --------- | ---------- |
+| `index.html` + `src/site/` | `/` only | The marketing page: plain HTML, Tailwind (compiled at build time, scoped to these files), self-hosted fonts, and the platform avatars from `scenarios/assets/platform/` as its characters. No game code |
+| `play.html` + `src/main.ts` | every other path | The game: `/missions`, `/{code}`, `/play?preview=…` |
+
+Apache (`FallbackResource /play.html`) and, in development, a small plugin in `vite.config.ts` send every path except `/` to `play.html`.
+
 ## Layout
 
 ```
+index.html           the marketing page (at "/")
+play.html            the game's page (every other path)
 src/
+  site/              the marketing page's styles and script
   main.ts            sign-in, load the scenario, connect, start Phaser
   config.ts          URLs and URL parameters
   core/              what everything else is built on

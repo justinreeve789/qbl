@@ -122,11 +122,15 @@ class GoogleAuthController extends Controller
         return (bool) config('services.google.client_id') && (bool) config('services.google.client_secret');
     }
 
-    /** Only ever go back to a page of this site: a path, never another host. */
+    /**
+     * Only ever go back to a page of this site: a path, never another host. Anything else goes
+     * to the missions page ("/" is the marketing site, which has no sign-in of its own).
+     */
     private static function localPath(mixed $path): string
     {
-        $path = is_string($path) ? $path : '/';
+        $fallback = '/missions';
+        $path = is_string($path) ? $path : $fallback;
 
-        return preg_match('#^/(?!/)[A-Za-z0-9_\-./?=&%]*$#', $path) && ! str_contains($path, '\\') ? $path : '/';
+        return preg_match('#^/(?!/)[A-Za-z0-9_\-./?=&%]*$#', $path) && ! str_contains($path, '\\') ? $path : $fallback;
     }
 }

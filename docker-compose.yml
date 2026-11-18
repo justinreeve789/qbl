@@ -1,12 +1,15 @@
-# Six containers:
-#   app       Laravel backend (PHP-FPM) + the built Phaser frontend
+# Seven containers:
+#   edge      Caddy: ends HTTPS (Let's Encrypt or your own certificate) and is the only one
+#             published; everything behind it speaks plain HTTP
+#   apache    web server and reverse proxy for the rest
+#   app       Laravel backend (PHP-FPM) + the built Phaser frontend and marketing page
 #   db        MariaDB
 #   colyseus  multiplayer game server
 #   editor    the scenario editor (a static web application)
 #   docs      the documentation (a static site built with MkDocs)
-#   apache    web server and reverse proxy; the only published port
 #
-#   docker compose up --build        ->  http://localhost:8080           the game (after seeding, below)
+#   docker compose up --build        ->  http://localhost:8080           the marketing page
+#                                        http://localhost:8080/missions  the game: sign in, then the missions page
 #                                        http://localhost:8080/editor    the editor
 #                                        http://localhost:8080/docs      the documentation
 #                                        http://localhost:8080/{code}    one scenario, by its 16-letter code
@@ -14,9 +17,9 @@
 #   docker compose exec app php artisan qbl:seed     seeds the marketplace and the demo mission.
 #                                                    Nothing is seeded automatically.
 #
-# Every container speaks plain HTTP. For HTTPS, put a TLS-terminating firewall or load balancer
-# in front of the one published port, have it send X-Forwarded-Proto and X-Forwarded-For, and
-# set QBL_PUBLIC_URL to the https address. See "HTTPS" in the README.
+# HTTPS on a server: in .env set QBL_PUBLIC_URL=https://dev.questlab.cc, QBL_HTTP_PORT=80 and
+# QBL_HTTPS_PORT=443. The edge then fetches a Let's Encrypt certificate (or uses yours, from
+# ./certs) and ends HTTPS; the containers behind it speak plain HTTP. See "HTTPS" in the README.
 #
 # The defaults below are for trying it out on your own machine. For anything shared,
 # copy .env.example to .env and set real secrets.
@@ -29,9 +32,9 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_KEY: ${APP_KEY:-}
-      # The address people type. With HTTPS at the firewall this is the https one.
+      # The address people type. With HTTPS (at the edge) this is the https one.
       APP_URL: ${QBL_PUBLIC_URL:-http://localhost:${QBL_HTTP_PORT:-8080}}
-      # Whose X-Forwarded-* headers Laravel believes: the firewall, and the Docker network Apache is on.
+      # Whose X-Forwarded-* headers Laravel believes: the Docker network Apache is on.
       TRUSTED_PROXIES: ${QBL_TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1}
       DB_CONNECTION: mariadb
       DB_HOST: db
@@ -143,10 +146,11 @@ services:
   apache:
     build:
       context: docker/apache
-    ports:
-      # Plain HTTP. In production point the firewall at this port, and bind it to an address only
-      # the firewall can reach (QBL_HTTP_BIND=10.0.0.5, or 127.0.0.1 when the firewall is on this host).
-      - "${QBL_HTTP_BIND:-0.0.0.0}:${QBL_HTTP_PORT:-8080}:80"
+    environment:
+      # The site's public address. Set, every address Apache writes uses it (https and the public
+      # name), whatever reaches it. Unset, addresses follow each request.
+      QBL_PUBLIC_URL: ${QBL_PUBLIC_URL:-}
+    # Not published: only the edge reaches it, over plain HTTP on the Docker network.
     volumes:
       - public:/var/www/public:ro
       - media:/var/www/media:ro
@@ -157,7 +161,37 @@ services:
       - docs
     restart: unless-stopped
 
+  edge:
+    build:
+      context: docker/edge
+    environment:
+      # https://… : HTTPS with a certificate from ./certs if there is one, else from Let's Encrypt.
+      # Empty or http://… : plain HTTP (trying it out on your own machine).
+      QBL_PUBLIC_URL: ${QBL_PUBLIC_URL:-}
+      # Optional: Let's Encrypt writes here about problems with the certificate.
+      QBL_ACME_EMAIL: ${QBL_ACME_EMAIL:-}
+      # Only so the start script can warn when Let's Encrypt could not reach it.
+      QBL_HTTP_PORT: ${QBL_HTTP_PORT:-8080}
+      QBL_HTTPS_PORT: ${QBL_HTTPS_PORT:-8443}
+    ports:
+      # The only published ports. On a server: QBL_HTTP_PORT=80, QBL_HTTPS_PORT=443.
+      - "${QBL_HTTP_BIND:-0.0.0.0}:${QBL_HTTP_PORT:-8080}:80"
+      - "${QBL_HTTP_BIND:-0.0.0.0}:${QBL_HTTPS_PORT:-8443}:443"
+      - "${QBL_HTTP_BIND:-0.0.0.0}:${QBL_HTTPS_PORT:-8443}:443/udp"
+    volumes:
+      # Your own certificate, if you have one: fullchain.pem and privkey.pem. Never committed.
+      - ${QBL_CERTS_DIR:-./certs}:/certs:ro
+      # Let's Encrypt certificates and account. Keep this volume: deleting it means fetching new
+      # certificates, and Let's Encrypt limits how often that may happen.
+      - edge-data:/data
+      - edge-config:/config
+    depends_on:
+      - apache
+    restart: unless-stopped
+
 volumes:
+  edge-data:
+  edge-config:
   public:
   media:
   app-data:

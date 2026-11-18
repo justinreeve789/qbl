@@ -8,7 +8,7 @@ apps/server       Colyseus 0.18 game server
 apps/client       Phaser 4 client (Vite): systems, action presenters and features; see apps/client/README.md
 apps/editor       the scenario editor (TypeScript, no framework); see apps/editor/README.md
 apps/api          the Laravel application: QBL tables, seed data, JSON generation, editor API, logins, saves
-docker            Dockerfiles and config for the app, colyseus, editor and apache containers
+docker            Dockerfiles and config for the app, colyseus, editor, docs, apache and edge containers
 scenarios         scenario JSON + media for local play; starship.json is generated from the shipped demo ZIP
 docs              the QBL JSON docs plus pages for everything added
 tools             scenario validator CLI
@@ -23,11 +23,25 @@ npm install
 npm run dev          # game server on :2567, client on http://localhost:5173 (no Laravel or database needed)
 ```
 
+http://localhost:5173 is the marketing page; the game is at http://localhost:5173/missions (or `/play`, `/{code}`).
+
 Open the client in two browser windows to see multiplayer. To work on the editor without Docker (needs PHP 8.2+ with SQLite as well):
 
 ```sh
 npm run dev:editor   # dev API on :8000, editor and game together at http://localhost:5173/editor/
 ```
+
+The site's addresses:
+
+| Address | What it is |
+| ------- | ---------- |
+| `/` | The marketing page (`apps/client/index.html`, Tailwind compiled at build time). Its "Log in" button goes to `/missions` |
+| `/missions` | The game: the sign-in screen if needed, then the player's missions |
+| `/{code}` | One scenario, by its 16-letter code |
+| `/play?…` | The game with the parameters below (editor previews use `/play?preview=…`) |
+| `/editor/`, `/docs/` | The editor and the documentation |
+
+Every path that is not `/` or a file loads the game (`apps/client/play.html`). Old links that put these parameters on `/` (`/?preview=…`, `/?scenario=…`) are forwarded to `/play`.
 
 Players open a scenario at `/{code}`. Other URL parameters:
 
@@ -48,21 +62,23 @@ docker compose up --build
 
 | Address | What it is |
 | ------- | ---------- |
-| http://localhost:8080 | The game, playing the demo mission |
+| http://localhost:8080 | The marketing page |
+| http://localhost:8080/missions | The game: sign in, then the missions page |
 | http://localhost:8080/starshipexplorer | The demo mission by its code. Every scenario is at `/{code}` |
 | http://localhost:8080/editor | The editor |
 | http://localhost:8080/docs | The documentation |
 
-Six containers:
+Seven containers:
 
 | Container | What runs in it |
 | --------- | --------------- |
-| `app` | The Laravel backend (PHP-FPM) and the built Phaser frontend, which lives in Laravel's `public/` directory |
+| `edge` | Caddy: the only published container. Ends HTTPS (with a Let's Encrypt certificate it fetches and renews itself, or your own) and passes everything to `apache` as plain HTTP. Without `QBL_PUBLIC_URL` it serves plain HTTP on port 8080 |
+| `app` | The Laravel backend (PHP-FPM) and the built frontend (the marketing page and the Phaser game), which lives in Laravel's `public/` directory |
 | `db` | MariaDB |
 | `colyseus` | The multiplayer game server |
 | `editor` | The scenario editor: a static web application served by its own small Apache |
 | `docs` | The documentation in `docs/`, built with MkDocs into a static site |
-| `apache` | Apache httpd: the only published port. Serves the game's files and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
+| `apache` | Apache httpd, behind `edge` (not published). Serves the game's files and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
 
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
 
@@ -83,24 +99,46 @@ docker compose exec app php artisan qbl:user you@example.org "Your Name" --role=
 
 ### HTTPS
 
-Every container speaks plain HTTP, including the one published port. For HTTPS, TLS ends at your firewall or load balancer, which forwards to that port:
+On a server (a VPS, say) the `edge` container ends HTTPS. It holds the certificate, redirects `http://` to `https://`, and passes every request to the other containers as plain HTTP: nothing behind it needs a certificate, and only `edge` is reachable from outside.
 
-What the firewall has to do:
+```
+browser ──https──▶ edge :443 (certificate for dev.questlab.cc) ──http──▶ apache ──http──▶ app, colyseus, editor, docs
+```
 
-- Forward to the published port (`QBL_HTTP_PORT`, 8080 by default) over HTTP, keeping the `Host` header.
-- Send `X-Forwarded-Proto: https` and `X-Forwarded-For`.
-- Allow WebSocket upgrades on `/game/` (forward the `Upgrade` and `Connection` headers; allow long-lived connections, an hour or more of idle timeout).
-- Redirect port 80 to 443 and send HSTS, if you want them. Nothing in the containers does.
+**1. DNS.** Point `dev.questlab.cc` (an A record, and AAAA if the server has IPv6) at the server's address.
 
-What to set in `.env`:
+**2. Ports.** Ports 80 and 443 must be open to the internet (TCP; also UDP 443 for HTTP/3) in the hosting provider's firewall or security group. Nothing else on the server may use them.
+
+**3. `.env`** next to `docker-compose.yml`:
+
+```sh
+QBL_PUBLIC_URL=https://dev.questlab.cc   # the address people type; no path
+QBL_HTTP_PORT=80
+QBL_HTTPS_PORT=443
+QBL_ACME_EMAIL=you@questlab.cc           # optional: Let's Encrypt writes here about certificate problems
+```
+
+then `docker compose up -d --build`. `docker compose logs edge` says which certificate it is using.
+
+**4. The certificate.** Two ways:
+
+- **Let's Encrypt (nothing to do).** With no certificate files, `edge` fetches a free certificate for `dev.questlab.cc` on its first start, which needs steps 1 and 2 in place, and renews it by itself. Certificates are kept in the `edge-data` volume: don't delete it (`docker compose down -v` would), because Let's Encrypt limits how often new ones may be issued.
+- **Your own certificate.** Put two PEM files in `certs/` next to `docker-compose.yml` (or the folder named by `QBL_CERTS_DIR`): `fullchain.pem` (the certificate followed by its intermediates) and `privkey.pem` (its private key), then `docker compose restart edge`. They are used instead of Let's Encrypt; renewing is up to you (replace the files, restart `edge`). `certs/` is in `.gitignore` and `.dockerignore`, so the key never reaches git or an image.
+
+**5. Google sign-in**, if used: the authorised redirect URI is `https://dev.questlab.cc/api/auth/google/callback`.
+
+**6. Check it.** Open http://dev.questlab.cc (it should move to https), then https://dev.questlab.cc/missions: sign in and start a mission, with a second browser in it too (that exercises `wss://`). https://dev.questlab.cc/editor (no slash) should land on `https://dev.questlab.cc/editor/`.
+
+With an https `QBL_PUBLIC_URL`, that address is the site's own name everywhere: Apache writes every redirect with it (its own, and the editor's and docs' it passes on), Laravel builds every link with it (the Google sign-in's `redirect_uri` among them) and marks its cookies https-only, and the game opens its socket as `wss://` because the page is https. `edge` replaces any `X-Forwarded-*` headers a visitor sends with the real ones, so Laravel's logs and rate limits see true addresses. A wrongly written `QBL_PUBLIC_URL` stops `edge` and `apache` at start with a message saying so.
 
 | Setting | Value |
 | ------- | ----- |
-| `QBL_PUBLIC_URL` | The address people type, e.g. `https://qbl.example.org`. Laravel's `APP_URL`; the Google sign-in address is built from it |
-| `QBL_HTTP_BIND` | The address the published port listens on. Make it one only the firewall can reach (`127.0.0.1` if the firewall is on the same host) |
-| `QBL_TRUSTED_PROXIES` | Whose `X-Forwarded-*` headers are believed: the firewall's address and the Docker network, comma-separated. The default is every private range, which suits a firewall on a private network |
-
-How it works inside: Apache passes the forwarded headers on to Laravel, which believes them only from the trusted addresses and then knows the site is https (its links, redirects and cookies follow) and what the visitor's real address is. Apache rewrites any redirect of its own, or of the editor and docs containers, from `http://` to `https://` when the visitor came by https, and logs the visitor's address. The game builds its socket address from the page's own, so an https page uses `wss://`. **The published port must be reachable only through the firewall**: anyone who can reach it directly can send those headers themselves.
+| `QBL_PUBLIC_URL` | The address people type, `https://dev.questlab.cc`. Turns on HTTPS in `edge`; Laravel's `APP_URL` and Apache's own name. Empty (the default) for trying it out on your own machine: plain HTTP at http://localhost:8080 |
+| `QBL_HTTP_PORT`, `QBL_HTTPS_PORT` | The published ports: 80 and 443 on a server (Let's Encrypt needs one of them). Default 8080 and 8443 |
+| `QBL_HTTP_BIND` | The address the published ports listen on. Default every address |
+| `QBL_ACME_EMAIL` | Optional address for Let's Encrypt |
+| `QBL_CERTS_DIR` | Where your own `fullchain.pem` and `privkey.pem` are. Default `./certs` |
+| `QBL_TRUSTED_PROXIES` | Whose `X-Forwarded-*` headers Laravel believes. Laravel only ever hears from Apache, so it must include the Docker network; the default is every private range |
 
 ### Google sign-in
 

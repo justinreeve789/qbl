@@ -1,6 +1,7 @@
 /**
- * Where the game is served. In production the game and the editor share an origin ("/" and
- * "/editor/"). In development they are two Vite servers, so the game's address is configured.
+ * Where the game is served. In production the game and the editor share an origin ("/{code}",
+ * "/play" and "/editor/"; "/" itself is the marketing page). In development they are two Vite
+ * servers, so the game's address is configured.
  */
 const env = import.meta.env ?? {};
 
@@ -13,7 +14,7 @@ export function previewUrl(scenarioId: number, sceneId?: number, debug = false):
   const params = new URLSearchParams({ preview: String(scenarioId) });
   if (sceneId != null) params.set('scene', String(sceneId));
   if (debug) params.set('debug', '1');
-  return `${config.gameUrl}?${params}`;
+  return `${config.gameUrl}play?${params}`;
 }
 
 /** Address players use for a published scenario. */

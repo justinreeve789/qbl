@@ -1,4 +1,4 @@
-# The "app" container: the Laravel backend (PHP-FPM) and the built Phaser frontend.
+# The "app" container: the Laravel backend (PHP-FPM), the built Phaser frontend and the marketing page.
 # Build from the repository root:  docker build -f docker/app/Dockerfile .
 
 # ---- 1. build the Phaser frontend ---------------------------------------------------
@@ -15,6 +15,8 @@ COPY apps/editor/package.json apps/editor/
 RUN npm install --workspace @qbl/shared --workspace @qbl/client --include-workspace-root
 COPY packages/shared packages/shared
 COPY apps/client apps/client
+# The marketing page's characters are the platform avatars.
+COPY scenarios/assets/platform scenarios/assets/platform
 # login: email + password against Laravel, with a "play as guest" link.
 ARG VITE_AUTH_MODE=login
 ARG VITE_DEFAULT_SCENARIO=starshipexplorer
@@ -41,7 +43,7 @@ RUN composer install --no-interaction --no-dev --prefer-dist --no-scripts --no-a
 COPY apps/api/ /app/
 RUN composer dump-autoload --optimize --no-dev
 
-# The game: index.html and its bundles sit beside Laravel's index.php, and scenario media beside them.
+# The marketing page (index.html), the game (play.html) and their bundles sit beside Laravel's index.php, and scenario media beside them.
 COPY --from=frontend /repo/apps/client/dist/ /app/public/
 COPY scenarios/assets/ /app/public/scenario-assets/
 

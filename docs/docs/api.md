@@ -31,7 +31,7 @@ Ends the token it is called with, so signing out works everywhere that token was
 
 Google sign-in is on when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set. It is a redirect flow, not a JSON call:
 
-1. The sign-in screen sends the browser to `GET /api/auth/google/redirect?return=/editor/`. `return` is a path on this site to come back to; anything else is replaced with `/`.
+1. The sign-in screen sends the browser to `GET /api/auth/google/redirect?return=/editor/`. `return` is a path on this site to come back to; anything else is replaced with `/missions`.
 2. Google asks the person and sends the browser to `GET /api/auth/google/callback` (register this address with Google: `https://your-host/api/auth/google/callback`. It is built from `APP_URL`).
 3. The API finds the account by Google's id for it, or joins an existing account with the same verified address, or creates a new one. It issues a token and answers with a small page that stores the token where the game and the editor look for it (`localStorage["qbl.token"]`) and goes to `return`. The token is never put in an address.
 
@@ -198,4 +198,4 @@ The editor runs the shared validator (`validateScenario` from `@qbl/shared`) on 
 
 ### Testing a draft
 
-The game plays a draft when opened as `/?preview={scenario id}&scene={scene id}`. It fetches `GET /api/editor/scenarios/{id}/preview` with the editor's token, checks the document, and plays it alone (no game server, nothing saved), starting in the given scene. This is what the editor's "Test this scene" button opens.
+The game plays a draft when opened as `/play?preview={scenario id}&scene={scene id}` (`/` itself is the marketing page, which forwards the old `/?preview=` form here). It fetches `GET /api/editor/scenarios/{id}/preview` with the editor's token, checks the document, and plays it alone (no game server, nothing saved), starting in the given scene. This is what the editor's "Test this scene" button opens.

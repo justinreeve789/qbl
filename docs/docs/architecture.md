@@ -2,8 +2,10 @@
 
 ```
                                browser
-                                  |
-                          apache  (port 80, published)
+                                  |  https (http on a local try-out)
+                          edge: Caddy  (ports 80 and 443, published; ends TLS)
+                                  |  plain http from here on
+                          apache
       /            |              |               |              \
  game files     /media         /editor          /api/*          /game  (WebSocket)
  and /{code}    uploaded          |               |                |
@@ -13,7 +15,7 @@
                                                   db  <------------+  (Docker network only)
 ```
 
-Docker runs six containers: `app` (Laravel and the built Phaser frontend), `db` (MariaDB), `colyseus`, `editor`, `docs` (this documentation, built with MkDocs and served at `/docs`) and `apache`. The Phaser build is copied into Laravel's `public/` directory; Apache serves those files from a shared volume and forwards PHP requests to FPM. Any path Apache has no file for loads the game, which is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
+Docker runs seven containers: `edge` (Caddy, the only published one: it ends HTTPS with a Let's Encrypt or your own certificate and passes everything on as plain HTTP), `apache`, `app` (Laravel, the built Phaser frontend and the marketing page), `db` (MariaDB), `colyseus`, `editor` and `docs` (this documentation, built with MkDocs and served at `/docs`). `/` is the marketing page; every other path Apache has no file for loads the game. The Phaser build is copied into Laravel's `public/` directory; Apache serves those files from a shared volume and forwards PHP requests to FPM. That fallback is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
 
 The `editor` container is static files behind its own small Apache, reached through the front one at `/editor`. It holds no data and no secrets; everything it does is a call to `/api/editor`. Because the game and the editor share an address, they share a sign-in, and the editor's "Test this scene" can open the game on a draft.
 
@@ -30,7 +32,7 @@ Path | What it is
 `apps/api` | The Laravel application: the QBL tables, the demo mission (shipped as an exported scenario ZIP), the store the editor and the seeder write through, the compiler that generates scenario JSON from the tables, and the controllers implementing the API contract.
 `scenarios` | Scenario JSON and media for the file backend. `starship.json` is generated from the demo's ZIP (`npm run seed:export`), with the files uploaded for it in `assets/starship/uploads`; do not edit them by hand.
 `docs` | This documentation.
-`docker` | Dockerfiles for the app, colyseus, editor and apache containers, the app entrypoint and the Apache configuration.
+`docker` | Dockerfiles for the app, colyseus, editor, docs, apache and edge containers, the app entrypoint, the Apache configuration and the start scripts that write Apache's and Caddy's settings from `QBL_PUBLIC_URL`.
 `tools` | `validate-scenario.ts`, `make-demo-audio.py`.
 
 ## Design decisions
