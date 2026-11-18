@@ -41,7 +41,7 @@ Beside the framework's usual folders:
 | `tests/progress.php` | Tests stars, XP and the marketplace the same way: `npm run test:progress` |
 | `tests/generation.php` | Tests the AI mission generator end to end with a stand-in model and placeholder pictures: `npm run test:generation` |
 | `tests/Feature/QblApiTest.php` | The same API through real Laravel: `php artisan test` |
-| `tests/Feature/SignInAndDeployTest.php` | Google sign-in, forwarded HTTPS headers, seeding by command, migrating a database made by the earlier migrations |
+| `tests/Feature/SignInAndDeployTest.php` | Google sign-in, forwarded HTTPS headers and the https public address, seeding by command, migrating a database made by the earlier migrations |
 | `dev/server.php` | A stand-in API for developing and testing the editor without Docker: `npm run dev:api`. Not for deployment |
 
 ## Why three plain PHP classes
@@ -109,7 +109,9 @@ returns to is `/api/auth/google/callback` on `APP_URL`.
 
 `bootstrap/app.php` trusts `X-Forwarded-For`, `-Host`, `-Port` and `-Proto` from the addresses in
 `TRUSTED_PROXIES` (comma-separated; by default every private range and localhost). Set `APP_URL` to the
-https address. Nothing else is needed for HTTPS that ends at a firewall in front of the web server.
+https address (in Docker, `QBL_PUBLIC_URL`). When `APP_URL` is https, `App\Http\Middleware\PublicAddress`
+builds every link from it and counts every request as secure, so nothing depends on the proxy's headers;
+a trusted proxy that says a visitor came by plain http is still believed for cookies.
 
 ## Codes and publishing
 

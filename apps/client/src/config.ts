@@ -13,8 +13,9 @@ export const config = {
   /** guest: pick a name (file backend). login: email and password (Laravel API). */
   authMode: (env.VITE_AUTH_MODE ?? 'guest') as 'guest' | 'login',
   /**
-   * No scenario was asked for: show the missions page (public missions and those a teacher
-   * assigned). Where the backend has no missions to list, the default scenario is played.
+   * No scenario was asked for (/missions, or /play with no parameters): show the missions page
+   * (public missions and those a teacher assigned). Where the backend has no missions to list,
+   * the default scenario is played. "/" itself is the marketing page, not the game.
    */
   home: codeInPath == null && !params.has('scenario') && !params.has('preview') && !params.has('offline'),
   /** Which scenario to play: the code in the path, else ?scenario=, else the demo. */

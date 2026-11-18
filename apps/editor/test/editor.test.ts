@@ -204,9 +204,9 @@ test('add a second scene and an exit along the edge that jumps to it', async () 
 
 test('the test button opens this scene of the draft in the game', async () => {
   const href = await page.getAttribute('.toolbar a.primary', 'href');
-  assert.equal(href, `/?preview=${scenarioId}&scene=${firstScene}`);
+  assert.equal(href, `/play?preview=${scenarioId}&scene=${firstScene}`);
   await page.check('.toolbar input[type=checkbox]');
-  assert.equal(await page.getAttribute('.toolbar a.primary', 'href'), `/?preview=${scenarioId}&scene=${firstScene}&debug=1`);
+  assert.equal(await page.getAttribute('.toolbar a.primary', 'href'), `/play?preview=${scenarioId}&scene=${firstScene}&debug=1`);
   // What that address loads: the draft, compiled on request, before anything is published.
   const { scenario } = await api<{ scenario: Scenario }>(`/editor/scenarios/${scenarioId}/preview`);
   assert.equal(scenario.scenes.length, 2);

@@ -1,15 +1,382 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Quest-Based Learning</title>
-  </head>
-  <body>
-    <div id="app">
-      <div id="game"></div>
-    </div>
-    <div id="gate" role="status">Loading…</div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuestLab — Multiplayer Educational Quests & AI Mission Builder</title>
+    <meta name="description" content="Multiplayer 2D learning quests for K-8: students explore cartoon worlds together while teachers build standards-aligned missions in seconds.">
+    <script>
+        // "/" used to be the game. Old links (editor previews, ?scenario=, a Google sign-in that
+        // came back with a problem) go to the game's new addresses. Runs before anything is drawn.
+        (function () {
+            var s = location.search, h = location.hash;
+            if (/[?&](preview|scenario|offline)(=|&|$)/.test(s)) location.replace('/play' + s + h);
+            else if (/^#signin=/.test(h)) location.replace('/missions' + h);
+            document.documentElement.className += ' js';
+        })();
+    </script>
+    <script type="module" src="/src/site/site.ts"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-pink-500 selection:text-white overflow-x-hidden font-sans">
+
+    <!-- Header / Navbar -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-indigo-900/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+            <a href="/" class="flex items-center space-x-3 shrink-0" aria-label="QuestLab home">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-pink-500/30 transform hover:scale-105 transition-transform">
+                    <span class="font-heading text-2xl font-bold text-white">QL</span>
+                </div>
+                <span class="font-heading text-2xl sm:text-3xl font-bold tracking-wide bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 bg-clip-text text-transparent">QuestLab</span>
+            </a>
+            <nav class="hidden lg:flex items-center space-x-8 text-sm font-medium text-slate-300">
+                <a href="#ai-builder" class="hover:text-pink-400 transition-colors">AI Mission Builder</a>
+                <a href="#missions" class="hover:text-pink-400 transition-colors">Curriculum Quests</a>
+                <a href="#assessment" class="hover:text-pink-400 transition-colors">Assessment & Analytics</a>
+                <a href="#features" class="hover:text-pink-400 transition-colors">School Features</a>
+            </nav>
+            <div class="flex items-center space-x-3">
+                <a href="/missions" class="px-5 py-2.5 rounded-2xl border border-cyan-400/60 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-200 hover:text-white font-heading font-semibold text-sm transition-all flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14M5 20H4a1 1 0 01-1-1V5a1 1 0 011-1h1"></path></svg>
+                    <span data-login-label="My missions">Log in</span>
+                </a>
+                <a href="#demo" class="hidden sm:inline-block px-6 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-heading font-semibold text-sm shadow-lg shadow-pink-600/30 transition-all transform hover:-translate-y-0.5">
+                    Request Pilot
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+    <!-- Hero Section -->
+    <section class="relative pt-36 pb-24 md:pt-48 md:pb-36 overflow-hidden">
+        <div class="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-pink-600/20 rounded-full blur-[120px] pointer-events-none animate-glow"></div>
+        <div class="absolute top-1/3 right-10 w-[500px] h-[500px] bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none animate-glow"></div>
+
+        <div class="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+            <div class="md:col-span-7 space-y-6 text-center md:text-left">
+                <div class="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-pink-950/80 border border-pink-800/60 text-pink-300 text-xs font-semibold tracking-wide uppercase shadow-inner">
+                    <span class="w-2.5 h-2.5 rounded-full bg-pink-400 animate-ping"></span>
+                    <span>Multiplayer 2D Learning Quests for K-8</span>
+                </div>
+                <h1 class="font-heading text-5xl md:text-7xl font-bold leading-tight tracking-tight">
+                    Turn your classroom into an <br><span class="bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 bg-clip-text text-transparent">epic multiplayer adventure.</span>
+                </h1>
+                <p class="text-lg md:text-xl text-slate-300 max-w-xl mx-auto md:mx-0 font-normal leading-relaxed">
+                    Students walk side-by-side with cartoon avatars, solve interactive puzzles, and master state standards together. Plus, teachers can generate custom quests in seconds.
+                </p>
+                <div class="flex flex-col sm:flex-row items-center justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4 pt-4">
+                    <a href="#ai-builder" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-heading font-semibold text-base shadow-xl shadow-pink-600/40 transition-all transform hover:-translate-y-1 flex items-center justify-center space-x-2">
+                        <span>Try AI Mission Generator</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </a>
+                    <a href="#missions" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-200 font-heading font-semibold text-base transition-all flex items-center justify-center">
+                        Explore Quests
+                    </a>
+                </div>
+                <p class="text-sm text-slate-400">
+                    Already on a quest? <a href="/missions" class="font-semibold text-cyan-300 hover:text-cyan-200 underline decoration-cyan-500/50 underline-offset-4">Log in to your missions →</a>
+                </p>
+            </div>
+
+            <!-- Hero Cartoon Showcase Card, with Sprocket waving hello -->
+            <div class="md:col-span-5 flex justify-center relative pb-36 md:pb-0" data-reveal>
+                <div class="w-full max-w-md bg-gradient-to-b from-indigo-900/60 to-slate-900/90 border border-indigo-700/50 rounded-3xl p-6 shadow-2xl backdrop-blur-xl animate-float">
+                    <div class="flex items-center justify-between pb-4 border-b border-indigo-800/60">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-rose-500 inline-block"></span>
+                            <span class="w-3.5 h-3.5 rounded-full bg-amber-500 inline-block"></span>
+                            <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 inline-block"></span>
+                        </div>
+                        <span class="text-xs font-heading text-pink-400 font-semibold uppercase tracking-wider">Live Classroom Session</span>
+                    </div>
+                    <div class="py-6 space-y-4 text-center">
+                        <div class="flex justify-center items-end space-x-2 py-2" aria-hidden="true">
+                            <img src="../../scenarios/assets/platform/avatars/avatar-1.png" alt="" class="qs-char qs-bob h-28 sm:h-32 w-auto" style="--delay:0s">
+                            <img src="../../scenarios/assets/platform/avatars/avatar-2.png" alt="" class="qs-char qs-bob h-28 sm:h-32 w-auto" style="--delay:.4s">
+                            <img src="../../scenarios/assets/platform/avatars/avatar-3.png" alt="" class="qs-char qs-bob h-28 sm:h-32 w-auto" style="--delay:.8s">
+                            <img src="../../scenarios/assets/platform/avatars/avatar-7.png" alt="" class="qs-char qs-bob h-28 sm:h-32 w-auto" style="--delay:1.2s">
+                        </div>
+                        <h3 class="font-heading text-xl font-bold text-white">Ecosystem Energy Flow Quest</h3>
+                        <p class="text-sm text-slate-300">Class 4B collaborating in real time to balance food webs and unlock digital badges.</p>
+                        <div class="pt-2 flex items-center justify-center space-x-2">
+                            <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold">28/28 Students Active</span>
+                            <span class="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-semibold">NGSS 5-LS2-1</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Sprocket, the platform's robot, standing at the card's corner -->
+                <div class="absolute left-0 bottom-0 md:-left-20 md:-bottom-40 flex items-end pointer-events-none" aria-hidden="true">
+                    <div class="qs-sprocket qs-sprocket-wave w-24 md:w-32"></div>
+                    <span class="qs-bubble qs-ring-cyan qs-tail-left qs-pop mb-16 md:mb-24 -ml-1 max-w-[12rem]" style="--tail-y:70%">Hi, I'm Sprocket! Ready for a quest?</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Mission Generator Feature Section -->
+    <section id="ai-builder" class="py-24 bg-gradient-to-b from-indigo-950/60 to-slate-900/80 border-y border-indigo-900/40">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+            <div class="md:col-span-6 space-y-6">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-800/60 text-purple-300 text-xs font-semibold tracking-wide uppercase">
+                    <span>⚡ Instant Authoring</span>
+                </div>
+                <h2 class="font-heading text-4xl md:text-5xl font-bold">Generate Custom Missions in Seconds</h2>
+                <p class="text-slate-300 text-base leading-relaxed">
+                    Just type your lesson objective or paste your vocabulary list into QuestLab's AI Mission Generator.
+                </p>
+                <ul class="space-y-3 text-sm text-slate-300">
+                    <li class="flex items-center space-x-3">
+                        <span class="w-6 h-6 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold shrink-0">✓</span>
+                        <span>Auto-generates scenes, interactive hotspots, and assessment tools.</span>
+                    </li>
+                    <li class="flex items-center space-x-3">
+                        <span class="w-6 h-6 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold shrink-0">✓</span>
+                        <span>Instantly tags state and national curriculum standards.</span>
+                    </li>
+                    <li class="flex items-center space-x-3">
+                        <span class="w-6 h-6 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold shrink-0">✓</span>
+                        <span>Includes complete teacher guides, vocabulary, and answer keys.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Interactive AI Prompt Box Mockup, presented by Orion -->
+            <div class="md:col-span-6 relative pt-40 md:pt-44" data-reveal>
+                <div class="absolute top-0 right-2 md:right-6 flex items-end pointer-events-none" aria-hidden="true">
+                    <span class="qs-bubble qs-ring-purple qs-tail-right qs-pop mb-24 -mr-1 max-w-[13rem]" style="--origin: bottom right; --tail-y:65%">One sentence in, a whole quest out. Watch!</span>
+                    <img src="../../scenarios/assets/platform/avatars/avatar-2.png" alt="" class="qs-char qs-rise h-44 md:h-48 w-auto relative top-4">
+                </div>
+                <div class="relative bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <span class="font-heading font-bold text-sm text-pink-400">✨ QuestLab AI Assistant</span>
+                        <span class="text-xs text-slate-500">Model: QBL-Edu-v2</span>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-sm text-slate-300">
+                        <p class="text-indigo-400 text-xs font-mono mb-1">// Teacher Prompt:</p>
+                        <p>"Create a 5th-grade fractions quest set in an ancient Egyptian pyramid where students collect fraction gems to open temple doors."</p>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-800/40 text-xs space-y-2">
+                        <div class="flex items-center justify-between text-indigo-300 font-semibold">
+                            <span>Generating Mission Package...</span>
+                            <span class="text-emerald-400">Ready in 4.2s</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div class="bg-gradient-to-r from-pink-500 to-cyan-400 h-full w-full"></div>
+                        </div>
+                        <p class="text-slate-400">Generated 4 scenes, 12 interactive hotspots, and aligned with <strong class="text-slate-200">CCSS.MATH.5.NF.A.1</strong>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Standards & Mission Examples: a guide peeks over each card -->
+    <section id="missions" class="py-24 max-w-7xl mx-auto px-6 space-y-16">
+        <div class="text-center max-w-2xl mx-auto space-y-4">
+            <h2 class="font-heading text-3xl md:text-4xl font-bold">Curriculum-Aligned Adventure Quests</h2>
+            <p class="text-slate-300 text-base">Every mission is rigorously mapped to academic standards so learning time is never compromised.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-48 pt-36">
+            <!-- Mission 1: Nova -->
+            <div class="relative" data-reveal>
+                <div class="absolute right-6 bottom-[calc(100%-3.5rem)] flex items-end pointer-events-none" aria-hidden="true">
+                    <span class="qs-bubble qs-tail-right qs-pop mb-28 -mr-1 text-sm" style="--origin: bottom right">To the stars!</span>
+                    <img src="../../scenarios/assets/platform/avatars/avatar-1.png" alt="" class="qs-char qs-rise h-48 w-auto">
+                </div>
+                <div class="relative h-full bg-slate-900 border border-indigo-900/60 rounded-3xl p-8 space-y-4 hover:border-pink-500/50 transition-all shadow-xl flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-pink-500/20 text-pink-400 flex items-center justify-center text-xl font-bold">🚀</div>
+                        <div class="inline-block px-3 py-1 rounded-full bg-pink-950 text-pink-300 text-xs font-semibold">Grade 3-5 Science</div>
+                        <h3 class="font-heading text-xl font-bold text-white">Starship Exoplanet Explorer</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed">Students navigate alien terrain, analyze atmospheric gas data, and pilot rovers to understand planetary ecosystems.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-800 text-xs text-indigo-300 font-mono">
+                        Standard: NGSS 5-ESS1-1 | Time: 45 Mins
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mission 2: Halley -->
+            <div class="relative" data-reveal>
+                <div class="absolute right-6 bottom-[calc(100%-3.5rem)] flex items-end pointer-events-none" aria-hidden="true">
+                    <span class="qs-bubble qs-ring-cyan qs-tail-right qs-pop mb-28 -mr-1 text-sm" style="--origin: bottom right">Scrolls ahoy!</span>
+                    <img src="../../scenarios/assets/platform/avatars/avatar-9.png" alt="" class="qs-char qs-rise h-48 w-auto" style="--rise-delay:.12s">
+                </div>
+                <div class="relative h-full bg-slate-900 border border-indigo-900/60 rounded-3xl p-8 space-y-4 hover:border-cyan-500/50 transition-all shadow-xl flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl font-bold">🏛️</div>
+                        <div class="inline-block px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 text-xs font-semibold">Grade 6-8 History</div>
+                        <h3 class="font-heading text-xl font-bold text-white">Ancient Alexandria Library Walk</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed">An immersive museum quest where student groups solve historical puzzles and interact with primary source scrolls.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-800 text-xs text-cyan-300 font-mono">
+                        Standard: CCSS.ELA-LITERACY.RH.6-8 | Time: 50 Mins
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mission 3: Vega -->
+            <div class="relative" data-reveal>
+                <div class="absolute right-6 bottom-[calc(100%-3.5rem)] flex items-end pointer-events-none" aria-hidden="true">
+                    <span class="qs-bubble qs-ring-purple qs-tail-right qs-pop mb-28 -mr-1 text-sm" style="--origin: bottom right">Fractions? Easy!</span>
+                    <img src="../../scenarios/assets/platform/avatars/avatar-3.png" alt="" class="qs-char qs-rise h-48 w-auto" style="--rise-delay:.24s">
+                </div>
+                <div class="relative h-full bg-slate-900 border border-indigo-900/60 rounded-3xl p-8 space-y-4 hover:border-purple-500/50 transition-all shadow-xl flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl font-bold">📐</div>
+                        <div class="inline-block px-3 py-1 rounded-full bg-purple-950 text-purple-300 text-xs font-semibold">Grade 3-4 Math</div>
+                        <h3 class="font-heading text-xl font-bold text-white">Fraction Forest Adventure</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed">Cooperative multiplayer quest where students share food items and bridge chasms by combining fractional lengths.</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-800 text-xs text-purple-300 font-mono">
+                        Standard: CCSS.MATH.3.NF.A.1 | Time: 40 Mins
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Assessment & Dashboard Section, with Cosmo keeping watch -->
+    <section id="assessment" class="py-24 bg-indigo-950/40 border-y border-indigo-900/40">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+            <div class="md:col-span-6 space-y-6">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-800/60 text-emerald-300 text-xs font-semibold tracking-wide uppercase">
+                    <span>📊 Real-Time Formative Insight</span>
+                </div>
+                <h2 class="font-heading text-4xl md:text-5xl font-bold">Actionable Assessment Without the Stress</h2>
+                <p class="text-slate-300 text-base leading-relaxed">
+                    While students play and collaborate, QuestLab's teacher dashboard tracks progress automatically in the background.
+                </p>
+                <div class="space-y-4">
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold flex-shrink-0 mt-1">1</div>
+                        <div>
+                            <h4 class="font-heading font-semibold text-white">Live Classroom Heatmap</h4>
+                            <p class="text-sm text-slate-400">See exactly which scene every student is in and where they might need a hint.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold flex-shrink-0 mt-1">2</div>
+                        <div>
+                            <h4 class="font-heading font-semibold text-white">Tamper-Proof Activity Logs</h4>
+                            <p class="text-sm text-slate-400">Review student decision paths and quiz responses instantly after mission completion.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assessment Dashboard Mockup Card -->
+            <div class="md:col-span-6 relative pt-40 md:pt-44" data-reveal>
+                <div class="absolute top-0 left-4 md:left-8 flex items-end pointer-events-none" aria-hidden="true">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-8.png" alt="" class="qs-char qs-rise h-44 md:h-48 w-auto relative top-4">
+                    <span class="qs-bubble qs-ring-emerald qs-tail-left qs-pop mb-24 -ml-1 max-w-[13rem]" style="--origin: bottom left; --tail-y:65%">Psst… Group 2 could use a hint!</span>
+                </div>
+                <div class="relative bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <span class="font-heading font-bold text-sm text-emerald-400">Teacher Live Dashboard</span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono">Session Active</span>
+                    </div>
+                    <div class="space-y-3 text-xs">
+                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-3">
+                                <span class="flex -space-x-2" aria-hidden="true">
+                                    <img src="../../scenarios/assets/platform/avatars/avatar-1.png" alt="" class="w-7 h-7 rounded-full object-cover object-top bg-indigo-800 ring-2 ring-slate-950">
+                                    <img src="../../scenarios/assets/platform/avatars/avatar-2.png" alt="" class="w-7 h-7 rounded-full object-cover object-top bg-pink-800 ring-2 ring-slate-950">
+                                </span>
+                                <span>Group 1 (Nova &amp; Orion)</span>
+                            </span>
+                            <span class="text-emerald-400 font-semibold text-right">Completed Quest (94%)</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-3">
+                                <span class="flex -space-x-2" aria-hidden="true">
+                                    <img src="../../scenarios/assets/platform/avatars/avatar-3.png" alt="" class="w-7 h-7 rounded-full object-cover object-top bg-cyan-800 ring-2 ring-slate-950">
+                                    <img src="../../scenarios/assets/platform/avatars/avatar-7.png" alt="" class="w-7 h-7 rounded-full object-cover object-top bg-amber-700 ring-2 ring-slate-950">
+                                </span>
+                                <span>Group 2 (Vega &amp; Juno)</span>
+                            </span>
+                            <span class="text-amber-400 font-semibold text-right">At Scene 3: Energy Reactor</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                            <span class="flex items-center gap-3">
+                                <span class="flex -space-x-2" aria-hidden="true">
+                                    <img src="../../scenarios/assets/platform/avatars/avatar-6.png" alt="" class="w-7 h-7 rounded-full object-cover object-top bg-purple-800 ring-2 ring-slate-950">
+                                    <img src="../../scenarios/assets/platform/avatars/avatar-5.png" alt="" class="w-7 h-7 rounded-full object-cover object-top bg-emerald-800 ring-2 ring-slate-950">
+                                </span>
+                                <span>Group 3 (Rigel &amp; Lyra)</span>
+                            </span>
+                            <span class="text-cyan-400 font-semibold text-right">Reviewing Teacher Hint</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- School & District Features Section, introduced by Atlas -->
+    <section id="features" class="py-24 max-w-7xl mx-auto px-6 space-y-16">
+        <div class="text-center max-w-2xl mx-auto space-y-4">
+            <div class="flex items-end justify-center pb-2" data-reveal aria-hidden="true">
+                <img src="../../scenarios/assets/platform/avatars/avatar-4.png" alt="" class="qs-char qs-bob h-44 w-auto" loading="lazy">
+                <span class="qs-bubble qs-ring-amber qs-tail-left qs-pop mb-28 -ml-1 max-w-[14rem] text-left" style="--tail-y:65%">I guard the data. No ads, no snooping!</span>
+            </div>
+            <h2 class="font-heading text-3xl md:text-4xl font-bold">Built for District Security & Simplicity</h2>
+            <p class="text-slate-300 text-base">We make adoption effortless for IT administrators and completely safe for students.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl">
+                <div class="w-14 h-14 rounded-2xl bg-pink-500/20 text-pink-400 flex items-center justify-center text-2xl">🔒</div>
+                <h3 class="font-heading text-xl font-bold text-white">COPPA & FERPA Compliant</h3>
+                <p class="text-slate-300 text-sm leading-relaxed">We collect zero unnecessary student data, run no ads, and comply with district data privacy agreements.</p>
+            </div>
+            <div class="bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl">
+                <div class="w-14 h-14 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl">🔑</div>
+                <h3 class="font-heading text-xl font-bold text-white">Seamless Rostering & SSO</h3>
+                <p class="text-slate-300 text-sm leading-relaxed">Integrate effortlessly with Google Classroom, Clever, ClassLink, and LTI-compatible learning management systems.</p>
+            </div>
+            <div class="bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl">
+                <div class="w-14 h-14 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl">💬</div>
+                <h3 class="font-heading text-xl font-bold text-white">Safe Emoji Chat & Controls</h3>
+                <p class="text-slate-300 text-sm leading-relaxed">Chat defaults to a curated emoji set to keep peer interaction joyful, with optional teacher-moderated text and instant room mute.</p>
+            </div>
+        </div>
+    </section>
+    </main>
+
+    <!-- Footer & CTA: the whole cast sees you off -->
+    <footer id="demo" class="pt-16 pb-20 border-t border-indigo-900/50 bg-slate-950 text-center text-sm text-slate-400 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 space-y-6">
+            <div class="relative pt-16" data-reveal aria-hidden="true">
+                <span class="qs-bubble qs-tail-down qs-pop absolute top-0 left-1/2 -translate-x-1/2 whitespace-nowrap" style="--origin: bottom center; --tail-x: calc(50% - 7px)">We saved you a seat on the starship!</span>
+                <div class="flex items-end justify-center gap-1 sm:gap-3">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-6.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto hidden sm:block pointer-events-auto" style="--delay:.1s" loading="lazy">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-5.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto hidden md:block" style="--delay:.5s" loading="lazy">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-1.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto" style="--delay:.9s" loading="lazy">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-2.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto" style="--delay:.3s" loading="lazy">
+                    <div class="qs-sprocket qs-sprocket-cheer w-20 sm:w-28"></div>
+                    <img src="../../scenarios/assets/platform/avatars/avatar-7.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto" style="--delay:.7s" loading="lazy">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-3.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto" style="--delay:1.1s" loading="lazy">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-9.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto hidden md:block" style="--delay:.2s" loading="lazy">
+                    <img src="../../scenarios/assets/platform/avatars/avatar-8.png" alt="" class="qs-char qs-bob qs-hop h-24 sm:h-32 w-auto hidden sm:block" style="--delay:.6s" loading="lazy">
+                </div>
+                <div class="mx-auto mt-1 h-3 max-w-2xl rounded-full bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent blur-sm"></div>
+            </div>
+            <h3 class="font-heading text-3xl font-bold text-white">Ready to bring QuestLab to your school?</h3>
+            <p class="max-w-md mx-auto text-slate-300">Schedule a live walkthrough with our district success team and get free trial pilot access for your teachers.</p>
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="mailto:support@questlab.edu" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-heading font-semibold shadow-lg shadow-pink-600/30 hover:opacity-95 transition-opacity inline-block text-base">
+                    Contact Our Team
+                </a>
+                <a href="/missions" class="px-8 py-4 rounded-2xl border border-cyan-400/60 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-200 hover:text-white font-heading font-semibold transition-all inline-block text-base">
+                    <span data-login-label="Go to my missions">Students: log in</span>
+                </a>
+            </div>
+            <p class="text-slate-400">Teachers and admins: <a href="/editor/" class="font-semibold text-pink-300 hover:text-pink-200 underline decoration-pink-500/50 underline-offset-4">sign in to the mission editor</a></p>
+            <p class="pt-12 text-xs text-slate-500">&copy; <span id="year">2026</span> QuestLab. Inspiring students through collaborative adventures.</p>
+        </div>
+    </footer>
+
+</body>
 </html>

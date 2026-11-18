@@ -1,6 +1,6 @@
 # Classes, missions and teams
 
-A **mission** is a published scenario. Players find their missions on the page they land on after signing in (the site's front page, `/`): a grid with one card per mission.
+A **mission** is a published scenario. Players find their missions on the page they land on after signing in (`/missions`, where the marketing page's "Log in" button goes): a grid with one card per mission.
 
 Kind | Who sees it | Set by
 ---- | ----------- | ------

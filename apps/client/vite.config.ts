@@ -1,5 +1,33 @@
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
+import { defineConfig, type Connect, type Plugin } from 'vite';
+
+/**
+ * Two pages are built:
+ *
+ *   index.html   the marketing site, at "/" only. Plain HTML and Tailwind; no game code.
+ *   play.html    the game, for every other address: /missions, /{code}, /play?preview=…
+ *
+ * In production Apache does this (DirectoryIndex index.html, FallbackResource /play.html).
+ * The plugin below does the same for `vite` and `vite preview`, so development matches.
+ */
+function gameFallback(): Plugin {
+  // Paths that are files or that the proxy below handles are left alone.
+  const passThrough = /^\/(@|src\/|node_modules\/|assets\/|api(\/|$)|game(\/|$)|media\/|scenario-assets\/|editor(\/|$)|docs(\/|$))/;
+  const rewrite: Connect.NextHandleFunction = (req, _res, next) => {
+    const [path, query = ''] = (req.url ?? '/').split(/\?(.*)/s, 2);
+    const wantsHtml = req.method === 'GET' && (req.headers.accept ?? '').includes('text/html');
+    if (wantsHtml && path !== '/' && path !== '/index.html' && !passThrough.test(path!) && !/\.[a-z0-9]+$/i.test(path!)) {
+      req.url = `/play.html${query ? `?${query}` : ''}`;
+    }
+    next();
+  };
+  return {
+    name: 'qbl-game-fallback',
+    configureServer: (server) => void server.middlewares.use(rewrite),
+    configurePreviewServer: (server) => void server.middlewares.use(rewrite),
+  };
+}
 
 /**
  * Two ways to run the game in development:
@@ -20,6 +48,9 @@ export default defineConfig(({ mode }) => {
   const editor = process.env.QBL_EDITOR_ORIGIN ?? 'http://localhost:5174';
 
   return {
+    // Multi-page: no single-page fallback to index.html (the marketing page); gameFallback() decides.
+    appType: 'mpa',
+    plugins: [tailwindcss(), gameFallback()],
     resolve: {
       // Use the shared package's TypeScript source directly: no build step, instant reloads.
       alias: { '@qbl/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
@@ -39,6 +70,16 @@ export default defineConfig(({ mode }) => {
           : {}),
       },
     },
-    build: { target: 'es2022', sourcemap: true, chunkSizeWarningLimit: 2500 },
+    build: {
+      target: 'es2022',
+      sourcemap: true,
+      chunkSizeWarningLimit: 2500,
+      rollupOptions: {
+        input: {
+          site: fileURLToPath(new URL('index.html', import.meta.url)),
+          play: fileURLToPath(new URL('play.html', import.meta.url)),
+        },
+      },
+    },
   };
 });
