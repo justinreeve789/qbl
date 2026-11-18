@@ -1,0 +1,5 @@
+# Scripts, Dockerfiles and server configs run inside Linux containers: always LF line endings,
+# even in a Windows checkout (a CRLF "#!/bin/sh" line stops a container from starting).
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.conf      text eol=lf

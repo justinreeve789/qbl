@@ -65,6 +65,8 @@ sudo certbot certonly --standalone -d dev.questlab.cc -m admin@questlab.cc --agr
 Then name the certificate in `.env` and start `edge` again (`docker compose up -d edge`):
 
 ```sh
+COMPOSE_PROFILES=https
+QBL_PUBLIC_URL=https://dev.questlab.cc
 QBL_CERTS_DIR=/etc/letsencrypt
 QBL_TLS_CERT=/etc/letsencrypt/live/dev.questlab.cc/fullchain.pem
 QBL_TLS_KEY=/etc/letsencrypt/live/dev.questlab.cc/privkey.pem
@@ -78,6 +80,8 @@ For renewals (certbot's hooks to stop, restart and start `edge`) and the alterna
 docker compose up --build
 ```
 
+That is development: plain HTTP on http://localhost:8080, no certificate, no `.env` needed. Staging and production add HTTPS with two lines in `.env` (see [HTTPS](#https)).
+
 | Address | What it is |
 | ------- | ---------- |
 | http://localhost:8080 | The marketing page |
@@ -90,13 +94,13 @@ Seven containers:
 
 | Container | What runs in it |
 | --------- | --------------- |
-| `edge` | Caddy: the only published container. Ends HTTPS (with a Let's Encrypt certificate it fetches and renews itself, or your own) and passes everything to `apache` as plain HTTP. Without `QBL_PUBLIC_URL` it serves plain HTTP on port 8080 |
+| `edge` | Caddy, on staging and production only (`COMPOSE_PROFILES=https`): ports 80 and 443. Ends HTTPS (with a Let's Encrypt certificate it fetches and renews itself, or your own) and passes everything to `apache` as plain HTTP |
 | `app` | The Laravel backend (PHP-FPM) and the built frontend (the marketing page and the Phaser game), which lives in Laravel's `public/` directory |
 | `db` | MariaDB |
 | `colyseus` | The multiplayer game server |
 | `editor` | The scenario editor: a static web application served by its own small Apache |
 | `docs` | The documentation in `docs/`, built with MkDocs into a static site |
-| `apache` | Apache httpd, behind `edge` (not published). Serves the game's files and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
+| `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
 
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
 
@@ -106,6 +110,8 @@ docker compose exec app php artisan qbl:seed --reset    # put the shipped demo b
 ```
 
 The first is safe to run again: a demo that is already there is left as it is, and so are prices changed in the catalogue. Until it has been run once there is no scenario to play. To play the demo, choose "Play as a guest instead" on the sign-in screen. Compose uses local-only default secrets; copy `.env.example` to `.env` and set real ones for anything shared.
+
+**The database password.** `DB_PASSWORD` in `.env` can be set or changed at any time: the `db` container applies it to the `qbl` account each time it starts (`docker compose up -d` after changing it). The MariaDB image alone sets it only when the `db-data` volume is first created, which used to end in "Access denied for user 'qbl'" when `.env` changed afterwards. `DB_ROOT_PASSWORD` is still set only on creation.
 
 **An account for the editor.** The editor needs a teacher or admin account. Either seed demo accounts (`php artisan qbl:seed --password=...` creates `teacher@qbl.test` and two students with that password), or create one at any time:
 
@@ -130,13 +136,12 @@ browser ──https──▶ edge :443 (certificate for dev.questlab.cc) ──h
 **3. `.env`** next to `docker-compose.yml`:
 
 ```sh
+COMPOSE_PROFILES=https                   # starts the edge container (development leaves this out)
 QBL_PUBLIC_URL=https://dev.questlab.cc   # the address people type; no path
-QBL_HTTP_PORT=80
-QBL_HTTPS_PORT=443
 QBL_ACME_EMAIL=you@questlab.cc           # optional: Let's Encrypt writes here about certificate problems
 ```
 
-then `docker compose up -d --build`. `docker compose logs edge` says which certificate it is using.
+then `docker compose up -d --build`. `docker compose ps` should list `edge`, and `docker compose logs edge` says which certificate it is using. Without `COMPOSE_PROFILES=https` there is no `edge` and nothing answers on ports 80 and 443.
 
 **4. The certificate.** Three ways:
 
@@ -169,9 +174,10 @@ With an https `QBL_PUBLIC_URL`, that address is the site's own name everywhere: 
 
 | Setting | Value |
 | ------- | ----- |
-| `QBL_PUBLIC_URL` | The address people type, `https://dev.questlab.cc`. Turns on HTTPS in `edge`; Laravel's `APP_URL` and Apache's own name. Empty (the default) for trying it out on your own machine: plain HTTP at http://localhost:8080 |
-| `QBL_HTTP_PORT`, `QBL_HTTPS_PORT` | The published ports: 80 and 443 on a server (Let's Encrypt needs one of them). Default 8080 and 8443 |
-| `QBL_HTTP_BIND` | The address the published ports listen on. Default every address |
+| `COMPOSE_PROFILES` | `https` on staging and production: starts `edge`. Empty in development |
+| `QBL_PUBLIC_URL` | The address people type, `https://dev.questlab.cc`. Turns on HTTPS in `edge`; Laravel's `APP_URL` and Apache's own name. Empty in development |
+| `QBL_HTTP_PORT`, `QBL_HTTPS_PORT`, `QBL_HTTP_BIND` | The edge's public ports and address. Default 80, 443 and every address, which is what a server needs (Let's Encrypt needs 80 or 443) |
+| `QBL_APACHE_PORT`, `QBL_APACHE_BIND` | Apache's own plain-HTTP port: the site in development. Default `127.0.0.1:8080`, so on a server it is not reachable from outside |
 | `QBL_ACME_EMAIL` | Optional address for Let's Encrypt |
 | `QBL_CERTS_DIR` | The folder with your own certificate, mounted into `edge`. Default `./certs` |
 | `QBL_TLS_CERT`, `QBL_TLS_KEY` | Your certificate and key, inside `QBL_CERTS_DIR` (host paths or relative). Empty: `fullchain.pem` and `privkey.pem` from that folder if present, else Let's Encrypt |
