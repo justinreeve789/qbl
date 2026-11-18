@@ -55,6 +55,18 @@ services:
       QBL_GOOGLE_TEACHER_DOMAINS: ${QBL_GOOGLE_TEACHER_DOMAINS:-}
       # Files uploaded in the editor.
       QBL_MEDIA_DIR: /media-data
+      # The AI scenario generator (php artisan qbl:generate). See docs/docs/generation.md.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      QBL_GEN_IMAGE_DRIVER: ${QBL_GEN_IMAGE_DRIVER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SCENARIO_API_KEY: ${SCENARIO_API_KEY:-}
+      SCENARIO_API_SECRET: ${SCENARIO_API_SECRET:-}
+      SCENARIO_MODEL_ID: ${SCENARIO_MODEL_ID:-}
+      LEARNING_COMMONS_API_KEY: ${LEARNING_COMMONS_API_KEY:-}
+      CSP_API_KEY: ${CSP_API_KEY:-}
+      # Each run's pictures, blueprint and ZIP, kept so a run can be resumed.
+      QBL_GEN_WORK_DIR: /data/generations
     volumes:
       - public:/shared/public      # the frontend and the demo's media, handed to Apache
       - media:/media-data          # uploaded media, served by Apache as /media
