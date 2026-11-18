@@ -54,6 +54,13 @@ Players open a scenario at `/{code}`. Other URL parameters:
 | `?offline` | Single-player, no game server needed (for previews) |
 | `?debug` | Draw walkable areas, spawn points and hotspot areas (including scene edges) |
 
+## SSL
+To set up an SSL cert, use certbot. For example:
+
+```sh
+certbot certonly -d questlab.cc -m admin@questlab.cc --agree-tos --redirect
+```
+
 ## Docker
 
 ```sh
