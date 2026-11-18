@@ -30,8 +30,10 @@ before(async () => {
   await page.fill('input[type=password]', 'anything');
   await page.click('button[type=submit]');
   await page.waitForSelector('[data-scenario]');
-  prompts.push('Tools');
-  await page.click('text=New scenario');
+  await page.click('button:has-text("New scenario")');
+  await page.fill('[data-dialog=new-scenario] input[name=title]', 'Tools');
+  await page.check('[data-dialog=new-scenario] input[value=empty]');
+  await page.click('[data-dialog=new-scenario] button[type=submit]');
   await page.waitForSelector('.scene-card');
   id = Number(/#\/s\/(\d+)/.exec(page.url())![1]);
 });

@@ -13,6 +13,7 @@ nav:
         - Labels: label.md
         - Runtime extensions (spec v2): extensions.md
         - Classes, missions and teams: classes.md
+        - Backups, copies and the starship hub: tooling.md
         - Save data: session.md
         - Architecture: architecture.md
         - HTTP API contract: api.md

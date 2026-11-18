@@ -1,6 +1,6 @@
 import { ApiError, type Api, type Assignment, type MissionSummary, type Student, type Team } from '../api';
 import { playUrl } from '../config';
-import { clear, confirmDelete, h, toast } from '../dom';
+import { clear, confirmDelete, h, help, toast } from '../dom';
 
 /** A due date as the API keeps it (UTC, "2026-12-01 15:00:00") to and from a date-and-time field's local value. */
 export function toLocalInput(utc: string | null): string {
@@ -152,8 +152,7 @@ export function classesView(api: Api): HTMLElement {
       existing ? null : h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Mission'), scenario),
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Due (optional)'), due),
       h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Note'), note),
-      h('div', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Teams'),
-        h('small', null, 'Each team plays in its own copy of the world and makes progress together. Without teams, everyone assigned shares one.'), teamList),
+      h('div', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Teams', help('Each team plays in its own copy of the world and makes progress together. Without teams, everyone assigned shares one.')), teamList),
       h('div', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Students'), people),
       h('div', { class: 'row-actions' },
         h('button', { type: 'submit', class: 'primary' }, existing ? 'Save changes' : 'Assign'),

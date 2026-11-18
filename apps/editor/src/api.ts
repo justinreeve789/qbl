@@ -142,7 +142,39 @@ export class Api {
   }
 
   list = async () => (await this.call<{ scenarios: ScenarioSummary[] }>('GET', '/editor/scenarios')).scenarios;
-  create = async (title: string) => (await this.call<{ scenario: Row }>('POST', '/editor/scenarios', { title })).scenario;
+  /** `template: 'starship'` starts the scenario as a copy of the starship hub instead of one empty scene. */
+  create = async (title: string, template?: 'starship') => (await this.call<{ scenario: Row }>('POST', '/editor/scenarios', { title, ...(template ? { template } : {}) })).scenario;
+  /** A copy of a scenario (one's own, or anyone's public published one) as a new draft of one's own. */
+  duplicate = async (id: number, title?: string) => (await this.call<{ scenario: Row }>('POST', `/editor/scenarios/${id}/duplicate`, title ? { title } : {})).scenario;
+
+  /** A new scenario from a ZIP made by "Export", or put together by hand in the same shape. */
+  async importZip(file: File): Promise<Row> {
+    const form = new FormData();
+    form.append('file', file);
+    return (await this.call<{ scenario: Row }>('POST', '/editor/scenarios/import', form)).scenario;
+  }
+
+  /** Download the whole scenario as a ZIP file: its JSON and the files uploaded for it. */
+  async exportZip(id: number): Promise<void> {
+    this.onBusy(++this.pending > 0);
+    try {
+      const res = await fetch(`/api/editor/scenarios/${id}/export`, { headers: { Accept: 'application/zip, application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) } });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { message?: string } | null;
+        throw new ApiError(res.status, data?.message ?? `Request failed (${res.status})`);
+      }
+      const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `scenario-${id}.zip`;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(await res.blob());
+      link.download = name;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+    } finally {
+      this.onBusy(--this.pending > 0);
+    }
+  }
   bundle = (id: number) => this.call<Bundle>('GET', `/editor/scenarios/${id}`);
   patchScenario = async (id: number, attrs: object) => (await this.call<{ scenario: Row }>('PATCH', `/editor/scenarios/${id}`, attrs)).scenario;
   deleteScenario = (id: number) => this.call<void>('DELETE', `/editor/scenarios/${id}`);

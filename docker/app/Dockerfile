@@ -25,8 +25,9 @@ RUN npm exec --workspace @qbl/client -- vite build
 # ---- 2. Laravel + the frontend in its public directory -------------------------------
 FROM php:8.4-fpm-alpine
 
-RUN apk add --no-cache git unzip \
-    && docker-php-ext-install pdo_mysql opcache
+# zip: scenarios are exported and imported as ZIP files (App\Qbl\ScenarioArchive).
+RUN apk add --no-cache git unzip libzip-dev \
+    && docker-php-ext-install pdo_mysql opcache zip
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app

@@ -360,3 +360,23 @@ button.link.danger { color: #ff9a9a; }
 .team-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; }
 .team-chip input { width: 110px; }
 .badge.late { background: rgba(214, 69, 69, 0.25); color: #ffb4b4; }
+
+/* ---------- help icons: explanations are behind a "?" rather than on the page ---------- */
+.help { position: relative; display: inline-flex; margin-left: 6px; vertical-align: middle; }
+.help-button { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid #8fa3c7; background: transparent; color: #c6d4ee; font: 700 11px/1 system-ui, sans-serif; cursor: pointer; }
+.help-button:hover, .help-button:focus-visible, .help-button[aria-expanded='true'] { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; outline: none; }
+.help-text { position: absolute; z-index: 40; top: 24px; left: -8px; width: 290px; padding: 10px 12px; border-radius: 8px; background: #0f1524; border: 1px solid #5d7099; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); color: #eef2f8; font: 400 13px/1.45 system-ui, sans-serif; text-transform: none; letter-spacing: 0; white-space: normal; cursor: default; }
+.help-text[hidden] { display: none; }
+.help.left .help-text { left: auto; right: -8px; }
+h1 .help, h2 .help { margin-left: 8px; }
+
+/* ---------- dialogs ---------- */
+dialog.modal { width: min(92vw, 520px); padding: 20px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: inherit; }
+dialog.modal::backdrop { background: rgba(0, 0, 0, 0.6); }
+dialog.modal h2 { margin: 0 0 12px; font-size: 18px; }
+dialog.modal .field { margin-bottom: 14px; }
+.choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--accent-solid); background: var(--accent-soft); }
+.choice strong { display: block; }
+.choice span span { color: var(--muted); font-size: 12.5px; }
+.card.other { border-top-color: #6b7a99; }

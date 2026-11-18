@@ -161,6 +161,10 @@ Endpoint | Body | Returns
 `POST /scenarios/{id}/media/upload` | multipart, field `file` | 201 `{ "row": media row }`
 `GET /scenarios/{id}/preview` | | `{ "scenario": Scenario }`: the JSON generated from the rows as they are now, published or not
 `POST /scenarios/{id}/publish` | | `{ "scenario": row }`. Generates the JSON and makes it what players get
+`POST /scenarios` with `"template": "starship"` | `{ "title", "template" }` | 201: the new scenario starts as a copy of the starship hub instead of one empty scene
+`POST /scenarios/{id}/duplicate` | `{ "title"? }` | 201 `{ "scenario" }`: a copy as a new draft of the caller's. Allowed for a scenario the caller can edit, and for anyone's published public scenario (copied as published)
+`GET /scenarios/{id}/export` | | The scenario as a ZIP file (`scenario.json`, `assets/`, `README.txt`)
+`POST /scenarios/import` | multipart `file` (a ZIP), `title`? | 201 `{ "scenario" }`: a new draft made from the ZIP. 422 if it is not a ZIP, has no `scenario.json`, or carries a file that is not a picture, sound or video. See [Backups, copies and the starship hub](tooling.md)
 
 Rules the API enforces whatever the editor sends:
 

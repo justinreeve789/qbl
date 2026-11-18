@@ -95,6 +95,30 @@ class ScenarioStore
 
     public const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
+    /** Rows of the starship hub, which a new scenario can start as a copy of. */
+    public const HUB_TEMPLATE = __DIR__.'/../../database/seeders/data/hub.php';
+
+    /** Keys that hold the id of another row, wherever they appear in a row's JSON, and the table that row is in. */
+    private const REFERENCES = [
+        'media_id' => 'media', 'music_media_id' => 'media', 'portrait_media_id' => 'media', 'media' => 'media',
+        'scene_id' => 'scenes', 'event_id' => 'events', 'target_event_id' => 'events', 'action_id' => 'actions', 'target_id' => 'actions',
+        'item_id' => 'items', 'character_id' => 'characters',
+    ];
+
+    /** What a row gets on import when the file does not say. */
+    private const IMPORT_DEFAULTS = [
+        'media' => ['scale_x' => 1, 'scale_y' => 1, 'priority' => 100],
+        'shop_items' => ['kind' => 'wearable', 'price' => 0, 'active' => true, 'sequence' => 0],
+        'variables' => ['default_value' => 0, 'scope' => 'player', 'persist' => true],
+        'items' => ['unique' => false, 'physical' => false, 'blocking' => false, 'wearable' => false, 'vehicle' => false, 'settings' => []],
+        'characters' => ['settings' => []],
+        'scenes' => ['sequence' => 1, 'zoom' => 1, 'show_avatars' => true, 'is_intro_scene' => false, 'background_media' => [], 'foreground_media' => [], 'layout' => []],
+        'events' => ['kind' => 'hotspot', 'sequence' => 1, 'overridable' => false, 'block_hotspots' => false, 'activate_by_trigger' => false, 'once' => false, 'audience' => 'player'],
+        'actions' => ['sequence' => 1, 'blocking' => true, 'params' => []],
+        'conditions' => ['type' => 'variable', 'operator' => '=', 'operand' => 0],
+        'labels' => ['scale_x' => 1, 'scale_y' => 1, 'position_x' => 0, 'position_y' => 0],
+    ];
+
     public function __construct(
         private PDO $pdo,
         /** Directory uploaded media is written to, or null if uploads are not available. */
@@ -225,6 +249,16 @@ class ScenarioStore
         $title = trim((string) ($attrs['title'] ?? ''));
         if ($title === '') {
             throw new StoreError(422, 'A scenario needs a title.');
+        }
+        // Start from a copy of the starship: the hub missions are launched from. The copy is the
+        // scenario's own, so what happens aboard can differ from one scenario to the next.
+        if (($attrs['template'] ?? '') === 'starship') {
+            $id = $this->importRows(require self::HUB_TEMPLATE, $userId, ['title' => $title] + array_intersect_key($attrs, ['subtitle' => 1, 'description' => 1]));
+
+            return $this->scenario($id);
+        }
+        if (($attrs['template'] ?? '') !== '') {
+            throw new StoreError(422, 'There is no such template.');
         }
         $code = $this->generateCode();
         $now = self::now();
@@ -373,7 +407,25 @@ class ScenarioStore
         if (! is_file($tmpPath) || filesize($tmpPath) > self::MAX_UPLOAD_BYTES) {
             throw new StoreError(422, 'The file is missing or larger than 25 MB.');
         }
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($tmpPath) ?: '';
+        [$type, $filepath, $url, $size] = $this->storeFile($scenarioId, $tmpPath);
+
+        return $this->createRow($scenarioId, 'media', [
+            'type' => $type,
+            'filename' => mb_substr(basename($originalName), 0, 200),
+            'filepath' => $filepath,
+            'url' => $url,
+            'width' => $size ? $size[0] : null,
+            'height' => $size ? $size[1] : null,
+        ]);
+    }
+
+    /**
+     * Keep a copy of a file in the scenario's own folder of the media directory, under a random name.
+     * What the file is comes from its content, not its name. Returns [type, filepath, url, [width, height] or false].
+     */
+    private function storeFile(int $scenarioId, string $path): array
+    {
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path) ?: '';
         if (! isset(self::UPLOADS[$mime])) {
             throw new StoreError(422, 'Only PNG, JPEG, WebP and GIF images, MP3, WAV and OGG audio, and MP4 and WebM video can be uploaded.');
         }
@@ -383,19 +435,159 @@ class ScenarioStore
             throw new RuntimeException("Cannot create $dir");
         }
         $filename = bin2hex(random_bytes(12)).'.'.$extension;
-        if (! (is_uploaded_file($tmpPath) ? move_uploaded_file($tmpPath, "$dir/$filename") : copy($tmpPath, "$dir/$filename"))) {
+        if (! (is_uploaded_file($path) ? move_uploaded_file($path, "$dir/$filename") : copy($path, "$dir/$filename"))) {
             throw new RuntimeException('Could not store the uploaded file.');
         }
-        $size = $type === 'image' ? @getimagesize("$dir/$filename") : false;
 
-        return $this->createRow($scenarioId, 'media', [
-            'type' => $type,
-            'filename' => mb_substr(basename($originalName), 0, 200),
-            'filepath' => "$scenarioId/$filename",
-            'url' => rtrim($this->mediaUrl, '/')."/$scenarioId/$filename",
-            'width' => $size ? $size[0] : null,
-            'height' => $size ? $size[1] : null,
-        ]);
+        return [$type, "$scenarioId/$filename", rtrim($this->mediaUrl, '/')."/$scenarioId/$filename", $type === 'image' ? @getimagesize("$dir/$filename") : false];
+    }
+
+    /** Where an uploaded media file is on disk, or null if the row has no file of this store's, or it is gone. */
+    public function mediaFile(array $media): ?string
+    {
+        $path = $media['filepath'] ?? null;
+        if ($this->mediaDir === null || ! is_string($path) || ! preg_match('#^\d+/[a-f0-9]{24}\.[a-z0-9]{2,4}$#', $path) || ! is_file($this->mediaDir.'/'.$path)) {
+            return null;
+        }
+
+        return $this->mediaDir.'/'.$path;
+    }
+
+    // ================================================================= importing
+
+    /**
+     * Create a new scenario from rows (shaped like bundle(), or as ScenarioDecompiler makes them).
+     * Every row gets a new id, and everything that referred to a row by its old id is pointed at
+     * the new one, so the copy is whole and shares nothing with where it came from.
+     *
+     * `$fileFor` is asked for each media row and returns the path of that row's file, or null;
+     * a file it returns is copied into the new scenario's own folder. A row whose file is not
+     * supplied keeps its address but is no longer treated as owning a file.
+     *
+     * The new scenario is a draft: it has a new code, belongs to `$userId`, and is not published.
+     */
+    public function importRows(array $rows, ?int $userId, array $overrides = [], ?callable $fileFor = null): int
+    {
+        if (empty($rows['scenes'])) {
+            throw new StoreError(422, 'A scenario needs at least one scene.');
+        }
+        $created = null;
+        try {
+            return $this->transaction(function () use ($rows, $userId, $overrides, $fileFor, &$created) {
+                $now = self::now();
+                $code = $this->generateCode();
+                $source = $overrides + $rows['scenario'];
+                $settings = (array) ($source['settings'] ?? []);
+                // Avatars are the platform's; a scenario brought in from elsewhere does not bring its own.
+                unset($settings['avatar_media_ids'], $settings['avatar_portraits']);
+                $row = $this->encode('scenarios', ['shortname' => $code, 'start_scene_id' => null, 'intro_media_portrait_id' => null, 'intro_media_landscape_id' => null, 'settings' => $settings] + $source);
+                if (trim((string) ($row['title'] ?? '')) === '') {
+                    throw new StoreError(422, 'A scenario needs a title.');
+                }
+                $id = $created = $this->insert('scenarios', $row + ['code' => $code, 'user_id' => $userId, 'created_at' => $now, 'updated_at' => $now]);
+
+                // First every row, with the columns that point at a parent following the parent's new id...
+                $map = array_fill_keys(self::CONTENT, []);
+                $new = [];
+                foreach (self::CONTENT as $table) {
+                    foreach ($rows[$table] ?? [] as $content) {
+                        $content += self::IMPORT_DEFAULTS[$table];
+                        if (isset(self::SCHEMA[$table]['scenario_id'])) {
+                            $content['scenario_id'] = $id;
+                        }
+                        foreach ((self::PARENTS[$table] ?? []) + ['media_id' => 'media'] as $column => $parent) {
+                            if (isset(self::SCHEMA[$table][$column]) && isset($content[$column])) {
+                                $content[$column] = $map[$parent][(int) $content[$column]] ?? null;
+                            }
+                        }
+                        if (isset(self::PARENTS[$table]) && ! array_filter(array_intersect_key($content, self::PARENTS[$table]), fn ($v) => $v !== null)) {
+                            continue; // its parent is not in the file
+                        }
+                        if ($table === 'media') {
+                            $file = $fileFor ? $fileFor($content) : null;
+                            $content['filepath'] = null;
+                            if ($file !== null && $this->mediaDir !== null) {
+                                [$content['type'], $content['filepath'], $content['url'], $size] = $this->storeFile($id, $file);
+                                if ($size) {
+                                    [$content['width'], $content['height']] = [$size[0], $size[1]];
+                                }
+                            }
+                        }
+                        $encoded = $this->encode($table, $content);
+                        $this->assertValid($id, $table, array_filter($encoded, fn ($v) => $v !== null), false);
+                        $newId = $this->insert($table, $encoded + ['created_at' => $now, 'updated_at' => $now]);
+                        if (isset($content['id'])) {
+                            $map[$table][(int) $content['id']] = $newId;
+                        }
+                        $new[$table][$newId] = $content;
+                    }
+                }
+
+                // ...then the references kept inside JSON (an action's target, a scene's layers and placements).
+                foreach ($new as $table => $list) {
+                    $json = array_keys(array_filter(self::SCHEMA[$table], fn ($type) => $type === 'json'));
+                    foreach ($list as $newId => $content) {
+                        $changed = [];
+                        foreach ($json as $column) {
+                            if (is_array($content[$column] ?? null)) {
+                                $layers = $table === 'scenes' && in_array($column, ['background_media', 'foreground_media'], true);
+                                $value = self::follow($content[$column], $map, $layers);
+                                if ($value !== $content[$column]) {
+                                    $changed[$column] = $value;
+                                }
+                            }
+                        }
+                        if ($changed) {
+                            $this->update($table, $newId, $this->encode($table, $changed));
+                        }
+                    }
+                }
+                $this->update('scenarios', $id, $this->encode('scenarios', ['settings' => self::follow($settings, $map)]) + [
+                    'start_scene_id' => $map['scenes'][(int) ($source['start_scene_id'] ?? 0)] ?? (array_values($map['scenes'])[0] ?? array_key_first($new['scenes'])),
+                    'intro_media_portrait_id' => $map['media'][(int) ($source['intro_media_portrait_id'] ?? 0)] ?? null,
+                    'intro_media_landscape_id' => $map['media'][(int) ($source['intro_media_landscape_id'] ?? 0)] ?? null,
+                ]);
+
+                return $id;
+            });
+        } catch (\Throwable $e) {
+            // The rows were rolled back; the files copied for them have to go too.
+            if ($created !== null) {
+                $this->removeUploads($created);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * A copy of a scenario, as a new draft belonging to `$userId`. `$rows` are the scenario's
+     * rows: bundle() for a scenario the person can edit, or its published version decompiled.
+     */
+    public function duplicate(array $rows, ?int $userId, ?string $title = null): array
+    {
+        $title = trim((string) $title) ?: 'Copy of '.($rows['scenario']['title'] ?? 'scenario');
+        $id = $this->importRows($rows, $userId, ['title' => mb_substr($title, 0, 255)], fn (array $media) => $this->mediaFile($media));
+
+        return $this->scenario($id);
+    }
+
+    /** Point every reference in a JSON value at the row's new id. One whose row was not imported becomes null. */
+    private static function follow(array $value, array $map, bool $layers = false): array
+    {
+        foreach ($value as $key => $inner) {
+            $table = is_string($key) ? (self::REFERENCES[$key] ?? null) : null;
+            // A scene's layers may name their media by `id`.
+            if ($layers && $key === 'id') {
+                $table = 'media';
+            }
+            if ($table !== null && (is_int($inner) || (is_string($inner) && ctype_digit($inner)))) {
+                $value[$key] = $map[$table][(int) $inner] ?? null;
+            } elseif (is_array($inner)) {
+                $value[$key] = self::follow($inner, $map, $layers && is_int($key));
+            }
+        }
+
+        return $value;
     }
 
     // =================================================================== seeding

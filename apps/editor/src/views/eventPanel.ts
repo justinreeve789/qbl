@@ -1,6 +1,6 @@
 import type { Row } from '../api';
 import { EVENT_KINDS, params } from '../describe';
-import { confirmDelete, fold, h } from '../dom';
+import { confirmDelete, fold, h, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
 import { EVENT_FIELDS, HOTSPOT_FIELDS, LABEL_FIELDS, LABEL_MEDIA, LABEL_SPRITEMAP, LABEL_TEXT } from '../schema';
 import { actionList } from './actions';
@@ -36,7 +36,7 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
     h(
       'div',
       { class: 'panel-head' },
-      h('h2', null, EVENT_KINDS[kind]),
+      h('h2', null, EVENT_KINDS[kind], help(KIND_HELP[kind])),
       h('button', {
         type: 'button', class: 'danger',
         onclick: async () => {
@@ -46,7 +46,6 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
         },
       }, 'Delete'),
     ),
-    h('p', { class: 'muted' }, KIND_HELP[kind]),
     // Each part folds away, so a long event is easy to get around in. What is folded stays folded from event to event.
     fold('event-settings', '⚙️ Settings', true, h('div', { class: 'form' }, h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Kind'), kindSelect)), form(EVENT_FIELDS, values, commit, ctx)),
     kind === 'hotspot' ? fold('event-hotspot', '🎯 Where it is and how it fires', true, form(HOTSPOT_FIELDS, values, commit, ctx)) : null,

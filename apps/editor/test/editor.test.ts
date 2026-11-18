@@ -65,8 +65,10 @@ test('signing in lists the seeded demo with its 16-letter code', async () => {
 });
 
 test('create a scenario: it gets a code and a first scene', async () => {
-  prompts.push('Pond Life');
-  await page.click('text=New scenario');
+  await page.click('button:has-text("New scenario")');
+  await page.fill('[data-dialog=new-scenario] input[name=title]', 'Pond Life');
+  await page.check('[data-dialog=new-scenario] input[value=empty]');
+  await page.click('[data-dialog=new-scenario] button[type=submit]');
   await page.waitForSelector('.scene-card');
   scenarioId = Number(/#\/s\/(\d+)/.exec(page.url())![1]);
   const { scenario, scenes } = await api<{ scenario: { code: string; title: string }; scenes: Array<{ id: number }> }>(`/editor/scenarios/${scenarioId}`);

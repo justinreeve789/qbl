@@ -1,5 +1,5 @@
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
-import { confirmDelete, h } from '../../dom';
+import { confirmDelete, h, help } from '../../dom';
 import { form, withValue, type Field, type FormContext } from '../../fields';
 import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
@@ -99,12 +99,12 @@ function layerList(model: SceneModel, which: LayerList, title: string, about: st
   return h(
     'section',
     null,
-    h('div', { class: 'sub-head' }, h('span', null, title), h('button', { type: 'button', class: 'link', onclick: add }, '+ Add layer')),
+    h('div', { class: 'sub-head' }, h('span', null, title, help(about)), h('button', { type: 'button', class: 'link', onclick: add }, '+ Add layer')),
     layers.length
       ? h('ul', { class: 'pick-list' }, ...layers.map((layer, index) =>
           h('li', null, h('button', { type: 'button', class: 'link', onclick: () => host.select({ kind: 'layer', which, index }) },
             `${index + 1}. ${layer.media_id ? mediaLabel(model.store.byId('media', layer.media_id as number)) : '(no image yet)'}${layer.tile ? ' · repeated' : ''}`))))
-      : h('p', { class: 'muted' }, about),
+      : h('p', { class: 'muted' }, 'None yet.'),
   );
 }
 
@@ -125,8 +125,7 @@ function layerPanel(model: SceneModel, ctx: FormContext, which: LayerList, index
   return h(
     'div',
     { class: 'panel' },
-    h('div', { class: 'panel-head' }, h('h2', null, which === 'background_media' ? 'Background layer' : 'Foreground layer')),
-    h('p', { class: 'muted' }, 'An image the size of the scene by default. Make the scene larger than the screen and it scrolls as players walk; repeat an image and give it a drift for moving clouds or water; lower the parallax for distant scenery.'),
+    h('div', { class: 'panel-head' }, h('h2', null, which === 'background_media' ? 'Background layer' : 'Foreground layer', help('An image the size of the scene by default. Make the scene larger than the screen and it scrolls as players walk; repeat an image and give it a drift for moving clouds or water; lower the parallax for distant scenery.'))),
     form(LAYER_FIELDS, layer, commit, ctx),
     h(
       'div',
@@ -154,8 +153,7 @@ function listPanel(model: SceneModel, ctx: FormContext, key: LayoutList, index: 
   return h(
     'div',
     { class: 'panel' },
-    h('div', { class: 'panel-head' }, h('h2', null, title)),
-    h('p', { class: 'muted' }, about),
+    h('div', { class: 'panel-head' }, h('h2', null, title, help(about))),
     form(fields, entry, commit, ctx),
     h(
       'div',
@@ -179,11 +177,10 @@ function areaPanel(model: SceneModel, which: 'walkable_areas' | 'blocked_areas',
   return h(
     'div',
     { class: 'panel' },
-    h('div', { class: 'panel-head' }, h('h2', null, walkable ? 'Walkable area' : 'Blocked area')),
-    h('p', { class: 'muted' }, walkable
+    h('div', { class: 'panel-head' }, h('h2', null, walkable ? 'Walkable area' : 'Blocked area', help(`${walkable
       ? 'Avatars can only stand inside walkable areas. With none, the whole scene is walkable.'
-      : 'A part of a walkable area that avatars cannot enter: a rock, a table, a pond.'),
-    h('p', null, `${area.length} corners. Drag a corner to move it. Drag the small dot on a side to add a corner. Double-click a corner to remove it.`),
+      : 'A part of a walkable area that avatars cannot enter: a rock, a table, a pond.'} Drag a corner to move it. Drag the small dot on a side to add a corner. Double-click a corner to remove it.`))),
+    h('p', { class: 'muted' }, `${area.length} corners.`),
     h(
       'div',
       { class: 'row-actions' },

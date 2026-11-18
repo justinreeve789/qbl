@@ -18,6 +18,9 @@ namespace App\Qbl;
  *   PATCH  scenarios/{id}/rows/{table}/{rowId}
  *   DELETE scenarios/{id}/rows/{table}/{rowId}
  *   POST   scenarios/{id}/media/upload            multipart "file"
+ *   POST   scenarios/import                       multipart `file`: a ZIP with scenario.json and assets/; creates a new scenario
+ *   POST   scenarios/{id}/duplicate               {title?}: a copy of the scenario as a new draft of the caller's
+ *   GET    scenarios/{id}/export                  the scenario as a ZIP file (scenario.json and the uploaded files)
  *   GET    scenarios/{id}/preview                 the scenario JSON generated from the tables as they are now
  *   POST   scenarios/{id}/publish                 generate the JSON and make it what players get
  */
@@ -51,6 +54,17 @@ class EditorApi
             throw new StoreError(404, 'Not found.');
         }
 
+        // A scenario from a ZIP made by "Export", or put together by hand in the same shape.
+        if ($parts === ['scenarios', 'import'] && $method === 'POST') {
+            $file = $files['file'] ?? null;
+            if (! $file || empty($file['tmp_name'])) {
+                throw new StoreError(422, 'No file was uploaded.');
+            }
+            $id = (new ScenarioArchive($this->store))->import($file['tmp_name'], (int) $user['id'], $body['title'] ?? null);
+
+            return [201, ['scenario' => $this->store->scenario($id)]];
+        }
+
         if (count($parts) === 1) {
             return match ($method) {
                 'GET' => [200, ['scenarios' => $this->store->listFor($user)]],
@@ -61,6 +75,18 @@ class EditorApi
 
         $id = $this->id($parts[1]);
         $scenario = $this->store->scenario($id);
+        // A copy to make one's own: of a scenario one can edit as it is now, or of anyone's public mission as it was published.
+        if ($scenario && array_slice($parts, 2) === ['duplicate'] && $method === 'POST') {
+            if ($this->store->canEdit($scenario, $user)) {
+                $rows = $this->store->bundle($id);
+            } elseif ($scenario['published_at'] !== null && ($scenario['settings']['visibility'] ?? 'public') !== 'private') {
+                $rows = ScenarioDecompiler::rows($this->store->findPublished($scenario['code']));
+            } else {
+                throw new StoreError(404, 'Scenario not found.');
+            }
+
+            return [201, ['scenario' => $this->store->duplicate($rows, (int) $user['id'], $body['title'] ?? null)]];
+        }
         if (! $scenario || ! $this->store->canEdit($scenario, $user)) {
             // The same answer whether it does not exist or belongs to someone else.
             throw new StoreError(404, 'Scenario not found.');
@@ -79,6 +105,12 @@ class EditorApi
         if ($rest === ['preview'] && $method === 'GET') {
             // As players will get it: with the platform's avatars.
             return [200, ['scenario' => Avatars::inject($this->store->pdo(), $this->store->compile($id))]];
+        }
+        // The whole scenario as one ZIP file. The caller sends the file named in `download` and then deletes it.
+        if ($rest === ['export'] && $method === 'GET') {
+            [$path, $name] = (new ScenarioArchive($this->store))->export($id);
+
+            return [200, ['download' => ['path' => $path, 'name' => $name, 'type' => 'application/zip']]];
         }
         if ($rest === ['publish'] && $method === 'POST') {
             $this->store->publish($id);

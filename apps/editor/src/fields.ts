@@ -1,7 +1,7 @@
 import { BUILT_IN_MOVES } from '@qbl/shared';
 import type { Row } from './api';
 import { actionLabel, eventLabel, EVENT_KINDS, mediaLabel, mediaUrl, params, sceneLabel } from './describe';
-import { h, toast } from './dom';
+import { h, help, toast } from './dom';
 import type { Store } from './store';
 
 /**
@@ -60,12 +60,12 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
   const value = values[f.key];
   const set = (v: unknown) => commit(f.key, v, f);
   const wrap = (input: Node, extra?: Node | null) =>
-    h('label', { class: `field${f.wide ? ' wide' : ''}`, 'data-field': f.key }, h('span', { class: 'field-label' }, f.label), input, extra, f.hint ? h('small', null, f.hint) : null);
+    h('label', { class: `field${f.wide ? ' wide' : ''}`, 'data-field': f.key }, h('span', { class: 'field-label' }, f.label, help(f.hint)), input, extra);
 
   switch (f.kind) {
     case 'bool': {
       const input = h('input', { type: 'checkbox', checked: value == null ? f.default === true : value === true || value === 1, onchange: () => set(input.checked) });
-      return h('label', { class: `field check${f.wide ? ' wide' : ''}`, 'data-field': f.key }, input, h('span', null, f.label), f.hint ? h('small', null, f.hint) : null);
+      return h('label', { class: `field check${f.wide ? ' wide' : ''}`, 'data-field': f.key }, input, h('span', null, f.label), help(f.hint));
     }
     case 'number': {
       const input = h('input', {

@@ -15,7 +15,7 @@ if (PHP_SAPI !== 'cli-server') {
     http_response_code(500);
     exit("This is a development server. Run it with php -S.\n");
 }
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -173,6 +173,14 @@ if ($path === '/api/me/progress' || $path === '/api/shop' || preg_match('#^/api/
 }
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
-    respond(...(new EditorApi($store))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files));
+    [$status, $answer] = (new EditorApi($store))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files);
+    if (isset($answer['download'])) {
+        header('Content-Type: '.$answer['download']['type']);
+        header('Content-Disposition: attachment; filename="'.$answer['download']['name'].'"');
+        readfile($answer['download']['path']);
+        unlink($answer['download']['path']);
+        exit;
+    }
+    respond($status, $answer);
 }
 respond(404, ['message' => 'Not found.']);

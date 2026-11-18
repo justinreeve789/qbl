@@ -1,6 +1,6 @@
 import type { Row, Table } from '../api';
 import { mediaLabel, mediaUrl, params } from '../describe';
-import { confirmDelete, fold, h, toast } from '../dom';
+import { confirmDelete, fold, h, toast, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
 import {
   CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS, MOVE_FIELDS, SHOP_ABILITY, SHOP_ANIMATION, SHOP_MOVE, SHOP_ITEM_FIELDS, SHOP_SLOT, SHOP_WEARABLE_FIELDS, ITEM_FIELDS, ITEM_SETTINGS_FIELDS, MEDIA_FIELDS, OBJECTIVE_FIELDS, VARIABLE_FIELDS,
@@ -12,7 +12,7 @@ import { apngToSheet } from '../apng';
 /** The scenario-wide lists: media, variables, items, characters and objectives. */
 
 const page = (title: string, about: string, actions: Array<HTMLElement | null>, body: HTMLElement) =>
-  h('div', { class: 'page' }, h('div', { class: 'page-head' }, h('div', null, h('h1', null, title), h('p', { class: 'muted' }, about)), h('div', { class: 'row-actions' }, ...actions)), body);
+  h('div', { class: 'page' }, h('div', { class: 'page-head' }, h('div', null, h('h1', null, title, help(about))), h('div', { class: 'row-actions' }, ...actions)), body);
 
 const none = (text: string) => h('p', { class: 'empty' }, text);
 

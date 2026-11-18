@@ -1,7 +1,7 @@
 import type { ActionType } from '@qbl/shared';
 import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
-import { confirmDelete, h } from '../dom';
+import { confirmDelete, h, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext, type Values } from '../fields';
 import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
@@ -91,9 +91,8 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
         h(
           'label',
           { class: 'field wide' },
-          h('span', { class: 'field-label' }, 'Type'),
+          h('span', { class: 'field-label' }, 'Type', help(def.about)),
           select(typeOptions, type, (next) => void store.patch('actions', id, { type: next, media_id: null, params: actionDefaults(next as ActionType) }, true)),
-          h('small', null, def.about),
         ),
       ),
       form(def.fields, { ...actionValues(action), ...choice(type, params(action)) }, commit, ctx),

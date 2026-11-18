@@ -90,3 +90,43 @@ export function fold(key: string, title: Child, openByDefault: boolean, ...child
   node.addEventListener('toggle', () => foldState.set(key, node.open));
   return node;
 }
+
+let openHelp: HTMLElement | null = null;
+const closeHelp = () => {
+  if (!openHelp) return;
+  openHelp.querySelector('.help-text')?.setAttribute('hidden', '');
+  openHelp.querySelector('button')?.setAttribute('aria-expanded', 'false');
+  openHelp = null;
+};
+document.addEventListener('click', closeHelp);
+document.addEventListener('keydown', (e) => e.key === 'Escape' && closeHelp());
+
+/**
+ * A small "?" that shows an explanation when clicked (or focused with the keyboard and
+ * pressed), instead of the explanation taking up room on the page. Click anywhere, or press
+ * Escape, to put it away. The text is also the button's tooltip.
+ */
+export function help(text: string | null | undefined): HTMLElement | null {
+  if (!text) return null;
+  const note = h('span', { class: 'help-text', role: 'note', hidden: true }, text);
+  const button = h('button', { type: 'button', class: 'help-button', 'aria-label': 'Help', 'aria-expanded': 'false', title: text }, '?');
+  const wrap = h('span', { class: 'help' }, button, note);
+  button.addEventListener('click', (e) => {
+    // Inside a label or a folding heading, the click is for the help and nothing else.
+    e.preventDefault();
+    e.stopPropagation();
+    const wasOpen = openHelp === wrap;
+    closeHelp();
+    if (wasOpen) return;
+    note.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    openHelp = wrap;
+    // Keep the note on the screen: open leftwards when the button is near the right edge.
+    wrap.classList.toggle('left', button.getBoundingClientRect().left > window.innerWidth - 320);
+  });
+  note.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  return wrap;
+}

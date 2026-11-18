@@ -170,7 +170,7 @@ class ProgressStore
 
         return array_filter($settings + [
             'id' => (int) $row['id'],
-            'scenario_id' => $row['scenario_id'] === null ? null : (int) $row['scenario_id'],
+            'scenario_id' => ($row['scenario_id'] ?? null) === null ? null : (int) $row['scenario_id'],
             'name' => (string) $row['name'],
             'description' => $row['description'] ?? null,
             'kind' => (string) $row['kind'],

@@ -1,7 +1,7 @@
 import { validateScenario } from '@qbl/shared';
 import { playUrl, previewUrl } from '../config';
 import { mediaUrl, params, sceneLabel } from '../describe';
-import { clear, confirmDelete, h, toast } from '../dom';
+import { clear, confirmDelete, h, toast, help } from '../dom';
 import { form, withValue, type FormContext } from '../fields';
 import { SCENARIO_FIELDS, SCENARIO_SETTINGS_FIELDS } from '../schema';
 
@@ -59,7 +59,7 @@ export function scenesPage(ctx: FormContext, open: (sceneId: number) => void): H
     h(
       'div',
       { class: 'page-head' },
-      h('div', null, h('h1', null, 'Scenes'), h('p', { class: 'muted' }, 'The places that make up the mission. Players move between them through jump actions, usually on a hotspot along an edge.')),
+      h('div', null, h('h1', null, 'Scenes', help('The places that make up the mission. Players move between them through jump actions, usually on a hotspot along an edge.'))),
       h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'primary', onclick: add }, 'New scene')),
     ),
     h('div', { class: 'grid' }, ...cards),
@@ -71,9 +71,32 @@ export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement
   return h(
     'div',
     { class: 'page narrow' },
-    h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings'), h('p', { class: 'muted' }, 'What the scenario is called and how it is played.'))),
+    h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings', help('What the scenario is called and how it is played.')))),
     h('div', { class: 'card' }, form(SCENARIO_FIELDS, store.scenario, (key, value) => void store.patchScenario({ [key]: value }, key.endsWith('_id')), ctx)),
     h('div', { class: 'card' }, form(SCENARIO_SETTINGS_FIELDS, store.settings, (key, value, field) => void store.patchScenario({ settings: withValue(store.settings, key, value, field) }), ctx)),
+    h(
+      'div',
+      { class: 'card', 'data-card': 'backup' },
+      h('h2', null, 'Back up or copy', help('Export downloads the whole scenario as one ZIP file: its JSON and the files uploaded for it. Importing that file (on the Scenarios page) makes a new scenario from it. Duplicate makes a copy here, to change without touching this one.')),
+      h('div', { class: 'row-actions' },
+        h('button', {
+          type: 'button',
+          onclick: async () => {
+            await store.settled();
+            await store.api.exportZip(store.scenarioId).catch((err: Error) => toast(err.message, 'error'));
+          },
+        }, 'Export as a ZIP'),
+        h('button', {
+          type: 'button',
+          onclick: async () => {
+            await store.settled();
+            await store.api.duplicate(store.scenarioId).then((made) => {
+              toast('Copied. You are now editing the copy.');
+              window.location.hash = `#/s/${made.id}`;
+            }, (err: Error) => toast(err.message, 'error'));
+          },
+        }, 'Duplicate')),
+    ),
     h(
       'div',
       { class: 'card danger-zone' },

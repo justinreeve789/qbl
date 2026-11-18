@@ -25,6 +25,11 @@ class EditorController extends Controller
             $upload ? ['file' => ['tmp_name' => $upload->getRealPath(), 'name' => $upload->getClientOriginalName()]] : [],
         );
 
+        // A file to send (an exported scenario), made for this request and removed once sent.
+        if (isset($body['download'])) {
+            return response()->download($body['download']['path'], $body['download']['name'], ['Content-Type' => $body['download']['type']])->deleteFileAfterSend(true);
+        }
+
         return $body === null ? response()->noContent($status) : response()->json($body, $status);
     }
 }
