@@ -2,10 +2,10 @@
 
 ```
                                browser
-                                  |  https (http on a local try-out)
-                          edge: Caddy  (ports 80 and 443, published; ends TLS)
-                                  |  plain http from here on
-                          apache
+                                  |  https
+                          edge: Caddy  (ports 80 and 443; ends TLS; staging and production only)
+                                  |  plain http from here on       (development: http://localhost:8080
+                          apache                                     goes straight to apache)
       /            |              |               |              \
  game files     /media         /editor          /api/*          /game  (WebSocket)
  and /{code}    uploaded          |               |                |
@@ -15,7 +15,7 @@
                                                   db  <------------+  (Docker network only)
 ```
 
-Docker runs seven containers: `edge` (Caddy, the only published one: it ends HTTPS with a Let's Encrypt or your own certificate and passes everything on as plain HTTP), `apache`, `app` (Laravel, the built Phaser frontend and the marketing page), `db` (MariaDB), `colyseus`, `editor` and `docs` (this documentation, built with MkDocs and served at `/docs`). `/` is the marketing page; every other path Apache has no file for loads the game. The Phaser build is copied into Laravel's `public/` directory; Apache serves those files from a shared volume and forwards PHP requests to FPM. That fallback is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
+Docker runs seven containers: `edge` (Caddy, started on staging and production by `COMPOSE_PROFILES=https`: it ends HTTPS with a Let's Encrypt or your own certificate and passes everything on as plain HTTP; development leaves it out and uses Apache directly at http://localhost:8080), `apache`, `app` (Laravel, the built Phaser frontend and the marketing page), `db` (MariaDB, whose start script keeps the `qbl` account's password equal to `DB_PASSWORD`), `colyseus`, `editor` and `docs` (this documentation, built with MkDocs and served at `/docs`). `/` is the marketing page; every other path Apache has no file for loads the game. The Phaser build is copied into Laravel's `public/` directory; Apache serves those files from a shared volume and forwards PHP requests to FPM. That fallback is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
 
 The `editor` container is static files behind its own small Apache, reached through the front one at `/editor`. It holds no data and no secrets; everything it does is a call to `/api/editor`. Because the game and the editor share an address, they share a sign-in, and the editor's "Test this scene" can open the game on a draft.
 
