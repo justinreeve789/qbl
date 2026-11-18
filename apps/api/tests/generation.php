@@ -117,6 +117,7 @@ $placeholder = new PlaceholderImageGenerator($style->chroma(), array_values($sty
 $strip = ImageTools::chromaKey(ImageTools::load($placeholder->generate('', [], '21:9', false, ['kind' => 'strip', 'frames' => 6, 'animation' => 'walk'])), $style->chroma());
 check(ImageTools::hasTransparentBackground($strip), 'the chroma background is cut out');
 same(count(ImageTools::figures($strip)), 6, 'six figures are found in a six-frame strip');
+same(count(ImageTools::figureCrops($strip)), 6, 'and cut out as six frames');
 $magenta = ImageTools::load($placeholder->generate('', [], '1:1', false, ['kind' => 'item']));
 same((imagecolorat(ImageTools::chromaKey($magenta, $style->chroma()), 5, 5) >> 24) & 0x7F, 127, 'a corner of a cut-out is fully transparent');
 $pulled = ImageTools::pullToPalette(ImageTools::load($placeholder->generate('', [], '16:9', false, ['kind' => 'background'])), $style->palette(), 0.5);

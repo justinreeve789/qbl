@@ -137,7 +137,7 @@ class AssetDirector
         $wanted = array_unique(['idle', 'walk', ...array_values(array_intersect($c['gestures'] ?? [], array_keys(self::ANIMATIONS)))]);
         foreach ($wanted as $name) {
             [$count, $duration, $loops] = self::ANIMATIONS[$name];
-            $frames = $this->strip($key, $c['name'], $name, $count, $sheetRef, $accents);
+            $frames = $this->strip($key, "{$c['name']} ({$c['appearance']})", $name, $count, $sheetRef, $accents);
             if ($frames === null) {
                 continue; // the built-in moves cover anything not drawn
             }
@@ -200,12 +200,14 @@ class AssetDirector
             $im = $this->cut(ImageTools::load($raw));
             $boxes = ImageTools::figures($im);
             if (count($boxes) !== $count) {
+                // Kept for looking at: why a strip was refused is easier to see than to read.
+                file_put_contents("{$this->workDir}/assets/".self::file($assetKey)."-rejected-$attempt.png", $raw);
                 $attempts[] = ['attempt' => $attempt, 'problem' => 'found '.count($boxes)." figures, not $count"];
                 $notes = ["Draw exactly $count separate full-body figures in one row, clearly apart, none overlapping, none cut off"];
 
                 continue;
             }
-            $frames = array_map(fn ($b) => ImageTools::crop($im, ...$b), $boxes);
+            $frames = ImageTools::figureCrops($im);
             $png = ImageTools::png($im);
             $verdict = $this->judge?->judge('strip', $png, $this->style->anchorsFor('strip'), [$sheet], "$count animation frames of $name: $animation", ["show exactly $count frames of the same character as the character sheet", 'frames side by side, same size, feet on one baseline']);
             $attempts[] = ['attempt' => $attempt] + ($verdict ? ['score' => $verdict['score'], 'problems' => $verdict['problems']] : []);
@@ -300,7 +302,7 @@ class AssetDirector
         $key = "bg:{$scene['key']}";
         if (($cache = $this->cached($key)) && ! empty($cache['asset'])) {
             if (! $this->sceneLook) {
-                $this->sceneLook = new Reference((string) file_get_contents($cache['asset']['path']), 'another scene of this same mission: match its look, colours and level of detail');
+                $this->sceneLook = new Reference((string) file_get_contents($cache['asset']['path']), 'another scene of this same mission, but a DIFFERENT place: match how it is painted (colours, light, level of detail), not its buildings, layout, landmarks or sky');
             }
 
             return $cache['asset'];
@@ -334,7 +336,7 @@ class AssetDirector
 
             return [$im, null];
         }, jpeg: true);
-        $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), 'another scene of this same mission: match its look, colours and level of detail', 'image/jpeg');
+        $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), 'another scene of this same mission, but a DIFFERENT place: match how it is painted (colours, light, level of detail), not its buildings, layout, landmarks or sky', 'image/jpeg');
 
         return $result;
     }

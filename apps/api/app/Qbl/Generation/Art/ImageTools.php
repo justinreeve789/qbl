@@ -149,6 +149,16 @@ final class ImageTools
                 }
             }
         }
+        // Enclosed pockets of background (between an arm and a body) do not touch the border: start a fill
+        // from every pixel that is the key colour almost exactly, so their soft edges go too.
+        if ($anywhere) {
+            foreach ($dist as $i => $d) {
+                if ($d < $exact && ! isset($gone[$i])) {
+                    $gone[$i] = true;
+                    $queue->enqueue($i);
+                }
+            }
+        }
         while (! $queue->isEmpty()) {
             $i = $queue->dequeue();
             $x = $i % $w;
@@ -349,6 +359,50 @@ final class ImageTools
      */
     public static function figures(GdImage $im): array
     {
+        return array_map(fn ($f) => $f['box'], self::figureParts($im));
+    }
+
+    /**
+     * Each figure of a cut-out strip as its own picture, left to right. Only the figure's own pixels are
+     * taken: a neighbour's outstretched hand inside its box is left out.
+     *
+     * @return GdImage[]
+     */
+    public static function figureCrops(GdImage $im): array
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $out = [];
+        foreach (self::figureParts($im) as $f) {
+            [$x0, $y0, $fw, $fh] = $f['box'];
+            $crop = self::crop($im, $x0, $y0, $fw, $fh);
+            $clear = imagecolorallocatealpha($crop, 0, 0, 0, 127);
+            $s = $f['scale'];
+            for ($y = 0; $y < $fh; $y++) {
+                for ($x = 0; $x < $fw; $x++) {
+                    $gx = intdiv($x0 + $x, $s);
+                    $gy = intdiv($y0 + $y, $s);
+                    // Kept if this grid cell, or one next to it, belongs to the figure (edges are soft).
+                    $mine = false;
+                    for ($dy = -1; $dy <= 1 && ! $mine; $dy++) {
+                        for ($dx = -1; $dx <= 1 && ! $mine; $dx++) {
+                            $mine = isset($f['cells'][($gy + $dy) * $f['grid'] + $gx + $dx]);
+                        }
+                    }
+                    if (! $mine) {
+                        imagesetpixel($crop, $x, $y, $clear);
+                    }
+                }
+            }
+            $out[] = $crop;
+        }
+
+        return $out;
+    }
+
+    /** @return array<array{box: array, cells: array<int, true>, grid: int, scale: int}> */
+    private static function figureParts(GdImage $im): array
+    {
         $w = imagesx($im);
         $h = imagesy($im);
         $s = max(1, (int) round(max($w, $h) / 500)); // work on a coarser grid; it is only for finding boxes
@@ -372,9 +426,11 @@ final class ImageTools
             }
             $seen[$start] = true;
             $stack = [$start];
+            $cells = [];
             [$x0, $y0, $x1, $y1, $n] = [PHP_INT_MAX, PHP_INT_MAX, -1, -1, 0];
             while ($stack) {
                 $i = array_pop($stack);
+                $cells[$i] = true;
                 $gx = $i % $gw;
                 $gy = intdiv($i, $gw);
                 $x0 = min($x0, $gx);
@@ -394,7 +450,7 @@ final class ImageTools
                     }
                 }
             }
-            $boxes[] = ['x0' => $x0 * $s, 'y0' => $y0 * $s, 'x1' => min($w - 1, ($x1 + 1) * $s), 'y1' => min($h - 1, ($y1 + 1) * $s), 'n' => $n];
+            $boxes[] = ['x0' => $x0 * $s, 'y0' => $y0 * $s, 'x1' => min($w - 1, ($x1 + 1) * $s), 'y1' => min($h - 1, ($y1 + 1) * $s), 'n' => $n, 'cells' => $cells];
         }
         if (! $boxes) {
             return [];
@@ -416,6 +472,7 @@ final class ImageTools
                 foreach (['x0' => 'min', 'y0' => 'min', 'x1' => 'max', 'y1' => 'max'] as $edge => $f) {
                     $big[$best][$edge] = $f($big[$best][$edge], $piece[$edge]);
                 }
+                $big[$best]['cells'] += $piece['cells'];
             }
         }
         // Figures whose boxes overlap a lot are one figure (an arm crossing in front of the next frame's space).
@@ -428,12 +485,13 @@ final class ImageTools
                 foreach (['x0' => 'min', 'y0' => 'min', 'x1' => 'max', 'y1' => 'max'] as $edge => $f) {
                     $merged[$k][$edge] = $f($merged[$k][$edge], $b[$edge]);
                 }
+                $merged[$k]['cells'] += $b['cells'];
             } else {
                 $merged[] = $b;
             }
         }
 
-        return array_map(fn ($b) => [$b['x0'], $b['y0'], $b['x1'] - $b['x0'] + 1, $b['y1'] - $b['y0'] + 1], $merged);
+        return array_map(fn ($b) => ['box' => [$b['x0'], $b['y0'], $b['x1'] - $b['x0'] + 1, $b['y1'] - $b['y0'] + 1], 'cells' => $b['cells'], 'grid' => $gw, 'scale' => $s], $merged);
     }
 
     /** Horizontal centre of mass of what is not see-through. */

@@ -95,17 +95,23 @@ final class ArtStyle
     /** Which anchors are sent with each kind of picture, most relevant first. */
     public function anchorsFor(string $kind): array
     {
+        // Drawing frames or a portrait of a character, their own approved sheet carries the style and the
+        // design; a character anchor beside it is a second person the model may draw instead. So those
+        // get only anchors without anyone in them.
         $roles = match ($kind) {
             'background' => ['environment', 'character'],
-            'character', 'strip' => ['character', 'environment'],
-            'portrait' => ['portrait', 'character'],
-            'item', 'vehicle', 'badge' => ['props', 'character'],
-            default => ['character'],
+            'character' => ['character', 'environment'],
+            'strip', 'portrait' => ['environment', 'props'],
+            'item', 'vehicle', 'badge' => ['props', 'environment'],
+            default => ['environment'],
         };
         $out = [];
         foreach ($roles as $role) {
             if (is_file($path = $this->anchorPath($role))) {
-                $out[] = new Reference((string) file_get_contents($path), "style anchor ($role): match its style exactly, not its content");
+                $out[] = new Reference((string) file_get_contents($path), match ($role) {
+                    'character', 'portrait' => "style anchor ($role): a DIFFERENT character, shown only for how characters are drawn. Do not copy their face, hair, body, clothes, colours or belongings",
+                    default => "style anchor ($role): match how it is painted, not what it shows",
+                });
             }
         }
 
