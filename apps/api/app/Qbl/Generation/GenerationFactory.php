@@ -79,7 +79,7 @@ class GenerationFactory
 
     public function style(?string $key = null): ArtStyle
     {
-        return ArtStyle::load((string) $this->config('styles_dir'), $key ?? (string) $this->config('style', 'qbl-cartoon'));
+        return ArtStyle::load((string) $this->config('styles_dir'), $key ?? (string) $this->config('style', 'qbl-adventure'));
     }
 
     public function images(?string $driver = null, ?ArtStyle $style = null): ImageGenerator
@@ -91,7 +91,7 @@ class GenerationFactory
         $c = fn (string $k, $d = '') => (string) $this->config("images.$driver.$k", $d);
 
         return match ($driver) {
-            'gemini' => new GeminiImageGenerator($this->http, $c('api_key'), $c('model', 'gemini-3-pro-image-preview'), $c('base_url', 'https://generativelanguage.googleapis.com/v1beta')),
+            'gemini' => new GeminiImageGenerator($this->http, $c('api_key'), $c('model', 'gemini-3-pro-image'), $c('base_url', 'https://generativelanguage.googleapis.com/v1beta'), $c('image_size', '2K')),
             'openai' => new OpenAiImageGenerator($this->http, $c('api_key'), $c('model', 'gpt-image-2'), $c('quality', 'high'), $c('base_url', 'https://api.openai.com/v1')),
             'scenario' => new ScenarioImageGenerator($this->http, $c('api_key'), $c('api_secret'), $c('model_id'), $c('base_url', 'https://api.cloud.scenario.com/v1')),
             'placeholder' => new PlaceholderImageGenerator(($style ?? $this->style())->chroma(), array_values(($style ?? $this->style())->palette())),

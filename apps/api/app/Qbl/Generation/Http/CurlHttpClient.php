@@ -28,7 +28,10 @@ class CurlHttpClient implements HttpClient
 
                 continue;
             }
-            if (($response->status === 429 || $response->status >= 500) && $attempt <= $this->retries) {
+            // A quota of zero (a free tier without the model) or a wait of more than a few minutes will not
+            // clear by retrying: answer at once so the caller can say what to do.
+            $hopeless = $response->status === 429 && (str_contains($response->body, 'limit: 0') || (int) ($response->headers['retry-after'] ?? 0) > 300);
+            if (($response->status === 429 || $response->status >= 500) && $attempt <= $this->retries && ! $hopeless) {
                 $this->pause($attempt, $response->headers['retry-after'] ?? null);
 
                 continue;

@@ -18,7 +18,7 @@ class GeminiImageGenerator implements ImageGenerator
     public function __construct(
         private HttpClient $http,
         private string $apiKey,
-        private string $model = 'gemini-3-pro-image-preview',
+        private string $model = 'gemini-3-pro-image',
         private string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta',
         private string $size = '2K',
     ) {
@@ -42,7 +42,11 @@ class GeminiImageGenerator implements ImageGenerator
         ], timeout: 300);
         $data = $response->json();
         if (! $response->ok()) {
-            throw new GenerationError('Gemini refused: '.($data['error']['message'] ?? $response->body));
+            $message = (string) ($data['error']['message'] ?? $response->body);
+            if (str_contains($message, 'free_tier') && str_contains($message, 'limit: 0')) {
+                throw new GenerationError("Gemini's image models are not part of the free tier, and this key's project is on it. Turn on billing for the key's project in Google AI Studio (aistudio.google.com, API keys > Set up billing), then try again.");
+            }
+            throw new GenerationError('Gemini refused: '.mb_substr($message, 0, 600));
         }
         foreach ($data['candidates'][0]['content']['parts'] ?? [] as $part) {
             $inline = $part['inlineData'] ?? $part['inline_data'] ?? null;

@@ -42,7 +42,7 @@ Option | Effect
 `--minutes=` | Rough playing time.
 `--notes=` | Anything else for the designer ("set it in ancient Egypt", "no reading above grade 2").
 `--owner=` | The teacher who owns the draft.
-`--style=` | The art style (a folder in `resources/art-styles`). Default `qbl-cartoon`.
+`--style=` | The art style (a folder in `resources/art-styles`). Default `QBL_GEN_STYLE`, `qbl-adventure`.
 `--images=` | `gemini`, `openai`, `scenario` or `placeholder`.
 `--design-only` | Stop after the blueprint, to review the plan cheaply before any picture is drawn. Then `--resume`.
 `--no-import` | Make the ZIP but do not import it.
@@ -90,21 +90,28 @@ Importing again updates rows in place. Without any standards for the grade and f
 
 This is the part that takes the most care. Five things work together:
 
-1. **A style bible.** `resources/art-styles/qbl-cartoon/style.php` says how pictures look: medium, outlines, shading, shapes, proportions, lighting, a named palette, what each kind of picture shows and how it is framed, and what to avoid. `ArtStyle` writes **every** prompt from it, in the same words and the same order, with only the subject changing.
+1. **A style bible.** `resources/art-styles/<style>/style.php` says how pictures look: medium, outlines, shading, shapes, proportions, lighting, a named palette, what each kind of picture shows and how it is framed, and what to avoid. `ArtStyle` writes **every** prompt from it, in the same words and the same order, with only the subject changing.
 2. **Anchors.** A few approved pictures (an environment, a character, a set of props, a portrait) in `anchors/` go with every request as references, and every result is **judged against them** by a vision model acting as art director (`StyleJudge`): line, shading, colour, shapes, rendering, subject and composition, each out of 10. A picture under the bar (7 by default, and no criterion under 5) is drawn again with the judge's corrections added. After the last attempt the best one is kept and flagged in the README and the command's output.
 3. **Design before motion.** Each character is drawn once as a character sheet. Their portrait and every animation strip are drawn *from* that sheet (it is the first reference), judged against it, and colour-matched to it, so a character looks the same in every frame and in the story box. The mission's first background goes with every later background, and its first character with every later character.
 4. **One finish.** Cut-outs are drawn on a flat chroma colour (`#FF00FF`) and keyed out (or drawn transparent, where the provider can), trimmed, and scaled to fixed sizes (characters on 240 × 320 frames, items 130/230/400 pixels tall, portraits 320 square on the same backdrop, backgrounds 2250 × 1200). Every picture is pulled part of the way towards the palette (`post.palette_pull`), keeping its shading.
 5. **A trained model, later.** Once 15-30 approved pictures exist (the anchors and the best of the generated ones), train a style model on them in Scenario and use `--images=scenario`: the most consistent option of all.
+
+### The styles
+
+- **`qbl-adventure`** (the default): hand-painted cartoon art in the spirit of classic 1990s point-and-click adventure games: vibrant, intricate, whimsical, with lots of open floor. Written from a prompt that gave good results in Recraft.
+- **`qbl-cartoon`**: a flatter, cleaner vector cartoon with cel shading.
+
+A new style is a new folder with a `style.php`; copy one of these and change the words.
 
 ### Setting up the anchors
 
 Do this once, before generating missions with a real image service (the command refuses otherwise, unless `--without-anchors`):
 
 ```sh
-php artisan qbl:art-style qbl-cartoon --bootstrap                 # 3 candidates each for environment, character, props
-php artisan qbl:art-style qbl-cartoon --approve=environment:2 --approve=character:1 --approve=props:3
-php artisan qbl:art-style qbl-cartoon --bootstrap --role=portrait # drawn from the approved character
-php artisan qbl:art-style qbl-cartoon --approve=portrait:1
+php artisan qbl:art-style qbl-adventure --bootstrap                 # 3 candidates each for environment, character, props
+php artisan qbl:art-style qbl-adventure --approve=environment:2 --approve=character:1 --approve=props:3
+php artisan qbl:art-style qbl-adventure --bootstrap --role=portrait # drawn from the approved character
+php artisan qbl:art-style qbl-adventure --approve=portrait:1
 ```
 
 The candidates are in the work folder under `anchors/`. **Commit the approved anchors** with the style: they define it. In Docker, approving writes into the container; copy them out with `docker compose cp app:/app/resources/art-styles ./apps/api/resources/` and commit them.
@@ -126,7 +133,11 @@ Driver | Model (default) | Notes
 `scenario` | your trained model | `SCENARIO_API_KEY`, `SCENARIO_API_SECRET`, `SCENARIO_MODEL_ID`. Not yet run against the live API: check its request fields against Scenario's documentation first.
 `placeholder` | | Draws labelled shapes locally, for free, through the same cutting, slicing and packaging. For trying the pipeline, laying out a mission before paying for art, and the tests.
 
-The language model is Claude (`ANTHROPIC_API_KEY`): `QBL_GEN_LLM_MODEL` writes and aligns the mission, `QBL_GEN_JUDGE_MODEL` judges pictures. Settings are in `apps/api/config/qbl_generation.php`.
+The language model is Claude (`ANTHROPIC_API_KEY`): `QBL_GEN_LLM_MODEL` writes and aligns the mission, `QBL_GEN_JUDGE_MODEL` judges pictures.
+
+**Every setting is in `.env`**: keys, models, API addresses, image size, the art style, judging and limits. `.env.example` lists them all with their defaults; an empty value means the default. `docker-compose.yml` passes them to the `app` container, and `apps/api/config/qbl_generation.php` reads them.
+
+Gemini's image models are not on its free tier: the key's project needs billing turned on in Google AI Studio. Without it every request is refused with a quota of 0, and the generator says so.
 
 ## Reviewing a generated mission
 

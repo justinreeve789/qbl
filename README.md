@@ -155,11 +155,11 @@ A **scenario** is a whole mission a group of students goes on together. It conta
 
 ```sh
 docker compose exec app php artisan qbl:standards file standards.json --framework=NGSS     # once: standards to align to
-docker compose exec app php artisan qbl:art-style qbl-cartoon --bootstrap                 # once: the style's anchor pictures
+docker compose exec app php artisan qbl:art-style qbl-adventure --bootstrap               # once: the style's anchor pictures
 docker compose exec app php artisan qbl:generate "Why does the orchard have flowers but no fruit?" --grade=3 --framework=NGSS --owner=teacher@qbl.test
 ```
 
-Set `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` (or `OPENAI_API_KEY`) in `.env`. `--images=placeholder` tries the whole pipeline with no image service. See `docs/docs/generation.md`.
+Set `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` (or `OPENAI_API_KEY`) in `.env`; every other setting (models, API addresses, art style, limits) is there too, listed in `.env.example`. `--images=placeholder` tries the whole pipeline with no image service. See `docs/docs/generation.md`.
 
 ## The demo mission
 

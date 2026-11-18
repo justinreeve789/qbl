@@ -41,7 +41,7 @@ class ImportStandards extends Command
                 $importer = new StandardsImporter($store, $factory->http());
                 $count = match ($source) {
                     'file' => $importer->fromFile((string) $this->argument('id'), $framework, $this->option('jurisdiction')),
-                    'learning-commons' => $importer->fromLearningCommons((string) $factory->config('standards.learning_commons_api_key'), (string) $this->argument('id'), $framework, $this->option('grade')),
+                    'learning-commons' => $importer->fromLearningCommons((string) $factory->config('standards.learning_commons_api_key'), (string) $this->argument('id'), $framework, $this->option('grade'), (string) $factory->config('standards.learning_commons_base_url')),
                     'csp' => $importer->fromCommonStandardsProject((string) $factory->config('standards.csp_api_key'), (string) $this->argument('id'), $framework, (string) $factory->config('standards.csp_base_url')),
                     default => throw new GenerationError("Unknown source \"$source\": use file, learning-commons or csp."),
                 };
