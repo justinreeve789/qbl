@@ -1,5 +1,5 @@
 import { CHAT_MAX_LENGTH, type IconName, type ObjectiveStatus } from '@qbl/shared';
-import { icon } from './icons';
+import { emojiIcon, icon } from './icons';
 import type { ChatLine, GlossaryRow, PlayerRow } from './UiPort';
 
 export type SidebarTab = 'mission' | 'bag' | 'moves' | 'players' | 'messages' | 'glossary';
@@ -91,7 +91,7 @@ export class Sidebar {
       button.hidden = true;
       const count = el('span', 'qbl-sidebar-count');
       count.hidden = true;
-      button.append(icon(tab.icon, { size: 26, target: `.qbl-sidebar-tab[data-tab="${tab.key}"]` }), count);
+      button.append(icon(tab.icon, { size: 26 }), count);
       button.addEventListener('click', () => this.open(this.current === tab.key ? null : tab.key, true));
       this.buttons.set(tab.key, { button, count });
       this.rail.append(button);
@@ -354,7 +354,9 @@ export class Sidebar {
         b.type = 'button';
         b.title = move.label;
         b.dataset.move = move.animation;
-        b.append(el('span', 'qbl-move-icon', move.icon), el('span', 'qbl-move-label', move.label));
+        const picture = el('span', 'qbl-move-icon');
+        picture.append(emojiIcon(move.icon));
+        b.append(picture, el('span', 'qbl-move-label', move.label));
         b.addEventListener('click', () => this.onMove(move.animation));
         row.append(b);
       }
@@ -363,7 +365,8 @@ export class Sidebar {
     if (this.emotes.length) {
       const pad = el('div', 'qbl-emotes');
       for (const emoji of this.emotes) {
-        const b = el('button', 'qbl-emote', emoji);
+        const b = el('button', 'qbl-emote');
+        b.append(emojiIcon(emoji));
         b.type = 'button';
         b.setAttribute('aria-label', `Send ${emoji}`);
         b.addEventListener('click', () => this.onEmote(emoji));

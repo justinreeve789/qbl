@@ -389,7 +389,7 @@ export class Ui implements UiPort {
     toggle.type = 'button';
     const draw = () => {
       const on = this.narrator.enabled;
-      toggle.replaceChildren(icon(on ? 'narration' : 'narration-off', { size: 26, target: '.qbl-narration-toggle' }));
+      toggle.replaceChildren(icon(on ? 'narration' : 'narration-off', { size: 26 }));
       toggle.setAttribute('aria-pressed', String(on));
       toggle.setAttribute('aria-label', 'Read text aloud');
       toggle.title = on ? 'Reading aloud is on. Click to turn it off.' : 'Reading aloud is off. Click to turn it on.';
@@ -538,7 +538,7 @@ export class Ui implements UiPort {
     if (!who) return;
     const node = el('div', 'qbl-account');
     const toggle = el('button', 'qbl-account-name');
-    toggle.append(icon('account', { size: 18, target: '.qbl-account-name' }), el('span', '', who.name));
+    toggle.append(icon('account', { size: 18 }), el('span', '', who.name));
     toggle.type = 'button';
     toggle.setAttribute('aria-haspopup', 'true');
     toggle.setAttribute('aria-expanded', 'false');
@@ -568,7 +568,7 @@ export class Ui implements UiPort {
     node.title = 'Open the marketplace and your wardrobe';
     const toNext = state.next_rank_xp == null ? 'top rank' : `${state.next_rank_xp - state.xp} XP to next rank`;
     const stars = el('span', 'qbl-stars');
-    stars.append(icon('star', { size: 18, target: '.qbl-rewards' }), el('span', '', String(state.stars)));
+    stars.append(icon('star', { size: 18 }), el('span', '', String(state.stars)));
     node.append(stars, el('span', 'qbl-rank', state.rank), el('span', 'qbl-xp', `${state.xp} XP · ${toNext}`));
     node.setAttribute('aria-label', `${state.stars} stars. Rank: ${state.rank}. ${state.xp} XP, ${toNext}. Open the marketplace.`);
     node.addEventListener('click', onOpen);

@@ -1,3 +1,4 @@
+import { emojiIcon } from '../icons';
 import type { ActionType } from '@qbl/shared';
 import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
@@ -126,7 +127,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     // The grip is what is dragged; the card follows it. Dropping on another card puts this action
     // before or after it, whichever half of that card the pointer is over.
     const grip = h('span', { class: 'grip', draggable: 'true', title: 'Drag to change the order', 'aria-hidden': 'true' }, '⠿');
-    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, `${ACTION_LOOK[type][0]} ${def.label}`), summary), body);
+    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, emojiIcon(ACTION_LOOK[type][0]), ` ${def.label}`), summary), body);
     card.addEventListener('toggle', () => (card.open ? open.add(id) : open.delete(id)));
     grip.addEventListener('click', (e) => e.preventDefault());
     grip.addEventListener('dragstart', (e) => {

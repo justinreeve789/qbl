@@ -384,11 +384,8 @@ dialog.modal .field { margin-bottom: 14px; }
 .choice span span { color: var(--muted); font-size: 12.5px; }
 .card.other { border-top-color: #6b7a99; }
 
-/* Icons from the LordIcon set, with a character until the animation has loaded (src/icons.ts). */
-.icon-label.lord { position: relative; display: inline-grid; place-items: center; width: 1.35em; height: 1.35em; vertical-align: -0.25em; }
-.lord-animated { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
-.icon-label.lord.ready .lord-animated { opacity: 1; }
-.icon-label.lord.ready .lord-fallback { visibility: hidden; }
+/* Icons: Twemoji, through the Twemoji Awesome stylesheet (src/icons.ts). */
+.icon-label.twa { font-size: 1.15em; margin: 0 0.3em 0 0; font-style: normal; }
 
 /* Scene groups and who is seen in a scene */
 .scene-group { display: flex; align-items: center; gap: 8px; margin: 4px 0; }

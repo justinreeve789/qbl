@@ -216,12 +216,12 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-home-empty { margin-top: 40px; text-align: center; opacity: 0.8; }
 @media (prefers-reduced-motion: reduce) { .qbl-mission { transition: none; } }
 
-/* ---------- icons (LordIcon, with a character until the animation has loaded) ---------- */
-.qbl-icon { --icon-size: 24px; position: relative; display: inline-grid; place-items: center; width: var(--icon-size); height: var(--icon-size); flex: none; vertical-align: middle; line-height: 1; }
-.qbl-icon-fallback { font-size: calc(var(--icon-size) * 0.82); }
-.qbl-icon-animated { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
-.qbl-icon.ready .qbl-icon-animated { opacity: 1; }
-.qbl-icon.ready .qbl-icon-fallback { visibility: hidden; }
+/* ---------- icons (Twemoji, through the Twemoji Awesome stylesheet: .twa sizes itself in em) ---------- */
+.qbl-icon { font-size: 24px; flex: none; line-height: 1; font-style: normal; }
+/* A thin light edge, so the set's dark pictures (silhouettes, the alien) still read on the dark panels. */
+.qbl-icon.twa { margin: 0; vertical-align: middle; filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.85)); }
+.qbl-emote .qbl-icon { font-size: 1.6rem; }
+.qbl-move-icon .qbl-icon { font-size: 1.4rem; }
 
 /* ---------- the side panel ---------- */
 /* Below the stars and the account, which have the corner; above the chat bar. */

@@ -9,7 +9,7 @@ import { glossaryPage } from './glossary';
 import { icon } from '../icons';
 import { sceneEditor } from './scene/sceneEditor';
 
-/** The pages of a scenario: its address, its name, and its icon (from the LordIcon set; see icons.ts). */
+/** The pages of a scenario: its address, its name, and its icon (see icons.ts). */
 export const TABS = [
   ['scenes', 'Scenes', 'scenes'],
   ['media', 'Media', 'media'],
@@ -120,7 +120,7 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
       { class: 'workspace-head' },
       h('div', { class: 'crumbs' }, h('a', { href: '#/' }, 'Scenarios'), ' › ', scene ? h('a', { href: base }, title) : title, scene ? ` › ${sceneLabel(scene)}` : null, state, h('span', { class: 'spacer' }), publish),
       h('nav', { class: 'tabs', 'aria-label': 'Scenario' },
-        ...TABS.map(([key, label, name]) => h('a', { href: key === 'scenes' ? base : `${base}/${key}`, 'data-tab': key, class: !scene && place.tab === key ? 'current' : scene && key === 'scenes' ? 'parent' : null }, icon(name, `.tabs a[data-tab="${key}"]`), label)),
+        ...TABS.map(([key, label, name]) => h('a', { href: key === 'scenes' ? base : `${base}/${key}`, 'data-tab': key, class: !scene && place.tab === key ? 'current' : scene && key === 'scenes' ? 'parent' : null }, icon(name), label)),
         // The scene editor has its own test button, which starts in that scene.
         scene ? null : h('a', { class: 'button test', href: previewUrl(store.scenarioId), target: 'qbl-preview' }, '▶ Test'),
       ),

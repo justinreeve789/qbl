@@ -1,3 +1,4 @@
+import { emojiIcon } from '../../icons';
 import { EVENT_KINDS, eventLabel, mediaLabel } from '../../describe';
 import { h } from '../../dom';
 import { sameSelection, type Point, type SceneModel, type Selection } from './model';
@@ -49,7 +50,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
       h(
         'summary',
         { style: `--tone:${LOOK[title]?.[1] ?? ''}` },
-        h('span', { class: 'outline-title' }, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, LOOK[title]?.[0] ?? ''), title, h('small', null, String(items.length))),
+        h('span', { class: 'outline-title' }, LOOK[title] ? emojiIcon(LOOK[title][0]) : null, title, h('small', null, String(items.length))),
         add
           ? h('button', {
               type: 'button', class: 'icon', title: `Add: ${title.toLowerCase()}`,

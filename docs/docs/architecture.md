@@ -77,7 +77,7 @@ Module | Responsibility
 `core/Pathfinder.ts` | The way around obstacles for click-to-walk, from a navigation mesh (the `navmesh` library).
 `ui/Sidebar.ts` | The side panel: mission, inventory, moves and emotes, players, messages, glossary.
 `ui/Narrator.ts` | Reading text aloud with the browser's voice, and which word it has reached.
-`ui/icons.ts` | Icons from the LordIcon set, with a character until each has loaded.
+`ui/icons.ts` | Icons: Twemoji, drawn through the Twemoji Awesome stylesheet.
 `ui/UiPort.ts`, `ui/Ui.ts` | The interface the game uses for on-screen UI, and its HTML implementation.
 
 `apps/client/README.md` explains how to add a system, a presenter or a feature.

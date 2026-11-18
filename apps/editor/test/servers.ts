@@ -47,9 +47,6 @@ export async function startSite(): Promise<TestSite> {
       res.writeHead(200, { 'Content-Type': 'text/html' }).end(page);
     } else if (/^\/editor\/main\.(js|css)$/.test(path)) {
       res.writeHead(200, { 'Content-Type': types[extname(path)] }).end(readFileSync(join(dist, path.slice('/editor/'.length))));
-    } else if (/^\/editor\/icons\/lordicon\/[a-z-]+\.json$/.test(path)) {
-      // What Vite copies from the editor's public folder: the icon manifest.
-      res.writeHead(200, { 'Content-Type': 'application/json' }).end(readFileSync(join(repo, 'apps/editor/public', path.slice('/editor/'.length))));
     } else {
       // Everything else belongs to the API server.
       const upstream = request({ host: '127.0.0.1', port: apiPort, path: req.url, method: req.method, headers: req.headers }, (answer) => {

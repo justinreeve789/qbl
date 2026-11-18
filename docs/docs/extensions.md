@@ -444,7 +444,7 @@ Players | Everyone in the scenario with the player: teammates first, each with w
 Messages | What was said in the scene, and private conversations | `chat_mode` is `free`, or `private_messages` is on
 Glossary | The player's words | The scenario has a glossary
 
-The icons are from the [LordIcon](https://lordicon.com) set; see `apps/client/public/icons/lordicon/README.md` for supplying the icon files.
+**Icons.** Every icon in the game and the editor is an emoji from one set, Twemoji, drawn through the [Twemoji Awesome](https://github.com/iamludal/twemoji-awesome) stylesheet (MIT, vendored in `packages/shared/assets/twemoji-awesome.css`): `<i class="twa twa-rocket"></i>`. They look the same on every device, where plain emoji characters differ from one system to the next. The interface's own icons are named in `packages/shared/src/icons.ts`; the emote pad, move buttons and the editor's tabs and lists are drawn the same way. After using a new emoji as an icon, run `node tools/make-twemoji-map.mjs <checkout of twemoji-awesome>` so it has its class; one without is shown as the plain character. The stylesheet loads each picture from `twitter.github.io/twemoji`: a site that must work without reaching that address should host the SVGs itself and replace the address in the stylesheet. Emoji drawn inside the scene (a speech bubble over an avatar) are still the device's own.
 
 ### Messages
 

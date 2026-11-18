@@ -9,6 +9,8 @@ import { OfflineConnection, OnlineConnection, type GameConnection } from './net/
 import { BootScene } from './scenes/BootScene';
 import { PlayScene } from './scenes/PlayScene';
 import { Ui } from './ui/Ui';
+// Twemoji Awesome: the one set every icon in the interface is drawn from (see ui/icons.ts).
+import '../../../packages/shared/assets/twemoji-awesome.css';
 import './ui/ui.css';
 
 const app = document.getElementById('app')!;
