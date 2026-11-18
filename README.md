@@ -55,11 +55,22 @@ Players open a scenario at `/{code}`. Other URL parameters:
 | `?debug` | Draw walkable areas, spawn points and hotspot areas (including scene edges) |
 
 ## SSL
-To set up an SSL cert, use certbot. For example:
+To set up an SSL cert, use certbot. Its standalone mode needs port 80, which the `edge` container holds, so stop that first:
 
 ```sh
-certbot certonly -d questlab.cc -m admin@questlab.cc --agree-tos --redirect
+docker compose stop edge
+sudo certbot certonly --standalone -d dev.questlab.cc -m admin@questlab.cc --agree-tos
 ```
+
+Then name the certificate in `.env` and start `edge` again (`docker compose up -d edge`):
+
+```sh
+QBL_CERTS_DIR=/etc/letsencrypt
+QBL_TLS_CERT=/etc/letsencrypt/live/dev.questlab.cc/fullchain.pem
+QBL_TLS_KEY=/etc/letsencrypt/live/dev.questlab.cc/privkey.pem
+```
+
+For renewals (certbot's hooks to stop, restart and start `edge`) and the alternative of letting `edge` fetch a certificate itself, see [HTTPS](#https).
 
 ## Docker
 
@@ -127,10 +138,28 @@ QBL_ACME_EMAIL=you@questlab.cc           # optional: Let's Encrypt writes here a
 
 then `docker compose up -d --build`. `docker compose logs edge` says which certificate it is using.
 
-**4. The certificate.** Two ways:
+**4. The certificate.** Three ways:
 
 - **Let's Encrypt (nothing to do).** With no certificate files, `edge` fetches a free certificate for `dev.questlab.cc` on its first start, which needs steps 1 and 2 in place, and renews it by itself. Certificates are kept in the `edge-data` volume: don't delete it (`docker compose down -v` would), because Let's Encrypt limits how often new ones may be issued.
-- **Your own certificate.** Put two PEM files in `certs/` next to `docker-compose.yml` (or the folder named by `QBL_CERTS_DIR`): `fullchain.pem` (the certificate followed by its intermediates) and `privkey.pem` (its private key), then `docker compose restart edge`. They are used instead of Let's Encrypt; renewing is up to you (replace the files, restart `edge`). `certs/` is in `.gitignore` and `.dockerignore`, so the key never reaches git or an image.
+- **Your own certificate, by path.** Name the files in `.env`. With certbot:
+
+  ```sh
+  QBL_CERTS_DIR=/etc/letsencrypt
+  QBL_TLS_CERT=/etc/letsencrypt/live/dev.questlab.cc/fullchain.pem
+  QBL_TLS_KEY=/etc/letsencrypt/live/dev.questlab.cc/privkey.pem
+  ```
+
+  `QBL_CERTS_DIR` is the folder mounted (read-only) into `edge`; the two files must be inside it, given as host paths like these or relative to it (`live/dev.questlab.cc/fullchain.pem`). Mount all of `/etc/letsencrypt`, not only `live/…`: the files in `live/` are links into `archive/`, which must be there too. Then `docker compose up -d edge`. A wrong path stops `edge` with a message saying which file it could not read.
+- **Your own certificate, by copying.** Leave `QBL_TLS_CERT` and `QBL_TLS_KEY` empty and put `fullchain.pem` (the certificate followed by its intermediates) and `privkey.pem` in `certs/` next to `docker-compose.yml`, then `docker compose restart edge`. `certs/` is in `.gitignore` and `.dockerignore`, so the key never reaches git or an image.
+
+With your own certificate, renewing is up to you, and `edge` reads the files only when it starts. For certbot, add a deploy hook that restarts it after each renewal, `/etc/letsencrypt/renewal-hooks/deploy/questlab.sh` (executable):
+
+```sh
+#!/bin/sh
+docker compose -f /path/to/qbl/docker-compose.yml restart edge
+```
+
+If certbot was set up with `--standalone`, it also needs port 80 to renew, which `edge` holds: add `pre/` and `post/` hooks that `stop` and `start` edge, and check with `sudo certbot renew --dry-run`. Letting `edge` fetch the certificate itself (the first option) avoids all of this.
 
 **5. Google sign-in**, if used: the authorised redirect URI is `https://dev.questlab.cc/api/auth/google/callback`.
 
@@ -144,7 +173,8 @@ With an https `QBL_PUBLIC_URL`, that address is the site's own name everywhere: 
 | `QBL_HTTP_PORT`, `QBL_HTTPS_PORT` | The published ports: 80 and 443 on a server (Let's Encrypt needs one of them). Default 8080 and 8443 |
 | `QBL_HTTP_BIND` | The address the published ports listen on. Default every address |
 | `QBL_ACME_EMAIL` | Optional address for Let's Encrypt |
-| `QBL_CERTS_DIR` | Where your own `fullchain.pem` and `privkey.pem` are. Default `./certs` |
+| `QBL_CERTS_DIR` | The folder with your own certificate, mounted into `edge`. Default `./certs` |
+| `QBL_TLS_CERT`, `QBL_TLS_KEY` | Your certificate and key, inside `QBL_CERTS_DIR` (host paths or relative). Empty: `fullchain.pem` and `privkey.pem` from that folder if present, else Let's Encrypt |
 | `QBL_TRUSTED_PROXIES` | Whose `X-Forwarded-*` headers Laravel believes. Laravel only ever hears from Apache, so it must include the Docker network; the default is every private range |
 
 ### Google sign-in

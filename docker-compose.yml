@@ -170,6 +170,12 @@ services:
       QBL_PUBLIC_URL: ${QBL_PUBLIC_URL:-}
       # Optional: Let's Encrypt writes here about problems with the certificate.
       QBL_ACME_EMAIL: ${QBL_ACME_EMAIL:-}
+      # Optional: your own certificate, as host paths inside QBL_CERTS_DIR (or relative to it),
+      # e.g. QBL_CERTS_DIR=/etc/letsencrypt and
+      # QBL_TLS_CERT=/etc/letsencrypt/live/dev.questlab.cc/fullchain.pem.
+      QBL_CERTS_DIR: ${QBL_CERTS_DIR:-./certs}
+      QBL_TLS_CERT: ${QBL_TLS_CERT:-}
+      QBL_TLS_KEY: ${QBL_TLS_KEY:-}
       # Only so the start script can warn when Let's Encrypt could not reach it.
       QBL_HTTP_PORT: ${QBL_HTTP_PORT:-8080}
       QBL_HTTPS_PORT: ${QBL_HTTPS_PORT:-8443}
@@ -179,7 +185,8 @@ services:
       - "${QBL_HTTP_BIND:-0.0.0.0}:${QBL_HTTPS_PORT:-8443}:443"
       - "${QBL_HTTP_BIND:-0.0.0.0}:${QBL_HTTPS_PORT:-8443}:443/udp"
     volumes:
-      # Your own certificate, if you have one: fullchain.pem and privkey.pem. Never committed.
+      # Your own certificate, if you have one (QBL_TLS_CERT/QBL_TLS_KEY, or fullchain.pem and
+      # privkey.pem). The whole folder is mounted so certbot's symlinks keep working. Never committed.
       - ${QBL_CERTS_DIR:-./certs}:/certs:ro
       # Let's Encrypt certificates and account. Keep this volume: deleting it means fetching new
       # certificates, and Let's Encrypt limits how often that may happen.
