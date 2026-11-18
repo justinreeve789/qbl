@@ -144,12 +144,36 @@ final class Recorded implements HttpClient
 $png = ImageTools::png(ImageTools::blank(4, 4));
 $ref = new Reference($png, 'style anchor (character)');
 
-$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => 'thinking'], ['type' => 'tool_use', 'name' => 'answer', 'input' => ['ok' => true]]], 'stop_reason' => 'tool_use']))]);
-$answer = (new AnthropicModel($http, 'key', 'claude-test'))->structured('sys', ['look', ['image' => $png]], 'answer', ['type' => 'object']);
-same($answer, ['ok' => true], 'Claude\'s answer is taken from its tool call');
-same($http->sent[0]['body']['tool_choice'], ['type' => 'tool', 'name' => 'answer'], 'Claude is required to answer with the tool');
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{"ok": true}']], 'stop_reason' => 'end_turn']))]);
+$answer = (new AnthropicModel($http, 'key', 'claude-test'))->structured('sys', ['look', ['image' => $png]], 'answer', ['type' => 'object', 'properties' => ['n' => ['type' => 'integer', 'minimum' => 0, 'description' => 'How many'], 'list' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 5, 'items' => ['type' => 'string', 'pattern' => '^[a-z]+$']]]]);
+same($answer, ['ok' => true], 'Claude\'s answer is read as JSON from its text block');
+$format = $http->sent[0]['body']['output_config']['format'] ?? [];
+same($format['type'] ?? null, 'json_schema', 'Claude is asked for structured output with the schema');
+same($format['schema']['additionalProperties'] ?? null, false, 'objects in the schema forbid other properties');
+check(! isset($format['schema']['properties']['n']['minimum']) && str_contains($format['schema']['properties']['n']['description'], 'minimum: 0'), 'bounds structured outputs do not accept move into the description');
+same([$format['schema']['properties']['list']['minItems'] ?? null, isset($format['schema']['properties']['list']['maxItems']), isset($format['schema']['properties']['list']['items']['pattern'])], [1, false, false], 'item counts above 1 and patterns are taken out');
 same($http->sent[0]['body']['messages'][0]['content'][1]['source']['type'] ?? null, 'base64', 'pictures go to Claude as base64');
 same($http->sent[0]['headers']['x-api-key'], 'key', 'with the key in x-api-key');
+$http = new Recorded([
+    new HttpResponse(400, json_encode(['type' => 'error', 'error' => ['type' => 'invalid_request_error', 'message' => 'The compiled grammar is too large, which would cause performance issues.']])),
+    new HttpResponse(200, json_encode(['content' => [['type' => 'tool_use', 'name' => 'big_answer', 'input' => ['big' => true]]], 'stop_reason' => 'tool_use'])),
+    new HttpResponse(200, json_encode(['content' => [['type' => 'tool_use', 'name' => 'big_answer', 'input' => ['again' => true]]], 'stop_reason' => 'tool_use'])),
+]);
+$big = new AnthropicModel($http, 'key');
+same($big->structured('sys', ['x'], 'big_answer', ['type' => 'object']), ['big' => true], 'a schema too large for a strict grammar is answered through a tool');
+same([$http->sent[1]['body']['tool_choice'] ?? null, isset($http->sent[1]['body']['output_config'])], [['type' => 'auto'], false], 'with tool_choice auto (forcing is not allowed)');
+same($big->structured('sys', ['x'], 'big_answer', ['type' => 'object']), ['again' => true], 'and the next request for it goes straight to the tool');
+same(count($http->sent), 3, 'without trying the grammar again');
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{"ok": tr']], 'stop_reason' => 'max_tokens']))]);
+check((function () use ($http) {
+    try {
+        (new AnthropicModel($http, 'key'))->structured('sys', ['x'], 'answer', ['type' => 'object'], 10);
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), 'ran out of room');
+    }
+
+    return false;
+})(), 'an answer cut off by max_tokens is reported as such');
 
 $http = new Recorded([new HttpResponse(200, json_encode(['candidates' => [['content' => ['parts' => [['text' => 'here'], ['inlineData' => ['mimeType' => 'image/png', 'data' => base64_encode($png)]]]]]]]))]);
 same((new GeminiImageGenerator($http, 'gkey', 'gemini-test'))->generate('draw', [$ref], '21:9', false), $png, 'Gemini\'s picture is read from inlineData');
