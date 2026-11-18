@@ -26,8 +26,10 @@ RUN npm exec --workspace @qbl/client -- vite build
 FROM php:8.4-fpm-alpine
 
 # zip: scenarios are exported and imported as ZIP files (App\Qbl\ScenarioArchive).
-RUN apk add --no-cache git unzip libzip-dev \
-    && docker-php-ext-install pdo_mysql opcache zip
+# gd: the AI scenario generator cuts out, sizes and colour-matches pictures (App\Qbl\Generation\Art\ImageTools).
+RUN apk add --no-cache git unzip libzip-dev libpng-dev libjpeg-turbo-dev libwebp-dev freetype-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install pdo_mysql opcache zip gd
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app

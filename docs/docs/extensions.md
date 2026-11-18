@@ -24,6 +24,7 @@ objectives | array | | The mission checklist shown to the player. See below.
 music_media_id | int | | Background music for the scenario: it plays in every scene that does not have music of its own.
 music_volume | decimal | 0.5 | Volume of that music, 0 to 1.
 session | object | null | Save data for the requesting player. See [Save data](session.md).
+curriculum | object | | What the mission teaches: `standards` (`framework`, `code`, `description`, `alignment`, `rationale`), `learning_objectives` (`id`, `text`, `standards`), `vocabulary`, and `evidence`: for each objective, the variables that record a student's evidence of it. Written by the [mission generator](generation.md); the runtime ignores it.
 
 `jump_targets` is generated from jump actions (including those on infobox buttons), by the API when it builds the JSON and again by the runtime. It may be either an object keyed by scene id (`{"3": [4]}`) or an array of `{scene_id, targets}`.
 

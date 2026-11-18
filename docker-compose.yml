@@ -55,6 +55,38 @@ services:
       QBL_GOOGLE_TEACHER_DOMAINS: ${QBL_GOOGLE_TEACHER_DOMAINS:-}
       # Files uploaded in the editor.
       QBL_MEDIA_DIR: /media-data
+      # The AI scenario generator (php artisan qbl:generate): keys, models, addresses and limits, all
+      # from .env. Empty means the default in apps/api/config/qbl_generation.php. See .env.example.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+      QBL_GEN_LLM_MODEL: ${QBL_GEN_LLM_MODEL:-}
+      QBL_GEN_JUDGE_MODEL: ${QBL_GEN_JUDGE_MODEL:-}
+      QBL_GEN_IMAGE_DRIVER: ${QBL_GEN_IMAGE_DRIVER:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
+      QBL_GEN_GEMINI_MODEL: ${QBL_GEN_GEMINI_MODEL:-}
+      QBL_GEN_GEMINI_IMAGE_SIZE: ${QBL_GEN_GEMINI_IMAGE_SIZE:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      QBL_GEN_OPENAI_MODEL: ${QBL_GEN_OPENAI_MODEL:-}
+      QBL_GEN_OPENAI_QUALITY: ${QBL_GEN_OPENAI_QUALITY:-}
+      SCENARIO_API_KEY: ${SCENARIO_API_KEY:-}
+      SCENARIO_API_SECRET: ${SCENARIO_API_SECRET:-}
+      SCENARIO_MODEL_ID: ${SCENARIO_MODEL_ID:-}
+      SCENARIO_BASE_URL: ${SCENARIO_BASE_URL:-}
+      QBL_GEN_STYLE: ${QBL_GEN_STYLE:-}
+      QBL_GEN_JUDGE: ${QBL_GEN_JUDGE:-}
+      QBL_GEN_JUDGE_MIN_SCORE: ${QBL_GEN_JUDGE_MIN_SCORE:-}
+      QBL_GEN_MAX_ATTEMPTS: ${QBL_GEN_MAX_ATTEMPTS:-}
+      QBL_GEN_MAX_SCENES: ${QBL_GEN_MAX_SCENES:-}
+      QBL_GEN_MAX_CHARACTERS: ${QBL_GEN_MAX_CHARACTERS:-}
+      QBL_GEN_MAX_ITEMS: ${QBL_GEN_MAX_ITEMS:-}
+      LEARNING_COMMONS_API_KEY: ${LEARNING_COMMONS_API_KEY:-}
+      LEARNING_COMMONS_BASE_URL: ${LEARNING_COMMONS_BASE_URL:-}
+      CSP_API_KEY: ${CSP_API_KEY:-}
+      CSP_BASE_URL: ${CSP_BASE_URL:-}
+      # Each run's pictures, blueprint and ZIP, kept so a run can be resumed.
+      QBL_GEN_WORK_DIR: /data/generations
     volumes:
       - public:/shared/public      # the frontend and the demo's media, handed to Apache
       - media:/media-data          # uploaded media, served by Apache as /media

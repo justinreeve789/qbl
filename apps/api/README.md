@@ -25,7 +25,10 @@ What QBL adds to stock Laravel:
 | `app/Http/Controllers/EditorController.php` | Hands `/api/editor/*` requests to `EditorApi` |
 | `app/Models/*` | `Scenario`, `ScenarioSession`, `ScenarioInstance`, `User` with a role |
 | `routes/api.php` and `app/Http/*` | The endpoints in `docs/docs/api.md`, and the service-key guard for `/api/internal` |
-| `app/Console/Commands/*` | `qbl:seed [--reset] [--password=]`, `qbl:publish [code-or-shortname] [--print]`, `qbl:user <email> <name> [--role=]` |
+| `app/Console/Commands/*` | `qbl:seed [--reset] [--password=]`, `qbl:publish [code-or-shortname] [--print]`, `qbl:user <email> <name> [--role=]`, `qbl:generate`, `qbl:art-style`, `qbl:standards` |
+| `app/Qbl/Generation/*` | The AI mission generator: curriculum alignment, the blueprint and its builder, the art pipeline. Plain PHP like the rest of `app/Qbl`. See `docs/docs/generation.md` |
+| `config/qbl_generation.php` | Keys and models for the generator, the art style, judging, limits |
+| `resources/art-styles/*` | Art styles: each a `style.php` bible and its approved `anchors/` |
 | `app/Http/Controllers/GoogleAuthController.php` | Sign in with Google (Laravel Socialite) |
 | `config/qbl.php` | `QBL_SERVICE_KEY`, `QBL_ALLOW_GUESTS`, `QBL_MEDIA_DIR`, `QBL_MEDIA_URL`, the Google sign-in domains, and `ranks`: the XP each rank needs |
 
@@ -36,6 +39,7 @@ Beside the framework's usual folders:
 | `bin/export-seed.php` | Runs the compiler on the seed data with no Laravel or database and prints the JSON |
 | `tests/store.php` | Tests the three `app/Qbl` classes over SQLite, with no framework: `npm run test:api` |
 | `tests/progress.php` | Tests stars, XP and the marketplace the same way: `npm run test:progress` |
+| `tests/generation.php` | Tests the AI mission generator end to end with a stand-in model and placeholder pictures: `npm run test:generation` |
 | `tests/Feature/QblApiTest.php` | The same API through real Laravel: `php artisan test` |
 | `tests/Feature/SignInAndDeployTest.php` | Google sign-in, forwarded HTTPS headers, seeding by command, migrating a database made by the earlier migrations |
 | `dev/server.php` | A stand-in API for developing and testing the editor without Docker: `npm run dev:api`. Not for deployment |
