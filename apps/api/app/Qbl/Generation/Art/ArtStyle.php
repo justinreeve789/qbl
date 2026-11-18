@@ -95,15 +95,16 @@ final class ArtStyle
     /** Which anchors are sent with each kind of picture, most relevant first. */
     public function anchorsFor(string $kind): array
     {
-        // Drawing frames or a portrait of a character, their own approved sheet carries the style and the
-        // design; a character anchor beside it is a second person the model may draw instead. So those
-        // get only anchors without anyone in them.
+        // What else is in an anchor gets copied, not just its style: a character anchor beside a character
+        // sheet is a second person the model may draw instead, and an environment anchor becomes a backdrop
+        // painted behind a cut-out. So cut-outs never get the environment, and frames and portraits (whose
+        // own approved sheet carries the style) get only the props, which has no one and nowhere in it.
         $roles = match ($kind) {
             'background' => ['environment', 'character'],
-            'character' => ['character', 'environment'],
-            'strip', 'portrait' => ['environment', 'props'],
-            'item', 'vehicle', 'badge' => ['props', 'environment'],
-            default => ['environment'],
+            'character' => ['character', 'props'],
+            'strip', 'portrait' => ['props'],
+            'item', 'vehicle', 'badge' => ['props'],
+            default => ['props'],
         };
         $out = [];
         foreach ($roles as $role) {

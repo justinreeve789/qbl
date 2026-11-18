@@ -418,6 +418,38 @@ final class ImageTools
                 }
             }
         }
+        // A ground line drawn under all the frames joins them into one shape. Take out long, thin
+        // horizontal runs: cells in a row that is mostly solid, whose solid column is only a few
+        // cells tall there (feet and bodies are much taller).
+        $rowCount = array_fill(0, $gh, 0);
+        foreach ($solid as $i => $_) {
+            $rowCount[intdiv($i, $gw)]++;
+        }
+        foreach ($rowCount as $gy => $n) {
+            if ($n < 0.45 * $gw) {
+                continue;
+            }
+            for ($gx = 0; $gx < $gw; $gx++) {
+                $i = $gy * $gw + $gx;
+                if (! isset($solid[$i])) {
+                    continue;
+                }
+                $run = 1;
+                for ($y = $gy - 1; $y >= 0 && isset($solid[$y * $gw + $gx]) && $run <= 4; $y--) {
+                    $run++;
+                }
+                for ($y = $gy + 1; $y < $gh && isset($solid[$y * $gw + $gx]) && $run <= 4; $y++) {
+                    $run++;
+                }
+                if ($run <= 4) {
+                    $thin[$i] = true;
+                }
+            }
+        }
+        foreach ($thin ?? [] as $i => $_) {
+            unset($solid[$i]);
+        }
+
         $seen = [];
         $boxes = [];
         foreach ($solid as $start => $_) {
