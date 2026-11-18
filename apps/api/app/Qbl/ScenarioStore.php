@@ -420,10 +420,11 @@ class ScenarioStore
     }
 
     /**
-     * Keep a copy of a file in the scenario's own folder of the media directory, under a random name.
-     * What the file is comes from its content, not its name. Returns [type, filepath, url, [width, height] or false].
+     * Keep a copy of a file in the scenario's own folder of the media directory, under a random name
+     * (or under `$name`, when that is 24 hexadecimal digits as such names are). What the file is comes
+     * from its content, not its name. Returns [type, filepath, url, [width, height] or false].
      */
-    private function storeFile(int $scenarioId, string $path): array
+    private function storeFile(int $scenarioId, string $path, ?string $name = null): array
     {
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path) ?: '';
         if (! isset(self::UPLOADS[$mime])) {
@@ -434,7 +435,7 @@ class ScenarioStore
         if (! is_dir($dir) && ! mkdir($dir, 0775, true) && ! is_dir($dir)) {
             throw new RuntimeException("Cannot create $dir");
         }
-        $filename = bin2hex(random_bytes(12)).'.'.$extension;
+        $filename = (preg_match('/^[a-f0-9]{24}$/', (string) $name) ? $name : bin2hex(random_bytes(12))).'.'.$extension;
         if (! (is_uploaded_file($path) ? move_uploaded_file($path, "$dir/$filename") : copy($path, "$dir/$filename"))) {
             throw new RuntimeException('Could not store the uploaded file.');
         }
@@ -593,69 +594,112 @@ class ScenarioStore
     // =================================================================== seeding
 
     /**
-     * Seed a scenario from rows shaped like database/seeders/data/starship.php, unless it is already
-     * in the database. Once seeded it belongs to whoever edits it: starting the application again
-     * must not undo their work, so an existing scenario is only replaced when `$reset` is true.
+     * Seed a scenario shipped with the application (a ZIP in database/seeders/scenarios, read by
+     * ScenarioArchive::seed), unless it is already in the database. Once seeded it belongs to
+     * whoever edits it: seeding again must not undo their work, so an existing scenario is only
+     * replaced when `$reset` is true.
      *
      * Returns the scenario's id, or null when it was already there and was left alone.
      */
-    public function seedScenario(array $rows, bool $reset = false): ?int
+    public function seedScenario(array $rows, bool $reset = false, ?callable $fileFor = null): ?int
     {
         $id = (int) $rows['scenario']['id'];
         $code = strtolower((string) ($rows['scenario']['code'] ?? ''));
         $present = $this->one('SELECT `id` FROM `scenarios` WHERE `id` = ? OR `code` = ?', [$id, $code]);
 
-        return $present && ! $reset ? null : $this->replaceScenario($rows);
+        return $present && ! $reset ? null : $this->replaceScenario($rows, $fileFor);
     }
 
     /**
-     * Replace a whole scenario with rows shaped like database/seeders/data/starship.php.
-     * Rows carry their own ids because actions refer to each other by id. Content that is in the
-     * database but not in the rows is removed; the scenario's id, owner and players' saves are kept.
+     * Replace a whole scenario with rows that carry their own ids, as ScenarioDecompiler makes
+     * them from a scenario.json. The ids are kept, because they are what links to a scene and
+     * players' saves refer to. Content that is in the database but not in the rows is removed;
+     * the scenario's id, owner and players' saves are kept.
+     *
+     * `$fileFor` works as it does for importRows(). A file it returns is stored under the name the
+     * row's filepath ends in, when that is a name this store gives, so seeding twice gives the
+     * same document. A row whose file is not supplied keeps its address but owns no file.
      */
-    public function replaceScenario(array $rows): int
+    public function replaceScenario(array $rows, ?callable $fileFor = null): int
     {
         $scenario = $rows['scenario'];
         $id = (int) $scenario['id'];
-
-        return $this->transaction(function () use ($rows, $scenario, $id) {
-            $now = self::now();
-            $row = $this->encode('scenarios', $scenario);
-            $code = strtolower((string) ($scenario['code'] ?? ''));
-            if (! preg_match('/^[a-z]{16}$/', $code)) {
-                throw new StoreError(422, 'Seed data needs a 16-letter code.');
-            }
-            if ($this->one('SELECT `id` FROM `scenarios` WHERE `code` = ? AND `id` <> ?', [$code, $id])) {
-                throw new StoreError(409, "Another scenario already has the code \"$code\".");
-            }
-            $existing = $this->one('SELECT `code` FROM `scenarios` WHERE `id` = ?', [$id]);
-            if ($existing && $existing['code'] !== $code) {
-                throw new StoreError(409, "Scenario $id is a different scenario (\"{$existing['code']}\"); it was not replaced.");
-            }
-            if ($existing) {
-                $this->clearContent($id);
-                $this->update('scenarios', $id, ['start_scene_id' => null] + $row + ['code' => $code]);
-            } else {
-                $this->insert('scenarios', ['id' => $id, 'start_scene_id' => null, 'code' => $code, 'created_at' => $now, 'updated_at' => $now] + $row);
-            }
-            foreach (self::CONTENT as $table) {
-                // Seed rows name their own ids. One that is still taken belongs to another scenario.
-                $ids = array_map(fn ($content) => (int) $content['id'], $rows[$table] ?? []);
-                foreach (array_chunk($ids, 500) as $chunk) {
-                    $taken = $this->ids("SELECT `id` FROM `$table` WHERE `id` IN (".implode(',', array_fill(0, count($chunk), '?')).')', $chunk);
-                    if ($taken) {
-                        throw new StoreError(409, "Cannot seed: $table ".implode(', ', array_slice($taken, 0, 5)).' already belong to another scenario.');
+        if ($id < 1) {
+            throw new StoreError(422, 'Seed data needs a scenario id.');
+        }
+        $before = $this->mediaDir === null ? [] : array_column($this->all('SELECT `filepath` FROM `media` WHERE `scenario_id` = ? AND `filepath` IS NOT NULL', [$id]), 'filepath');
+        $stored = $kept = [];
+        try {
+            $this->transaction(function () use ($rows, $scenario, $id, $fileFor, &$stored, &$kept) {
+                $now = self::now();
+                $row = $this->encode('scenarios', $scenario);
+                $code = strtolower((string) ($scenario['code'] ?? ''));
+                if (! preg_match('/^[a-z]{16}$/', $code)) {
+                    throw new StoreError(422, 'Seed data needs a 16-letter code.');
+                }
+                if ($this->one('SELECT `id` FROM `scenarios` WHERE `code` = ? AND `id` <> ?', [$code, $id])) {
+                    throw new StoreError(409, "Another scenario already has the code \"$code\".");
+                }
+                $existing = $this->one('SELECT `code` FROM `scenarios` WHERE `id` = ?', [$id]);
+                if ($existing && $existing['code'] !== $code) {
+                    throw new StoreError(409, "Scenario $id is a different scenario (\"{$existing['code']}\"); it was not replaced.");
+                }
+                if ($existing) {
+                    $this->clearContent($id);
+                    $this->update('scenarios', $id, ['start_scene_id' => null] + $row + ['code' => $code]);
+                } else {
+                    $this->insert('scenarios', ['id' => $id, 'start_scene_id' => null, 'code' => $code, 'created_at' => $now, 'updated_at' => $now] + $row);
+                }
+                foreach (self::CONTENT as $table) {
+                    // Seed rows name their own ids. One that is still taken belongs to another scenario.
+                    $ids = array_map(fn ($content) => (int) $content['id'], $rows[$table] ?? []);
+                    foreach (array_chunk($ids, 500) as $chunk) {
+                        $taken = $this->ids("SELECT `id` FROM `$table` WHERE `id` IN (".implode(',', array_fill(0, count($chunk), '?')).')', $chunk);
+                        if ($taken) {
+                            throw new StoreError(409, "Cannot seed: $table ".implode(', ', array_slice($taken, 0, 5)).' already belong to another scenario.');
+                        }
+                    }
+                    foreach ($rows[$table] ?? [] as $content) {
+                        $content += self::IMPORT_DEFAULTS[$table];
+                        if (isset(self::SCHEMA[$table]['scenario_id'])) {
+                            $content['scenario_id'] = $id;
+                        }
+                        if ($table === 'media' && $fileFor !== null) {
+                            $file = $fileFor($content);
+                            $name = pathinfo((string) ($content['filepath'] ?? ''), PATHINFO_FILENAME);
+                            $content['filepath'] = null;
+                            if ($file !== null && $this->mediaDir !== null) {
+                                [$content['type'], $content['filepath'], $content['url'], $size] = $this->storeFile($id, $file, $name);
+                                $stored[] = $content['filepath'];
+                                if ($size) {
+                                    [$content['width'], $content['height']] = [$size[0], $size[1]];
+                                }
+                            }
+                        }
+                        if ($table === 'media' && is_string($content['filepath'] ?? null)) {
+                            $kept[] = $content['filepath'];
+                        }
+                        $this->insert($table, ['id' => (int) $content['id'], 'created_at' => $now, 'updated_at' => $now] + $this->encode($table, $content));
                     }
                 }
-                foreach ($rows[$table] ?? [] as $content) {
-                    $this->insert($table, ['id' => (int) $content['id'], 'created_at' => $now, 'updated_at' => $now] + $this->encode($table, $content));
-                }
+                // start_scene_id points at a scene, so it is set once the scenes exist.
+                $this->run('UPDATE `scenarios` SET `start_scene_id` = ? WHERE `id` = ?', [$scenario['start_scene_id'] ?? null, $id]);
+            });
+        } catch (\Throwable $e) {
+            // The rows were rolled back; files written for them that were not there before go too.
+            foreach (array_diff($stored, $before) as $path) {
+                @unlink($this->mediaDir.'/'.$path);
             }
-            // start_scene_id points at a scene, so it is set once the scenes exist.
-            $this->run('UPDATE `scenarios` SET `start_scene_id` = ? WHERE `id` = ?', [$scenario['start_scene_id'] ?? null, $id]);
+            throw $e;
+        }
+        // The files of the content that was replaced, unless the new content uses them too.
+        foreach (array_diff($before, $kept) as $path) {
+            if (preg_match('#^\d+/[a-f0-9]{24}\.[a-z0-9]{2,4}$#', $path)) {
+                @unlink($this->mediaDir.'/'.$path);
+            }
+        }
 
-            return $id;
-        });
+        return $id;
     }
 
     // =================================================================== helpers

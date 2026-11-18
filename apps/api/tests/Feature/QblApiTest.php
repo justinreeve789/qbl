@@ -3,7 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Database\Seeders\StarshipSeeder;
+use App\Qbl\ScenarioArchive;
+use Database\Seeders\ShippedScenarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
@@ -24,7 +25,7 @@ class QblApiTest extends TestCase
 
     public function test_the_seeder_publishes_the_demo_at_its_code(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
 
         $document = $this->getJson('/api/scenarios/starshipexplorer/play')->assertOk()->json('scenario');
         $this->assertSame('starshipexplorer', $document['code']);
@@ -34,16 +35,18 @@ class QblApiTest extends TestCase
         // Added as the document is served: the caller's save, and the instance they are about to join.
         $this->assertSame(['group' => 'public', 'party' => 'public'], $document['instance']);
         unset($document['session'], $document['instance']);
+        // The files uploaded for it are served from /media here, and from beside the JSON by the file backend.
+        [$document] = ScenarioArchive::forFileBackend($document);
         $this->assertEquals($shipped, $document, 'The seeded, published JSON is the one shipped in scenarios/starship.json.');
     }
 
     public function test_seeding_again_keeps_edits(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
         $token = $this->teacher()->createToken('test')->plainTextToken;
         $this->withToken($token)->patchJson('/api/editor/scenarios/1', ['title' => 'Edited'])->assertOk();
 
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
 
         $this->withToken($token)->getJson('/api/editor/scenarios/1')->assertOk()->assertJsonPath('scenario.title', 'Edited');
     }
@@ -125,7 +128,7 @@ class QblApiTest extends TestCase
     public function test_the_game_servers_routes_need_the_service_key(): void
     {
         config(['qbl.service_key' => 'test-service-key']);
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
 
         $this->getJson('/api/internal/scenarios/starshipexplorer')->assertForbidden();
         $this->getJson('/api/internal/scenarios/starshipexplorer', ['X-QBL-Service-Key' => 'test-service-key'])

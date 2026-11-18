@@ -12,7 +12,7 @@ foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avat
 }
 
 use App\Qbl\EditorApi;
-use App\Qbl\ScenarioCompiler;
+use App\Qbl\ScenarioArchive;
 use App\Qbl\ScenarioStore;
 
 $failures = 0;
@@ -41,17 +41,33 @@ $store = new ScenarioStore($pdo, $mediaDir, '/media');
 foreach (ScenarioStore::sqliteSchema() as $sql) {
     $pdo->exec($sql);
 }
-$seed = require __DIR__.'/../database/seeders/data/starship.php';
+// The demo is shipped as the ZIP the editor exports; $seed is its rows as the archive reads them.
+$zip = ScenarioArchive::SHIPPED.'/starship-explorer.zip';
+$archive = new ScenarioArchive($store);
+[$seed, $shipped, $zipped] = ScenarioArchive::read($zip, function (array $rows, callable $fileFor, array $document) {
+    $files = [];
+    foreach ($rows['media'] as $media) {
+        if ($media['filepath'] !== null) {
+            $files[basename($media['filepath'])] = sha1_file($fileFor($media));
+        }
+    }
+
+    return [ScenarioArchive::asShipped($rows, $document), $document, $files];
+});
+$fromSeed = pretty($shipped);
 
 // ------------------------------------------------------------------ seeding -> JSON
-$id = $store->replaceScenario($seed);
-same($id, 1, 'seeding keeps the scenario id from the seed data');
-$fromSeed = pretty(ScenarioCompiler::compile($seed));
+$id = $archive->seed($zip);
+same($id, 1, 'seeding keeps the scenario id the ZIP was exported with');
 $fromDatabase = pretty($store->compile($id));
-check($fromDatabase === $fromSeed, 'JSON generated from the seeded database equals JSON generated from the seed arrays');
+check($fromDatabase === $fromSeed, 'JSON generated from the seeded database is the ZIP\'s scenario.json');
+check(count($zipped) === 5 && array_filter(array_keys($zipped), fn ($name) => is_file("$mediaDir/1/$name") && sha1_file("$mediaDir/1/$name") === $zipped[$name]) === array_keys($zipped), 'the files in the ZIP are stored under the names the document uses');
 
 $checkedIn = __DIR__.'/../../../scenarios/starship.json';
-check(is_file($checkedIn) && file_get_contents($checkedIn) === $fromSeed, 'scenarios/starship.json is current (run: npm run seed:export)');
+[$forFiles, $uploads] = ScenarioArchive::forFileBackend($store->compile($id));
+check(is_file($checkedIn) && file_get_contents($checkedIn) === pretty($forFiles), 'scenarios/starship.json is current (run: npm run seed:export)');
+$uploadDir = __DIR__.'/../../../scenarios/assets/starship/uploads';
+check(array_keys($uploads) == array_keys($zipped) && ! array_filter($zipped, fn ($sha, $name) => ! is_file("$uploadDir/$name") || sha1_file("$uploadDir/$name") !== $sha, ARRAY_FILTER_USE_BOTH), 'and the files it uploaded are beside it, for the file backend');
 
 $counts = fn () => array_map(fn ($t) => (int) $pdo->query("SELECT COUNT(*) FROM `$t`")->fetchColumn(), array_combine(ScenarioStore::CONTENT, ScenarioStore::CONTENT));
 $before = $counts();
@@ -61,8 +77,10 @@ same($before['conditions'], count($seed['conditions']), 'every seeded condition 
 
 // Seeding again changes nothing, and a save game survives it.
 $pdo->exec("INSERT INTO scenario_sessions (scenario_id, user_id, data) VALUES (1, 7, '{}')");
-$store->replaceScenario($seed);
+$archive->seed($zip, true);
 same($counts(), $before, 'seeding twice leaves the same rows');
+check(pretty($store->compile(1)) === $fromSeed, 'and the same document');
+same(count(glob("$mediaDir/1/*")), count($zipped), 'and the same files, no more and no fewer');
 same((int) $pdo->query('SELECT COUNT(*) FROM scenario_sessions')->fetchColumn(), 1, 'players\' saves survive a re-seed');
 
 // Rows dropped from the seed disappear from the database.
@@ -72,13 +90,14 @@ $store->replaceScenario($smaller);
 same($counts()['actions'], $before['actions'] - 1, 'an action removed from the seed is removed from the database');
 $store->replaceScenario($seed);
 check(pretty($store->compile(1)) === $fromSeed, 'and seeding the full data restores it exactly');
+same(count(glob("$mediaDir/1/*")), count($zipped), 'files the rows still use are kept');
 
 // Seeding when the application starts: a scenario that is already there is left alone, edits and all.
 $store->updateRow(1, 'scenes', 3, ['subtitle' => 'Edited by a teacher']);
-same($store->seedScenario($seed), null, 'seeding on start leaves an existing scenario alone');
+same($archive->seed($zip), null, 'seeding on start leaves an existing scenario alone');
 $subtitle = fn () => $pdo->query('SELECT subtitle FROM scenes WHERE id = 3')->fetchColumn();
 same($subtitle(), 'Edited by a teacher', 'so an edit made in the editor survives a restart');
-same($store->seedScenario($seed, true), 1, 'a reset replaces it');
+same($archive->seed($zip, true), 1, 'a reset replaces it');
 check(pretty($store->compile(1)) === $fromSeed, 'and puts the shipped version back exactly');
 
 // Seed rows name their own ids, so seeding must refuse to take rows that belong to another scenario.

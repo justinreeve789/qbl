@@ -22,6 +22,38 @@ class ScenarioArchive
 
     public const MAX_TOTAL_BYTES = 1024 * 1024 * 1024;
 
+    /** Where the scenarios shipped with the application are kept, one ZIP each. `qbl:seed` adds them. */
+    public const SHIPPED = __DIR__.'/../../database/seeders/scenarios';
+
+    /** The shipped scenario ZIPs, by file name. */
+    public static function shipped(): array
+    {
+        $paths = glob(self::SHIPPED.'/*.zip') ?: [];
+        sort($paths);
+
+        return $paths;
+    }
+
+    /**
+     * A published document as the game server's file backend serves it (scenarios/*.json): that
+     * backend has no /media, so each uploaded file is expected beside the scenario's other assets,
+     * under `$folder` of its asset_base_url. Returns [document, [file name => filepath]].
+     */
+    public static function forFileBackend(array $document, string $folder = 'uploads'): array
+    {
+        $files = [];
+        foreach ($document['assets'] ?? [] as $index => $media) {
+            if (is_string($media['filepath'] ?? null) && $media['filepath'] !== '') {
+                $name = basename($media['filepath']);
+                $files[$name] = $media['filepath'];
+                unset($document['assets'][$index]['filepath']);
+                $document['assets'][$index]['url'] = "$folder/$name";
+            }
+        }
+
+        return [$document, $files];
+    }
+
     public function __construct(private ScenarioStore $store) {}
 
     /** Write the scenario, as it is in the editor now, to a new temporary ZIP file. Returns [path, download name]. */
@@ -69,6 +101,47 @@ class ScenarioArchive
 
     /** Create a scenario from a ZIP made by export(), or put together by hand in the same shape. Returns its id. */
     public function import(string $zipPath, ?int $userId, ?string $title = null): int
+    {
+        $overrides = trim((string) $title) !== '' ? ['title' => trim((string) $title)] : [];
+
+        return self::read($zipPath, fn (array $rows, callable $fileFor) => $this->store->importRows($rows, $userId, $overrides, $fileFor));
+    }
+
+    /**
+     * Seed a scenario shipped with the application as a ZIP (database/seeders/scenarios). Unlike
+     * import(), it keeps the code and the ids it was exported with, so it is the same scenario
+     * on every installation and seeding it again finds it. Returns its id, or null when it was
+     * already there and `$reset` is false. It is not published here.
+     */
+    public function seed(string $zipPath, bool $reset = false): ?int
+    {
+        return self::read($zipPath, fn (array $rows, callable $fileFor, array $document) => $this->store->seedScenario(self::asShipped($rows, $document), $reset, $fileFor));
+    }
+
+    /**
+     * A shipped scenario's rows. Unlike an import, a shipped scenario keeps its own avatar lists:
+     * they are the avatars where the platform has none (the file backend, or before the avatars
+     * are seeded). They go back in the document's order, so that publishing the seeded scenario
+     * gives the document it was shipped as.
+     */
+    public static function asShipped(array $rows, array $document): array
+    {
+        $settings = $rows['scenario']['settings'] + array_intersect_key($document, array_flip(['avatar_media_ids', 'avatar_portraits']));
+        $order = array_flip(array_keys($document));
+        uksort($settings, fn ($a, $b) => ($order[$a] ?? PHP_INT_MAX) <=> ($order[$b] ?? PHP_INT_MAX));
+        $rows['scenario']['settings'] = $settings;
+
+        return $rows;
+    }
+
+    /**
+     * Open a scenario ZIP and hand its rows (as ScenarioDecompiler makes them from scenario.json)
+     * to `$use`, with a function that returns the path of a media row's file from the ZIP, or null.
+     * The files it returns are temporary and are removed once `$use` returns.
+     *
+     * @param  callable(array $rows, callable(array): ?string $fileFor, array $document): mixed  $use
+     */
+    public static function read(string $zipPath, callable $use): mixed
     {
         self::needZip();
         $zip = new ZipArchive;
@@ -155,7 +228,7 @@ class ScenarioArchive
                 return $extracted[$name];
             };
 
-            return $this->store->importRows($rows, $userId, trim((string) $title) !== '' ? ['title' => trim((string) $title)] : [], $fileFor);
+            return $use($rows, $fileFor, $document);
         } finally {
             $zip->close();
             foreach ($extracted as $temp) {

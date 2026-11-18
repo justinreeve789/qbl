@@ -11,10 +11,10 @@ use Illuminate\Console\Command;
 class SeedDemo extends Command
 {
     protected $signature = 'qbl:seed
-        {--reset : Put the shipped Starship Explorer back, replacing any edits made to it}
+        {--reset : Put the shipped scenarios (Starship Explorer) back, replacing any edits made to them}
         {--password= : Also create teacher@qbl.test, student1@qbl.test and student2@qbl.test with this password}';
 
-    protected $description = 'Seed the marketplace catalogue and the Starship Explorer demo mission';
+    protected $description = 'Seed the avatars, the marketplace catalogue and the shipped scenarios (the Starship Explorer demo)';
 
     public function handle(): int
     {

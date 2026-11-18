@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Database\Seeders\StarshipSeeder;
+use Database\Seeders\ShippedScenarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +38,7 @@ class PortingTest extends TestCase
 
     public function test_a_scenario_is_duplicated_exported_and_imported_again(): void
     {
-        $this->seed(StarshipSeeder::class);
+        $this->seed(ShippedScenarioSeeder::class);
         $token = $this->teacher();
 
         $copy = $this->withToken($token)->postJson('/api/editor/scenarios/1/duplicate')->assertCreated()->json('scenario');

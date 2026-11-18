@@ -53,10 +53,16 @@ $store = new ScenarioStore($pdo, "$dataDir/media", '/media');
 foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
 }
-// First run: seed the demo mission exactly as the Laravel seeder does. After that it is left alone.
-$seeded = $store->seedScenario(require __DIR__.'/../database/seeders/data/starship.php');
-if ($seeded !== null) {
-    $store->publish($seeded);
+// First run (no scenarios yet): add the shipped scenarios (the demo mission) from their ZIPs, as
+// the Laravel seeder does, and publish them. After that they are left alone.
+if (! $pdo->query('SELECT COUNT(*) FROM `scenarios`')->fetchColumn()) {
+    $archive = new App\Qbl\ScenarioArchive($store);
+    foreach (App\Qbl\ScenarioArchive::shipped() as $zip) {
+        $seeded = $archive->seed($zip);
+        if ($seeded !== null) {
+            $store->publish($seeded);
+        }
+    }
 }
 
 // The platform's marketplace catalogue, added once, as ShopSeeder does.
