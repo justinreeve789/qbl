@@ -1,5 +1,5 @@
 import { ScenarioIndex } from './scenario.js';
-import { SHOWN_TO_SCENE, type Action, type AnimateAction, type AwardAction, type GameEvent, type Hotspot, type Id, type Scene, type TranslateAction } from './types.js';
+import { SHOWN_TO_SCENE, type Action, type AnimateAction, type AwardAction, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene, type TranslateAction } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
 /** A running action. `done` settles when it ends on its own or is cancelled. */
@@ -39,6 +39,10 @@ export interface EngineHost {
   freeze?(frozen: boolean): void;
   /** Ask the game server to grant an award action's stars and XP. */
   award?(action: AwardAction): void;
+  /** Add a word to the player's glossary. */
+  glossary?(action: GlossaryAction): void;
+  /** An event of this player's started: for the activity log. `hotspot` when a hotspot set it off. */
+  started?(event: GameEvent, hotspot: boolean): void;
   delay(ms: number): ActionHandle;
   /** Leave the current scene. Called after end events have finished. */
   jump(sceneId: Id, spawnPoint?: string): void;
@@ -136,6 +140,7 @@ export class SceneEngine {
     if (this.hotspotsBlocked || !this.hotspotAvailable(h) || this.runs.has(h.id)) return false;
     if (h.once) this.flags.add(`hotspot:${h.id}`);
     this.hotspotCoordinates = `${h.position_x ?? ''},${h.position_y ?? ''}`;
+    this.host.started?.(h, true);
     void this.trigger(h);
     return true;
   }
@@ -307,6 +312,10 @@ export class SceneEngine {
         }
         case 'award': {
           this.host.award?.(action);
+          break;
+        }
+        case 'glossary': {
+          this.host.glossary?.(action);
           break;
         }
         case 'animate': {

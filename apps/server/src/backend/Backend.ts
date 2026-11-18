@@ -1,4 +1,4 @@
-import type { Id, InstanceData, RewardMessage, Scenario, Session, User } from '@qbl/shared';
+import type { ActivityEntry, Id, InstanceData, MessageEntry, RewardMessage, Scenario, Session, User } from '@qbl/shared';
 
 export type { InstanceData, User };
 
@@ -15,7 +15,7 @@ export interface Backend {
    * May this player join this instance of the scenario? An instance is named by its group:
    * "public", an assignment's ("a12") or a team's ("t7"). Teams are for their members.
    */
-  mayJoin(scenarioId: Id, user: User, group: string): Promise<boolean>;
+  mayJoin(scenarioId: Id, user: User, group: string, party?: string): Promise<Access>;
   /** A player's save belongs to one instance: their team's game is not their public one. */
   loadSession(scenarioId: Id, userId: string, group: string): Promise<Session | null>;
   saveSession(scenarioId: Id, userId: string, group: string, session: Session): Promise<void>;
@@ -29,6 +29,22 @@ export interface Backend {
   award(scenarioId: Id, userId: string, actionId: Id): Promise<RewardMessage | null>;
   /** What the player's avatar wears now: equipped shop item ids, comma-separated. */
   look(userId: string): Promise<string>;
+  /** Keep what players did, for the teacher's reports. */
+  logActivity(scenarioId: Id, entries: ActivityEntry[]): Promise<void>;
+  /** Keep every message sent, in a scene or privately, so it can be audited later. */
+  logMessages(scenarioId: Id, entries: MessageEntry[]): Promise<void>;
+}
+
+/** The answer to "may this player join this instance?". */
+export interface Access {
+  allowed: boolean;
+  /**
+   * The room the instance belongs to: the teams of one assignment share a room (its `a12`), so
+   * they can meet in scenes that are not limited to a team. Anything else is a room of its own.
+   */
+  party: string;
+  /** What the instance is called, when it has a name: the team's. */
+  team_name?: string;
 }
 
 /** Wraps a backend so scenario documents are fetched at most once per TTL. */

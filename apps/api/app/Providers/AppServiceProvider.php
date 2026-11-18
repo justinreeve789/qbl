@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Qbl\ActivityStore;
 use App\Qbl\ClassApi;
 use App\Qbl\ClassStore;
 use App\Qbl\Generation\GenerationFactory;
@@ -21,7 +22,8 @@ class AppServiceProvider extends ServiceProvider
             config('qbl.media_url'),
         ));
         $this->app->singleton(ClassStore::class, fn () => new ClassStore(DB::connection()->getPdo()));
-        $this->app->singleton(ClassApi::class, fn () => new ClassApi(DB::connection()->getPdo()));
+        $this->app->singleton(ClassApi::class, fn () => new ClassApi(DB::connection()->getPdo(), config('qbl.ranks')));
+        $this->app->singleton(ActivityStore::class, fn () => new ActivityStore(DB::connection()->getPdo()));
         $this->app->singleton(ProgressStore::class, fn () => new ProgressStore(DB::connection()->getPdo(), config('qbl.ranks')));
         // The AI scenario generator (qbl:generate). Plain PHP too; built from config/qbl_generation.php.
         $this->app->singleton(GenerationFactory::class, fn ($app) => new GenerationFactory(config('qbl_generation'), $app->make(ScenarioStore::class)));

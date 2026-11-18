@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { animationRepeats, BUILT_IN_MOVES, findAnimation, parseIds, type Id, type PlayerRec, type ShopItem } from '@qbl/shared';
+import { animationRepeats, BUILT_IN_MOVES, findAnimation, parseIds, shadeTint, type Id, type PlayerRec, type ShopItem } from '@qbl/shared';
 import { ensureDefaultAvatar, mediaKey, shopTexture } from '../core/assets';
 import { Depth } from '../core/depth';
 import type { GameContext } from '../core/GameContext';
@@ -61,8 +61,10 @@ export class Avatar {
    * It applies to the figure and to everything it wears or rides.
    */
   constructor(
-    private scene: Phaser.Scene, private ctx: GameContext, rec: PlayerRec, private zoom: number, readonly isLocal: boolean,
+    private scene: Phaser.Scene, private ctx: GameContext, private rec: PlayerRec, private zoom: number, readonly isLocal: boolean,
     private depth: (x: number, y: number) => number = () => 1,
+    /** How shaded a figure standing at a point is, 0 to 1, from the scene's shadow spots. */
+    private shade: (x: number, y: number) => number = () => 0,
   ) {
     this.x = rec.x;
     this.y = rec.y;
@@ -107,6 +109,7 @@ export class Avatar {
       if (!key || !this.scene.textures.exists(key)) continue;
       this.worn.set(id, { item, image: this.scene.add.image(this.x, this.y, key).setOrigin(0.5, item.kind === 'pet' ? 1 : 0.5) });
     }
+    this.retint();
     this.applyVisibility();
     this.layout();
   }
@@ -247,6 +250,7 @@ export class Avatar {
       figure.object.setOrigin(0.5, 1).setScale((item.scale ?? 1) * this.zoom);
       this.attached.set(id, figure);
     }
+    this.retint();
     this.applyVisibility();
     this.layout();
   }
@@ -290,9 +294,40 @@ export class Avatar {
       img.setPosition(this.x + (item.attach_offset_x ?? 0) * dir * this.zoom * k, this.y + (item.attach_offset_y ?? 0) * this.zoom * k - bend.lift * img.displayHeight);
       img.setRotation(bend.lean).setDepth(this.y + (item.attach_layer === 'behind' ? -0.5 : 0.5));
     }
+    this.applyShade();
     const top = this.y - this.sprite.displayHeight;
     this.label.setPosition(this.x, top - 6);
     this.bubble.setPosition(this.x, top - 40);
+  }
+
+  private tint = 0xffffff;
+
+  /** Walking through a patch of shade darkens the figure and all it wears, carries and rides. The name stays readable. */
+  private applyShade() {
+    const tint = shadeTint(this.shade(this.x, this.y));
+    if (tint === this.tint) return;
+    this.tint = tint;
+    this.retint();
+  }
+
+  private retint() {
+    const paint = (o: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite) => (this.tint === 0xffffff ? o.clearTint() : o.setTint(this.tint));
+    paint(this.sprite);
+    for (const f of this.attached.values()) paint(f.object);
+    for (const w of this.worn.values()) paint(w.image);
+  }
+
+  /** The player this figure is. */
+  get userId(): string {
+    return this.rec.user_id;
+  }
+
+  /** Call `onClick` when the figure is clicked, and `onHover` as the pointer comes and goes. */
+  onPointer(onClick: () => void, onHover: (over: boolean) => void) {
+    this.sprite.setInteractive({ useHandCursor: true });
+    this.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => onHover(true));
+    this.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => onHover(false));
+    this.sprite.on(Phaser.Input.Events.GAMEOBJECT_POINTER_DOWN, onClick);
   }
 
   /** Where each slot is on the figure: across (towards where it faces) and up, as fractions of its height. */

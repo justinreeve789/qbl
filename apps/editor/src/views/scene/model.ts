@@ -11,11 +11,12 @@ export type Selection =
   | { kind: 'item'; index: number }
   | { kind: 'character'; index: number }
   | { kind: 'area'; which: AreaList; index: number }
-  | { kind: 'scale'; index: number };
+  | { kind: 'scale'; index: number }
+  | { kind: 'shadow'; index: number };
 
 export type LayerList = 'background_media' | 'foreground_media';
 export type AreaList = 'walkable_areas' | 'blocked_areas';
-export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | AreaList;
+export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | AreaList;
 
 export interface Point { x: number; y: number }
 export type Bag = Record<string, unknown>;
@@ -83,6 +84,7 @@ export class SceneModel {
         blocked_areas: this.layout<Point[]>('blocked_areas').map(area),
         spawn_points: this.layout('spawn_points').map(moved),
         scale_areas: this.layout('scale_areas').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
+        shadow_spots: this.layout('shadow_spots').map((a) => ({ ...a, x: x(a.x), y: y(a.y), radius: x(a.radius), ...(a.radius_y != null ? { radius_y: y(a.radius_y) } : {}) })),
         items: this.layout('items').map(moved),
         characters: this.layout('characters').map(moved),
       },

@@ -1,4 +1,6 @@
+import { isNarrated } from '@qbl/shared';
 import type { Presenter } from '../Presenter';
+import { speech } from './dialogue';
 
 // Screen-space actions are drawn by the UI layer, not by Phaser, so they stay
 // sharp and are unaffected by camera zoom.
@@ -10,6 +12,7 @@ export const textOverlay: Presenter<'text_overlay'> = (action, pc) => {
     color: action.text_font_color,
     style: action.text_font_style,
     duration: action.duration,
+    speak: isNarrated(pc.ctx.scenario, action) ? speech(pc, action) : undefined,
   });
   pc.track(action.id, { kind: 'overlay', overlay }, overlay);
   return overlay;

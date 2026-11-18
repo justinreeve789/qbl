@@ -62,6 +62,47 @@ export interface Assignment {
   teams: Team[];
 }
 
+/** How one student did in a mission, as the report gives it (App\Qbl\ActivityStore::report). */
+export interface StudentReport {
+  id: number;
+  name: string;
+  group: string;
+  team: string | null;
+  started: boolean;
+  finished: boolean;
+  /** Seconds. */
+  time_spent: number;
+  visits: number;
+  first_seen: string | null;
+  last_seen: string | null;
+  scene: string | null;
+  scenes_visited: string[];
+  objectives_done: number;
+  objectives_total: number;
+  objectives: Array<{ id: string | number; complete: boolean; listed: boolean }>;
+  hotspots_used: number;
+  answers: number;
+  questions: Array<{ action_id: string; attempts: number; first_answer: string | null; last_answer: string | null }>;
+  words_learned: number;
+  words_total: number;
+  stars_earned: number;
+  xp_earned: number;
+  badges: string[];
+  messages: number;
+  learning: Array<{ id: string | number; evidence: Array<{ interaction: string | null; type: string | null; values: Record<string, string | number> }> }>;
+}
+export interface Report {
+  summary: {
+    students: number; started: number; finished: number; average_time_spent: number; average_objectives_done: number; objectives_total: number;
+    questions_answered: number; answered_in_one_try: number; average_words_learned: number; words_total: number;
+  };
+  objectives: Array<{ id: string | number; text: string; optional: boolean; completed_by: number }>;
+  learning_objectives: Array<{ id: string | number; text: string; standards: string[] }>;
+  students: StudentReport[];
+}
+export interface ActivityLine { user_id: number; name?: string; group: string; scene_id?: number; type: string; ref?: string; label?: string; value?: number; at: string }
+export interface MessageLine { user_id: number; name?: string; group: string; scene_id?: number; kind: 'chat' | 'emote' | 'private'; to_user_id?: number; to_name?: string; text: string; at: string }
+
 export interface AssignmentDraft {
   student_ids: number[];
   due_at: string | null;
@@ -194,6 +235,10 @@ export class Api {
   assign = async (attrs: AssignmentDraft & { scenario_id: number }) => (await this.call<{ assignment: Assignment }>('POST', '/teach/assignments', attrs)).assignment;
   updateAssignment = async (id: number, attrs: Partial<AssignmentDraft>) => (await this.call<{ assignment: Assignment }>('PUT', `/teach/assignments/${id}`, attrs)).assignment;
   unassign = (id: number) => this.call<void>('DELETE', `/teach/assignments/${id}`);
+  // Reports: how students did, what they did, and what they wrote to each other.
+  report = async (id: number) => (await this.call<{ report: Report }>('GET', `/teach/assignments/${id}/report`)).report;
+  activity = async (id: number, studentId?: number) => (await this.call<{ activity: ActivityLine[] }>('GET', `/teach/assignments/${id}/activity${studentId != null ? `/${studentId}` : ''}`)).activity;
+  messageLog = async (id: number) => (await this.call<{ messages: MessageLine[] }>('GET', `/teach/assignments/${id}/messages`)).messages;
 
   async upload(id: number, file: File): Promise<Row> {
     const form = new FormData();

@@ -190,3 +190,33 @@ export function revealAmount(hotspot: Pick<Hotspot, 'position_x' | 'position_y' 
   if (distance <= inner) return 1;
   return (outer - distance) / (outer - inner);
 }
+
+// ------------------------------------------------------------------ shade
+
+/**
+ * How shaded a figure standing at (x, y) is, from 0 (full light) to 1 (black), from the scene's
+ * shadow spots. Each spot is darkest at its centre and fades smoothly to nothing at its edge;
+ * where spots overlap their shade adds up the way real shadows do, never beyond black.
+ */
+export function shadeAt(scene: Pick<Scene, 'shadow_spots'>, x: number, y: number): number {
+  let light = 1;
+  for (const s of scene.shadow_spots ?? []) {
+    const rx = s.radius;
+    const ry = s.radius_y ?? s.radius;
+    if (!(rx > 0) || !(ry > 0)) continue;
+    const d = Math.hypot((x - s.x) / rx, (y - s.y) / ry);
+    if (d >= 1) continue;
+    // Smoothstep, so the edge of the shade is soft and the middle is evenly dark.
+    const t = 1 - d;
+    const falloff = t * t * (3 - 2 * t);
+    const strength = Math.min(1, Math.max(0, (s.strength ?? 60) / 100));
+    light *= 1 - strength * falloff;
+  }
+  return 1 - light;
+}
+
+/** The tint (0xRRGGBB) that darkens a picture by that much shade. 0xffffff leaves it as it is. */
+export function shadeTint(shade: number): number {
+  const v = Math.round(255 * (1 - Math.min(1, Math.max(0, shade))));
+  return (v << 16) | (v << 8) | v;
+}

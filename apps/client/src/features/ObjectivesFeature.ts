@@ -37,7 +37,11 @@ export class ObjectivesFeature implements GameFeature {
       if (!o.complete || this.completed.has(id)) continue;
       this.completed.add(id);
       // Objectives already complete when the game starts (from a save) are not announced again.
-      if (!this.first) ctx.ui.toast(`Objective complete: ${o.text}`, 4000);
+      if (!this.first) {
+        ctx.ui.toast(`Objective complete: ${o.text}`, 4000);
+        // For the teacher's report: when each objective was reached.
+        ctx.track({ type: 'objective', ref: id, label: o.text });
+      }
     }
     this.first = false;
     return list;

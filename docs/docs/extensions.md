@@ -30,6 +30,11 @@ curriculum | object | | What the mission teaches: `standards` (`framework`, `cod
 
 The game server only lets a player move to a scene listed in the current scene's jump targets.
 
+scene_groups | array | | Groups of scenes, each `{id, name, team_only}`. A scene names its group with `group_id`. See [Teams in a scene](#teams-in-a-scene).
+glossary | array | | Words the mission teaches. See [Glossary](#glossary).
+narration | string | off | `on`: dialogue, infoboxes and text overlays are read aloud unless an action says otherwise. `off`: only actions marked `narrate`. See [Reading text aloud](#reading-text-aloud).
+private_messages | bool | false | Players may send typed messages to one other player. See [Messages](#messages).
+
 ### Objectives
 
 A scenario can define a checklist that is shown on screen while it is played. Objectives are driven by variables, so events move the mission along simply by changing variables.
@@ -64,6 +69,85 @@ spawn_points | array | | Named places players appear. See below.
 items | array | | Item placements: `{item_id, position_x, position_y}`.
 characters | array | | Character placements: `{character_id, position_x, position_y, facing, event_id}`.
 indirect_events | array | | Events that only run via a run event action, an infobox button or a character. (Mentioned on the Events page; this is where they live.)
+
+shadow_spots | array | | Patches of shade. See [Shadow spots](#shadow-spots).
+team_only | bool | the group's | Show a player only their own team in this scene. See [Teams in a scene](#teams-in-a-scene).
+
+### What stands in front of what
+
+Everything placed in a scene has a place relative to the players. There are three:
+
+Place | Drawn | Use it for
+----- | ----- | ----------
+`background` | Behind every player, in front of the background layers | A hotspot's icon, a marking on the floor, a rug, a sign on the far wall
+`object` | Among the players, sorted by where it stands: a player lower on the screen is in front of it, one higher up is behind it | A rock, a crate, a plant, a console players can walk around
+`front` | Over everything | A caption floating above the scene
+
+What decides it:
+
+* **Hotspot labels**: `placement` on the label. Default: `object` for pictures (image and spritemap labels), `front` for text. A picture stands on its **bottom edge**: that is the line players are sorted against.
+* **Items**: `placement` on the item, `object` (default) or `background`. An item stands at its position, the middle of its bottom edge.
+* **Characters and avatars** are always objects.
+* **`image_fixed` and `spritemap` actions**: `layer`, which is `above` (default: over everything), `sorted` (among the players, by `position_y`) or `behind` (part of the background).
+* **Foreground layers** are drawn over all of it, as before.
+
+A label can also be **solid**: players cannot walk through it and are led around it.
+
+Parameter | Applies to | Default | Description
+--------- | ---------- | ------- | -----------
+placement | label | by kind | `background`, `object` or `front`.
+solid | picture label | false | Players walk around it. A solid label is always an object.
+solid_radius | picture label | 35% of its width | Radius of the obstacle, a circle at the picture's base.
+placement | item | object | `object` or `background`.
+
+```json
+{ "type": "image", "media": 48, "position_x": 1700, "position_y": 790, "solid": true, "solid_radius": 110 }
+```
+
+A solid label blocks only while its hotspot is there: when the hotspot's conditions stop holding (the boulders have been cleared) the picture goes and so does the obstacle. Items block with `blocking` and `blocking_radius`, as before. In the demo the hotspot icons are `background` and the fallen boulders on the cliff path are solid.
+
+### Walking around things
+
+A click or tap sets a destination, and the avatar finds its own way there around blocked areas, blocking items and solid labels. The route comes from a navigation mesh built with the [`navmesh`](https://github.com/mikewesthad/navmesh) library (MIT): the scene is sampled into squares, the walkable ones are merged into a mesh, and the shortest path across it is pulled tight around corners. The mesh is rebuilt when an obstacle appears, goes or moves. Keyboard movement is direct, as before, and every step, however it was planned, is still checked by the same "feet inside polygons" rule the game server uses. Where no route exists the avatar heads straight for the spot and stops at the first thing in its way. With `?debug` the obstacles are drawn.
+
+### Shadow spots
+
+`shadow_spots` is a list of patches of shade on the floor. A figure walking through one is darkened as if shade were cast over it: most at the centre of the spot, fading smoothly to nothing at its edge. It applies to avatars and what they wear, carry or ride, and to items and characters standing there. Where spots overlap, their shade adds up.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+name | string | | A label for the editor.
+x, y | int | | The centre, in scene pixels.
+radius | int | | How far the shade reaches across.
+radius_y | int | radius | How far it reaches up and down. Smaller than `radius` for a shadow lying on a floor seen at an angle.
+strength | decimal | 60 | How dark the centre is, 0 to 100.
+
+```json
+"shadow_spots": [{ "name": "under the tree", "x": 640, "y": 820, "radius": 220, "radius_y": 90, "strength": 70 }]
+```
+
+Put spots where the artwork already shows shade. In the scene editor, add one with **Add › Shadow spot**, drag it into place and drag its two handles to size it. The spot itself draws nothing in the game; it only shades what walks through.
+
+### Teams in a scene
+
+When a teacher puts students into teams (see [Classes, missions and teams](classes.md)), every team is its own instance of the scenario, with its own shared variables, items and save data. The teams of one assignment are nevertheless in **one room**, so that they can meet where the scenario wants them to. Each scene says which it is:
+
+* A scene **limited to teams** shows a player only their own team. Use it for small rooms and for anywhere a team should feel on its own: a laboratory, a planet.
+* A scene that is **not** shows everyone playing. Use it for meeting places: an observation deck for briefings.
+
+A scene's `team_only` decides; if it does not say, its group's `team_only` does; with neither, everyone is shown. Groups are `scene_groups` on the scenario, and a scene belongs to one through `group_id`:
+
+```json
+"scene_groups": [{ "id": 1, "name": "Starship" }, { "id": 2, "name": "Planet", "team_only": true }]
+```
+
+```json
+{ "id": 8, "shortname": "laboratory", "group_id": 1, "team_only": true }
+```
+
+The demo does exactly this: the starship's rooms are shared except the laboratory, and the planet is each team's own. What is limited is what players **see and hear** of each other: avatars, emotes, chat, and events with `audience: scene`. A shared variable is always the team's own, in every scene: one team's rockfall never blocks another team's path, even in a scene where the teams can see each other. `QBLPlayerCount` counts the player's team. With no teams (the public instance, an assignment without teams) everyone is one team and the setting changes nothing.
+
+In the editor, groups are made on the **Scenes** page, where each scene's card has its group and shows who is seen there; a scene's own setting is in the scene editor ("Who players see here").
 
 ### Background and foreground layers
 
@@ -200,6 +284,51 @@ The bubble follows the speaker and keeps itself on screen. It sits above them wh
 
 A story conversation is normally the player's own (`audience: player`, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.
 
+### Reading text aloud
+
+Dialogue, infoboxes and text overlays can be read aloud, with **each word highlighted as it is spoken**. The voice is the one built into the player's browser (the Web Speech API): it costs nothing, needs no recordings and no server, and works with whatever voices the device has. The browser reports each word as it starts speaking it, and that is what moves the highlight; where a voice does not report its progress, the words are paced evenly over the time the line takes, allowing for longer words and for the pauses punctuation makes.
+
+Parameter | Applies to | Default | Description
+--------- | ---------- | ------- | -----------
+narration | scenario | off | `on`: read everything unless an action says otherwise.
+narrate | dialogue, infobox, text_overlay | the scenario's | `true` or `false` for this action.
+narration_media_id | dialogue, infobox, text_overlay | | An audio recording to play instead of the browser's voice. The words are highlighted at an even pace over its length.
+voice_pitch, voice_rate | character | 1 | How the character sounds: 0 to 2, and 0.5 to 2.
+voice_name | character | | Part of the name of a voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
+
+```json
+{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "narrate": true, "text": "Welcome aboard, {{QBLPlayerName}}!" }
+```
+
+A speech bubble that is being read stays until the voice has finished. One thing is read at a time: a new line stops the one before. Players have a switch for reading aloud at the foot of the side panel (it is offered when the scenario has anything to read) and their choice is kept in their browser. In the demo the story's portrait dialogue is read.
+
+Browser voices vary in quality from device to device. For a consistent voice, record the lines (or generate them once with a text-to-speech service) and attach them with `narration_media_id`; a service that returns word timings could drive the highlight exactly, which is the natural next step if the built-in voices are not good enough.
+
+### Glossary
+
+A scenario can teach words. `glossary` on the scenario lists them; players see the ones they have in the side panel, in alphabetical order, and can search them.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+id | string or int | Unique within the scenario.
+term | string | The word.
+definition | string | What it means. `{{variable}}` placeholders work.
+media_id | int | A picture, optional.
+initial | bool | In every player's glossary from the start. Otherwise a `glossary` action adds it.
+
+A new action type, `glossary`, gives the player a word:
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+entry_id | string or int | | The entry's `id`.
+quiet | bool | false | Add it without telling the player.
+
+```json
+{ "type": "glossary", "entry_id": "ph" }
+```
+
+A player gets each word once (they are told, and the word is marked as new in the panel). Words are kept with the player's save, as flags (`glossary:<id>`), so they are still there next visit. The action never holds up the sequence. Which words each student has is part of the teacher's report.
+
 ### Animate
 
 A new action type, `animate`, plays an animation on something in the scene. See [Animations](#animations) for where animations come from.
@@ -262,6 +391,12 @@ repeatable | bool | false | By default a player gets each award **once**, howeve
 
 Stars and XP belong to the player's **account**, not to a scenario: they carry across every scenario on the platform. See [Stars, XP and the marketplace](#stars-xp-and-the-marketplace) for how they are kept honest.
 
+**Badges.** An award can carry a badge: `badge` (its name), and optionally `badge_description` and `badge_media_id` (its picture). A player earns each badge once, and it is shown on their [profile](classes.md#profiles), where other players can see it.
+
+```json
+{ "type": "award", "stars": 10, "xp": 40, "badge": "Stream Saver", "badge_description": "Found out why the stream wilted", "badge_media_id": 46 }
+```
+
 * Neither total goes below zero. Taking away more than a player has leaves them with none.
 * **Guests earn nothing.** Stars and XP need a signed-in account.
 * Put awards in an event's own actions. An award placed directly on an infobox button is not given (the validator warns): make the button run an event (`run_event`) that contains the award.
@@ -295,6 +430,27 @@ Clarifications of documented behaviour:
 * An infobox action is not finished until the box is closed **and** the chosen button's action has run to its end. A sequence such as "ask a question, then open a menu" therefore waits for the feedback the answer triggers.
 * Infobox `content` is sanitised. Formatting, lists, tables, links and images are kept; scripts, styles, frames and event handlers are removed.
 * **Background music** is an audio action with `repeat` and `persist` in a scene's start events. Persistent audio is treated as the music track: only one plays at a time. When a scene starts a persistent audio action with the same media that is already playing, the music carries on without restarting; with different media, it replaces the old track. A cancel action naming the audio action's id stops it.
+
+## The side panel
+
+Everything that used to float over the scene is in one panel at the side of the screen: a rail of icons that is always there, each opening its panel and closing it again (Escape closes it too). The panel that was open is remembered between visits.
+
+Panel | Holds | Shown when
+----- | ----- | ----------
+Mission | The objectives checklist | The scenario has objectives. Open at first, as the checklist always was
+Inventory | What the player is wearing or riding, with a button to leave each, and the way into the wardrobe and marketplace | There is anything to show
+Moves and emotes | The move buttons and the emote pad | The scenario has moves, or chat is not `off`
+Players | Everyone in the scenario with the player: teammates first, each with where they are. A name opens that player's profile | Always
+Messages | What was said in the scene, and private conversations | `chat_mode` is `free`, or `private_messages` is on
+Glossary | The player's words | The scenario has a glossary
+
+The icons are from the [LordIcon](https://lordicon.com) set; see `apps/client/public/icons/lordicon/README.md` for supplying the icon files.
+
+### Messages
+
+With `chat_mode: free`, what is typed is said in the scene: it shows as a bubble over the speaker and in the Messages panel, for the players who can see the speaker (those in the scene, and only teammates where the scene is limited to teams). With `private_messages: true`, a player can also write to **one** other player anywhere in the scenario, from the Players panel or that player's profile; only the two of them see it.
+
+Every message is cleaned and length-limited by the game server like chat, and **every message is logged**, scene or private, with who wrote it, to whom, where and when, so that it can be audited later. A teacher reads the log of an assignment on the Classes page. Players are told on the panel that messages are kept.
 
 ## Variables
 
@@ -489,7 +645,7 @@ These need no special support; they are combinations of the pieces above.
 
 ## Not implemented yet
 
-* `physical` items.
+* `physical` items (pushable objects). Things players walk *around* are covered: blocking items and solid labels.
 * `intro_media_portrait_id` / `intro_media_landscape_id` splash screens and `is_intro_scene`.
 * `allow_groups` as a lobby. Groups work (players who join with the same group key share a room, up to `max_players`), but choosing a group is left to whatever launches the game: pass `?group=`.
 * Animating what an avatar wears along with a sheet animation: worn items follow the figure's position, not its frames.

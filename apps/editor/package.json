@@ -10,6 +10,7 @@
     "test": "tsx --tsconfig tsconfig.test.json --test test/*.test.ts"
   },
   "dependencies": {
+    "@lordicon/element": "^3.0.2",
     "@qbl/shared": "*"
   },
   "devDependencies": {

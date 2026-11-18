@@ -15,7 +15,7 @@ if (PHP_SAPI !== 'cli-server') {
     http_response_code(500);
     exit("This is a development server. Run it with php -S.\n");
 }
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -50,7 +50,7 @@ if (str_starts_with($path, '/scenario-assets/')) {
 
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");
 $store = new ScenarioStore($pdo, "$dataDir/media", '/media');
-foreach (ScenarioStore::sqliteSchema() as $sql) {
+foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
 }
 // First run: seed the demo mission exactly as the Laravel seeder does. After that it is left alone.
@@ -125,7 +125,7 @@ if ($path === '/api/me') {
     respond(200, ['user' => array_filter($user + ['avatar_media_id' => (int) $chosen->fetchColumn() ?: null], fn ($v) => $v !== null)]);
 }
 // Missions, avatars and the teacher's classes, with the same rules as the Laravel app (App\Qbl\ClassApi).
-if (preg_match('#^/api/(missions|avatars|me/avatar|teach(/.*)?)$#', $path, $m)) {
+if (preg_match('#^/api/(missions|avatars|me/avatar|players/\d+/profile|teach(/.*)?)$#', $path, $m)) {
     if ($user && $user['role'] === 'guest') {
         // Guests are not rows here until they need to be.
         $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `role`) VALUES (?, ?, ?)')->execute([$user['id'], $user['name'], 'guest']);
@@ -142,7 +142,9 @@ if (preg_match('#^/api/scenarios/([A-Za-z][A-Za-z0-9_-]*)/play$#', $path, $m)) {
     if ($user ? ! (new App\Qbl\ClassStore($pdo))->mayJoin((int) $user['id'], (string) $user['role'], (int) $document['id'], $group) : $group !== 'public') {
         respond(403, ['message' => 'You are not in that team.']);
     }
-    respond(200, ['scenario' => App\Qbl\Avatars::inject($pdo, $document) + ['session' => null]]);
+    $access = $user ? (new App\Qbl\ClassStore($pdo))->access((int) $user['id'], (string) $user['role'], (int) $document['id'], $group) : ['party' => $group];
+    $instance = array_filter(['group' => $group, 'party' => $access['party'], 'team_name' => $access['team_name'] ?? null], fn ($v) => $v !== null);
+    respond(200, ['scenario' => App\Qbl\Avatars::inject($pdo, $document) + ['session' => null, 'instance' => $instance]]);
 }
 // Stars, XP and the marketplace, with the same rules as the Laravel app (App\Qbl\ProgressStore).
 // Awards themselves come through the game server, which needs the real backend; here stars start at 100.

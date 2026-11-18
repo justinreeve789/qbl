@@ -71,6 +71,7 @@ export class RewardsFeature implements GameFeature {
       ].filter(Boolean);
       if (parts.length) ui.toast(`${parts.join('  ')}${r.note ? ` · ${r.note}` : ''}`, 3500);
       if (r.rank_up) ui.toast(`New rank: ${r.rank}!`, 5000);
+      if (r.badge) ui.toast(`Badge earned: ${r.badge.name}`, 5000);
     };
     const stop = [
       rewards.onChange(draw),

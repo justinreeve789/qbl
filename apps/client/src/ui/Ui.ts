@@ -1,7 +1,10 @@
 import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type ChatMode, type ObjectiveStatus } from '@qbl/shared';
 import { sanitizeHtml } from './sanitize';
 import { placeBubble, type BubbleAnchor } from './bubble';
-import type { InfoboxHandle, OverlayHandle, ShopView, UiPort } from './UiPort';
+import { icon } from './icons';
+import { narratable, Narrator, type SpeakOptions } from './Narrator';
+import { Sidebar } from './Sidebar';
+import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -35,8 +38,9 @@ export class Ui implements UiPort {
   readonly root: HTMLElement;
   private overlays = el('div', 'qbl-overlays');
   private hud = el('div', 'qbl-hud');
-  private chips = el('div', 'qbl-chips');
-  private checklist = el('div', 'qbl-objectives');
+  /** The side panel: mission, inventory, moves and emotes, players, messages, glossary. */
+  readonly sidebar = new Sidebar();
+  readonly narrator = new Narrator();
   private toasts = el('div', 'qbl-toasts');
   private banner = el('div', 'qbl-banner');
   private modals = 0;
@@ -45,8 +49,7 @@ export class Ui implements UiPort {
   constructor(parent: HTMLElement) {
     this.root = el('div', 'qbl-ui');
     this.banner.hidden = true;
-    this.checklist.hidden = true;
-    this.root.append(this.overlays, this.chips, this.corner, this.checklist, this.hud, this.toasts, this.banner);
+    this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.toasts, this.banner);
     parent.appendChild(this.root);
   }
 
@@ -66,18 +69,39 @@ export class Ui implements UiPort {
 
   // ------------------------------------------------------------ overlays
 
-  textOverlay(text: string, o: { alignment?: Alignment; size?: number; color?: string; style?: string; duration?: number }): OverlayHandle {
+  /**
+   * Read an element's text aloud, if this text is to be read and the player has reading aloud
+   * on. Each word is marked as it is spoken. `over` settles when the reading ends or is stopped.
+   */
+  private read(node: HTMLElement, speak: SpeakOptions | undefined): { active: boolean; over: Promise<void>; stop(): void } {
+    if (!speak || !this.narrator.enabled || (!speak.audioUrl && !this.narrator.supported)) return { active: false, over: Promise.resolve(), stop() {} };
+    const words = narratable(node);
+    node.classList.add('qbl-narrated');
+    let done!: () => void;
+    const over = new Promise<void>((r) => (done = r));
+    const stop = this.narrator.speak(words.text, speak, (i) => words.mark(i), () => {
+      words.clear();
+      done();
+    });
+    return { active: true, over, stop };
+  }
+
+  textOverlay(text: string, o: { alignment?: Alignment; size?: number; color?: string; style?: string; duration?: number; speak?: SpeakOptions }): OverlayHandle {
     const node = el('div', `qbl-overlay qbl-text ${ALIGN_CLASS(o.alignment)}`, text);
     node.style.fontSize = `${o.size ?? 24}px`;
     node.style.color = o.color || 'white';
     if (o.style === 'italic') node.style.fontStyle = 'italic';
-    return this.overlay(node, o.duration);
+    const h = this.overlay(node, o.duration);
+    const reading = this.read(node, o.speak);
+    void h.done.then(reading.stop);
+    return h;
   }
 
-  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null }): ActionHandle {
+  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null; speak?: SpeakOptions }): ActionHandle {
     const node = el('div', 'qbl-bubble');
     if (o.name) node.append(el('strong', 'qbl-bubble-name', o.name));
-    node.append(el('span', '', text));
+    const words = el('span', '', text);
+    node.append(words);
     node.setAttribute('role', 'status');
     this.root.append(node);
 
@@ -99,17 +123,20 @@ export class Ui implements UiPort {
     const end = () => {
       cancelAnimationFrame(frame);
       window.clearTimeout(timer);
+      reading.stop();
       node.remove();
       finish();
     };
-    const timer = window.setTimeout(end, o.duration);
+    // Read aloud, the bubble stays until the voice has finished, however long that takes.
+    const reading = this.read(words, o.speak);
+    const timer = window.setTimeout(() => void reading.over.then(end), o.duration);
     // A click closes it early, for readers who are done.
     node.addEventListener('click', end);
     follow();
     return { done, cancel: end };
   }
 
-  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean }): ActionHandle {
+  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle {
     const node = el('div', `qbl-story${o.watching ? ' watching' : ''}`);
     const frame = el('div', 'qbl-story-portrait');
     if (o.portrait) {
@@ -131,9 +158,14 @@ export class Ui implements UiPort {
     node.setAttribute('aria-label', o.name ? `${o.name} says` : 'Dialogue');
     this.root.append(node);
 
-    // The words arrive a few at a time. A first click shows them all; the next one continues.
-    let shown = 0;
+    // Read aloud, the whole line is there at once and each word lights up as it is spoken.
+    line.textContent = text;
+    const reading = this.read(line, o.speak);
+    if (!reading.active) line.textContent = '';
+    // Otherwise the words arrive a few at a time. A first click shows them all; the next one continues.
+    let shown = reading.active ? text.length : 0;
     const reveal = window.setInterval(() => {
+      if (reading.active) return window.clearInterval(reveal);
       shown = Math.min(text.length, shown + 2);
       line.textContent = text.slice(0, shown);
       if (shown >= text.length) window.clearInterval(reveal);
@@ -147,6 +179,7 @@ export class Ui implements UiPort {
     const h = handle(() => {
       window.clearInterval(reveal);
       window.clearTimeout(timer);
+      reading.stop();
       window.removeEventListener('keydown', onKey, true);
       if (modal) this.modals--;
       node.remove();
@@ -168,7 +201,7 @@ export class Ui implements UiPort {
     };
     node.addEventListener('click', next);
     if (modal) window.addEventListener('keydown', onKey, true);
-    if (o.duration > 0) timer = window.setTimeout(h.finish, o.duration);
+    if (o.duration > 0) timer = window.setTimeout(() => void reading.over.then(h.finish), o.duration);
     return h;
   }
 
@@ -227,7 +260,7 @@ export class Ui implements UiPort {
    * index of the button chosen, or null if the box was dismissed. A box that is not
    * dismissible has no close button and ignores Escape and clicks outside it.
    */
-  infobox(html: string, buttons: string[], o: { dismissible: boolean }): InfoboxHandle {
+  infobox(html: string, buttons: string[], o: { dismissible: boolean; speak?: SpeakOptions }): InfoboxHandle {
     const backdrop = el('div', 'qbl-backdrop');
     const box = el('div', 'qbl-infobox');
     box.setAttribute('role', 'dialog');
@@ -244,11 +277,13 @@ export class Ui implements UiPort {
     this.modals++;
     const h = handle(() => {
       this.modals--;
+      reading.stop();
       backdrop.remove();
       document.removeEventListener('keydown', onKey, true);
       previous?.focus?.();
       settle(result);
     });
+    const reading = this.read(body, o.speak);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && o.dismissible) {
         e.stopPropagation();
@@ -285,25 +320,9 @@ export class Ui implements UiPort {
   /** Build the chat controls for a scenario's chat mode. */
   chat(mode: ChatMode, send: { text(t: string): void; emote(e: string): void }) {
     this.hud.replaceChildren();
+    // Emotes are in the side panel, with the moves.
+    this.sidebar.setEmotes(mode === 'off' ? [] : EMOTES, send.emote);
     if (mode === 'off') return;
-
-    const pad = el('div', 'qbl-emotes');
-    pad.hidden = true;
-    for (const emoji of EMOTES) {
-      const b = el('button', 'qbl-emote', emoji);
-      b.type = 'button';
-      b.setAttribute('aria-label', `Send ${emoji}`);
-      b.addEventListener('click', () => {
-        send.emote(emoji);
-        pad.hidden = true;
-      });
-      pad.appendChild(b);
-    }
-    const toggle = el('button', 'qbl-button round', '😀');
-    toggle.type = 'button';
-    toggle.setAttribute('aria-label', 'Emotes');
-    toggle.addEventListener('click', () => (pad.hidden = !pad.hidden));
-    this.hud.append(pad, toggle);
 
     if (mode === 'free') {
       const form = el('form', 'qbl-chat');
@@ -329,50 +348,183 @@ export class Ui implements UiPort {
 
   /** Small buttons for things the player is wearing or riding. */
   attachments(items: Array<{ id: number; name: string }>, onRemove: (id: number) => void) {
-    this.chips.replaceChildren(
-      ...items.map((item) => {
-        const b = el('button', 'qbl-chip', `✕ ${item.name}`);
-        b.type = 'button';
-        b.setAttribute('aria-label', `Leave ${item.name}`);
-        b.addEventListener('click', () => onRemove(item.id));
-        return b;
-      }),
-    );
+    this.sidebar.setAttachments(items, onRemove);
   }
 
-  /** The mission checklist. An empty list hides the panel. */
+  /** The mission checklist, in the side panel. An empty list takes its tab away. */
   objectives(list: ObjectiveStatus[]) {
-    this.checklist.hidden = list.length === 0;
-    const title = el('div', 'qbl-objectives-title', 'Mission');
-    const ul = el('ul');
-    for (const o of list) {
-      const li = el('li', o.complete ? 'done' : '');
-      const mark = el('span', 'qbl-objectives-mark', o.complete ? '✓' : '');
-      mark.setAttribute('aria-hidden', 'true');
-      const text = el('span', '', o.optional ? `Bonus: ${o.text}` : o.text);
-      li.append(mark, text);
-      li.setAttribute('aria-label', `${o.text}${o.complete ? ' (done)' : ''}`);
-      ul.appendChild(li);
-    }
-    this.checklist.replaceChildren(title, ul);
+    this.sidebar.setObjectives(list);
   }
-
-  private movesNode = el('div', 'qbl-moves');
 
   moves(list: Array<{ animation: string; label: string; icon: string }>, onDo: (animation: string) => void) {
-    if (!this.movesNode.isConnected) this.root.append(this.movesNode);
-    this.movesNode.hidden = list.length === 0;
-    this.movesNode.setAttribute('role', 'toolbar');
-    this.movesNode.setAttribute('aria-label', 'Moves');
-    this.movesNode.replaceChildren(...list.map((move) => {
-      const b = el('button', 'qbl-move');
-      b.type = 'button';
-      b.title = move.label;
-      b.dataset.move = move.animation;
-      b.append(el('span', 'qbl-move-icon', move.icon), el('span', 'qbl-move-label', move.label));
-      b.addEventListener('click', () => onDo(move.animation));
-      return b;
-    }));
+    this.sidebar.setMoves(list, onDo);
+  }
+
+  players(list: PlayerRow[], on: { profile(id: string): void; message?(id: string): void }) {
+    this.sidebar.setPlayers(list, on);
+  }
+
+  messaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) {
+    this.sidebar.setMessaging(o);
+  }
+
+  message(line: ChatLine) {
+    this.sidebar.addMessage(line);
+  }
+
+  openMessages(thread: string, name: string) {
+    this.sidebar.openThread(thread, name);
+  }
+
+  glossary(list: GlossaryRow[], fresh?: string) {
+    this.sidebar.setGlossary(list, fresh);
+  }
+
+  private narrationToggle: HTMLButtonElement | null = null;
+
+  /** The read-aloud switch, at the foot of the side rail. The player's choice is kept in this browser. */
+  narration(available: boolean) {
+    if (!available || this.narrationToggle || !this.narrator.supported) return;
+    const toggle = (this.narrationToggle = el('button', 'qbl-sidebar-tab qbl-narration-toggle'));
+    toggle.type = 'button';
+    const draw = () => {
+      const on = this.narrator.enabled;
+      toggle.replaceChildren(icon(on ? 'narration' : 'narration-off', { size: 26, target: '.qbl-narration-toggle' }));
+      toggle.setAttribute('aria-pressed', String(on));
+      toggle.setAttribute('aria-label', 'Read text aloud');
+      toggle.title = on ? 'Reading aloud is on. Click to turn it off.' : 'Reading aloud is off. Click to turn it on.';
+    };
+    toggle.addEventListener('click', () => {
+      this.narrator.enabled = !this.narrator.enabled;
+      draw();
+      this.toast(this.narrator.enabled ? 'Text will be read aloud.' : 'Reading aloud is off.', 2000);
+    });
+    draw();
+    this.sidebar.addControl(toggle);
+  }
+
+  /** A player's profile: their avatar as it is dressed, rank, stars, XP and badges. */
+  profile(view: ProfileView, on: { message?(): void } = {}): { update(view: ProfileView): void; close(): void } {
+    const backdrop = el('div', 'qbl-backdrop');
+    const card = el('div', 'qbl-profile');
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    backdrop.append(card);
+    this.root.append(backdrop);
+    this.modals++;
+    const previous = document.activeElement as HTMLElement | null;
+    let open = true;
+    const close = () => {
+      if (!open) return;
+      open = false;
+      this.modals--;
+      document.removeEventListener('keydown', onKey, true);
+      backdrop.remove();
+      previous?.focus?.();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      close();
+    };
+    const draw = (v: ProfileView) => {
+      card.setAttribute('aria-label', `${v.name}'s profile`);
+      const figure = el('div', 'qbl-profile-avatar');
+      if (v.avatar.url) {
+        if (v.avatar.sheet) {
+          // A sprite sheet: its first frame, not the whole sheet.
+          const frame = el('span', 'qbl-profile-frame');
+          frame.style.backgroundImage = `url("${v.avatar.url}")`;
+          frame.style.backgroundSize = `${v.avatar.sheet.columns * 100}% ${v.avatar.sheet.rows * 100}%`;
+          figure.append(frame);
+        } else {
+          const img = el('img', 'qbl-profile-frame');
+          img.src = v.avatar.url;
+          img.alt = '';
+          figure.append(img);
+        }
+      } else {
+        figure.append(icon('account', { size: 96 }));
+      }
+      for (const w of v.worn) {
+        const img = el('img', `qbl-profile-worn ${w.kind === 'pet' ? 'pet' : `slot-${w.slot ?? 'body'}`}`);
+        img.src = w.url;
+        img.alt = w.name;
+        img.title = w.name;
+        figure.append(img);
+      }
+      const head = el('div', 'qbl-profile-head');
+      const title = el('div', 'qbl-profile-title');
+      title.append(el('h2', '', v.name));
+      if (v.rank) {
+        const rank = el('span', 'qbl-rank');
+        rank.append(icon('rank', { size: 16 }), el('span', '', v.rank));
+        title.append(rank);
+      }
+      if (v.team) {
+        const team = el('span', 'qbl-profile-team');
+        team.append(icon('team', { size: 16 }), el('span', '', v.team));
+        title.append(team);
+      }
+      head.append(figure, title);
+
+      const body = el('div', 'qbl-profile-body');
+      if (v.guest) {
+        body.append(el('p', 'qbl-sidebar-empty', 'Playing as a guest. Stars, ranks and badges are kept for players with an account.'));
+      } else if (v.loading) {
+        body.append(el('p', 'qbl-sidebar-empty', 'Loading…'));
+      } else {
+        const stats = el('div', 'qbl-profile-stats');
+        const stars = el('div');
+        stars.append(icon('star', { size: 22 }), el('strong', '', String(v.stars ?? 0)), el('small', '', 'stars'));
+        const xp = el('div');
+        xp.append(el('strong', '', String(v.xp ?? 0)), el('small', '', v.nextRankXp == null ? 'XP · top rank' : `XP · ${v.nextRankXp - (v.xp ?? 0)} to next rank`));
+        stats.append(stars, xp);
+        body.append(stats, el('h3', '', `Badges${v.badges?.length ? ` (${v.badges.length})` : ''}`));
+        if (v.badges?.length) {
+          const grid = el('ul', 'qbl-profile-badges');
+          for (const b of v.badges) {
+            const li = el('li');
+            li.title = [b.description, b.scenario].filter(Boolean).join(' · ');
+            if (b.image_url) {
+              const img = el('img');
+              img.src = b.image_url;
+              img.alt = '';
+              li.append(img);
+            } else {
+              li.append(icon('badge', { size: 40 }));
+            }
+            li.append(el('strong', '', b.name));
+            if (b.scenario) li.append(el('small', '', b.scenario));
+            grid.append(li);
+          }
+          body.append(grid);
+        } else {
+          body.append(el('p', 'qbl-sidebar-empty', 'No badges yet.'));
+        }
+      }
+
+      const actions = el('div', 'qbl-infobox-actions');
+      if (on.message) {
+        const say = el('button', 'qbl-button primary', 'Send a message');
+        say.type = 'button';
+        say.addEventListener('click', () => {
+          close();
+          on.message?.();
+        });
+        actions.append(say);
+      }
+      const shut = el('button', 'qbl-button', 'Close');
+      shut.type = 'button';
+      shut.addEventListener('click', close);
+      actions.append(shut);
+      card.replaceChildren(head, body, actions);
+      shut.focus();
+    };
+    backdrop.addEventListener('pointerdown', (e) => e.target === backdrop && close());
+    document.addEventListener('keydown', onKey, true);
+    draw(view);
+    return { update: (v) => open && draw(v), close };
   }
 
   private rewardsNode: HTMLElement | null = null;
@@ -385,7 +537,8 @@ export class Ui implements UiPort {
     this.accountNode = null;
     if (!who) return;
     const node = el('div', 'qbl-account');
-    const toggle = el('button', 'qbl-account-name', `👤 ${who.name}`);
+    const toggle = el('button', 'qbl-account-name');
+    toggle.append(icon('account', { size: 18, target: '.qbl-account-name' }), el('span', '', who.name));
     toggle.type = 'button';
     toggle.setAttribute('aria-haspopup', 'true');
     toggle.setAttribute('aria-expanded', 'false');
@@ -407,12 +560,16 @@ export class Ui implements UiPort {
   rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void) {
     this.rewardsNode?.remove();
     this.rewardsNode = null;
+    // The wardrobe is also reached from the inventory in the side panel.
+    this.sidebar.setWardrobe(state ? onOpen : null);
     if (!state) return;
     const node = el('button', 'qbl-rewards');
     node.type = 'button';
     node.title = 'Open the marketplace and your wardrobe';
     const toNext = state.next_rank_xp == null ? 'top rank' : `${state.next_rank_xp - state.xp} XP to next rank`;
-    node.append(el('span', 'qbl-stars', `⭐ ${state.stars}`), el('span', 'qbl-rank', state.rank), el('span', 'qbl-xp', `${state.xp} XP · ${toNext}`));
+    const stars = el('span', 'qbl-stars');
+    stars.append(icon('star', { size: 18, target: '.qbl-rewards' }), el('span', '', String(state.stars)));
+    node.append(stars, el('span', 'qbl-rank', state.rank), el('span', 'qbl-xp', `${state.xp} XP · ${toNext}`));
     node.setAttribute('aria-label', `${state.stars} stars. Rank: ${state.rank}. ${state.xp} XP, ${toNext}. Open the marketplace.`);
     node.addEventListener('click', onOpen);
     this.corner.prepend(node);

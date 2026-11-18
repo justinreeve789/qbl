@@ -32,6 +32,9 @@ export class DebugSystem implements SceneSystem {
     }
     g.lineStyle(2, 0xff3355, 0.8);
     for (const o of this.rt.walk().obstacles) g.strokeCircle(o.x, o.y, o.radius);
+    // Shadow spots: the edge of each patch of shade.
+    g.lineStyle(2, 0x9aa0ff, 0.8);
+    for (const s of def.shadow_spots ?? []) g.strokeEllipse(s.x, s.y, s.radius * 2, (s.radius_y ?? s.radius) * 2);
   }
 
   destroy() {

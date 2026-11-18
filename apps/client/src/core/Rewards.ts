@@ -78,9 +78,13 @@ export class Rewards {
 
   /** The server's answer to an award. */
   apply(reward: RewardMessage): void {
-    const { delta_stars: _s, delta_xp: _x, note: _n, rank_up: _r, ...progress } = reward;
+    const { delta_stars: _s, delta_xp: _x, note: _n, rank_up: _r, badge, ...progress } = reward;
     // The marketplace may have changed what is owned since; the award only speaks for the totals.
-    this.progress = { ...progress, owned: this.progress?.owned ?? progress.owned, equipped: this.progress?.equipped ?? progress.equipped };
+    this.progress = {
+      ...progress, owned: this.progress?.owned ?? progress.owned, equipped: this.progress?.equipped ?? progress.equipped,
+      // A badge that came with the award joins the ones already earned.
+      badges: badge ? [badge, ...(this.progress?.badges ?? [])] : (progress.badges ?? this.progress?.badges),
+    };
     this.changed();
   }
 
@@ -93,9 +97,12 @@ export class Rewards {
     const stars = Math.max(0, this.progress.stars + Math.round(action.stars ?? 0));
     const xp = Math.max(0, this.progress.xp + Math.round(action.xp ?? 0));
     const before = this.progress;
+    // A badge is earned once, like the award it comes with; in a preview it is kept with the pretend account.
+    const badge = action.badge && !(before.badges ?? []).some((b) => b.name === action.badge) ? { name: action.badge, description: action.badge_description } : undefined;
     const reward: RewardMessage = {
       ...before, stars, xp, ...rankFor(xp), delta_stars: stars - before.stars, delta_xp: xp - before.xp, note: action.note,
       rank_up: rankFor(xp).rank !== before.rank && xp > before.xp,
+      badge,
     };
     this.apply(reward);
     return reward;

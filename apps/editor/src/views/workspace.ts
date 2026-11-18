@@ -5,19 +5,23 @@ import type { FormContext } from '../fields';
 import type { Store } from '../store';
 import { charactersPage, itemsPage, mediaPage, movesPage, objectivesPage, shopPage, variablesPage } from './library';
 import { checkAndPublish, publishPage, scenesPage, settingsPage } from './pages';
+import { glossaryPage } from './glossary';
+import { icon } from '../icons';
 import { sceneEditor } from './scene/sceneEditor';
 
+/** The pages of a scenario: its address, its name, and its icon (from the LordIcon set; see icons.ts). */
 export const TABS = [
-  ['scenes', 'Scenes', '🗺️'],
-  ['media', 'Media', '🖼️'],
-  ['variables', 'Variables', '🔢'],
-  ['items', 'Items', '🎒'],
-  ['characters', 'Characters', '🧑‍🚀'],
-  ['objectives', 'Objectives', '✅'],
-  ['moves', 'Moves', '🤸'],
-  ['shop', 'Shop', '🛍️'],
-  ['settings', 'Settings', '⚙️'],
-  ['publish', 'Publish', '🚀'],
+  ['scenes', 'Scenes', 'scenes'],
+  ['media', 'Media', 'media'],
+  ['variables', 'Variables', 'variables'],
+  ['items', 'Items', 'items'],
+  ['characters', 'Characters', 'characters'],
+  ['objectives', 'Objectives', 'objectives'],
+  ['glossary', 'Glossary', 'glossary'],
+  ['moves', 'Moves', 'moves'],
+  ['shop', 'Shop', 'shop'],
+  ['settings', 'Settings', 'settings'],
+  ['publish', 'Publish', 'publish'],
 ] as const;
 
 export type Tab = (typeof TABS)[number][0];
@@ -76,6 +80,8 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
         return charactersPage(ctx);
       case 'objectives':
         return objectivesPage(ctx);
+      case 'glossary':
+        return glossaryPage(ctx);
       case 'moves':
         return movesPage(ctx);
       case 'shop':
@@ -114,7 +120,7 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
       { class: 'workspace-head' },
       h('div', { class: 'crumbs' }, h('a', { href: '#/' }, 'Scenarios'), ' › ', scene ? h('a', { href: base }, title) : title, scene ? ` › ${sceneLabel(scene)}` : null, state, h('span', { class: 'spacer' }), publish),
       h('nav', { class: 'tabs', 'aria-label': 'Scenario' },
-        ...TABS.map(([key, label, icon]) => h('a', { href: key === 'scenes' ? base : `${base}/${key}`, class: !scene && place.tab === key ? 'current' : scene && key === 'scenes' ? 'parent' : null }, h('span', { class: 'icon-label', 'aria-hidden': 'true' }, icon), label)),
+        ...TABS.map(([key, label, name]) => h('a', { href: key === 'scenes' ? base : `${base}/${key}`, 'data-tab': key, class: !scene && place.tab === key ? 'current' : scene && key === 'scenes' ? 'parent' : null }, icon(name, `.tabs a[data-tab="${key}"]`), label)),
         // The scene editor has its own test button, which starts in that scene.
         scene ? null : h('a', { class: 'button test', href: previewUrl(store.scenarioId), target: 'qbl-preview' }, '▶ Test'),
       ),

@@ -1,6 +1,7 @@
 import { ApiError, type Api, type Assignment, type MissionSummary, type Student, type Team } from '../api';
 import { playUrl } from '../config';
 import { clear, confirmDelete, h, help, toast } from '../dom';
+import { reportView } from './reports';
 
 /** A due date as the API keeps it (UTC, "2026-12-01 15:00:00") to and from a date-and-time field's local value. */
 export function toLocalInput(utc: string | null): string {
@@ -196,6 +197,7 @@ export function classesView(api: Api): HTMLElement {
               loose.length ? h('li', null, h('span', null, h('strong', null, 'No team'), ': ', loose.map((s) => s.name).join(', ')), link(a.group)) : null)
           : h('ul', { class: 'people' }, h('li', null, h('span', null, `${a.students.length} ${a.students.length === 1 ? 'student' : 'students'}, playing together: `, a.students.map((s) => s.name).join(', ') || 'nobody yet'), link(a.group))),
         h('div', { class: 'row-actions' },
+          h('button', { type: 'button', class: 'primary', 'data-action': 'report', onclick: () => clear(body, reportView(api, a, draw)) }, '📊 Report'),
           h('button', { type: 'button', onclick: () => clear(card, h('h2', null, a.scenario?.title ?? 'Assignment'), assignmentForm(a, show)) }, 'Change'),
           h('button', {
             type: 'button', class: 'danger',

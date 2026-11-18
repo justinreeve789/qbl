@@ -49,6 +49,8 @@ export class FakeObject extends Emitter {
   /** The key of the animation last played on it, and how far it is turned. */
   playing = '';
   rotation = 0;
+  /** 0xffffff: drawn as it is. Anything darker: shaded. */
+  tint = 0xffffff;
 
   constructor(readonly kind: string, readonly key: string = '', x = 0, y = 0) {
     super();
@@ -77,6 +79,8 @@ export class FakeObject extends Emitter {
   play(key?: unknown) { this.anims.isPlaying = true; this.playing = typeof key === 'string' ? key : ''; return this; }
   stop() { this.anims.isPlaying = false; this.playing = ''; return this; }
   setRotation(r: number) { this.rotation = r; return this; }
+  setTint(t: number) { this.tint = t; return this; }
+  clearTint() { this.tint = 0xffffff; return this; }
   destroy() { this.destroyed = true; this.removeAllListeners(); }
 }
 

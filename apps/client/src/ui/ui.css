@@ -63,12 +63,6 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-infobox-body a { color: #bfe0ff; }
 .qbl-infobox-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; padding: 14px 24px 20px; }
 
-/* mission checklist */
-/* Below the stars and the account, which have the corner. */
-.qbl-objectives { position: absolute; top: 60px; right: 16px; width: min(320px, 44vw); padding: 12px 14px; border-radius: 12px; background: rgba(12, 23, 78, 0.88); border: 2px solid rgba(255, 255, 255, 0.3); font-size: 0.92rem; }
-.qbl-objectives[hidden] { display: none; }
-.qbl-objectives-title { font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.75rem; opacity: 0.8; margin-bottom: 6px; }
-.qbl-objectives ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .qbl-objectives li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; line-height: 1.3; }
 .qbl-objectives-mark { width: 18px; height: 18px; border-radius: 5px; border: 2px solid rgba(255, 255, 255, 0.7); display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; }
 .qbl-objectives li.done { opacity: 0.7; }
@@ -77,16 +71,13 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-infobox-actions.stacked .qbl-button { text-align: left; }
 
 /* chat */
-.qbl-hud { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 10px; align-items: flex-end; }
+.qbl-hud { position: absolute; left: 16px; right: 76px; bottom: 16px; display: flex; gap: 10px; align-items: flex-end; }
 .qbl-chat { flex: 1; }
 .qbl-chat input { width: 100%; box-sizing: border-box; height: 52px; padding: 0 20px; border-radius: 26px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(12, 23, 78, 0.85); color: #fff; font: inherit; font-size: 1.1rem; }
-.qbl-emotes { position: absolute; bottom: 64px; left: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 10px; border-radius: 14px; background: rgba(12, 23, 78, 0.95); border: 2px solid rgba(255, 255, 255, 0.3); }
-.qbl-emotes[hidden] { display: none; }
 .qbl-emote { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; font-size: 1.6rem; cursor: pointer; }
 .qbl-emote:hover { background: rgba(255, 255, 255, 0.15); }
 
 /* status */
-.qbl-chips { position: absolute; top: 16px; left: 16px; display: flex; gap: 8px; }
 .qbl-chip { padding: 8px 14px; border-radius: 18px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(12, 23, 78, 0.85); color: #fff; font: inherit; cursor: pointer; }
 .qbl-toasts { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: grid; gap: 8px; }
 .qbl-toast { padding: 10px 16px; border-radius: 10px; background: rgba(0, 0, 0, 0.75); }
@@ -184,9 +175,6 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-shop-message { color: #ffb4ab; margin: 6px 0; }
 .qbl-shop-empty { color: #c5cce0; padding: 24px; text-align: center; }
 
-/* Moves: what the player can do whenever they like (jump, dance), in a row above the chat bar. */
-.qbl-moves { position: absolute; left: 16px; bottom: 84px; display: flex; gap: 8px; flex-wrap: wrap; max-width: 60vw; }
-.qbl-moves[hidden] { display: none; }
 .qbl-move { display: grid; justify-items: center; gap: 1px; min-width: 58px; padding: 6px 8px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; background: rgba(12, 23, 78, 0.85); color: #fff; font: inherit; cursor: pointer; pointer-events: auto; }
 .qbl-move:hover, .qbl-move:focus-visible { background: rgba(30, 50, 130, 0.95); border-color: #fff; outline: none; }
 .qbl-move-icon { font-size: 1.4rem; line-height: 1.1; }
@@ -227,3 +215,115 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-mission-go { margin-top: auto; align-self: flex-start; padding: 8px 18px; border-radius: 10px; background: var(--qbl-accent); font-weight: 700; }
 .qbl-home-empty { margin-top: 40px; text-align: center; opacity: 0.8; }
 @media (prefers-reduced-motion: reduce) { .qbl-mission { transition: none; } }
+
+/* ---------- icons (LordIcon, with a character until the animation has loaded) ---------- */
+.qbl-icon { --icon-size: 24px; position: relative; display: inline-grid; place-items: center; width: var(--icon-size); height: var(--icon-size); flex: none; vertical-align: middle; line-height: 1; }
+.qbl-icon-fallback { font-size: calc(var(--icon-size) * 0.82); }
+.qbl-icon-animated { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+.qbl-icon.ready .qbl-icon-animated { opacity: 1; }
+.qbl-icon.ready .qbl-icon-fallback { visibility: hidden; }
+
+/* ---------- the side panel ---------- */
+/* Below the stars and the account, which have the corner; above the chat bar. */
+.qbl-sidebar { position: absolute; top: 64px; right: 12px; bottom: 16px; display: flex; gap: 8px; align-items: flex-start; justify-content: flex-end; max-width: calc(100vw - 24px); z-index: 11; }
+.qbl-sidebar > * { pointer-events: auto; }
+.qbl-sidebar-rail { display: grid; gap: 8px; align-content: start; }
+.qbl-sidebar-rail[hidden] { display: none; }
+.qbl-sidebar-tab { position: relative; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border-radius: 14px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(12, 23, 78, 0.88); color: #fff; cursor: pointer; }
+.qbl-sidebar-tab[hidden] { display: none; }
+.qbl-sidebar-tab:hover, .qbl-sidebar-tab:focus-visible { border-color: #fff; background: rgba(30, 50, 130, 0.95); outline: none; }
+.qbl-sidebar-tab.current { background: var(--qbl-accent); border-color: #fff; }
+.qbl-narration-toggle { margin-top: 10px; }
+.qbl-narration-toggle[aria-pressed='false'] { opacity: 0.7; }
+.qbl-sidebar-count { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; border-radius: 10px; background: #ffd34d; color: #2b2100; font-size: 0.72rem; font-weight: 700; line-height: 20px; text-align: center; }
+.qbl-sidebar-count[hidden] { display: none; }
+.qbl-sidebar-count.inline { position: static; display: inline-block; margin-left: 6px; }
+.qbl-sidebar-panel { width: min(340px, calc(100vw - 96px)); max-height: 100%; display: grid; grid-template-rows: auto 1fr; border-radius: 14px; background: rgba(12, 23, 78, 0.94); border: 2px solid rgba(255, 255, 255, 0.3); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); overflow: hidden; }
+.qbl-sidebar-panel[hidden] { display: none; }
+.qbl-sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 10px 8px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
+.qbl-sidebar-title { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
+.qbl-sidebar-close { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #fff; cursor: pointer; }
+.qbl-sidebar-close:hover, .qbl-sidebar-close:focus-visible { background: rgba(255, 255, 255, 0.16); outline: none; }
+.qbl-sidebar-body { padding: 12px 14px 14px; overflow-y: auto; display: grid; gap: 10px; align-content: start; font-size: 0.92rem; min-height: 0; }
+.qbl-sidebar-body h3 { margin: 4px 0 0; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; }
+.qbl-sidebar-empty { margin: 0; opacity: 0.75; line-height: 1.4; }
+.qbl-sidebar-note { margin: 0; font-size: 0.75rem; opacity: 0.65; line-height: 1.35; }
+.qbl-button.wide { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+
+.qbl-objectives { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.qbl-bag, .qbl-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.qbl-bag li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qbl-chip { padding: 6px 12px; }
+.qbl-moves { display: flex; gap: 8px; flex-wrap: wrap; }
+.qbl-emotes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+.qbl-emote { width: 100%; aspect-ratio: 1; height: auto; color: inherit; }
+
+.qbl-players li { display: flex; gap: 6px; align-items: stretch; }
+.qbl-players li.away { opacity: 0.55; }
+.qbl-player { flex: 1; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; text-align: left; padding: 7px 10px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: inherit; font: inherit; cursor: pointer; min-width: 0; }
+.qbl-player .qbl-icon { grid-row: span 2; }
+.qbl-player strong, .qbl-player small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qbl-player small { grid-column: 2; opacity: 0.7; font-size: 0.75rem; }
+.qbl-player small:empty { display: none; }
+.qbl-player:hover, .qbl-player:focus-visible, .qbl-player-message:hover, .qbl-player-message:focus-visible { background: rgba(255, 255, 255, 0.2); outline: none; }
+.qbl-player-message { width: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: inherit; cursor: pointer; }
+
+.qbl-sidebar-body[data-tab='messages'] { grid-template-rows: auto minmax(120px, 1fr) auto auto; height: min(420px, 60vh); box-sizing: border-box; }
+.qbl-messages-threads { display: flex; gap: 6px; overflow-x: auto; }
+.qbl-messages-threads button { flex: none; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.3); background: transparent; color: inherit; font: inherit; font-size: 0.82rem; cursor: pointer; }
+.qbl-messages-threads button.current { background: var(--qbl-accent); border-color: #fff; }
+.qbl-messages-log { overflow-y: auto; display: grid; gap: 6px; align-content: start; padding-right: 4px; }
+.qbl-messages-log p { margin: 0; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.1); line-height: 1.35; overflow-wrap: anywhere; justify-self: start; max-width: 92%; }
+.qbl-messages-log p.mine { background: rgba(47, 143, 214, 0.55); justify-self: end; }
+.qbl-messages-log p.qbl-sidebar-empty { background: none; padding: 0; }
+.qbl-messages-log strong { display: block; font-size: 0.72rem; opacity: 0.75; }
+.qbl-messages-form { display: flex; gap: 6px; }
+.qbl-messages-form input, .qbl-glossary-search { flex: 1; min-width: 0; height: 40px; padding: 0 12px; box-sizing: border-box; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.25); color: #fff; font: inherit; }
+.qbl-messages-form .qbl-button { padding: 0 12px; }
+
+.qbl-glossary { margin: 0; display: grid; gap: 4px; }
+.qbl-glossary dt { font-weight: 700; margin-top: 6px; }
+.qbl-glossary dt.fresh { color: #ffd34d; }
+.qbl-glossary-new { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: #ffd34d; color: #2b2100; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+.qbl-glossary dd { margin: 0; line-height: 1.4; opacity: 0.92; display: flex; gap: 10px; align-items: flex-start; }
+.qbl-glossary dd img { width: 56px; height: 56px; object-fit: contain; flex: none; border-radius: 8px; background: rgba(255, 255, 255, 0.08); }
+
+/* ---------- read aloud: the word being spoken ---------- */
+.qbl-narrated .qbl-word { border-radius: 4px; transition: background-color 0.08s, color 0.08s; }
+.qbl-narrated .qbl-word.speaking { background: #ffd34d; color: #1c172e; box-shadow: 0 0 0 2px #ffd34d; }
+.qbl-overlay.qbl-text.qbl-narrated .qbl-word.speaking { text-shadow: none; }
+
+/* ---------- a player's profile ---------- */
+.qbl-profile { width: min(92vw, 440px); max-height: 86vh; overflow: auto; border-radius: 16px; background: var(--qbl-panel); border: 3px solid #fff; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); pointer-events: auto; }
+.qbl-profile-head { display: flex; gap: 16px; align-items: center; padding: 20px 22px 6px; }
+.qbl-profile-avatar { position: relative; width: 104px; height: 150px; flex: none; display: grid; place-items: center; border-radius: 14px; background: rgba(255, 255, 255, 0.08); }
+.qbl-profile-frame { display: block; width: 92px; height: 138px; object-fit: contain; background-repeat: no-repeat; background-position: 0 0; }
+.qbl-profile-worn { position: absolute; width: 34%; height: auto; object-fit: contain; pointer-events: auto; }
+.qbl-profile-worn.slot-head { top: 0; left: 33%; }
+.qbl-profile-worn.slot-body { top: 42%; left: 33%; }
+.qbl-profile-worn.slot-back { top: 34%; left: 4%; }
+.qbl-profile-worn.slot-hand { top: 50%; right: 2%; }
+.qbl-profile-worn.pet { bottom: 2%; left: -12%; width: 40%; }
+.qbl-profile-title { display: grid; gap: 6px; min-width: 0; }
+.qbl-profile-title h2 { margin: 0; font-size: 1.4rem; overflow-wrap: anywhere; }
+.qbl-profile-title .qbl-rank, .qbl-profile-team { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.qbl-profile-team { opacity: 0.85; font-size: 0.9rem; }
+.qbl-profile-body { padding: 10px 22px 4px; display: grid; gap: 10px; }
+.qbl-profile-body h3 { margin: 6px 0 0; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.qbl-profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qbl-profile-stats > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); }
+.qbl-profile-stats strong { font-size: 1.3rem; }
+.qbl-profile-stats small { opacity: 0.8; }
+.qbl-profile-badges { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.qbl-profile-badges li { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); text-align: center; font-size: 0.82rem; }
+.qbl-profile-badges img { width: 56px; height: 56px; object-fit: contain; }
+.qbl-profile-badges small { opacity: 0.7; font-size: 0.7rem; }
+.qbl-account-name { display: inline-flex; align-items: center; gap: 6px; }
+.qbl-stars { display: inline-flex; align-items: center; gap: 4px; }
+
+@media (max-width: 560px) {
+  .qbl-sidebar { top: 56px; right: 8px; }
+  .qbl-sidebar-tab { width: 44px; height: 44px; border-radius: 12px; }
+  .qbl-sidebar-panel { width: calc(100vw - 76px); }
+  .qbl-hud { right: 64px; }
+}

@@ -183,6 +183,7 @@ export interface Variable {
 
 export type ActionType =
   | 'award'
+  | 'glossary'
   | 'shop'
   | 'dialogue'
   | 'avatar'
@@ -234,8 +235,20 @@ export interface CancelAction extends ActionBase {
   type: 'cancel';
   action_id: Id;
 }
-/** [ext] 'above' draws over avatars and foregrounds (default); 'sorted' depth-sorts with avatars by position_y. */
-export type WorldLayer = 'above' | 'sorted';
+/**
+ * [ext] 'above' draws over avatars and foregrounds (default); 'sorted' depth-sorts with avatars by
+ * position_y; 'behind' is part of the background: avatars always pass in front of it.
+ */
+export type WorldLayer = 'above' | 'sorted' | 'behind';
+
+/**
+ * [ext] Where something placed in a scene stands relative to the players.
+ * `background`: it is part of the floor or the far wall, and players always walk in front of it
+ * (a hotspot's icon, a rug, a marking). `object`: it is a thing standing in the scene, so a player
+ * lower on the screen is drawn in front of it and one higher up behind it. `front`: it is drawn
+ * over everything, as a sign floating above the scene (how text labels have always been drawn).
+ */
+export type Placement = 'background' | 'object' | 'front';
 
 export interface ImageFixedAction extends ActionBase {
   type: 'image_fixed';
@@ -261,7 +274,17 @@ export interface CallToAction {
   /** [ext] The button is only offered while these hold. */
   conditions?: Condition[];
 }
-export interface InfoboxAction extends ActionBase {
+/**
+ * [ext] Reading text aloud. `narrate` overrides the scenario's `narration` setting for one action.
+ * `narration_media_id` is a recording to play instead of the browser's voice; the words are then
+ * highlighted at an even pace over the recording's length.
+ */
+export interface Narrated {
+  narrate?: boolean;
+  narration_media_id?: Id;
+}
+
+export interface InfoboxAction extends ActionBase, Narrated {
   type: 'infobox';
   /** HTML. May contain {{variable}} and {{media:ID}} placeholders. */
   content: string;
@@ -291,7 +314,7 @@ export interface SpritemapAction extends ActionBase, Spritemap {
   type: 'spritemap';
   layer?: WorldLayer;
 }
-export interface TextOverlayAction extends ActionBase {
+export interface TextOverlayAction extends ActionBase, Narrated {
   type: 'text_overlay';
   text: string;
   alignment?: Alignment;
@@ -374,7 +397,7 @@ export interface FreezeAction extends ActionBase {
  * the scene. The bubble keeps itself on screen: it sits above the speaker, moves below when the
  * speaker is near the top, and to one side when there is no room above or below.
  */
-export interface DialogueAction extends ActionBase {
+export interface DialogueAction extends ActionBase, Narrated {
   type: 'dialogue';
   text: string;
   /** Who speaks. Default: the player. */
@@ -404,6 +427,26 @@ export interface AwardAction extends ActionBase {
   repeatable?: boolean;
   /** Shown to the player with the award, e.g. "Sample collected". */
   note?: string;
+  /**
+   * A badge that comes with the award: its name. A player earns each badge once, and it is shown
+   * on their profile for the other players to see.
+   */
+  badge?: string;
+  badge_description?: string;
+  /** The badge's picture, one of the scenario's media. */
+  badge_media_id?: Id;
+}
+
+/**
+ * [ext] Add a word to the player's glossary. Words marked `initial` in the scenario are there from
+ * the start; the others arrive through this action as the player meets them.
+ */
+export interface GlossaryAction extends ActionBase {
+  type: 'glossary';
+  /** The `id` of an entry in the scenario's `glossary`. */
+  entry_id: Id | string;
+  /** Add it without telling the player. */
+  quiet?: boolean;
 }
 
 /** [ext] Open the marketplace, where the player spends stars and changes what their avatar wears. */
@@ -412,7 +455,7 @@ export interface ShopAction extends ActionBase {
 }
 
 export type Action =
-  | AnimateAction | AwardAction | ShopAction | DialogueAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
+  | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
   | VariableAction | VideoAction | WaitAction;
@@ -430,6 +473,18 @@ export interface Label extends Spritemap {
   text?: string | null;
   /** A media id, or an inline media object. */
   media?: Id | Media | null;
+  /**
+   * [ext] Where the label stands relative to the players. Default: `object` for pictures (they are
+   * sorted among the players by their bottom edge) and `front` for text.
+   */
+  placement?: Placement;
+  /**
+   * [ext] For `placement: "object"`: players cannot walk through it and are led around it.
+   * The obstacle is a circle at the picture's base.
+   */
+  solid?: boolean;
+  /** [ext] Radius of that obstacle in scene pixels. Default: 35% of the picture's width. */
+  solid_radius?: number;
 }
 
 // --------------------------------------------------------------- events
@@ -551,6 +606,32 @@ export interface Progress {
   next_rank_xp: number | null;
   owned: Id[];
   equipped: Id[];
+  /** Badges earned, newest first. */
+  badges?: Badge[];
+}
+
+/** A badge a player earned through an award action. */
+export interface Badge {
+  name: string;
+  description?: string;
+  image_url?: string | null;
+  /** The mission it was earned in. */
+  scenario?: string;
+  earned_at?: string;
+}
+
+/** What other players may see of a player: who they are, how they look and what they have achieved. */
+export interface PlayerProfile {
+  user_id: string;
+  name: string;
+  avatar_media_id?: Id | null;
+  /** Ids of the marketplace items they have on. */
+  look: Id[];
+  stars: number;
+  xp: number;
+  rank: string;
+  next_rank_xp?: number | null;
+  badges: Badge[];
 }
 
 export interface Rank { xp: number; name: string }
@@ -584,6 +665,11 @@ export interface Item {
   media_id?: Id;
   /** [ext] Display scale of the item image. */
   scale?: number;
+  /**
+   * [ext] `object` (default): sorted among the players by where it stands, so they walk behind and
+   * in front of it. `background`: it lies on the floor and players always walk over it.
+   */
+  placement?: 'object' | 'background';
   /** [ext] Radius used for blocking, in scene pixels. Defaults to a third of the displayed width. */
   blocking_radius?: number;
   /** [ext] Where the item sits relative to the avatar's feet while worn or ridden. */
@@ -608,6 +694,11 @@ export interface Character {
   /** [ext] A close-up of the character's face, shown in portrait dialogue. */
   portrait_media_id?: Id;
   scale?: number;
+  /** [ext] How the character sounds when its lines are read aloud: 0 to 2, 1 is the voice's own. */
+  voice_pitch?: number;
+  voice_rate?: number;
+  /** [ext] Part of the name of a browser voice to prefer for this character, e.g. "female" or "Daniel". */
+  voice_name?: string;
   params?: Params;
 }
 
@@ -653,6 +744,41 @@ export interface CharacterPlacement {
   event_id?: Id;
 }
 
+/**
+ * [ext] A patch of shade: a circle (or, with `radius_y`, an ellipse lying on the floor). A figure
+ * standing in it is darkened by up to `strength` percent at the centre, fading to nothing at the edge.
+ */
+export interface ShadowSpot {
+  name?: string;
+  x: number;
+  y: number;
+  radius: number;
+  /** Vertical radius, for a shadow seen at an angle. Default: the same as `radius`. */
+  radius_y?: number;
+  /** How dark the centre is, 0 to 100. Default 60. */
+  strength?: number;
+}
+
+/**
+ * [ext] Scenes that belong together: the rooms of the starship, the places on one planet. A group
+ * can say that its scenes show a player only their own team, which a scene may still override.
+ */
+export interface SceneGroup {
+  id: Id;
+  name: string;
+  team_only?: boolean;
+}
+
+/** [ext] A word worth knowing, with what it means. Shown in the player's glossary once they have it. */
+export interface GlossaryEntry {
+  id: Id | string;
+  term: string;
+  definition: string;
+  media_id?: Id | null;
+  /** In the glossary from the start. Otherwise a `glossary` action adds it. */
+  initial?: boolean;
+}
+
 export interface Scene {
   id: Id;
   shortname?: string;
@@ -688,6 +814,13 @@ export interface Scene {
   music_volume?: number;
   /** [ext] Boxes in which avatars, what they wear or ride, items and characters are drawn smaller or larger, for depth. */
   scale_areas?: ScaleArea[];
+  /** [ext] Patches of shade on the floor. A figure walking through one darkens, most at its centre. */
+  shadow_spots?: ShadowSpot[];
+  /**
+   * [ext] Show a player only the members of their own team in this scene. Absent: as the scene's
+   * group says (`scene_groups`), and failing that everyone playing is shown.
+   */
+  team_only?: boolean | null;
   items?: ItemPlacement[];
   characters?: CharacterPlacement[];
 }
@@ -775,9 +908,26 @@ export interface Scenario {
   music_media_id?: Id | null;
   /** [ext] 0 to 1. Default 0.5. */
   music_volume?: number;
+  /** [ext] Groups of scenes. A scene names its group with `group_id`. */
+  scene_groups?: SceneGroup[];
+  /** [ext] Words and their meanings. Players collect them as they play. */
+  glossary?: GlossaryEntry[];
+  /**
+   * [ext] Read dialogue, infoboxes and text overlays aloud with the browser's voice, highlighting
+   * each word as it is spoken. `on`: unless an action says otherwise. Default `off`: only actions
+   * marked `narrate`. A player can always switch reading aloud off for themselves.
+   */
+  narration?: 'off' | 'on';
+  /** [ext] Players may send typed messages to one other player. They are filtered and logged like chat. */
+  private_messages?: boolean;
   /** [ext] Spec version this document was written against. */
   spec_version?: number;
 
   /** Save-game data for the requesting player, when there is any. */
   session?: Session | null;
+  /**
+   * The instance the requesting player is about to join, added when the document is served:
+   * its group key, the room it belongs to and, for a team, the team's name.
+   */
+  instance?: { group: string; party: string; team_name?: string } | null;
 }

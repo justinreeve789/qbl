@@ -1,4 +1,5 @@
-import { dialogueDuration, resolveMediaUrl, type Id } from '@qbl/shared';
+import { dialogueDuration, isNarrated, resolveMediaUrl, type Id, type Narrated } from '@qbl/shared';
+import type { SpeakOptions } from '../../ui/UiPort';
 import type { BubbleAnchor } from '../../ui/bubble';
 import type { Presenter, PresenterContext } from '../Presenter';
 
@@ -20,6 +21,22 @@ function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: str
 }
 
 /**
+ * How a narrated action is read: with a recording when it has one, and otherwise by the
+ * browser's voice in the scenario's language, in the character's voice when one is speaking.
+ */
+export function speech(pc: PresenterContext, action: Narrated, characterId?: Id): SpeakOptions {
+  const { scenario } = pc.ctx;
+  const character = characterId != null ? (scenario.characters ?? []).find((c) => c.id === characterId) : undefined;
+  return {
+    lang: scenario.default_language,
+    pitch: character?.voice_pitch,
+    rate: character?.voice_rate,
+    voice: character?.voice_name,
+    audioUrl: (action.narration_media_id != null && pc.ctx.mediaUrl(action.narration_media_id)) || undefined,
+  };
+}
+
+/**
  * A line of dialogue. As a bubble it hangs over the player or a character: the bubble is HTML,
  * so the text is sharp and it can keep itself on screen, and this presenter tells it, every
  * frame, where the speaker is on the page. As a portrait box it is a panel across the screen
@@ -28,6 +45,7 @@ function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: str
 export const dialogue: Presenter<'dialogue'> = (action, pc, actor) => {
   const byCharacter = action.speaker === 'character';
   const text = pc.ctx.text(action.text);
+  const speak = isNarrated(pc.ctx.scenario, action) ? speech(pc, action, byCharacter ? action.character_id : undefined) : undefined;
 
   if (action.style === 'portrait') {
     const who = speakerOf(pc, byCharacter ? action.character_id : undefined, actor);
@@ -37,6 +55,7 @@ export const dialogue: Presenter<'dialogue'> = (action, pc, actor) => {
       // The player who set it off reads at their own pace. Others only look on, so theirs closes by itself.
       duration: action.duration && action.duration > 0 ? action.duration : actor ? dialogueDuration(action.text) : 0,
       watching: !!actor,
+      speak,
     });
   }
 
@@ -61,5 +80,6 @@ export const dialogue: Presenter<'dialogue'> = (action, pc, actor) => {
     name: byCharacter ? speaker?.name : actor ? speakerOf(pc, undefined, actor).name : undefined,
     duration: action.duration && action.duration > 0 ? action.duration : dialogueDuration(action.text),
     anchor,
+    speak,
   });
 };

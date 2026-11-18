@@ -39,7 +39,9 @@ Path | What it is
 
 **One set of world rules, written once.** `World` (movement limits, scene changes, items, shared variables, save data) runs against any object with the right shape. On the server that is the Colyseus room state; in the client's offline mode (`?offline`) it is plain Maps in the browser. Offline play therefore behaves exactly like online play with one player, which is what an editor preview needs.
 
-**One room per scenario instance, not per scene.** Class-sized groups make this cheap, and it lets shared variables and unique items span scenes without cross-room coordination. If a scenario ever needs hundreds of players in one instance, per-scene filtering with Colyseus state views is the next step.
+**Teams are instances; a room holds the instances that may meet.** Each team has its own `World` (shared variables, items, saves), and the teams of one assignment run side by side in one room, over one list of players, so that a scene can show everyone or only a player's team. The server sends chat and shown events only to those who can see the sender.
+
+**One room per party, not per scene.** Class-sized groups make this cheap, and it lets shared variables and unique items span scenes without cross-room coordination. If a scenario ever needs hundreds of players in one instance, per-scene filtering with Colyseus state views is the next step.
 
 **No physics engine.** Movement is "feet inside polygons", checked by the same function on client and server. Arcade physics would add a second, slightly different opinion about where a player can be.
 
@@ -68,10 +70,14 @@ Module | Responsibility
 `systems/*` | One concern each: layers, props, local player, remote players, hotspots, speech, camera, preloading, debug overlay. `systems/index.ts` is the list.
 `actions/ActionHost.ts` | The engine's link to Phaser and the UI.
 `actions/presenters/*` | One presenter per action type; `index.ts` is the registry.
-`features/*` | Session-long features: mission checklist, chat, connection status, attachments, progress saving, and stars, XP and the marketplace (`RewardsFeature`).
+`features/*` | Session-long features: mission checklist, chat and private messages, players and profiles, the glossary, connection status, attachments, progress saving, and stars, XP and the marketplace (`RewardsFeature`).
 `core/Rewards.ts` | The player's stars, XP, rank and marketplace items as the game knows them; talks to the API for purchases and pretends in a preview.
 `entities/Avatar.ts` | A player figure with name, speech bubble and attachments.
 `core/assets.ts` | Media loading, preloading of jump targets, sprite sheets.
+`core/Pathfinder.ts` | The way around obstacles for click-to-walk, from a navigation mesh (the `navmesh` library).
+`ui/Sidebar.ts` | The side panel: mission, inventory, moves and emotes, players, messages, glossary.
+`ui/Narrator.ts` | Reading text aloud with the browser's voice, and which word it has reached.
+`ui/icons.ts` | Icons from the LordIcon set, with a character until each has loaded.
 `ui/UiPort.ts`, `ui/Ui.ts` | The interface the game uses for on-screen UI, and its HTML implementation.
 
 `apps/client/README.md` explains how to add a system, a presenter or a feature.

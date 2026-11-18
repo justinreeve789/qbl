@@ -21,12 +21,20 @@ use PDO;
  *   POST   teach/assignments             {scenario_id, student_ids, due_at?, note?, teams?: [{name, student_ids}]}
  *   PUT    teach/assignments/{id}        any of due_at, note, student_ids, teams
  *   DELETE teach/assignments/{id}
+ *   GET    teach/assignments/{id}/report              how each student did: time, objectives, answers, words, evidence
+ *   GET    teach/assignments/{id}/activity            what they did, newest first
+ *   GET    teach/assignments/{id}/activity/{student}  ... one student
+ *   GET    teach/assignments/{id}/messages            every message sent in the assignment's instances, for auditing
+ *
+ *   For any signed-in player:
+ *   GET    players/{id}/profile          what others may see of a player: avatar, look, rank, stars, XP, badges
  */
 class ClassApi
 {
     private ClassStore $classes;
 
-    public function __construct(private PDO $pdo)
+    /** `$ranks`: the platform's ranks, for profiles. Default: ProgressStore's. */
+    public function __construct(private PDO $pdo, private ?array $ranks = null)
     {
         $this->classes = new ClassStore($pdo);
     }
@@ -65,6 +73,10 @@ class ClassApi
             return [200, ['avatar_media_id' => $id]];
         }
 
+        if (count($parts) === 3 && $parts[0] === 'players' && ctype_digit($parts[1]) && $parts[2] === 'profile' && $method === 'GET') {
+            return [200, ['profile' => (new ActivityStore($this->pdo))->profile((int) $parts[1], new ProgressStore($this->pdo, $this->ranks ?? ProgressStore::DEFAULT_RANKS))]];
+        }
+
         if (($parts[0] ?? '') !== 'teach') {
             throw new StoreError(404, 'Not found.');
         }
@@ -74,6 +86,9 @@ class ClassApi
         $admin = $role === 'admin';
         $what = $parts[1] ?? '';
         $id = isset($parts[2]) && ctype_digit($parts[2]) ? (int) $parts[2] : null;
+        if ($what === 'assignments' && $id !== null && isset($parts[3]) && $method === 'GET') {
+            return $this->report($me, $admin, $id, $parts[3], $parts[4] ?? null, count($parts));
+        }
         if (count($parts) > 3 || (isset($parts[2]) && $id === null)) {
             throw new StoreError(404, 'Not found.');
         }
@@ -91,6 +106,27 @@ class ClassApi
             $what === 'assignments' && $id !== null && $method === 'DELETE' => $this->done(fn () => $this->classes->unassign($me, $id)),
             default => throw new StoreError(404, 'Not found.'),
         };
+    }
+
+    /** The reports on one assignment: the summary, the activity log, or the message log. */
+    private function report(int $me, bool $admin, int $assignmentId, string $which, ?string $student, int $depth): array
+    {
+        $on = $this->classes->reportOn($me, $assignmentId, $admin);
+        $activity = new ActivityStore($this->pdo);
+        if ($which === 'report' && $depth === 4) {
+            $st = $this->pdo->prepare('SELECT document FROM scenarios WHERE id = ?');
+            $st->execute([$on['scenario_id']]);
+            $document = json_decode((string) $st->fetchColumn(), true) ?: [];
+
+            return [200, ['assignment' => $on['assignment'], 'report' => $activity->report($on['scenario_id'], $on['students'], $document)]];
+        }
+        if ($which === 'activity' && ($depth === 4 || ($depth === 5 && ctype_digit((string) $student)))) {
+            return [200, ['activity' => $activity->activity($on['scenario_id'], $on['groups'], $student === null ? null : (int) $student)]];
+        }
+        if ($which === 'messages' && $depth === 4) {
+            return [200, ['messages' => $activity->messages($on['scenario_id'], $on['groups'])]];
+        }
+        throw new StoreError(404, 'Not found.');
     }
 
     private function avatarOf(int $userId): ?int

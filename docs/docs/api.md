@@ -91,6 +91,21 @@ Endpoint | Body | Returns
 
 An `Assignment` is `{ id, scenario, due_at, note, group, students: [{ id, name, email, team_id }], teams: [{ id, name, group, student_ids }] }`.
 
+### Reports (teachers and admins)
+
+Endpoint | Returns
+-------- | -------
+`GET /api/teach/assignments/{id}/report` | `{ "assignment": ..., "report": { "summary", "objectives", "learning_objectives", "students" } }`: how each student did. See [Reports](classes.md#reports)
+`GET /api/teach/assignments/{id}/activity` | `{ "activity": [...] }`: the activity log of the assignment's instances, newest first
+`GET /api/teach/assignments/{id}/activity/{studentId}` | The same, for one student
+`GET /api/teach/assignments/{id}/messages` | `{ "messages": [...] }`: every message sent in the assignment's instances, newest first
+
+Only the assignment's teacher (or an admin) may read them.
+
+### Profiles
+
+`GET /api/players/{id}/profile`, for any signed-in player, returns `{ "profile": { "user_id", "name", "avatar_media_id", "look", "stars", "xp", "rank", "next_rank_xp", "badges" } }`: what other players may see of a player. 404 for a guest.
+
 ### Stars, XP and the marketplace
 
 All need a token except `GET /api/shop`. Guests are answered 403: stars and XP need an account.
@@ -124,13 +139,17 @@ Endpoint | Body | Returns
 -------- | ---- | -------
 `POST /auth/verify` | `{ "token": "..." }` | `{ "user": User }`, or 401 if the token is not valid
 `GET /scenarios/{code}` | | `{ "scenario": Scenario }` (no session), or 404. A shortname is accepted too
-`GET /scenarios/{id}/access/{userId}?group=` | | `{ "allowed": true }` if the player may join that instance: asked before a player is let into a room
+`GET /scenarios/{id}/access/{userId}?group=` | | `{ "allowed": true, "party": "a12", "team_name": "Comets" }`: whether the player may join that instance, the room it belongs to (a team's is its assignment's; anything else is its own) and, for a team, its name. Asked before a player is let into a room
 `GET /scenarios/{id}/sessions/{userId}?group=` | | `{ "session": Session or null }`: the player's save in that instance (`public` if no group is given)
 `PUT /scenarios/{id}/sessions/{userId}?group=` | `{ "session": Session }` | 204
 `GET /scenarios/{id}/instances/{group}` | | `{ "instance": InstanceData or null }`
 `PUT /scenarios/{id}/instances/{group}` | `{ "instance": InstanceData }` | 204
 `POST /scenarios/{id}/awards` | `{ "user_id": 12, "action_id": 72090 }` | `Progress` plus `delta_stars`, `delta_xp`, `note`, `rank_up`. The action must be an `award` in the published document; a once-only award already given changes nothing. 403 for a guest
 `GET /users/{id}/look` | | `{ "look": "1,102" }`: the ids of what the player has on, for other players to see
+`POST /scenarios/{id}/activity` | `{ "entries": [ActivityEntry] }` | `{ "kept": 12 }`. Lines for the activity log: `{user_id, group, scene_id, type, ref?, label?, value?, at}`
+`POST /scenarios/{id}/messages` | `{ "entries": [MessageEntry] }` | `{ "kept": 3 }`. Messages sent: `{user_id, name, group, scene_id, kind, to_user_id?, to_name?, text, at}`
+
+An award's answer carries `badge` when the action had one and the player had not earned it yet.
 
 `Session` and `InstanceData` are described on the [Save data](session.md) page.
 

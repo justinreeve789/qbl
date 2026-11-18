@@ -1,9 +1,9 @@
 import type {
-  Action, ActionType, GameEvent, Hotspot, Id, Item, Label, Media, Scenario, Scene, SceneLayer, SpawnPoint,
+  Action, ActionType, GameEvent, GlossaryEntry, Hotspot, Id, Item, Label, Media, Placement, Scenario, Scene, SceneLayer, SpawnPoint,
 } from './types.js';
 
 const ACTION_TYPES: ActionType[] = [
-  'animate', 'award', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
+  'animate', 'award', 'glossary', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
   'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait',
 ];
 
@@ -104,6 +104,34 @@ export function normalizeScenario(input: Scenario): Scenario {
   return out;
 }
 
+/**
+ * Whether a scene shows a player only their own team: what the scene says, or else its group,
+ * or else no (everyone playing is shown).
+ */
+export function sceneTeamOnly(scenario: Pick<Scenario, 'scene_groups'>, scene: Pick<Scene, 'team_only' | 'group_id'>): boolean {
+  if (scene.team_only != null) return scene.team_only === true;
+  const group = scene.group_id != null ? (scenario.scene_groups ?? []).find((g) => g.id === scene.group_id) : undefined;
+  return group?.team_only === true;
+}
+
+/** Where a hotspot label stands relative to the players: as it says, or by its kind. */
+export function labelPlacement(label: Pick<Label, 'placement' | 'type'>): Placement {
+  if (label.placement === 'background' || label.placement === 'object' || label.placement === 'front') return label.placement;
+  return label.type === 'text' ? 'front' : 'object';
+}
+
+/** The glossary entries a player has: those there from the start and those their flags record. */
+export function glossaryOf(scenario: Pick<Scenario, 'glossary'>, flags: Iterable<string>): GlossaryEntry[] {
+  const have = new Set(flags);
+  return (scenario.glossary ?? [])
+    .filter((e) => e.initial === true || have.has(glossaryFlag(e.id)))
+    .sort((a, b) => a.term.localeCompare(b.term));
+}
+
+export function glossaryFlag(entryId: Id | string): string {
+  return `glossary:${String(entryId).slice(0, 48)}`;
+}
+
 export function labelMediaId(label: Label): Id | null {
   if (label.media == null) return null;
   return typeof label.media === 'number' ? label.media : label.media.id;
@@ -151,7 +179,11 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
   for (const l of [...(scene.background_media ?? []), ...(scene.foreground_media ?? [])]) add(layerMediaId(l));
   add(scene.music_media_id);
   for (const h of scene.hotspots ?? []) for (const label of h.labels ?? []) add(labelMediaId(label));
-  walkActions(scene, (a) => add(a.media_id));
+  walkActions(scene, (a) => {
+    add(a.media_id);
+    if ('narration_media_id' in a) add(a.narration_media_id);
+    if (a.type === 'award') add(a.badge_media_id);
+  });
   const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
   for (const p of scene.items ?? []) add(items.get(p.item_id)?.media_id);
   const chars = new Map((scenario.characters ?? []).map((c) => [c.id, c]));
@@ -165,6 +197,7 @@ export function collectGlobalMediaIds(scenario: Scenario): Id[] {
   if (scenario.music_media_id != null) ids.add(scenario.music_media_id);
   // What players wear travels with them, so a scenario's shop pictures are needed everywhere.
   for (const item of scenario.shop_items ?? []) if (item.media_id != null) ids.add(item.media_id);
+  for (const entry of scenario.glossary ?? []) if (entry.media_id != null) ids.add(entry.media_id);
   for (const item of scenario.items ?? []) {
     if ((item.vehicle || item.wearable) && item.media_id != null) ids.add(item.media_id);
   }

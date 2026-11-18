@@ -28,6 +28,11 @@ export const config = {
   startScene: number(params.get('scene')),
   /** Which instance of the scenario to join: the public one, an assignment's ("a12") or a team's ("t7"). */
   group: params.get('group') || 'public',
+  /**
+   * The room to share with other teams. The API says which room a team belongs to (its
+   * assignment's); this is for trying teams out with the file backend: `?group=red&party=class`.
+   */
+  party: params.get('party'),
   /** Play alone without the game server. Used for content previews. */
   offline: params.has('offline') || params.has('preview'),
   debug: params.has('debug'),

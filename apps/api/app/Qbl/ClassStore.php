@@ -198,6 +198,51 @@ class ClassStore
         return self::visibility($scenario) === 'public';
     }
 
+    /**
+     * The game server's question in full: may this player join this instance, which room does the
+     * instance belong to, and what is it called. The teams of one assignment share a room (the
+     * assignment's, `a12`), so they can meet in scenes that are not limited to a team; any other
+     * instance is a room of its own.
+     *
+     * @return array{allowed: bool, party: string, team_name?: string}
+     */
+    public function access(int $userId, string $role, int $scenarioId, string $group): array
+    {
+        $out = ['allowed' => $this->mayJoin($userId, $role, $scenarioId, $group), 'party' => $group];
+        if (preg_match('/^t(\d+)$/', $group, $m)) {
+            $team = $this->one('SELECT t.name, t.assignment_id, a.scenario_id FROM teams t JOIN assignments a ON a.id = t.assignment_id WHERE t.id = ?', [(int) $m[1]]);
+            if ($team && (int) $team['scenario_id'] === $scenarioId) {
+                $out['party'] = 'a'.$team['assignment_id'];
+                $out['team_name'] = (string) $team['name'];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Who a report on an assignment is about: its students, each with the instance they play in
+     * (their team's, or the assignment's own for those in no team). For the assignment's teacher, or an admin.
+     *
+     * @return array{assignment: array, scenario_id: int, students: array, groups: string[]}
+     */
+    public function reportOn(int $teacherId, int $assignmentId, bool $admin = false): array
+    {
+        $a = $admin ? $this->one('SELECT * FROM assignments WHERE id = ?', [$assignmentId]) : $this->owned($teacherId, $assignmentId);
+        if (! $a) {
+            throw new StoreError(404, 'No such assignment.');
+        }
+        $assignment = $this->assignment($a);
+        $teams = array_column($assignment['teams'], 'name', 'id');
+        $students = array_map(fn ($s) => [
+            'id' => $s['id'], 'name' => $s['name'],
+            'group' => $s['team_id'] === null ? 'a'.$a['id'] : 't'.$s['team_id'],
+            'team' => $s['team_id'] === null ? null : ($teams[$s['team_id']] ?? null),
+        ], $assignment['students']);
+
+        return ['assignment' => $assignment, 'scenario_id' => (int) $a['scenario_id'], 'students' => $students, 'groups' => array_values(array_unique(array_merge(['a'.$a['id']], array_map(fn ($t) => 't'.$t['id'], $assignment['teams']))))];
+    }
+
     public static function sqliteSchema(): array
     {
         return [

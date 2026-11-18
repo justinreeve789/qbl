@@ -1,9 +1,11 @@
 import * as Phaser from 'phaser';
-import { nearestWalkable, parseIds, resolveMove, scaleAt, speedFactorAt, stepToward, type Item, type PlayerRec, type Point } from '@qbl/shared';
+import { nearestWalkable, parseIds, resolveMove, scaleAt, shadeAt, speedFactorAt, stepToward, type Item, type PlayerRec, type Point } from '@qbl/shared';
+import { Pathfinder, walkSignature } from '../core/Pathfinder';
 import { Avatar } from '../entities/Avatar';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { HotspotSystem } from './HotspotSystem';
 import { PropsSystem } from './PropsSystem';
+import { RemotePlayersSystem } from './RemotePlayersSystem';
 
 /** Milliseconds between position reports while moving. */
 const SEND_INTERVAL = 66;
@@ -23,6 +25,9 @@ export class LocalPlayerSystem implements SceneSystem {
   avatar!: Avatar;
   private keys!: Record<KeyName, Phaser.Input.Keyboard.Key>;
   private walkTarget: Point | null = null;
+  /** The corners still to pass on the way to where the player clicked. `walkTarget` is the next one. */
+  private route: Point[] = [];
+  private finder: { signature: string; pathfinder: Pathfinder } | null = null;
   private facing: 'left' | 'right' = 'right';
   private lastSent = { x: 0, y: 0, facing: 'right', at: 0 };
   private mismatchSince = 0;
@@ -36,7 +41,7 @@ export class LocalPlayerSystem implements SceneSystem {
     const rec = ctx.connection.me!;
     const start = this.rt.startPosition ?? { x: rec.x, y: rec.y };
     const safe = nearestWalkable(this.rt.walk(), start) ?? start;
-    this.avatar = new Avatar(scene, ctx, { ...plain(rec), x: safe.x, y: safe.y, hidden: false }, zoom, true, (x, y) => scaleAt(def, x, y));
+    this.avatar = new Avatar(scene, ctx, { ...plain(rec), x: safe.x, y: safe.y, hidden: false }, zoom, true, (x, y) => scaleAt(def, x, y), (x, y) => shadeAt(def, x, y));
     this.facing = rec.facing === 'left' ? 'left' : 'right';
     this.lastSent = { x: safe.x, y: safe.y, facing: this.facing, at: 0 };
     if (def.show_avatars === false) this.avatar.setVisible(false);
@@ -55,7 +60,7 @@ export class LocalPlayerSystem implements SceneSystem {
       ctx.connection.on('snap', (m) => {
         // A correction for another scene is stale, or will be handled by reconcileScene().
         if (m.scene_id !== def.id || this.rt.leaving) return;
-        this.walkTarget = null;
+        this.stop();
         this.avatar.setPosition(m.x, m.y);
         this.lastSent = { ...this.lastSent, x: m.x, y: m.y };
       }),
@@ -66,10 +71,37 @@ export class LocalPlayerSystem implements SceneSystem {
     return { x: this.avatar.x, y: this.avatar.y };
   }
 
-  /** Walk toward a point (the nearest walkable spot to it). */
+  /**
+   * Walk to a point (the nearest walkable spot to it), around whatever is in the way: the route
+   * comes from the navigation mesh, and the avatar walks it corner by corner. Where the mesh
+   * knows no way, the avatar heads straight for the spot and stops at the first thing it meets.
+   */
   walkTo(point: Point) {
     if (this.frozen) return;
-    this.walkTarget = nearestWalkable(this.rt.walk(), point, 200, 10) ?? null;
+    const walk = this.rt.walk();
+    const target = nearestWalkable(walk, point, 200, 10);
+    this.stop();
+    if (!target) return;
+    const route = this.pathfinder(walk).find(this.position, target) ?? [target];
+    this.walkTarget = route[0] ?? null;
+    this.route = route.slice(1);
+  }
+
+  /** Where the avatar is walking to by itself, if anywhere: the corners ahead, ending at the destination. */
+  get path(): Point[] {
+    return this.walkTarget ? [this.walkTarget, ...this.route] : [];
+  }
+
+  private stop() {
+    this.walkTarget = null;
+    this.route = [];
+  }
+
+  /** The mesh for the scene as it is now. It is built again when an obstacle comes, goes or moves. */
+  private pathfinder(walk = this.rt.walk()): Pathfinder {
+    const signature = walkSignature(walk);
+    if (this.finder?.signature !== signature) this.finder = { signature, pathfinder: new Pathfinder(walk) };
+    return this.finder.pathfinder;
   }
 
   /** Put on or climb into an item, walking closer first if it is out of reach. */
@@ -81,7 +113,7 @@ export class LocalPlayerSystem implements SceneSystem {
       this.walkTo(at);
       return;
     }
-    this.walkTarget = null;
+    this.stop();
     ctx.connection.item({ item_id: item.id, action: 'attach' });
   }
 
@@ -99,7 +131,7 @@ export class LocalPlayerSystem implements SceneSystem {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer) {
-    if (this.rt.ctx.ui.capturesInput || this.rt.leaving || this.rt.system(PropsSystem).hovering) return;
+    if (this.rt.ctx.ui.capturesInput || this.rt.leaving || this.rt.system(PropsSystem).hovering || this.rt.system(RemotePlayersSystem).hovering) return;
     const p = this.worldPoint(pointer);
     if (this.rt.system(HotspotSystem).click(p.x, p.y)) return;
     // Otherwise walk there, Club Penguin style.
@@ -118,7 +150,7 @@ export class LocalPlayerSystem implements SceneSystem {
   /** A freeze action: the player cannot walk until released. Hotspots can still be clicked. */
   setFrozen(frozen: boolean) {
     this.frozen = frozen;
-    if (frozen) this.walkTarget = null;
+    if (frozen) this.stop();
   }
 
   setAvatarVisible(visible: boolean, duration: number) {
@@ -179,19 +211,20 @@ export class LocalPlayerSystem implements SceneSystem {
       const dx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
       const dy = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0);
       if (dx !== 0 || dy !== 0) {
-        this.walkTarget = null;
+        this.stop();
         const len = Math.hypot(dx, dy);
         to = { x: from.x + (dx / len) * step, y: from.y + (dy / len) * step };
       }
     }
     if (!to && this.walkTarget) {
       to = stepToward(from, this.walkTarget, step);
-      if (to.x === this.walkTarget.x && to.y === this.walkTarget.y) this.walkTarget = null;
+      // A corner reached: on to the next one.
+      if (to.x === this.walkTarget.x && to.y === this.walkTarget.y) this.walkTarget = this.route.shift() ?? null;
     }
 
     if (to) {
       const next = resolveMove(this.rt.walk(), from, to);
-      if (next.x === from.x && next.y === from.y) this.walkTarget = null; // walked into something
+      if (next.x === from.x && next.y === from.y) this.stop(); // walked into something
       if (Math.abs(next.x - from.x) > 0.01) this.facing = next.x < from.x ? 'left' : 'right';
       me.setFacing(this.facing);
       me.setPosition(next.x, next.y);
@@ -221,5 +254,6 @@ function plain(rec: PlayerRec): PlayerRec {
   return {
     user_id: rec.user_id, name: rec.name, role: rec.role, avatar: rec.avatar, scene_id: rec.scene_id,
     x: rec.x, y: rec.y, facing: rec.facing, attachments: rec.attachments, connected: rec.connected, hidden: rec.hidden, look: rec.look,
+    anim: rec.anim, team: rec.team,
   };
 }

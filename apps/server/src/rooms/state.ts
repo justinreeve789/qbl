@@ -16,6 +16,8 @@ export const Player = schema({
   attachments: t.string(),
   /** False while the connection is dropped and the seat is held for reconnection. */
   connected: t.boolean(),
+  /** The instance the player is in: their team's key, their assignment's, or "public". */
+  team: t.string(),
   hidden: t.boolean(),
   look: t.string(),
   /** The animation the avatar was last asked to play, as name:count. */
@@ -38,9 +40,9 @@ export const RoomState = schema({
   scenario: t.string(),
   group: t.string(),
   players: t.map(Player),
-  /** Keyed by item id. */
+  /** Unique items, one set per team: keyed by `team|item id`. */
   items: t.map(ItemState),
-  /** Room-scoped variables. Values are JSON-encoded so numbers stay numbers. */
+  /** Shared variables, one set per team: keyed by `team|name`. Values are JSON-encoded so numbers stay numbers. */
   vars: t.map('string'),
 }, 'RoomState');
 export type RoomState = SchemaType<typeof RoomState>;

@@ -1,9 +1,9 @@
 import { Client, type Room } from '@colyseus/sdk';
 import {
-  C2S, ROOM_NAME, S2C, World,
+  C2S, ROOM_NAME, S2C, scopedMap, World,
   type ChatBroadcast, type EmoteBroadcast, type Id, type ItemMessage, type ItemRec, type JoinOptions,
   type MoveMessage, type NoticeMessage, type PlayerRec, type ProgressMessage, type RewardMessage, type Scenario, type SceneMessage,
-  type ShowBroadcast, type ShowMessage, type SnapMessage, type User, type VariableMessage, type WelcomeMessage, type WorldState,
+  type ShowBroadcast, type ShowMessage, type SnapMessage, type TrackMessage, type User, type VariableMessage, type WelcomeMessage, type WhisperBroadcast, type WorldState,
 } from '@qbl/shared';
 
 export interface ConnectionEvents {
@@ -15,6 +15,8 @@ export interface ConnectionEvents {
   reward: RewardMessage;
   /** Another player's event, meant for the whole scene, reached this action. */
   show: ShowBroadcast;
+  /** A private message, to this player or from them. */
+  whisper: WhisperBroadcast;
   /** Connection lost; the SDK is retrying. */
   drop: void;
   reconnect: void;
@@ -38,7 +40,7 @@ export abstract class GameConnection {
   abstract leave(): void;
 
   private handlers: Handlers = {
-    chat: new Set(), emote: new Set(), snap: new Set(), notice: new Set(), reward: new Set(), show: new Set(),
+    chat: new Set(), emote: new Set(), snap: new Set(), notice: new Set(), reward: new Set(), show: new Set(), whisper: new Set(),
     drop: new Set(), reconnect: new Set(), leave: new Set(),
   };
 
@@ -72,6 +74,10 @@ export abstract class GameConnection {
   animate(name: string) { this.send(C2S.Animate, { name }); }
   /** Show or hide this player's avatar for everyone in the scene. */
   avatarVisible(visible: boolean) { this.send(C2S.Avatar, { visible }); }
+  /** A typed message for one other player, wherever in the scenario they are. */
+  whisper(to: string, text: string) { this.send(C2S.Whisper, { to, text }); }
+  /** Something the player did that a teacher's report counts: a hotspot used, an answer chosen. */
+  track(msg: TrackMessage) { this.send(C2S.Track, msg); }
 }
 
 /** A Colyseus room on the game server. */
@@ -86,6 +92,7 @@ export class OnlineConnection extends GameConnection {
     room.onMessage(S2C.Notice, (m: NoticeMessage) => this.emit('notice', m));
     room.onMessage(S2C.Progress, (m: RewardMessage) => this.emit('reward', m));
     room.onMessage(S2C.Show, (m: ShowBroadcast) => this.emit('show', m));
+    room.onMessage(S2C.Whisper, (m: WhisperBroadcast) => this.emit('whisper', m));
     room.onDrop(() => this.emit('drop', undefined));
     room.onReconnect(() => this.emit('reconnect', undefined));
     room.onLeave((code: number) => this.emit('leave', code));
@@ -117,13 +124,26 @@ export class OnlineConnection extends GameConnection {
     return this.room.sessionId;
   }
 
+  private view: { of: unknown; state: WorldState } | null = null;
+
+  /**
+   * The room as this player's team has it. Everyone in the room is in `players`, but a room can
+   * hold several teams, each with its own shared variables and items: those two maps are the
+   * team's own part of the room's.
+   */
   get state(): WorldState {
-    return this.room.state as unknown as WorldState;
+    const raw = this.room.state as unknown as WorldState;
+    if (!raw?.players) return raw;
+    if (this.view?.of !== raw) {
+      const team = this.welcome.team?.key ?? '';
+      this.view = { of: raw, state: { players: raw.players, items: scopedMap(raw.items, team), vars: scopedMap(raw.vars, team) } };
+    }
+    return this.view.state;
   }
 
   override get me() {
     // Before the first patch the state's collections may not exist yet.
-    return this.state?.players?.get(this.sessionId);
+    return (this.room.state as unknown as WorldState)?.players?.get(this.sessionId);
   }
 
   protected send(type: string, payload: unknown) {
@@ -150,6 +170,8 @@ export class OfflineConnection extends GameConnection {
   readonly welcome: WelcomeMessage;
   /** What this player's events would have shown to the rest of the scene. */
   readonly shared: ShowMessage[] = [];
+  /** What would have gone into the activity log. */
+  readonly tracked: TrackMessage[] = [];
   private world: World;
 
   constructor(scenario: Scenario, user: User, avatarId?: Id, now: () => number = () => Date.now()) {
@@ -161,7 +183,10 @@ export class OfflineConnection extends GameConnection {
       now,
     });
     const session = this.world.addPlayer(this.sessionId, user, scenario.session ?? null, avatarId);
-    this.welcome = { session_id: this.sessionId, session, chat_mode: scenario.chat_mode ?? 'emotes' };
+    this.welcome = {
+      session_id: this.sessionId, session, chat_mode: scenario.chat_mode ?? 'emotes',
+      team: { key: '' }, private_messages: scenario.private_messages === true,
+    };
   }
 
   protected send(type: string, payload: unknown) {
@@ -203,6 +228,9 @@ export class OfflineConnection extends GameConnection {
       case C2S.Emote:
         this.emit('emote', { session_id: id, emoji: (payload as { emoji: string }).emoji });
         break;
+      case C2S.Track:
+        this.tracked.push(payload as TrackMessage);
+        break;
       default:
     }
   }
@@ -210,6 +238,19 @@ export class OfflineConnection extends GameConnection {
   private snap() {
     const p = this.me;
     if (p) this.emit('snap', { x: p.x, y: p.y, scene_id: p.scene_id });
+  }
+
+  /** Another player in the room, as the server's state would have them. For previews and tests. */
+  addPlayer(sessionId: string, rec: Partial<PlayerRec> & Pick<PlayerRec, 'name' | 'scene_id'>) {
+    this.state.players.set(sessionId, {
+      user_id: sessionId, role: 'student', avatar: this.me?.avatar ?? 0, x: 0, y: 0, facing: 'right', attachments: '', connected: true,
+      team: '', hidden: false, look: '', anim: '', ...rec,
+    });
+  }
+
+  /** A private message arriving, as the server would deliver it. */
+  receive(whisper: WhisperBroadcast) {
+    this.emit('whisper', whisper);
   }
 
   /** Another player's shown action arriving, as the server would deliver it. */

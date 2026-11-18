@@ -1,8 +1,8 @@
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
-  escapeHtml, interpolate, resolveMediaUrl, ScenarioIndex, VariableStore,
-  type Id, type Scenario, type User, type VarValue,
+  canSee, escapeHtml, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
+  type GlossaryEntry, type Id, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
 } from '@qbl/shared';
 import type { AwardAction } from '@qbl/shared';
 import type { GameConnection } from '../net/Connection';
@@ -56,13 +56,72 @@ export class GameContext {
     this.vars.provide('QBLTimeElapsed', () => this.timeElapsed);
     this.vars.provide('QBLScenarioLanguage', () => (scenario.default_language ?? 'en-us').slice(0, 2));
     this.vars.provide('QBLPlayerName', () => user.name);
+    // "Everyone playing together" is the player's own instance: their team, when the room holds several.
     this.vars.provide('QBLPlayerCount', () => {
       let n = 0;
-      connection.state.players.forEach(() => n++);
+      const mine = connection.me?.team ?? '';
+      connection.state.players.forEach((p) => {
+        if ((p.team ?? '') === mine) n++;
+      });
       return n;
     });
     this.vars.provide('QBLVideoPlaying', () => (ui.videoPlaying ? 1 : 0));
     this.vars.provide('QBLVideoTimeIndex', () => ui.videoTime);
+  }
+
+  // ------------------------------------------------------------- other players
+
+  /** The team this player is in, and its name when it has one. */
+  get team(): { key: string; name?: string } {
+    return this.connection.welcome.team ?? { key: '' };
+  }
+
+  /**
+   * Whether another player is shown to this one: they are in the same scene, and, where the
+   * scene is limited to teams (by itself or by its group), in the same team.
+   */
+  sees(other: Pick<PlayerRec, 'scene_id' | 'team'>): boolean {
+    const me = this.connection.me;
+    const scene = me ? this.index.scene(me.scene_id) : undefined;
+    return !!me && !!scene && canSee(me, other, sceneTeamOnly(this.scenario, scene));
+  }
+
+  /** Set by the players feature: open the profile of the player with this session id. */
+  showProfile: ((sessionId: string) => void) | null = null;
+
+  /** Set at start-up when there is an API to ask: another player's profile by their user id. Null: not available. */
+  fetchProfile: ((userId: string) => Promise<PlayerProfile | null>) | null = null;
+
+  // ------------------------------------------------------------------ glossary
+
+  private glossaryListeners = new Set<() => void>();
+
+  /** The words this player has, in alphabetical order. */
+  get glossary(): GlossaryEntry[] {
+    return glossaryOf(this.scenario, this.flags);
+  }
+
+  /** Give the player a word. Returns the entry when it is new to them, and null otherwise. */
+  learn(entryId: Id | string): GlossaryEntry | null {
+    const entry = (this.scenario.glossary ?? []).find((e) => String(e.id) === String(entryId));
+    if (!entry || entry.initial === true || this.flags.has(glossaryFlag(entry.id))) return null;
+    this.flags.add(glossaryFlag(entry.id));
+    this.markDirty();
+    this.track({ type: 'glossary', ref: String(entry.id), label: entry.term });
+    for (const l of [...this.glossaryListeners]) l();
+    return entry;
+  }
+
+  onGlossary(listener: () => void): () => void {
+    this.glossaryListeners.add(listener);
+    return () => this.glossaryListeners.delete(listener);
+  }
+
+  // ------------------------------------------------------------------ activity
+
+  /** Note something the player did, for the teacher's reports. Sent to the game server, which keeps the log. */
+  track(msg: TrackMessage): void {
+    this.connection.track({ ...msg, ref: msg.ref?.slice(0, 64), label: msg.label?.slice(0, 200) });
   }
 
   get timeElapsed(): number {

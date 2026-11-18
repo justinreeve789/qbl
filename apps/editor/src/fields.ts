@@ -14,7 +14,11 @@ export type FieldKind =
   | 'value'
   /** A comma-separated list of whole numbers. */
   | 'numbers'
-  | 'media' | 'scene' | 'spawn' | 'event' | 'action' | 'variable' | 'item' | 'character' | 'animation';
+  | 'media' | 'scene' | 'spawn' | 'event' | 'action' | 'variable' | 'item' | 'character' | 'animation'
+  /** Yes, no, or left to something else to decide (the placeholder). `options` are the labels for yes and no. Stored as true, false or absent. */
+  | 'tristate'
+  /** One of the scenario's glossary entries, or one of its scene groups. */
+  | 'glossary' | 'group';
 
 export interface Field {
   key: string;
@@ -108,6 +112,19 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     }
     case 'select':
       return wrap(select(f.options ?? [], value == null ? '' : String(value), (v) => set(v === '' ? null : v), f.placeholder));
+    case 'tristate': {
+      const [yes, no] = [f.options?.[0]?.[1] ?? 'Yes', f.options?.[1]?.[1] ?? 'No'];
+      const current = value == null || value === '' ? '' : String(value === true || value === 'true' || value === 1);
+      return wrap(select([['true', yes], ['false', no]], current, (v) => set(v === '' ? null : v === 'true'), f.placeholder));
+    }
+    case 'glossary': {
+      const entries = (ctx.store.settings.glossary as Array<{ id: string | number; term?: string }> | undefined) ?? [];
+      return wrap(select(entries.map((e) => [String(e.id), String(e.term ?? e.id)] as const), value == null ? '' : String(value), (v) => set(v === '' ? null : v), entries.length ? 'Choose a word' : 'Add words on the Glossary page first'));
+    }
+    case 'group': {
+      const groups = (ctx.store.settings.scene_groups as Array<{ id: number; name?: string }> | undefined) ?? [];
+      return wrap(idSelect(groups.map((g) => [g.id, String(g.name ?? `Group ${g.id}`)]), value, set, f.placeholder ?? 'None'));
+    }
     case 'scene':
       return wrap(idSelect(ctx.store.rows('scenes').map((r) => [r.id, sceneLabel(r)]), value, set, f.placeholder ?? 'Choose a scene'));
     case 'item':

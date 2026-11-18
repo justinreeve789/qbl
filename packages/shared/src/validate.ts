@@ -127,6 +127,23 @@ export function validateScenario(doc: unknown): ValidationResult {
       else if (a.frames.some((f) => !Number.isInteger(f) || f < 0 || f >= count)) err(`${ap}.frames`, `Frames are numbered 0 to ${count - 1}`);
     });
   });
+  const glossaryIds = new Set<string>();
+  (s.glossary ?? []).forEach((e, i) => {
+    const p = `glossary[${i}]`;
+    if (e.id == null || String(e.id) === '') err(`${p}.id`, 'A glossary entry needs an id');
+    else if (glossaryIds.has(String(e.id))) err(`${p}.id`, `Duplicate glossary entry "${String(e.id)}"`);
+    glossaryIds.add(String(e.id));
+    if (typeof e.term !== 'string' || e.term.trim() === '') err(`${p}.term`, 'term is required');
+    if (typeof e.definition !== 'string' || e.definition.trim() === '') err(`${p}.definition`, 'definition is required');
+    if (e.media_id != null) needMedia(e.media_id, `${p}.media_id`, 'image');
+  });
+  const groupIds = new Set<Id>();
+  (s.scene_groups ?? []).forEach((g, i) => {
+    if (typeof g.id !== 'number' || groupIds.has(g.id)) err(`scene_groups[${i}].id`, 'A scene group needs an id of its own');
+    groupIds.add(g.id);
+    if (typeof g.name !== 'string' || g.name.trim() === '') err(`scene_groups[${i}].name`, 'name is required');
+  });
+  if (s.narration != null && s.narration !== 'off' && s.narration !== 'on') err('narration', 'narration is "off" or "on"');
   (s.moves ?? []).forEach((m, i) => {
     if (!ANIMATION_NAME.test(String(m.animation))) err(`moves[${i}].animation`, 'A move names an animation: lowercase letters, digits and underscores');
   });
@@ -239,6 +256,11 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (typeof a.stars !== 'number' && typeof a.xp !== 'number') err(path, 'An award needs stars, XP or both');
         // Awards are checked by the backend against the events' actions, which a button's action is not part of.
         if (inCta) warn(path, 'An award on a button is not given. Put it in an event and have the button run that event');
+        if (a.badge != null && (typeof a.badge !== 'string' || a.badge.trim() === '')) err(`${path}.badge`, 'A badge needs a name');
+        if (a.badge_media_id != null) needMedia(a.badge_media_id, `${path}.badge_media_id`, 'image');
+        break;
+      case 'glossary':
+        if (!(s.glossary ?? []).some((e) => String(e.id) === String(a.entry_id))) err(`${path}.entry_id`, `The glossary has no entry "${String(a.entry_id)}"`);
         break;
       case 'dialogue':
         if (typeof a.text !== 'string' || a.text === '') err(`${path}.text`, 'text is required');
@@ -339,6 +361,24 @@ export function validateScenario(doc: unknown): ValidationResult {
         else if (a[key] > 400) warn(`${p}.${key}`, `${key} is ${a[key]}%, which is very large`);
       }
       if (a.speed_effect != null && (a.speed_effect < 0 || a.speed_effect > 100)) err(`${p}.speed_effect`, 'speed_effect is a percentage from 0 to 100');
+    });
+    (scene.shadow_spots ?? []).forEach((spot, i) => {
+      const p = `${sp}.shadow_spots[${i}]`;
+      if (typeof spot.x !== 'number' || typeof spot.y !== 'number') err(p, 'A shadow spot needs x and y');
+      if (!(spot.radius > 0)) err(`${p}.radius`, 'radius is a number of pixels greater than 0');
+      if (spot.radius_y != null && !(spot.radius_y > 0)) err(`${p}.radius_y`, 'radius_y is a number of pixels greater than 0');
+      if (spot.strength != null && (spot.strength < 0 || spot.strength > 100)) err(`${p}.strength`, 'strength is a percentage from 0 to 100');
+    });
+    if (scene.group_id != null && s.scene_groups && !s.scene_groups.some((g) => g.id === scene.group_id)) {
+      warn(`${sp}.group_id`, `Scene group ${scene.group_id} does not exist`);
+    }
+    (scene.hotspots ?? []).forEach((h, hi) => {
+      (h.labels ?? []).forEach((label, li) => {
+        const lp = `${sp}.hotspots[${hi}].labels[${li}]`;
+        if (label.placement != null && !['background', 'object', 'front'].includes(label.placement)) err(`${lp}.placement`, 'placement is "background", "object" or "front"');
+        if (label.solid && label.type === 'text') warn(`${lp}.solid`, 'Only picture labels can be solid');
+        if (label.solid && label.placement != null && label.placement !== 'object') warn(`${lp}.solid`, 'A solid label is an object: its placement is ignored');
+      });
     });
     (scene.hotspots ?? []).forEach((h, hi) => {
       if (h.reveal_radius == null) return;

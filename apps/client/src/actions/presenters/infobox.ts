@@ -1,4 +1,5 @@
-import { testConditions } from '@qbl/shared';
+import { isNarrated, testConditions } from '@qbl/shared';
+import { speech } from './dialogue';
 import type { Presenter } from '../Presenter';
 
 /**
@@ -14,11 +15,13 @@ export const infobox: Presenter<'infobox'> = (action, pc) => {
   const box = ctx.ui.infobox(
     ctx.html(action.content),
     buttons.map((cta) => ctx.text(cta.text)),
-    { dismissible: action.dismissible !== false },
+    { dismissible: action.dismissible !== false, speak: isNarrated(ctx.scenario, action) ? speech(pc, action) : undefined },
   );
   let cancelled = false;
   const done = box.choice.then(async (index) => {
     if (cancelled || index == null) return;
+    // Which answer was chosen, for the teacher's report: the first choice per question is what the student thought unaided.
+    ctx.track({ type: 'choice', ref: String(action.id), label: ctx.text(buttons[index]?.text ?? ''), value: index });
     const chosen = buttons[index]?.action;
     if (chosen) await pc.engine.runAction(chosen);
   });

@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Id, Scenario, Session } from '@qbl/shared';
-import type { Backend, InstanceData, User } from './Backend.js';
+import type { ActivityEntry, Id, MessageEntry, Scenario, Session } from '@qbl/shared';
+import type { Access, Backend, InstanceData, User } from './Backend.js';
 
 const SAFE = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
 
@@ -46,9 +46,26 @@ export class FileBackend implements Backend {
     return { id: `guest-${id}`, name, role: 'guest' };
   }
 
-  /** There are no classes or teams without the API: any group is an open one. */
-  async mayJoin(): Promise<boolean> {
-    return true;
+  /**
+   * There are no classes or teams without the API: any group is an open one, and it shares a room
+   * with whichever party the player asks for (`?party=`), which is how teams are tried out locally.
+   */
+  async mayJoin(_scenarioId: Id, _user: User, group: string, party?: string): Promise<Access> {
+    return { allowed: true, party: party || group, team_name: group === 'public' ? undefined : group };
+  }
+
+  /** Logs are lines of JSON, one file per scenario: `activity-7.jsonl`, `messages-7.jsonl`. */
+  logActivity(scenarioId: Id, entries: ActivityEntry[]): Promise<void> {
+    return this.append(`activity-${scenarioId}`, entries);
+  }
+  logMessages(scenarioId: Id, entries: MessageEntry[]): Promise<void> {
+    return this.append(`messages-${scenarioId}`, entries);
+  }
+
+  private async append(name: string, entries: unknown[]): Promise<void> {
+    if (!entries.length) return;
+    await mkdir(this.saveDir, { recursive: true });
+    await appendFile(path.join(this.saveDir, `${name}.jsonl`), entries.map((e) => `${JSON.stringify(e)}\n`).join(''));
   }
 
   // The public instance keeps the file name saves had before instances had saves of their own.

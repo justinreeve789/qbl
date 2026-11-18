@@ -69,7 +69,9 @@ function mountFileApi(app: Express) {
       const session = user && scenario.enable_save_session
         ? await services.backend.loadSession(scenario.id, user.id, String(req.query.group ?? 'public').slice(0, 64) || 'public')
         : null;
-      res.json({ scenario: { ...scenario, session } });
+      const group = String(req.query.group ?? 'public').slice(0, 64) || 'public';
+      const instance = { group, party: String(req.query.party ?? group).slice(0, 64) || group };
+      res.json({ scenario: { ...scenario, session, instance } });
     } catch {
       res.status(404).json({ message: 'Scenario not found.' });
     }
@@ -78,8 +80,8 @@ function mountFileApi(app: Express) {
 
 const server = defineServer({
   rooms: {
-    // Players are matched into the same room when scenario and group agree.
-    [ROOM_NAME]: defineRoom(ScenarioRoom).filterBy(['scenario', 'group']),
+    // Players are matched into the same room when scenario and party agree; a room holds one or more teams.
+    [ROOM_NAME]: defineRoom(ScenarioRoom).filterBy(['scenario', 'party']),
   },
   express: (app) => {
     app.use(cors);
