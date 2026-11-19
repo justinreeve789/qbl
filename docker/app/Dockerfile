@@ -29,27 +29,36 @@ FROM php:8.4-fpm-alpine
 
 # zip: scenarios are exported and imported as ZIP files (App\Qbl\ScenarioArchive).
 # gd: the AI scenario generator cuts out, sizes and colour-matches pictures (App\Qbl\Generation\Art\ImageTools).
-RUN apk add --no-cache git unzip libzip-dev libpng-dev libjpeg-turbo-dev libwebp-dev freetype-dev \
+# shadow + su-exec: apps/api is mounted from the host, so www-data takes the host owner's user id
+# and php runs as that user (see entrypoint.sh and php-as-owner.sh).
+RUN apk add --no-cache git unzip shadow su-exec libzip-dev libpng-dev libjpeg-turbo-dev libwebp-dev freetype-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
     && docker-php-ext-install pdo_mysql opcache zip gd
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Composer's cache is shared by whichever user runs it (root while building, the host's user after).
+ENV COMPOSER_HOME=/composer
+RUN mkdir -p /composer && chmod 1777 /composer
 
 WORKDIR /app
-# apps/api is a complete Laravel application. Dependencies come from its composer.lock, so every
-# build installs the same versions. They are installed before the code is copied so that this
+# apps/api is a complete Laravel application. docker-compose.yml mounts it from the host over /app,
+# so in Compose the code (and vendor/) are the host's; the copy below makes the image work on its own.
+# Dependencies come from its composer.lock, so every build installs the same versions. They are installed before the code is copied so that this
 # layer is reused until composer.json or composer.lock changes.
 COPY apps/api/composer.json apps/api/composer.lock ./
 RUN composer install --no-interaction --no-dev --prefer-dist --no-scripts --no-autoloader
 COPY apps/api/ /app/
 RUN composer dump-autoload --optimize --no-dev
 
-# The marketing page (index.html), the game (play.html) and their bundles sit beside Laravel's index.php, and scenario media beside them.
-COPY --from=frontend /repo/apps/client/dist/ /app/public/
-COPY scenarios/assets/ /app/public/scenario-assets/
+# The marketing page (index.html), the game (play.html), their bundles and the scenario media. They are
+# kept outside /app (which the host's apps/api covers) and joined with Laravel's public/ on each start.
+COPY --from=frontend /repo/apps/client/dist/ /srv/qbl-public/
+COPY scenarios/assets/ /srv/qbl-public/scenario-assets/
 
 COPY docker/app/php.ini /usr/local/etc/php/conf.d/qbl.ini
 COPY docker/app/entrypoint.sh /usr/local/bin/qbl-entrypoint
-RUN chmod +x /usr/local/bin/qbl-entrypoint && mkdir -p /data /shared/public /media-data
+# Earlier in PATH than the real php, so "php artisan" and "composer" run as the owner of /app.
+COPY docker/app/php-as-owner.sh /usr/local/sbin/php
+RUN chmod +x /usr/local/bin/qbl-entrypoint /usr/local/sbin/php && mkdir -p /data /shared/public /media-data
 
 EXPOSE 9000
 ENTRYPOINT ["qbl-entrypoint"]

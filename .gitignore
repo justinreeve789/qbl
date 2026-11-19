@@ -5,6 +5,5 @@ dist/
 .idea/
 *.tsbuildinfo
 docs/site/
-apps/api/vendor/
 # Your own TLS certificate for the edge container (fullchain.pem, privkey.pem). Never commit it.
 certs/

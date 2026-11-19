@@ -95,7 +95,7 @@ Seven containers:
 | Container | What runs in it |
 | --------- | --------------- |
 | `edge` | Caddy, on staging and production only (`COMPOSE_PROFILES=https`): ports 80 and 443. Ends HTTPS (with a Let's Encrypt certificate it fetches and renews itself, or your own) and passes everything to `apache` as plain HTTP |
-| `app` | The Laravel backend (PHP-FPM) and the built frontend (the marketing page and the Phaser game), which lives in Laravel's `public/` directory |
+| `app` | The Laravel backend (PHP-FPM), running `apps/api` mounted from your checkout, and the built frontend (the marketing page and the Phaser game) |
 | `db` | MariaDB |
 | `colyseus` | The multiplayer game server |
 | `editor` | The scenario editor: a static web application served by its own small Apache |
@@ -120,6 +120,27 @@ docker compose exec app php artisan qbl:user you@example.org "Your Name" --role=
 ```
 
 **Upgrading a database from an earlier build.** `docker compose up --build` is enough: migrations run on start and are written so that tables and columns that already exist are left alone. Changes to the demo occur only when you run `qbl:seed --reset`.
+
+### Working on the API
+
+`apps/api` is mounted into the `app` container (`./apps/api:/app`), not copied: an edit on either side is there on the other at once, with no rebuild. PHP files are picked up within about two seconds.
+
+Its PHP dependencies are in `apps/api/vendor`, which is not committed. The `app` container runs `composer install` into it when it starts if it is missing, or older than `composer.lock`. Since both sides use the same folder, artisan and composer work on both:
+
+```sh
+docker compose exec app php artisan qbl:seed     # in the container
+docker compose exec app composer require foo/bar
+
+cd apps/api && php artisan test                  # on your machine (PHP 8.3 or later)
+cd apps/api && composer install
+```
+
+In the container, `php` and `composer` run as the user that owns your `apps/api` folder, not as root, and PHP-FPM's `www-data` takes that user's id. So `vendor/`, `storage/` and anything else the container writes stays yours, and the host can keep changing it. (When the folder belongs to root, as on Docker Desktop for Windows, everything runs as before.) To run something as root anyway: `docker compose exec -e QBL_PHP_AS_ROOT=1 app php ...`.
+
+Two things to know:
+
+- A `.env` in `apps/api` (for running artisan on your machine) is seen by the container too. The settings in `docker-compose.yml` win wherever both set the same variable. To point artisan on your machine at the Docker database, use `DB_CONNECTION=mariadb`, `DB_HOST=127.0.0.1`, `DB_PORT=3307`, `DB_DATABASE=qbl`, `DB_USERNAME=qbl`, `DB_PASSWORD=qbl-local-only` (or your `DB_PASSWORD`).
+- Static files in `apps/api/public` are copied to Apache when `app` starts, so changes there need `docker compose restart app`. The game's own files are built into the image (`docker compose up --build`).
 
 ### HTTPS
 
@@ -199,7 +220,7 @@ Without them anyone with a Google account can register as a student, and teacher
 
 How the pieces connect:
 
-- Apache reads the frontend and the demo's media from a volume that `app` fills from its `public/` directory on each start.
+- Apache reads the frontend and the demo's media from a volume that `app` fills on each start, from Laravel's `public/` directory and the frontend built into its image.
 - Files uploaded in the editor are written by `app` to a `media` volume, which Apache serves read-only as `/media`.
 - The editor container holds no data. It is static files; everything it does goes through the Laravel API at `/api/editor`.
 - Colyseus calls Laravel's `/api/internal` routes through a second Apache port (8081) that exists only on the Docker network. The public port answers 404 for `/api/internal`.

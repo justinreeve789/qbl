@@ -4,6 +4,8 @@
 .git
 docs/site
 apps/api/vendor
+# Caches written by whichever artisan ran last (host or container); the image makes its own.
+apps/api/bootstrap/cache/*.php
 apps/api/.env
 apps/api/database/*.sqlite
 apps/api/storage/logs/*.log

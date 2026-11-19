@@ -92,6 +92,11 @@ services:
       # Each run's pictures, blueprint and ZIP, kept so a run can be resumed.
       QBL_GEN_WORK_DIR: /data/generations
     volumes:
+      # The Laravel code, live from the host in both directions: edits on either side show at once,
+      # with no rebuild. vendor/ lives here too (installed on start when missing; not committed), so
+      # artisan and composer work on the host and in the container alike. The container runs PHP as
+      # the folder's owner, so what it writes stays yours. See "Working on the API" in the README.
+      - ./apps/api:/app
       - public:/shared/public      # the frontend and the demo's media, handed to Apache
       - media:/media-data          # uploaded media, served by Apache as /media
       - app-data:/data
