@@ -1,5 +1,7 @@
 #!/bin/sh
 set -e
+# A failed client build is noticed even though its output is labelled on the way to the log.
+set -o pipefail
 
 # /app is apps/api, mounted from the host (docker-compose.yml), so edits go both ways.
 #
@@ -59,12 +61,48 @@ fi
 #   docker compose exec app php artisan qbl:seed --reset    put the shipped demo back, replacing edits to it
 php artisan migrate --force
 
-# Apache serves the static files (the marketing page, the Phaser game, scenario media) straight
-# from this volume: Laravel's public/ plus the frontend built into the image.
+# ---- the client: the marketing page and the Phaser game ------------------------------------------
+# Its source is mounted from the host (apps/client, packages/shared, scenarios/assets under /repo).
+# Vite builds it into the "public" volume, which Apache serves, next to Laravel's own public/ files.
+# With QBL_CLIENT_WATCH=true it keeps watching and rebuilds on every change: reload the page.
+label() {
+  while IFS= read -r line; do echo "client: $line"; done
+}
+
+client() {
+  if [ ! -f /repo/apps/client/package.json ]; then
+    echo "qbl: no client in /repo/apps/client (is ./apps/client mounted?); the site will have no pages" >&2
+    return 0
+  fi
+
+  # The client's packages are installed in the "client-modules" volume, apart from any node_modules
+  # on the host (which may be for another system). Installed again when a package.json changes.
+  stamp="$(cat /repo/package.json /repo/packages/shared/package.json /repo/apps/client/package.json | sha256sum)"
+  if [ "$(cat /repo/node_modules/.qbl-installed 2>/dev/null)" != "$stamp" ]; then
+    echo "qbl: installing the client's packages (npm install)"
+    (cd /repo && npm install --workspace @qbl/shared --workspace @qbl/client --include-workspace-root \
+      --no-audit --no-fund --loglevel=warn) || return 1
+    echo "$stamp" > /repo/node_modules/.qbl-installed
+  fi
+
+  # Built without the type check, so a typing complaint cannot keep the site down. Run
+  # "npm run typecheck" on the host or in CI. The output is outside the client's folder, so Vite
+  # does not empty it: Laravel's files stay, and in watch mode old bundles stay until a restart.
+  if [ "$QBL_CLIENT_WATCH" = true ]; then
+    echo "qbl: building the client, then rebuilding it whenever apps/client or packages/shared changes"
+    (cd /repo/apps/client && npx vite build --outDir /shared/public --emptyOutDir false --watch --clearScreen false 2>&1 \
+      | label) &
+  else
+    echo "qbl: building the client"
+    (cd /repo/apps/client && npx vite build --outDir /shared/public --emptyOutDir false --logLevel warn 2>&1 \
+      | label) || return 1
+  fi
+}
+
 if [ -d /shared/public ]; then
   find /shared/public -mindepth 1 -delete
   cp -a /app/public/. /shared/public/
-  cp -a /srv/qbl-public/. /shared/public/
+  client || echo "qbl: the client could not be built (see above); the API runs without it" >&2
 fi
 
 exec "$@"

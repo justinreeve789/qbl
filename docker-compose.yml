@@ -2,7 +2,8 @@
 #   edge      Caddy: ends HTTPS (Let's Encrypt or your own certificate) on staging and production
 #             only (the "https" profile); everything behind it speaks plain HTTP
 #   apache    web server and reverse proxy for the rest; http://localhost:8080 in development
-#   app       Laravel backend (PHP-FPM) + the built Phaser frontend and marketing page
+#   app       Laravel backend (PHP-FPM), and Vite building the Phaser frontend and marketing page
+#             (apps/api and apps/client are mounted from the checkout, not copied in)
 #   db        MariaDB
 #   colyseus  multiplayer game server
 #   editor    the scenario editor (a static web application)
@@ -26,9 +27,11 @@
 # copy .env.example to .env and set real secrets.
 services:
   app:
+    # The image is only PHP, Composer and Node. The client and the server are mounted below.
     build:
-      context: .
-      dockerfile: docker/app/Dockerfile
+      context: docker/app
+    # Reaps the client's build process, which runs alongside PHP-FPM.
+    init: true
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
@@ -90,13 +93,30 @@ services:
       CSP_BASE_URL: ${CSP_BASE_URL:-}
       # Each run's pictures, blueprint and ZIP, kept so a run can be resumed.
       QBL_GEN_WORK_DIR: /data/generations
+      # The client (the marketing page and the game) is built by Vite when app starts. true: it is
+      # also rebuilt whenever apps/client or packages/shared changes. false: built once per start
+      # (docker compose restart app after a change), which saves memory on a server.
+      QBL_CLIENT_WATCH: ${QBL_CLIENT_WATCH:-true}
+      # login: email + password against Laravel, with a "play as guest" link.
+      VITE_AUTH_MODE: ${VITE_AUTH_MODE:-login}
+      VITE_DEFAULT_SCENARIO: ${VITE_DEFAULT_SCENARIO:-starshipexplorer}
     volumes:
       # The Laravel code, live from the host in both directions: edits on either side show at once,
       # with no rebuild. vendor/ lives here too (installed on start when missing; not committed), so
       # artisan and composer work on the host and in the container alike. The container runs PHP as
       # the folder's owner, so what it writes stays yours. See "Working on the API" in the README.
       - ./apps/api:/app
-      - public:/shared/public      # the frontend and the demo's media, handed to Apache
+      # The client's source, read-only: the game and marketing page, the code they share with the
+      # game server, and the scenario pictures (the marketing page uses the platform avatars).
+      # Vite builds it from here into the public volume. See "Working on the client" in the README.
+      - ./package.json:/repo/package.json:ro
+      - ./tsconfig.base.json:/repo/tsconfig.base.json:ro
+      - ./packages/shared:/repo/packages/shared:ro
+      - ./apps/client:/repo/apps/client:ro
+      - ./scenarios/assets:/repo/scenarios/assets:ro
+      # The client's npm packages, for this container's system; any node_modules on the host is not used.
+      - client-modules:/repo/node_modules
+      - public:/shared/public      # the built client and Laravel's public/, handed to Apache
       - media:/media-data          # uploaded media, served by Apache as /media
       - app-data:/data
     depends_on:
@@ -164,6 +184,8 @@ services:
       - "${QBL_APACHE_BIND:-127.0.0.1}:${QBL_APACHE_PORT:-8080}:80"
     volumes:
       - public:/var/www/public:ro
+      # The scenarios' pictures and sounds, served as /scenario-assets straight from the checkout.
+      - ./scenarios/assets:/var/www/scenario-assets:ro
       - media:/var/www/media:ro
     depends_on:
       - app
@@ -213,6 +235,7 @@ volumes:
   edge-data:
   edge-config:
   public:
+  client-modules:
   media:
   app-data:
   db-data:

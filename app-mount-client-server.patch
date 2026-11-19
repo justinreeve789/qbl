@@ -1,0 +1,327 @@
+diff --git a/.env.example b/.env.example
+index d629a74..fd7396a 100644
+--- a/.env.example
++++ b/.env.example
+@@ -17,6 +17,9 @@ APP_KEY=
+ QBL_SEED_PASSWORD=
+ # The demo mission allows guests. Set to false to require accounts.
+ QBL_ALLOW_GUESTS=true
++# The game and marketing page are built by Vite when the app container starts. true: rebuilt on
++# every change to apps/client or packages/shared. false: built once per start (servers).
++QBL_CLIENT_WATCH=true
+ 
+ # ---- HTTPS (staging and production only) ------------------------------------------------
+ # Development needs none of this: leave COMPOSE_PROFILES and QBL_PUBLIC_URL empty.
+diff --git a/README.md b/README.md
+index 9d557f3..98e36b3 100644
+--- a/README.md
++++ b/README.md
+@@ -95,12 +95,12 @@ Seven containers:
+ | Container | What runs in it |
+ | --------- | --------------- |
+ | `edge` | Caddy, on staging and production only (`COMPOSE_PROFILES=https`): ports 80 and 443. Ends HTTPS (with a Let's Encrypt certificate it fetches and renews itself, or your own) and passes everything to `apache` as plain HTTP |
+-| `app` | The Laravel backend (PHP-FPM), running `apps/api` mounted from your checkout, and the built frontend (the marketing page and the Phaser game) |
++| `app` | The Laravel backend (PHP-FPM), running `apps/api` mounted from your checkout, and Vite building the frontend (the marketing page and the Phaser game) from `apps/client`, also mounted. The image holds only PHP, Composer and Node |
+ | `db` | MariaDB |
+ | `colyseus` | The multiplayer game server |
+ | `editor` | The scenario editor: a static web application served by its own small Apache |
+ | `docs` | The documentation in `docs/`, built with MkDocs into a static site |
+-| `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
++| `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files, `scenarios/assets` (mounted, as `/scenario-assets`) and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
+ 
+ Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
+ 
+@@ -149,7 +149,21 @@ In the container, `php` and `composer` run as the user that owns your `apps/api`
+ Two things to know:
+ 
+ - A `.env` in `apps/api` (for running artisan on your machine) is seen by the container too. The settings in `docker-compose.yml` win wherever both set the same variable. To point artisan on your machine at the Docker database, use `DB_CONNECTION=mariadb`, `DB_HOST=127.0.0.1`, `DB_PORT=3307`, `DB_DATABASE=qbl`, `DB_USERNAME=qbl`, `DB_PASSWORD=qbl-local-only` (or your `DB_PASSWORD`).
+-- Static files in `apps/api/public` are copied to Apache when `app` starts, so changes there need `docker compose restart app`. The game's own files are built into the image (`docker compose up --build`).
++- Static files in `apps/api/public` are copied to Apache when `app` starts, so changes there need `docker compose restart app`.
++
++### Working on the client
++
++The game and the marketing page are not copied into the image either. `app` mounts their source read-only (`apps/client`, `packages/shared`, `scenarios/assets`, the root `package.json` and `tsconfig.base.json`, all under `/repo`) and Vite builds it when the container starts, into the volume Apache serves. With `QBL_CLIENT_WATCH=true` (the default) Vite keeps watching and rebuilds within a few seconds of a save: reload the page. Its output is in the logs, labelled `client:`:
++
++```sh
++docker compose logs -f app
++```
++
++- The client's npm packages are installed in the `client-modules` volume on the first start, and again whenever one of those `package.json` files changes. A `node_modules` on your machine is not used, so it can be for another system.
++- The build skips the type check, so a typing mistake cannot keep the site down; run `npm run typecheck` yourself. A build that fails outright is reported in the log and the API keeps running.
++- On a server, `QBL_CLIENT_WATCH=false` in `.env` builds once per start and saves the memory the watcher uses. After `git pull`, `docker compose restart app` rebuilds.
++- Scenario pictures and sounds in `scenarios/assets` are served by Apache straight from the checkout, as `/scenario-assets`.
++- `docker compose up --build` is needed only when something in `docker/` changes.
+ 
+ ### HTTPS
+ 
+diff --git a/docker-compose.yml b/docker-compose.yml
+index a49668c..1b7c567 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -2,7 +2,8 @@
+ #   edge      Caddy: ends HTTPS (Let's Encrypt or your own certificate) on staging and production
+ #             only (the "https" profile); everything behind it speaks plain HTTP
+ #   apache    web server and reverse proxy for the rest; http://localhost:8080 in development
+-#   app       Laravel backend (PHP-FPM) + the built Phaser frontend and marketing page
++#   app       Laravel backend (PHP-FPM), and Vite building the Phaser frontend and marketing page
++#             (apps/api and apps/client are mounted from the checkout, not copied in)
+ #   db        MariaDB
+ #   colyseus  multiplayer game server
+ #   editor    the scenario editor (a static web application)
+@@ -26,9 +27,11 @@
+ # copy .env.example to .env and set real secrets.
+ services:
+   app:
++    # The image is only PHP, Composer and Node. The client and the server are mounted below.
+     build:
+-      context: .
+-      dockerfile: docker/app/Dockerfile
++      context: docker/app
++    # Reaps the client's build process, which runs alongside PHP-FPM.
++    init: true
+     environment:
+       APP_ENV: production
+       APP_DEBUG: "false"
+@@ -90,13 +93,30 @@ services:
+       CSP_BASE_URL: ${CSP_BASE_URL:-}
+       # Each run's pictures, blueprint and ZIP, kept so a run can be resumed.
+       QBL_GEN_WORK_DIR: /data/generations
++      # The client (the marketing page and the game) is built by Vite when app starts. true: it is
++      # also rebuilt whenever apps/client or packages/shared changes. false: built once per start
++      # (docker compose restart app after a change), which saves memory on a server.
++      QBL_CLIENT_WATCH: ${QBL_CLIENT_WATCH:-true}
++      # login: email + password against Laravel, with a "play as guest" link.
++      VITE_AUTH_MODE: ${VITE_AUTH_MODE:-login}
++      VITE_DEFAULT_SCENARIO: ${VITE_DEFAULT_SCENARIO:-starshipexplorer}
+     volumes:
+       # The Laravel code, live from the host in both directions: edits on either side show at once,
+       # with no rebuild. vendor/ lives here too (installed on start when missing; not committed), so
+       # artisan and composer work on the host and in the container alike. The container runs PHP as
+       # the folder's owner, so what it writes stays yours. See "Working on the API" in the README.
+       - ./apps/api:/app
+-      - public:/shared/public      # the frontend and the demo's media, handed to Apache
++      # The client's source, read-only: the game and marketing page, the code they share with the
++      # game server, and the scenario pictures (the marketing page uses the platform avatars).
++      # Vite builds it from here into the public volume. See "Working on the client" in the README.
++      - ./package.json:/repo/package.json:ro
++      - ./tsconfig.base.json:/repo/tsconfig.base.json:ro
++      - ./packages/shared:/repo/packages/shared:ro
++      - ./apps/client:/repo/apps/client:ro
++      - ./scenarios/assets:/repo/scenarios/assets:ro
++      # The client's npm packages, for this container's system; any node_modules on the host is not used.
++      - client-modules:/repo/node_modules
++      - public:/shared/public      # the built client and Laravel's public/, handed to Apache
+       - media:/media-data          # uploaded media, served by Apache as /media
+       - app-data:/data
+     depends_on:
+@@ -164,6 +184,8 @@ services:
+       - "${QBL_APACHE_BIND:-127.0.0.1}:${QBL_APACHE_PORT:-8080}:80"
+     volumes:
+       - public:/var/www/public:ro
++      # The scenarios' pictures and sounds, served as /scenario-assets straight from the checkout.
++      - ./scenarios/assets:/var/www/scenario-assets:ro
+       - media:/var/www/media:ro
+     depends_on:
+       - app
+@@ -213,6 +235,7 @@ volumes:
+   edge-data:
+   edge-config:
+   public:
++  client-modules:
+   media:
+   app-data:
+   db-data:
+diff --git a/docker/apache/qbl.conf b/docker/apache/qbl.conf
+index 9c7926f..945b0ac 100644
+--- a/docker/apache/qbl.conf
++++ b/docker/apache/qbl.conf
+@@ -65,7 +65,12 @@ ProxyFCGISetEnvIf "true" SCRIPT_FILENAME "/app/public/index.php"
+         ExpiresDefault "access plus 1 year"
+         Header set Cache-Control "public, immutable"
+     </Directory>
+-    <Directory /var/www/public/scenario-assets>
++    # The scenarios' pictures and sounds, mounted from the checkout's scenarios/assets.
++    Alias /scenario-assets /var/www/scenario-assets
++    <Directory /var/www/scenario-assets>
++        Require all granted
++        AllowOverride None
++        Options -Indexes
+         ExpiresActive On
+         ExpiresDefault "access plus 1 hour"
+     </Directory>
+diff --git a/docker/app/Dockerfile b/docker/app/Dockerfile
+index de9f0ce..7a84137 100644
+--- a/docker/app/Dockerfile
++++ b/docker/app/Dockerfile
+@@ -1,65 +1,49 @@
+-# The "app" container: the Laravel backend (PHP-FPM), the built Phaser frontend and the marketing page.
+-# Build from the repository root:  docker build -f docker/app/Dockerfile .
++# The "app" container: the Laravel backend (PHP-FPM), and the build of the Phaser frontend and the
++# marketing page.
++#
++# The image holds only the tools: PHP with its extensions, Composer and Node. The code is not copied
++# in. docker-compose.yml mounts it from the checkout instead, so edits show without a rebuild:
++#
++#   ./apps/api        -> /app                  the Laravel application (the server)
++#   ./apps/client     -> /repo/apps/client     the game and the marketing page (the client), built
++#   ./packages/shared -> /repo/packages/shared   by Vite on start into the "public" volume, and
++#   ./scenarios/assets-> /repo/scenarios/assets  rebuilt on every change while QBL_CLIENT_WATCH=true
++#
++# Built by Compose from this folder (context: docker/app). On its own it has nothing to run.
+ 
+-# ---- 1. build the Phaser frontend ---------------------------------------------------
+-FROM node:22-alpine AS frontend
+-# npm needs git: at least one package in the dependency tree is fetched from a git URL.
+-RUN apk add --no-cache git
+-WORKDIR /repo
+-COPY package.json package-lock.json* tsconfig.base.json ./
+-COPY packages/shared/package.json packages/shared/
+-COPY apps/server/package.json apps/server/
+-COPY apps/client/package.json apps/client/
+-COPY apps/editor/package.json apps/editor/
+-# Switch to `npm ci` once package-lock.json is committed.
+-RUN npm install --workspace @qbl/shared --workspace @qbl/client --include-workspace-root
+-COPY packages/shared packages/shared
+-COPY apps/client apps/client
+-# The marketing page's characters are the platform avatars.
+-COPY scenarios/assets/platform scenarios/assets/platform
+-# login: email + password against Laravel, with a "play as guest" link.
+-ARG VITE_AUTH_MODE=login
+-ARG VITE_DEFAULT_SCENARIO=starshipexplorer
+-ENV VITE_AUTH_MODE=$VITE_AUTH_MODE VITE_DEFAULT_SCENARIO=$VITE_DEFAULT_SCENARIO
+-# Bundles without the type-check step, so a typing complaint cannot block the image. Run `npm run typecheck` in CI.
+-RUN npm exec --workspace @qbl/client -- vite build
++FROM node:22-alpine AS node
+ 
+-# ---- 2. Laravel + the frontend in its public directory -------------------------------
+ FROM php:8.4-fpm-alpine
+ 
+ # zip: scenarios are exported and imported as ZIP files (App\Qbl\ScenarioArchive).
+ # gd: the AI scenario generator cuts out, sizes and colour-matches pictures (App\Qbl\Generation\Art\ImageTools).
+ # shadow + su-exec: apps/api is mounted from the host, so www-data takes the host owner's user id
+ # and php runs as that user (see entrypoint.sh and php-as-owner.sh).
+-RUN apk add --no-cache git unzip shadow su-exec libzip-dev libpng-dev libjpeg-turbo-dev libwebp-dev freetype-dev \
++# git: npm fetches at least one package in the client's dependency tree from a git URL.
++# libstdc++: Node needs it.
++RUN apk add --no-cache git unzip shadow su-exec libstdc++ libzip-dev libpng-dev libjpeg-turbo-dev libwebp-dev freetype-dev \
+     && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+     && docker-php-ext-install pdo_mysql opcache zip gd
+ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+-# Composer's cache is shared by whichever user runs it (root while building, the host's user after).
++# Composer's cache is shared by whichever user runs it (root on first start, the host's user after).
+ ENV COMPOSER_HOME=/composer
+ RUN mkdir -p /composer && chmod 1777 /composer
+ 
+-WORKDIR /app
+-# apps/api is a complete Laravel application. docker-compose.yml mounts it from the host over /app,
+-# so in Compose the code (and vendor/) are the host's; the copy below makes the image work on its own.
+-# Dependencies come from its composer.lock, so every build installs the same versions. They are installed before the code is copied so that this
+-# layer is reused until composer.json or composer.lock changes.
+-COPY apps/api/composer.json apps/api/composer.lock ./
+-RUN composer install --no-interaction --no-dev --prefer-dist --no-scripts --no-autoloader
+-COPY apps/api/ /app/
+-RUN composer dump-autoload --optimize --no-dev
+-
+-# The marketing page (index.html), the game (play.html), their bundles and the scenario media. They are
+-# kept outside /app (which the host's apps/api covers) and joined with Laravel's public/ on each start.
+-COPY --from=frontend /repo/apps/client/dist/ /srv/qbl-public/
+-COPY scenarios/assets/ /srv/qbl-public/scenario-assets/
++# Node 22 and npm, to build the client (both images are Alpine, so the binary runs as it is).
++COPY --from=node /usr/local/bin/node /usr/local/bin/node
++COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
++RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
++    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
++    && node --version && npm --version
+ 
+-COPY docker/app/php.ini /usr/local/etc/php/conf.d/qbl.ini
+-COPY docker/app/entrypoint.sh /usr/local/bin/qbl-entrypoint
++COPY php.ini /usr/local/etc/php/conf.d/qbl.ini
++COPY entrypoint.sh /usr/local/bin/qbl-entrypoint
+ # Earlier in PATH than the real php, so "php artisan" and "composer" run as the owner of /app.
+-COPY docker/app/php-as-owner.sh /usr/local/sbin/php
+-RUN chmod +x /usr/local/bin/qbl-entrypoint /usr/local/sbin/php && mkdir -p /data /shared/public /media-data
++COPY php-as-owner.sh /usr/local/sbin/php
++RUN chmod +x /usr/local/bin/qbl-entrypoint /usr/local/sbin/php \
++    && mkdir -p /app /repo /data /shared/public /media-data
+ 
++WORKDIR /app
+ EXPOSE 9000
+ ENTRYPOINT ["qbl-entrypoint"]
+ CMD ["php-fpm"]
+diff --git a/docker/app/entrypoint.sh b/docker/app/entrypoint.sh
+index ca2157c..ed4dabf 100644
+--- a/docker/app/entrypoint.sh
++++ b/docker/app/entrypoint.sh
+@@ -1,5 +1,7 @@
+ #!/bin/sh
+ set -e
++# A failed client build is noticed even though its output is labelled on the way to the log.
++set -o pipefail
+ 
+ # /app is apps/api, mounted from the host (docker-compose.yml), so edits go both ways.
+ #
+@@ -59,12 +61,48 @@ fi
+ #   docker compose exec app php artisan qbl:seed --reset    put the shipped demo back, replacing edits to it
+ php artisan migrate --force
+ 
+-# Apache serves the static files (the marketing page, the Phaser game, scenario media) straight
+-# from this volume: Laravel's public/ plus the frontend built into the image.
++# ---- the client: the marketing page and the Phaser game ------------------------------------------
++# Its source is mounted from the host (apps/client, packages/shared, scenarios/assets under /repo).
++# Vite builds it into the "public" volume, which Apache serves, next to Laravel's own public/ files.
++# With QBL_CLIENT_WATCH=true it keeps watching and rebuilds on every change: reload the page.
++label() {
++  while IFS= read -r line; do echo "client: $line"; done
++}
++
++client() {
++  if [ ! -f /repo/apps/client/package.json ]; then
++    echo "qbl: no client in /repo/apps/client (is ./apps/client mounted?); the site will have no pages" >&2
++    return 0
++  fi
++
++  # The client's packages are installed in the "client-modules" volume, apart from any node_modules
++  # on the host (which may be for another system). Installed again when a package.json changes.
++  stamp="$(cat /repo/package.json /repo/packages/shared/package.json /repo/apps/client/package.json | sha256sum)"
++  if [ "$(cat /repo/node_modules/.qbl-installed 2>/dev/null)" != "$stamp" ]; then
++    echo "qbl: installing the client's packages (npm install)"
++    (cd /repo && npm install --workspace @qbl/shared --workspace @qbl/client --include-workspace-root \
++      --no-audit --no-fund --loglevel=warn) || return 1
++    echo "$stamp" > /repo/node_modules/.qbl-installed
++  fi
++
++  # Built without the type check, so a typing complaint cannot keep the site down. Run
++  # "npm run typecheck" on the host or in CI. The output is outside the client's folder, so Vite
++  # does not empty it: Laravel's files stay, and in watch mode old bundles stay until a restart.
++  if [ "$QBL_CLIENT_WATCH" = true ]; then
++    echo "qbl: building the client, then rebuilding it whenever apps/client or packages/shared changes"
++    (cd /repo/apps/client && npx vite build --outDir /shared/public --emptyOutDir false --watch --clearScreen false 2>&1 \
++      | label) &
++  else
++    echo "qbl: building the client"
++    (cd /repo/apps/client && npx vite build --outDir /shared/public --emptyOutDir false --logLevel warn 2>&1 \
++      | label) || return 1
++  fi
++}
++
+ if [ -d /shared/public ]; then
+   find /shared/public -mindepth 1 -delete
+   cp -a /app/public/. /shared/public/
+-  cp -a /srv/qbl-public/. /shared/public/
++  client || echo "qbl: the client could not be built (see above); the API runs without it" >&2
+ fi
+ 
+ exec "$@"
+diff --git a/docs/docs/architecture.md b/docs/docs/architecture.md
+index 8c930be..bb3bc27 100644
+--- a/docs/docs/architecture.md
++++ b/docs/docs/architecture.md
+@@ -15,7 +15,7 @@
+                                                   db  <------------+  (Docker network only)
+ ```
+ 
+-Docker runs seven containers: `edge` (Caddy, started on staging and production by `COMPOSE_PROFILES=https`: it ends HTTPS with a Let's Encrypt or your own certificate and passes everything on as plain HTTP; development leaves it out and uses Apache directly at http://localhost:8080), `apache`, `app` (Laravel, the built Phaser frontend and the marketing page), `db` (MariaDB, whose start script keeps the `qbl` account's password equal to `DB_PASSWORD`), `colyseus`, `editor` and `docs` (this documentation, built with MkDocs and served at `/docs`). `/` is the marketing page; every other path Apache has no file for loads the game. The Phaser build is copied into Laravel's `public/` directory; Apache serves those files from a shared volume and forwards PHP requests to FPM. That fallback is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
++Docker runs seven containers: `edge` (Caddy, started on staging and production by `COMPOSE_PROFILES=https`: it ends HTTPS with a Let's Encrypt or your own certificate and passes everything on as plain HTTP; development leaves it out and uses Apache directly at http://localhost:8080), `apache`, `app` (Laravel, and Vite building the Phaser frontend and the marketing page; both are mounted from the checkout, not copied into the image), `db` (MariaDB, whose start script keeps the `qbl` account's password equal to `DB_PASSWORD`), `colyseus`, `editor` and `docs` (this documentation, built with MkDocs and served at `/docs`). `/` is the marketing page; every other path Apache has no file for loads the game. Vite builds the frontend into a shared volume next to Laravel's `public/` files; Apache serves that volume (and `scenarios/assets` as `/scenario-assets`) and forwards PHP requests to FPM. That fallback is how `/{code}` works: the game reads the 16-letter code from its address and asks the API for that scenario.
+ 
+ The `editor` container is static files behind its own small Apache, reached through the front one at `/editor`. It holds no data and no secrets; everything it does is a call to `/api/editor`. Because the game and the editor share an address, they share a sign-in, and the editor's "Test this scene" can open the game on a draft.
+ 

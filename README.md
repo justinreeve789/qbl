@@ -95,12 +95,12 @@ Seven containers:
 | Container | What runs in it |
 | --------- | --------------- |
 | `edge` | Caddy, on staging and production only (`COMPOSE_PROFILES=https`): ports 80 and 443. Ends HTTPS (with a Let's Encrypt certificate it fetches and renews itself, or your own) and passes everything to `apache` as plain HTTP |
-| `app` | The Laravel backend (PHP-FPM), running `apps/api` mounted from your checkout, and the built frontend (the marketing page and the Phaser game) |
+| `app` | The Laravel backend (PHP-FPM), running `apps/api` mounted from your checkout, and Vite building the frontend (the marketing page and the Phaser game) from `apps/client`, also mounted. The image holds only PHP, Composer and Node |
 | `db` | MariaDB |
 | `colyseus` | The multiplayer game server |
 | `editor` | The scenario editor: a static web application served by its own small Apache |
 | `docs` | The documentation in `docs/`, built with MkDocs into a static site |
-| `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
+| `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files, `scenarios/assets` (mounted, as `/scenario-assets`) and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
 
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
 
@@ -149,7 +149,21 @@ In the container, `php` and `composer` run as the user that owns your `apps/api`
 Two things to know:
 
 - A `.env` in `apps/api` (for running artisan on your machine) is seen by the container too. The settings in `docker-compose.yml` win wherever both set the same variable. To point artisan on your machine at the Docker database, use `DB_CONNECTION=mariadb`, `DB_HOST=127.0.0.1`, `DB_PORT=3307`, `DB_DATABASE=qbl`, `DB_USERNAME=qbl`, `DB_PASSWORD=qbl-local-only` (or your `DB_PASSWORD`).
-- Static files in `apps/api/public` are copied to Apache when `app` starts, so changes there need `docker compose restart app`. The game's own files are built into the image (`docker compose up --build`).
+- Static files in `apps/api/public` are copied to Apache when `app` starts, so changes there need `docker compose restart app`.
+
+### Working on the client
+
+The game and the marketing page are not copied into the image either. `app` mounts their source read-only (`apps/client`, `packages/shared`, `scenarios/assets`, the root `package.json` and `tsconfig.base.json`, all under `/repo`) and Vite builds it when the container starts, into the volume Apache serves. With `QBL_CLIENT_WATCH=true` (the default) Vite keeps watching and rebuilds within a few seconds of a save: reload the page. Its output is in the logs, labelled `client:`:
+
+```sh
+docker compose logs -f app
+```
+
+- The client's npm packages are installed in the `client-modules` volume on the first start, and again whenever one of those `package.json` files changes. A `node_modules` on your machine is not used, so it can be for another system.
+- The build skips the type check, so a typing mistake cannot keep the site down; run `npm run typecheck` yourself. A build that fails outright is reported in the log and the API keeps running.
+- On a server, `QBL_CLIENT_WATCH=false` in `.env` builds once per start and saves the memory the watcher uses. After `git pull`, `docker compose restart app` rebuilds.
+- Scenario pictures and sounds in `scenarios/assets` are served by Apache straight from the checkout, as `/scenario-assets`.
+- `docker compose up --build` is needed only when something in `docker/` changes.
 
 ### HTTPS
 
