@@ -1,4 +1,14 @@
 :root {
+  /* Phones with a notch or a home bar: the page runs under them (viewport-fit=cover), so controls keep clear. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  /* A round button on the game screen, and its distance from the edges. */
+  --qbl-tab: 52px;
+  --qbl-edge: 12px;
+  /* The dock's height when there is one (upright screens), else nothing. */
+  --qbl-dock: 0px;
   --qbl-bg: #1c172e;
   --qbl-panel: #0b2b8a;
   --qbl-accent: #2f8fd6;
@@ -31,7 +41,7 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-avatar-frame { display: block; width: 74px; height: 110px; margin: 0 auto; background-repeat: no-repeat; background-position: 0 0; }
 
 /* ---------- in-game layer ---------- */
-.qbl-ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+.qbl-ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; --qbl-keyboard: 0px; }
 .qbl-ui > * { pointer-events: none; }
 .qbl-ui button, .qbl-ui input, .qbl-ui video, .qbl-infobox, .qbl-backdrop { pointer-events: auto; }
 
@@ -42,7 +52,7 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-button:disabled { opacity: 0.5; cursor: default; }
 
 /* overlays: a 3x3 grid, one cell per alignment value */
-.qbl-overlays { position: absolute; inset: 24px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
+.qbl-overlays { position: absolute; inset: 24px; top: calc(24px + var(--safe-t)); left: calc(24px + var(--safe-l)); bottom: calc(24px + var(--safe-b)); right: calc(var(--qbl-tab) + 36px + var(--safe-r)); display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); }
 .qbl-overlay { max-width: 90vw; }
 .qbl-overlay.qbl-text { font-weight: 600; text-shadow: 0 0 4px #000, 0 2px 6px #000; text-align: center; white-space: pre-wrap; }
 .qbl-overlay.qbl-image { --sx: 1; --sy: 1; transform: scale(var(--sx), var(--sy)); max-height: 80vh; }
@@ -70,10 +80,7 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-infobox-actions.stacked { flex-direction: column; align-items: stretch; }
 .qbl-infobox-actions.stacked .qbl-button { text-align: left; }
 
-/* chat */
-.qbl-hud { position: absolute; left: 16px; right: 76px; bottom: 16px; display: flex; gap: 10px; align-items: flex-end; }
-.qbl-chat { flex: 1; }
-.qbl-chat input { width: 100%; box-sizing: border-box; height: 52px; padding: 0 20px; border-radius: 26px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(12, 23, 78, 0.85); color: #fff; font: inherit; font-size: 1.1rem; }
+/* emotes (in the side panel) */
 .qbl-emote { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; font-size: 1.6rem; cursor: pointer; }
 .qbl-emote:hover { background: rgba(255, 255, 255, 0.15); }
 
@@ -139,24 +146,6 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
   .qbl-story-text { font-size: 16px; }
 }
 
-/* Top right: stars, XP and rank (the door to the marketplace), then who is playing. The top left
-   belongs to the buttons for leaving a vehicle or taking something off. */
-.qbl-corner { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; align-items: flex-start; justify-content: flex-end; flex-wrap: wrap; max-width: calc(100vw - 24px); z-index: 12; }
-.qbl-corner > * { pointer-events: auto; }
-.qbl-account { position: relative; }
-.qbl-account-name { padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(16, 20, 30, 0.82); color: #fff; font: inherit; cursor: pointer; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.qbl-account-name:hover { background: rgba(30, 40, 62, 0.95); }
-.qbl-account-menu { position: absolute; top: calc(100% + 6px); right: 0; display: grid; gap: 10px; width: 230px; padding: 12px; border-radius: 12px; background: rgba(16, 20, 30, 0.96); border: 1px solid rgba(255, 255, 255, 0.25); }
-.qbl-account-menu[hidden] { display: none; }
-.qbl-account-note { font-size: 0.85rem; opacity: 0.85; }
-.qbl-rewards {
-  display: flex; gap: 10px; align-items: baseline; padding: 6px 12px; border: 0; border-radius: 999px;
-  background: rgba(16, 20, 30, 0.82); color: #fff; font: inherit; cursor: pointer; pointer-events: auto;
-}
-.qbl-rewards:hover { background: rgba(30, 40, 62, 0.95); }
-.qbl-stars { font-weight: 700; color: #ffd24a; }
-.qbl-rank { font-weight: 600; }
-.qbl-xp { font-size: 12px; opacity: 0.8; }
 .qbl-shop { width: min(860px, 94vw); max-height: 86vh; overflow: auto; padding: 16px 20px 20px; border-radius: 14px; background: #1f2430; color: #fff; pointer-events: auto; }
 .qbl-shop-head { display: flex; align-items: center; gap: 14px; }
 .qbl-shop-head h2 { margin: 0; flex: 1; font-size: 22px; }
@@ -181,8 +170,31 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-move-label { font-size: 0.7rem; font-weight: 600; }
 
 /* ---------- the missions page ---------- */
-#gate.home { display: block; overflow-y: auto; text-align: left; white-space: normal; padding: 0; }
-.qbl-home { max-width: 1120px; margin: 0 auto; padding: 28px 24px 56px; }
+/* place-items: the sign-in card's centring; in a block it would size the page to its content (justify-self now applies to blocks). */
+#gate.home { display: block; overflow-y: auto; text-align: left; white-space: normal; padding: 0; place-items: normal; }
+.qbl-home { max-width: 1120px; margin: 0 auto; padding: 0 24px 56px; padding: 0 max(24px, var(--safe-r)) calc(56px + var(--safe-b)) max(24px, var(--safe-l)); }
+/* The bar across the top of the missions page: the brand, the site's places (teachers and admins), the player's menu. */
+.qbl-site { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; margin: 0 -24px 24px; padding: calc(10px + var(--safe-t)) 24px 10px; background: rgba(28, 23, 46, 0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.qbl-site-brand { font-size: 1.25rem; font-weight: 800; letter-spacing: 0.01em; color: #fff; text-decoration: none; }
+.qbl-site-nav { display: flex; gap: 4px; flex: 1; min-width: 0; }
+.qbl-site-link { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; color: rgba(255, 255, 255, 0.85); font-weight: 600; font-size: 0.95rem; text-decoration: none; white-space: nowrap; }
+.qbl-site-link:hover, .qbl-site-link:focus-visible { background: rgba(255, 255, 255, 0.1); color: #fff; outline: none; }
+.qbl-site-link.current { background: var(--qbl-accent); color: #fff; }
+.qbl-site .qbl-me { margin-left: auto; }
+.qbl-site .qbl-me-button { --qbl-tab: 44px; }
+@media (max-width: 720px) {
+  /* A phone: the places get a row of their own, under the brand and the menu. */
+  .qbl-site.staff { flex-wrap: wrap; row-gap: 8px; }
+  .qbl-site-nav { order: 3; flex: 1 1 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .qbl-site-nav::-webkit-scrollbar { display: none; }
+  .qbl-site-link { padding: 7px 12px; font-size: 0.9rem; }
+}
+@media (max-width: 440px) {
+  /* All four places on one row of a phone: words only. */
+  .qbl-site-link { padding: 7px 11px; }
+  .qbl-site-link .qbl-icon { display: none; }
+  .qbl-home-who h1 { font-size: 1.35rem; }
+}
 .qbl-home-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .qbl-home-who { display: flex; align-items: center; gap: 16px; }
 .qbl-home-who h1 { margin: 0; font-size: 1.6rem; }
@@ -225,12 +237,14 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-move-icon .qbl-icon { font-size: 1.4rem; }
 
 /* ---------- the side panel ---------- */
-/* Below the stars and the account, which have the corner; above the chat bar. */
-.qbl-sidebar { position: absolute; top: 64px; right: 12px; bottom: 16px; display: flex; gap: 8px; align-items: flex-start; justify-content: flex-end; max-width: calc(100vw - 24px); z-index: 11; }
+/* A column of buttons down the right, under the player's own button (landscape); a dock along the bottom (upright: see the end). */
+.qbl-sidebar { position: absolute; top: calc(var(--qbl-edge) + var(--safe-t) + var(--qbl-tab) + 14px); right: calc(var(--qbl-edge) + var(--safe-r)); bottom: calc(16px + var(--safe-b)); display: flex; gap: 8px; align-items: flex-start; justify-content: flex-end; max-width: calc(100vw - 24px); z-index: 11; }
 .qbl-sidebar > * { pointer-events: auto; }
-.qbl-sidebar-rail { display: grid; gap: 8px; align-content: start; }
+/* Room around the buttons for their counts; it scrolls when the screen is too short for them all (a phone on its side). */
+.qbl-sidebar-rail { display: grid; gap: 8px; align-content: start; max-height: 100%; overflow-y: auto; padding: 7px 7px 7px 4px; margin: -7px -7px -7px -4px; scrollbar-width: none; }
+.qbl-sidebar-rail::-webkit-scrollbar { display: none; }
 .qbl-sidebar-rail[hidden] { display: none; }
-.qbl-sidebar-tab { position: relative; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border-radius: 14px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(12, 23, 78, 0.88); color: #fff; cursor: pointer; }
+.qbl-sidebar-tab { position: relative; flex: none; width: var(--qbl-tab); height: var(--qbl-tab); display: grid; place-items: center; padding: 0; border-radius: 14px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(12, 23, 78, 0.88); color: #fff; cursor: pointer; }
 .qbl-sidebar-tab[hidden] { display: none; }
 .qbl-sidebar-tab:hover, .qbl-sidebar-tab:focus-visible { border-color: #fff; background: rgba(30, 50, 130, 0.95); outline: none; }
 .qbl-sidebar-tab.current { background: var(--qbl-accent); border-color: #fff; }
@@ -287,7 +301,7 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-messages-log p.qbl-sidebar-empty { background: none; padding: 0; }
 .qbl-messages-log strong { display: block; font-size: 0.72rem; opacity: 0.75; }
 .qbl-messages-form { display: flex; gap: 6px; }
-.qbl-messages-form input, .qbl-glossary-search { flex: 1; min-width: 0; height: 40px; padding: 0 12px; box-sizing: border-box; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.25); color: #fff; font: inherit; }
+.qbl-messages-form input, .qbl-glossary-search { flex: 1; min-width: 0; height: 40px; padding: 0 12px; box-sizing: border-box; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(0, 0, 0, 0.25); color: #fff; font: inherit; font-size: max(16px, 1em); }
 .qbl-messages-form .qbl-button { padding: 0 12px; }
 
 .qbl-glossary { margin: 0; display: grid; gap: 4px; }
@@ -327,12 +341,105 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-profile-badges li { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); text-align: center; font-size: 0.82rem; }
 .qbl-profile-badges img { width: 56px; height: 56px; object-fit: contain; }
 .qbl-profile-badges small { opacity: 0.7; font-size: 0.7rem; }
-.qbl-account-name { display: inline-flex; align-items: center; gap: 6px; }
 .qbl-stars { display: inline-flex; align-items: center; gap: 4px; }
 
-@media (max-width: 560px) {
-  .qbl-sidebar { top: 56px; right: 8px; }
-  .qbl-sidebar-tab { width: 44px; height: 44px; border-radius: 12px; }
-  .qbl-sidebar-panel { width: calc(100vw - 76px); }
-  .qbl-hud { right: 64px; }
+
+/* ---------- the player's own button and menu (top right) ---------- */
+.qbl-corner { position: absolute; top: calc(var(--qbl-edge) + var(--safe-t)); right: calc(var(--qbl-edge) + var(--safe-r)); z-index: 13; }
+.qbl-me { position: relative; pointer-events: auto; }
+.qbl-me-button { position: relative; display: grid; place-items: center; width: var(--qbl-tab); height: var(--qbl-tab); padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.55); background: rgba(12, 23, 78, 0.9); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); cursor: pointer; }
+.qbl-me-button:hover, .qbl-me-button:focus-visible, .qbl-me.open .qbl-me-button { border-color: #fff; outline: none; }
+.qbl-me-button:focus-visible { box-shadow: 0 0 0 3px #7dd3fc; }
+.qbl-me-button > .qbl-face { width: 100%; height: 100%; }
+/* A face: the top of the avatar in a circle. */
+.qbl-face { display: inline-grid; place-items: start center; width: var(--size); height: var(--size); flex: none; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 35%, #4a5a94, #1b2140); }
+.qbl-face.empty { place-items: center; }
+.qbl-face-frame { display: block; width: 118%; margin-top: 4%; aspect-ratio: 2 / 3; background-repeat: no-repeat; background-position: 0 0; }
+img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
+.qbl-me-stars { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px; padding: 0 6px 0 4px; border-radius: 999px; background: #ffd34d; color: #2b2100; font-size: 11px; font-weight: 800; line-height: 17px; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); pointer-events: none; }
+.qbl-me-stars[hidden] { display: none; }
+.qbl-me-stars .qbl-icon.twa { filter: none; }
+.qbl-me-menu { position: absolute; top: calc(100% + 12px); right: 0; display: grid; gap: 8px; width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 100px); max-height: calc(100dvh - 100px - var(--safe-t)); overflow-y: auto; box-sizing: border-box; padding: 10px; border-radius: 16px; background: rgba(14, 19, 44, 0.97); border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); animation: qbl-pop 0.14s ease-out; }
+.qbl-me-menu[hidden] { display: none; }
+@keyframes qbl-pop { from { opacity: 0; transform: translateY(-6px); } }
+.qbl-me-head { display: flex; gap: 12px; align-items: center; padding: 4px 4px 2px; }
+.qbl-me-who { display: grid; min-width: 0; }
+.qbl-me-who strong { font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qbl-me-who small { opacity: 0.7; font-size: 0.8rem; }
+.qbl-me-progress { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); }
+.qbl-me-progress-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
+.qbl-me-rank { display: inline-flex; align-items: center; gap: 6px; }
+.qbl-me-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.qbl-me-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2f8fd6, #7dd3fc); }
+.qbl-me-xp { opacity: 0.75; font-size: 0.76rem; }
+.qbl-me-list { list-style: none; margin: 0; padding: 6px 0 0; display: grid; gap: 2px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.qbl-me-item { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 12px; box-sizing: border-box; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: #fff; font: inherit; font-size: 0.95rem; text-align: left; text-decoration: none; cursor: pointer; }
+.qbl-me-item:hover, .qbl-me-item:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
+.qbl-me-item.current { background: rgba(47, 143, 214, 0.25); cursor: default; }
+.qbl-me-text { display: grid; min-width: 0; }
+.qbl-me-text small { opacity: 0.65; font-size: 0.74rem; }
+
+/* ---------- the chat bar ---------- */
+/* Bottom left, clear of the column of buttons; above the on-screen keyboard while typing on a phone. */
+.qbl-hud { position: absolute; left: calc(var(--qbl-edge) + var(--safe-l)); right: calc(var(--qbl-edge) + var(--safe-r) + var(--qbl-tab) + 12px); bottom: calc(16px + var(--safe-b)); bottom: max(calc(16px + var(--safe-b)), calc(var(--qbl-keyboard) + 8px)); display: flex; align-items: flex-end; z-index: 12; }
+/* Closed: a round chat button. Open (typing, or a click on it): a bar the width of the screen. */
+.qbl-chat { position: relative; display: flex; align-items: center; gap: 4px; width: var(--qbl-tab); max-width: 100%; height: var(--qbl-tab); box-sizing: border-box; border-radius: calc(var(--qbl-tab) / 2); border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(12, 23, 78, 0.88); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); overflow: hidden; pointer-events: auto; transition: width 0.2s ease, border-color 0.2s, background-color 0.2s; }
+.qbl-chat:hover { border-color: rgba(255, 255, 255, 0.7); }
+.qbl-chat.open { width: 100%; border-color: #fff; background: rgba(10, 18, 60, 0.97); }
+.qbl-chat-icon { flex: none; display: grid; place-items: center; width: calc(var(--qbl-tab) - 4px); height: 100%; cursor: pointer; }
+.qbl-chat input { flex: 1; min-width: 0; height: 100%; padding: 0 4px; border: 0; background: transparent; color: #fff; font: inherit; font-size: 16px; outline: none; }
+.qbl-chat input::placeholder { color: rgba(255, 255, 255, 0.55); }
+.qbl-chat:not(.open) input { opacity: 0; }
+.qbl-chat:not(.open) :is(.qbl-chat-left, .qbl-chat-tool, .qbl-chat-send) { display: none; }
+.qbl-chat-left { flex: none; font-size: 0.8rem; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.qbl-chat-left:empty { display: none; }
+.qbl-chat-tool, .qbl-chat-send { flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; cursor: pointer; }
+.qbl-chat-tool:hover, .qbl-chat-tool:focus-visible { background: rgba(255, 255, 255, 0.14); outline: none; }
+.qbl-chat-send { margin-right: 4px; background: var(--qbl-accent); }
+.qbl-chat-send:disabled { opacity: 0.4; cursor: default; }
+.qbl-chat-send:not(:disabled):hover, .qbl-chat-send:focus-visible { background: #4aa5ea; outline: none; }
+/* Something typed and not sent yet. */
+.qbl-chat.draft:not(.open)::after { content: ''; position: absolute; top: 7px; right: 7px; width: 10px; height: 10px; border-radius: 50%; background: #ffd34d; }
+@media (prefers-reduced-motion: reduce) { .qbl-chat, .qbl-me-menu { transition: none; animation: none; } }
+
+/* ---------- small screens ---------- */
+/* A phone on its side: little height, so smaller buttons. */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root { --qbl-tab: 42px; --qbl-edge: 8px; }
+  .qbl-sidebar { gap: 6px; }
+  .qbl-sidebar-rail { gap: 6px; }
+  .qbl-sidebar-tab { border-radius: 12px; }
+  .qbl-sidebar-tab .qbl-icon { font-size: 22px !important; }
+  .qbl-narration-toggle { margin-top: 4px; }
+  .qbl-sidebar-panel { width: min(340px, calc(100vw - 120px)); }
+  .qbl-story { bottom: 10px; min-height: 0; }
 }
+
+/* Upright (a phone or tablet held in portrait): the buttons become a dock along the bottom, and
+   their panels open above it as a sheet. Same query as DOCK_QUERY in Sidebar.ts. */
+@media (orientation: portrait) and (max-width: 1100px) {
+  :root { --qbl-tab: 48px; --qbl-edge: 10px; }
+  /* The dock is solid, so the scene is drawn above it rather than behind it. */
+  #app:has(.qbl-sidebar-rail:not([hidden])) { --qbl-dock: calc(var(--qbl-tab) + 17px + var(--safe-b)); }
+  #game { height: calc(100% - var(--qbl-dock)); }
+  .qbl-sidebar { top: auto; left: 0; right: 0; bottom: 0; flex-direction: column; align-items: stretch; justify-content: flex-end; gap: 0; max-width: none; }
+  .qbl-sidebar-rail { display: flex; justify-content: space-evenly; gap: 2px; max-height: none; margin: 0; padding: 8px calc(6px + var(--safe-r)) calc(8px + var(--safe-b)) calc(6px + var(--safe-l)); overflow-x: auto; overflow-y: hidden; background: rgba(9, 14, 44, 0.97); border-top: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.3); }
+  .qbl-sidebar-tab { border-color: transparent; background: transparent; }
+  .qbl-sidebar-tab:hover, .qbl-sidebar-tab:focus-visible { border-color: rgba(255, 255, 255, 0.6); background: rgba(255, 255, 255, 0.08); }
+  .qbl-sidebar-tab.current { border-color: transparent; background: var(--qbl-accent); }
+  .qbl-sidebar-count { top: -3px; right: -3px; }
+  .qbl-narration-toggle { margin-top: 0; }
+  /* The open panel: a sheet over the bottom of the scene, just above the dock. */
+  .qbl-sidebar-panel { width: auto; max-height: min(52vh, 460px); max-height: min(52dvh, 460px); margin: 0 calc(8px + var(--safe-r)) 8px calc(8px + var(--safe-l)); border-radius: 16px; animation: qbl-sheet 0.18s ease-out; }
+  @keyframes qbl-sheet { from { opacity: 0; transform: translateY(14px); } }
+  .qbl-sidebar-body[data-tab='messages'] { height: min(380px, 44dvh); }
+  /* Author overlays keep clear of the player's button at the top and of the chat and dock at the bottom. */
+  .qbl-overlays { top: calc(var(--qbl-tab) + 22px + var(--safe-t)); right: calc(16px + var(--safe-r)); left: calc(16px + var(--safe-l)); bottom: calc(var(--qbl-dock) + var(--qbl-tab) + 24px); }
+  .qbl-hud { right: calc(var(--qbl-edge) + var(--safe-r)); bottom: max(calc(var(--qbl-dock) + 12px), calc(16px + var(--safe-b)), calc(var(--qbl-keyboard) + 8px)); }
+  /* While a panel is open over the bottom of the scene, the closed chat button would sit on it. */
+  .qbl-ui:has(.qbl-sidebar.open) .qbl-chat:not(.open) { visibility: hidden; }
+  .qbl-story { bottom: calc(var(--qbl-dock) + 14px); }
+  .qbl-story.watching { top: calc(var(--qbl-tab) + 24px + var(--safe-t)); }
+  .qbl-toasts { top: calc(12px + var(--safe-t)); max-width: calc(100vw - 2 * var(--qbl-tab) - 40px); text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) { .qbl-sidebar-panel { animation: none; } }

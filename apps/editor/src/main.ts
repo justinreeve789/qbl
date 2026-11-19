@@ -1,4 +1,7 @@
+import { siteLinks, type SiteLink } from '@qbl/shared';
 import { Api, ApiError, type User } from './api';
+import { config } from './config';
+import { icon } from './icons';
 import { clear, h, toast } from './dom';
 // Twemoji Awesome: the one set every icon in the interface is drawn from (see icons.ts).
 import '../../../packages/shared/assets/twemoji-awesome.css';
@@ -21,7 +24,32 @@ const root = document.getElementById('app')!;
 const saving = h('span', { class: 'saving', 'aria-live': 'polite' });
 const account = h('div', { class: 'account' });
 const view = h('div', { class: 'view' });
-root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QBL Editor'), h('nav', { class: 'top-nav' }, h('a', { href: '#/' }, 'Scenarios'), h('a', { href: '#/classes' }, 'Classes')), saving, h('span', { class: 'spacer' }), account), view);
+const nav = h('nav', { class: 'top-nav', 'aria-label': 'Site' });
+root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QBL Editor'), nav, saving, h('span', { class: 'spacer' }), account), view);
+
+/**
+ * The site's places, as on the missions page and in the game's menu: Missions (the game),
+ * Editor (the scenarios), Classes and Docs. Inside the editor the first is in the game and the
+ * last two are the editor's own pages, reached by their fragment.
+ */
+function placeHref(link: SiteLink): string {
+  if (link.key === 'missions') return `${config.gameUrl}missions`;
+  if (link.key === 'editor') return '#/';
+  if (link.key === 'classes') return '#/classes';
+  return link.href;
+}
+
+function drawNav() {
+  const here: SiteLink['key'] = window.location.hash === '#/classes' ? 'classes' : 'editor';
+  const links = user && (user.role === 'teacher' || user.role === 'admin') ? siteLinks(user.role) : [];
+  clear(nav, ...links.map((link) => h('a', {
+    href: placeHref(link),
+    title: link.hint,
+    'data-place': link.key,
+    class: link.key === here ? 'current' : null,
+    'aria-current': link.key === here ? 'page' : null,
+  }, icon(link.icon), link.label)));
+}
 
 let hideSaved = 0;
 api.onBusy = (busy) => {
@@ -68,6 +96,7 @@ function drawAccount() {
 async function route() {
   const turn = ++routing;
   drawAccount();
+  drawNav();
   if (!user) {
     return show(loginView(api, (signedIn) => {
       user = signedIn;

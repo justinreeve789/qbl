@@ -1,4 +1,6 @@
-import type { User } from '@qbl/shared';
+import { siteLinks, type User } from '@qbl/shared';
+import { AccountMenu } from './ui/AccountMenu';
+import { icon } from './ui/icons';
 
 /** A scenario the player can play, as `GET /api/missions` lists it. */
 export interface Mission {
@@ -116,7 +118,7 @@ export interface HomeOptions {
 export function whoNotice(role: string): string | null {
   if (role === 'guest') return 'You are playing as a guest. Sign in with your own account to see the missions your teacher assigned you.';
   if (role === 'teacher' || role === 'admin') {
-    return 'You are signed in as a teacher. Students see the missions you assign when they sign in with their own accounts; the game and the editor share one sign-in in each browser. To watch a class, use "Look in" on Classes in the editor.';
+    return 'You are signed in as a teacher. Students see the missions you assign when they sign in with their own accounts; the game and the editor share one sign-in in each browser. To watch a class, use "Look in" on Classes (in the menu at the top).';
   }
   return null;
 }
@@ -125,6 +127,41 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   const { user, missions, avatars } = options;
   let avatarId = options.avatarId;
   const page = el('div', 'qbl-home');
+
+  // The bar across the top: the site's places for teachers and admins (Missions, Editor, Classes,
+  // Docs), and the player's own menu. On a phone the places sit in a row of their own under it.
+  const links = siteLinks(user.role);
+  const bar = el('header', 'qbl-site');
+  const brand = el('a', 'qbl-site-brand', 'QuestLab');
+  brand.href = '/';
+  const nav = el('nav', 'qbl-site-nav');
+  nav.setAttribute('aria-label', 'Site');
+  if (links.length > 1) {
+    for (const link of links) {
+      const a = el('a', `qbl-site-link${link.key === 'missions' ? ' current' : ''}`);
+      a.href = link.href;
+      a.title = link.hint;
+      a.dataset.place = link.key;
+      if (link.key === 'missions') a.setAttribute('aria-current', 'page');
+      a.append(icon(link.icon, { size: 18 }), el('span', undefined, link.label));
+      nav.appendChild(a);
+    }
+  }
+  const avatarOf = (id: number | null) => {
+    const mine = avatars.find((a) => a.media_id === id) ?? avatars[0];
+    return mine ? { url: mine.image_url, sheet: mine.sheet ?? null } : null;
+  };
+  const menu = new AccountMenu({
+    name: user.name,
+    subtitle: user.role === 'guest' ? 'Playing as a guest' : user.role === 'admin' ? 'Administrator' : user.role === 'teacher' ? 'Teacher' : undefined,
+    avatar: avatarOf(avatarId),
+    links,
+    current: 'missions',
+    signOut: { label: user.role === 'guest' ? 'Sign in with an account' : 'Sign out', run: () => options.onSignOut() },
+  });
+  bar.append(brand, nav, menu.root);
+  if (links.length > 1) bar.classList.add('staff');
+  page.appendChild(bar);
 
   const header = el('header', 'qbl-home-header');
   const who = el('div', 'qbl-home-who');
@@ -142,10 +179,7 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   const greeting = el('div');
   greeting.append(el('h1', undefined, `Welcome, ${user.name}`), el('p', undefined, 'Choose a mission to begin.'));
   who.append(face, greeting);
-  const out = el('button', 'qbl-button', user.role === 'guest' ? 'Sign in' : 'Sign out');
-  out.type = 'button';
-  out.addEventListener('click', () => options.onSignOut());
-  header.append(who, out);
+  header.append(who);
   page.appendChild(header);
 
   // Missions a teacher assigns reach a student's own account. Say so where the page would
@@ -166,16 +200,24 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
           options.onAvatar(a.media_id);
           picker.hidden = true;
           drawFace();
+          menu.setAvatar(avatarOf(avatarId));
         });
         return b;
       }),
     );
   };
   picker.append(el('h2', undefined, 'Choose your character'), el('p', undefined, 'You keep the same character in every mission.'), grid);
-  face.addEventListener('click', () => {
+  const togglePicker = () => {
     picker.hidden = !picker.hidden;
     if (!picker.hidden) drawPicker();
-  });
+  };
+  face.addEventListener('click', togglePicker);
+  if (avatars.length) {
+    menu.setActions([{ key: 'character', label: 'Change your character', icon: 'account', run: () => {
+      if (picker.hidden) togglePicker();
+      picker.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } }]);
+  }
   page.appendChild(picker);
 
   const section = (title: string, list: Mission[]) => {

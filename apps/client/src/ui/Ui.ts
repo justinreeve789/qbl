@@ -1,10 +1,11 @@
 import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type ChatMode, type ObjectiveStatus } from '@qbl/shared';
 import { sanitizeHtml } from './sanitize';
 import { placeBubble, type BubbleAnchor } from './bubble';
-import { icon } from './icons';
+import { AccountMenu, type MenuStats } from './AccountMenu';
+import { emojiIcon, icon } from './icons';
 import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
-import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
+import type { AccountActions, AccountView, ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -51,6 +52,24 @@ export class Ui implements UiPort {
     this.banner.hidden = true;
     this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.toasts, this.banner);
     parent.appendChild(this.root);
+    this.followKeyboard();
+  }
+
+  /**
+   * On a phone the on-screen keyboard covers the bottom of the page without resizing it (iOS
+   * Safari, and Chrome on Android by default). `--qbl-keyboard` is how much of the page it
+   * covers, so the chat bar can sit on top of the keyboard instead of behind it.
+   */
+  private followKeyboard() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const covered = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      this.root.style.setProperty('--qbl-keyboard', `${covered}px`);
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
   }
 
   /** True while something modal is open or a text field has focus; the game ignores movement input meanwhile. */
@@ -317,31 +336,110 @@ export class Ui implements UiPort {
 
   // ---------------------------------------------------------------- chat
 
-  /** Build the chat controls for a scenario's chat mode. */
+  private chatCleanup: (() => void) | null = null;
+
+  /**
+   * The chat bar, for a scenario where players talk freely: a round button in the corner that
+   * opens into a bar across the bottom of the screen while the player types, and closes again
+   * when they send or leave it. Enter opens it from anywhere in the game; Escape puts it away
+   * (a draft is kept, and the button shows a dot while there is one).
+   */
   chat(mode: ChatMode, send: { text(t: string): void; emote(e: string): void }) {
+    this.chatCleanup?.();
+    this.chatCleanup = null;
     this.hud.replaceChildren();
     // Emotes are in the side panel, with the moves.
     this.sidebar.setEmotes(mode === 'off' ? [] : EMOTES, send.emote);
-    if (mode === 'off') return;
+    if (mode !== 'free') return;
 
-    if (mode === 'free') {
-      const form = el('form', 'qbl-chat');
-      const input = el('input');
-      input.type = 'text';
-      input.maxLength = CHAT_MAX_LENGTH;
-      input.placeholder = 'Say something…';
-      input.autocomplete = 'off';
-      input.setAttribute('aria-label', 'Chat message');
-      form.appendChild(input);
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const text = input.value.trim();
-        if (text) send.text(text);
-        input.value = '';
-        input.blur();
+    const form = el('form', 'qbl-chat');
+    form.setAttribute('aria-label', 'Chat');
+    const mark = el('span', 'qbl-chat-icon');
+    mark.append(icon('chat', { size: 24 }));
+    const input = el('input');
+    input.type = 'text';
+    input.name = 'chat';
+    input.maxLength = CHAT_MAX_LENGTH;
+    input.placeholder = 'Say something…';
+    input.autocomplete = 'off';
+    input.enterKeyHint = 'send';
+    input.setAttribute('aria-label', 'Chat message. Press Enter to send, Escape to close.');
+    input.title = 'Chat (Enter)';
+    const left = el('span', 'qbl-chat-left');
+    left.setAttribute('aria-live', 'polite');
+    const emotes = el('button', 'qbl-chat-tool');
+    emotes.type = 'button';
+    emotes.setAttribute('aria-label', 'Emotes');
+    emotes.title = 'Emotes';
+    emotes.append(emojiIcon('😀', { size: 22 }));
+    const go = el('button', 'qbl-chat-send');
+    go.type = 'submit';
+    go.setAttribute('aria-label', 'Send');
+    go.title = 'Send';
+    go.append(icon('send', { size: 20 }));
+    form.append(mark, input, left, emotes, go);
+    this.hud.appendChild(form);
+
+    const refresh = () => {
+      const value = input.value;
+      const remaining = CHAT_MAX_LENGTH - value.length;
+      left.textContent = remaining <= 20 ? String(remaining) : '';
+      go.disabled = value.trim() === '';
+      form.classList.toggle('draft', value.trim() !== '');
+    };
+    const open = () => {
+      form.classList.add('open');
+      if (document.activeElement !== input) input.focus({ preventScroll: true });
+    };
+    const close = () => {
+      form.classList.remove('open');
+      if (document.activeElement === input) input.blur();
+    };
+    input.addEventListener('focus', () => form.classList.add('open'));
+    input.addEventListener('blur', () => {
+      // Clicking the bar's own buttons keeps it open (they keep the focus; see below).
+      window.setTimeout(() => {
+        if (!form.contains(document.activeElement)) form.classList.remove('open');
       });
-      this.hud.appendChild(form);
-    }
+    });
+    input.addEventListener('input', refresh);
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    });
+    // The bar's buttons must not take the focus from the text: on a phone that would close the keyboard.
+    for (const b of [go, emotes]) b.addEventListener('pointerdown', (e) => e.preventDefault());
+    mark.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (form.classList.contains('open')) close();
+      else open();
+    });
+    emotes.addEventListener('click', () => {
+      close();
+      this.sidebar.open('moves', true);
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (text) send.text(text);
+      input.value = '';
+      refresh();
+      // Back to walking about.
+      close();
+    });
+    // Enter, with nothing else taking the keyboard, starts typing.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.repeat || e.altKey || e.ctrlKey || e.metaKey || this.capturesInput) return;
+      const active = document.activeElement;
+      if (active && active !== document.body && !(active instanceof HTMLCanvasElement)) return;
+      e.preventDefault();
+      open();
+    };
+    window.addEventListener('keydown', onKey);
+    refresh();
+    this.chatCleanup = () => window.removeEventListener('keydown', onKey);
   }
 
   // --------------------------------------------------------------- status
@@ -531,53 +629,48 @@ export class Ui implements UiPort {
     return { update: (v) => open && draw(v), close };
   }
 
-  private rewardsNode: HTMLElement | null = null;
-  private accountNode: HTMLElement | null = null;
-  /** Top right: the stars and rank, then who is playing. Kept clear of the top-left buttons (leave a vehicle, take off a hat). */
+  /** Top right: the player's own button and menu. The top left belongs to the buttons for leaving a vehicle or taking something off. */
   private corner = el('div', 'qbl-corner');
+  private me: AccountMenu | null = null;
+  private meActions: AccountActions = {};
+  private stats: MenuStats | null = null;
+  private onShop: (() => void) | null = null;
 
-  account(who: { name: string; guest: boolean } | null, onSignOut: () => void) {
-    this.accountNode?.remove();
-    this.accountNode = null;
+  account(who: AccountView | null, on: AccountActions) {
+    this.me?.root.remove();
+    this.me = null;
+    this.meActions = on;
     if (!who) return;
-    const node = el('div', 'qbl-account');
-    const toggle = el('button', 'qbl-account-name');
-    toggle.append(icon('account', { size: 18 }), el('span', '', who.name));
-    toggle.type = 'button';
-    toggle.setAttribute('aria-haspopup', 'true');
-    toggle.setAttribute('aria-expanded', 'false');
-    const menu = el('div', 'qbl-account-menu');
-    menu.hidden = true;
-    const out = el('button', 'qbl-button', who.guest ? 'Sign in with an account' : 'Sign out');
-    out.type = 'button';
-    out.addEventListener('click', onSignOut);
-    menu.append(el('span', 'qbl-account-note', who.guest ? 'You are playing as a guest. Stars and progress are kept for accounts.' : `Signed in as ${who.name}`), out);
-    toggle.addEventListener('click', () => {
-      menu.hidden = !menu.hidden;
-      toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    this.me = new AccountMenu({
+      name: who.name,
+      subtitle: who.subtitle ?? (who.guest ? 'Playing as a guest' : undefined),
+      avatar: who.avatar,
+      links: who.links,
+      onNavigate: on.leave ? (href) => on.leave!(href) : undefined,
+      signOut: on.signOut ? { label: who.guest ? 'Sign in with an account' : 'Sign out', run: on.signOut } : null,
     });
-    node.append(toggle, menu);
-    this.corner.append(node);
-    this.accountNode = node;
+    this.me.setStats(this.stats);
+    this.menuActions();
+    this.corner.append(this.me.root);
   }
 
   rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void) {
-    this.rewardsNode?.remove();
-    this.rewardsNode = null;
     // The wardrobe is also reached from the inventory in the side panel.
     this.sidebar.setWardrobe(state ? onOpen : null);
-    if (!state) return;
-    const node = el('button', 'qbl-rewards');
-    node.type = 'button';
-    node.title = 'Open the marketplace and your wardrobe';
-    const toNext = state.next_rank_xp == null ? 'top rank' : `${state.next_rank_xp - state.xp} XP to next rank`;
-    const stars = el('span', 'qbl-stars');
-    stars.append(icon('star', { size: 18 }), el('span', '', String(state.stars)));
-    node.append(stars, el('span', 'qbl-rank', state.rank), el('span', 'qbl-xp', `${state.xp} XP · ${toNext}`));
-    node.setAttribute('aria-label', `${state.stars} stars. Rank: ${state.rank}. ${state.xp} XP, ${toNext}. Open the marketplace.`);
-    node.addEventListener('click', onOpen);
-    this.corner.prepend(node);
-    this.rewardsNode = node;
+    this.stats = state ? { stars: state.stars, xp: state.xp, rank: state.rank, next_rank_xp: state.next_rank_xp } : null;
+    this.onShop = state ? onOpen : null;
+    this.me?.setStats(this.stats);
+    this.menuActions();
+  }
+
+  private menuActions() {
+    if (!this.me) return;
+    const actions: Parameters<AccountMenu['setActions']>[0] = [];
+    const profile = this.meActions.profile;
+    if (profile) actions.push({ key: 'profile', label: 'My profile and badges', icon: 'profile', run: profile });
+    const shop = this.onShop;
+    if (shop) actions.push({ key: 'shop', label: 'Wardrobe and marketplace', icon: 'shop', run: shop });
+    this.me.setActions(actions);
   }
 
   shop(view: () => ShopView, on: { buy(id: number): Promise<void>; equip(id: number, on: boolean): Promise<void> }): ActionHandle {

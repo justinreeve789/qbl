@@ -127,7 +127,7 @@ test('removing a student and deleting the assignment take the mission away again
 });
 
 test('a scenario can be made private in its settings', async () => {
-  await page.click('.top-nav >> text=Scenarios');
+  await page.click('.top-nav [data-place=editor]');
   await page.click('[data-scenario="1"] >> text=Edit');
   await page.click('.tabs >> text=Settings');
   await page.locator('[data-field=visibility] select').selectOption('private');

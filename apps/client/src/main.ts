@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { isStaff, normalizeScenario, resolveMediaUrl, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
@@ -276,16 +276,33 @@ async function start() {
       window.location.assign(`/${encodeURIComponent(String(key))}?${query}`);
     };
   }
-  // Signing out leaves the game and comes back to the sign-in screen. Not offered in a preview:
-  // that window shares its sign-in with the editor it was opened from.
-  if (config.preview == null) {
-    ui.account({ name: user.name, guest: user.role === 'guest' }, () => {
+  // The player's own button, top right: their profile, the wardrobe, the site's other places
+  // (for a teacher: Editor, Classes, Docs), and signing out. Leaving saves first. A preview
+  // shares its sign-in with the editor it was opened from, so it offers no signing out or places.
+  const preview = config.preview != null;
+  const leave = (href: string) => {
+    ctx.saveProgress(true);
+    connection.leave();
+    window.location.assign(href);
+  };
+  const face = avatarId != null ? (scenario.assets ?? []).find((m) => m.id === avatarId) : undefined;
+  ui.account({
+    name: user.name,
+    guest: user.role === 'guest',
+    subtitle: user.role === 'guest' ? 'Playing as a guest' : isStaff(user.role) ? (user.role === 'admin' ? 'Administrator' : 'Teacher') : undefined,
+    avatar: face ? { url: resolveMediaUrl(scenario, face), sheet: face.sheet ? { columns: face.sheet.columns, rows: face.sheet.rows } : null } : null,
+    links: preview ? [] : siteLinks(user.role),
+  }, {
+    leave,
+    profile: () => ctx.showProfile?.(connection.sessionId),
+    // Signing out leaves the game and comes back to the sign-in screen.
+    signOut: preview ? null : () => {
       ctx.saveProgress(true);
       connection.leave();
       api.signOut();
       window.location.reload();
-    });
-  }
+    },
+  });
   // Session-long features: connection status, chat, the mission checklist, saving progress.
   for (const feature of gameFeatures()) feature.start(ctx);
 

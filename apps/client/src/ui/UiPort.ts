@@ -1,5 +1,5 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, Badge, ChatMode, ObjectiveStatus } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, ChatMode, ObjectiveStatus, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
 
 export type { SpeakOptions };
@@ -43,12 +43,18 @@ export interface UiPort {
    * `watching`: it comes from another player's event, so it never takes this player's input.
    */
   portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle;
-  /** The stars, XP and rank display, with a button that opens the marketplace. Null hides it (guests). */
+  /**
+   * Stars, XP and rank, shown in the account menu (and the stars on its button), and the way into
+   * the marketplace. Null: the player has none (guests).
+   */
   rewards(state: { stars: number; xp: number; rank: string; next_rank_xp: number | null } | null, onOpen: () => void): void;
   /** What the player can do from their screen: one button per move. An empty list hides the row. */
   moves(list: Array<{ animation: string; label: string; icon: string }>, onDo: (animation: string) => void): void;
-  /** Who is playing, top right, with the way to sign out (or, for a guest, to sign in with an account). Null hides it. */
-  account(who: { name: string; guest: boolean } | null, onSignOut: () => void): void;
+  /**
+   * The player's own button, top right: their face, opening a menu with their profile, the
+   * wardrobe, the site's places and signing out (for a guest, signing in). Null removes it.
+   */
+  account(who: AccountView | null, on: AccountActions): void;
   /**
    * The marketplace and wardrobe. `view` is asked again after every purchase or change, so the
    * window always shows the current stars and what is owned and worn.
@@ -88,6 +94,26 @@ export interface UiPort {
   toast(message: string, ms?: number): void;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null): void;
+}
+
+/** Who is playing, for the account menu. */
+export interface AccountView {
+  name: string;
+  guest: boolean;
+  /** Under the name: "Teacher", "Playing as a guest". */
+  subtitle?: string;
+  avatar?: { url: string | null; sheet?: { columns: number; rows: number } | null } | null;
+  /** The site's places the menu links to (see `siteLinks`). */
+  links: SiteLink[];
+}
+
+export interface AccountActions {
+  /** Sign out, or for a guest sign in with an account. Absent: not offered (a preview). */
+  signOut?: (() => void) | null;
+  /** Leave the game for another page of the site (the game saves first). */
+  leave?(href: string): void;
+  /** Open the player's own profile card. */
+  profile?(): void;
 }
 
 /** One line of the players list. `id` is the player's session id. */

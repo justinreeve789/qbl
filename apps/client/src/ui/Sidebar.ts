@@ -15,6 +15,13 @@ const TABS: Array<{ key: SidebarTab; label: string; icon: IconName }> = [
 ];
 
 const STORE = 'qbl.sidebar';
+/**
+ * When the rail is a dock along the bottom of the screen instead of a column on the right: a
+ * phone or tablet held upright. ui.css has the same query for the dock's layout.
+ */
+export const DOCK_QUERY = '(orientation: portrait) and (max-width: 1100px)';
+const media = () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(DOCK_QUERY) : null);
+const docked = () => media()?.matches === true;
 /** The thread for what is said out loud in the scene. Every other thread is one other player, by session id. */
 export const SCENE_THREAD = 'scene';
 const MAX_LINES = 200;
@@ -72,7 +79,6 @@ export class Sidebar {
   constructor() {
     this.root.setAttribute('aria-label', 'Game menu');
     this.rail.setAttribute('role', 'toolbar');
-    this.rail.setAttribute('aria-orientation', 'vertical');
     this.panel.id = 'qbl-sidebar-panel';
     this.panel.hidden = true;
     const close = el('button', 'qbl-sidebar-close');
@@ -100,6 +106,10 @@ export class Sidebar {
       this.rail.append(button);
     }
     this.root.append(this.panel, this.rail);
+    // Upright, the rail runs along the bottom: tell assistive technology which way it goes.
+    const orient = () => this.rail.setAttribute('aria-orientation', docked() ? 'horizontal' : 'vertical');
+    orient();
+    media()?.addEventListener?.('change', orient);
     this.root.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' || this.current == null) return;
       e.stopPropagation();
@@ -149,7 +159,8 @@ export class Sidebar {
     this.objectives = list;
     this.offer('mission', list.length > 0);
     // The checklist is in view from the start, as it always was, until the player puts it away.
-    if (!this.chosen && this.current == null && list.length > 0) this.current = 'mission';
+    // Not on an upright phone, where it would cover half the scene: the dock's count says it is there.
+    if (!this.chosen && this.current == null && list.length > 0 && !docked()) this.current = 'mission';
     const left = list.filter((o) => !o.complete && !o.optional).length;
     this.count('mission', left, `${left} to do`);
     this.draw('mission');
