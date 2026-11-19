@@ -4,7 +4,7 @@ namespace App\Qbl;
 
 /**
  * Turns the rows of the QBL tables into the scenario JSON document the game
- * plays (the structure in docs/docs).
+ * plays (the structure in docs/src/content/docs/developers).
  *
  * It is deliberately plain PHP with no framework calls: it takes arrays and
  * returns an array. Values may arrive straight from a database driver, so

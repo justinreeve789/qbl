@@ -99,7 +99,7 @@ Seven containers:
 | `db` | MariaDB |
 | `colyseus` | The multiplayer game server |
 | `editor` | The scenario editor: a static web application served by its own small Apache. The image holds no code: `app` builds the editor from `apps/editor` (mounted) into a volume this container serves |
-| `docs` | The documentation in `docs/`, built with MkDocs into a static site |
+| `docs` | The documentation in `docs/`, built with Astro Starlight into a static site |
 | `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files, `scenarios/assets` (mounted, as `/scenario-assets`) and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
 
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
@@ -265,7 +265,7 @@ npm run build
 
 ## How a mission is put together
 
-A **scenario** is a whole mission a group of students goes on together. It contains **scenes**. Each scene has a background, and **events** made of **actions** that run in order: start events when the scene loads, end events just before leaving, hotspots, and indirect events run by other actions. Each scenario is represented by a JSON file that loads when the player launches. See `docs/docs` for the complete specification.
+A **scenario** is a whole mission a group of students goes on together. It contains **scenes**. Each scene has a background, and **events** made of **actions** that run in order: start events when the scene loads, end events just before leaving, hotspots, and indirect events run by other actions. Each scenario is represented by a JSON file that loads when the player launches. See `docs/` for the documentation: the editor guide, and the complete specification under Developers (`docs/src/content/docs/developers`).
 
 - **Moving between scenes** is a `jump` action. Scene edges are walk-in hotspots that span one axis (a null `position_x` or `position_y`) and jump when an avatar reaches them.
 - **Background music** is an `audio` action with `repeat` and `persist` in a scene's start events. It carries on across scenes that use the same track and changes when a scene starts a different one.
@@ -274,7 +274,7 @@ A **scenario** is a whole mission a group of students goes on together. It conta
 - **Variables are a player's own or shared.** A player's own variable has a separate value for each player (how many animals this student has greeted). A shared one has a single value for everyone playing together, so one student changing it changes it for all (the boulders have fallen; the path is closed). The variable's `scope` decides, once, where it is defined.
 - **Dialogue** is a speech bubble over the speaker, or a story box across the screen with the speaker's close-up portrait, for the characters that carry the story. Characters and avatars can each be given a portrait.
 
-`docs/docs/extensions.md` lists the fields added for the walk-around runtime (walkable areas, spawn points, item and character placement, shared variables, chat mode).
+`docs/src/content/docs/developers/extensions.md` lists the fields added for the walk-around runtime (walkable areas, spawn points, item and character placement, shared variables, chat mode).
 
 ## Generating missions with AI
 
@@ -286,7 +286,7 @@ docker compose exec app php artisan qbl:art-style qbl-adventure --bootstrap     
 docker compose exec app php artisan qbl:generate "Why does the orchard have flowers but no fruit?" --grade=3 --framework=NGSS --owner=teacher@qbl.test
 ```
 
-Set `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` (or `OPENAI_API_KEY`) in `.env`; every other setting (models, API addresses, art style, limits) is there too, listed in `.env.example`. `--images=placeholder` tries the whole pipeline with no image service. See `docs/docs/generation.md`.
+Set `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` (or `OPENAI_API_KEY`) in `.env`; every other setting (models, API addresses, art style, limits) is there too, listed in `.env.example`. `--images=placeholder` tries the whole pipeline with no image service. See `docs/src/content/docs/developers/generation.md`.
 
 ## The demo mission
 
@@ -318,7 +318,7 @@ All of this is data: scenes, hotspots, events, actions, variables and the checkl
 - **Five built-in moves** (jump, spin, crouch, wave, dance) work on any picture, sheet or not, by moving the picture itself. Frames drawn under the same name are used instead.
 - A player's animation goes through the game server, so everyone in the scene sees it.
 
-See "Animations" in `docs/docs/extensions.md`.
+See "Animations" in `docs/src/content/docs/developers/extensions.md`.
 
 ## Stars, XP, ranks and the marketplace
 
@@ -328,7 +328,7 @@ See "Animations" in `docs/docs/extensions.md`.
 - The **marketplace** sells things to wear (head, body, back, hand), pets that follow the avatar, ways for the avatar to move, and abilities. Players open it from their stars in the top-left corner of the game, or through a `shop` action, and choose what to have on under "My things". Other players see what they wear.
 - Every scenario sells the platform's catalogue (`apps/api/database/seeders/data/shop.php`; there is no screen for editing it yet). Authors add **mission-specific items** on the editor's Shop page.
 - **Abilities** are flags: while a player has one equipped, the variable `QBLAbility_<key>` is 1, and a scenario decides what that unlocks. They do not change walking speed or reveal distances.
-- The backend grants awards, checking each against the published scenario, and keeps a ledger of every change. See "Stars, XP and the marketplace" in `docs/docs/extensions.md`.
+- The backend grants awards, checking each against the published scenario, and keeps a ledger of every change. See "Stars, XP and the marketplace" in `docs/src/content/docs/developers/extensions.md`.
 
 ## The editor
 

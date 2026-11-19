@@ -1,0 +1,13 @@
+/* A little warmth for the QBL docs: the game's yellow as the accent. */
+:root {
+  --sl-color-accent-low: #3d3000;
+  --sl-color-accent: #b38600;
+  --sl-color-accent-high: #ffd45a;
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: #fff1c2;
+  --sl-color-accent: #946f00;
+  --sl-color-accent-high: #5c4400;
+}
+/* Settings and other things named in the interface. */
+.sl-markdown-content kbd { white-space: nowrap; }

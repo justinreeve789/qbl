@@ -10,7 +10,7 @@ use App\Http\Controllers\ProgressController;
 use App\Http\Middleware\ServiceKey;
 use Illuminate\Support\Facades\Route;
 
-// Contract: docs/docs/api.md
+// Contract: docs/src/content/docs/developers/api.md
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/auth/guest', [AuthController::class, 'guest'])->middleware('throttle:10,1');

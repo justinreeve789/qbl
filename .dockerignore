@@ -2,7 +2,7 @@
 **/dist
 .data
 .git
-docs/site
+docs/.astro
 apps/api/vendor
 # Caches written by whichever artisan ran last (host or container); the image makes its own.
 apps/api/bootstrap/cache/*.php

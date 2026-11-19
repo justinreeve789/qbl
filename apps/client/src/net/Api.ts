@@ -28,7 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-/** The handful of QBL API calls the player needs. See docs/docs/api.md. */
+/** The handful of QBL API calls the player needs. See docs/src/content/docs/developers/api.md. */
 export class Api {
   token: string | null = null;
 

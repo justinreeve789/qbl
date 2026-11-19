@@ -7,7 +7,7 @@
 #   db        MariaDB
 #   colyseus  multiplayer game server
 #   editor    the scenario editor (a static web application)
-#   docs      the documentation (a static site built with MkDocs)
+#   docs      the documentation (a static site built with Astro Starlight)
 #
 #   docker compose up --build        ->  http://localhost:8080           the marketing page (development: plain HTTP, no certificate)
 #                                        http://localhost:8080/missions  the game: sign in, then the missions page

@@ -3,7 +3,7 @@
 /**
  * The platform's avatars: the characters players choose from, the same in every scenario.
  * `scale` sizes the picture in a scene. A sprite sheet also says how it is cut into frames and
- * which frames make each animation (see docs/docs/extensions.md, "Animations").
+ * which frames make each animation (see docs/src/content/docs/developers/extensions.md, "Animations").
  */
 $avatars = [];
 foreach (['Nova', 'Orion', 'Vega', 'Atlas', 'Lyra', 'Rigel', 'Juno', 'Cosmo', 'Halley'] as $i => $name) {

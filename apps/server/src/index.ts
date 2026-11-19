@@ -31,7 +31,7 @@ function cors(req: Request, res: Response, next: NextFunction) {
 /**
  * With the file backend this server stands in for the parts of the QBL API
  * the client calls, so the game runs with no other service. The routes and
- * payloads match docs/docs/api.md.
+ * payloads match docs/src/content/docs/developers/api.md.
  */
 function mountFileApi(app: Express) {
   const bearer = (req: Request) => (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '') || null;

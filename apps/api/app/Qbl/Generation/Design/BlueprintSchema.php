@@ -8,7 +8,7 @@ namespace App\Qbl\Generation\Design;
  * A blueprint is deliberately higher-level than the scenario JSON. The model decides the story,
  * the places, the people and things, what students do and in what order; it never writes event ids,
  * action sequences, variable names or coordinates. MissionBuilder turns a blueprint into QBL rows
- * with the patterns from docs/docs/extensions.md, so whatever the model writes, the result is a
+ * with the patterns from docs/src/content/docs/developers/extensions.md, so whatever the model writes, the result is a
  * scenario the validator accepts and the runtime plays.
  */
 final class BlueprintSchema

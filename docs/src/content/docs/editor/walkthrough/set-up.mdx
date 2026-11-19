@@ -1,0 +1,133 @@
+---
+title: "1. Set up the scenario"
+description: Create The Cloudy Pond, a two-scene water-quality mission, and define its media, variables and characters.
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+In this walkthrough you will build **The Cloudy Pond**, a small mission for grades 3 to 5. The school pond has turned brown. A teacher character asks the student to find out why, the student walks to the pond, and a question about the muddy pipe teaches two words: *sediment* and *runoff*.
+
+It is small on purpose, but it uses almost everything a bigger mission does:
+
+| Part | Where it is used |
+| ---- | ---------------- |
+| Two scenes joined by exits | Schoolyard and pond |
+| A character with a conversation | Ms. Okafor, in the schoolyard |
+| A gate that needs a conversation first | The schoolyard's exit, with conditions on its actions |
+| A question with right and wrong answers | The pipe at the pond |
+| Variables, objectives, a glossary, stars, XP and a badge | Throughout |
+| Testing, publishing and assigning | The last page |
+
+**What you need:** a teacher or admin account, and four pictures. You can use your own, or the placeholder pictures that come with the [finished mission](/docs/editor/walkthrough/publish/#the-finished-mission): unzip `cloudy-pond.zip` and take the four files from its `assets` folder. The backgrounds are 1600 × 900 pixels.
+
+| File | What it is |
+| ---- | ---------- |
+| `schoolyard.png` | Background for the first scene |
+| `pond.png` | Background for the second scene |
+| `okafor.png` | Ms. Okafor, standing, on a transparent background |
+| `okafor-portrait.png` | A close-up of Ms. Okafor for conversations |
+
+## Create the scenario
+
+<Steps>
+
+1. Open the editor. On the **Scenarios** page, press **New scenario**.
+
+2. Type the title `The Cloudy Pond`. Under *how to start*, choose **Start empty**, then press **Create**.
+
+   You land on the scenario's **Scenes** page with one blank scene. (Starting aboard the starship would also work, but you would then have eight ship rooms to ignore.)
+
+3. Open the **Settings** tab and fill in:
+
+   | Field | Value |
+   | ----- | ----- |
+   | **Subtitle** | `A water-quality mystery` |
+   | **Description** | `The school pond has turned brown. Find out why, using what you can see.` |
+   | **Chat** | *Emotes only* |
+   | **Who can play it** | *Only students it is assigned to* |
+
+   Leave **Save each player's progress between visits** and **Players must sign in** on.
+
+   <Aside type="tip">
+   Keeping the mission private while you build means no student stumbles on it half-finished. You will assign it to your class at the end. Settings like this apply immediately, with no publishing.
+   </Aside>
+
+</Steps>
+
+## Add the media
+
+<Steps>
+
+1. Open the **Media** tab and press **Upload files**. Choose all four pictures.
+
+2. Each picture appears as a card with a preview. You do not need to file them by hand: the backgrounds are filed under **Backgrounds** once a scene uses them, and the character under **NPCs** once a character does.
+
+</Steps>
+
+## Define the variables
+
+A variable is how the mission remembers something. This one needs two, both yes/no flags. A value of `0` means *not yet* and `1` means *done*.
+
+<Steps>
+
+1. Open the **Variables** tab and press **New variable**. Set:
+
+   | Field | Value |
+   | ----- | ----- |
+   | **Name** | `mission_started` |
+   | **Starting value** | `0` |
+   | **Whose it is** | *Each player has their own* |
+   | **Kept between visits** | on |
+
+2. Press **New variable** again for the second:
+
+   | Field | Value |
+   | ----- | ----- |
+   | **Name** | `found_source` |
+   | **Starting value** | `0` |
+   | **Whose it is** | *Each player has their own* |
+   | **Kept between visits** | on |
+
+</Steps>
+
+<Aside type="caution">
+Name them now and keep the names. Renaming a variable later does not update the conditions and actions that already use it.
+</Aside>
+
+## Define the character
+
+<Steps>
+
+1. Open the **Characters** tab and press **New character**.
+
+2. Set **Name** to `Ms. Okafor`, **Image** to `okafor.png`, and **Close-up portrait** to `okafor-portrait.png`. Set **Image scale** to `0.7` so she stands a believable height beside an avatar.
+
+</Steps>
+
+## Define the glossary and objectives
+
+These can be done now or at the end. Doing them now means the actions you build later can pick them from lists.
+
+<Steps>
+
+1. Open the **Glossary** tab. Press **New word** twice:
+
+   | Word | What it means | From the start |
+   | ---- | ------------- | -------------- |
+   | `Sediment` | `Tiny bits of soil and sand carried along by water.` | ticked |
+   | `Runoff` | `Rain that flows over the ground instead of soaking in, carrying soil and litter with it.` | not ticked |
+
+   Runoff's card will say *No action gives this word yet*. That is correct for now: you will add the action that gives it in part 3.
+
+2. Open the **Objectives** tab. Press **New objective** twice:
+
+   | Text | Listed only when | Ticked off when |
+   | ---- | ---------------- | --------------- |
+   | `Talk to Ms. Okafor in the schoolyard` | *(leave empty: always listed)* | `mission_started` `=` `1` |
+   | `Find where the muddy water comes from` | `mission_started` `=` `1` | `found_source` `=` `1` |
+
+   The second objective stays hidden until the first is done, so the checklist unfolds as the student plays.
+
+</Steps>
+
+You now have everything the scenes will use. Continue with [the schoolyard](/docs/editor/walkthrough/schoolyard/).
