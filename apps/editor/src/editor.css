@@ -343,8 +343,10 @@ details.action.drop-after { box-shadow: 0 4px 0 0 var(--warn); }
 
 /* ---------- classes ---------- */
 .top-nav { display: flex; gap: 4px; margin-left: 18px; }
-.top-nav a { padding: 4px 10px; border-radius: 6px; color: #e6e9ee; text-decoration: none; font-size: 13px; }
-.top-nav a:hover, .top-nav a:focus-visible { background: rgba(255, 255, 255, 0.12); }
+.top-nav a { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; color: #e6e9ee; text-decoration: none; font-size: 13px; white-space: nowrap; }
+.top-nav a:hover, .top-nav a:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
+.top-nav a.current { background: var(--accent-solid); color: var(--accent-text); }
+@media (max-width: 760px) { .top-nav { margin-left: 4px; overflow-x: auto; } .top-nav a { padding: 4px 8px; } }
 .classes { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr); gap: 20px; align-items: start; }
 @media (max-width: 900px) { .classes { grid-template-columns: 1fr; } }
 .classes h2 { margin: 0 0 6px; font-size: 16px; }
@@ -366,9 +368,11 @@ button.link.danger { color: #ff9a9a; }
 
 /* ---------- help icons: explanations are behind a "?" rather than on the page ---------- */
 .help { position: relative; display: inline-flex; margin-left: 6px; vertical-align: middle; }
-.help-button { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid #8fa3c7; background: transparent; color: #c6d4ee; font: 700 11px/1 system-ui, sans-serif; cursor: pointer; }
+/* Centred with grid: the general button rule is a left-aligned inline-flex, which pushed the mark against the circle's edge. */
+.help-button { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; padding: 0; gap: 0; border-radius: 50%; border: 1.5px solid #8fa3c7; background: transparent; color: #c6d4ee; line-height: 0; cursor: pointer; }
+.help-button svg { display: block; pointer-events: none; }
 .help-button:hover, .help-button:focus-visible, .help-button[aria-expanded='true'] { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; outline: none; }
-.help-text { position: absolute; z-index: 40; top: 24px; left: -8px; width: 290px; padding: 10px 12px; border-radius: 8px; background: #0f1524; border: 1px solid #5d7099; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); color: #eef2f8; font: 400 13px/1.45 system-ui, sans-serif; text-transform: none; letter-spacing: 0; white-space: normal; cursor: default; }
+.help-text { position: absolute; z-index: 40; top: 24px; left: -8px; width: min(290px, calc(100vw - 32px)); padding: 10px 12px; border-radius: 8px; background: #0f1524; border: 1px solid #5d7099; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); color: #eef2f8; font: 400 13px/1.45 system-ui, sans-serif; text-transform: none; letter-spacing: 0; white-space: normal; cursor: default; }
 .help-text[hidden] { display: none; }
 .help.left .help-text { left: auto; right: -8px; }
 h1 .help, h2 .help { margin-left: 8px; }

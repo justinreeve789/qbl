@@ -19,6 +19,8 @@ export const ICONS = {
   // the editor's pages
   scenes: '🗺️', media: '🖼️', variables: '🔢', items: '🎒', characters: '🧑‍🚀', objectives: '✅', settings: '⚙️', publish: '🚀', reports: '📊', groups: '🗂️',
   play: '▶️', shadow: '🌑',
+  // the site's places (site.ts) and the account menu
+  editor: '✏️', classes: '🏫', docs: '📚', 'sign-out': '🚪', chat: '💬',
 } as const;
 
 export type IconName = keyof typeof ICONS;

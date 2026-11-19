@@ -91,6 +91,34 @@ export function fold(key: string, title: Child, openByDefault: boolean, ...child
   return node;
 }
 
+/**
+ * The help button's question mark, drawn as a small SVG rather than a "?" character: a typed
+ * glyph sat wherever the font and the button's flex layout put it (off to one side, clipped by
+ * the circle), which read as a broken icon. The circle is the button's own border.
+ */
+function helpGlyph(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('width', '12');
+  svg.setAttribute('height', '12');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const hook = document.createElementNS(ns, 'path');
+  hook.setAttribute('d', 'M5.6 5.9a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2.9-1.2 1.7v.5');
+  hook.setAttribute('fill', 'none');
+  hook.setAttribute('stroke', 'currentColor');
+  hook.setAttribute('stroke-width', '1.9');
+  hook.setAttribute('stroke-linecap', 'round');
+  const dot = document.createElementNS(ns, 'circle');
+  dot.setAttribute('cx', '8');
+  dot.setAttribute('cy', '13.1');
+  dot.setAttribute('r', '1.15');
+  dot.setAttribute('fill', 'currentColor');
+  svg.append(hook, dot);
+  return svg;
+}
+
 let openHelp: HTMLElement | null = null;
 const closeHelp = () => {
   if (!openHelp) return;
@@ -109,7 +137,8 @@ document.addEventListener('keydown', (e) => e.key === 'Escape' && closeHelp());
 export function help(text: string | null | undefined): HTMLElement | null {
   if (!text) return null;
   const note = h('span', { class: 'help-text', role: 'note', hidden: true }, text);
-  const button = h('button', { type: 'button', class: 'help-button', 'aria-label': 'Help', 'aria-expanded': 'false', title: text }, '?');
+  const button = h('button', { type: 'button', class: 'help-button', 'aria-label': 'Help', 'aria-expanded': 'false', title: text });
+  button.append(helpGlyph());
   const wrap = h('span', { class: 'help' }, button, note);
   button.addEventListener('click', (e) => {
     // Inside a label or a folding heading, the click is for the help and nothing else.
