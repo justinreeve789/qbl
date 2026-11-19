@@ -19,6 +19,7 @@ export type AreaList = 'walkable_areas' | 'blocked_areas';
 export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | AreaList;
 
 export interface Point { x: number; y: number }
+export type Side = 'left' | 'right' | 'top' | 'bottom';
 export type Bag = Record<string, unknown>;
 
 export function sameSelection(a: Selection, b: Selection): boolean {
@@ -110,6 +111,22 @@ export class SceneModel {
       if (shown) return { width: shown.x, height: shown.y, known: true };
     }
     return { width: 1920, height: 1080, known: false };
+  }
+
+  /**
+   * Where a walk-in exit along one edge goes, as event columns. Left and right exits are a band
+   * down the whole edge; top and bottom exits sit on the edge of where avatars can walk, not of
+   * the picture. Used by the scene editor's "Exit along the … edge" and by the scene map.
+   */
+  edgeHotspot(side: Side, size: { width: number; height: number }): { shortname: string; activate_by_trigger: false; position_x: number | null; position_y: number | null; radius: number } {
+    const ys = this.layout<Point[]>('walkable_areas').flat().map((p) => p.y);
+    const where = {
+      left: { position_x: 0, position_y: null, radius: 120 },
+      right: { position_x: size.width, position_y: null, radius: 120 },
+      top: { position_x: null, position_y: ys.length ? Math.min(...ys) : 0, radius: 30 },
+      bottom: { position_x: null, position_y: ys.length ? Math.max(...ys) : size.height, radius: 30 },
+    }[side];
+    return { shortname: `edge-${side}`, activate_by_trigger: false, ...where };
   }
 
   /** The size a layer is drawn at, if it can be worked out yet. */

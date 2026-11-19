@@ -5,7 +5,7 @@ import { select } from '../../fields';
 import type { Store } from '../../store';
 import { SceneCanvas } from './canvas';
 import { inspector } from './inspector';
-import { SceneModel, type Point, type Selection } from './model';
+import { SceneModel, type Point, type Selection, type Side } from './model';
 import { outline, type Addable } from './outline';
 
 const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
@@ -31,13 +31,22 @@ const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
 
 const ZOOMS: ReadonlyArray<readonly [string, string]> = [['0', 'Fit'], ['0.25', '25%'], ['0.5', '50%'], ['0.75', '75%'], ['1', '100%'], ['1.5', '150%'], ['2', '200%']];
 
+/** What the next scene editor opened for a scene starts with selected (set by the scene map). */
+let opening: { sceneId: number; selection: Selection } | null = null;
+
+/** Make the scene editor, when it next opens this scene, start with something selected. */
+export function selectOnOpen(sceneId: number, selection: Selection) {
+  opening = { sceneId, selection };
+}
+
 /**
  * The scene editor: a list of what is in the scene, the scene itself, and a form for whatever
  * is selected. Returns the element and a function that stops it listening to the store.
  */
 export function sceneEditor(store: Store, sceneId: number, leave: () => void): { element: HTMLElement; dispose(): void } {
   const model = new SceneModel(store, sceneId);
-  let selection: Selection = { kind: 'scene' };
+  let selection: Selection = opening?.sceneId === sceneId ? opening.selection : { kind: 'scene' };
+  opening = null;
   let refreshers: Array<() => void> = [];
 
   const outlineHost = h('div', { class: 'outline-host' });
@@ -85,17 +94,8 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
     return row?.id;
   }
 
-  async function addEdge(side: 'left' | 'right' | 'top' | 'bottom') {
-    const { width, height } = canvas.size();
-    // Top and bottom exits sit on the edge of where avatars can walk, not of the picture.
-    const ys = model.layout<Point[]>('walkable_areas').flat().map((p) => p.y);
-    const where = {
-      left: { position_x: 0, position_y: null, radius: 120 },
-      right: { position_x: width, position_y: null, radius: 120 },
-      top: { position_x: null, position_y: ys.length ? Math.min(...ys) : 0, radius: 30 },
-      bottom: { position_x: null, position_y: ys.length ? Math.max(...ys) : height, radius: 30 },
-    }[side];
-    const id = await addEvent('hotspot', { shortname: `edge-${side}`, activate_by_trigger: false, ...where });
+  async function addEdge(side: Side) {
+    const id = await addEvent('hotspot', model.edgeHotspot(side, canvas.size()));
     if (id == null) return;
     const target = store.rows('scenes').find((s) => s.id !== sceneId);
     await store.add('actions', { event_id: id, type: 'jump', params: target ? { scene_id: target.id } : {} });
@@ -125,7 +125,7 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
       case 'edge-right':
       case 'edge-top':
       case 'edge-bottom':
-        return void addEdge(what.slice(5) as 'left' | 'right' | 'top' | 'bottom');
+        return void addEdge(what.slice(5) as Side);
       case 'spawn': {
         const names = new Set(model.layout('spawn_points').map((p) => p.name));
         let name = names.has('default') ? 'spawn' : 'default';

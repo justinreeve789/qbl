@@ -10,7 +10,18 @@ It is plain TypeScript and DOM, with no UI framework: a few hundred lines of hel
 
 - **Scenarios**: list the ones you may edit, create one. A new scenario gets its permanent
   16-letter code and a first scene.
-- **Scenes**: create, order, delete, choose the start scene.
+- **Scenes**: create, order, delete, choose the start scene. The page shows scenes as **Cards**
+  or as a **Map** (a switch at the top; each browser remembers its choice). On the map every scene
+  is a box and every jump an arrow, coloured by how players take it (walk in, click, an event or
+  an infobox button) and dashed when a condition guards it. Boxes are dragged to lay the mission
+  out (their places are kept in each scene's `params.editor_map`, so they travel with the
+  scenario). Dragging a box's **+** onto another box links them: a walk-in exit on the edge that
+  faces the other scene on the map, arriving at the spawn point nearest the opposite edge, and
+  (with "Link both ways") the way back. Dropping the **+** on empty space makes a new scene there.
+  Clicking an arrow shows its exits, to change where they go or where players arrive, remove them,
+  or open them in the scene editor; the pencil on a box opens the scene. The map points out
+  scenes players cannot reach from the start and exits that go nowhere. "Arrange for me" lays
+  the map out from the start scene, each scene beside the edge that leads to it.
 - **Scene editor**: the scene drawn to scale with everything in it. Background and foreground
   layers (stretched, or repeated with drift and parallax), walkable and blocked areas, spawn
   points, placed items and characters, hotspots and their labels, and the positions of
@@ -60,6 +71,9 @@ Every change is saved as it is made. There is no save button.
           outline.ts     the list of what is in the scene
           inspector.ts   the form for the selection
           model.ts       reading and writing a scene's JSON columns
+        sceneMap/
+          graph.ts       which scenes lead where, the map's layout, making and removing links
+          sceneMap.ts    the Scenes page's map: boxes, arrows, dragging, the side panel
 
 ## Adding things
 
@@ -103,3 +117,5 @@ The tests drive the real editor in a headless browser against the dev API: a tea
 two-scene scenario by clicking, typing and dragging, publishes it, and the published JSON is then
 played by the game's headless harness. A second file covers layers, areas, spawn points,
 placements, objectives, settings and deleting, checking the generated JSON after each.
+`scene-map.test.ts` builds three scenes on the Scenes page's map by dragging (set `QBL_SHOTS` to
+a folder to keep screenshots).

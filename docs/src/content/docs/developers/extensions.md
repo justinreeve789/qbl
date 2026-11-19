@@ -74,6 +74,7 @@ indirect_events | array | | Events that only run via a run event action, an info
 
 shadow_spots | array | | Patches of shade. See [Shadow spots](#shadow-spots).
 team_only | bool | the group's | Show a player only their own team in this scene. See [Teams in a scene](#teams-in-a-scene).
+params.editor_map | `{x, y}` | | Where the scene's box sits on the editor's scene map (Scenes page › Map), in map pixels. The editor writes it; the game ignores it. A scene without one is placed by the map itself.
 
 ### What stands in front of what
 
