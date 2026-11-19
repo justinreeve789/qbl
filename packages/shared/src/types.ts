@@ -4,7 +4,7 @@
  * Fields documented in the original QBL JSON docs keep their names and
  * meaning. Fields marked [ext] are extensions added for the walk-around
  * multiplayer runtime; they are all optional and documented in
- * docs/docs/extensions.md.
+ * docs/src/content/docs/developers/extensions.md.
  */
 
 export type Id = number;

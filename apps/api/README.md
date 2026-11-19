@@ -24,9 +24,9 @@ What QBL adds to stock Laravel:
 | `database/seeders/data/shop.php` | The platform's marketplace catalogue. `ShopSeeder` adds each item once, by id, so prices changed in the database are kept |
 | `app/Http/Controllers/EditorController.php` | Hands `/api/editor/*` requests to `EditorApi` |
 | `app/Models/*` | `Scenario`, `ScenarioSession`, `ScenarioInstance`, `User` with a role |
-| `routes/api.php` and `app/Http/*` | The endpoints in `docs/docs/api.md`, and the service-key guard for `/api/internal` |
+| `routes/api.php` and `app/Http/*` | The endpoints in `docs/src/content/docs/developers/api.md`, and the service-key guard for `/api/internal` |
 | `app/Console/Commands/*` | `qbl:seed [--reset] [--password=]`, `qbl:publish [code-or-shortname] [--print]`, `qbl:user <email> <name> [--role=]`, `qbl:update-role <email> [--role=]`, `qbl:generate`, `qbl:art-style`, `qbl:standards` |
-| `app/Qbl/Generation/*` | The AI mission generator: curriculum alignment, the blueprint and its builder, the art pipeline. Plain PHP like the rest of `app/Qbl`. See `docs/docs/generation.md` |
+| `app/Qbl/Generation/*` | The AI mission generator: curriculum alignment, the blueprint and its builder, the art pipeline. Plain PHP like the rest of `app/Qbl`. See `docs/src/content/docs/developers/generation.md` |
 | `config/qbl_generation.php` | Keys and models for the generator, the art style, judging, limits |
 | `resources/art-styles/*` | Art styles: each a `style.php` bible and its approved `anchors/` |
 | `app/Http/Controllers/GoogleAuthController.php` | Sign in with Google (Laravel Socialite) |
