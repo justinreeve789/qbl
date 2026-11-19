@@ -22,7 +22,7 @@ State the server owns and every client sees (Colyseus schema, `apps/server/src/r
 * `items["team|itemId"]`: unique items only, one set per team. `scene_id`, `x`, `y`, `holder` (a session id, or empty).
 * `vars["team|name"]`: shared variables, JSON-encoded, one set per team.
 
-`players[...].team` is the instance a player is in. A room holds every instance of its party; each is its own `World` over its own part of `items` and `vars` (keys are prefixed with the team's key), and clients read their own team's part. Clients draw the players whose `scene_id` matches their own, and where the scene is limited to teams (`team_only`, on the scene or its group) only those with the same `team`.
+`players[...].team` is the instance a player is in. A room holds every instance of its party; each is its own `World` over its own part of `items` and `vars` (keys are prefixed with the team's key), and clients read their own team's part. Clients draw the players whose `scene_id` matches their own, and where the scene is limited to teams (`team_only`, on the scene or its group) only those with the same `team`, (`canSee`). `players[...].team_name` is the team's name ("Comets"), empty for an assignment's or the public instance. Chat, emotes and scene-audience events go to the same players (`World.audience`). `JoinOptions.scene_id` starts a teacher or admin in that scene instead of their saved one (how a teacher switching team arrives where the team is); it is ignored for anyone else.
 
 ## Client to server
 

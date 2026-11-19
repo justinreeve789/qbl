@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { normalizeScenario, resolveMediaUrl, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { isStaff, normalizeScenario, resolveMediaUrl, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
@@ -242,7 +242,15 @@ async function start() {
         token: api.token ?? undefined,
         name: user.name,
         avatar_media_id: avatarId,
+        // A teacher switching team arrives where the team is (the server ignores this for anyone else).
+        scene_id: config.preview == null ? (config.startScene ?? undefined) : undefined,
       });
+  // That was for arriving only: a reload should go back to wherever the teacher is by then.
+  if (config.startScene != null && config.preview == null) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('scene');
+    window.history.replaceState(null, '', url);
+  }
 
   const ui = new Ui(app);
   const ctx = new GameContext(scenario, user, connection, ui, { debug: config.debug });
@@ -255,6 +263,19 @@ async function start() {
   if (config.preview != null) ctx.rewards.pretend(500);
   // Other players' profiles come from the API, which a preview and the standalone game server do not have.
   if (!config.offline) ctx.fetchProfile = (userId) => api.profile(userId);
+  // A teacher follows one team of an assignment at a time, as a member of its game, and can
+  // switch: they leave this game and join the other team's, in the scene where that team is.
+  if (!config.offline && config.preview == null && isStaff(user.role)) {
+    const here = scenario.instance?.group ?? config.group;
+    ctx.fetchTeams = () => api.teamsToFollow(here);
+    ctx.followTeam = (group, sceneId) => {
+      ctx.saveProgress(true);
+      connection.leave();
+      const query = new URLSearchParams({ group });
+      if (sceneId != null) query.set('scene', String(sceneId));
+      window.location.assign(`/${encodeURIComponent(String(key))}?${query}`);
+    };
+  }
   // Signing out leaves the game and comes back to the sign-in screen. Not offered in a preview:
   // that window shares its sign-in with the editor it was opened from.
   if (config.preview == null) {

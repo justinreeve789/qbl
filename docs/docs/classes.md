@@ -16,8 +16,9 @@ The editor has two areas, in the bar at the top: **Scenarios** and **Classes**.
 1. **Add your students** by the email address they sign in with. A student has to have signed in once before they can be added. A student can be in several teachers' lists.
 2. **Assign a mission**: choose a published scenario, the students it is for, and optionally a due date and a short note. Both are shown on the student's mission card; a due date that has passed is marked.
 3. **Teams** (optional): add teams and put students into them, or use "Share students out evenly". Each team plays in **its own copy of the world**: the team walks around together and shares what is shared (a boulder one of them knocked down stays down for the whole team, and only for that team). Other teams appear only in the scenes the scenario opens to everyone, such as a meeting room; everywhere else a team is on its own (see [Teams in a scene](extensions.md#teams-in-a-scene)). Without teams, everyone the mission was assigned to shares one copy. Students left in no team share the assignment's own copy.
-4. **Look in** opens a team's copy of the mission as yourself.
-5. **Report** shows how the students are doing; see [Reports](#reports).
+4. **Look in** opens a team's copy of the mission as yourself. You **follow one team at a time**: you are in that team's game, as one of them, so you see what the team sees (each team's world can differ: what has been picked up, which hotspots and events are active) and the team sees you; what you do there counts in their game. To follow another team, open the **Team you are following** tab (🛡️) at the side of the game and choose it: you join that team's game in the scene where most of its players are.
+5. **On the missions page**, a teacher (or a guest) is told why no assigned missions are listed: assigned missions reach the student's own account, and the game and the editor share one sign-in in each browser, so check a student's view in another browser or a private window.
+6. **Report** shows how the students are doing; see [Reports](#reports).
 
 An assignment can be changed at any time. Teams keep their copy of the world, and their progress, when they are renamed or when students move between them; a student who moves starts in the new team's world with a fresh save there.
 

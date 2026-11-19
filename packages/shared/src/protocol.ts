@@ -24,6 +24,11 @@ export interface JoinOptions {
   party?: string;
   /** API bearer token. */
   token?: string;
+  /**
+   * Start in this scene instead of the saved one. Honoured for teachers and admins only: it is
+   * how a teacher switching to another team arrives where that team is.
+   */
+  scene_id?: number;
   /** Display name for guests when the scenario does not require login. */
   name?: string;
   /** Media id of the chosen avatar. */

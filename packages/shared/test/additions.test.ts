@@ -136,6 +136,34 @@ test('teams meet where a scene allows it and are alone where it does not', () =>
   assert.equal(canSee(r1, { ...b1, scene_id: 3 }, false), false);
 });
 
+test('a teacher follows one team: a member of its game, seen by it, and arriving where it is', () => {
+  const { state, clock, red, blue } = room();
+  red.teamName = 'Red';
+  red.addPlayer('r1', user('r1'), null);
+  blue.addPlayer('b1', user('b1'), null);
+  for (const [w, id] of [[red, 'r1'], [blue, 'b1']] as const) assert.ok(w.changeScene(id, { scene_id: 2 }));
+  assert.equal(state.players.get('r1')!.team_name, 'Red');
+  assert.equal(state.players.get('b1')!.team_name, '');
+
+  // The teacher joins Red's game and asks to arrive in the lab, where Red is.
+  clock.now += 1000;
+  const session = red.addPlayer('teach', { id: 'teach', name: 'Ms T', role: 'teacher' }, { scene_id: 1 } as any, undefined, 2);
+  assert.equal(session.scene_id, 2, 'the scene asked for wins over the save');
+  const [r1, b1, teacher] = [state.players.get('r1')!, state.players.get('b1')!, state.players.get('teach')!];
+  assert.equal(teacher.team, 't1');
+  // In a scene limited to teams the teacher is one of Red: sees Red, is seen by Red, not by Blue.
+  assert.equal(canSee(teacher, r1, true), true);
+  assert.equal(canSee(r1, teacher, true), true);
+  assert.equal(canSee(teacher, b1, true), false);
+  assert.equal(canSee(b1, teacher, true), false);
+  assert.deepEqual(red.audience('teach'), ['r1']);
+  assert.deepEqual(red.audience('r1'), ['teach']);
+  assert.deepEqual(blue.audience('b1'), []);
+  // An unknown scene is ignored: the save (or the start) is used.
+  const other = blue.addPlayer('t2', { id: 't2', name: 'Mr U', role: 'teacher' }, null, undefined, 999);
+  assert.equal(other.scene_id, 1);
+});
+
 test('read-aloud words: where they are, which one a voice has reached, and an even pace', () => {
   const text = 'Welcome aboard, cadet. Ready?';
   const words = speechWords(text);

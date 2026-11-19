@@ -1,6 +1,6 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
-  C2S, CloseCodes, normalizeScenario, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
+  C2S, CloseCodes, isStaff, normalizeScenario, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
   type ActivityEntry, type ChatBroadcast, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
   type MessageEntry, type MoveMessage, type NoticeMessage, type ProgressMessage, type Scenario, type SceneMessage, type ShowBroadcast, type ShowMessage,
   type SnapMessage, type TrackMessage, type VariableMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
@@ -212,11 +212,15 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     const scenario = this.scenario;
     const world = await this.instance(group);
     if (team_name) this.teamNames.set(group, team_name);
+    // Its players carry the team's name, so a teacher looking in can tell the teams apart.
+    world.teamName = this.teamNames.get(group) ?? '';
     const saved = scenario.enable_save_session !== false
       ? await services.backend.loadSession(scenario.id, user.id, group).catch(() => null)
       : null;
     this.teamOf.set(client.sessionId, group);
-    const session = world.addPlayer(client.sessionId, user, saved, Number(options?.avatar_media_id) || undefined);
+    // A teacher switching to another team asks to arrive in the scene where that team is.
+    const startScene = isStaff(user.role) ? Number(options?.scene_id) || undefined : undefined;
+    const session = world.addPlayer(client.sessionId, user, saved, Number(options?.avatar_media_id) || undefined, startScene);
     const welcome: WelcomeMessage = {
       session_id: client.sessionId,
       session,

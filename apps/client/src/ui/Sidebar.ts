@@ -1,14 +1,15 @@
 import { CHAT_MAX_LENGTH, type IconName, type ObjectiveStatus } from '@qbl/shared';
 import { emojiIcon, icon } from './icons';
-import type { ChatLine, GlossaryRow, PlayerRow } from './UiPort';
+import type { ChatLine, GlossaryRow, PlayerRow, TeamRow } from './UiPort';
 
-export type SidebarTab = 'mission' | 'bag' | 'moves' | 'players' | 'messages' | 'glossary';
+export type SidebarTab = 'mission' | 'bag' | 'moves' | 'players' | 'teams' | 'messages' | 'glossary';
 
 const TABS: Array<{ key: SidebarTab; label: string; icon: IconName }> = [
   { key: 'mission', label: 'Mission', icon: 'mission' },
   { key: 'bag', label: 'Inventory', icon: 'bag' },
   { key: 'moves', label: 'Moves and emotes', icon: 'moves' },
   { key: 'players', label: 'Players', icon: 'players' },
+  { key: 'teams', label: 'Team you are following', icon: 'team' },
   { key: 'messages', label: 'Messages', icon: 'messages' },
   { key: 'glossary', label: 'Glossary', icon: 'glossary' },
 ];
@@ -57,6 +58,8 @@ export class Sidebar {
   private emotes: string[] = [];
   private onEmote: (emoji: string) => void = () => {};
   private playerRows: PlayerRow[] = [];
+  private teamRows: TeamRow[] = [];
+  private onFollow: (group: string) => void = () => {};
   private onPlayer: { profile(id: string): void; message?(id: string): void } = { profile() {} };
   private messaging: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;
   private threads = new Map<string, Thread>();
@@ -190,6 +193,17 @@ export class Sidebar {
     this.draw('players');
   }
 
+  /**
+   * For a teacher: the teams of the assignment, to follow one. The teacher plays in the followed
+   * team's game; choosing another moves them into that team's. Null: not offered.
+   */
+  setTeams(list: TeamRow[] | null, onFollow: (group: string) => void) {
+    this.teamRows = list ?? [];
+    this.onFollow = onFollow;
+    this.offer('teams', list != null);
+    this.draw('teams');
+  }
+
   setMessaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) {
     this.messaging = o;
     this.offer('messages', o != null && (o.scene || o.private));
@@ -296,6 +310,8 @@ export class Sidebar {
         return this.movesAndEmotes();
       case 'players':
         return [this.players()];
+      case 'teams':
+        return this.teams();
       case 'messages':
         return this.messages();
       case 'glossary':
@@ -401,6 +417,30 @@ export class Sidebar {
       list.append(li);
     }
     return list;
+  }
+
+  private teams(): HTMLElement[] {
+    const current = this.teamRows.find((t) => t.current);
+    const intro = el('p', 'qbl-sidebar-note', current
+      ? `You are following ${current.name}: you are in their game, you see what they see, and they see you. Choose another team to follow it; you join its game where most of its players are.`
+      : 'Choose a team to follow: you join its game, where most of its players are.');
+    const list = el('ul', 'qbl-teams');
+    for (const t of this.teamRows) {
+      const li = el('li', t.current ? 'current' : '');
+      const pick = el('button', 'qbl-team');
+      pick.type = 'button';
+      pick.dataset.team = t.group;
+      pick.disabled = t.current;
+      const what = el('span', 'qbl-team-text');
+      const online = t.online ? `${t.online} playing${t.where ? ` · most in ${t.where}` : ''}` : 'Nobody playing now';
+      what.append(el('strong', '', t.name), el('small', '', online));
+      pick.append(icon('team', { size: 18 }), what, el('span', 'qbl-team-go', t.current ? 'Following' : 'Follow'));
+      pick.setAttribute('aria-label', t.current ? `Following ${t.name}` : `Follow ${t.name}`);
+      pick.addEventListener('click', () => this.onFollow(t.group));
+      li.append(pick);
+      list.append(li);
+    }
+    return [intro, list];
   }
 
   private messages(): HTMLElement[] {

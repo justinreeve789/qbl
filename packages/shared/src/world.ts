@@ -31,6 +31,8 @@ export interface PlayerRec {
    * teams can be in one room; scenes limited to a team show a player only those with the same value.
    */
   team?: string;
+  /** What the player's team is called ("Comets"), or empty where the instance has no name. */
+  team_name?: string;
   /** True while an avatar action has hidden this player. Cleared on every scene change. */
   hidden: boolean;
   /** Equipped shop item ids, comma-separated. Drawn on the avatar by every client. */
@@ -92,6 +94,9 @@ export class World {
    * `team` names the instance this world is: several can run side by side in one room, each over
    * its own shared variables and items (see `scopedMap`) and the room's one list of players.
    */
+  /** What this instance's team is called, when it is a named team. Copied onto its players. */
+  teamName = '';
+
   constructor(readonly scenario: Scenario, private deps: WorldDeps, instance: InstanceData | null = null, readonly team = '') {
     this.index = new ScenarioIndex(scenario);
     const { state } = deps;
@@ -135,10 +140,12 @@ export class World {
   }
 
   /** Add a player and return the save data they start from. */
-  addPlayer(sessionId: string, user: User, saved: Session | null, avatarId?: Id): Session {
+  addPlayer(sessionId: string, user: User, saved: Session | null, avatarId?: Id, startSceneId?: Id): Session {
     const { state } = this.deps;
     const useSave = this.scenario.enable_save_session !== false ? saved : null;
-    const scene = (useSave?.scene_id != null && this.index.scene(useSave.scene_id)) || this.index.startScene();
+    // A scene asked for at the door (a teacher joining a team where its players are) wins over the save.
+    const asked = startSceneId != null ? this.index.scene(startSceneId) : undefined;
+    const scene = asked || (useSave?.scene_id != null && this.index.scene(useSave.scene_id)) || this.index.startScene();
     const wanted =
       useSave && scene.id === useSave.scene_id && useSave.position_x != null && useSave.position_y != null
         ? { x: useSave.position_x, y: useSave.position_y }
@@ -162,6 +169,7 @@ export class World {
     p.attachments = attachments.join(',');
     p.connected = true;
     p.team = this.team;
+    p.team_name = this.teamName;
     p.hidden = false;
     p.anim = '';
     p.look = cleanLook(user.look);
@@ -267,6 +275,7 @@ export class World {
   /**
    * The other players who can see this one: those in the same scene, and, where the scene is
    * limited to teams, in the same team. They are who a chat message or a shown event reaches.
+   * A teacher is in one team's game at a time (the one they follow), so this holds for them too.
    */
   audience(sessionId: string): string[] {
     const p = this.deps.state.players.get(sessionId);
@@ -275,7 +284,7 @@ export class World {
     const teamOnly = sceneTeamOnly(this.scenario, scene);
     const others: string[] = [];
     this.deps.state.players.forEach((other, id) => {
-      if (id !== sessionId && canSee(p, other, teamOnly)) others.push(id);
+      if (id !== sessionId && canSee(other, p, teamOnly)) others.push(id);
     });
     return others;
   }
@@ -467,9 +476,19 @@ function blocksForEveryone(item: Item): boolean {
   return item.blocking === true && !(item.conditions && item.conditions.length > 0);
 }
 
-/** Whether two players are shown to each other: same scene, and the same team where the scene asks for it. */
-export function canSee(a: Pick<PlayerRec, 'scene_id' | 'team'>, b: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
-  return a.scene_id === b.scene_id && (!teamOnly || (a.team ?? '') === (b.team ?? ''));
+/** Teachers and admins. A teacher follows one team at a time, and can switch to another. */
+export function isStaff(role: string | undefined): boolean {
+  return role === 'teacher' || role === 'admin';
+}
+
+/**
+ * Whether `viewer` is shown `subject`: they are in the same scene and, where the scene is
+ * limited to teams, in the same team. The same for everyone: each team's scene can hold
+ * different items, hotspots and events, so seeing another team's players there would show
+ * them in a world that is not theirs. A teacher sees the team they follow, as a member of it.
+ */
+export function canSee(viewer: Pick<PlayerRec, 'scene_id' | 'team'>, subject: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
+  return viewer.scene_id === subject.scene_id && (!teamOnly || (viewer.team ?? '') === (subject.team ?? ''));
 }
 
 const SCOPE_SEPARATOR = '|';

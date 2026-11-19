@@ -25,7 +25,8 @@ export function playerRows(ctx: GameContext): PlayerRow[] {
     rows.push({
       id, name: p.name, me: mine, teammate,
       // Only this player's own team has a name here; other teams are simply "another team".
-      team: teammate ? ctx.team.name : 'Another team',
+      // A teacher sees every team's name.
+      team: teammate ? ctx.team.name : ctx.staff ? (p.team_name || 'No team') : 'Another team',
       here: !mine && ctx.sees(p),
       where: mine ? undefined : sceneName(ctx, p.scene_id),
       connected: p.connected,

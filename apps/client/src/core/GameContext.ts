@@ -1,11 +1,14 @@
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
-  canSee, escapeHtml, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
+  canSee, escapeHtml, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
   type GlossaryEntry, type Id, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
 } from '@qbl/shared';
 import type { AwardAction } from '@qbl/shared';
 import type { GameConnection } from '../net/Connection';
+
+/** A team a teacher can follow: its instance key (`t7`, or `a12` for students in no team) and name. */
+export interface TeamChoice { group: string; name: string }
 import type { UiPort } from '../ui/UiPort';
 
 export interface GameOptions {
@@ -85,6 +88,20 @@ export class GameContext {
     const scene = me ? this.index.scene(me.scene_id) : undefined;
     return !!me && !!scene && canSee(me, other, sceneTeamOnly(this.scenario, scene));
   }
+
+  /** A teacher or admin: they follow one team at a time and can switch to another (see TeamsFeature). */
+  get staff(): boolean {
+    return isStaff(this.connection.me?.role);
+  }
+
+  /**
+   * Set at start-up when there is an API to ask: the teams a teacher can follow in this game
+   * (their assignment's teams). Null: none to offer.
+   */
+  fetchTeams: (() => Promise<TeamChoice[]>) | null = null;
+
+  /** Set at start-up: leave this game and join the same scenario as a member of another team. */
+  followTeam: ((group: string, sceneId?: Id) => void) | null = null;
 
   /** Set by the players feature: open the profile of the player with this session id. */
   showProfile: ((sessionId: string) => void) | null = null;

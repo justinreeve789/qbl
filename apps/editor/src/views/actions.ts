@@ -76,13 +76,6 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
       else void store.patch('actions', id, { params: withValue(params(current()), key, value, field) }, field.structural === true);
     };
 
-    const move = (by: number) => {
-      const order = [...actions];
-      const [moved] = order.splice(index, 1);
-      order.splice(index + by, 0, moved!);
-      reorder(order);
-    };
-
     const body = h(
       'div',
       { class: 'card-body' },
@@ -110,8 +103,6 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
         'div',
         { class: 'row-actions' },
         h('span', { class: 'muted' }, `Action #${id}`),
-        h('button', { type: 'button', disabled: index === 0, onclick: () => move(-1) }, '↑ Earlier'),
-        h('button', { type: 'button', disabled: index === actions.length - 1, onclick: () => move(1) }, '↓ Later'),
         h('button', {
           type: 'button',
           onclick: async () => {
