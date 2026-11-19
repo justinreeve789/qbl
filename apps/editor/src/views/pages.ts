@@ -4,7 +4,9 @@ import { mediaUrl, params, sceneLabel } from '../describe';
 import { clear, confirmDelete, h, toast, help } from '../dom';
 import { form, withValue, type FormContext } from '../fields';
 import { SCENARIO_FIELDS, SCENARIO_SETTINGS_FIELDS } from '../schema';
+import { icon } from '../icons';
 import { sceneGroupControl, sceneGroupsCard } from './glossary';
+import { sceneMap } from './sceneMap/sceneMap';
 
 /** The scenario's own pages: its scenes, its settings, and checking and publishing it. */
 
@@ -55,18 +57,51 @@ export function scenesPage(ctx: FormContext, open: (sceneId: number) => void): H
     );
   });
 
+  const mapped = scenesLayout() === 'map';
+  const choose = (layout: ScenesLayout) => {
+    chosenLayout = layout;
+    try {
+      window.localStorage.setItem(SCENES_LAYOUT_KEY, layout);
+    } catch {
+      /* storage turned off: the choice lasts while the editor is open */
+    }
+    // The Scenes page is drawn again on any change; this is a change only to how it is shown.
+    store.emit(false);
+  };
+  const switcher = h('div', { class: 'view-switch', role: 'group', 'aria-label': 'Show scenes as' },
+    h('button', { type: 'button', 'data-layout': 'cards', 'aria-pressed': String(!mapped), onclick: () => choose('cards') }, icon('groups'), 'Cards'),
+    h('button', { type: 'button', 'data-layout': 'map', 'aria-pressed': String(mapped), onclick: () => choose('map') }, icon('scenes'), 'Map'));
+
   return h(
     'div',
-    { class: 'page' },
+    { class: mapped ? 'page map-page' : 'page' },
     h(
       'div',
       { class: 'page-head' },
-      h('div', null, h('h1', null, 'Scenes', help('The places that make up the mission. Players move between them through jump actions, usually on a hotspot along an edge.'))),
-      h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'primary', onclick: add }, 'New scene')),
+      h('div', null, h('h1', null, 'Scenes', help(mapped
+        ? 'The places that make up the mission, and the ways between them. Each box is a scene and each arrow a jump: a hotspot or event that takes players to another scene. Drag boxes to lay the mission out, drag a box’s + onto another box to link them, and click ✏️ to edit a scene.'
+        : 'The places that make up the mission. Players move between them through jump actions, usually on a hotspot along an edge.'))),
+      h('div', { class: 'row-actions' }, switcher, mapped ? null : h('button', { type: 'button', class: 'primary', onclick: add }, 'New scene')),
     ),
-    sceneGroupsCard(ctx),
-    h('div', { class: 'grid' }, ...cards),
+    ...(mapped
+      ? [sceneMap(ctx, open)]
+      : [sceneGroupsCard(ctx), h('div', { class: 'grid' }, ...cards)]),
   );
+}
+
+type ScenesLayout = 'cards' | 'map';
+const SCENES_LAYOUT_KEY = 'qbl.editor.scenes-layout';
+/** The choice made since the editor was opened. */
+let chosenLayout: ScenesLayout | null = null;
+
+/** Whether the Scenes page shows cards or the map. Each browser remembers its own choice. */
+function scenesLayout(): ScenesLayout {
+  if (chosenLayout) return chosenLayout;
+  try {
+    return window.localStorage.getItem(SCENES_LAYOUT_KEY) === 'map' ? 'map' : 'cards';
+  } catch {
+    return 'cards';
+  }
 }
 
 export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement {
