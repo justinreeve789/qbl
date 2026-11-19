@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Media - QBL JSON Documentation</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../scenario/" class="nav-link">Scenarios</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../scene/" class="nav-link">Scenes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../event/" class="nav-link">Events</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../action/" class="nav-link">Actions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Media</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../character/" class="nav-link">Characters</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../item/" class="nav-link">Items</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../variable/" class="nav-link">Variables</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../condition/" class="nav-link">Conditions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../spritemap/" class="nav-link">Spritemaps</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../label/" class="nav-link">Labels</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../extensions/" class="nav-link">Runtime extensions (spec v2)</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../classes/" class="nav-link">Classes, missions and teams</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../tooling/" class="nav-link">Backups, copies and the starship hub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../session/" class="nav-link">Save data</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../architecture/" class="nav-link">Architecture</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">HTTP API contract</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../protocol/" class="nav-link">Multiplayer protocol</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../action/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../character/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#media" class="nav-link">Media</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#media-types" class="nav-link">Media Types</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="media">Media</h1>
+<p>A media object describes an audio, image, or video file that has been uploaded and associated with the scenario.</p>
+<p>Media objects are currently defined at the action level, but with the draft revisions, they are being transferred to a single list at the scenario level for better reusability, and so they can be referenced from different scenes for pre-loading.</p>
+<h3 id="primary-attributes">Primary Attributes</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>int</td>
+<td></td>
+<td>The id for the media object.</td>
+</tr>
+<tr>
+<td>scenario_id</td>
+<td>int</td>
+<td></td>
+<td>The scenario id the media object is associated with.</td>
+</tr>
+<tr>
+<td>file_id</td>
+<td>int/array</td>
+<td></td>
+<td>The file id(s) of the media object.</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>int</td>
+<td></td>
+<td>User id of the media uploader.</td>
+</tr>
+<tr>
+<td>folder_id</td>
+<td>int</td>
+<td></td>
+<td>The id of the user-created folder this media object is stored in.</td>
+</tr>
+<tr>
+<td>type</td>
+<td>string</td>
+<td></td>
+<td>Any one of the following representing the type of media: audio, image, video.</td>
+</tr>
+<tr>
+<td>filename</td>
+<td>string</td>
+<td></td>
+<td>The name of the file as presented to the user. Note that this is not the actual file name on the server, but the file name presented within the use rinterface.</td>
+</tr>
+<tr>
+<td>filepath</td>
+<td>string</td>
+<td>/</td>
+<td>The full path to the file within the scenario assets. This has no relation to where the file is stored on the server, but indicates where the file can be found within the user-created directories of the scenario.</td>
+</tr>
+<tr>
+<td>url</td>
+<td>string</td>
+<td>null</td>
+<td>A URL to an external media asset. This will be retrieved before the scenario runs.</td>
+</tr>
+<tr>
+<td>scale_x</td>
+<td>decimal</td>
+<td>1.0</td>
+<td>Multiplicator to horizontally stretch the image or video. This value is ignored if the type is audio, backgroundimage, or backgroundvideo.</td>
+</tr>
+<tr>
+<td>scale_y</td>
+<td>decimal</td>
+<td>1.0</td>
+<td>Multiplicator to vertically stretch the image or video. This value is ignored if the type is audio, backgroundimage, or backgroundvideo.</td>
+</tr>
+<tr>
+<td>params</td>
+<td>array</td>
+<td></td>
+<td>A list of arbitrary parameters that may further define the media object.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="media-types">Media Types</h2>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>audio</td>
+<td>An audio file (MP3/WAV) that can be played via actions.</td>
+</tr>
+<tr>
+<td>image</td>
+<td>An image that can be displayed via an action or in a label. Sprite sheets are categorized as images within the media object.</td>
+</tr>
+<tr>
+<td>video</td>
+<td>A video file (MP4/WEBM) that can be displayed via an action.</td>
+</tr>
+</tbody>
+</table></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

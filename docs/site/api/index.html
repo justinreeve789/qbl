@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>HTTP API contract - QBL JSON Documentation</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../scenario/" class="nav-link">Scenarios</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../scene/" class="nav-link">Scenes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../event/" class="nav-link">Events</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../action/" class="nav-link">Actions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../media/" class="nav-link">Media</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../character/" class="nav-link">Characters</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../item/" class="nav-link">Items</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../variable/" class="nav-link">Variables</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../condition/" class="nav-link">Conditions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../spritemap/" class="nav-link">Spritemaps</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../label/" class="nav-link">Labels</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../extensions/" class="nav-link">Runtime extensions (spec v2)</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../classes/" class="nav-link">Classes, missions and teams</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../tooling/" class="nav-link">Backups, copies and the starship hub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../session/" class="nav-link">Save data</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../architecture/" class="nav-link">Architecture</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">HTTP API contract</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../protocol/" class="nav-link">Multiplayer protocol</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../architecture/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../protocol/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#http-api-contract" class="nav-link">HTTP API contract</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#public-endpoints-called-by-the-browser" class="nav-link">Public endpoints (called by the browser)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#internal-endpoints-called-by-the-game-server" class="nav-link">Internal endpoints (called by the game server)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#editor-endpoints-called-by-the-editor" class="nav-link">Editor endpoints (called by the editor)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="http-api-contract">HTTP API contract</h1>
+<p>The player, the editor and the game server depend on a small set of endpoints. Two things implement the player's and the game server's:</p>
+<ul>
+<li>the <strong>Laravel API</strong> in <code>apps/api</code> (production), and</li>
+<li>the <strong>game server's file backend</strong> (development and previews), which serves the public endpoints itself from JSON files so the game runs without Laravel.</li>
+</ul>
+<p>Anything that honours this contract can be swapped in.</p>
+<h2 id="public-endpoints-called-by-the-browser">Public endpoints (called by the browser)</h2>
+<p>All responses are JSON. Authenticated requests send <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+<h3 id="post-apiauthlogin"><code>POST /api/auth/login</code></h3>
+<p>Body <code>{ "email": "...", "password": "..." }</code>. Returns <code>{ "token": "...", "user": User }</code>, or 422 with <code>{ "message": "..." }</code>.</p>
+<h3 id="post-apiauthguest"><code>POST /api/auth/guest</code></h3>
+<p>Body <code>{ "name": "..." }</code>. Returns <code>{ "token": "...", "user": User }</code> with role <code>guest</code>. The Laravel API only offers this when <code>QBL_ALLOW_GUESTS=true</code>. A guest token is accepted by the game server only for scenarios with <code>require_login: false</code>.</p>
+<h3 id="post-apiauthlogout"><code>POST /api/auth/logout</code></h3>
+<p>Ends the token it is called with, so signing out works everywhere that token was kept. The game and the editor call it from their "Sign out" buttons and then forget the token.</p>
+<h3 id="get-apiauthproviders"><code>GET /api/auth/providers</code></h3>
+<p><code>{ "google": true, "guest": true }</code>: which optional ways of signing in this installation offers. The sign-in screens show a Google button when <code>google</code> is true.</p>
+<h3 id="signing-in-with-google">Signing in with Google</h3>
+<p>Google sign-in is on when <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> are set. It is a redirect flow, not a JSON call:</p>
+<ol>
+<li>The sign-in screen sends the browser to <code>GET /api/auth/google/redirect?return=/editor/</code>. <code>return</code> is a path on this site to come back to; anything else is replaced with <code>/</code>.</li>
+<li>Google asks the person and sends the browser to <code>GET /api/auth/google/callback</code> (register this address with Google: <code>https://your-host/api/auth/google/callback</code>. It is built from <code>APP_URL</code>).</li>
+<li>The API finds the account by Google's id for it, or joins an existing account with the same verified address, or creates a new one. It issues a token and answers with a small page that stores the token where the game and the editor look for it (<code>localStorage["qbl.token"]</code>) and goes to <code>return</code>. The token is never put in an address.</li>
+</ol>
+<p>If nobody is signed in, the browser is sent to <code>return</code> with the reason after the <code>#</code>: <code>#signin=cancelled</code>, <code>domain</code> (the address is not at an accepted domain), <code>unverified</code>, <code>expired</code> or <code>failed</code>.</p>
+<p>New accounts are students. <code>QBL_GOOGLE_DOMAINS</code> limits who may sign in to those domains; accounts at <code>QBL_GOOGLE_TEACHER_DOMAINS</code> start as teachers. An account that has only ever signed in with Google has no password.</p>
+<h3 id="get-apime"><code>GET /api/me</code></h3>
+<p>Returns <code>{ "user": User }</code> or 401.</p>
+<h3 id="get-apiscenarioscodeplay"><code>GET /api/scenarios/{code}/play</code></h3>
+<p><code>{code}</code> is the scenario's unique 16-letter code, the same one players have in their address bar (<code>/{code}</code>). A shortname is accepted too.</p>
+<p>Returns <code>{ "scenario": Scenario }</code>: the published scenario document with the caller's save data in <code>scenario.session</code> (null if none). Returns 401 when the scenario has <code>require_login: true</code> (or is private) and there is no valid token, and 404 for an unknown or unpublished scenario.</p>
+<p><code>?group=</code> names the instance being joined (<code>public</code> if absent, <code>a12</code> for an assignment, <code>t7</code> for a team; see <a href="../classes/">Classes, missions and teams</a>). The save returned is the caller's save in that instance. 403 if the caller does not belong to it, or if the scenario is private and was not assigned to them.</p>
+<p>The document's avatars (<code>avatar_media_ids</code>, <code>avatar_portraits</code> and their images in <code>assets</code>) are the platform's, added as the document is served.</p>
+<h3 id="missions-and-avatars">Missions and avatars</h3>
+<p>All need a token.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Body</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/missions</code></td>
+<td></td>
+<td><code>{ "missions": [Mission] }</code>: every public scenario, and everything assigned to the caller (assigned first, soonest due first)</td>
+</tr>
+<tr>
+<td><code>GET /api/avatars</code></td>
+<td></td>
+<td><code>{ "avatars": [{ media_id, name, image_url, portrait_url, sheet }], "avatar_media_id": 900004 or null }</code></td>
+</tr>
+<tr>
+<td><code>PUT /api/me/avatar</code></td>
+<td><code>{ "avatar_media_id": 900004 }</code></td>
+<td>The same. 422 if it is not one of the platform's avatars</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{
+  &quot;id&quot;: 1, &quot;code&quot;: &quot;starshipexplorer&quot;, &quot;title&quot;: &quot;Starship Explorer&quot;, &quot;subtitle&quot;: null, &quot;description&quot;: &quot;...&quot;,
+  &quot;image&quot;: &quot;/scenario-assets/starship/backgrounds/bridge.png&quot;, &quot;visibility&quot;: &quot;public&quot;,
+  &quot;kind&quot;: &quot;assigned&quot;, &quot;group&quot;: &quot;t7&quot;, &quot;assignment_id&quot;: 12, &quot;teacher&quot;: &quot;Ms Tan&quot;, &quot;team&quot;: &quot;Comets&quot;,
+  &quot;due_at&quot;: &quot;2026-12-01 15:00:00&quot;, &quot;note&quot;: &quot;Read chapter 4 first&quot;, &quot;started_at&quot;: null
+}
+</code></pre>
+<p><code>kind</code> is <code>public</code> or <code>assigned</code>. A player opens a mission at <code>/{code}?group={group}</code>. <code>image</code> is the background of the scenario's first scene. Times are UTC. <code>started_at</code> is when the caller's save in that instance was last written, or null. The fields from <code>assignment_id</code> to <code>note</code> are only on assigned missions.</p>
+<h3 id="classes-teachers-and-admins">Classes (teachers and admins)</h3>
+<p>Under <code>/api/teach</code>; 403 for anyone else.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Body</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /students</code></td>
+<td></td>
+<td><code>{ "students": [{ id, name, email }] }</code></td>
+</tr>
+<tr>
+<td><code>POST /students</code></td>
+<td><code>{ "email": "..." }</code></td>
+<td>201 <code>{ "student": {...} }</code>. 404 if nobody has signed in with that address</td>
+</tr>
+<tr>
+<td><code>DELETE /students/{id}</code></td>
+<td></td>
+<td>204. The student also leaves this teacher's assignments</td>
+</tr>
+<tr>
+<td><code>GET /scenarios</code></td>
+<td></td>
+<td><code>{ "scenarios": [...] }</code>: published scenarios the caller can assign (public ones and their own; all of them for an admin)</td>
+</tr>
+<tr>
+<td><code>GET /assignments</code></td>
+<td></td>
+<td><code>{ "assignments": [Assignment] }</code></td>
+</tr>
+<tr>
+<td><code>POST /assignments</code></td>
+<td><code>{ "scenario_id", "student_ids": [], "due_at"?, "note"?, "teams"?: [{ "name", "student_ids": [] }] }</code></td>
+<td>201 <code>{ "assignment": Assignment }</code></td>
+</tr>
+<tr>
+<td><code>PUT /assignments/{id}</code></td>
+<td>Any of <code>due_at</code>, <code>note</code>, <code>student_ids</code>, <code>teams</code> (give a team's <code>id</code> to keep its instance)</td>
+<td><code>{ "assignment": Assignment }</code></td>
+</tr>
+<tr>
+<td><code>DELETE /assignments/{id}</code></td>
+<td></td>
+<td>204</td>
+</tr>
+</tbody>
+</table>
+<p>An <code>Assignment</code> is <code>{ id, scenario, due_at, note, group, students: [{ id, name, email, team_id }], teams: [{ id, name, group, student_ids }] }</code>.</p>
+<h3 id="stars-xp-and-the-marketplace">Stars, XP and the marketplace</h3>
+<p>All need a token except <code>GET /api/shop</code>. Guests are answered 403: stars and XP need an account.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Body</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/me/progress</code></td>
+<td></td>
+<td><code>{ "progress": Progress }</code></td>
+</tr>
+<tr>
+<td><code>GET /api/shop?scenario={code}</code></td>
+<td></td>
+<td><code>{ "items": ShopItem[], "progress": Progress or null }</code>: the platform's items plus that scenario's own</td>
+</tr>
+<tr>
+<td><code>POST /api/shop/{item}/buy</code></td>
+<td><code>{ "scenario": "{code}" }</code></td>
+<td><code>{ "progress": Progress }</code>. 422 without enough stars, 409 if already owned, 404 if the item is not sold in that scenario</td>
+</tr>
+<tr>
+<td><code>POST /api/shop/{item}/equip</code></td>
+<td><code>{ "equipped": true }</code></td>
+<td><code>{ "progress": Progress }</code>. Putting something on takes off what was in its place</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{ &quot;stars&quot;: 56, &quot;xp&quot;: 240, &quot;rank&quot;: &quot;Explorer&quot;, &quot;next_rank_xp&quot;: 300, &quot;owned&quot;: [1, 102], &quot;equipped&quot;: [102] }
+</code></pre>
+<p><code>ShopItem</code> is described under <a href="../extensions/#stars-xp-and-the-marketplace">Stars, XP and the marketplace</a>. There is no public endpoint that gives stars: awards come only through the game server (below).</p>
+<h3 id="user">User</h3>
+<pre><code class="language-json">{ &quot;id&quot;: 12, &quot;name&quot;: &quot;Ada&quot;, &quot;role&quot;: &quot;student&quot;, &quot;avatar_media_id&quot;: 103 }
+</code></pre>
+<p><code>role</code> is one of <code>student</code>, <code>teacher</code>, <code>admin</code>, <code>guest</code>. <code>avatar_media_id</code> is optional.</p>
+<h2 id="internal-endpoints-called-by-the-game-server">Internal endpoints (called by the game server)</h2>
+<p>Under <code>/api/internal</code>, authenticated with the header <code>X-QBL-Service-Key</code>, which must equal the API's <code>QBL_SERVICE_KEY</code>. These must not be reachable from the internet; in the provided Docker setup Apache answers 404 for <code>/api/internal</code> on its public port, and the game server reaches those routes through a second Apache port that exists only on the Docker network.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Body</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /auth/verify</code></td>
+<td><code>{ "token": "..." }</code></td>
+<td><code>{ "user": User }</code>, or 401 if the token is not valid</td>
+</tr>
+<tr>
+<td><code>GET /scenarios/{code}</code></td>
+<td></td>
+<td><code>{ "scenario": Scenario }</code> (no session), or 404. A shortname is accepted too</td>
+</tr>
+<tr>
+<td><code>GET /scenarios/{id}/access/{userId}?group=</code></td>
+<td></td>
+<td><code>{ "allowed": true }</code> if the player may join that instance: asked before a player is let into a room</td>
+</tr>
+<tr>
+<td><code>GET /scenarios/{id}/sessions/{userId}?group=</code></td>
+<td></td>
+<td><code>{ "session": Session or null }</code>: the player's save in that instance (<code>public</code> if no group is given)</td>
+</tr>
+<tr>
+<td><code>PUT /scenarios/{id}/sessions/{userId}?group=</code></td>
+<td><code>{ "session": Session }</code></td>
+<td>204</td>
+</tr>
+<tr>
+<td><code>GET /scenarios/{id}/instances/{group}</code></td>
+<td></td>
+<td><code>{ "instance": InstanceData or null }</code></td>
+</tr>
+<tr>
+<td><code>PUT /scenarios/{id}/instances/{group}</code></td>
+<td><code>{ "instance": InstanceData }</code></td>
+<td>204</td>
+</tr>
+<tr>
+<td><code>POST /scenarios/{id}/awards</code></td>
+<td><code>{ "user_id": 12, "action_id": 72090 }</code></td>
+<td><code>Progress</code> plus <code>delta_stars</code>, <code>delta_xp</code>, <code>note</code>, <code>rank_up</code>. The action must be an <code>award</code> in the published document; a once-only award already given changes nothing. 403 for a guest</td>
+</tr>
+<tr>
+<td><code>GET /users/{id}/look</code></td>
+<td></td>
+<td><code>{ "look": "1,102" }</code>: the ids of what the player has on, for other players to see</td>
+</tr>
+</tbody>
+</table>
+<p><code>Session</code> and <code>InstanceData</code> are described on the <a href="../session/">Save data</a> page.</p>
+<h2 id="editor-endpoints-called-by-the-editor">Editor endpoints (called by the editor)</h2>
+<p>Under <code>/api/editor</code>, with <code>Authorization: Bearer &lt;token&gt;</code>. Only the Laravel API implements these (and the development stand-in, <code>apps/api/dev/server.php</code>, which runs the same classes).</p>
+<table>
+<thead>
+<tr>
+<th>Who</th>
+<th>May</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin</code></td>
+<td>edit every scenario</td>
+</tr>
+<tr>
+<td><code>teacher</code></td>
+<td>edit their own scenarios, and shared samples that have no owner</td>
+</tr>
+<tr>
+<td>anyone else</td>
+<td>nothing: 403</td>
+</tr>
+</tbody>
+</table>
+<p>A scenario the caller may not edit answers 404, the same as one that does not exist. Errors are <code>{ "message": "..." }</code> with 401, 403, 404, 409 or 422.</p>
+<p>A scenario is stored as rows of these tables: <code>media</code>, <code>variables</code>, <code>items</code>, <code>characters</code>, <code>scenes</code>, <code>events</code>, <code>actions</code>, <code>conditions</code>, <code>labels</code>. The columns are the attributes on the corresponding docs pages; attributes that only some rows have are kept in a JSON column (<code>params</code> for actions, labels and media; <code>settings</code> for items, characters and the scenario; <code>layout</code> for a scene's walkable areas, spawn points and placements). <code>ScenarioStore::SCHEMA</code> is the authoritative list.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Body</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /scenarios</code></td>
+<td></td>
+<td><code>{ "scenarios": [...] }</code>: id, code, title, subtitle, owner, <code>published_at</code>, <code>updated_at</code></td>
+</tr>
+<tr>
+<td><code>POST /scenarios</code></td>
+<td><code>{ "title": "..." }</code></td>
+<td>201 <code>{ "scenario": row }</code>. The scenario gets its code and a first scene</td>
+</tr>
+<tr>
+<td><code>GET /scenarios/{id}</code></td>
+<td></td>
+<td><code>{ "scenario": row, "media": [...], "variables": [...], ..., "labels": [...] }</code>: every row of the scenario</td>
+</tr>
+<tr>
+<td><code>PATCH /scenarios/{id}</code></td>
+<td>columns to change</td>
+<td><code>{ "scenario": row }</code></td>
+</tr>
+<tr>
+<td><code>DELETE /scenarios/{id}</code></td>
+<td></td>
+<td>204. Removes its rows, players' saves and uploaded files</td>
+</tr>
+<tr>
+<td><code>POST /scenarios/{id}/rows/{table}</code></td>
+<td>columns</td>
+<td>201 <code>{ "row": row }</code></td>
+</tr>
+<tr>
+<td><code>PATCH /scenarios/{id}/rows/{table}/{rowId}</code></td>
+<td>columns to change</td>
+<td><code>{ "row": row }</code></td>
+</tr>
+<tr>
+<td><code>DELETE /scenarios/{id}/rows/{table}/{rowId}</code></td>
+<td></td>
+<td>204. Also removes what only existed because of it: a scene's events, an event's actions, labels and conditions</td>
+</tr>
+<tr>
+<td><code>POST /scenarios/{id}/media/upload</code></td>
+<td>multipart, field <code>file</code></td>
+<td>201 <code>{ "row": media row }</code></td>
+</tr>
+<tr>
+<td><code>GET /scenarios/{id}/preview</code></td>
+<td></td>
+<td><code>{ "scenario": Scenario }</code>: the JSON generated from the rows as they are now, published or not</td>
+</tr>
+<tr>
+<td><code>POST /scenarios/{id}/publish</code></td>
+<td></td>
+<td><code>{ "scenario": row }</code>. Generates the JSON and makes it what players get</td>
+</tr>
+<tr>
+<td><code>POST /scenarios</code> with <code>"template": "starship"</code></td>
+<td><code>{ "title", "template" }</code></td>
+<td>201: the new scenario starts as a copy of the starship hub instead of one empty scene</td>
+</tr>
+<tr>
+<td><code>POST /scenarios/{id}/duplicate</code></td>
+<td><code>{ "title"? }</code></td>
+<td>201 <code>{ "scenario" }</code>: a copy as a new draft of the caller's. Allowed for a scenario the caller can edit, and for anyone's published public scenario (copied as published)</td>
+</tr>
+<tr>
+<td><code>GET /scenarios/{id}/export</code></td>
+<td></td>
+<td>The scenario as a ZIP file (<code>scenario.json</code>, <code>assets/</code>, <code>README.txt</code>)</td>
+</tr>
+<tr>
+<td><code>POST /scenarios/import</code></td>
+<td>multipart <code>file</code> (a ZIP), <code>title</code>?</td>
+<td>201 <code>{ "scenario" }</code>: a new draft made from the ZIP. 422 if it is not a ZIP, has no <code>scenario.json</code>, or carries a file that is not a picture, sound or video. See <a href="../tooling/">Backups, copies and the starship hub</a></td>
+</tr>
+</tbody>
+</table>
+<p>Rules the API enforces whatever the editor sends:</p>
+<ul>
+<li>A row can only be created in, moved to, or made to refer to things in the same scenario (<code>scene_id</code>, <code>event_id</code>, <code>media_id</code>, ...).</li>
+<li>Enumerated columns only take their documented values (action <code>type</code>, event <code>kind</code>, media <code>type</code>, condition <code>operator</code>, ...).</li>
+<li>A condition belongs to exactly one of an event, an action, an item or a character.</li>
+<li>Variable names are letters, digits and underscores, and may not start with <code>QBL</code>.</li>
+<li>Uploads are identified by their content. Images (PNG, JPEG, WebP, GIF), audio (MP3, WAV, OGG) and video (MP4, WebM) up to 25 MB are accepted; SVG is not.</li>
+<li>A scenario's <code>code</code> cannot be changed.</li>
+</ul>
+<p>The editor runs the shared validator (<code>validateScenario</code> from <code>@qbl/shared</code>) on the preview before it publishes and refuses to publish a document with errors. The API does not repeat that check, so a client other than the editor should run <code>npm run validate</code> on what it builds; the game server validates every document it loads either way.</p>
+<h3 id="testing-a-draft">Testing a draft</h3>
+<p>The game plays a draft when opened as <code>/?preview={scenario id}&amp;scene={scene id}</code>. It fetches <code>GET /api/editor/scenarios/{id}/preview</code> with the editor's token, checks the document, and plays it alone (no game server, nothing saved), starting in the given scene. This is what the editor's "Test this scene" button opens.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
