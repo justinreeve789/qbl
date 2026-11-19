@@ -104,10 +104,30 @@ async function route() {
     }));
   }
   if (user.role !== 'teacher' && user.role !== 'admin') {
-    return show(h('div', { class: 'center' }, h('div', { class: 'card' }, h('h1', null, 'QBL Editor'), h('p', null, 'The editor is for teachers and content creators. This account can play scenarios but not edit them.'))));
+    // Say which account this is: the game and the editor share one sign-in per browser, so the
+    // usual cause is being signed in as a student, or a Google account that started as one.
+    return show(h('div', { class: 'center' }, h('div', { class: 'card', 'data-refused': user.role },
+      h('h1', null, 'QBL Editor'),
+      h('p', null, `You are signed in as ${user.name}, ${user.role === 'guest' ? 'a guest' : `a${/^[aeiou]/.test(user.role) ? 'n' : ''} ${user.role}`}. The editor and Classes are for teachers and admins; this account can play missions but not edit them.`),
+      h('p', { class: 'muted' }, 'If you are a teacher, sign out and sign in with your teacher account, or ask your administrator to make this account a teacher.'),
+      h('div', { class: 'row-actions' },
+        h('a', { class: 'button primary', href: `${config.gameUrl}missions` }, 'Go to your missions'),
+        h('button', { type: 'button', onclick: () => {
+          api.signOut();
+          user = null;
+          store = null;
+          void route();
+        } }, 'Sign in with another account')))));
   }
 
   if (window.location.hash === '#/classes') return show(classesView(api));
+  if (window.location.hash === '#/new') {
+    // From the missions page's "New scenario": the list, with the dialog open over it. The address
+    // becomes the list's, so going back or reloading does not open the dialog again.
+    window.history.replaceState(null, '', '#/');
+    drawNav();
+    return show(scenarioListView(api, (id) => go(`#/s/${id}`), { startNew: true }));
+  }
 
   const match = /^#\/s\/(\d+)(?:\/(?:scene\/(\d+)|([a-z]+)))?$/.exec(window.location.hash);
   if (!match) return show(scenarioListView(api, (id) => go(`#/s/${id}`)));

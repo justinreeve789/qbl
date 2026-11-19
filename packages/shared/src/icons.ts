@@ -21,6 +21,8 @@ export const ICONS = {
   play: '▶️', shadow: '🌑',
   // the site's places (site.ts) and the account menu
   editor: '✏️', classes: '🏫', docs: '📚', 'sign-out': '🚪', chat: '💬',
+  // the teacher's missions page
+  new: '➕', 'look-in': '👀', scenarios: '🧩', students: '🧑‍🎓', due: '📅',
 } as const;
 
 export type IconName = keyof typeof ICONS;
