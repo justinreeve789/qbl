@@ -13,6 +13,13 @@ class CreateUser extends Command
 
     public function handle(): int
     {
+        $role = strtolower(trim((string) $this->option('role')));
+        if (! in_array($role, [User::ROLE_STUDENT, User::ROLE_TEACHER, User::ROLE_ADMIN], true)) {
+            $this->error('The role must be one of: student, teacher, admin.');
+
+            return self::FAILURE;
+        }
+
         $password = $this->secret('Password');
 
         if (strlen((string) $password) < 8) {
@@ -24,7 +31,7 @@ class CreateUser extends Command
         $user = User::create([
             'email' => $this->argument('email'),
             'name' => $this->argument('name'),
-            'role' => $this->option('role'),
+            'role' => $role,
             'password' => $password,
         ]);
 

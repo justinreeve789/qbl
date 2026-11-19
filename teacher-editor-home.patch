@@ -1,0 +1,308 @@
+From df726bb82edef0bcd4eaf5574ab2720c0bc28ca8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 03:55:46 -0700
+Subject: [PATCH] Teachers and admins land in the editor after signing in;
+ roles are read tidily
+
+Signing in at /missions (by password or Google) now takes a teacher or admin
+to the editor, their dashboard; students and guests stay on the missions
+page. Arriving already signed in (the Missions link) still shows the
+teacher's missions page. The marketing page's log-in buttons take a
+signed-in teacher to the editor too.
+
+A role typed by hand as "Teacher" or with a space was refused by the editor,
+which compares roles exactly. The User model now reads and stores roles
+trimmed and lower-case, and qbl:user checks --role like qbl:update-role does.
+
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_013vcUhrNdsNZkboJszJAs6F
+---
+ README.md                                     |  4 +-
+ apps/api/app/Console/Commands/CreateUser.php  |  9 ++++-
+ apps/api/app/Models/User.php                  | 12 ++++++
+ .../api/tests/Feature/SignInAndDeployTest.php | 18 +++++++++
+ apps/client/src/main.ts                       | 38 +++++++++++++++++--
+ apps/client/src/site/site.ts                  | 24 ++++++++++++
+ docs/docs/classes.md                          |  2 +-
+ packages/shared/src/site.ts                   | 10 +++++
+ packages/shared/test/site.test.ts             | 12 +++++-
+ 9 files changed, 121 insertions(+), 8 deletions(-)
+
+diff --git a/README.md b/README.md
+index 9d557f3..5a0e4a8 100644
+--- a/README.md
++++ b/README.md
+@@ -36,7 +36,7 @@ The site's addresses:
+ | Address | What it is |
+ | ------- | ---------- |
+ | `/` | The marketing page (`apps/client/index.html`, Tailwind compiled at build time). Its "Log in" button goes to `/missions` |
+-| `/missions` | The game: the sign-in screen if needed, then the missions page. Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
++| `/missions` | The game: the sign-in screen if needed, then the missions page. **A teacher or admin who signs in here lands in the editor (`/editor/`), their dashboard**; the Missions link brings them back to this page. Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
+ | `/{code}` | One scenario, by its 16-letter code |
+ | `/play?…` | The game with the parameters below (editor previews use `/play?preview=…`) |
+ | `/editor/`, `/docs/` | The editor and the documentation |
+@@ -85,7 +85,7 @@ That is development: plain HTTP on http://localhost:8080, no certificate, no `.e
+ | Address | What it is |
+ | ------- | ---------- |
+ | http://localhost:8080 | The marketing page |
+-| http://localhost:8080/missions | The game: sign in, then the missions page |
++| http://localhost:8080/missions | The game: sign in, then the missions page (teachers and admins go on to the editor) |
+ | http://localhost:8080/starshipexplorer | The demo mission by its code. Every scenario is at `/{code}` |
+ | http://localhost:8080/editor | The editor |
+ | http://localhost:8080/docs | The documentation |
+diff --git a/apps/api/app/Console/Commands/CreateUser.php b/apps/api/app/Console/Commands/CreateUser.php
+index 312e157..73a22f9 100644
+--- a/apps/api/app/Console/Commands/CreateUser.php
++++ b/apps/api/app/Console/Commands/CreateUser.php
+@@ -13,6 +13,13 @@ class CreateUser extends Command
+ 
+     public function handle(): int
+     {
++        $role = strtolower(trim((string) $this->option('role')));
++        if (! in_array($role, [User::ROLE_STUDENT, User::ROLE_TEACHER, User::ROLE_ADMIN], true)) {
++            $this->error('The role must be one of: student, teacher, admin.');
++
++            return self::FAILURE;
++        }
++
+         $password = $this->secret('Password');
+ 
+         if (strlen((string) $password) < 8) {
+@@ -24,7 +31,7 @@ public function handle(): int
+         $user = User::create([
+             'email' => $this->argument('email'),
+             'name' => $this->argument('name'),
+-            'role' => $this->option('role'),
++            'role' => $role,
+             'password' => $password,
+         ]);
+ 
+diff --git a/apps/api/app/Models/User.php b/apps/api/app/Models/User.php
+index 8a4845d..dafe9ac 100644
+--- a/apps/api/app/Models/User.php
++++ b/apps/api/app/Models/User.php
+@@ -2,6 +2,7 @@
+ 
+ namespace App\Models;
+ 
++use Illuminate\Database\Eloquent\Casts\Attribute;
+ use Illuminate\Database\Eloquent\Factories\HasFactory;
+ use Illuminate\Foundation\Auth\User as Authenticatable;
+ use Illuminate\Notifications\Notifiable;
+@@ -27,6 +28,17 @@ protected function casts(): array
+         ];
+     }
+ 
++    /**
++     * Roles are compared exactly everywhere (the API, the editor, the game), so a role typed by
++     * hand as "Teacher" or "teacher " is read, and stored, as "teacher".
++     */
++    protected function role(): Attribute
++    {
++        $tidy = fn ($value) => $value === null ? null : strtolower(trim((string) $value));
++
++        return Attribute::make(get: $tidy, set: $tidy);
++    }
++
+     /** The shape the client and game server expect. See docs/docs/api.md. */
+     public function toQbl(): array
+     {
+diff --git a/apps/api/tests/Feature/SignInAndDeployTest.php b/apps/api/tests/Feature/SignInAndDeployTest.php
+index 40acd75..285de06 100644
+--- a/apps/api/tests/Feature/SignInAndDeployTest.php
++++ b/apps/api/tests/Feature/SignInAndDeployTest.php
+@@ -158,6 +158,24 @@ public function test_update_role_makes_an_existing_account_a_teacher(): void
+         $this->assertSame('guest', $guest->fresh()->role);
+     }
+ 
++    /** A role typed straight into the database with a capital or a space still counts: "Teacher " is a teacher. */
++    public function test_a_role_written_by_hand_is_read_as_the_role_it_spells(): void
++    {
++        $user = User::create(['name' => 'Mr Keating', 'email' => 'keating@school.org', 'password' => 'secret-password', 'role' => 'student']);
++        $token = $user->createToken('player')->plainTextToken;
++        \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->update(['role' => 'Teacher ']);
++
++        $this->withToken($token)->getJson('/api/me')->assertJsonPath('user.role', 'teacher');
++        $this->newRequest()->withToken($token)->getJson('/api/editor/scenarios')->assertOk();
++        $this->newRequest()->withToken($token)->getJson('/api/teach/assignments')->assertOk();
++
++        // And qbl:user stores a role the same way, or says it is not one.
++        $this->artisan('qbl:user', ['email' => 'new@school.org', 'name' => 'New', '--role' => 'headmaster'])->assertFailed();
++        $this->assertNull(User::where('email', 'new@school.org')->first());
++        $this->artisan('qbl:user', ['email' => 'new@school.org', 'name' => 'New', '--role' => 'Teacher'])->expectsQuestion('Password', 'long-enough-password')->assertSuccessful();
++        $this->assertSame('teacher', \Illuminate\Support\Facades\DB::table('users')->where('email', 'new@school.org')->value('role'));
++    }
++
+     public function test_an_answer_that_does_not_match_a_sign_in_this_browser_started_is_refused(): void
+     {
+         $this->withGoogle();
+diff --git a/apps/client/src/main.ts b/apps/client/src/main.ts
+index 01e5cf2..d908e00 100644
+--- a/apps/client/src/main.ts
++++ b/apps/client/src/main.ts
+@@ -1,5 +1,5 @@
+ import * as Phaser from 'phaser';
+-import { isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
++import { homePath, isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+ import { config } from './config';
+ import { GameContext } from './core/GameContext';
+ import { gameFeatures } from './features';
+@@ -76,7 +76,15 @@ function signIn(message?: string): Promise<User> {
+     google.className = 'qbl-button qbl-google';
+     google.textContent = 'Sign in with Google';
+     google.hidden = true;
+-    google.addEventListener('click', () => window.location.assign(api.googleUrl(window.location.pathname + window.location.search)));
++    google.addEventListener('click', () => {
++      // Google brings the browser back already signed in; this says the sign-in was just now.
++      try {
++        sessionStorage.setItem(SIGNING_IN_KEY, '1');
++      } catch {
++        /* ignore */
++      }
++      window.location.assign(api.googleUrl(window.location.pathname + window.location.search));
++    });
+     void api.providers().then((p) => (google.hidden = !p.google));
+     form.append(title, fields, error, button, google, swap);
+     form.addEventListener('submit', async (e) => {
+@@ -101,6 +109,19 @@ function signIn(message?: string): Promise<User> {
+   });
+ }
+ 
++const SIGNING_IN_KEY = 'qbl.signing-in';
++
++/** True once, on the page a Google sign-in started from this tab comes back to. */
++function takeSigningIn(): boolean {
++  try {
++    const was = sessionStorage.getItem(SIGNING_IN_KEY) != null;
++    sessionStorage.removeItem(SIGNING_IN_KEY);
++    return was;
++  } catch {
++    return false;
++  }
++}
++
+ const AVATAR_KEY = 'qbl.avatar';
+ 
+ /** Keep the player's choice of avatar: on their account, and in this browser for guests. */
+@@ -205,12 +226,23 @@ async function loadDraft(scenarioId: number): Promise<Scenario> {
+ 
+ async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
+   let user = await api.me();
++  // Signed in just now (here, or on the way back from Google), as opposed to arriving signed in.
++  let fresh = takeSigningIn() && user != null;
+   let message: string | undefined;
+   for (;;) {
+-    user ??= await signIn(message ?? takeSignInProblem());
++    if (!user) {
++      user = await signIn(message ?? takeSignInProblem());
++      fresh = true;
++    }
+     show('Loading…');
+     try {
+       if (config.preview != null) return { scenario: await loadDraft(config.preview), user };
++      // Signing in with no scenario asked for takes each user to their own dashboard: the editor
++      // for teachers and admins. Arriving already signed in (the Missions link) shows the missions page.
++      if (config.home && fresh && isStaff(user.role)) {
++        window.location.replace(homePath(user.role));
++        return new Promise(() => undefined);
++      }
+       // With no scenario asked for, the player chooses one from their missions; that page takes over from here.
+       if (config.home && (await showHome(user))) return new Promise(() => undefined);
+       return { scenario: normalizeScenario(await api.play(config.scenario, config.group, config.party)), user };
+diff --git a/apps/client/src/site/site.ts b/apps/client/src/site/site.ts
+index 8e33449..e3c1f06 100644
+--- a/apps/client/src/site/site.ts
++++ b/apps/client/src/site/site.ts
+@@ -31,6 +31,30 @@ try {
+ }
+ if (signedIn) {
+   document.querySelectorAll<HTMLElement>('[data-login-label]').forEach((el) => (el.textContent = el.dataset.loginLabel ?? el.textContent));
++  void staffDashboard();
++}
++
++/**
++ * A signed-in teacher's or admin's dashboard is the editor, so the log-in buttons take them there
++ * (as `homePath` in @qbl/shared has it; not imported, to keep the game's code off this page).
++ * Anyone else, or any failure to find out, leaves the buttons going to /missions.
++ */
++async function staffDashboard() {
++  try {
++    const base = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
++    const res = await fetch(`${base}/api/me`, { headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('qbl.token')}` } });
++    if (!res.ok) return;
++    const role = ((await res.json()) as { user?: { role?: string } }).user?.role;
++    if (role !== 'teacher' && role !== 'admin') return;
++    document.querySelectorAll<HTMLAnchorElement>('a[href="/missions"]').forEach((a) => {
++      a.href = '/editor/#/';
++      const label = a.querySelector<HTMLElement>('[data-login-label]');
++      if (label) label.textContent = 'My dashboard';
++      else a.textContent = 'Go to your dashboard →';
++    });
++  } catch {
++    /* offline, or storage blocked: the buttons keep going to /missions */
++  }
+ }
+ 
+ document.getElementById('year')!.textContent = String(new Date().getFullYear());
+diff --git a/docs/docs/classes.md b/docs/docs/classes.md
+index 082b0c3..4778f5d 100644
+--- a/docs/docs/classes.md
++++ b/docs/docs/classes.md
+@@ -1,6 +1,6 @@
+ # Classes, missions and teams
+ 
+-A **mission** is a published scenario. Players find their missions on the page they land on after signing in (`/missions`, where the marketing page's "Log in" button goes): a grid with one card per mission.
++A **mission** is a published scenario. Players find their missions on the page they land on after signing in (`/missions`, where the marketing page's "Log in" button goes): a grid with one card per mission. Teachers and admins land in the editor instead, which is their dashboard, and reach the missions page from the **Missions** link.
+ 
+ Kind | Who sees it | Set by
+ ---- | ----------- | ------
+diff --git a/packages/shared/src/site.ts b/packages/shared/src/site.ts
+index 6944185..b243275 100644
+--- a/packages/shared/src/site.ts
++++ b/packages/shared/src/site.ts
+@@ -18,6 +18,16 @@ const LINKS: SiteLink[] = [
+   { key: 'docs', label: 'Docs', hint: 'How scenarios and the editor work', href: '/docs/', icon: 'docs' },
+ ];
+ 
++/**
++ * The page a user lands on after signing in, and where the marketing page's log-in button takes
++ * someone already signed in. Teachers and admins work in the editor, so that is their dashboard;
++ * everyone else plays, so theirs is the missions page. A teacher still reaches the missions page
++ * (their assignments, "Look in", missions to try) from the Missions link.
++ */
++export function homePath(role: string | undefined): string {
++  return role === 'teacher' || role === 'admin' ? '/editor/#/' : '/missions';
++}
++
+ /**
+  * Where a signed-in user can go from any page. Teachers and admins move between playing
+  * (Missions), building (Editor), teaching (Classes) and the documentation; everyone else has
+diff --git a/packages/shared/test/site.test.ts b/packages/shared/test/site.test.ts
+index ce86517..e0ee568 100644
+--- a/packages/shared/test/site.test.ts
++++ b/packages/shared/test/site.test.ts
+@@ -1,6 +1,6 @@
+ import assert from 'node:assert/strict';
+ import { test } from 'node:test';
+-import { siteLinks } from '../src/site';
++import { homePath, siteLinks } from '../src/site';
+ 
+ test('teachers and admins can go to every place on the site; others only to their missions', () => {
+   assert.deepEqual(siteLinks('teacher').map((l) => l.key), ['missions', 'editor', 'classes', 'docs']);
+@@ -14,3 +14,13 @@ test('the links are copies, so a page can change one without changing the next p
+   siteLinks('teacher')[0]!.label = 'Changed';
+   assert.equal(siteLinks('teacher')[0]!.label, 'Missions');
+ });
++
++test('after signing in, teachers and admins land in the editor; everyone else on their missions', () => {
++  assert.equal(homePath('teacher'), '/editor/#/');
++  assert.equal(homePath('admin'), '/editor/#/');
++  assert.equal(homePath('student'), '/missions');
++  assert.equal(homePath('guest'), '/missions');
++  assert.equal(homePath(undefined), '/missions');
++  // Roles are exact: anything unrecognised is treated as a player, never as staff.
++  assert.equal(homePath('Teacher'), '/missions');
++});
+-- 
+2.43.0
+

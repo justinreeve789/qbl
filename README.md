@@ -36,7 +36,7 @@ The site's addresses:
 | Address | What it is |
 | ------- | ---------- |
 | `/` | The marketing page (`apps/client/index.html`, Tailwind compiled at build time). Its "Log in" button goes to `/missions` |
-| `/missions` | The game: the sign-in screen if needed, then the missions page. Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
+| `/missions` | The game: the sign-in screen if needed, then the missions page. **A teacher or admin who signs in here lands in the editor (`/editor/`), their dashboard**; the Missions link brings them back to this page. Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
 | `/{code}` | One scenario, by its 16-letter code |
 | `/play?…` | The game with the parameters below (editor previews use `/play?preview=…`) |
 | `/editor/`, `/docs/` | The editor and the documentation |
@@ -85,7 +85,7 @@ That is development: plain HTTP on http://localhost:8080, no certificate, no `.e
 | Address | What it is |
 | ------- | ---------- |
 | http://localhost:8080 | The marketing page |
-| http://localhost:8080/missions | The game: sign in, then the missions page |
+| http://localhost:8080/missions | The game: sign in, then the missions page (teachers and admins go on to the editor) |
 | http://localhost:8080/starshipexplorer | The demo mission by its code. Every scenario is at `/{code}` |
 | http://localhost:8080/editor | The editor |
 | http://localhost:8080/docs | The documentation |

@@ -31,6 +31,30 @@ try {
 }
 if (signedIn) {
   document.querySelectorAll<HTMLElement>('[data-login-label]').forEach((el) => (el.textContent = el.dataset.loginLabel ?? el.textContent));
+  void staffDashboard();
+}
+
+/**
+ * A signed-in teacher's or admin's dashboard is the editor, so the log-in buttons take them there
+ * (as `homePath` in @qbl/shared has it; not imported, to keep the game's code off this page).
+ * Anyone else, or any failure to find out, leaves the buttons going to /missions.
+ */
+async function staffDashboard() {
+  try {
+    const base = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/me`, { headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('qbl.token')}` } });
+    if (!res.ok) return;
+    const role = ((await res.json()) as { user?: { role?: string } }).user?.role;
+    if (role !== 'teacher' && role !== 'admin') return;
+    document.querySelectorAll<HTMLAnchorElement>('a[href="/missions"]').forEach((a) => {
+      a.href = '/editor/#/';
+      const label = a.querySelector<HTMLElement>('[data-login-label]');
+      if (label) label.textContent = 'My dashboard';
+      else a.textContent = 'Go to your dashboard →';
+    });
+  } catch {
+    /* offline, or storage blocked: the buttons keep going to /missions */
+  }
 }
 
 document.getElementById('year')!.textContent = String(new Date().getFullYear());

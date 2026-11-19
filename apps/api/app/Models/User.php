@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,6 +26,17 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Roles are compared exactly everywhere (the API, the editor, the game), so a role typed by
+     * hand as "Teacher" or "teacher " is read, and stored, as "teacher".
+     */
+    protected function role(): Attribute
+    {
+        $tidy = fn ($value) => $value === null ? null : strtolower(trim((string) $value));
+
+        return Attribute::make(get: $tidy, set: $tidy);
     }
 
     /** The shape the client and game server expect. See docs/docs/api.md. */

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { homePath, isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
@@ -76,7 +76,15 @@ function signIn(message?: string): Promise<User> {
     google.className = 'qbl-button qbl-google';
     google.textContent = 'Sign in with Google';
     google.hidden = true;
-    google.addEventListener('click', () => window.location.assign(api.googleUrl(window.location.pathname + window.location.search)));
+    google.addEventListener('click', () => {
+      // Google brings the browser back already signed in; this says the sign-in was just now.
+      try {
+        sessionStorage.setItem(SIGNING_IN_KEY, '1');
+      } catch {
+        /* ignore */
+      }
+      window.location.assign(api.googleUrl(window.location.pathname + window.location.search));
+    });
     void api.providers().then((p) => (google.hidden = !p.google));
     form.append(title, fields, error, button, google, swap);
     form.addEventListener('submit', async (e) => {
@@ -99,6 +107,19 @@ function signIn(message?: string): Promise<User> {
     show(form);
     render();
   });
+}
+
+const SIGNING_IN_KEY = 'qbl.signing-in';
+
+/** True once, on the page a Google sign-in started from this tab comes back to. */
+function takeSigningIn(): boolean {
+  try {
+    const was = sessionStorage.getItem(SIGNING_IN_KEY) != null;
+    sessionStorage.removeItem(SIGNING_IN_KEY);
+    return was;
+  } catch {
+    return false;
+  }
 }
 
 const AVATAR_KEY = 'qbl.avatar';
@@ -205,12 +226,23 @@ async function loadDraft(scenarioId: number): Promise<Scenario> {
 
 async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
   let user = await api.me();
+  // Signed in just now (here, or on the way back from Google), as opposed to arriving signed in.
+  let fresh = takeSigningIn() && user != null;
   let message: string | undefined;
   for (;;) {
-    user ??= await signIn(message ?? takeSignInProblem());
+    if (!user) {
+      user = await signIn(message ?? takeSignInProblem());
+      fresh = true;
+    }
     show('Loading…');
     try {
       if (config.preview != null) return { scenario: await loadDraft(config.preview), user };
+      // Signing in with no scenario asked for takes each user to their own dashboard: the editor
+      // for teachers and admins. Arriving already signed in (the Missions link) shows the missions page.
+      if (config.home && fresh && isStaff(user.role)) {
+        window.location.replace(homePath(user.role));
+        return new Promise(() => undefined);
+      }
       // With no scenario asked for, the player chooses one from their missions; that page takes over from here.
       if (config.home && (await showHome(user))) return new Promise(() => undefined);
       return { scenario: normalizeScenario(await api.play(config.scenario, config.group, config.party)), user };

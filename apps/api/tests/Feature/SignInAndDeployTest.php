@@ -158,6 +158,24 @@ class SignInAndDeployTest extends TestCase
         $this->assertSame('guest', $guest->fresh()->role);
     }
 
+    /** A role typed straight into the database with a capital or a space still counts: "Teacher " is a teacher. */
+    public function test_a_role_written_by_hand_is_read_as_the_role_it_spells(): void
+    {
+        $user = User::create(['name' => 'Mr Keating', 'email' => 'keating@school.org', 'password' => 'secret-password', 'role' => 'student']);
+        $token = $user->createToken('player')->plainTextToken;
+        \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->update(['role' => 'Teacher ']);
+
+        $this->withToken($token)->getJson('/api/me')->assertJsonPath('user.role', 'teacher');
+        $this->newRequest()->withToken($token)->getJson('/api/editor/scenarios')->assertOk();
+        $this->newRequest()->withToken($token)->getJson('/api/teach/assignments')->assertOk();
+
+        // And qbl:user stores a role the same way, or says it is not one.
+        $this->artisan('qbl:user', ['email' => 'new@school.org', 'name' => 'New', '--role' => 'headmaster'])->assertFailed();
+        $this->assertNull(User::where('email', 'new@school.org')->first());
+        $this->artisan('qbl:user', ['email' => 'new@school.org', 'name' => 'New', '--role' => 'Teacher'])->expectsQuestion('Password', 'long-enough-password')->assertSuccessful();
+        $this->assertSame('teacher', \Illuminate\Support\Facades\DB::table('users')->where('email', 'new@school.org')->value('role'));
+    }
+
     public function test_an_answer_that_does_not_match_a_sign_in_this_browser_started_is_refused(): void
     {
         $this->withGoogle();

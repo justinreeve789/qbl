@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { siteLinks } from '../src/site';
+import { homePath, siteLinks } from '../src/site';
 
 test('teachers and admins can go to every place on the site; others only to their missions', () => {
   assert.deepEqual(siteLinks('teacher').map((l) => l.key), ['missions', 'editor', 'classes', 'docs']);
@@ -13,4 +13,14 @@ test('teachers and admins can go to every place on the site; others only to thei
 test('the links are copies, so a page can change one without changing the next page’s', () => {
   siteLinks('teacher')[0]!.label = 'Changed';
   assert.equal(siteLinks('teacher')[0]!.label, 'Missions');
+});
+
+test('after signing in, teachers and admins land in the editor; everyone else on their missions', () => {
+  assert.equal(homePath('teacher'), '/editor/#/');
+  assert.equal(homePath('admin'), '/editor/#/');
+  assert.equal(homePath('student'), '/missions');
+  assert.equal(homePath('guest'), '/missions');
+  assert.equal(homePath(undefined), '/missions');
+  // Roles are exact: anything unrecognised is treated as a player, never as staff.
+  assert.equal(homePath('Teacher'), '/missions');
 });
