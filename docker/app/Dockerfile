@@ -41,7 +41,7 @@ COPY entrypoint.sh /usr/local/bin/qbl-entrypoint
 # Earlier in PATH than the real php, so "php artisan" and "composer" run as the owner of /app.
 COPY php-as-owner.sh /usr/local/sbin/php
 RUN chmod +x /usr/local/bin/qbl-entrypoint /usr/local/sbin/php \
-    && mkdir -p /app /repo /data /shared/public /media-data
+    && mkdir -p /app /repo /data /shared/public /shared/editor /media-data
 
 WORKDIR /app
 EXPOSE 9000

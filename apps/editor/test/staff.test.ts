@@ -54,17 +54,33 @@ test('cancelling the dialog leaves the teacher on their list', async () => {
   assert.equal(new URL(page.url()).hash, '#/');
 });
 
-test('a student is told which account this is, and is offered the way back and another sign-in', async () => {
+test('a student is told which account this is and what its role is, and can sign in as a teacher right there', async () => {
   await signIn('student.zed@example.test');
   await page.waitForSelector('[data-refused=student]');
   const text = await page.innerText('[data-refused]');
-  assert.match(text, /signed in as Student\.zed, a student/);
-  assert.match(text, /ask your administrator to make this account a teacher/);
+  assert.match(text, /signed in as Student\.zed \(student\.zed@example\.test\), a student/);
+  assert.match(text, /qbl:update-role student\.zed@example\.test --role=teacher/);
   assert.match(await page.getAttribute('[data-refused] a', 'href') ?? '', /\/missions$/);
   assert.equal(await page.locator('.top-nav a').count(), 0, 'no links into the editor for a student');
 
-  await page.click('[data-refused] >> text=Sign in with another account');
-  await page.waitForSelector('input[type=email]');
+  // Not a dead end: the sign-in form is on the same screen, and a teacher's sign-in replaces the student's.
+  await page.fill('[data-refused] input[type=email]', 'teacher@example.test');
+  await page.fill('[data-refused] input[type=password]', 'anything');
+  await page.click('[data-refused] button[type=submit]');
+  await page.waitForSelector('[data-scenario], [data-empty], .scenario-list, dialog, main');
+  await page.waitForFunction(() => !document.querySelector('[data-refused]'));
+  assert.match(await page.innerText('.who'), /Teacher/);
+});
+
+test('a guest sign-in left in the browser by the game gets the sign-in form too', async () => {
+  await page.evaluate(async () => {
+    const res = await fetch('/api/auth/guest', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ name: 'Visitor' }) });
+    localStorage.setItem('qbl.token', (await res.json()).token);
+  });
+  await page.reload();
+  await page.waitForSelector('[data-refused=guest]');
+  assert.match(await page.innerText('[data-refused]'), /signed in as Visitor, a guest/);
+  assert.equal(await page.locator('[data-refused] input[type=email]').count(), 1);
 });
 
 test('nothing went wrong in the browser along the way', () => {

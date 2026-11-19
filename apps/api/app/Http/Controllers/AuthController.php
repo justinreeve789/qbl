@@ -27,7 +27,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $user->createToken('player')->plainTextToken,
-            'user' => $user->toQbl(),
+            'user' => $this->own($user),
         ]);
     }
 
@@ -60,6 +60,15 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return response()->json(['user' => $request->user()->toQbl()]);
+        return response()->json(['user' => $this->own($request->user())]);
+    }
+
+    /**
+     * What an account is told about itself: toQbl(), and its address, so a page can say exactly
+     * which account is signed in. Other players never get this.
+     */
+    private function own(User $user): array
+    {
+        return $user->toQbl() + ($user->role === 'guest' ? [] : ['email' => $user->email]);
     }
 }

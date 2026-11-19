@@ -66,43 +66,64 @@ php artisan migrate --force
 # Vite builds it into the "public" volume, which Apache serves, next to Laravel's own public/ files.
 # With QBL_CLIENT_WATCH=true it keeps watching and rebuilds on every change: reload the page.
 label() {
-  while IFS= read -r line; do echo "client: $line"; done
+  while IFS= read -r line; do echo "$1: $line"; done
 }
 
-client() {
-  if [ ! -f /repo/apps/client/package.json ]; then
-    echo "qbl: no client in /repo/apps/client (is ./apps/client mounted?); the site will have no pages" >&2
-    return 0
+# build <name> <folder under /repo/apps> <where the result goes>
+# --configLoader runner: Vite reads its config without writing a temporary file beside it, which
+# it cannot do in a read-only mount (it fails outright when the host has a node_modules there).
+build() {
+  if [ "$QBL_CLIENT_WATCH" = true ]; then
+    echo "qbl: building the $1, then rebuilding it whenever its source or packages/shared changes"
+    (cd "/repo/apps/$2" && npx vite build --configLoader runner --outDir "$3" --emptyOutDir false --watch --clearScreen false 2>&1 \
+      | label "$1") &
+  else
+    echo "qbl: building the $1"
+    (cd "/repo/apps/$2" && npx vite build --configLoader runner --outDir "$3" --emptyOutDir false --logLevel warn 2>&1 \
+      | label "$1") || return 1
   fi
+}
 
-  # The client's packages are installed in the "client-modules" volume, apart from any node_modules
-  # on the host (which may be for another system). Installed again when a package.json changes.
-  stamp="$(cat /repo/package.json /repo/packages/shared/package.json /repo/apps/client/package.json | sha256sum)"
+# The npm packages of the client and the editor are installed in the "client-modules" volume, apart
+# from any node_modules on the host (which may be for another system). Installed again when a
+# package.json changes.
+packages() {
+  workspaces="--workspace @qbl/shared --workspace @qbl/client"
+  manifests="/repo/package.json /repo/packages/shared/package.json /repo/apps/client/package.json"
+  if [ -f /repo/apps/editor/package.json ]; then
+    workspaces="$workspaces --workspace @qbl/editor"
+    manifests="$manifests /repo/apps/editor/package.json"
+  fi
+  stamp="$(cat $manifests | sha256sum)"
   if [ "$(cat /repo/node_modules/.qbl-installed 2>/dev/null)" != "$stamp" ]; then
-    echo "qbl: installing the client's packages (npm install)"
-    (cd /repo && npm install --workspace @qbl/shared --workspace @qbl/client --include-workspace-root \
-      --no-audit --no-fund --loglevel=warn) || return 1
+    echo "qbl: installing the client's and the editor's packages (npm install)"
+    (cd /repo && npm install $workspaces --include-workspace-root --no-audit --no-fund --loglevel=warn) || return 1
     echo "$stamp" > /repo/node_modules/.qbl-installed
   fi
-
-  # Built without the type check, so a typing complaint cannot keep the site down. Run
-  # "npm run typecheck" on the host or in CI. The output is outside the client's folder, so Vite
-  # does not empty it: Laravel's files stay, and in watch mode old bundles stay until a restart.
-  if [ "$QBL_CLIENT_WATCH" = true ]; then
-    echo "qbl: building the client, then rebuilding it whenever apps/client or packages/shared changes"
-    (cd /repo/apps/client && npx vite build --outDir /shared/public --emptyOutDir false --watch --clearScreen false 2>&1 \
-      | label) &
-  else
-    echo "qbl: building the client"
-    (cd /repo/apps/client && npx vite build --outDir /shared/public --emptyOutDir false --logLevel warn 2>&1 \
-      | label) || return 1
-  fi
 }
 
+# Apache serves Laravel's own public/ files from the same volume as the client.
 if [ -d /shared/public ]; then
   find /shared/public -mindepth 1 -delete
   cp -a /app/public/. /shared/public/
-  client || echo "qbl: the client could not be built (see above); the API runs without it" >&2
+fi
+[ -d /shared/editor ] && find /shared/editor -mindepth 1 -delete
+
+# Built without the type check, so a typing complaint cannot keep the site down. Run
+# "npm run typecheck" on the host or in CI. The output is outside the source folders, so Vite does
+# not empty it: in watch mode old bundles stay until a restart, when both were emptied above.
+if [ ! -f /repo/apps/client/package.json ]; then
+  echo "qbl: no client in /repo/apps/client (is ./apps/client mounted?); the site will have no pages" >&2
+elif ! packages; then
+  echo "qbl: the packages could not be installed (see above); the API runs without the client and the editor" >&2
+else
+  if [ -d /shared/public ]; then
+    build client client /shared/public || echo "qbl: the client could not be built (see above); the API runs without it" >&2
+  fi
+  # The editor, for the "editor" container. "Test this scene" opens the game at the same address.
+  if [ -d /shared/editor ] && [ -f /repo/apps/editor/package.json ]; then
+    VITE_GAME_URL="${VITE_GAME_URL:-/}" build editor editor /shared/editor || echo "qbl: the editor could not be built (see above); /editor has no page" >&2
+  fi
 fi
 
 exec "$@"

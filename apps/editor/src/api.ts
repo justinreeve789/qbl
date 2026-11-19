@@ -16,6 +16,8 @@ export interface User {
   id: number;
   name: string;
   role: string;
+  /** The account's address, as the API tells an account about itself. Guests have none. */
+  email?: string;
 }
 
 export interface ScenarioSummary {

@@ -110,7 +110,7 @@ if ($path === '/api/auth/login' && $method === 'POST') {
         respond(422, ['message' => 'Enter an email address.']);
     }
     // Anyone can sign in with any address. One starting "admin" is an admin, "student" a student, and the rest teachers.
-    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'role' => str_starts_with($email, 'admin') ? 'admin' : (str_starts_with($email, 'student') ? 'student' : 'teacher')];
+    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'email' => $email, 'role' => str_starts_with($email, 'admin') ? 'admin' : (str_starts_with($email, 'student') ? 'student' : 'teacher')];
     // Kept as a row, so a teacher can add the student to a class by this address.
     $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, $account['role']]);
     respond(200, $issue($account));

@@ -114,9 +114,13 @@ services:
       - ./packages/shared:/repo/packages/shared:ro
       - ./apps/client:/repo/apps/client:ro
       - ./scenarios/assets:/repo/scenarios/assets:ro
+      # The editor's source, read-only too. Vite builds it into the editor-dist volume, which the
+      # "editor" container serves: a change to apps/editor shows without rebuilding any image.
+      - ./apps/editor:/repo/apps/editor:ro
       # The client's npm packages, for this container's system; any node_modules on the host is not used.
       - client-modules:/repo/node_modules
       - public:/shared/public      # the built client and Laravel's public/, handed to Apache
+      - editor-dist:/shared/editor # the built editor, handed to the editor container
       - media:/media-data          # uploaded media, served by Apache as /media
       - app-data:/data
     depends_on:
@@ -160,9 +164,12 @@ services:
     restart: unless-stopped
 
   editor:
+    # Only a web server: the editor itself is built by "app" from ./apps/editor (mounted there)
+    # into this volume, so it is never older than the checkout.
     build:
-      context: .
-      dockerfile: docker/editor/Dockerfile
+      context: docker/editor
+    volumes:
+      - editor-dist:/usr/local/apache2/htdocs/editor:ro
     restart: unless-stopped
 
   docs:
@@ -236,6 +243,7 @@ volumes:
   edge-config:
   public:
   client-modules:
+  editor-dist:
   media:
   app-data:
   db-data:

@@ -1,34 +1,16 @@
-# The "editor" container: the scenario editor, a static web application served under /editor/.
-# Build from the repository root:  docker build -f docker/editor/Dockerfile .
+# The "editor" container: a small Apache that serves the scenario editor under /editor/.
 #
-# It holds no data and no secrets. Everything it does goes through the Laravel API in the "app"
-# container, which checks who is asking; Apache puts both behind the same address.
-
-# ---- 1. build ------------------------------------------------------------------------
-FROM node:22-alpine AS build
-# npm needs git: at least one package in the dependency tree is fetched from a git URL.
-RUN apk add --no-cache git
-WORKDIR /repo
-COPY package.json package-lock.json* tsconfig.base.json ./
-COPY packages/shared/package.json packages/shared/
-COPY apps/server/package.json apps/server/
-COPY apps/client/package.json apps/client/
-COPY apps/editor/package.json apps/editor/
-# Switch to `npm ci` once package-lock.json is committed.
-RUN npm install --workspace @qbl/shared --workspace @qbl/editor --include-workspace-root
-COPY packages/shared packages/shared
-COPY apps/editor apps/editor
-# Where "Test this scene" opens the game. Apache serves the game at the root of the same address.
-ARG VITE_GAME_URL=/
-ENV VITE_GAME_URL=$VITE_GAME_URL
-# Bundles without the type-check step, so a typing complaint cannot block the image. Run `npm run typecheck` in CI.
-RUN npm exec --workspace @qbl/editor -- vite build
-
-# ---- 2. serve ------------------------------------------------------------------------
+# The image holds no code. The editor is built by the "app" container (Vite, from ./apps/editor
+# mounted there) into the "editor-dist" volume, which docker-compose.yml mounts here as
+# htdocs/editor. So the editor people get is the one in the checkout, with no image to rebuild.
+#
+# It holds no data and no secrets. Everything the editor does goes through the Laravel API in the
+# "app" container, which checks who is asking; Apache puts both behind the same address.
+# Built by Compose from this folder (context: docker/editor).
 FROM httpd:2.4-alpine
-COPY docker/editor/editor.conf conf/extra/editor.conf
+COPY editor.conf conf/extra/editor.conf
 RUN echo 'Include conf/extra/editor.conf' >> conf/httpd.conf \
-    && rm -f htdocs/index.html
-COPY --from=build /repo/apps/editor/dist/ htdocs/editor/
+    && rm -f htdocs/index.html && mkdir -p htdocs/editor
 EXPOSE 80
-HEALTHCHECK --interval=15s --timeout=3s --start-period=5s CMD wget -qO- http://127.0.0.1/editor/ > /dev/null || exit 1
+# While "app" is still building the editor (the first minute after a start) there is no page yet.
+HEALTHCHECK --interval=15s --timeout=3s --start-period=120s CMD wget -qO- http://127.0.0.1/editor/ > /dev/null || exit 1

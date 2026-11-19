@@ -11,7 +11,15 @@ const SIGN_IN_PROBLEMS: Record<string, string> = {
 };
 
 /** Sign-in. The game and the editor share the sign-in, so someone signed in to one is signed in to both. */
-export function loginView(api: Api, done: (user: User) => void): HTMLElement {
+const aRole = (role: string) => (role === 'guest' ? 'a guest' : `a${/^[aeiou]/.test(role) ? 'n' : ''} ${role}`);
+
+/**
+ * The sign-in form. `refused` is the account this browser is signed in with when it is not a
+ * teacher's or admin's: the form then says which account that is, as the server has it, and
+ * signing in here replaces it. The game and the editor share one sign-in per browser, so this is
+ * what a teacher sees after playing as a guest or trying a student account.
+ */
+export function loginView(api: Api, done: (user: User) => void, refused?: User, missionsUrl = '/missions'): HTMLElement {
   const email = h('input', { type: 'email', name: 'email', autocomplete: 'username', required: true });
   const password = h('input', { type: 'password', name: 'password', autocomplete: 'current-password', required: true });
   const error = h('p', { class: 'issue error', role: 'alert', hidden: true });
@@ -28,9 +36,14 @@ export function loginView(api: Api, done: (user: User) => void): HTMLElement {
   }
   const node = h(
     'form',
-    { class: 'login card' },
+    { class: 'login card', 'data-refused': refused?.role },
     h('h1', null, 'QBL Editor'),
-    h('p', { class: 'muted' }, 'Build scenarios: scenes, hotspots, events and everything players do in them.'),
+    refused
+      ? h('div', { class: 'issue warning', role: 'status' },
+          h('p', null, `This browser is signed in as ${refused.name}${refused.email ? ` (${refused.email})` : ''}, ${aRole(refused.role)}. The editor and Classes are for teachers and admins.`),
+          h('p', null, 'Sign in below with a teacher or admin account to use the editor. ', h('a', { href: missionsUrl }, 'Or go to your missions.')),
+          refused.role === 'guest' ? null : h('p', { class: 'muted' }, `Should this account be a teacher? Its role on this server is "${refused.role}"; an administrator changes it with: php artisan qbl:update-role ${refused.email ?? '<email>'} --role=teacher`))
+      : h('p', { class: 'muted' }, 'Build scenarios: scenes, hotspots, events and everything players do in them.'),
     h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Email'), email),
     h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Password'), password),
     error,

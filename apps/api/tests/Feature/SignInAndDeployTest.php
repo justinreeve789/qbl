@@ -165,7 +165,8 @@ class SignInAndDeployTest extends TestCase
         $token = $user->createToken('player')->plainTextToken;
         \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->update(['role' => 'Teacher ']);
 
-        $this->withToken($token)->getJson('/api/me')->assertJsonPath('user.role', 'teacher');
+        // An account is told its own address too, so a page can say exactly who is signed in.
+        $this->withToken($token)->getJson('/api/me')->assertJsonPath('user.role', 'teacher')->assertJsonPath('user.email', 'keating@school.org');
         $this->newRequest()->withToken($token)->getJson('/api/editor/scenarios')->assertOk();
         $this->newRequest()->withToken($token)->getJson('/api/teach/assignments')->assertOk();
 

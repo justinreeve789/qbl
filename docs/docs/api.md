@@ -41,7 +41,7 @@ New accounts are students. `QBL_GOOGLE_DOMAINS` limits who may sign in to those 
 
 ### `GET /api/me`
 
-Returns `{ "user": User }` or 401.
+Returns `{ "user": User }` or 401. Here, and in the answer to `POST /api/auth/login`, the user also has its own `email` (guests have none), so a page can say exactly which account is signed in; nobody else is given it.
 
 ### `GET /api/scenarios/{code}/play`
 

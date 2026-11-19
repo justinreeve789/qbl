@@ -98,7 +98,7 @@ Seven containers:
 | `app` | The Laravel backend (PHP-FPM), running `apps/api` mounted from your checkout, and Vite building the frontend (the marketing page and the Phaser game) from `apps/client`, also mounted. The image holds only PHP, Composer and Node |
 | `db` | MariaDB |
 | `colyseus` | The multiplayer game server |
-| `editor` | The scenario editor: a static web application served by its own small Apache |
+| `editor` | The scenario editor: a static web application served by its own small Apache. The image holds no code: `app` builds the editor from `apps/editor` (mounted) into a volume this container serves |
 | `docs` | The documentation in `docs/`, built with MkDocs into a static site |
 | `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files, `scenarios/assets` (mounted, as `/scenario-assets`) and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
 
@@ -163,7 +163,9 @@ docker compose logs -f app
 - The build skips the type check, so a typing mistake cannot keep the site down; run `npm run typecheck` yourself. A build that fails outright is reported in the log and the API keeps running.
 - On a server, `QBL_CLIENT_WATCH=false` in `.env` builds once per start and saves the memory the watcher uses. After `git pull`, `docker compose restart app` rebuilds.
 - Scenario pictures and sounds in `scenarios/assets` are served by Apache straight from the checkout, as `/scenario-assets`.
-- `docker compose up --build` is needed only when something in `docker/` changes.
+- The editor is built the same way, from `apps/editor` (mounted read-only too), into the `editor-dist` volume the `editor` container serves; its lines in the log are labelled `editor:`. So `/editor` is never older than the checkout, and an edit to the editor shows after a reload.
+- `docker compose up --build` is needed only when something in `docker/` changes, for these three (API, client, editor). The game server (`colyseus`) and the documentation (`docs`) are still copied into their images: after changing `apps/server`, `packages/shared` or `docs`, rebuild them with `docker compose up -d --build colyseus docs`.
+- **If `/editor` will not let a teacher in**, the sign-in form there says which account the browser is signed in with and the role the server has for it (the game and the editor share one sign-in per browser, so a guest or student sign-in left from playing is the usual cause): sign in on that form with the teacher's account. To see the role in the database the site is really using: `docker compose exec app php artisan qbl:update-role <email>`.
 
 ### HTTPS
 
