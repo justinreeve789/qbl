@@ -6,8 +6,9 @@ use App\Models\User;
 use Illuminate\Console\Command;
 
 /**
- * Change what an existing account may do. Google sign-in makes students unless the address's
- * domain is in QBL_GOOGLE_TEACHER_DOMAINS, so this is how such an account becomes a teacher:
+ * Change what an existing account may do. The role alone decides who may use the editor,
+ * Classes and reports (teachers and admins). Google sign-in always makes students, so this is
+ * how such an account becomes a teacher:
  *
  *   php artisan qbl:update-role teacher@school.org --role=teacher
  *   php artisan qbl:update-role teacher@school.org            (only shows the current role)

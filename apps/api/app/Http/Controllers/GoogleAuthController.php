@@ -104,7 +104,9 @@ class GoogleAuthController extends Controller
                 'name' => Str::limit(trim(strip_tags((string) ($google->getName() ?: Str::before($email, '@')))), 60, ''),
                 'email' => $email,
                 'password' => null,
-                'role' => in_array($domain, config('qbl.google.teacher_domains'), true) ? 'teacher' : 'student',
+                // Every new account is a student. What someone may do (the editor, Classes, reports)
+                // goes by their role alone, and only an administrator changes it: qbl:update-role.
+                'role' => User::ROLE_STUDENT,
             ]);
             $user->forceFill(['google_id' => $google->getId(), 'email_verified_at' => now()])->save();
         }

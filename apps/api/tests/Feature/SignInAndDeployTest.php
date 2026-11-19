@@ -115,16 +115,17 @@ class SignInAndDeployTest extends TestCase
         $this->assertSame(1, User::count());
     }
 
-    public function test_domains_decide_who_may_sign_in_and_who_starts_as_a_teacher(): void
+    public function test_domains_decide_who_may_sign_in_and_every_new_account_is_a_student(): void
     {
-        $this->withGoogle(['qbl.google.domains' => ['school.example', 'staff.school.example'], 'qbl.google.teacher_domains' => ['staff.school.example']]);
+        $this->withGoogle(['qbl.google.domains' => ['school.example', 'staff.school.example']]);
 
         $this->finish($this->googleAccount('g-1', 'kid@elsewhere.example'), $this->begin('/missions'))->assertRedirect('/missions#signin=domain');
         $this->assertSame(0, User::count());
 
         $this->finish($this->googleAccount('g-2', 'kid@school.example'), $this->begin())->assertOk();
         $this->finish($this->googleAccount('g-3', 'head@staff.school.example'), $this->begin())->assertOk();
-        $this->assertSame(['kid@school.example' => 'student', 'head@staff.school.example' => 'teacher'], User::pluck('role', 'email')->all());
+        // The domain says nothing about the role: staff are made teachers with qbl:update-role.
+        $this->assertSame(['kid@school.example' => 'student', 'head@staff.school.example' => 'student'], User::pluck('role', 'email')->all());
     }
 
     /** A Google account that started as a student is made a teacher by hand, and can then use the editor. */
@@ -132,7 +133,9 @@ class SignInAndDeployTest extends TestCase
     {
         $user = User::create(['name' => 'Ms Frizzle', 'email' => 'frizzle@school.org', 'password' => 'secret-password', 'role' => 'student']);
         $token = $user->createToken('player')->plainTextToken;
+        // The role alone decides: a student may not use the editor, Classes or reports.
         $this->withToken($token)->getJson('/api/editor/scenarios')->assertStatus(403);
+        $this->newRequest()->withToken($token)->getJson('/api/teach/assignments')->assertStatus(403);
 
         $this->artisan('qbl:update-role', ['email' => 'frizzle@school.org'])->expectsOutputToContain('is a student')->assertSuccessful();
         $this->artisan('qbl:update-role', ['email' => 'frizzle@school.org', '--role' => 'principal'])->assertFailed();
@@ -143,6 +146,12 @@ class SignInAndDeployTest extends TestCase
         // The same token works at once: the role is read on every request.
         $this->newRequest()->withToken($token)->getJson('/api/me')->assertJsonPath('user.role', 'teacher');
         $this->newRequest()->withToken($token)->getJson('/api/editor/scenarios')->assertOk();
+        $this->newRequest()->withToken($token)->getJson('/api/teach/assignments')->assertOk();
+
+        // And back: made a student again, the same account is refused once more.
+        $this->artisan('qbl:update-role', ['email' => 'frizzle@school.org', '--role' => 'student'])->assertSuccessful();
+        $this->newRequest()->withToken($token)->getJson('/api/editor/scenarios')->assertStatus(403);
+        $this->newRequest()->withToken($token)->getJson('/api/teach/assignments')->assertStatus(403);
 
         $guest = User::create(['name' => 'Guest', 'email' => 'guest-1@guest.invalid', 'password' => 'x', 'role' => 'guest']);
         $this->artisan('qbl:update-role', ['email' => $guest->email, '--role' => 'admin'])->assertFailed();

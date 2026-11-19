@@ -37,7 +37,7 @@ Google sign-in is on when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
 
 If nobody is signed in, the browser is sent to `return` with the reason after the `#`: `#signin=cancelled`, `domain` (the address is not at an accepted domain), `unverified`, `expired` or `failed`.
 
-New accounts are students. `QBL_GOOGLE_DOMAINS` limits who may sign in to those domains; accounts at `QBL_GOOGLE_TEACHER_DOMAINS` start as teachers. An account that has only ever signed in with Google has no password.
+New accounts are students. `QBL_GOOGLE_DOMAINS` limits who may sign in to those domains. The role alone decides access: teachers and admins may use `/api/editor/*` and `/api/teach/*` (Classes and reports); an administrator changes a role with `php artisan qbl:update-role <email> --role=teacher`. An account that has only ever signed in with Google has no password.
 
 ### `GET /api/me`
 

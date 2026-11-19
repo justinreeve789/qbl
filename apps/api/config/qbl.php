@@ -11,8 +11,7 @@ return [
     'google' => [
         // Only addresses at these domains may sign in with Google. Empty: any Google account.
         'domains' => array_values(array_filter(array_map('trim', explode(',', strtolower((string) env('QBL_GOOGLE_DOMAINS', '')))))),
-        // New accounts at these domains start as teachers, who can use the editor. Everyone else starts as a student.
-        'teacher_domains' => array_values(array_filter(array_map('trim', explode(',', strtolower((string) env('QBL_GOOGLE_TEACHER_DOMAINS', '')))))),
+        // New accounts are always students; roles are changed with qbl:update-role.
     ],
 
     // Ranks, by the XP at which each starts. Platform-wide.
