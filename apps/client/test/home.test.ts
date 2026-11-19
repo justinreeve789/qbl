@@ -27,9 +27,11 @@ test('due dates read naturally, and a missed one is marked late', () => {
   assert.equal(missionCard({ ...base, kind: 'assigned', group: 'a3', due_at: '2026-11-10 12:00:00' }, now, 'en-GB').tags[0]!.tone, 'late');
 });
 
-test('the missions page says when assigned missions cannot be listed: a guest, or a teacher', () => {
+test('the missions page tells a guest why no assigned missions are listed', () => {
   assert.match(whoNotice('guest')!, /guest.*Sign in.*your teacher assigned/);
-  assert.match(whoNotice('teacher')!, /signed in as a teacher.*own accounts/);
-  assert.match(whoNotice('admin')!, /signed in as a teacher/);
   assert.equal(whoNotice('student'), null);
+  // A teacher's page lists their assignments instead, and says there where students see them.
+  assert.equal(whoNotice('teacher'), null);
+  assert.equal(whoNotice('admin'), null);
 });
+

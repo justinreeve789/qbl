@@ -36,7 +36,7 @@ The site's addresses:
 | Address | What it is |
 | ------- | ---------- |
 | `/` | The marketing page (`apps/client/index.html`, Tailwind compiled at build time). Its "Log in" button goes to `/missions` |
-| `/missions` | The game: the sign-in screen if needed, then the player's missions |
+| `/missions` | The game: the sign-in screen if needed, then the missions page. Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
 | `/{code}` | One scenario, by its 16-letter code |
 | `/play?…` | The game with the parameters below (editor previews use `/play?preview=…`) |
 | `/editor/`, `/docs/` | The editor and the documentation |

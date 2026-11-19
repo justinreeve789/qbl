@@ -86,8 +86,12 @@ function newScenarioDialog(): Promise<{ title: string; template?: 'starship' } |
   });
 }
 
-/** The scenarios this person can edit, and public missions by others that they can make a copy of. */
-export function scenarioListView(api: Api, open: (id: number) => void): HTMLElement {
+/**
+ * The scenarios this person can edit, and public missions by others that they can make a copy of.
+ * `startNew` opens the "New scenario" dialog straight away (`#/new`, linked from the teacher's
+ * missions page).
+ */
+export function scenarioListView(api: Api, open: (id: number) => void, options: { startNew?: boolean } = {}): HTMLElement {
   const list = h('div', { class: 'grid' }, h('p', { class: 'muted' }, 'Loading…'));
   const others = h('div', null);
   const fail = (err: unknown, fallback: string) => toast(err instanceof Error ? err.message : fallback, 'error');
@@ -111,6 +115,9 @@ export function scenarioListView(api: Api, open: (id: number) => void): HTMLElem
       fail(err, 'Could not copy the scenario.');
     }
   };
+
+  // Once the page is on screen: the dialog is modal over it.
+  if (options.startNew) queueMicrotask(() => void create());
 
   const zip = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true, 'data-input': 'import' });
   zip.addEventListener('change', async () => {

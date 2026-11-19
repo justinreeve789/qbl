@@ -184,6 +184,7 @@ async function showHome(user: User): Promise<boolean> {
       api.signOut();
       window.location.reload();
     },
+    desk: isStaff(user.role) ? api.teacherDesk() : undefined,
   }));
   return true;
 }

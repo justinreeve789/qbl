@@ -1,4 +1,5 @@
-import { siteLinks, type User } from '@qbl/shared';
+import { isStaff, siteLinks, type User } from '@qbl/shared';
+import { buildTeacherDesk, TEACH_PATHS, teacherMissionsHeading, type TeacherDesk } from './teach';
 import { AccountMenu } from './ui/AccountMenu';
 import { icon } from './ui/icons';
 
@@ -108,21 +109,30 @@ export interface HomeOptions {
   /** Called when the player picks a different avatar. */
   onAvatar(id: number): void;
   onSignOut(): void;
+  /**
+   * For teachers and admins: their assignments, scenarios and students, shown above the
+   * missions. The page is drawn at once and this part fills in when it arrives.
+   */
+  desk?: Promise<TeacherDesk>;
 }
 
+
 /**
- * The page a player lands on: every mission they can play. Assigned ones first (a teacher gave
- * them, perhaps with a due date and a team), then the ones open to everyone.
+ * What the missions page says about who is signed in, where it explains what is (not) listed.
+ * Teachers get none: their page lists their assignments and says where students see them.
  */
-/** What the missions page says about who is signed in, where it explains what is (not) listed. */
 export function whoNotice(role: string): string | null {
   if (role === 'guest') return 'You are playing as a guest. Sign in with your own account to see the missions your teacher assigned you.';
-  if (role === 'teacher' || role === 'admin') {
-    return 'You are signed in as a teacher. Students see the missions you assign when they sign in with their own accounts; the game and the editor share one sign-in in each browser. To watch a class, use "Look in" on Classes (in the menu at the top).';
-  }
   return null;
 }
 
+/**
+ * The page a user lands on after signing in. A student's lists every mission they can play:
+ * assigned ones first (a teacher gave them, perhaps with a due date and a team), then the ones
+ * open to everyone. A teacher's (or admin's) opens with their teaching instead: shortcuts into
+ * the editor, their assignments with a way to look in on each team, and their scenarios; the
+ * missions they can play come after.
+ */
 export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   const { user, missions, avatars } = options;
   let avatarId = options.avatarId;
@@ -131,6 +141,8 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   // The bar across the top: the site's places for teachers and admins (Missions, Editor, Classes,
   // Docs), and the player's own menu. On a phone the places sit in a row of their own under it.
   const links = siteLinks(user.role);
+  const staff = isStaff(user.role);
+  if (staff) page.classList.add('staff');
   const bar = el('header', 'qbl-site');
   const brand = el('a', 'qbl-site-brand', 'QuestLab');
   brand.href = '/';
@@ -159,8 +171,18 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
     current: 'missions',
     signOut: { label: user.role === 'guest' ? 'Sign in with an account' : 'Sign out', run: () => options.onSignOut() },
   });
-  bar.append(brand, nav, menu.root);
-  if (links.length > 1) bar.classList.add('staff');
+  bar.append(brand, nav);
+  if (staff) {
+    const add = el('a', 'qbl-site-new');
+    add.href = TEACH_PATHS.newScenario;
+    add.dataset.place = 'new-scenario';
+    add.title = 'Make a new scenario in the editor';
+    add.setAttribute('aria-label', 'New scenario');
+    add.append(icon('new', { size: 16 }), el('span', undefined, 'New scenario'));
+    bar.appendChild(add);
+  }
+  bar.appendChild(menu.root);
+  if (staff) bar.classList.add('staff');
   page.appendChild(bar);
 
   const header = el('header', 'qbl-home-header');
@@ -177,7 +199,10 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   };
   drawFace();
   const greeting = el('div');
-  greeting.append(el('h1', undefined, `Welcome, ${user.name}`), el('p', undefined, 'Choose a mission to begin.'));
+  greeting.append(
+    el('h1', undefined, `Welcome, ${user.name}`),
+    el('p', undefined, staff ? 'Build missions, assign them to your classes, and look in while they play.' : 'Choose a mission to begin.'),
+  );
   who.append(face, greeting);
   header.append(who);
   page.appendChild(header);
@@ -220,6 +245,8 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   }
   page.appendChild(picker);
 
+  if (staff) page.appendChild(buildTeacherDesk(options.desk ?? Promise.reject(new Error('no desk')), user, now));
+
   const section = (title: string, list: Mission[]) => {
     if (!list.length) return;
     const wrap = el('section', 'qbl-home-section');
@@ -248,6 +275,12 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
     wrap.appendChild(cards);
     page.appendChild(wrap);
   };
+  if (staff) {
+    // A teacher's own assignments are listed above; what follows is what they can play themselves.
+    section(teacherMissionsHeading(missions), missions);
+    if (!missions.length) page.appendChild(el('p', 'qbl-home-empty', 'No missions are published yet. Publish one from the editor to play it here.'));
+    return page;
+  }
   section('Your assignments', missions.filter((m) => m.kind === 'assigned'));
   section('Open missions', missions.filter((m) => m.kind === 'public'));
   if (!missions.length) page.appendChild(el('p', 'qbl-home-empty', 'There are no missions for you yet. Check back soon.'));

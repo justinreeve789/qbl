@@ -1,6 +1,7 @@
 import type { PlayerProfile, Progress, Scenario, ShopItem, User } from '@qbl/shared';
 import { config } from '../config';
 import type { AvatarChoice, Mission } from '../home';
+import type { TeachAssignment, TeachScenario, TeacherDesk } from '../teach';
 
 const TOKEN_KEY = 'qbl.token';
 
@@ -163,6 +164,22 @@ export class Api {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * What a teacher's missions page shows: their assignments, the scenarios they can edit and how
+   * many students they have. Each part is null when it cannot be read, so one failure does not
+   * hide the rest.
+   */
+  async teacherDesk(): Promise<TeacherDesk> {
+    const read = <T,>(path: string, pick: (body: any) => T): Promise<T | null> =>
+      this.call<unknown>('GET', path).then(pick, () => null);
+    const [assignments, scenarios, students] = await Promise.all([
+      read('/teach/assignments', (b) => b.assignments as TeachAssignment[]),
+      read('/editor/scenarios', (b) => b.scenarios as TeachScenario[]),
+      read('/teach/students', (b) => (Array.isArray(b.students) ? b.students.length : null) as number | null),
+    ]);
+    return { assignments, scenarios, students };
   }
 
   /** What the player can play: public missions and those assigned to them. Null where the backend has no such list. */
