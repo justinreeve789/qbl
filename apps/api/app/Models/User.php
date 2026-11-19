@@ -39,7 +39,7 @@ class User extends Authenticatable
         return Attribute::make(get: $tidy, set: $tidy);
     }
 
-    /** The shape the client and game server expect. See docs/docs/api.md. */
+    /** The shape the client and game server expect. See docs/src/content/docs/developers/api.md. */
     public function toQbl(): array
     {
         return array_filter([

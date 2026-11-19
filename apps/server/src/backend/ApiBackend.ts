@@ -3,7 +3,7 @@ import type { Access, Backend, InstanceData, User } from './Backend.js';
 
 /**
  * Talks to the QBL Laravel API's internal endpoints. Every request carries
- * the shared service key; see docs/docs/api.md for the contract.
+ * the shared service key; see docs/src/content/docs/developers/api.md for the contract.
  */
 export class ApiBackend implements Backend {
   constructor(private baseUrl: string, private serviceKey: string) {}

@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Runtime extensions (spec v2) - QBL JSON Documentation</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../scenario/" class="nav-link">Scenarios</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../scene/" class="nav-link">Scenes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../event/" class="nav-link">Events</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../action/" class="nav-link">Actions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../media/" class="nav-link">Media</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../character/" class="nav-link">Characters</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../item/" class="nav-link">Items</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../variable/" class="nav-link">Variables</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../condition/" class="nav-link">Conditions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../spritemap/" class="nav-link">Spritemaps</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../label/" class="nav-link">Labels</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Runtime extensions (spec v2)</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../classes/" class="nav-link">Classes, missions and teams</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../tooling/" class="nav-link">Backups, copies and the starship hub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../session/" class="nav-link">Save data</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../architecture/" class="nav-link">Architecture</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">HTTP API contract</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../protocol/" class="nav-link">Multiplayer protocol</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../label/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../classes/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#runtime-extensions-spec-v2" class="nav-link">Runtime extensions (spec v2)</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#scenario" class="nav-link">Scenario</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#scenes" class="nav-link">Scenes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#events-and-hotspots" class="nav-link">Events and hotspots</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#actions" class="nav-link">Actions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#variables" class="nav-link">Variables</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#items" class="nav-link">Items</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#characters" class="nav-link">Characters</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#animations" class="nav-link">Animations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#stars-xp-and-the-marketplace" class="nav-link">Stars, XP and the marketplace</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#patterns" class="nav-link">Patterns</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#not-implemented-yet" class="nav-link">Not implemented yet</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="runtime-extensions-spec-v2">Runtime extensions (spec v2)</h1>
+<p>The original pages describe the JSON as first designed. The walk-around multiplayer runtime needs a few things those pages do not cover: where avatars can walk, where they appear, how scenes connect, where items and characters stand, and which state is shared between players.</p>
+<p>Everything on this page is <strong>optional and additive</strong>. A document that uses none of it still plays: the whole scene is walkable, players appear in the centre, and all variables are per-player. Set <code>"spec_version": 2</code> on scenarios that use these fields.</p>
+<p>All coordinates are scene pixels with the origin at the top left. An avatar's position is the position of its <strong>feet</strong>.</p>
+<h2 id="scenario">Scenario</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>spec_version</td>
+<td>int</td>
+<td>1</td>
+<td>Version of the spec the document was written against.</td>
+</tr>
+<tr>
+<td>code</td>
+<td>string</td>
+<td></td>
+<td>The scenario's unique 16-letter code (lowercase <code>a</code> to <code>z</code>). It is generated when the scenario is created, never changes, and is its address: players open <code>/{code}</code>. <code>shortname</code> stays as a readable name and can be edited freely.</td>
+</tr>
+<tr>
+<td>items</td>
+<td>array</td>
+<td></td>
+<td>Item definitions (see <a href="../item/">Items</a>). Scenes place them with <code>scenes[].items</code>.</td>
+</tr>
+<tr>
+<td>characters</td>
+<td>array</td>
+<td></td>
+<td>Character definitions (see <a href="../character/">Characters</a>). Scenes place them with <code>scenes[].characters</code>.</td>
+</tr>
+<tr>
+<td>asset_base_url</td>
+<td>string</td>
+<td></td>
+<td>Prefix for media <code>url</code> values that are neither absolute nor rooted. A <code>url</code> that starts with <code>/</code> (such as <code>/media/12/ab12….png</code>, a file uploaded in the editor) is used as it is.</td>
+</tr>
+<tr>
+<td>visibility</td>
+<td>string</td>
+<td>public</td>
+<td><code>public</code>: on every player's missions page. <code>private</code>: only for students a teacher assigned it to.</td>
+</tr>
+<tr>
+<td>chat_mode</td>
+<td>string</td>
+<td>emotes</td>
+<td><code>off</code>: no chat. <code>emotes</code>: a fixed set of emoji only. <code>free</code>: typed text, filtered by the game server.</td>
+</tr>
+<tr>
+<td>move_speed</td>
+<td>decimal</td>
+<td>420</td>
+<td>Avatar walking speed in scene pixels per second.</td>
+</tr>
+<tr>
+<td>avatar_media_ids</td>
+<td>array</td>
+<td></td>
+<td>Image media ids players may choose as their avatar. The first is the default. With the Laravel API these are the platform's avatars, the same in every scenario, added when the document is served (media ids from 900000); a scenario does not set them. See <a href="../classes/">Classes, missions and teams</a>.</td>
+</tr>
+<tr>
+<td>avatar_portraits</td>
+<td>object</td>
+<td></td>
+<td>A close-up portrait for an avatar: <code>{"&lt;avatar media id&gt;": &lt;portrait media id&gt;}</code>. Shown when a player with that avatar speaks in a story box. An avatar without one is shown by its ordinary picture.</td>
+</tr>
+<tr>
+<td>objectives</td>
+<td>array</td>
+<td></td>
+<td>The mission checklist shown to the player. See below.</td>
+</tr>
+<tr>
+<td>music_media_id</td>
+<td>int</td>
+<td></td>
+<td>Background music for the scenario: it plays in every scene that does not have music of its own.</td>
+</tr>
+<tr>
+<td>music_volume</td>
+<td>decimal</td>
+<td>0.5</td>
+<td>Volume of that music, 0 to 1.</td>
+</tr>
+<tr>
+<td>session</td>
+<td>object</td>
+<td>null</td>
+<td>Save data for the requesting player. See <a href="../session/">Save data</a>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>jump_targets</code> is generated from jump actions (including those on infobox buttons), by the API when it builds the JSON and again by the runtime. It may be either an object keyed by scene id (<code>{"3": [4]}</code>) or an array of <code>{scene_id, targets}</code>.</p>
+<p>The game server only lets a player move to a scene listed in the current scene's jump targets.</p>
+<h3 id="objectives">Objectives</h3>
+<p>A scenario can define a checklist that is shown on screen while it is played. Objectives are driven by variables, so events move the mission along simply by changing variables.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>string or int</td>
+<td></td>
+<td>Unique within the scenario.</td>
+</tr>
+<tr>
+<td>text</td>
+<td>string</td>
+<td></td>
+<td>What the player reads. May contain placeholders, e.g. <code>Collect samples ({{samples}}/3)</code>.</td>
+</tr>
+<tr>
+<td>show_when</td>
+<td>array of conditions</td>
+<td>always</td>
+<td>The objective is listed only while these hold. Use it to reveal steps as the mission unfolds.</td>
+</tr>
+<tr>
+<td>complete_when</td>
+<td>array of conditions</td>
+<td></td>
+<td>The objective is ticked while these hold. Required.</td>
+</tr>
+<tr>
+<td>optional</td>
+<td>bool</td>
+<td>false</td>
+<td>Shown as a bonus.</td>
+</tr>
+</tbody>
+</table>
+<p>The player is told when an objective becomes complete.</p>
+<h3 id="placeholders-in-text">Placeholders in text</h3>
+<p>Text overlays, infobox content, infobox button labels, text labels and objective text may contain placeholders:</p>
+<ul>
+<li><code>{{variable_name}}</code> is replaced with the variable's current value. Reserved variables work too.</li>
+<li><code>{{media:ID}}</code> is replaced with the URL of a media asset, for use in infobox HTML: <code>&lt;img src="{{media:40}}" alt=""&gt;</code>.</li>
+</ul>
+<p>Values are escaped when inserted into HTML. A placeholder that names nothing is left as written, so a typo shows up.</p>
+<h2 id="scenes">Scenes</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>width, height</td>
+<td>int</td>
+<td>first background's size</td>
+<td>World size in pixels. <strong>Set these</strong>: the game server cannot see image files, and uses the size to check movement.</td>
+</tr>
+<tr>
+<td>walkable_areas</td>
+<td>array of polygons</td>
+<td>whole scene</td>
+<td>Where feet may be. A polygon is an array of <code>{x, y}</code> points. A point is walkable if it is inside any of them.</td>
+</tr>
+<tr>
+<td>blocked_areas</td>
+<td>array of polygons</td>
+<td></td>
+<td>Holes cut out of the walkable areas (furniture, pits).</td>
+</tr>
+<tr>
+<td>spawn_points</td>
+<td>array</td>
+<td></td>
+<td>Named places players appear. See below.</td>
+</tr>
+<tr>
+<td>items</td>
+<td>array</td>
+<td></td>
+<td>Item placements: <code>{item_id, position_x, position_y}</code>.</td>
+</tr>
+<tr>
+<td>characters</td>
+<td>array</td>
+<td></td>
+<td>Character placements: <code>{character_id, position_x, position_y, facing, event_id}</code>.</td>
+</tr>
+<tr>
+<td>indirect_events</td>
+<td>array</td>
+<td></td>
+<td>Events that only run via a run event action, an infobox button or a character. (Mentioned on the Events page; this is where they live.)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="background-and-foreground-layers">Background and foreground layers</h3>
+<p>Entries of <code>background_media</code> and <code>foreground_media</code> may be plain media objects, as before, or layer objects:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>media_id</td>
+<td>int</td>
+<td></td>
+<td>Media to draw.</td>
+</tr>
+<tr>
+<td>position_x, position_y</td>
+<td>decimal</td>
+<td>0</td>
+<td>Top-left corner.</td>
+</tr>
+<tr>
+<td>display_width, display_height</td>
+<td>decimal</td>
+<td>scene size</td>
+<td>Size to draw the image at.</td>
+</tr>
+<tr>
+<td>tile</td>
+<td>bool</td>
+<td>false</td>
+<td>Repeat the image to fill the display size.</td>
+</tr>
+<tr>
+<td>scroll_speed_x, scroll_speed_y</td>
+<td>decimal</td>
+<td>0</td>
+<td>For tiled layers: pixels per second the texture drifts.</td>
+</tr>
+<tr>
+<td>parallax</td>
+<td>decimal</td>
+<td>1</td>
+<td>Camera scroll factor. 1 moves with the world, 0 stays fixed on screen.</td>
+</tr>
+</tbody>
+</table>
+<p>Backgrounds draw in order behind everything; foregrounds draw in order in front of avatars.</p>
+<h3 id="background-music">Background music</h3>
+<p>A scene starts with its own music (<code>music_media_id</code>, <code>music_volume</code> on the scene) or, failing that, the scenario's. Events can change the music at any time with an <code>audio</code> action flagged <code>repeat</code> and <code>persist</code>; the next scene starts with its own music again. One music track plays at a time, and a track that is already playing is never restarted, so walking between scenes that share music is seamless. A scene whose start events start background music themselves is left to do so.</p>
+<h3 id="scale-areas">Scale areas</h3>
+<p><code>scale_areas</code> is a list of boxes that give a scene depth. Whatever stands in a box is drawn at <code>scale_top</code> percent of its normal size at the box's top edge and <code>scale_bottom</code> percent at its bottom edge, and in proportion in between. It applies to avatars, to what they wear or ride, and to items and characters, by where their feet are.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>string</td>
+<td>A label for the editor.</td>
+</tr>
+<tr>
+<td>x, y, width, height</td>
+<td>int</td>
+<td>The box, in scene pixels.</td>
+</tr>
+<tr>
+<td>scale_top</td>
+<td>decimal</td>
+<td>Percent of normal size at the top edge. 100 is unchanged.</td>
+</tr>
+<tr>
+<td>scale_bottom</td>
+<td>decimal</td>
+<td>Percent of normal size at the bottom edge.</td>
+</tr>
+<tr>
+<td>speed_effect</td>
+<td>decimal</td>
+<td>How much walking speed follows size, 0 to 100. Default 100: one to one, so a figure drawn at half size walks at half speed. 0: speed is unaffected. A value such as 60 lets distant figures cover ground a little faster than their size suggests without looking like they are racing.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">&quot;scale_areas&quot;: [{ &quot;name&quot;: &quot;corridor depth&quot;, &quot;x&quot;: 0, &quot;y&quot;: 580, &quot;width&quot;: 1800, &quot;height&quot;: 620, &quot;scale_top&quot;: 40, &quot;scale_bottom&quot;: 100 }]
+</code></pre>
+<p>Scale areas are separate from walkable areas on purpose: a crate at the far end of a room should be small even though nobody can walk there. Outside every box things are drawn at normal size. Where boxes overlap, the first one listed applies. Scale areas change how things are drawn and, through <code>speed_effect</code>, how fast avatars walk. Hotspot radii, reach and blocking radii stay in scene pixels. The game server's speed limit is the full walking speed, so slowing down in a scale area never conflicts with it.</p>
+<h3 id="spawn-points">Spawn points</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>string</td>
+<td></td>
+<td>Unique within the scene. The one named <code>default</code> is used when none is asked for.</td>
+</tr>
+<tr>
+<td>position_x, position_y</td>
+<td>decimal</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>facing</td>
+<td>string</td>
+<td>right</td>
+<td><code>left</code> or <code>right</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="moving-between-scenes">Moving between scenes</h3>
+<p>Scenes are connected the way the original docs describe: with <strong>jump actions</strong>. To send players to the next scene when they reach the edge of the current one, put a walk-in hotspot along that edge and give it a jump action.</p>
+<p>A hotspot whose <code>position_x</code> or <code>position_y</code> is null covers that entire axis, so one hotspot makes a whole edge:</p>
+<pre><code class="language-json">{
+  &quot;id&quot;: 310, &quot;shortname&quot;: &quot;edge-east&quot;,
+  &quot;position_x&quot;: 2250, &quot;position_y&quot;: null, &quot;radius&quot;: 35,
+  &quot;activate_by_trigger&quot;: false,
+  &quot;actions&quot;: [{ &quot;id&quot;: 3101, &quot;type&quot;: &quot;jump&quot;, &quot;scene_id&quot;: 4, &quot;spawn_point&quot;: &quot;west&quot; }]
+}
+</code></pre>
+<p>This fires when an avatar comes within 35 pixels of x = 2250, at any height. Use <code>position_y</code> with a null <code>position_x</code> for a top or bottom edge. Because it is an ordinary hotspot it can have conditions (a locked door), and the jump can be preceded by other actions (a sound, a line of text). The scene's end events run before the jump, as always.</p>
+<p>The spawn point a jump arrives at must not be inside a walk-in hotspot that jumps, or arriving players would leave again at once. The validator rejects this.</p>
+<h2 id="events-and-hotspots">Events and hotspots</h2>
+<p><code>activate_by_trigger</code> keeps its meaning. In a walk-around game the two cases are:</p>
+<ul>
+<li><code>true</code>: fires when the player <strong>clicks or taps</strong> inside the radius (or on one of the hotspot's labels).</li>
+<li><code>false</code>: fires when the player's avatar <strong>walks into</strong> the radius. It fires again each time they leave and re-enter. If it cannot fire at that moment (another event is blocking hotspots, or its conditions are not met) it fires as soon as it can while the avatar is still inside.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>once</td>
+<td>bool</td>
+<td>false</td>
+<td>Fire only once per player, ever. Remembered in the save data.</td>
+</tr>
+<tr>
+<td>reveal_radius</td>
+<td>decimal</td>
+<td></td>
+<td>The hotspot is only there when the player's avatar is within this many scene pixels of its position. Further away, its labels are invisible and it cannot be clicked. Absent: it is always there.</td>
+</tr>
+<tr>
+<td>reveal_full_radius</td>
+<td>decimal</td>
+<td>half of reveal_radius</td>
+<td>Within this distance the hotspot is fully visible. Between the two distances its labels fade in as the avatar approaches and out as it leaves.</td>
+</tr>
+</tbody>
+</table>
+<p>The reveal distance is measured from each player's own avatar, so a hotspot can be visible to one player and not yet to another. A coordinate the hotspot leaves empty does not count towards the distance. Walk-in hotspots still fire by their <code>radius</code> alone.</p>
+<h3 id="who-sees-an-event">Who sees an event</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>audience</td>
+<td>string</td>
+<td>player</td>
+<td><code>player</code>: only the player who sets the event off sees it. <code>scene</code>: every player in the scene sees and hears it as it happens.</td>
+</tr>
+</tbody>
+</table>
+<p>Every kind of event can have an <code>audience</code>. With <code>scene</code>, these actions are shown to the other players in the scene at the moment they happen for the player who set the event off: <code>audio</code>, <code>image_fixed</code>, <code>image_overlay</code>, <code>text_overlay</code>, <code>spritemap</code>, <code>video</code>, <code>dialogue</code>, <code>translate</code> and <code>cancel</code>. In a shared dialogue, "the player" is the player who set it off: the bubble hangs over their avatar, and a story box shows their name and portrait.</p>
+<p>Everything an event <em>does</em> stays with the player who set it off, whatever the audience: <code>variable</code>, <code>award</code>, <code>jump</code>, <code>freeze</code>, <code>avatar</code>, <code>shop</code>, <code>infobox</code> and the timing actions. Nothing another player's event shows can change your variables, move you or open a box you must answer. (A variable that should change for everyone is a shared variable; see <a href="#variables">Variables</a>. An avatar being hidden is seen by everyone anyway.)</p>
+<ul>
+<li>The player's own conditions decide which actions run; the others are shown exactly those.</li>
+<li>A player who walks into the scene part-way through sees the rest, not what came before. For something that must still be true for late arrivals (the boulders are across the path), use a shared variable and a hotspot or start event conditioned on it; use <code>audience: scene</code> for the moment itself (the boulders falling).</li>
+<li>An event run with <code>run_event</code> has its own audience: a private conversation can set off a shared event.</li>
+<li>The game server passes on only actions that belong to a <code>scene</code> event in the scene the player is in, so a player cannot push anything else onto other screens.</li>
+</ul>
+<pre><code class="language-json">{ &quot;id&quot;: 553, &quot;shortname&quot;: &quot;rockfall&quot;, &quot;audience&quot;: &quot;scene&quot;, &quot;actions&quot;: [
+  { &quot;type&quot;: &quot;text_overlay&quot;, &quot;text&quot;: &quot;RUMBLE! Boulders crash down across the cliff path.&quot;, &quot;duration&quot;: 3000, &quot;blocking&quot;: false },
+  { &quot;type&quot;: &quot;variable&quot;, &quot;name&quot;: &quot;rockfall&quot;, &quot;operator&quot;: &quot;set&quot;, &quot;operand&quot;: 1 }
+] }
+</code></pre>
+<p><code>overridable</code> is implemented as: when any event starts, every running event flagged <code>overridable</code> is stopped where it is. Events not flagged always run to the end.</p>
+<h2 id="actions">Actions</h2>
+<p>Action <code>type</code> values are matched loosely: <code>Image Fixed</code>, <code>imageFixed</code> and <code>image_fixed</code> are the same. The canonical names are <code>audio</code>, <code>cancel</code>, <code>image_fixed</code>, <code>image_overlay</code>, <code>infobox</code>, <code>jump</code>, <code>repeat</code>, <code>run_event</code>, <code>spritemap</code>, <code>text_overlay</code>, <code>translate</code>, <code>variable</code>, <code>video</code> and <code>wait</code>.</p>
+<p>Actions may carry their own <code>conditions</code> array (the Conditions page allows this; the Actions page did not list it). An action whose conditions fail is skipped.</p>
+<h3 id="dialogue">Dialogue</h3>
+<p>A new action type, <code>dialogue</code>, shows what someone says: in a speech bubble over them, or in a story box with their portrait.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>text</td>
+<td>string</td>
+<td></td>
+<td>What is said. <code>{{variable}}</code> placeholders work.</td>
+</tr>
+<tr>
+<td>speaker</td>
+<td>string</td>
+<td>player</td>
+<td><code>player</code>, or <code>character</code>.</td>
+</tr>
+<tr>
+<td>character_id</td>
+<td>int</td>
+<td></td>
+<td>The character, when <code>speaker</code> is <code>character</code>. For a bubble it must be placed in the scene; a story box can carry a voice from anywhere.</td>
+</tr>
+<tr>
+<td>style</td>
+<td>string</td>
+<td>bubble</td>
+<td><code>bubble</code>: a speech bubble over the speaker. <code>portrait</code>: a story box.</td>
+</tr>
+<tr>
+<td>duration</td>
+<td>int</td>
+<td></td>
+<td>Milliseconds on screen. Absent: a bubble stays long enough to read, and a story box stays until the player continues. A click closes either sooner.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;dialogue&quot;, &quot;speaker&quot;: &quot;character&quot;, &quot;character_id&quot;: 1, &quot;text&quot;: &quot;Welcome aboard, {{QBLPlayerName}}!&quot; }
+</code></pre>
+<p>The bubble follows the speaker and keeps itself on screen. It sits above them when there is room, below when they are near the top of the screen, and to the right or left when there is room neither above nor below; sideways it slides along to stay inside the screen while its tail keeps pointing at the speaker. A sequence of dialogue actions is a conversation; put a <code>freeze</code> before it to hold the player still.</p>
+<p><strong>The story box</strong> (<code>style: "portrait"</code>) is for the characters and moments that carry the story. It is a panel across the bottom of the screen with the speaker's close-up portrait standing on its edge, their name, and the words appearing a few at a time. The player clicks, or presses Enter or Space, to continue: once to show the whole line, again to go on. The portrait is the character's <code>portrait_media_id</code> (or their ordinary picture), or for the player the portrait of their avatar (<code>avatar_portraits</code>).</p>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;dialogue&quot;, &quot;style&quot;: &quot;portrait&quot;, &quot;speaker&quot;: &quot;character&quot;, &quot;character_id&quot;: 1, &quot;text&quot;: &quot;Welcome aboard, {{QBLPlayerName}}! I am Captain Vega.&quot; }
+</code></pre>
+<p>A story conversation is normally the player's own (<code>audience: player</code>, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.</p>
+<h3 id="animate">Animate</h3>
+<p>A new action type, <code>animate</code>, plays an animation on something in the scene. See <a href="#animations">Animations</a> for where animations come from.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>animation</td>
+<td>string</td>
+<td></td>
+<td>The animation's name: one defined on the target's sprite sheet, or a built-in move (<code>jump</code>, <code>spin</code>, <code>crouch</code>, <code>wave</code>, <code>dance</code>). Empty: stop what is playing and return to standing and walking.</td>
+</tr>
+<tr>
+<td>target</td>
+<td>string</td>
+<td>player</td>
+<td><code>player</code>: the avatar of the player whose event this is. <code>item</code>: an item or vehicle, on the floor of this scene or being worn or ridden. <code>character</code>: a character placed in this scene. <code>action</code>: a picture that an <code>image_fixed</code> action is showing.</td>
+</tr>
+<tr>
+<td>item_id, character_id, target_id</td>
+<td>int</td>
+<td></td>
+<td>Which item, character or action, for those targets.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;animate&quot;, &quot;target&quot;: &quot;character&quot;, &quot;character_id&quot;: 1, &quot;animation&quot;: &quot;wave&quot;, &quot;blocking&quot;: false }
+</code></pre>
+<p>With <code>blocking</code> (the default) the sequence waits until a one-pass animation has finished; a looping one never holds it up. An animation on a <strong>player's avatar goes through the game server</strong>, so everyone in the scene sees it, whatever the event's audience. An animation on an item, a character or a picture is shown to the other players only when the event's <code>audience</code> is <code>scene</code>, like anything else an event shows.</p>
+<h3 id="freeze">Freeze</h3>
+<p>A new action type, <code>freeze</code>, stops the player from walking, or lets them walk again: for a conversation with a character, a cutscene, a countdown.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>frozen</td>
+<td>bool</td>
+<td><code>true</code>: the player cannot move. <code>false</code>: they can again.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;freeze&quot;, &quot;frozen&quot;: true }
+</code></pre>
+<p>A freeze ends at a <code>freeze</code> action with <code>frozen: false</code>, <strong>or when the event that froze the player finishes</strong>, or on leaving the scene, whichever comes first, so a player can never be left stuck by a missing action. While frozen a player can still click hotspots and infobox buttons. The demo freezes the player while Captain Vega is speaking.</p>
+<h3 id="avatar">Avatar</h3>
+<p>A new action type, <code>avatar</code>, shows or hides the player's own avatar.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>visible</td>
+<td>bool</td>
+<td></td>
+<td><code>false</code> hides the avatar, <code>true</code> shows it.</td>
+</tr>
+<tr>
+<td>duration</td>
+<td>int</td>
+<td>0</td>
+<td>Fade time in milliseconds.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;avatar&quot;, &quot;visible&quot;: false, &quot;duration&quot;: 400 }
+</code></pre>
+<p>The change goes through the game server, so every player in the scene sees it. A hidden player can still walk and use hotspots. Avatars are <strong>always shown again when a player arrives in a scene</strong>: to keep them hidden in a scene, hide them in one of its start events. The demo's rocket hides the avatar as the player steps aboard, and the player reappears in the control room. (The scene attribute <code>show_avatars: false</code> from the base docs still hides every avatar in a scene, for everyone, for the whole visit.)</p>
+<h3 id="award">Award</h3>
+<p>A new action type, <code>award</code>, gives the player stars, XP, or both. A negative number takes them away.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>stars</td>
+<td>int</td>
+<td>0</td>
+<td>Stars to give (or take, if negative). Stars are the currency of the marketplace.</td>
+</tr>
+<tr>
+<td>xp</td>
+<td>int</td>
+<td>0</td>
+<td>Experience points to give (or take). XP is never spent; it adds up to a rank.</td>
+</tr>
+<tr>
+<td>note</td>
+<td>string</td>
+<td></td>
+<td>A few words shown with the award: "Sample collected".</td>
+</tr>
+<tr>
+<td>repeatable</td>
+<td>bool</td>
+<td>false</td>
+<td>By default a player gets each award <strong>once</strong>, however often its event runs and in however many visits. Set this to give it every time.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;award&quot;, &quot;stars&quot;: 3, &quot;xp&quot;: 10, &quot;note&quot;: &quot;Sample collected&quot; }
+</code></pre>
+<p>Stars and XP belong to the player's <strong>account</strong>, not to a scenario: they carry across every scenario on the platform. See <a href="#stars-xp-and-the-marketplace">Stars, XP and the marketplace</a> for how they are kept honest.</p>
+<ul>
+<li>Neither total goes below zero. Taking away more than a player has leaves them with none.</li>
+<li><strong>Guests earn nothing.</strong> Stars and XP need a signed-in account.</li>
+<li>Put awards in an event's own actions. An award placed directly on an infobox button is not given (the validator warns): make the button run an event (<code>run_event</code>) that contains the award.</li>
+<li>Awards never hold up the sequence, whatever <code>blocking</code> says.</li>
+</ul>
+<h3 id="shop">Shop</h3>
+<p>A new action type, <code>shop</code>, opens the marketplace. It has no parameters. The sequence waits until the player closes the window.</p>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;shop&quot; }
+</code></pre>
+<p>Players can also open the marketplace at any time from the stars shown in the corner of the screen, so a scenario needs no shop action; it is there for scenarios that want a place for it, as the demo's marketplace room does.</p>
+<table>
+<thead>
+<tr>
+<th>Addition</th>
+<th>Applies to</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dismissible</td>
+<td>infobox</td>
+<td>Default true. See below.</td>
+</tr>
+<tr>
+<td>spawn_point</td>
+<td>jump</td>
+<td>Spawn point to arrive at in the target scene.</td>
+</tr>
+<tr>
+<td>target_event_id</td>
+<td>run_event</td>
+<td>The event to run. Use this rather than <code>event_id</code>, which the base action attributes already use for "the event this action belongs to". <code>event_id</code> is still read if <code>target_event_id</code> is absent.</td>
+</tr>
+<tr>
+<td>layer</td>
+<td>image_fixed, spritemap</td>
+<td><code>above</code> (default) draws over avatars and foregrounds. <code>sorted</code> depth-sorts with avatars using <code>position_y</code>, so players can walk in front of it.</td>
+</tr>
+<tr>
+<td>position_x, position_y, scale_x, scale_y, alpha, duration</td>
+<td>translate</td>
+<td>Values present are animated on the target over <code>duration</code> milliseconds. Position applies to <code>image_fixed</code> and <code>spritemap</code> targets; overlays support scale and alpha.</td>
+</tr>
+<tr>
+<td>alignment, scale_x, scale_y, volume</td>
+<td>video</td>
+<td>Video plays as an overlay with browser controls. It blocks until it ends.</td>
+</tr>
+</tbody>
+</table>
+<p>Clarifications of documented behaviour:</p>
+<ul>
+<li>An action with no end (an image or text with <code>duration</code> 0, repeating audio, a repeating spritemap) never holds up the sequence, whatever <code>blocking</code> says. It stays until a cancel or a jump.</li>
+<li>A <code>repeat</code> with no <code>wait</code> in its loop runs about once per frame rather than freezing the page.</li>
+<li><code>call_to_actions</code> is a list of <code>{"text": "...", "action": {...}, "conditions": [...]}</code>. The action needs no <code>id</code>. A button with <code>conditions</code> is only offered while they hold, so one infobox can serve as a menu that changes.</li>
+<li>An infobox has a close button unless <code>dismissible</code> is <code>false</code>. A box that cannot be dismissed must be answered with one of its buttons, which is how questions are asked.</li>
+<li>An infobox action is not finished until the box is closed <strong>and</strong> the chosen button's action has run to its end. A sequence such as "ask a question, then open a menu" therefore waits for the feedback the answer triggers.</li>
+<li>Infobox <code>content</code> is sanitised. Formatting, lists, tables, links and images are kept; scripts, styles, frames and event handlers are removed.</li>
+<li><strong>Background music</strong> is an audio action with <code>repeat</code> and <code>persist</code> in a scene's start events. Persistent audio is treated as the music track: only one plays at a time. When a scene starts a persistent audio action with the same media that is already playing, the music carries on without restarting; with different media, it replaces the old track. A cancel action naming the audio action's id stops it.</li>
+</ul>
+<h2 id="variables">Variables</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>scope</td>
+<td>string</td>
+<td>player</td>
+<td><code>player</code>: each player has their own value, saved with their progress. <code>room</code>: one value shared by everyone in the group, held by the game server.</td>
+</tr>
+<tr>
+<td>persist</td>
+<td>bool</td>
+<td>true</td>
+<td>If false the variable returns to <code>default_value</code> on every visit.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Each variable is one or the other, and its <code>scope</code> says which.</strong></p>
+<ul>
+<li>A <strong>player's own</strong> variable (<code>player</code>) has a separate value for every player. Changing it for one player changes nothing for anyone else. Use it for a player's progress: students must greet three animals before a door opens, and each has their own count of how many they have greeted.</li>
+<li>A <strong>shared</strong> variable (<code>room</code>) has one value for everyone playing together. When any player changes it, it changes for all of them at once, wherever in the scenario they are. Use it for the state of the world: one student sends boulders down across a path, and after that nobody can use the path.</li>
+</ul>
+<p>Conditions and variable actions are written the same way for both; only the variable's scope differs, so a scenario decides this once, where the variable is defined, and not in every action. A variable action on a shared variable is sent to the game server, applied there, and the new value reaches every player; hotspots and objectives whose conditions use it update for everyone. The editor marks shared variables wherever one is chosen.</p>
+<p>"Everyone playing together" is a group: the players who joined with the same group key (a class, a team), up to <code>max_players</code>. A shared variable with <code>persist</code> is saved with the group's game, so the path is still blocked when they come back tomorrow; a different group has its own. A player's own variables are reported by the browser and can be tampered with; shared variables are held by the server, but any player's event can change them, so they are not secrets either.</p>
+<p>Both examples are in the demo: the rockfall above the spring meadow (<code>rockfall</code>, shared, cleared again by the repair drone in the engine room) and the critters in the hydroponics bay (<code>critters_met</code>, each player's own).</p>
+<p>Additional reserved variables: <code>QBLSceneId</code>, <code>QBLPlayerName</code>, <code>QBLPlayerCount</code>, and for the player's account <code>QBLStars</code>, <code>QBLXp</code>, <code>QBLRank</code> (the rank's name) and <code>QBLAbility_&lt;key&gt;</code> (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as <code>{{placeholders}}</code> like any other variable.</p>
+<p>Additional condition operators: <code>&gt;=</code> and <code>&lt;=</code>.</p>
+<h2 id="items">Items</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>media_id</td>
+<td>int</td>
+<td></td>
+<td>Image for the item.</td>
+</tr>
+<tr>
+<td>scale</td>
+<td>decimal</td>
+<td>1.0</td>
+<td>Display scale.</td>
+</tr>
+<tr>
+<td>blocking_radius</td>
+<td>decimal</td>
+<td>40</td>
+<td>Size of the obstacle for <code>blocking</code> items.</td>
+</tr>
+<tr>
+<td>attach_offset_x, attach_offset_y</td>
+<td>decimal</td>
+<td>0</td>
+<td>Where the item sits relative to the avatar's feet while worn or ridden. X is mirrored when the avatar faces left.</td>
+</tr>
+<tr>
+<td>attach_layer</td>
+<td>string</td>
+<td>front</td>
+<td><code>front</code> or <code>behind</code> the avatar.</td>
+</tr>
+<tr>
+<td>art_faces</td>
+<td>string</td>
+<td>right</td>
+<td>Which way the artwork faces. It is mirrored to match the avatar.</td>
+</tr>
+<tr>
+<td>speed_multiplier</td>
+<td>decimal</td>
+<td>1.5</td>
+<td>Vehicles: walking speed while riding.</td>
+</tr>
+</tbody>
+</table>
+<p>Items are positioned by the bottom centre of their image, like avatars.</p>
+<p><strong>Wearables and vehicles</strong> work the same way: clicking one within reach attaches it to the avatar, and a button on screen removes it. A player can ride one vehicle at a time.</p>
+<ul>
+<li><code>unique: true</code>: one exists per room. While someone has it nobody else can take it, and when they let go (or disconnect) it stays where they stood, in whatever scene that is. Its position is saved with the room.</li>
+<li><code>unique: false</code>: every player has their own. It disappears from the floor for the player using it and is saved with that player.</li>
+</ul>
+<p><code>blocking</code> is implemented. <code>physical</code> (pushable objects) is <strong>not implemented yet</strong>.</p>
+<h3 id="vehicles-are-single-objects">Vehicles are single objects</h3>
+<p>A vehicle is always <code>unique</code>, whatever the document says: there is one of it in the room. It goes with whoever is riding it, across scenes. When the rider gets out it stays in that scene at that spot, where any player can climb in. Where vehicles were left is part of the room's saved data, so a vehicle left on the planet is still on the planet next lesson.</p>
+<h2 id="characters">Characters</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>media_id</td>
+<td>int</td>
+<td></td>
+<td>Image for the character.</td>
+</tr>
+<tr>
+<td>portrait_media_id</td>
+<td>int</td>
+<td></td>
+<td>A close-up of the character's face, shown in the story box when they speak (<code>dialogue</code> with <code>style: "portrait"</code>). Without one, <code>media_id</code> is used.</td>
+</tr>
+<tr>
+<td>scale</td>
+<td>decimal</td>
+<td>1.0</td>
+<td>Display scale.</td>
+</tr>
+</tbody>
+</table>
+<p>A placement's <code>event_id</code> names an indirect event in the same scene that runs when the character is clicked, typically an infobox with what they say.</p>
+<h2 id="animations">Animations</h2>
+<h3 id="sprite-sheets-and-named-animations">Sprite sheets and named animations</h3>
+<p>Any image can be a <strong>sprite sheet</strong>: a grid of equal frames. The media says how the grid is cut and names the animations made of its frames. Whatever is drawn with that media (an avatar, an item, a vehicle, a character, an <code>image_fixed</code> picture) can then play them.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sheet</td>
+<td>object</td>
+<td><code>{ "columns": 6, "rows": 3 }</code>: frames across and down. <code>count</code> may be added when the last row is not full. Frames are numbered from 0 at the top left, left to right and then down, as on the <a href="../spritemap/">Spritemaps</a> page.</td>
+</tr>
+<tr>
+<td>animations</td>
+<td>array</td>
+<td><code>{ "name", "frames", "duration", "repeat" }</code>. <code>frames</code> are frame numbers in the order they play. <code>duration</code> is the milliseconds one pass takes (default 100 per frame). <code>repeat</code> says whether it loops (default: by its name, see below).</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">{ &quot;id&quot;: 120, &quot;type&quot;: &quot;image&quot;, &quot;url&quot;: &quot;avatars/sprocket-sheet.png&quot;,
+  &quot;sheet&quot;: { &quot;columns&quot;: 6, &quot;rows&quot;: 3 },
+  &quot;animations&quot;: [
+    { &quot;name&quot;: &quot;idle&quot;, &quot;frames&quot;: [0, 1], &quot;duration&quot;: 900 },
+    { &quot;name&quot;: &quot;walk&quot;, &quot;frames&quot;: [6, 7, 8, 9, 10, 11], &quot;duration&quot;: 600 },
+    { &quot;name&quot;: &quot;jump&quot;, &quot;frames&quot;: [12, 13, 14, 13, 12], &quot;duration&quot;: 600, &quot;repeat&quot;: false },
+    { &quot;name&quot;: &quot;dance&quot;, &quot;frames&quot;: [15, 16, 17, 16], &quot;duration&quot;: 700 }
+  ] }
+</code></pre>
+<p>An <strong>animated PNG</strong> is not played as such. The editor reads its frames when it is uploaded and lays them out as a sprite sheet with one animation at the file's own speed, so the game has one way of animating. The existing <code>spritemap</code> action and spritemap labels, which describe their grid themselves, work as before.</p>
+<h3 id="names-that-mean-something">Names that mean something</h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>When it plays</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idle</code></td>
+<td>By itself, while the figure stands. Loops.</td>
+</tr>
+<tr>
+<td><code>walk</code></td>
+<td>By itself, while the figure moves: an avatar walking, a vehicle being ridden. Loops. It is mirrored for the direction the art does not face.</td>
+</tr>
+<tr>
+<td><code>walk_left</code>, <code>walk_right</code></td>
+<td>Used instead of <code>walk</code> for that direction, unmirrored. If only one is given, it is mirrored for the other.</td>
+</tr>
+<tr>
+<td>anything else</td>
+<td>When an <code>animate</code> action or a player's move asks for it. Plays once unless <code>repeat</code> is true (<code>dance</code> loops by default).</td>
+</tr>
+</tbody>
+</table>
+<p>A figure with no sheet, or a sheet without <code>idle</code> or <code>walk</code>, simply stands and is mirrored to face the way it goes, as before.</p>
+<h3 id="built-in-moves">Built-in moves</h3>
+<p>Five moves need no frames: <code>jump</code> (a hop), <code>spin</code> (a turn on the spot), <code>crouch</code> (a duck), <code>wave</code> (a sway from side to side) and <code>dance</code> (a looping bounce and sway). The picture itself is moved, so they work on any figure. <strong>Frames win</strong>: when a figure's sheet has an animation of the same name, that is played instead. So <code>jump</code> always does something, and looks best where a jump was drawn.</p>
+<h3 id="moves-what-players-can-do-themselves">Moves: what players can do themselves</h3>
+<p><code>moves</code> on the scenario lists what players can do whenever they like, from buttons on their screen.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>animation</td>
+<td>string</td>
+<td>The animation or built-in move to play on the player's avatar.</td>
+</tr>
+<tr>
+<td>label, icon</td>
+<td>string</td>
+<td>What the button shows. Default: the animation's name.</td>
+</tr>
+<tr>
+<td>conditions</td>
+<td>array</td>
+<td>The button is there only while these hold. Absent: always.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">&quot;moves&quot;: [
+  { &quot;animation&quot;: &quot;jump&quot; },
+  { &quot;animation&quot;: &quot;dance&quot;, &quot;conditions&quot;: [{ &quot;variable&quot;: &quot;learned_dance&quot;, &quot;operator&quot;: &quot;=&quot;, &quot;operand&quot;: 1 }] }
+]
+</code></pre>
+<p>This is the "animation inventory": a move a scenario teaches is a player's own variable set by an event, and the button appears when the condition holds. Moves of that kind belong to the scenario. Moves <strong>bought in the marketplace</strong> (shop items of kind <code>move</code>) belong to the account: once bought and switched on, their buttons are there in every scenario. A pressed move plays until it ends, or for a looping one until the player walks or presses it again.</p>
+<p>Avatars differ, so a move is not tied to one avatar's art: a player whose avatar has <code>dance</code> frames dances with them, and any other avatar does the built-in dance. A move that is neither on the avatar's sheet nor built in does nothing for that avatar.</p>
+<h3 id="how-animations-reach-other-players">How animations reach other players</h3>
+<p><code>players[...].anim</code> in the room state holds the last animation asked of a player's avatar, as <code>name:count</code>; clients play it when it changes, and it is cleared when the player walks or changes scene. The server checks the name's shape and how often it is asked (four times a second at most), not whether the player "owns" the move: animations are only something to look at. Walking and standing need no message; every client works them out from the positions it already receives.</p>
+<h2 id="stars-xp-and-the-marketplace">Stars, XP and the marketplace</h2>
+<p>Players earn <strong>stars</strong> and <strong>XP</strong> through <code>award</code> actions. Stars are spent in the marketplace. XP is never spent: its total decides the player's <strong>rank</strong>. Both are kept on the player's account by the backend and are the same in every scenario.</p>
+<h3 id="ranks">Ranks</h3>
+<p>Ranks are platform-wide. The defaults are in <code>apps/api/config/qbl.php</code> (<code>ranks</code>):</p>
+<table>
+<thead>
+<tr>
+<th>XP</th>
+<th>Rank</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Cadet</td>
+</tr>
+<tr>
+<td>100</td>
+<td>Explorer</td>
+</tr>
+<tr>
+<td>300</td>
+<td>Navigator</td>
+</tr>
+<tr>
+<td>700</td>
+<td>Specialist</td>
+</tr>
+<tr>
+<td>1500</td>
+<td>Commander</td>
+</tr>
+<tr>
+<td>3000</td>
+<td>Admiral</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-the-marketplace-sells">What the marketplace sells</h3>
+<p>Every scenario sells the platform's catalogue (<code>apps/api/database/seeders/data/shop.php</code>). A scenario can also sell items of its own, which exist only there: a mission badge, a tool for this planet. Authors add them on the editor's <strong>Shop</strong> page; they are in the document as <code>shop_items</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>int</td>
+<td></td>
+</tr>
+<tr>
+<td>name, description</td>
+<td>string</td>
+<td></td>
+</tr>
+<tr>
+<td>kind</td>
+<td>string</td>
+<td><code>wearable</code>, <code>pet</code>, <code>animation</code>, <code>move</code> or <code>ability</code>.</td>
+</tr>
+<tr>
+<td>price</td>
+<td>int</td>
+<td>In stars.</td>
+</tr>
+<tr>
+<td>media_id</td>
+<td>int</td>
+<td>The item's picture, one of the scenario's media. (Platform items have an <code>image_url</code> instead.)</td>
+</tr>
+<tr>
+<td>slot</td>
+<td>string</td>
+<td>Wearables: <code>head</code>, <code>body</code>, <code>back</code> or <code>hand</code>. One item per slot is worn at a time.</td>
+</tr>
+<tr>
+<td>scale</td>
+<td>decimal</td>
+<td>Wearables and pets: height as a fraction of the avatar's height, so an item fits avatars of any size.</td>
+</tr>
+<tr>
+<td>offset_x, offset_y</td>
+<td>decimal</td>
+<td>Wearables and pets: a nudge forward and down, in avatar heights.</td>
+</tr>
+<tr>
+<td>animation</td>
+<td>string</td>
+<td>Animations: <code>bounce</code>, <code>float</code>, <code>sway</code> or <code>pulse</code>. How the avatar moves while standing.</td>
+</tr>
+<tr>
+<td>move</td>
+<td>string</td>
+<td>Moves: the animation a button on the player's screen plays, in every scenario. See <a href="#moves-what-players-can-do-themselves">Moves</a>.</td>
+</tr>
+<tr>
+<td>ability</td>
+<td>string</td>
+<td>Abilities: a key. While equipped, <code>QBLAbility_&lt;key&gt;</code> is 1.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-json">&quot;shop_items&quot;: [
+  { &quot;id&quot;: 101, &quot;name&quot;: &quot;Wilting Stream patch&quot;, &quot;kind&quot;: &quot;wearable&quot;, &quot;slot&quot;: &quot;body&quot;, &quot;price&quot;: 20, &quot;media_id&quot;: 46, &quot;scale&quot;: 0.14 },
+  { &quot;id&quot;: 102, &quot;name&quot;: &quot;Stream survey map&quot;, &quot;kind&quot;: &quot;ability&quot;, &quot;price&quot;: 15, &quot;media_id&quot;: 47, &quot;ability&quot;: &quot;stream_map&quot; }
+]
+</code></pre>
+<p>A player owns what they buy for good, and chooses what to have on: one wearable per slot, one pet, one animation (a way of standing: bounce, float, sway, pulse), and any number of moves and abilities. What a player wears is drawn on their avatar in every scenario and is seen by the other players.</p>
+<p><strong>Abilities do nothing by themselves.</strong> They are a flag scenarios can test, so what an ability unlocks is up to each author: a hotspot only its owners see, an extra line of dialogue, a shortcut. They never change walking speed or how far away a hotspot is revealed. In the demo, the survey map makes a map table appear at the landing site:</p>
+<pre><code class="language-json">{ &quot;shortname&quot;: &quot;survey-map&quot;, &quot;conditions&quot;: [{ &quot;variable&quot;: &quot;QBLAbility_stream_map&quot;, &quot;operator&quot;: &quot;=&quot;, &quot;operand&quot;: 1 }], &quot;...&quot;: &quot;...&quot; }
+</code></pre>
+<h3 id="how-it-is-kept-honest">How it is kept honest</h3>
+<p>The game client never changes stars or XP itself. When an award action runs, the client tells the game server the action's id; the game server asks the backend, which looks the action up <strong>in the published document</strong>, checks whether this player already had it, and records the change in a ledger. A player can therefore not invent an award or collect a once-only award twice. What they <em>can</em> do is trigger an award whose event they have not really reached, because events run in the browser (see the trust model on the <a href="../protocol/">protocol</a> page). Treat stars as encouragement, not as grades.</p>
+<p>Purchases go straight from the browser to the backend, which takes the stars and hands over the item in one step.</p>
+<p>While testing a draft from the editor, awards and purchases are pretend: the preview starts with 500 stars and nothing is written to the account.</p>
+<h2 id="patterns">Patterns</h2>
+<p>These need no special support; they are combinations of the pieces above.</p>
+<p><strong>A scored question.</strong> An indirect event holds an infobox with <code>dismissible: false</code> and one button per answer. Each button runs its own indirect event, which records the answer in a variable, adds to a score variable if it is the right one, and shows an infobox explaining why.</p>
+<p><strong>A menu that stays open.</strong> An event holds a non-dismissible infobox followed by a <code>repeat</code> action with a condition such as <code>menu_open = 1</code>. Buttons change variables or run events; a "Step away" button sets <code>menu_open</code> to 0, which ends the loop. Do not have an event run itself through <code>run_event</code>: an event that is already running is not started again.</p>
+<p><strong>A hands-on experiment.</strong> The same loop, with buttons that change a variable (<code>beaker_ph + 1</code>) and content that shows it (<code>pH {{beaker_ph}}</code>), plus an action whose condition detects the goal (<code>beaker_ph = 7</code>).</p>
+<p><strong>Collecting things.</strong> A click hotspot whose conditions include <code>sample_x = 0</code>, with the object as an image label. Its actions set <code>sample_x</code> to 1 and add to a counter. The label disappears because the hotspot's conditions no longer hold.</p>
+<h2 id="not-implemented-yet">Not implemented yet</h2>
+<ul>
+<li><code>physical</code> items.</li>
+<li><code>intro_media_portrait_id</code> / <code>intro_media_landscape_id</code> splash screens and <code>is_intro_scene</code>.</li>
+<li><code>allow_groups</code> as a lobby. Groups work (players who join with the same group key share a room, up to <code>max_players</code>), but choosing a group is left to whatever launches the game: pass <code>?group=</code>.</li>
+<li>Animating what an avatar wears along with a sheet animation: worn items follow the figure's position, not its frames.</li>
+<li>A screen for editing the platform's marketplace catalogue and the ranks.</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

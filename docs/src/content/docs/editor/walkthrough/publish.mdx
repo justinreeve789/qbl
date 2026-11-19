@@ -1,0 +1,87 @@
+---
+title: "4. Test, publish and assign"
+description: Play the draft, check it, publish it, assign it to a class, and read the report.
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+## Test the draft
+
+<Steps>
+
+1. Open the `schoolyard` scene and tick **with outlines**, then press **▶ Test this scene**. A new tab opens with the game on your draft, with you alone and nothing saved.
+
+2. Walk into the right edge before talking to anyone. You should see the hint, *Talk to Ms. Okafor before you head to the pond.*, and stay put.
+
+3. Click Ms. Okafor. She speaks in a story box with her portrait, and the objective *Talk to Ms. Okafor in the schoolyard* is ticked, and the second objective appears.
+
+4. Walk into the right edge again. You arrive in the pond at the west end.
+
+5. Click the pipe and choose **From the ducks**. You get the *Not quite* box. Click the pipe again and choose **From the road above the pond**. You should get five stars, 20 XP, the *Pond Detective* badge and the word *Runoff*, and the pipe and its label disappear.
+
+6. Walk into the left edge. You return to the schoolyard at the `east` spot.
+
+</Steps>
+
+Because it is a test, none of this is saved. Test again as often as you like.
+
+<Aside type="tip">
+If a hotspot does not fire, look at the outlines. A walk-in hotspot you cannot reach, or a click hotspot whose condition no longer holds, shows up immediately. In the editor, check the variable's starting value too: `found_source` must start at `0` for the pipe to be there.
+</Aside>
+
+## Publish
+
+<Steps>
+
+1. Press **🚀 Publish**. The editor runs the validator over the whole scenario. It should report no errors. If it does, it takes you to the **Publish** tab with a list: each line says where the problem is (for example a condition on a variable you have not defined).
+
+2. When it succeeds, the badge changes from **Draft** to **Published**.
+
+3. On the **Publish** tab, copy the **Player link**. The 16-letter code in it is permanent, so you can share it before or after publishing again.
+
+</Steps>
+
+If you change the scenario afterwards the badge says **Unpublished changes**. Students keep playing the last published version until you press **Publish** again.
+
+## Assign it to a class
+
+You made the mission **private**, so it appears only for students you assign it to.
+
+<Steps>
+
+1. Open **Classes** in the header. Under **My students**, add each student by the email address they sign in with. They need to have signed in once.
+
+2. Press **Assign a mission**, choose *The Cloudy Pond*, and pick the students. Optionally set a **Due** date and a **Note**, and add **Teams** (each team then plays in its own copy of the world and shares what it does).
+
+3. Students now see the mission on their missions page, with the due date and your note.
+
+4. Use **Look in** on the assignment to join a team's game as yourself while they play. You follow one team at a time.
+
+</Steps>
+
+<Aside>
+To see what a student sees, use another browser or a private window. The game and the editor share one sign-in per browser, so your own browser will always show your teacher view.
+</Aside>
+
+## Read the report
+
+Press **Report** on the assignment. For each student you see their progress (not started, in progress, finished), time in the mission, objectives done, how many questions they got right on the first try, glossary words collected, hotspots explored, stars earned and messages sent. Click a name for that student's answers and steps.
+
+For this mission, *One try* counts the pipe question: a student who chose the road straight away got it in one try; one who tried the ducks first did not. That is the difference between knowing the idea and finding it by elimination, which the report makes visible.
+
+## The finished mission
+
+If you want to compare your mission with a known-good one, or skip the building and look around, import the finished version:
+
+<a href="/docs/files/cloudy-pond.zip" download>Download cloudy-pond.zip</a>
+
+On the **Editor** page press **Import a ZIP** and choose it. It becomes a new draft of your own, with placeholder pictures you can replace on the **Media** tab. It never replaces an existing scenario, so importing it beside the one you built is safe. The ids in the editor are renumbered on import; everything else is as in the walkthrough.
+
+## Where to go next
+
+* Add a **second question** to the pond, or a hotspot that teaches a word with a **Glossary** action.
+* Add **background music** in Settings, or a **start event** with an **Audio** action marked as background music.
+* Give the walk a sense of depth with a **scale area**, or put a tree in front of the avatars with a **foreground layer**.
+* Let students work in **teams**, and use a shared variable so one team's progress is shared by its members. See [Variables](/docs/developers/extensions/#variables).
+* Start your next mission **aboard the starship** and add the places it goes to.
+* Look at the [JSON reference](/docs/developers/) to see the same mission as data.

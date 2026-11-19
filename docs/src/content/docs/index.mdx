@@ -1,0 +1,31 @@
+---
+title: QBL Docs
+description: Build missions for students to walk around, and understand how QBL works.
+template: splash
+hero:
+  tagline: Build missions that students walk around, with conversations, questions and rewards, and learn how it all works underneath.
+  actions:
+    - text: Build your first mission
+      link: /docs/editor/walkthrough/set-up/
+      icon: right-arrow
+    - text: The editor at a glance
+      link: /docs/editor/
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Build a mission" icon="pencil">
+    How the editor works: scenarios and scenes, drawing a scene, hotspots, events and actions, and publishing. Start with [the editor at a glance](/docs/editor/).
+  </Card>
+  <Card title="Walkthrough: The Cloudy Pond" icon="rocket">
+    Build a two-scene mission from an empty scenario to a published, assigned one, with a conversation, a gate and a question. [Start the walkthrough](/docs/editor/walkthrough/set-up/).
+  </Card>
+  <Card title="Teaching" icon="open-book">
+    Add students, assign missions, put them in teams, look in on a team's game and read the report. See [Classes, missions and teams](/docs/editor/classes/).
+  </Card>
+  <Card title="Developers" icon="seti:json">
+    The scenario JSON, the runtime extensions, save data, and the architecture, HTTP and multiplayer contracts. See [the developer overview](/docs/developers/).
+  </Card>
+</CardGrid>

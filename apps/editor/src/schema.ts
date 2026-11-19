@@ -3,7 +3,7 @@ import type { Field } from './fields';
 
 /**
  * What can be edited, as data. Each list here becomes a form. The attributes are the ones in
- * docs/docs (action.md, scene.md, event.md, ...) plus the extensions in docs/docs/extensions.md.
+ * docs/src/content/docs/developers (action.md, scene.md, event.md, ...) plus the extensions in docs/src/content/docs/developers/extensions.md.
  */
 
 const ALIGNMENTS = ['top left', 'top center', 'top right', 'center left', 'center center', 'center right', 'bottom left', 'bottom center', 'bottom right']
@@ -51,7 +51,7 @@ export interface ActionDef {
   fields: Field[];
 }
 
-/** The fourteen action types of docs/docs/action.md. `media_id` and `blocking` are columns; the rest are params. */
+/** The fourteen action types of docs/src/content/docs/developers/action.md. `media_id` and `blocking` are columns; the rest are params. */
 export const ACTIONS: Record<ActionType, ActionDef> = {
   infobox: {
     label: 'Infobox',
@@ -370,7 +370,7 @@ export const SHADOW_SPOT_FIELDS: Field[] = [
   { key: 'strength', label: 'Darkness at the centre (%)', kind: 'number', min: 0, max: 100, placeholder: '60', wide: true, hint: 'A figure at the centre is darkened by this much; towards the edge the shade fades to nothing. Put spots where the picture already shows shade: under a tree, behind a pillar, in a doorway.' },
 ];
 
-/** A background or foreground layer (docs/docs/extensions.md). */
+/** A background or foreground layer (docs/src/content/docs/developers/extensions.md). */
 export const LAYER_FIELDS: Field[] = [
   { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true },
   { key: 'position_x', label: 'X', kind: 'number', placeholder: '0' },

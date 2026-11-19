@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Backups, copies and the starship hub - QBL JSON Documentation</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../scenario/" class="nav-link">Scenarios</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../scene/" class="nav-link">Scenes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../event/" class="nav-link">Events</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../action/" class="nav-link">Actions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../media/" class="nav-link">Media</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../character/" class="nav-link">Characters</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../item/" class="nav-link">Items</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../variable/" class="nav-link">Variables</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../condition/" class="nav-link">Conditions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../spritemap/" class="nav-link">Spritemaps</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../label/" class="nav-link">Labels</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../extensions/" class="nav-link">Runtime extensions (spec v2)</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../classes/" class="nav-link">Classes, missions and teams</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Backups, copies and the starship hub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../session/" class="nav-link">Save data</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../architecture/" class="nav-link">Architecture</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">HTTP API contract</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../protocol/" class="nav-link">Multiplayer protocol</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../classes/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../session/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#backups-copies-and-the-starship-hub" class="nav-link">Backups, copies and the starship hub</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#starting-aboard-the-starship" class="nav-link">Starting aboard the starship</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#duplicating" class="nav-link">Duplicating</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#export-and-import" class="nav-link">Export and import</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#help-icons" class="nav-link">Help icons</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="backups-copies-and-the-starship-hub">Backups, copies and the starship hub</h1>
+<p>Three ways to get a whole scenario at once, all on the editor's <strong>Scenarios</strong> page (and Export and Duplicate again under a scenario's <strong>Settings</strong>).</p>
+<h2 id="starting-aboard-the-starship">Starting aboard the starship</h2>
+<p><strong>New scenario</strong> asks for a title and how to start:</p>
+<ul>
+<li><strong>Start aboard the starship</strong> (the default): the new scenario begins as a copy of the starship hub.</li>
+<li><strong>Start empty</strong>: one blank scene.</li>
+</ul>
+<p>The hub is the ship missions are launched from, without any mission: the control room, observation deck, laboratory, main corridor, crew quarters, hydroponics bay, engine room and marketplace, the doors between them, the things to read in each room, and:</p>
+<ul>
+<li><strong>The crew</strong>: Captain Vega in the control room, Chief Engineer Okoro in the engine room, Botanist Lin in hydroponics and Quartermaster Pax in the marketplace. Clicking one runs an indirect event in which they speak in a story box.</li>
+<li><strong>Things that go on by themselves</strong>: a planet drifts past the observation deck every couple of minutes (a wide, mostly empty picture scrolling as a background layer between the stars and the window frame), and a warning light blinks in the engine room (a start event: show a picture for a moment, wait, repeat).</li>
+</ul>
+<p>The copy is the scenario's own. Every scenario therefore has the same ship to begin with, and each is free to change what happens aboard: add events to the rooms, change what the crew say, add the places the mission goes to and doors that lead there. Changing one scenario's ship changes no other. The pictures themselves are not copied: every copy uses the shipped files under <code>/scenario-assets/</code>.</p>
+<p>The hub's rows are <code>apps/api/database/seeders/data/hub.php</code>, generated by <code>php tools/make-hub.php</code> from the demo's ship scenes (the lists at the top of that script say what is kept). Its two ambient pictures are made by <code>tools/make-hub-art.py</code>.</p>
+<h2 id="duplicating">Duplicating</h2>
+<p><strong>Duplicate</strong> makes a copy of a scenario as a new draft that belongs to you, with a new code and "Copy of ..." as its title. Everything is copied: scenes, events, actions, conditions, labels, media (uploaded files are copied into the new scenario's own folder), items, characters, variables, the scenario's own shop items, objectives and settings. Nothing is shared with the original afterwards, so a teacher can change text, add scenes, award extra stars or rebuild the mission without affecting anyone else. Players' saves and assignments are not copied.</p>
+<ul>
+<li>A scenario you can edit is copied as it is in the editor now.</li>
+<li><strong>Public missions by others</strong> are listed under your own scenarios. They cannot be edited, but <strong>Make my own copy</strong> copies the version that is published. Private scenarios are not offered.</li>
+</ul>
+<h2 id="export-and-import">Export and import</h2>
+<p><strong>Export</strong> downloads the scenario as one ZIP file:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scenario.json</code></td>
+<td>The scenario document, exactly as these pages describe it</td>
+</tr>
+<tr>
+<td><code>assets/</code></td>
+<td>The files uploaded for the scenario. A media entry whose <code>filepath</code> ends in one of these names uses that file</td>
+</tr>
+<tr>
+<td><code>README.txt</code></td>
+<td>What the file is and when it was made</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Import a ZIP</strong> creates a new scenario from such a file: a draft with a new code, owned by whoever imported it. It never replaces an existing scenario, so a backup can always be brought back beside the scenario it was made from.</p>
+<p>What does not travel: media that was not uploaded keeps its address and is loaded from there (the demo's pictures under <code>/scenario-assets/</code> are part of every installation); shop items that were switched off are not in the JSON; avatars, players' saves, assignments and the published state.</p>
+<h3 id="making-a-zip-by-hand">Making a ZIP by hand</h3>
+<p>Any ZIP with a <code>scenario.json</code> (at the top, or inside one folder) is accepted, so a scenario can be written as JSON, or generated, and brought in whole.</p>
+<ul>
+<li>Ids only have to be consistent within the file: every row gets a new id on import and references follow (<code>media_id</code>, <code>scene_id</code>, <code>target_event_id</code>, <code>target_id</code>, <code>item_id</code>, <code>character_id</code>, a label's <code>media</code>, and so on). Parts without an id are given one.</li>
+<li>A media entry's file is looked for in the ZIP by the file name its <code>filepath</code> ends in, then by its <code>url</code>, then by its <code>filename</code>, under <code>assets/</code> or beside <code>scenario.json</code>. A file found becomes an uploaded file of the new scenario; an entry with no file in the ZIP keeps its <code>url</code>.</li>
+<li><code>jump_targets</code> and <code>session</code> are ignored (the first is generated; the second is a player's). <code>avatar_media_ids</code> and <code>avatar_portraits</code> are dropped: avatars are the platform's.</li>
+<li>Only pictures (PNG, JPEG, WebP, GIF), sound (MP3, WAV, OGG) and video (MP4, WebM) are accepted, judged by content, each up to 25 MB. A ZIP holding a file of another kind where a media file is expected is refused whole.</li>
+</ul>
+<p>The imported scenario is a draft. Open it and press Publish: the checks there say if anything in the file does not add up.</p>
+<h2 id="help-icons">Help icons</h2>
+<p>Explanations in the editor are behind a small <strong>?</strong> beside the field, heading or page title they belong to. Click it (or focus it and press Enter) to read the explanation; click anywhere or press Escape to put it away. Hovering shows the same text as a tooltip.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

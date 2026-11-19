@@ -1,0 +1,103 @@
+---
+title: The scene editor
+description: Draw a scene, set where players can walk, and place hotspots, characters, items and exits.
+---
+
+Open a scene from the Scenes page and you get the scene editor: three panes side by side.
+
+| Pane | What it is |
+| ---- | ---------- |
+| **Left: the outline** | Everything in the scene as folding lists, A to Z. The easy way to find and select something that is hard to click. Each list heading has a **+** to add one |
+| **Middle: the canvas** | The scene drawn to scale, with everything in it. Click to select, drag to move |
+| **Right: the inspector** | The form for whatever is selected. Choose **⚙️ Scene settings** at the top of the outline to edit the scene itself |
+
+The toolbar above the canvas has **+ Add to scene…**, a **Zoom** list (Fit, or 25% to 200%), the scene's size and the pointer's position in scene pixels, a **with outlines** tick box, and **▶ Test this scene**. A key under the canvas colours the shapes: click hotspots, walk-in hotspots, exits to other scenes, walkable areas and blocked areas.
+
+Coordinates are in **scene pixels**, measured from the top left of the scene. Every position field in the inspector has a marker you can also drag on the canvas, so use whichever is easier.
+
+## Adding things
+
+**+ Add to scene…** (or the **+** on an outline heading) puts something new at the middle of what you are looking at, and selects it so its form opens.
+
+| Menu item | What you get |
+| --------- | ------------ |
+| **Hotspot players click** | A circle that runs its actions when a player clicks or taps inside it |
+| **Hotspot players walk into** | A circle that runs its actions when an avatar walks into it |
+| **Exit along the left, right, top or bottom edge** | A walk-in hotspot along that edge with a jump action already in it (see below) |
+| **Start event**, **End event** | Run on arriving in, and leaving, the scene |
+| **Indirect event** | Runs only when another event, or a click on a character, starts it |
+| **Spawn point** | A place players can arrive |
+| **Item**, **Character** | Something from the [library](/docs/editor/library/) placed in this scene |
+| **Walkable area**, **Blocked area** | Where feet may and may not go |
+| **Scale area (depth)** | Makes things smaller towards the back of the scene |
+| **Shadow spot (shade)** | A patch of shade figures darken in |
+| **Background layer**, **Foreground layer** | A picture behind or in front of the avatars |
+
+Items and characters must be defined first on their own pages; if there are none, the editor tells you so.
+
+## The scene itself
+
+Select **⚙️ Scene settings**. The form has:
+
+* **Short name**, **Subtitle** and **Description**.
+* **Width** and **Height** in pixels. A scene larger than the screen scrolls as the avatar walks. Leave them empty to use the background's size. When the first background image is a different size from the scene, a notice offers **Make the scene that size**, which resizes the scene and moves everything in it to match.
+* **Zoom**, **Show avatars**, and **Group**.
+* **Background music for this scene**, with its volume. Empty uses the scenario's music.
+* **Who players see here**, for missions with teams.
+* **Make this the start scene** and **Delete scene**.
+
+### Layers
+
+A scene's picture is made of **background layers** (behind the avatars, first at the back) and **foreground layers** (in front of them: tree tops, a railing, an arch to walk under). Use **+ Add layer** in the inspector or **Background layer** / **Foreground layer** in the add menu, then choose the image. A layer can be:
+
+* **Stretched** to the scene (the default), or **repeated** at its own size with **Repeat the image at its own size instead of stretching it**.
+* Given a **Shown width/height** and an **X/Y** position, to place a picture inside a larger scene.
+* Made to **drift** (px per second, right and down) for clouds, water or stars.
+* Given a **Parallax** below 1 to move slower than the scene, as if far away. 0 stays put on the screen.
+
+Select a layer in the outline to reorder it with **↑ Further back** and **↓ Further forward**.
+
+### Where players can walk
+
+A scene with no **walkable areas** is walkable everywhere. Add one and players can only walk inside the areas you draw; **blocked areas** cut holes out of them (a table, a pond, a pit). Players click to set a destination and find their own way around blocked areas.
+
+Both are polygons. Drag a corner to move it. A small handle half way along each side adds a corner when you drag it, and **double-click** a corner to remove it. A new walkable area starts as a rectangle you can reshape; a new blocked area is a smaller one.
+
+### Spawn points
+
+A **spawn point** is a named place players can arrive, with an X, a Y and which way they **Face**. The one named `default` is used when a jump names none. Jump actions pick a spawn point of the scene they go to, so name them for where they are on the map: `west`, `east`, `cave-mouth`.
+
+:::caution
+Do not put a spawn point inside a walk-in hotspot that jumps, or arriving players would leave again at once. **Publish** refuses it.
+:::
+
+### Depth: scale areas and shadow spots
+
+A **scale area** is a box where things are drawn smaller or larger depending on how high up they stand: **Size at the top edge (%)** and **Size at the bottom edge (%)**, with an even change between. A new one covers the walkable part of the scene at 50% to 100%. **Walking speed follows size (%)** decides whether a small, distant figure also walks slower (100 is one to one, 0 ignores size). Outside every box, things are normal size.
+
+A **shadow spot** is a patch of shade on the floor: figures walking through it darken, most at the centre. Place it where your picture already shows shade, and give it a **Radius** and a flatter **Radius up and down**.
+
+## Exits to other scenes
+
+**Exit along the … edge** is how players get from scene to scene. It creates a walk-in hotspot named `edge-left`, `edge-right`, `edge-top` or `edge-bottom` that spans the whole edge, with one **jump** action that sends players to another scene. Left and right exits sit on the picture's edge; top and bottom exits sit on the edge of the walkable area.
+
+Open the hotspot's action to choose the **Scene** to go to and the spawn point to **Arrive at**. Because an exit is an ordinary hotspot, it can have conditions (a locked gate) and other actions before the jump (a sound, a line of text). The [walkthrough](/docs/editor/walkthrough/schoolyard/#a-gate-that-needs-a-conversation) builds a gate that way.
+
+## Hotspots
+
+A hotspot has a position and a **Radius**. Drag its dashed ring on the canvas to change the radius.
+
+* **Fires when**: *a player clicks or taps inside it*, or *a player's avatar walks into it*. A walk-in hotspot fires again each time the avatar leaves and re-enters.
+* **X** or **Y** left empty makes the hotspot span the whole width or height, which is how an edge exit works. A **Radius** of -1 covers the whole scene.
+* **Walk-in only: fire once per visit to the scene** limits a walk-in hotspot.
+* **Appears within (px)** and **Fully visible within (px)** hide a hotspot until the avatar is near, drawn as two dashed rings: far enough and it is invisible and cannot be clicked; between the two distances its labels fade in.
+
+What a hotspot shows, and what it does, is covered in [Events and actions](/docs/editor/events-and-actions/).
+
+## Characters and items in a scene
+
+A placed **character** has a position, a **Facing**, and **When clicked, run**, a list of this scene's indirect events. That is how conversations start. A placed **item** has a position and is drawn like any object: players walk behind it and in front of it.
+
+## Testing from here
+
+**▶ Test this scene** opens the game on your unpublished draft, in this scene, with you alone and nothing saved. Tick **with outlines** first to draw hotspots, walkable areas and positions over the game, which is the quickest way to see why a hotspot does not fire.

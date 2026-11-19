@@ -4,6 +4,6 @@ dist/
 .env
 .idea/
 *.tsbuildinfo
-docs/site/
+docs/.astro/
 # Your own TLS certificate for the edge container (fullchain.pem, privkey.pem). Never commit it.
 certs/

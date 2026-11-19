@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Actions - QBL JSON Documentation</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../scenario/" class="nav-link">Scenarios</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../scene/" class="nav-link">Scenes</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../event/" class="nav-link">Events</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Actions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../media/" class="nav-link">Media</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../character/" class="nav-link">Characters</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../item/" class="nav-link">Items</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../variable/" class="nav-link">Variables</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../condition/" class="nav-link">Conditions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../spritemap/" class="nav-link">Spritemaps</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../label/" class="nav-link">Labels</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../extensions/" class="nav-link">Runtime extensions (spec v2)</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../classes/" class="nav-link">Classes, missions and teams</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../tooling/" class="nav-link">Backups, copies and the starship hub</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../session/" class="nav-link">Save data</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../architecture/" class="nav-link">Architecture</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">HTTP API contract</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../protocol/" class="nav-link">Multiplayer protocol</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../event/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../media/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#actions" class="nav-link">Actions</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#audio" class="nav-link">Audio</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#cancel" class="nav-link">Cancel</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#image-fixed" class="nav-link">Image Fixed</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#image-overlay" class="nav-link">Image Overlay</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#infobox" class="nav-link">Infobox</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#jump" class="nav-link">Jump</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#repeat" class="nav-link">Repeat</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#run-event" class="nav-link">Run Event</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#spritemap" class="nav-link">Spritemap</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#text-overlay" class="nav-link">Text Overlay</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#translate" class="nav-link">Translate</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#variable" class="nav-link">Variable</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#video" class="nav-link">Video</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#wait" class="nav-link">Wait</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="actions">Actions</h1>
+<p>An event consists of actions, and actions describe what happens when the user interacts with a scene. Actions are executed in sequential order, and actions from different events can be run simultaneously.</p>
+<h3 id="primary-attributes">Primary Attributes</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>int</td>
+<td></td>
+<td>action id</td>
+</tr>
+<tr>
+<td>event_id</td>
+<td>int</td>
+<td></td>
+<td>The event id the action is associated with.</td>
+</tr>
+<tr>
+<td>type</td>
+<td>string</td>
+<td></td>
+<td>The type of action. Different actions may require different attributes to be present, and these are listed separately below.</td>
+</tr>
+<tr>
+<td>sequence</td>
+<td>int</td>
+<td></td>
+<td>The order the action executes in the event.</td>
+</tr>
+<tr>
+<td>blocking</td>
+<td>bool</td>
+<td>true</td>
+<td>If true, this action must complete before the next action in the sequence executes. If false, the next action will execute immediately after this action executes. This is used in situations where two or more actions must occur simultaneously, such as an audio and text action to show a character speaking with subtitles.</td>
+</tr>
+<tr>
+<td>media_id</td>
+<td>int</td>
+<td></td>
+<td>An id for a media object defined at the project level, in the assets. Not all action types require media.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="audio">Audio</h2>
+<p>Play an audio (MP3) file.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>volume</td>
+<td>decimal</td>
+<td>1.0</td>
+<td>Volume range from 0.0 to 1.0.</td>
+</tr>
+<tr>
+<td>repeat</td>
+<td>bool</td>
+<td>false</td>
+<td>If true, play the audio file on an infinite loop once it reaches the end, until a jump or cancel action stops the file.</td>
+</tr>
+<tr>
+<td>persist</td>
+<td>bool</td>
+<td>false</td>
+<td>If true, do not stop playing the audio file after a jump action. Audio actions are the only action types that can persist across scenes.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cancel">Cancel</h2>
+<p>Cancel an action that’s currently executing.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>action_id</td>
+<td>int</td>
+<td></td>
+<td>An action id of a currently-running action. Actions do not necessarily need to be from the same event sequence in a scene to be cancelled, but they do need to be from the same scene (with the exception of persistent audio).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="image-fixed">Image Fixed</h2>
+<p>Display an image (JPEG or PNG) file in a fixed position on the scene.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>position_x</td>
+<td>decimal</td>
+<td></td>
+<td>The X coordinate for the image.</td>
+</tr>
+<tr>
+<td>position_y</td>
+<td>decimal</td>
+<td></td>
+<td>The Y coordinate for the image.</td>
+</tr>
+<tr>
+<td>scale_x</td>
+<td>decimal</td>
+<td>1.0</td>
+<td></td>
+</tr>
+<tr>
+<td>scale_y</td>
+<td>decimal</td>
+<td>1.0</td>
+<td></td>
+</tr>
+<tr>
+<td>duration</td>
+<td>int</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="image-overlay">Image Overlay</h2>
+<p>Display an image (JPEG or PNG) file.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>alignment</td>
+<td>string</td>
+<td>center center</td>
+<td>A positioning for the image when it pops up.</td>
+</tr>
+<tr>
+<td>scale_x</td>
+<td>decimal</td>
+<td>1.0</td>
+<td></td>
+</tr>
+<tr>
+<td>scale_y</td>
+<td>decimal</td>
+<td>1.0</td>
+<td></td>
+</tr>
+<tr>
+<td>duration</td>
+<td>int</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="image-alignment">Image Alignment</h3>
+<p>The image alignment is used when the image is fixed, and will pop up at a certain position on the screen according to the chart below.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>top left</td>
+<td>top center</td>
+</tr>
+<tr>
+<td>center left</td>
+<td>center center</td>
+</tr>
+<tr>
+<td>bottom left</td>
+<td>bottom center</td>
+</tr>
+</tbody>
+</table>
+<h2 id="infobox">Infobox</h2>
+<p>Open an informational box.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>content</td>
+<td>string</td>
+<td></td>
+<td>The text to show in the box (HTML allowed).</td>
+</tr>
+<tr>
+<td>call_to_actions</td>
+<td>json</td>
+<td>null</td>
+<td>A list of buttons, each containing (1) a string, and (2) an action that is performed when clicked or tapped.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="jump">Jump</h2>
+<p>Load another scene, ending all actions in the current scene (except persistent audio).</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>scene_id</td>
+<td>int</td>
+<td></td>
+<td>The scene id to jump to.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="repeat">Repeat</h2>
+<p>Repeat the actions for the event, starting with the first action. If there are any actions after a repeat action, they will never execute, unless the repeat is conditional.</p>
+<h2 id="run-event">Run Event</h2>
+<p>Execute an indirect event.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>event_id</td>
+<td>int</td>
+<td></td>
+<td>The event id to execute.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="spritemap">Spritemap</h2>
+<p>Display and animate a spritemap (JPEG or PNG) file (PNG recommended). Spritemap attributes follow a standard format regardless of whether they occur in an action, hotspot, or other data structure in the JSON specification.</p>
+<p>See the Spritemap specification for more details.</p>
+<h2 id="text-overlay">Text Overlay</h2>
+<p>Display a text string on the screen, overlaying everything else.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>text</td>
+<td>string</td>
+<td></td>
+<td>The text to display (256-character limit).</td>
+</tr>
+<tr>
+<td>alignment</td>
+<td>string</td>
+<td>center center</td>
+<td>A positioning for the text when it pops up.</td>
+</tr>
+<tr>
+<td>text_font_size</td>
+<td>int</td>
+<td>24</td>
+<td>Size for the font, defined in pixel height.</td>
+</tr>
+<tr>
+<td>text_font_color</td>
+<td>string</td>
+<td>white</td>
+<td>Color for the font.</td>
+</tr>
+<tr>
+<td>text_font_style</td>
+<td>string</td>
+<td></td>
+<td>Style for the font (leave blank, or “italic”).</td>
+</tr>
+<tr>
+<td>duration</td>
+<td>int</td>
+<td></td>
+<td>The number of milliseconds the text displays before disappearing. If “0” the text displays indefinitely, until a jump or cancel action removes it.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="text-alignment">Text Alignment</h3>
+<p>The text alignment is used when the text is fixed, and will pop up at a certain position on the screen according to the chart below.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>top left</td>
+<td>top center</td>
+</tr>
+<tr>
+<td>center left</td>
+<td>center center</td>
+</tr>
+<tr>
+<td>bottom left</td>
+<td>bottom center</td>
+</tr>
+</tbody>
+</table>
+<h2 id="translate">Translate</h2>
+<p>A translation is the movement or alteration of the object in an image, video, or spritemap action, or a hotspot label. Attributes can be overridden as well. A “targetId” must be specified, or this action will be bypassed. Also, the original action must still be running, or this action will be bypassed. (Under revision.)</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>target_id</td>
+<td>int</td>
+<td></td>
+<td>An action id of a currently-running action. Actions do not necessarily need to be from the same event sequence in a scene to be translated.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="image-translation">Image Translation</h3>
+<p>(Under revision.)</p>
+<h3 id="video-translation">Video Translation</h3>
+<p>(Under revision.)</p>
+<h2 id="variable">Variable</h2>
+<p>Set or modify a global variable.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>string</td>
+<td></td>
+<td>A global variable that has been defined at the project level. Only dynamic variables by a variable action.</td>
+</tr>
+<tr>
+<td>operator</td>
+<td>string</td>
+<td></td>
+<td>One of six data manipulation operators to perform on the variable: set, +, -, *, /, %</td>
+</tr>
+<tr>
+<td>operand</td>
+<td>multiple</td>
+<td></td>
+<td>A number (integer or decimal), or a string, for which the variable is manipulated according to the operator.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="operator">Operator</h3>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>set</td>
+<td>Assign the variable to the value specified in operand.</td>
+</tr>
+<tr>
+<td>+</td>
+<td>Add the numeric variable by the value specified in operand. If the operand is non-numeric, this does nothing.</td>
+</tr>
+<tr>
+<td>-</td>
+<td>Subtract the numeric variable by the value specified in operand. If the operand is non-numeric, this does nothing.</td>
+</tr>
+<tr>
+<td>*</td>
+<td>Multiply the numeric variable by the value specified in operand. If the operand is non-numeric, this does nothing.</td>
+</tr>
+<tr>
+<td>/</td>
+<td>Divide the numeric variable by the value specified in operand. if the operand is non-numeric, this does nothing.</td>
+</tr>
+<tr>
+<td>%</td>
+<td>Modulo the numeric variable by the value specified in operand. if the operand is non-numeric, this does nothing.</td>
+</tr>
+<tr>
+<td>random</td>
+<td>Generate a random number between 1 and 1000000000 and assign it to the variable. To narrow the results, follow it up with another variable action, using modulus (%). For example, to get a number between 1 and 20, generate the random number, then apply “% 20” to it.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="video">Video</h2>
+<p>Play a video (MP4) file. Currently under revision.</p>
+<h2 id="wait">Wait</h2>
+<p>Waits a specified amount of time before proceeding with the next action.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>duration</td>
+<td>int</td>
+<td></td>
+<td>The number of milliseconds to wait. If 0 or less, the wait action is bypassed.</td>
+</tr>
+</tbody>
+</table></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
