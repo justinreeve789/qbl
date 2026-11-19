@@ -119,6 +119,15 @@ The first is safe to run again: a demo that is already there is left as it is, a
 docker compose exec app php artisan qbl:user you@example.org "Your Name" --role=teacher
 ```
 
+Someone who signed in with Google is a student unless their domain is in `QBL_GOOGLE_TEACHER_DOMAINS`. To make an existing account a teacher (or an admin, or a student again):
+
+```sh
+docker compose exec app php artisan qbl:update-role you@example.org --role=teacher
+docker compose exec app php artisan qbl:update-role you@example.org   # shows the current role
+```
+
+It applies at once; reload any page that is open.
+
 **Upgrading a database from an earlier build.** `docker compose up --build` is enough: migrations run on start and are written so that tables and columns that already exist are left alone. Changes to the demo occur only when you run `qbl:seed --reset`.
 
 ### Working on the API
@@ -216,7 +225,7 @@ The game's and the editor's sign-in screens then show "Sign in with Google". Som
 | `QBL_GOOGLE_DOMAINS` | Only addresses at these domains may sign in with Google (`school.org,students.school.org`). Empty: any Google account |
 | `QBL_GOOGLE_TEACHER_DOMAINS` | New accounts at these domains start as teachers, who can use the editor |
 
-Without them anyone with a Google account can register as a student, and teachers are made with `qbl:user` or by changing `users.role`. For a school, set `QBL_GOOGLE_DOMAINS`.
+Without them anyone with a Google account can register as a student, and teachers are made with `qbl:user`, or from an existing account with `qbl:update-role <email> --role=teacher`. For a school, set `QBL_GOOGLE_DOMAINS`.
 
 How the pieces connect:
 

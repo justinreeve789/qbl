@@ -127,6 +127,28 @@ class SignInAndDeployTest extends TestCase
         $this->assertSame(['kid@school.example' => 'student', 'head@staff.school.example' => 'teacher'], User::pluck('role', 'email')->all());
     }
 
+    /** A Google account that started as a student is made a teacher by hand, and can then use the editor. */
+    public function test_update_role_makes_an_existing_account_a_teacher(): void
+    {
+        $user = User::create(['name' => 'Ms Frizzle', 'email' => 'frizzle@school.org', 'password' => 'secret-password', 'role' => 'student']);
+        $token = $user->createToken('player')->plainTextToken;
+        $this->withToken($token)->getJson('/api/editor/scenarios')->assertStatus(403);
+
+        $this->artisan('qbl:update-role', ['email' => 'frizzle@school.org'])->expectsOutputToContain('is a student')->assertSuccessful();
+        $this->artisan('qbl:update-role', ['email' => 'frizzle@school.org', '--role' => 'principal'])->assertFailed();
+        $this->artisan('qbl:update-role', ['email' => 'nobody@school.org', '--role' => 'teacher'])->assertFailed();
+        $this->artisan('qbl:update-role', ['email' => 'frizzle@school.org', '--role' => 'Teacher'])->expectsOutputToContain('is now a teacher')->assertSuccessful();
+
+        $this->assertSame('teacher', $user->fresh()->role);
+        // The same token works at once: the role is read on every request.
+        $this->newRequest()->withToken($token)->getJson('/api/me')->assertJsonPath('user.role', 'teacher');
+        $this->newRequest()->withToken($token)->getJson('/api/editor/scenarios')->assertOk();
+
+        $guest = User::create(['name' => 'Guest', 'email' => 'guest-1@guest.invalid', 'password' => 'x', 'role' => 'guest']);
+        $this->artisan('qbl:update-role', ['email' => $guest->email, '--role' => 'admin'])->assertFailed();
+        $this->assertSame('guest', $guest->fresh()->role);
+    }
+
     public function test_an_answer_that_does_not_match_a_sign_in_this_browser_started_is_refused(): void
     {
         $this->withGoogle();
