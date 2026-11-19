@@ -1,70 +1,81 @@
-import type { GameContext } from '../core/GameContext';
+import type { Id } from '@qbl/shared';
+import type { GameContext, TeamChoice } from '../core/GameContext';
 import type { GameFeature } from '../core/GameFeature';
 import type { TeamRow } from '../ui/UiPort';
 
-/** How often the teams box is brought up to date. */
-const REFRESH_MS = 500;
+/** How often the tab's counts are brought up to date. */
+const REFRESH_MS = 1000;
 
-/** What a team is called in the box: its name, or what its instance is. */
-function teamName(key: string, name: string | undefined): string {
-  if (name) return name;
-  if (key === 'public') return 'Public game';
-  return 'No team';
-}
-
-/**
- * The teams a teacher (or admin) can show or hide, in the scene they are in. Null where there is
- * nothing to choose: a student, or a scene every team shares (there everyone sees everyone).
- * One row per team with players in the game, besides the teacher, sorted by name.
- */
-export function teamRows(ctx: GameContext): TeamRow[] | null {
+/** How many of a team's players are in the game now, and the scene where most of them are (its id and name). */
+function teamWhere(ctx: GameContext, group: string): { online: number; sceneId?: Id; where?: string } {
   const { connection } = ctx;
-  const me = connection.me;
-  if (!me || !ctx.staff || !ctx.teamOnlyHere) return null;
-  const rows = new Map<string, TeamRow>();
+  const count = new Map<number, number>();
+  let online = 0;
   connection.state.players.forEach((p, id) => {
-    if (id === connection.sessionId) return;
-    const key = p.team ?? '';
-    let row = rows.get(key);
-    if (!row) {
-      row = { key, name: teamName(key, p.team_name), here: 0, total: 0, shown: !ctx.hiddenTeams.has(key) };
-      rows.set(key, row);
-    }
-    row.total++;
-    if (p.scene_id === me.scene_id) row.here++;
+    if (id === connection.sessionId || (p.team ?? '') !== group || !p.connected) return;
+    online++;
+    count.set(p.scene_id, (count.get(p.scene_id) ?? 0) + 1);
   });
-  return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }) || a.key.localeCompare(b.key));
+  let sceneId: number | undefined;
+  for (const [id, n] of count) if (sceneId === undefined || n > count.get(sceneId)!) sceneId = id;
+  const scene = sceneId != null ? ctx.index.scene(sceneId) : undefined;
+  const name = scene ? (scene.subtitle || scene.shortname || '').replace(/[-_]+/g, ' ') : '';
+  return { online, sceneId, where: name || undefined };
 }
 
 /**
- * For teachers looking in on a game played in teams. In a scene limited to teams, students see
- * only their own team; a teacher sees every team. A "Teams in this scene" tab then appears on
- * the side, with a box per team: untick one and its players are hidden, with what they say,
- * their emotes, moves and the events they show the scene. Every team is shown to begin with.
+ * The teams a teacher can follow, as the tab lists them. Null where there is nothing to choose:
+ * a student, or a game that is not one of the teacher's assignments with teams.
+ */
+export function teamRows(ctx: GameContext, choices: TeamChoice[]): TeamRow[] | null {
+  const me = ctx.connection.me;
+  if (!me || !ctx.staff || !choices.length) return null;
+  const mine = me.team ?? '';
+  return choices.map((c) => {
+    const { online, where } = teamWhere(ctx, c.group);
+    return { group: c.group, name: c.name, current: c.group === mine, online, where };
+  });
+}
+
+/**
+ * For teachers (and admins). A teacher plays an assignment as a member of one team's game at a
+ * time: they see what that team sees (each team's world can differ: items, hotspots, events) and
+ * the team sees them. Where the assignment has teams, a "Team you are following" tab lists them;
+ * choosing another team leaves this game and joins that team's, in the scene where most of it is.
  */
 export class TeamsFeature implements GameFeature {
-  /** Bring the box up to date now. It also does so by itself, twice a second. */
+  /** Bring the tab up to date now. It also does so by itself, once a second. */
   refresh: () => void = () => {};
 
   start(ctx: GameContext): () => void {
     const { ui } = ctx;
+    if (!ctx.staff || !ctx.fetchTeams) {
+      ui.teams(null, () => {});
+      return () => {};
+    }
+    let choices: TeamChoice[] = [];
     let shown = '';
+    const follow = (group: string) => {
+      if (group === (ctx.connection.me?.team ?? '')) return;
+      ctx.followTeam?.(group, teamWhere(ctx, group).sceneId);
+    };
     const draw = () => {
-      const rows = teamRows(ctx);
+      const rows = teamRows(ctx, choices);
       const key = JSON.stringify(rows);
       if (key === shown) return;
       shown = key;
-      ui.teams(rows, toggle);
+      ui.teams(rows, follow);
     };
-    const toggle = (key: string, on: boolean) => {
-      if (on) ctx.hiddenTeams.delete(key);
-      else ctx.hiddenTeams.add(key);
+    let stopped = false;
+    void ctx.fetchTeams().then((list) => {
+      if (stopped) return;
+      choices = list;
       draw();
-    };
-    draw();
+    });
     this.refresh = draw;
     const timer = setInterval(draw, REFRESH_MS);
     return () => {
+      stopped = true;
       clearInterval(timer);
       ui.teams(null, () => {});
     };

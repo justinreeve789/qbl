@@ -146,6 +146,25 @@ export class Api {
     }
   }
 
+  /**
+   * For a teacher: the teams they can follow in the game whose instance is `group` (the teams of
+   * that assignment, and "No team" when some students are in none). Empty when the assignment has
+   * no teams, the game is not one of their assignments, or there is no API to ask.
+   */
+  async teamsToFollow(group: string): Promise<Array<{ group: string; name: string }>> {
+    type Listed = { group: string; students: Array<{ team_id: number | null }>; teams: Array<{ name: string; group?: string }> };
+    try {
+      const list = (await this.call<{ assignments: Listed[] }>('GET', '/teach/assignments')).assignments;
+      const a = list.find((x) => x.group === group || x.teams.some((t) => t.group === group));
+      if (!a || !a.teams.length) return [];
+      const out = a.teams.filter((t) => t.group).map((t) => ({ group: t.group!, name: t.name }));
+      if (a.students.some((s) => s.team_id == null)) out.push({ group: a.group, name: 'No team' });
+      return out;
+    } catch {
+      return [];
+    }
+  }
+
   /** What the player can play: public missions and those assigned to them. Null where the backend has no such list. */
   async missions(): Promise<Mission[] | null> {
     try {

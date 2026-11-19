@@ -262,11 +262,13 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-players li { display: flex; gap: 6px; align-items: stretch; }
 .qbl-players li.away { opacity: 0.55; }
 .qbl-teams { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 6px; }
-.qbl-teams li.off { opacity: 0.6; }
-.qbl-team { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); cursor: pointer; }
-.qbl-team input { width: 18px; height: 18px; margin: 0; accent-color: #7dd3fc; cursor: pointer; }
+.qbl-team { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.qbl-team:hover:not(:disabled) { border-color: rgba(125, 211, 252, 0.6); }
+.qbl-teams li.current .qbl-team { cursor: default; border-color: rgba(125, 211, 252, 0.6); background: rgba(125, 211, 252, 0.16); }
 .qbl-team-text { display: grid; min-width: 0; }
 .qbl-team-text small { opacity: 0.7; }
+.qbl-team-go { font-size: 0.8rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
+.qbl-teams li.current .qbl-team-go { background: #7dd3fc; color: #0b1020; }
 .qbl-player { flex: 1; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; text-align: left; padding: 7px 10px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: inherit; font: inherit; cursor: pointer; min-width: 0; }
 .qbl-player .qbl-icon { grid-row: span 2; }
 .qbl-player strong, .qbl-player small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

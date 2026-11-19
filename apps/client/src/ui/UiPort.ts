@@ -64,8 +64,8 @@ export interface UiPort {
    * player's profile; `on.message`, when private messages are allowed, starts writing to them.
    */
   players(list: PlayerRow[], on: { profile(id: string): void; message?(id: string): void }): void;
-  /** A teacher's teams in a scene limited to teams, to show or hide. Null: none to offer. */
-  teams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void): void;
+  /** For a teacher: the teams they can follow, to switch to another. Null: none to offer. */
+  teams(list: TeamRow[] | null, onFollow: (group: string) => void): void;
   /**
    * The messages panel: whether what is said in the scene can be typed there, and whether
    * players can be written to privately. `send` gets the thread (`scene`, or a player's
@@ -106,16 +106,16 @@ export interface PlayerRow {
   connected: boolean;
 }
 
-/** One team in the scene a teacher is looking at. */
+/** A team a teacher can follow, as the teams tab lists it. */
 export interface TeamRow {
-  /** The team's instance key (`t7`, `a12`, `public`). */
-  key: string;
+  /** The team's instance key (`t7`; `a12` for students in no team). */
+  group: string;
   name: string;
-  /** Its players in this scene, and in the whole game. */
-  here: number;
-  total: number;
-  /** Whether its players are shown. */
-  shown: boolean;
+  /** The team the teacher is following now. */
+  current: boolean;
+  /** How many of its players are in the game right now, and where most of them are. */
+  online: number;
+  where?: string;
 }
 
 export interface ChatLine {

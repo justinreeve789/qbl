@@ -140,10 +140,12 @@ export class World {
   }
 
   /** Add a player and return the save data they start from. */
-  addPlayer(sessionId: string, user: User, saved: Session | null, avatarId?: Id): Session {
+  addPlayer(sessionId: string, user: User, saved: Session | null, avatarId?: Id, startSceneId?: Id): Session {
     const { state } = this.deps;
     const useSave = this.scenario.enable_save_session !== false ? saved : null;
-    const scene = (useSave?.scene_id != null && this.index.scene(useSave.scene_id)) || this.index.startScene();
+    // A scene asked for at the door (a teacher joining a team where its players are) wins over the save.
+    const asked = startSceneId != null ? this.index.scene(startSceneId) : undefined;
+    const scene = asked || (useSave?.scene_id != null && this.index.scene(useSave.scene_id)) || this.index.startScene();
     const wanted =
       useSave && scene.id === useSave.scene_id && useSave.position_x != null && useSave.position_y != null
         ? { x: useSave.position_x, y: useSave.position_y }
@@ -272,8 +274,8 @@ export class World {
 
   /**
    * The other players who can see this one: those in the same scene, and, where the scene is
-   * limited to teams, in the same team, or a teacher or admin (who sees every team). They are
-   * who a chat message or a shown event reaches.
+   * limited to teams, in the same team. They are who a chat message or a shown event reaches.
+   * A teacher is in one team's game at a time (the one they follow), so this holds for them too.
    */
   audience(sessionId: string): string[] {
     const p = this.deps.state.players.get(sessionId);
@@ -474,18 +476,19 @@ function blocksForEveryone(item: Item): boolean {
   return item.blocking === true && !(item.conditions && item.conditions.length > 0);
 }
 
-/** Teachers and admins: in a scene limited to teams they still see every team. */
+/** Teachers and admins. A teacher follows one team at a time, and can switch to another. */
 export function isStaff(role: string | undefined): boolean {
   return role === 'teacher' || role === 'admin';
 }
 
 /**
  * Whether `viewer` is shown `subject`: they are in the same scene and, where the scene is
- * limited to teams, in the same team. A teacher or admin sees every team there; students
- * still see only their own (so they see a teacher only one who joined their team's game).
+ * limited to teams, in the same team. The same for everyone: each team's scene can hold
+ * different items, hotspots and events, so seeing another team's players there would show
+ * them in a world that is not theirs. A teacher sees the team they follow, as a member of it.
  */
-export function canSee(viewer: Pick<PlayerRec, 'scene_id' | 'team'> & { role?: string }, subject: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
-  return viewer.scene_id === subject.scene_id && (!teamOnly || isStaff(viewer.role) || (viewer.team ?? '') === (subject.team ?? ''));
+export function canSee(viewer: Pick<PlayerRec, 'scene_id' | 'team'>, subject: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
+  return viewer.scene_id === subject.scene_id && (!teamOnly || (viewer.team ?? '') === (subject.team ?? ''));
 }
 
 const SCOPE_SEPARATOR = '|';

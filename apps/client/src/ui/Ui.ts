@@ -364,8 +364,8 @@ export class Ui implements UiPort {
     this.sidebar.setPlayers(list, on);
   }
 
-  teams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void) {
-    this.sidebar.setTeams(list, onToggle);
+  teams(list: TeamRow[] | null, onFollow: (group: string) => void) {
+    this.sidebar.setTeams(list, onFollow);
   }
 
   messaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) {

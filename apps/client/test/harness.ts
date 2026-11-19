@@ -132,12 +132,12 @@ export class HeadlessUi implements UiPort {
     this.playerList = list;
     this.onPlayer = on;
   }
-  /** The teams box as last drawn (null: not offered), and what ticking a box does. */
+  /** The teams tab as last drawn (null: not offered), and what choosing a team does. */
   teamList: TeamRow[] | null = null;
-  onTeam: (key: string, shown: boolean) => void = () => {};
-  teams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void) {
+  onFollow: (group: string) => void = () => {};
+  teams(list: TeamRow[] | null, onFollow: (group: string) => void) {
     this.teamList = list;
-    this.onTeam = onToggle;
+    this.onFollow = onFollow;
   }
   /** The messages panel: how it is set up, every line shown, and which conversation was opened. */
   messagingSetup: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;

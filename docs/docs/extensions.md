@@ -132,7 +132,7 @@ Put spots where the artwork already shows shade. In the scene editor, add one wi
 
 When a teacher puts students into teams (see [Classes, missions and teams](classes.md)), every team is its own instance of the scenario, with its own shared variables, items and save data. The teams of one assignment are nevertheless in **one room**, so that they can meet where the scenario wants them to. Each scene says which it is:
 
-* A scene **limited to teams** shows a player only their own team. Use it for small rooms and for anywhere a team should feel on its own: a laboratory, a planet. A **teacher or admin** there sees every team (and can hide teams from the side panel); students see a teacher only if the teacher joined their team's game.
+* A scene **limited to teams** shows a player only their own team. Use it for small rooms and for anywhere a team should feel on its own: a laboratory, a planet. A teacher is a member of the team they follow, so the same holds for them; they switch teams from the game's side panel.
 * A scene that is **not** shows everyone playing. Use it for meeting places: an observation deck for briefings.
 
 A scene's `team_only` decides; if it does not say, its group's `team_only` does; with neither, everyone is shown. Groups are `scene_groups` on the scenario, and a scene belongs to one through `group_id`:

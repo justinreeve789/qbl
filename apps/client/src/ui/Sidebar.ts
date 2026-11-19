@@ -9,7 +9,7 @@ const TABS: Array<{ key: SidebarTab; label: string; icon: IconName }> = [
   { key: 'bag', label: 'Inventory', icon: 'bag' },
   { key: 'moves', label: 'Moves and emotes', icon: 'moves' },
   { key: 'players', label: 'Players', icon: 'players' },
-  { key: 'teams', label: 'Teams in this scene', icon: 'team' },
+  { key: 'teams', label: 'Team you are following', icon: 'team' },
   { key: 'messages', label: 'Messages', icon: 'messages' },
   { key: 'glossary', label: 'Glossary', icon: 'glossary' },
 ];
@@ -59,7 +59,7 @@ export class Sidebar {
   private onEmote: (emoji: string) => void = () => {};
   private playerRows: PlayerRow[] = [];
   private teamRows: TeamRow[] = [];
-  private onTeam: (key: string, shown: boolean) => void = () => {};
+  private onFollow: (group: string) => void = () => {};
   private onPlayer: { profile(id: string): void; message?(id: string): void } = { profile() {} };
   private messaging: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;
   private threads = new Map<string, Thread>();
@@ -194,15 +194,13 @@ export class Sidebar {
   }
 
   /**
-   * For a teacher in a scene limited to teams: the teams there, each with a box to show or hide
-   * its players. Null: not offered (a student, or a scene every team shares).
+   * For a teacher: the teams of the assignment, to follow one. The teacher plays in the followed
+   * team's game; choosing another moves them into that team's. Null: not offered.
    */
-  setTeams(list: TeamRow[] | null, onToggle: (key: string, shown: boolean) => void) {
+  setTeams(list: TeamRow[] | null, onFollow: (group: string) => void) {
     this.teamRows = list ?? [];
-    this.onTeam = onToggle;
+    this.onFollow = onFollow;
     this.offer('teams', list != null);
-    const hidden = this.teamRows.filter((t) => !t.shown).length;
-    this.count('teams', hidden, `${hidden} team${hidden === 1 ? '' : 's'} hidden`);
     this.draw('teams');
   }
 
@@ -422,28 +420,27 @@ export class Sidebar {
   }
 
   private teams(): HTMLElement[] {
-    const intro = el('p', 'qbl-sidebar-note', 'Students here see only their own team. You see every team: untick one to hide its players and what they say and do.');
-    if (!this.teamRows.length) return [intro, el('p', 'qbl-sidebar-empty', 'Nobody is playing yet.')];
+    const current = this.teamRows.find((t) => t.current);
+    const intro = el('p', 'qbl-sidebar-note', current
+      ? `You are following ${current.name}: you are in their game, you see what they see, and they see you. Choose another team to follow it; you join its game where most of its players are.`
+      : 'Choose a team to follow: you join its game, where most of its players are.');
     const list = el('ul', 'qbl-teams');
     for (const t of this.teamRows) {
-      const li = el('li', t.shown ? '' : 'off');
-      const label = el('label', 'qbl-team');
-      const box = el('input');
-      box.type = 'checkbox';
-      box.checked = t.shown;
-      box.dataset.team = t.key;
-      box.addEventListener('change', () => this.onTeam(t.key, box.checked));
+      const li = el('li', t.current ? 'current' : '');
+      const pick = el('button', 'qbl-team');
+      pick.type = 'button';
+      pick.dataset.team = t.group;
+      pick.disabled = t.current;
       const what = el('span', 'qbl-team-text');
-      what.append(el('strong', '', t.name), el('small', '', `${t.here} here · ${t.total} playing`));
-      label.append(box, what);
-      li.append(label);
+      const online = t.online ? `${t.online} playing${t.where ? ` · most in ${t.where}` : ''}` : 'Nobody playing now';
+      what.append(el('strong', '', t.name), el('small', '', online));
+      pick.append(icon('team', { size: 18 }), what, el('span', 'qbl-team-go', t.current ? 'Following' : 'Follow'));
+      pick.setAttribute('aria-label', t.current ? `Following ${t.name}` : `Follow ${t.name}`);
+      pick.addEventListener('click', () => this.onFollow(t.group));
+      li.append(pick);
       list.append(li);
     }
-    const all = el('button', 'qbl-chip', 'Show every team');
-    all.type = 'button';
-    all.disabled = this.teamRows.every((t) => t.shown);
-    all.addEventListener('click', () => this.teamRows.filter((t) => !t.shown).forEach((t) => this.onTeam(t.key, true)));
-    return [intro, list, all];
+    return [intro, list];
   }
 
   private messages(): HTMLElement[] {

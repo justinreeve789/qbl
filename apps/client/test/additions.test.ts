@@ -6,7 +6,7 @@ import { playerRows } from '../src/features/PlayersFeature';
 import { ChatFeature } from '../src/features/ChatFeature';
 import { GlossaryFeature } from '../src/features/GlossaryFeature';
 import { PlayersFeature } from '../src/features/PlayersFeature';
-import { TeamsFeature, teamRows } from '../src/features/TeamsFeature';
+import { TeamsFeature } from '../src/features/TeamsFeature';
 import type { OfflineConnection } from '../src/net/Connection';
 import { HotspotSystem } from '../src/systems/HotspotSystem';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
@@ -262,51 +262,54 @@ test('in a scene limited to teams a player sees only their own team', async () =
   assert.ok(remote().get('ben'), 'the teammate is there');
   assert.equal(remote().get('dee'), undefined, 'the other team is not shown');
   assert.deepEqual(playerRows(g.ctx).map((p) => [p.name, p.here]), [['Tester', false], ['Ben', true], ['Dee', false]], 'though the players list still says where they are');
-  assert.equal(teamRows(g.ctx), null, 'a student has no teams to choose from');
 });
 
-test('a teacher sees every team in a scene limited to teams, and can hide a team and all it does', async () => {
+test('a teacher follows one team, sees what it sees, and can switch to another where it is', async () => {
   const g = new Game(mission(), { id: 'u9', name: 'Ms T', role: 'teacher' });
+  const followed: Array<[string, number | undefined]> = [];
+  g.ctx.fetchTeams = async () => [{ group: 't1', name: 'Red' }, { group: 't2', name: 'Blue' }, { group: 'a1', name: 'No team' }];
+  g.ctx.followTeam = (group, sceneId) => void followed.push([group, sceneId as number | undefined]);
   const teams = new TeamsFeature();
-  for (const feature of [new ChatFeature(), teams]) stops.push(feature.start(g.ctx));
+  stops.push(teams.start(g.ctx));
   await g.wait(100);
   const room = offline(g);
-  room.addPlayer('ann', { name: 'Ann', scene_id: 1, x: 500, y: 450, team: 't1', team_name: 'Red' });
-  room.addPlayer('dee', { name: 'Dee', scene_id: 1, x: 700, y: 450, team: 't2', team_name: 'Blue' });
-  await g.wait(100);
+  room.state.players.get('local')!.team = 't1';
+  room.addPlayer('ann', { name: 'Ann', scene_id: 2, x: 400, y: 400, team: 't1', team_name: 'Red' });
+  room.addPlayer('dee', { name: 'Dee', scene_id: 2, x: 500, y: 400, team: 't2', team_name: 'Blue' });
+  room.addPlayer('eve', { name: 'Eve', scene_id: 1, x: 500, y: 450, team: 't2', team_name: 'Blue' });
+  room.addPlayer('fay', { name: 'Fay', scene_id: 2, x: 600, y: 400, team: 't2', team_name: 'Blue' });
   teams.refresh();
-  assert.equal(g.ui.teamList, null, 'on the deck every team sees every other: nothing to choose');
+  assert.deepEqual(g.ui.teamList!.map((t) => [t.group, t.name, t.current, t.online, t.where]), [
+    ['t1', 'Red', true, 1, 'lab'], ['t2', 'Blue', false, 3, 'lab'], ['a1', 'No team', false, 0, undefined],
+  ]);
 
+  // In the lab, which is for one team at a time, the teacher is one of Red: Blue is not shown.
   local(g).walkTo({ x: 1188, y: 400 });
   await g.hold([], () => g.sceneName === 'lab');
-  room.state.players.get('ann')!.scene_id = 2;
-  room.state.players.get('dee')!.scene_id = 2;
-  await g.wait(100);
-  teams.refresh();
-  const remote = () => g.scene.system(RemotePlayersSystem);
-  assert.ok(remote().get('ann') && remote().get('dee'), 'in the lab the teacher still sees both teams');
-  assert.deepEqual(g.ui.teamList!.map((t) => [t.key, t.name, t.here, t.total, t.shown]), [['t2', 'Blue', 1, 1, true], ['t1', 'Red', 1, 1, true]]);
-
-  // Untick Blue: Dee goes, and what Dee says and shows the scene is not shown either.
-  g.ui.onTeam('t2', false);
   await g.wait(50);
+  const remote = () => g.scene.system(RemotePlayersSystem);
   assert.ok(remote().get('ann'));
   assert.equal(remote().get('dee'), undefined);
-  assert.equal(g.ui.teamList!.find((t) => t.key === 't2')!.shown, false);
-  const say = (from: string, text: string) => (room as any).emit('chat', { session_id: from, text });
-  say('dee', 'blue here');
-  say('ann', 'red here');
-  assert.deepEqual(g.ui.lines.map((l) => [l.from, l.text]), [['Ann', 'red here']]);
 
-  // Tick it again and Dee is back.
-  g.ui.onTeam('t2', true);
-  await g.wait(50);
-  assert.ok(remote().get('dee'));
-  say('dee', 'still here');
-  assert.deepEqual(g.ui.lines.map((l) => l.from), ['Ann', 'Dee']);
+  // Following Red again does nothing; following Blue joins Blue's game in the lab, where most of Blue is.
+  g.ui.onFollow('t1');
+  g.ui.onFollow('t2');
+  assert.deepEqual(followed, [['t2', 2]]);
+});
 
-  // Back on the deck there is nothing to choose again.
-  room.state.players.get('local')!.scene_id = 1;
-  teams.refresh();
+test('a student, or a teacher in a game without teams, has no team to choose', async () => {
+  const student = await play();
+  student.ctx.fetchTeams = async () => [{ group: 't1', name: 'Red' }];
+  const t1 = new TeamsFeature();
+  stops.push(t1.start(student.ctx));
+  await student.wait(16);
+  assert.equal(student.ui.teamList, null);
+
+  const g = new Game(mission(), { id: 'u9', name: 'Ms T', role: 'teacher' });
+  g.ctx.fetchTeams = async () => [];
+  const t2 = new TeamsFeature();
+  stops.push(t2.start(g.ctx));
+  await g.wait(16);
+  t2.refresh();
   assert.equal(g.ui.teamList, null);
 });

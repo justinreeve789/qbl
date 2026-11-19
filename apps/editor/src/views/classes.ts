@@ -197,11 +197,6 @@ export function classesView(api: Api): HTMLElement {
               loose.length ? h('li', null, h('span', null, h('strong', null, 'No team'), ': ', loose.map((s) => s.name).join(', ')), link(a.group)) : null)
           : h('ul', { class: 'people' }, h('li', null, h('span', null, `${a.students.length} ${a.students.length === 1 ? 'student' : 'students'}, playing together: `, a.students.map((s) => s.name).join(', ') || 'nobody yet'), link(a.group))),
         h('div', { class: 'row-actions' },
-          // Every team's game at once, from the assignment's own instance: in the teams' room, so
-          // every team is in view, but in no team's game, so nothing the teacher does changes theirs.
-          a.teams.length && a.scenario
-            ? h('a', { class: 'button', 'data-action': 'look-all', href: `${playUrl(a.scenario.code)}?group=${a.group}`, target: '_blank', rel: 'noopener' }, '👀 Look in on every team')
-            : null,
           h('button', { type: 'button', class: 'primary', 'data-action': 'report', onclick: () => clear(body, reportView(api, a, draw)) }, '📊 Report'),
           h('button', { type: 'button', onclick: () => clear(card, h('h2', null, a.scenario?.title ?? 'Assignment'), assignmentForm(a, show)) }, 'Change'),
           h('button', {

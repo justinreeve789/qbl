@@ -96,8 +96,6 @@ test('assign a mission to two teams with a due date; each student sees it in the
   assert.notEqual(ann[0]!.group, ben[0]!.group, 'each team has its own instance');
   assert.equal(new Date(`${ann[0]!.due_at!.replace(' ', 'T')}Z`).getTime(), new Date('2026-12-01T15:00').getTime(), 'the due date is the local time the teacher typed');
   assert.match(await page.getAttribute('[data-assignment] [data-team] a', 'href') ?? '', /starshipexplorer\?group=t\d+$/);
-  // And one link for every team at once: the assignment's own instance, in the teams' room.
-  assert.match(await page.getAttribute('[data-assignment] [data-action=look-all]', 'href') ?? '', /starshipexplorer\?group=a\d+$/);
 
   // A student may open their own team's game, and is refused the other team's.
   const play = (group: string) => fetch(`${site.url}/api/scenarios/starshipexplorer/play?group=${group}`, { headers: { Authorization: `Bearer ${tokens['student.ann@example.test']}` } }).then((r) => r.status);
