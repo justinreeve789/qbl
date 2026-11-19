@@ -56,7 +56,6 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       QBL_GOOGLE_DOMAINS: ${QBL_GOOGLE_DOMAINS:-}
-      QBL_GOOGLE_TEACHER_DOMAINS: ${QBL_GOOGLE_TEACHER_DOMAINS:-}
       # Files uploaded in the editor.
       QBL_MEDIA_DIR: /media-data
       # The AI scenario generator (php artisan qbl:generate): keys, models, addresses and limits, all

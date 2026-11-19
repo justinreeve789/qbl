@@ -100,8 +100,8 @@ from those tables.
 
 `POST /api/auth/login` (email and password), `POST /api/auth/guest` (a name, when guests are allowed), and
 Google: `GoogleAuthController` with Laravel Socialite. Google sign-in is on when `GOOGLE_CLIENT_ID` and
-`GOOGLE_CLIENT_SECRET` are set (`config/services.php`); who may use it and who starts as a teacher is in
-`config/qbl.php` (`QBL_GOOGLE_DOMAINS`, `QBL_GOOGLE_TEACHER_DOMAINS`). The API keeps no sessions, so the
+`GOOGLE_CLIENT_SECRET` are set (`config/services.php`); who may use it is in `config/qbl.php`
+(`QBL_GOOGLE_DOMAINS`). New accounts are students; roles change only with `qbl:update-role`. The API keeps no sessions, so the
 OAuth "state" travels in a ten-minute encrypted cookie, and Socialite is used statelessly. The address Google
 returns to is `/api/auth/google/callback` on `APP_URL`.
 
