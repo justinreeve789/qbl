@@ -83,7 +83,7 @@ class ScenarioStore
         'conditions.operator' => ['=', '!=', '>', '<', '>=', '<='],
         'actions.type' => [
             'animate', 'award', 'glossary', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat', 'run_event', 'spritemap',
-            'text_overlay', 'translate', 'variable', 'video', 'wait',
+            'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk',
         ],
     ];
 
@@ -102,6 +102,7 @@ class ScenarioStore
     /** Keys that hold the id of another row, wherever they appear in a row's JSON, and the table that row is in. */
     private const REFERENCES = [
         'media_id' => 'media', 'music_media_id' => 'media', 'portrait_media_id' => 'media', 'media' => 'media',
+        'narration_media_id' => 'media', 'badge_media_id' => 'media',
         'scene_id' => 'scenes', 'event_id' => 'events', 'target_event_id' => 'events', 'action_id' => 'actions', 'target_id' => 'actions',
         'item_id' => 'items', 'character_id' => 'characters',
     ];

@@ -1,5 +1,9 @@
 import * as Phaser from 'phaser';
-import { nearestWalkable, parseIds, resolveMove, scaleAt, shadeAt, speedFactorAt, stepToward, type Item, type PlayerRec, type Point } from '@qbl/shared';
+import {
+  doorPoint, doorsOf, nearestWalkable, parseIds, resolveMove, scaleAt, shadeAt, speedFactorAt, stepToward, testConditions,
+  type ActionHandle, type Door, type Item, type PlayerRec, type Point, type WalkAction,
+} from '@qbl/shared';
+import { deferred } from '../actions/Presenter';
 import { Pathfinder, walkSignature } from '../core/Pathfinder';
 import { Avatar } from '../entities/Avatar';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
@@ -30,6 +34,8 @@ export class LocalPlayerSystem implements SceneSystem {
   private finder: { signature: string; pathfinder: Pathfinder } | null = null;
   private facing: 'left' | 'right' = 'right';
   private lastSent = { x: 0, y: 0, facing: 'right', at: 0 };
+  /** A walk action walking the avatar: where it ends, and what to do on getting there. */
+  private scripted: { end: Point; facing?: 'left' | 'right'; door: Door | null; speed?: number; finish(): void } | null = null;
   private mismatchSince = 0;
   private off: Array<() => void> = [];
 
@@ -85,6 +91,67 @@ export class LocalPlayerSystem implements SceneSystem {
     const route = this.pathfinder(walk).find(this.position, target) ?? [target];
     this.walkTarget = route[0] ?? null;
     this.route = route.slice(1);
+  }
+
+  /**
+   * A walk action aimed at the player: walk the avatar there, as if the player had clicked the
+   * spot, even while frozen (a freeze and a walk make a cutscene). To another scene, it walks to
+   * the door that leads there and goes through it. The handle finishes on arriving, or when the
+   * player walks off somewhere else.
+   */
+  walkScripted(action: WalkAction): ActionHandle | null {
+    const { def, ctx } = this.rt;
+    const walk = this.rt.walk();
+    const to = action.to ?? 'point';
+    let goal: Point | null = null;
+    let door: Door | null = null;
+    let facing = action.facing;
+    if (to === 'point' && action.position_x != null && action.position_y != null) goal = { x: action.position_x, y: action.position_y };
+    else if (to === 'spawn') {
+      const spawn = (def.spawn_points ?? []).find((p) => p.name === action.spawn_point);
+      if (spawn) goal = { x: spawn.position_x, y: spawn.position_y };
+      facing ??= spawn?.facing;
+    } else if (to === 'scene') {
+      door = doorsOf(def).find((d) => d.to === action.scene_id && testConditions(d.conditions, ctx.vars.get)) ?? null;
+      if (door) goal = doorPoint(walk, door.hotspot, this.position);
+    }
+    const target = goal && nearestWalkable(walk, goal, 200, 10);
+    if (!target) return null;
+    this.scripted?.finish();
+    this.stop();
+    const route = this.pathfinder(walk).find(this.position, target) ?? [target];
+    this.walkTarget = route[0] ?? null;
+    this.route = route.slice(1);
+    const d = deferred();
+    const mine = {
+      end: target, facing, door, speed: action.speed,
+      finish: () => {
+        if (this.scripted === mine) this.scripted = null;
+        d.resolve();
+      },
+    };
+    this.scripted = mine;
+    return { done: d.done, cancel: () => {
+      if (this.scripted === mine) this.stop();
+      mine.finish();
+    } };
+  }
+
+  /** A scripted walk has ended: arrived (turn, or go through the door) or was walked away from. */
+  private endScripted() {
+    const s = this.scripted;
+    if (!s) return;
+    const arrived = Math.hypot(this.avatar.x - s.end.x, this.avatar.y - s.end.y) < 4;
+    if (arrived && s.facing) {
+      this.facing = s.facing;
+      this.avatar.setFacing(s.facing);
+    }
+    s.finish();
+    // Through the door: its own actions if it can be used now, or else straight through.
+    if (arrived && s.door && !this.rt.leaving) {
+      const { engine } = this.rt;
+      if (!engine.triggerHotspot(s.door.hotspot)) void engine.leave(s.door.to, s.door.spawn_point);
+    }
   }
 
   /** Where the avatar is walking to by itself, if anywhere: the corners ahead, ending at the destination. */
@@ -197,7 +264,10 @@ export class LocalPlayerSystem implements SceneSystem {
     }
     // In a scale area, figures drawn smaller also walk slower, by as much as the area's speed effect says.
     const depth = speedFactorAt(this.rt.def, this.avatar.x, this.avatar.y);
-    return (ctx.scenario.move_speed ?? 420) * multiplier * depth;
+    // A walk action may say how fast; never faster than the server lets a player go.
+    const base = ctx.scenario.move_speed ?? 420;
+    const own = this.scripted?.speed && this.scripted.speed > 0 ? Math.min(this.scripted.speed, base) : base;
+    return own * multiplier * depth;
   }
 
   private move(time: number, delta: number) {
@@ -231,6 +301,8 @@ export class LocalPlayerSystem implements SceneSystem {
     }
     // Walking plays the sheet's walk, on the figure and on what it rides.
     me.setMoving(me.x !== from.x || me.y !== from.y);
+    // A walk action's walk is over once there is nowhere left to walk to.
+    if (this.scripted && !this.walkTarget) this.endScripted();
 
     // Report at a steady rate while moving, and once more on stopping so everyone agrees on the final spot.
     const s = this.lastSent;

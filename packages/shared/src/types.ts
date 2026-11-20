@@ -224,7 +224,8 @@ export type ActionType =
   | 'translate'
   | 'variable'
   | 'video'
-  | 'wait';
+  | 'wait'
+  | 'walk';
 
 export type Alignment =
   | 'top left' | 'top center' | 'top right'
@@ -476,11 +477,50 @@ export interface ShopAction extends ActionBase {
   type: 'shop';
 }
 
+/**
+ * [ext] Walk someone somewhere, on foot: a character, or the player's own avatar. Unlike
+ * `translate`, which glides a picture in a straight line, a walk finds a way around whatever is in
+ * the scene, plays the walking poses and turns the figure the way it goes.
+ *
+ * - `point`: to a spot in the scene the walker is in.
+ * - `spawn`: to one of that scene's spawn points, by name.
+ * - `scene`: to another scene. The walker heads for the door that leads there (a hotspot whose
+ *   jump goes to that scene), goes through it and arrives at the spawn point the jump names, as a
+ *   player would; through several rooms if no door leads there directly. With `spawn_point` it
+ *   then walks on to that spawn point of the scene it arrives in.
+ *
+ * Only a character that roams (`Npc.roams`) can really leave a scene: it lives in the world, so
+ * everyone sees it go and finds it where it went. Any other character walks on the player's own
+ * screen (or the whole scene's, for an event whose audience is the scene), and one that walks out
+ * through a door is gone until the scene is entered again. The player walks out through a door
+ * only to a scene next to this one.
+ */
+export interface WalkAction extends ActionBase {
+  type: 'walk';
+  /** Who walks. Default: a character. */
+  target?: 'character' | 'player';
+  character_id?: Id;
+  /** Where to. Default: `point`. */
+  to?: WalkDestination;
+  position_x?: number;
+  position_y?: number;
+  /** `spawn`: a spawn point of the walker's scene. `scene`: where to walk on to once arrived. */
+  spawn_point?: string;
+  /** `scene`: the scene to walk to. */
+  scene_id?: Id;
+  /** Scene pixels per second. Default: the character's `walk_speed`, or the scenario's `move_speed`. */
+  speed?: number;
+  /** Turn this way on arriving. Default: the way it walked (or, at a spawn point, the way the spawn point faces). */
+  facing?: 'left' | 'right';
+}
+
+export type WalkDestination = 'point' | 'spawn' | 'scene';
+
 export type Action =
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
-  | VariableAction | VideoAction | WaitAction;
+  | VariableAction | VideoAction | WaitAction | WalkAction;
 
 // --------------------------------------------------------------- labels
 
@@ -532,7 +572,7 @@ export interface GameEvent {
 export type EventAudience = 'player' | 'scene';
 
 /** The action types other players are shown when an event's audience is the scene. */
-export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'translate', 'cancel', 'animate'] as const;
+export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'translate', 'cancel', 'animate', 'walk'] as const;
 
 export interface Hotspot extends GameEvent {
   position_x?: number | null;
@@ -754,6 +794,18 @@ export interface Npc extends Character {
   /** The character is there only while these hold. */
   conditions?: Condition[];
   /**
+   * [ext] The character lives in the world and walks around it on its own: there is one of it in
+   * each instance, kept by the game server, so every player sees it in the same place, and it
+   * stays where it went. It starts at its first placement (in scene order), as a unique item
+   * does; a placement in another scene only says what clicking it there does. Walk actions can
+   * send it to other scenes, and its `routine` keeps it busy. Set by itself when it has a routine.
+   */
+  roams?: boolean;
+  /** [ext] Scene pixels per second when it walks. Default: the scenario's `move_speed`. */
+  walk_speed?: number;
+  /** [ext] What a roaming character does on its own, over and over. */
+  routine?: Routine | null;
+  /**
    * [ext] Before animations: the character's picture. Read when `animations` is empty: a still
    * picture faces right; on a sprite sheet the media's `idle`, `walk`, `walk_left` and `walk_right`
    * become the poses and its other animations the character's.
@@ -762,6 +814,36 @@ export interface Npc extends Character {
   /** [ext] Before animations: the close-up shown in portrait dialogue. Read when `animations` is empty. */
   portrait_media_id?: Id;
 }
+
+/**
+ * [ext] What a roaming character does when nobody is telling it what to do: walking from place to
+ * place, waiting, saying a line, playing an animation, changing a shared variable. The game server
+ * runs it, one step after another, for each instance, whether or not anyone is watching.
+ *
+ * Only shared (room) variables mean anything here, because the routine is nobody's in particular:
+ * conditions on a player's own variables are left out. While the routine's `conditions` do not
+ * hold, the character stops where it is, and it carries on with the step it was on when they hold
+ * again. A walk action sent by a player's event comes first: the routine waits until it is done.
+ */
+export interface Routine {
+  steps: RoutineStep[];
+  /** Start again from the first step after the last. Default true. */
+  loop?: boolean;
+  conditions?: Condition[];
+}
+
+/**
+ * One step of a routine: one of the actions a character can do by itself, written as that action
+ * is (a step needs no id, and `walk`, `animate` and `dialogue` are about the character itself, so
+ * they do not name it). A step whose conditions do not hold is skipped. `blocking: false` goes on
+ * to the next step at once, as in an event.
+ */
+export type RoutineStep = RoutineStepOf<WalkAction | WaitAction | AnimateAction | DialogueAction | VariableAction>;
+type RoutineStepOf<T extends Action> = T extends Action
+  ? Omit<T, 'id' | 'event_id' | 'target' | 'character_id' | 'speaker' | 'target_id' | 'item_id'> & { id?: Id }
+  : never;
+export type RoutineStepType = RoutineStep['type'];
+export const ROUTINE_STEP_TYPES: RoutineStepType[] = ['walk', 'wait', 'dialogue', 'animate', 'variable'];
 
 /**
  * [ext] An avatar players choose from. Avatars belong to the platform, not to a scenario, so a

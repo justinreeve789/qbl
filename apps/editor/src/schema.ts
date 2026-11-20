@@ -44,6 +44,46 @@ const spritemap: Field[] = [
   { key: 'spritemap_show_first_as_fixed', label: 'Show the first tile before it plays', kind: 'bool' },
 ];
 
+/**
+ * Where a walk goes, for a walk action and a routine's walk step. `here` lists the spawn points of
+ * the scene being edited (for a routine: of every scene, since the character may be anywhere).
+ */
+const to = (v: Record<string, unknown>) => (v.to as string | undefined) ?? 'point';
+export const WALK_FIELDS: Field[] = [
+  {
+    key: 'to', label: 'Walk to', kind: 'select', wide: true, structural: true, placeholder: 'A spot in the scene',
+    options: [['spawn', 'A spawn point in the scene'], ['scene', 'Another scene, through its doors']],
+    hint: 'To another scene, the walker heads for a hotspot whose jump goes there (a door), goes through it and arrives at the spawn point that jump names, as a player would. A character that walks around on its own can go through several rooms to get there; anyone else only through a door of this scene.',
+  },
+  { key: 'position_x', label: 'X', kind: 'number', hint: 'Scene pixels from the left. The walker goes around whatever is in the way, and stops at the nearest spot it can stand on.', when: (v) => to(v) === 'point' },
+  { key: 'position_y', label: 'Y', kind: 'number', hint: 'Scene pixels from the top.', when: (v) => to(v) === 'point' },
+  { key: 'spawn_point', label: 'Spawn point', kind: 'spawn', sceneKey: 'here', placeholder: 'Choose a spawn point', when: (v) => to(v) === 'spawn' },
+  { key: 'scene_id', label: 'Scene', kind: 'scene', structural: true, when: (v) => to(v) === 'scene' },
+  {
+    key: 'spawn_point', label: 'Then walk on to', kind: 'spawn', sceneKey: 'scene_id', placeholder: 'Stop where the door brings it', when: (v) => to(v) === 'scene',
+    hint: 'A spawn point of that scene to walk to once there. Only a character that walks around on its own goes on; the player and other characters leave this scene through the door.',
+  },
+  { key: 'speed', label: 'Speed (pixels per second)', kind: 'number', min: 1, placeholder: 'The walker’s own', slider: { min: 50, max: 1000, step: 10 }, hint: 'Players walk at the scenario’s speed (420 unless the Scenario page says otherwise). A player is never walked faster than that.' },
+  { key: 'facing', label: 'Face on arriving', kind: 'select', placeholder: 'The way it walked', options: [['left', 'Left'], ['right', 'Right']] },
+];
+
+/**
+ * A walk's attributes once `to` has changed: only those of the new destination are kept, so a
+ * walk to another scene does not carry the X and Y it had as a walk to a spot.
+ */
+export function tidyWalk<T extends Record<string, unknown>>(values: T): T {
+  const next: Record<string, unknown> = { ...values };
+  const to = (values.to as string | undefined) ?? 'point';
+  if (to !== 'point') {
+    delete next.position_x;
+    delete next.position_y;
+  }
+  if (to !== 'scene') delete next.scene_id;
+  // A spawn point's name belongs to the scene it was chosen in.
+  delete next.spawn_point;
+  return next as T;
+}
+
 export interface ActionDef {
   label: string;
   /** One sentence for the "add action" menu. */
@@ -229,6 +269,21 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     about: 'Stop another action: remove an image, stop a sound.',
     fields: [{ key: 'action_id', label: 'Action to stop', kind: 'action', wide: true }],
   },
+  walk: {
+    label: 'Walk',
+    about: 'Walk a character or the player to a spot, a spawn point, or another scene.',
+    fields: [
+      {
+        key: 'target', label: 'Who walks', kind: 'select', wide: true, structural: true, placeholder: 'A character', options: [['player', 'The player']],
+        hint: 'Unlike Translate, a walk goes around things, plays the walking poses and turns the walker the way it goes. The player is walked even while frozen: freeze them first for a cutscene.',
+      },
+      {
+        key: 'character_id', label: 'Character', kind: 'character', wide: true, when: (v) => v.target !== 'player',
+        hint: 'A character set to walk around on its own (Characters page, “Getting around”) walks for everyone, can go to other scenes and stays where it went. Any other character walks on this player’s screen (or the whole scene’s, when the event’s audience is the scene) and is back in its place next time.',
+      },
+      ...WALK_FIELDS,
+    ],
+  },
   translate: {
     label: 'Translate',
     about: 'Move, resize or fade something another action is showing.',
@@ -252,7 +307,7 @@ export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: strin
   image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
-  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'], glossary: ['📖', STATE],
+  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], walk: ['🚶', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'], glossary: ['📖', STATE],
   variable: ['🔢', STATE],
 };
 
@@ -289,6 +344,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return { position_x: 200, position_y: 200 };
     case 'translate':
       return { duration: 1000 };
+    case 'walk':
+      return { to: 'point', position_x: 400, position_y: 400 };
     default:
       return {};
   }

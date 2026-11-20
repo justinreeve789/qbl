@@ -1,8 +1,9 @@
 import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Circle, type WalkContext } from './geometry.js';
 import { isShownToScene } from './engine.js';
-import type { AnimateMessage, AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage } from './protocol.js';
-import { sceneSize, sceneTeamOnly, ScenarioIndex } from './scenario.js';
-import { ANIMATION_NAME, type Id, type Item, type Scenario, type Scene, type Session, type VarValue } from './types.js';
+import type { AnimateMessage, AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage, WalkMessage } from './protocol.js';
+import { Roamers, type NpcRec, type SavedNpc, type WalkSpec } from './roaming.js';
+import { forEachAction, sceneSize, sceneTeamOnly, ScenarioIndex } from './scenario.js';
+import { ANIMATION_NAME, type Id, type Item, type Scenario, type Scene, type Session, type VarValue, type VariableOperator } from './types.js';
 import { applyOperator } from './variables.js';
 
 /** Who is playing. `id` is the stable key for save data. */
@@ -28,6 +29,8 @@ export interface InstanceData {
   variables: Record<string, VarValue>;
   /** Where unique items were left. */
   items: Record<string, { scene_id: Id; x: number; y: number }>;
+  /** Where characters that roam were left, by character id. */
+  characters?: Record<string, SavedNpc>;
   updated_at?: string;
 }
 
@@ -63,11 +66,14 @@ export interface WorldState {
   players: MapLike<PlayerRec>;
   items: MapLike<ItemRec>;
   vars: MapLike<string>;
+  /** Characters that roam, by character id. A world given none keeps its own. */
+  npcs?: MapLike<NpcRec>;
 }
 export interface WorldDeps {
   state: WorldState;
   newPlayer(): PlayerRec;
   newItem(): ItemRec;
+  newNpc?(): NpcRec;
   now(): number;
   random?(): number;
 }
@@ -84,6 +90,8 @@ interface Meta {
   /** When this player's avatar was last asked to animate, and how many times in all. */
   lastAnimation: number;
   animations: number;
+  /** When this player's event last sent a character walking. */
+  lastWalk: number;
 }
 
 /**
@@ -96,6 +104,9 @@ export class World {
   readonly index: ScenarioIndex;
   private meta = new Map<string, Meta>();
   private staticObstacles = new Map<Id, Circle[]>();
+  /** The characters that walk around on their own. */
+  readonly roamers: Roamers;
+  readonly npcs: MapLike<NpcRec>;
   dirty = false;
 
   /**
@@ -138,6 +149,31 @@ export class World {
       }
       this.staticObstacles.set(scene.id, obstacles);
     }
+
+    this.npcs = state.npcs ?? new Map<string, NpcRec>();
+    this.roamers = new Roamers(
+      {
+        scenario,
+        index: this.index,
+        npcs: this.npcs,
+        newNpc: deps.newNpc ?? (() => ({}) as NpcRec),
+        now: () => deps.now(),
+        walkContext: (sceneId) => this.ctx(sceneId),
+        roomVariable: (name) => decode(state.vars.get(name)),
+        setRoomVariable: (name, operator, operand) => {
+          this.applyRoomVariable(name, operator, operand);
+        },
+        changed: () => {
+          this.dirty = true;
+        },
+      },
+      instance?.characters,
+    );
+  }
+
+  /** Let time pass for the characters that walk around on their own. The game server calls this a few times a second. */
+  tick(): void {
+    this.roamers.tick();
   }
 
   // ------------------------------------------------------------ players
@@ -188,7 +224,7 @@ export class World {
       flags: (useSave?.flags ?? []).slice(0, MAX_FLAGS),
       time_elapsed: useSave?.time_elapsed ?? 0,
     };
-    this.meta.set(sessionId, { user, budget: new MoveBudget(this.deps.now()), progress, lastAnimation: -Infinity, animations: 0 });
+    this.meta.set(sessionId, { user, budget: new MoveBudget(this.deps.now()), progress, lastAnimation: -Infinity, animations: 0, lastWalk: -Infinity });
     return this.sessionOf(sessionId)!;
   }
 
@@ -334,17 +370,52 @@ export class World {
 
   /** Apply a variable action to a room-scoped variable. */
   setVariable(_sessionId: string, msg: VariableMessage): boolean {
-    const def = (this.scenario.global_variables ?? []).find((v) => v.variable_name === msg?.name);
+    return this.applyRoomVariable(msg?.name, msg?.operator, msg?.operand);
+  }
+
+  /** Change a shared variable: for a player's variable action, or a character's routine. */
+  private applyRoomVariable(name: string, operator: VariableOperator, rawOperand: unknown): boolean {
+    const def = (this.scenario.global_variables ?? []).find((v) => v.variable_name === name);
     if (!def || (def.scope ?? 'player') !== 'room') return false;
-    if (!['set', '+', '-', '*', '/', '%', 'random'].includes(msg.operator)) return false;
-    const operand = typeof msg.operand === 'number' || typeof msg.operand === 'string' ? msg.operand : undefined;
+    if (!['set', '+', '-', '*', '/', '%', 'random'].includes(operator)) return false;
+    const operand = typeof rawOperand === 'number' || typeof rawOperand === 'string' ? rawOperand : undefined;
     if (typeof operand === 'string' && operand.length > 1000) return false;
     const { vars } = this.deps.state;
     const current = decode(vars.get(def.variable_name)) ?? def.default_value;
-    const next = applyOperator(current, msg.operator, operand, this.deps.random);
+    const next = applyOperator(current, operator, operand, this.deps.random);
     vars.set(def.variable_name, JSON.stringify(next));
     this.dirty = true;
     return true;
+  }
+
+  /**
+   * A walk action of the player's event, for a character that roams: walk it there, for everyone.
+   * Only a walk that an event of the player's scene has (on a button too) is taken, so a player
+   * can send a character only where the scenario sends it, and no more often than a few times a
+   * second.
+   */
+  walk(sessionId: string, msg: WalkMessage): boolean {
+    const p = this.deps.state.players.get(sessionId);
+    const m = this.meta.get(sessionId);
+    const characterId = Number(msg?.character_id);
+    if (!p || !m || !this.roamers.has(characterId)) return false;
+    const scene = this.index.scene(p.scene_id);
+    if (!scene) return false;
+    const spec: WalkSpec = {
+      to: msg.to, position_x: msg.position_x, position_y: msg.position_y, spawn_point: msg.spawn_point,
+      scene_id: msg.scene_id, speed: msg.speed, facing: msg.facing,
+    };
+    let known = false;
+    forEachAction(scene, (a) => {
+      if (known || a.type !== 'walk' || (a.target ?? 'character') !== 'character' || a.character_id !== characterId) return;
+      known = sameWalk(a, spec);
+    });
+    if (!known) return false;
+    const now = this.deps.now();
+    if (now - m.lastWalk < 250) return false;
+    m.lastWalk = now;
+    const ticket = typeof msg.ticket === 'string' ? msg.ticket.slice(0, 32) : '';
+    return this.roamers.command(characterId, spec, ticket);
   }
 
   /** Put on / climb into an item, or take it off. */
@@ -410,7 +481,7 @@ export class World {
         ? { scene_id: holder.scene_id, x: holder.x, y: holder.y }
         : { scene_id: rec.scene_id, x: rec.x, y: rec.y };
     });
-    return { variables, items, updated_at: new Date(this.deps.now()).toISOString() };
+    return { variables, items, characters: this.roamers.saved(), updated_at: new Date(this.deps.now()).toISOString() };
   }
 
   // ------------------------------------------------------------ helpers
@@ -525,6 +596,18 @@ export function blockingRadius(item: Item): number {
 
 export function parseIds(csv: string): Id[] {
   return csv ? csv.split(',').map(Number).filter((n) => Number.isFinite(n)) : [];
+}
+
+/** Whether a walk asked for is the walk an action describes: the same destination, speed and facing. */
+function sameWalk(a: WalkSpec, b: WalkSpec): boolean {
+  const to = (w: WalkSpec) => w.to ?? 'point';
+  if (to(a) !== to(b) || (a.speed ?? null) !== (b.speed ?? null) || (a.facing ?? null) !== (b.facing ?? null)) return false;
+  switch (to(a)) {
+    case 'point': return a.position_x === b.position_x && a.position_y === b.position_y;
+    case 'spawn': return (a.spawn_point ?? '') === (b.spawn_point ?? '');
+    case 'scene': return a.scene_id === b.scene_id && (a.spawn_point ?? '') === (b.spawn_point ?? '');
+    default: return false;
+  }
 }
 
 function decode(raw: string | undefined): VarValue | undefined {

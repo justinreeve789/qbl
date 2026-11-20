@@ -46,8 +46,71 @@ final class NpcCharacter extends Character
                 unset($settings['animations']);
             }
         }
+        // Walking around on its own: a yes or no, a speed, and a routine of steps.
+        if (array_key_exists('roams', $settings)) {
+            if ($settings['roams'] === true) {
+                $settings['roams'] = true;
+            } else {
+                unset($settings['roams']);
+            }
+        }
+        if (array_key_exists('walk_speed', $settings)) {
+            $speed = is_numeric($settings['walk_speed']) ? (float) $settings['walk_speed'] : 0;
+            if ($speed > 0) {
+                $settings['walk_speed'] = min($speed, 5000);
+            } else {
+                unset($settings['walk_speed']);
+            }
+        }
+        if (array_key_exists('routine', $settings)) {
+            $routine = self::cleanRoutine($settings['routine']);
+            if ($routine === null) {
+                unset($settings['routine']);
+            } else {
+                $settings['routine'] = $routine;
+            }
+        }
 
         return $settings;
+    }
+
+    /** The kinds of step a routine can have, as in @qbl/shared ROUTINE_STEP_TYPES. */
+    public const ROUTINE_STEPS = ['walk', 'wait', 'dialogue', 'animate', 'variable'];
+
+    /** At most this many steps: a routine is a loop of a few things, not a script. */
+    public const MAX_ROUTINE_STEPS = 100;
+
+    /**
+     * A routine kept to its shape: a list of steps of the known kinds (other keys of a step are
+     * kept as they are, like an action's params), whether it loops, and its conditions. Null when
+     * it has no steps left.
+     */
+    public static function cleanRoutine(mixed $routine): ?array
+    {
+        if (! is_array($routine) || ! is_array($routine['steps'] ?? null)) {
+            return null;
+        }
+        $steps = [];
+        foreach (array_values($routine['steps']) as $step) {
+            if (is_array($step) && in_array($step['type'] ?? null, self::ROUTINE_STEPS, true)) {
+                $steps[] = $step;
+            }
+            if (count($steps) >= self::MAX_ROUTINE_STEPS) {
+                break;
+            }
+        }
+        if (! $steps) {
+            return null;
+        }
+        $out = ['steps' => $steps];
+        if (($routine['loop'] ?? true) === false) {
+            $out['loop'] = false;
+        }
+        if (is_array($routine['conditions'] ?? null) && $routine['conditions']) {
+            $out['conditions'] = array_values(array_filter($routine['conditions'], 'is_array'));
+        }
+
+        return $out;
     }
 
     public function toDocument(): array

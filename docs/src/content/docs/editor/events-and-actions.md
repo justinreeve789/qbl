@@ -100,6 +100,7 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 | ✋ **Freeze or release player** | Stop the player walking while a character talks, or let them walk again. A freeze always ends when the event finishes or the scene changes, so nobody is left stuck |
 | 👤 **Show or hide avatar** | Hide the player's avatar (stepping into a rocket) or show it again |
 | 🤸 **Play an animation** | Make the avatar, an item, a vehicle or a character jump, dance or do anything its sprite sheet has |
+| 🚶 **Walk** | Walk a **Character** or **The player** to a spot, a spawn point, or **Another scene, through its doors**. [Details below](#walking) |
 
 **What the mission remembers and gives**
 
@@ -113,6 +114,18 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 :::note
 An **award** is given **once per student** by default, however often the event runs; tick **Give it every time this runs** to change that. Stars and XP belong to the player's account and carry across missions; guests earn none. Put awards in an event, not on an infobox button.
 :::
+
+### Walking
+
+**Walk** moves someone on foot: around whatever is in the way, with their walking pictures, turning the way they go. Choose **Who walks** and **Walk to**; only the fields for that destination are shown.
+
+* **A spot in the scene**: its **X** and **Y**.
+* **A spawn point in the scene**: one of the scene's spawn points.
+* **Another scene, through its doors**: the walker heads for a hotspot of this scene whose jump goes to that scene (an exit made on the scene map is one), goes through it and arrives at the spawn point the jump names. **Then walk on to** sends a character that walks around on its own on to a spawn point there.
+
+**Speed** is in pixels per second (players walk at 420 unless the scenario says otherwise), and **Face on arriving** turns the walker at the end. With **Wait for this to finish** ticked, the next action waits until they get there.
+
+What happens depends on the character. One set to **walk around on its own** (Characters page, *Getting around*) walks for everyone, can cross several rooms, and stays where it went. Any other character walks on this player's screen in this scene, and is back in its place next time; one that walks out through a door is gone until the scene is entered again. The player walks even while frozen, so **Freeze**, then **Walk** the player, makes a short cutscene; walked to another scene, they go through the door as if they had walked into it.
 
 ### Infobox and questions
 

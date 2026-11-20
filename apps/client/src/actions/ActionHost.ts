@@ -1,7 +1,7 @@
 import type * as Phaser from 'phaser';
 import {
   resolvedHandle,
-  type Action, type ActionHandle, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction,
+  type Action, type ActionHandle, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
 } from '@qbl/shared';
 import type { AnimateAction, AwardAction, GlossaryAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
@@ -79,6 +79,15 @@ export class ActionHost implements EngineHost, PresenterContext {
       : (this.animateControl?.(action, actor) ?? null);
     if (ms == null) this.warn(`animate ${action.id}: nothing to animate`);
     return ms != null && ms > 0 ? this.delay(ms) : null;
+  }
+
+  /** Set by the scene: walks a character, or the player's avatar. */
+  walkControl: ((action: WalkAction, actor?: string) => ActionHandle | null) | null = null;
+
+  walk(action: WalkAction, actor?: string): ActionHandle | null {
+    const handle = this.walkControl?.(action, actor) ?? null;
+    if (!handle && !actor) this.warn(`walk ${action.id}: nobody to walk, or nowhere to go`);
+    return handle;
   }
 
   /** Set by the scene: stops the local player from walking, or lets them walk again. */

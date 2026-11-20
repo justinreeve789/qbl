@@ -4,7 +4,7 @@
  * through the synchronized room state instead; see apps/server/src/rooms/state.ts.
  */
 import type { Badge, Progress } from './types.js';
-import type { Id, Session, VarValue, VariableOperator } from './types.js';
+import type { Id, Session, VarValue, VariableOperator, WalkAction } from './types.js';
 
 export const ROOM_NAME = 'scenario';
 
@@ -50,6 +50,7 @@ export const C2S = {
   Animate: 'animate',
   Whisper: 'whisper',
   Track: 'track',
+  Walk: 'walk',
 } as const;
 
 export const S2C = {
@@ -82,6 +83,14 @@ export interface ShowMessage { event_id: Id; action_id: Id }
 export interface ShowBroadcast extends ShowMessage { session_id: string }
 /** Play an animation on the sender's avatar, for everyone in their scene. An empty name stops it. */
 export interface AnimateMessage { name: string }
+/**
+ * A walk action of the sender's event, aimed at a character that roams: the game server walks it,
+ * for everyone. The server checks that the sender's scene has such a walk action. `ticket` is the
+ * sender's name for this request: the character's `trip` carries it until it arrives.
+ */
+export interface WalkMessage extends Pick<WalkAction, 'character_id' | 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing'> {
+  ticket: string;
+}
 /** Show or hide the sender's avatar for everyone in their scene. */
 export interface AvatarMessage { visible: boolean }
 /** Sent periodically so the server can save player-scoped progress. */

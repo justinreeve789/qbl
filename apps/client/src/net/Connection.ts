@@ -2,8 +2,8 @@ import { Client, type Room } from '@colyseus/sdk';
 import {
   C2S, ROOM_NAME, S2C, scopedMap, World,
   type ChatBroadcast, type EmoteBroadcast, type Id, type ItemMessage, type ItemRec, type JoinOptions,
-  type MoveMessage, type NoticeMessage, type PlayerRec, type ProgressMessage, type RewardMessage, type Scenario, type SceneMessage,
-  type ShowBroadcast, type ShowMessage, type SnapMessage, type TrackMessage, type User, type VariableMessage, type WelcomeMessage, type WhisperBroadcast, type WorldState,
+  type MoveMessage, type NoticeMessage, type NpcRec, type PlayerRec, type ProgressMessage, type RewardMessage, type Scenario, type SceneMessage,
+  type ShowBroadcast, type ShowMessage, type SnapMessage, type TrackMessage, type User, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WorldState,
 } from '@qbl/shared';
 
 export interface ConnectionEvents {
@@ -57,6 +57,14 @@ export abstract class GameConnection {
     return this.state.players.get(this.sessionId);
   }
 
+  /** A character that walks around on its own, where the room says it is. */
+  npc(characterId: Id): NpcRec | undefined {
+    return this.state.npcs?.get(String(characterId));
+  }
+
+  /** Called every frame. Online the game server keeps time; offline the world is ticked here. */
+  tick(): void {}
+
   move(msg: MoveMessage) { this.send(C2S.Move, msg); }
   changeScene(msg: SceneMessage) { this.send(C2S.Scene, msg); }
   chat(text: string) { this.send(C2S.Chat, { text }); }
@@ -78,6 +86,8 @@ export abstract class GameConnection {
   whisper(to: string, text: string) { this.send(C2S.Whisper, { to, text }); }
   /** Something the player did that a teacher's report counts: a hotspot used, an answer chosen. */
   track(msg: TrackMessage) { this.send(C2S.Track, msg); }
+  /** A walk action for a character that roams: the server walks it, for everyone. */
+  walk(msg: WalkMessage) { this.send(C2S.Walk, msg); }
 }
 
 /** A Colyseus room on the game server. */
@@ -136,7 +146,10 @@ export class OnlineConnection extends GameConnection {
     if (!raw?.players) return raw;
     if (this.view?.of !== raw) {
       const team = this.welcome.team?.key ?? '';
-      this.view = { of: raw, state: { players: raw.players, items: scopedMap(raw.items, team), vars: scopedMap(raw.vars, team) } };
+      this.view = {
+        of: raw,
+        state: { players: raw.players, items: scopedMap(raw.items, team), vars: scopedMap(raw.vars, team), npcs: raw.npcs ? scopedMap(raw.npcs, team) : undefined },
+      };
     }
     return this.view.state;
   }
@@ -166,6 +179,7 @@ export class OfflineConnection extends GameConnection {
     players: new Map<string, PlayerRec>(),
     items: new Map<string, ItemRec>(),
     vars: new Map<string, string>(),
+    npcs: new Map<string, NpcRec>(),
   };
   readonly welcome: WelcomeMessage;
   /** What this player's events would have shown to the rest of the scene. */
@@ -180,6 +194,7 @@ export class OfflineConnection extends GameConnection {
       state: this.state,
       newPlayer: () => ({}) as PlayerRec,
       newItem: () => ({}) as ItemRec,
+      newNpc: () => ({}) as NpcRec,
       now,
     });
     const session = this.world.addPlayer(this.sessionId, user, scenario.session ?? null, avatarId);
@@ -231,8 +246,15 @@ export class OfflineConnection extends GameConnection {
       case C2S.Track:
         this.tracked.push(payload as TrackMessage);
         break;
+      case C2S.Walk:
+        this.world.walk(id, payload as WalkMessage);
+        break;
       default:
     }
+  }
+
+  override tick() {
+    this.world.tick();
   }
 
   private snap() {

@@ -226,6 +226,46 @@ same([count($b['shop_items']), $b['shop_items'][0]['active']], [1, false], 'a du
 $store->deleteScenario($dupe);
 same([is_file("$dir/media/{$media['filepath']}"), is_dir("$dir/media/$dupe")], [true, false], 'deleting the duplicate removes its files and leaves the original\'s');
 
+// ---- characters that walk around on their own, and walk actions, travel with a duplicate
+$roam = (int) $store->createScenario(['title' => 'Roaming'], 1)['id'];
+$roamMedia = $store->addMediaFile($roam, $png, 'guide.png');
+$roamEvent = $store->createRow($roam, 'events', ['scene_id' => $store->bundle($roam)['scenes'][0]['id'], 'kind' => 'indirect']);
+$lab = $store->createRow($roam, 'scenes', ['shortname' => 'lab']);
+$guide = $store->createRow($roam, 'characters', ['name' => 'Guide', 'settings' => [
+    'animations' => ['stand_right' => ['media_id' => $roamMedia['id']]],
+    'roams' => 'yes please', 'walk_speed' => -3,
+    'routine' => ['loop' => false, 'steps' => [
+        ['type' => 'walk', 'to' => 'scene', 'scene_id' => $lab['id']],
+        ['type' => 'dialogue', 'text' => 'Hello', 'narration_media_id' => $roamMedia['id']],
+        ['type' => 'jump', 'scene_id' => $lab['id']],
+        'junk',
+    ]],
+]]);
+same([$guide['settings']['routine']['steps'][0]['type'], count($guide['settings']['routine']['steps']), $guide['settings']['routine']['loop'], isset($guide['settings']['roams']), isset($guide['settings']['walk_speed'])], ['walk', 2, false, false, false], 'a routine keeps its steps of the kinds it can have; roams is a yes or nothing; a speed is a positive number');
+$walk = $store->createRow($roam, 'actions', ['event_id' => $roamEvent['id'], 'type' => 'walk', 'params' => ['character_id' => $guide['id'], 'to' => 'scene', 'scene_id' => $lab['id']]]);
+same($walk['type'], 'walk', 'a walk action can be added');
+[$status, $body] = $api->handle('POST', "scenarios/$roam/duplicate", [], $teacher);
+$b = $store->bundle((int) $body['scenario']['id']);
+$labCopy = array_values(array_filter($b['scenes'], fn ($sc) => $sc['shortname'] === 'lab'))[0];
+$guideCopy = $b['characters'][0];
+$walkCopy = array_values(array_filter($b['actions'], fn ($a) => $a['type'] === 'walk'))[0];
+$steps = $guideCopy['settings']['routine']['steps'];
+same(
+    [$steps[0]['scene_id'], $steps[1]['narration_media_id'], $walkCopy['params']['scene_id'], $walkCopy['params']['character_id']],
+    [$labCopy['id'], $b['media'][0]['id'], $labCopy['id'], $guideCopy['id']],
+    'the routine\'s scene and recording, and the walk action\'s scene and character, point at the copies'
+);
+$store->deleteScenario((int) $body['scenario']['id']);
+if (class_exists(ZipArchive::class)) {
+    [, $out] = $api->handle('GET', "scenarios/$roam/export", [], $teacher);
+    [$status, $in] = $api->handle('POST', 'scenarios/import', [], $teacher, ['file' => ['tmp_name' => $out['download']['path'], 'name' => 'roaming.zip']]);
+    $back = $store->bundle((int) $in['scenario']['id']);
+    $labBack = array_values(array_filter($back['scenes'], fn ($sc) => $sc['shortname'] === 'lab'))[0];
+    same([$status, $back['characters'][0]['settings']['routine']['steps'][0]['scene_id'], $back['characters'][0]['settings']['routine']['loop']], [201, $labBack['id'], false], 'and a ZIP export brings the routine back in, pointing at the imported scene');
+    $store->deleteScenario((int) $in['scenario']['id']);
+}
+$store->deleteScenario($roam);
+
 // Someone else's scenario: only once published and public, and then as it was published.
 same($api->handle('POST', "scenarios/$mine/duplicate", [], $other)[0], 404, 'another teacher cannot copy a draft');
 $store->publish($mine);
