@@ -1102,3 +1102,98 @@ h2.section-head { font-size: 15px; letter-spacing: 0.02em; margin-bottom: 12px; 
   .page { padding: 16px 12px 40px; }
   .page-head { flex-wrap: wrap; }
 }
+
+/* ---- conversations (views/conversation.ts): the map in the action card, and the panel */
+:root { --tone-talk: #4cc9f0; --tone-player: #4c9aff; }
+.talk-who {
+  flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: color-mix(in srgb, var(--tone-character) 34%, #2a2d33); border: 2px solid var(--tone-character); color: #fff; font-size: 12px; font-weight: 700;
+}
+.talk-who.player { background: color-mix(in srgb, var(--tone-player) 30%, #2a2d33); border-color: var(--tone-player); }
+.talk-who .icon-label.twa { font-size: 13px; margin: 0; }
+.talk-key {
+  flex: none; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px;
+  background: var(--tone-talk); color: #10232b; font-size: 11.5px; font-weight: 700;
+}
+.chip.talk-start { background: color-mix(in srgb, var(--ok) 22%, transparent); border-color: var(--ok); color: #fff; }
+.chip.warn { background: rgba(245, 198, 83, 0.14); border-color: var(--warn); color: var(--warn); }
+.chip.ok { background: color-mix(in srgb, var(--ok) 20%, transparent); border-color: var(--ok); }
+.chip.end { border-style: dashed; color: #d9dee6; }
+
+/* The map: the tree from its start, choices indented under the line they answer. */
+.talk-map { margin-top: 8px; padding: 8px 10px 10px; border: 1px solid color-mix(in srgb, var(--tone-talk) 55%, var(--edge)); border-radius: 8px; background: color-mix(in srgb, var(--tone-talk) 7%, var(--surface-2)); }
+.talk-map > .sub-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.talk-open { display: inline-flex; align-items: center; gap: 4px; }
+.talk-map ul { list-style: none; margin: 0; padding: 0; }
+.talk-map-tree { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; margin-top: 6px !important; }
+.talk-map li { min-width: 0; }
+.talk-map-choices { margin: 2px 0 4px 11px !important; padding-left: 10px !important; border-left: 2px solid color-mix(in srgb, var(--tone-talk) 60%, transparent); display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; }
+.talk-map-choice > ul { margin-left: 9px; padding-left: 10px; border-left: 1px dashed var(--edge); display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.talk-map-line .chip { flex: none; }
+.talk-map-line {
+  display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 6px; text-align: left; white-space: normal;
+  background: #23262c; border: 1px solid #454b56; border-radius: 6px; font-size: 12.5px; line-height: 1.3;
+}
+.talk-map-line:hover:not(:disabled) { border-color: var(--tone-talk); background: color-mix(in srgb, var(--tone-talk) 12%, #23262c); }
+.talk-map-line.revealed, .talk-map-line:focus-visible { outline: 2px solid var(--tone-talk); }
+.talk-map-text { flex: 1; min-width: 0; }
+.talk-map-say { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 12.5px; color: #dff6fd; font-style: italic; }
+.talk-map-stub { font-size: 12px; color: var(--muted); padding: 2px 0 2px 4px; }
+.talk-map-stub button.link { font-size: 12px; text-decoration: none; color: #bfe9f8; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+.talk-map-text { overflow-wrap: anywhere; }
+.talk-map-stub.missing { color: var(--danger); }
+.talk-map-never { margin: 8px 0 0; font-size: 12px; color: var(--warn); }
+
+/* The panel: every line on the left, the open one on the right. */
+.talk-panel { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.talk-nav { position: sticky; top: 0; max-height: calc(92vh - 110px); overflow: auto; }
+.talk-start-field { margin-bottom: 8px; }
+.talk-nav-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.talk-nav-item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'w m' 'w l'; gap: 2px 8px; align-items: center;
+  width: 100%; padding: 6px 8px; text-align: left; white-space: normal; background: #22252b; border: 1px solid #4a505b; border-radius: 8px;
+}
+.talk-nav-item > .talk-who { grid-area: w; align-self: start; margin-top: 2px; }
+.talk-nav-item > .talk-nav-main { grid-area: m; display: grid; gap: 1px; min-width: 0; }
+.talk-nav-item > .chip { grid-area: l; justify-self: start; font-size: 11px; }
+.talk-nav-name { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 11.5px; font-weight: 700; color: #cfe8f3; text-transform: uppercase; letter-spacing: 0.04em; }
+.talk-nav-name .chip { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.talk-nav-text { font-size: 13px; line-height: 1.3; color: #fff; }
+.talk-nav-item:hover:not(:disabled) { border-color: var(--tone-talk); }
+.talk-nav-item.current { background: color-mix(in srgb, var(--tone-talk) 22%, #22252b); border-color: var(--tone-talk); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone-talk) 35%, transparent); }
+.talk-nav-item.unreached { border-style: dashed; }
+.talk-add-line, .talk-add-choice { display: inline-flex; align-items: center; gap: 4px; }
+
+.talk-line-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.talk-line-head .section-head { flex: 1; margin: 0; font-size: 15px; letter-spacing: 0.02em; }
+.talk-line-head .talk-who { width: 30px; height: 30px; font-size: 14px; }
+label.talk-id-label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+input.talk-id { width: 84px; font-family: ui-monospace, monospace; font-size: 12px; }
+.talk-from { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.18); }
+.talk-from .field-label { margin: 0 4px 0 0; }
+button.talk-from-link { cursor: pointer; border-color: color-mix(in srgb, var(--tone-talk) 60%, var(--edge)); background: color-mix(in srgb, var(--tone-talk) 12%, transparent); color: #fff; }
+button.talk-from-link:hover:not(:disabled) { border-color: var(--tone-talk); }
+.talk-from-link em { color: #bfe9f8; }
+
+.talk-then { margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--tone-talk) 45%, var(--edge)); background: color-mix(in srgb, var(--tone-talk) 6%, #262930); }
+.talk-then > h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 14px; color: var(--tone-talk); }
+.talk-choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 8px; }
+.talk-choice { min-width: 0; padding: 8px 10px; border-radius: 8px; background: #22252b; border: 1px solid #4a505b; border-left: 4px solid var(--tone-talk); display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.talk-line, .talk-then { min-width: 0; }
+.talk-choice.correct { border-left-color: var(--ok); }
+.talk-choice-head { display: flex; align-items: center; gap: 6px; }
+.talk-choice-head input[type='text'] { flex: 1; min-width: 0; font-weight: 600; }
+.talk-choice-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.talk-choice-row .field-label { margin: 0; min-width: 72px; }
+.talk-target { display: flex; gap: 6px; flex: 1; min-width: 220px; }
+.talk-target select { flex: 1; min-width: 0; }
+button.talk-go { flex: none; background: color-mix(in srgb, var(--tone-talk) 30%, var(--button)); border-color: var(--tone-talk); font-weight: 600; }
+.talk-next { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--edge); }
+.talk-next.quiet { opacity: 0.85; }
+.talk-choice .ctas { margin-top: 0; }
+.inline-action { border-left: 4px solid var(--tone, var(--edge)); }
+.inline-action .cta-head { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+@media (max-width: 860px) {
+  .talk-panel { grid-template-columns: 1fr; }
+  .talk-nav { position: static; max-height: 40vh; }
+}

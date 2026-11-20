@@ -1,12 +1,13 @@
 import type * as Phaser from 'phaser';
 import {
   resolvedHandle,
-  type Action, type ActionHandle, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
+  type Action, type ActionHandle, type ChoiceHandle, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
 } from '@qbl/shared';
 import type { AnimateAction, AwardAction, GlossaryAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import { deferred, type Presenter, type PresenterContext, type PresenterMap, type Target } from './Presenter';
 import { stopMusic } from './presenters/audio';
+import { conversationLine } from './presenters/conversation';
 import { presenters as defaultPresenters } from './presenters';
 
 /**
@@ -36,6 +37,12 @@ export class ActionHost implements EngineHost, PresenterContext {
       return resolvedHandle();
     }
     return presenter(action as never, this, actor);
+  }
+
+  /** One line of a conversation, and the player's answer to it. */
+  converse(action: ConversationAction, line: ConversationLine, choices: ConversationChoice[], engine: SceneEngine): ChoiceHandle {
+    this.engine = engine;
+    return conversationLine(action, line, choices, this);
   }
 
   /** An event for the whole scene reached an action: the other players there are shown it too. */

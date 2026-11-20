@@ -1,10 +1,21 @@
+import { lineToSay, offeredChoices, startLineId } from './conversation.js';
 import { ScenarioIndex } from './scenario.js';
-import { SHOWN_TO_SCENE, type Action, type AnimateAction, type AwardAction, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene, type TranslateAction, type WalkAction } from './types.js';
+import {
+  SHOWN_TO_SCENE,
+  type Action, type AnimateAction, type AwardAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
+  type TranslateAction, type WalkAction,
+} from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
 /** A running action. `done` settles when it ends on its own or is cancelled. */
 export interface ActionHandle {
   done: Promise<void>;
+  cancel(): void;
+}
+
+/** One line of a conversation on screen. `choice` settles with the index of the choice picked, or null. */
+export interface ChoiceHandle {
+  choice: Promise<number | null>;
   cancel(): void;
 }
 
@@ -41,6 +52,12 @@ export interface EngineHost {
    * another player's, shown here because their event's audience is the scene.
    */
   walk?(action: WalkAction, actor?: string): ActionHandle | null;
+  /**
+   * Say one line of a conversation and offer the player `choices` (already filtered by their
+   * conditions; may be empty). `choice` settles with the index into `choices` of the one picked,
+   * or, for a line with nothing to choose, null once the player has read it and goes on.
+   */
+  converse?(action: ConversationAction, line: ConversationLine, choices: ConversationChoice[], engine: SceneEngine): ChoiceHandle;
   /** Stop the player from walking (true) or let them walk again (false). */
   freeze?(frozen: boolean): void;
   /** Ask the game server to grant an award action's stars and XP. */
@@ -83,6 +100,12 @@ export function isShownToScene(action: Action): boolean {
 
 /** A repeat with no wait in its loop is paced at roughly one pass per frame. */
 const REPEAT_YIELD_MS = 16;
+
+/**
+ * Lines a conversation may say one after another without the player choosing anything. Lines
+ * that lead round in a circle with no choice to leave would otherwise never end.
+ */
+const MAX_LINES_WITHOUT_CHOICE = 200;
 
 interface Run {
   event: GameEvent;
@@ -276,19 +299,39 @@ export class SceneEngine {
     await Promise.race([handle.done, run.woken]);
   }
 
-  private async execute(run: Run): Promise<void> {
-    const actions = run.event.actions;
+  private execute(run: Run): Promise<void> {
+    return this.runList(run, run.event.actions, false);
+  }
+
+  /**
+   * Run a list of actions in order as part of `run`: the event's own, or (`nested`) those of a
+   * conversation's choice. Nested actions need no ids, are not shown to the scene, and cannot
+   * repeat the event.
+   */
+  private async runList(run: Run, list: Action[], nested: boolean): Promise<void> {
+    const actions = nested ? list.map((a) => (a.id == null ? ({ ...a, id: this.adHocId-- } as Action) : a)) : list;
     let i = 0;
-    while (i < actions.length && !run.cancelled && !this.stopped) {
+    while (i < actions.length && !run.cancelled && !this.stopped && !(nested && this.leaving)) {
       const action = actions[i]!;
       i++;
       if (!testConditions(action.conditions, this.vars.get)) continue;
-      if (run.event.audience === 'scene' && isShownToScene(action)) this.host.share?.(run.event, action);
+      if (!nested && run.event.audience === 'scene' && isShownToScene(action)) this.host.share?.(run.event, action);
 
       switch (action.type) {
         case 'repeat': {
+          if (nested) {
+            this.host.warn?.('repeat: a conversation choice cannot repeat its event');
+            break;
+          }
           i = 0;
           await this.wait(run, this.host.delay(REPEAT_YIELD_MS));
+          break;
+        }
+        case 'conversation': {
+          const talk = this.converse(run, action);
+          if (action.blocking !== false) await Promise.race([talk, run.woken]);
+          // A choice jumped to another scene: like a jump of the event's own, that ends the event.
+          if (this.leaving) return;
           break;
         }
         case 'jump': {
@@ -372,6 +415,58 @@ export class SceneEngine {
           if (action.blocking !== false && !isIndefinite(action)) await this.wait(run, h);
         }
       }
+    }
+  }
+  /**
+   * Hold a conversation: say its lines one after another, wait at each for the player to read it
+   * or pick a choice, do what the choice does and follow it to its line. It ends when a line or a
+   * choice leads nowhere, when it is cancelled, or when the event is.
+   */
+  private async converse(run: Run, action: ConversationAction): Promise<void> {
+    if (!this.host.converse) {
+      this.host.warn?.(`conversation ${action.id}: conversations cannot be shown here`);
+      return;
+    }
+    let ended = false;
+    const live = () => !ended && !run.cancelled && !this.stopped && !this.leaving;
+    let id = startLineId(action);
+    let withoutChoice = 0;
+    while (live()) {
+      const line = lineToSay(action, id, this.vars.get);
+      if (!line) return;
+      const choices = offeredChoices(line, this.vars.get);
+      const shown = this.host.converse(action, line, choices, this);
+      // A cancel action naming the conversation ends it, not just the line on screen. Only the
+      // line showing now can: tracking the next line cancels the handle of the one before.
+      let current = true;
+      const handle: ActionHandle = {
+        done: shown.choice.then(() => undefined),
+        cancel: () => {
+          if (!current) return;
+          ended = true;
+          shown.cancel();
+        },
+      };
+      this.track(run, action, handle);
+      const picked = await Promise.race([shown.choice, run.woken.then(() => null)]);
+      current = false;
+      if (!live()) {
+        shown.cancel();
+        return;
+      }
+      if (!choices.length) {
+        if (++withoutChoice > MAX_LINES_WITHOUT_CHOICE) {
+          this.host.warn?.(`conversation ${action.id}: its lines go round in a circle with nothing to choose`);
+          return;
+        }
+        id = line.next ?? undefined;
+        continue;
+      }
+      withoutChoice = 0;
+      const choice = picked == null ? undefined : choices[picked];
+      if (!choice) return;
+      await this.runList(run, (choice.actions ?? []) as Action[], true);
+      id = choice.next ?? undefined;
     }
   }
 }
