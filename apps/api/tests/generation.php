@@ -277,6 +277,35 @@ check((function () use ($http) {
 
     return false;
 })(), 'an answer cut off by max_tokens is reported as such');
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{}']], 'stop_reason' => 'end_turn']))]);
+(new AnthropicModel($http, 'key'))->structured('sys', ['x'], 'answer', ['type' => 'object'], 32000);
+same([$http->sent[0]['body']['max_tokens'], isset($http->sent[0]['body']['output_config']['effort'])], [64000, false], 'room to think is added to the answer\'s limit, and no effort is sent unless set');
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{}']], 'stop_reason' => 'end_turn']))]);
+(new AnthropicModel($http, 'key', thinkingRoom: 200000, effort: 'low'))->structured('sys', ['x'], 'answer', ['type' => 'object'], 32000);
+same([$http->sent[0]['body']['max_tokens'], $http->sent[0]['body']['output_config']['effort'] ?? null, isset($http->sent[0]['body']['output_config']['format'])], [128000, 'low', true], 'the limit stops at the model\'s most, and the effort goes beside the format');
+$http = new Recorded([
+    new HttpResponse(400, json_encode(['type' => 'error', 'error' => ['type' => 'invalid_request_error', 'message' => 'The compiled grammar is too large']])),
+    new HttpResponse(200, json_encode(['content' => [['type' => 'thinking', 'thinking' => '', 'signature' => 's']], 'stop_reason' => 'max_tokens'])),
+]);
+check((function () use ($http) {
+    try {
+        (new AnthropicModel($http, 'key', effort: 'high'))->structured('sys', ['x'], 'thinker_answer', ['type' => 'object'], 1000);
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), 'spent it all thinking') && str_contains($e->getMessage(), 'QBL_GEN_THINKING_TOKENS');
+    }
+
+    return false;
+})(), 'running out while still thinking says so, and what to change');
+same($http->sent[1]['body']['output_config'] ?? null, ['effort' => 'high'], 'the tool route sends the effort too');
+check((function () {
+    try {
+        new AnthropicModel(new Recorded([]), 'key', effort: 'loud');
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), 'QBL_GEN_LLM_EFFORT');
+    }
+
+    return false;
+})(), 'an unknown effort is refused at once');
 
 $http = new Recorded([new HttpResponse(200, json_encode(['candidates' => [['content' => ['parts' => [['text' => 'here'], ['inlineData' => ['mimeType' => 'image/png', 'data' => base64_encode($png)]]]]]]]))]);
 same((new GeminiImageGenerator($http, 'gkey', 'gemini-test'))->generate('draw', [$ref], '21:9', false), $png, 'Gemini\'s picture is read from inlineData');

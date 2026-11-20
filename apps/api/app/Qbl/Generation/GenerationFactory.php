@@ -96,7 +96,12 @@ class GenerationFactory
 
     private function anthropic(string $model): AnthropicModel
     {
-        return new AnthropicModel($this->http, (string) $this->config('llm.api_key'), $model, (string) $this->config('llm.base_url', 'https://api.anthropic.com'), $this->spend());
+        return new AnthropicModel(
+            $this->http, (string) $this->config('llm.api_key'), $model, (string) $this->config('llm.base_url', 'https://api.anthropic.com'), $this->spend(),
+            thinkingRoom: (int) $this->config('llm.thinking_tokens', 32000),
+            effort: (string) $this->config('llm.effort', ''),
+            timeout: (int) $this->config('llm.timeout', 1800),
+        );
     }
 
     public function standards(): StandardsStore
