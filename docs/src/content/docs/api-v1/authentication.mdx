@@ -13,7 +13,7 @@ An **API client** is an id and a secret that belongs to one organization (a dist
 
 <Steps>
 
-1. **Make sure your organization has advanced features on.** API clients, single sign-on and roster syncing are turned on per organization by the QBL administrator, so that they are off until someone asks. Until then, the **District** page says so. If you run QBL yourself, the command is `php artisan qbl:org enable "Your District"`. It also creates the organization (`qbl:org create`) and makes an admin (`qbl:org admin "Your District" it@yourdistrict.org`).
+1. **Make sure your organization has advanced features on.** API clients, single sign-on and roster syncing are turned on per organization by the QuestLab administrator, so that they are off until someone asks. Until then, the **District** page says so. If you run QuestLab yourself, the command is `php artisan qbl:org enable "Your District"`. It also creates the organization (`qbl:org create`) and makes an admin (`qbl:org admin "Your District" it@yourdistrict.org`).
 
 2. **Open the district admin panel.** In the editor, go to **District** (`/editor/#/district`). You see it if you are an admin of the organization. [More on the panel](/docs/editor/district-admin/).
 
@@ -47,12 +47,12 @@ The id and secret may instead go in the body as `client_id` and `client_secret`.
     curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
       -d grant_type=client_credentials \
       -d scope="roster:read reports:read" \
-      "$QBL/api/v1/oauth/token"
+      "$QuestLab/api/v1/oauth/token"
     ```
   </TabItem>
   <TabItem label="JavaScript">
     ```js
-    const res = await fetch(`${QBL}/api/v1/oauth/token`, {
+    const res = await fetch(`${QuestLab}/api/v1/oauth/token`, {
       method: 'POST',
       headers: {
         Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
@@ -68,7 +68,7 @@ The id and secret may instead go in the body as `client_id` and `client_secret`.
     import requests
 
     r = requests.post(
-        f"{QBL}/api/v1/oauth/token",
+        f"{QuestLab}/api/v1/oauth/token",
         auth=(CLIENT_ID, CLIENT_SECRET),
         data={"grant_type": "client_credentials", "scope": "roster:read reports:read"},
     )
@@ -125,7 +125,7 @@ A good starting split:
 
 ## Limits
 
-- **600 requests a minute** for each access token (a server can change this with `QBL_API_RATE_LIMIT`).
+- **600 requests a minute** for each access token (a server can change this with `QuestLab_API_RATE_LIMIT`).
 - **20 requests a minute** from each address to `oauth/token`, so cache your token.
 - Over a limit you get `429` with a `Retry-After` header: wait that many seconds.
 - Batch endpoints take up to **1,000 people** in one request, which is far cheaper than 1,000 requests.

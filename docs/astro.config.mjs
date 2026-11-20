@@ -1,4 +1,4 @@
-// The QBL documentation: a static Starlight site served under /docs/ by the `docs` container.
+// The QuestLab documentation: a static Starlight site served under /docs/ by the `docs` container.
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightLinksValidator from 'starlight-links-validator';
@@ -24,7 +24,7 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: 'QBL Docs',
+      title: 'QuestLab Docs',
       description: 'Build missions that students walk around, teach with them, and connect them to your school systems.',
       // Fails the build on a broken link, as `mkdocs build --strict` did.
       plugins: [starlightLinksValidator({ errorOnLocalLinks: false })],
@@ -35,13 +35,13 @@ export default defineConfig({
           label: 'Start here',
           items: [
             { label: 'Your first class in 20 minutes', slug: 'start/quickstart' },
-            { label: 'How QBL works', slug: 'start/concepts' },
+            { label: 'How QuestLab works', slug: 'start/concepts' },
           ],
         },
         {
           label: 'For educators',
           items: [
-            { label: 'Why teach with QBL', slug: 'educators' },
+            { label: 'Why teach with QuestLab', slug: 'educators' },
             { label: 'You are in the room: facilitating', slug: 'educators/facilitation' },
             { label: 'A class period, step by step', slug: 'educators/lesson-plan' },
             { label: 'Maximizing learning', slug: 'educators/maximize-learning' },

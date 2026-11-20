@@ -11,7 +11,7 @@ position_x, position_y | decimal | Where they stood. If that spot is no longer w
 variables | object | Values of player-scoped variables with `persist` not false, by name.
 attachments | array | Ids of non-unique items the player was wearing or riding.
 flags | array | One-shot markers, such as `hotspot:420` for a hotspot flagged `once` that has fired.
-time_elapsed | int | Total seconds spent in the scenario. Feeds `QBLTimeElapsed`.
+time_elapsed | int | Total seconds spent in the scenario. Feeds `QuestLabTimeElapsed`.
 updated_at | string | ISO 8601 time of the save.
 
 ```json

@@ -8,7 +8,7 @@
         
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Variables - QBL JSON Documentation</title>
+        <title>Variables - QuestLab JSON Documentation</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/fontawesome.min.css" rel="stylesheet">
         <link href="../css/brands.min.css" rel="stylesheet">
@@ -24,7 +24,7 @@
     <body>
         <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <a class="navbar-brand" href="..">QuestLab JSON Documentation</a>
                 <!-- Expander button -->
                 <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -138,7 +138,7 @@
                     <div class="col-md-9" role="main">
 
 <h1 id="global-variables">Global Variables</h1>
-<p>Custom global variables can be declared by a user, and can be used throughout the project by storing numbers and strings. They are particularly useful when defining conditions for events and actions. A certain number of global variables are reserved for system use. Reserved variables are used for reference by the user in their scripting, and can be changed via actions. All reserved variables are prefixed with “QBL.”</p>
+<p>Custom global variables can be declared by a user, and can be used throughout the project by storing numbers and strings. They are particularly useful when defining conditions for events and actions. A certain number of global variables are reserved for system use. Reserved variables are used for reference by the user in their scripting, and can be changed via actions. All reserved variables are prefixed with “QuestLab.”</p>
 <h3 id="primary-attributes">Primary Attributes</h3>
 <table>
 <thead>
@@ -186,23 +186,23 @@
 </thead>
 <tbody>
 <tr>
-<td>QBLHotspotCoordinates</td>
+<td>QuestLabHotspotCoordinates</td>
 <td>If a hotspot is currently executing, this is the XY coordinates of the hotspot.</td>
 </tr>
 <tr>
-<td>QBLScenarioLanguage</td>
+<td>QuestLabScenarioLanguage</td>
 <td>Two-digit country code specifying the currently selected language for the scenario.</td>
 </tr>
 <tr>
-<td>QBLTimeElapsed</td>
+<td>QuestLabTimeElapsed</td>
 <td>The number of seconds the user has currently spent in the scenario.</td>
 </tr>
 <tr>
-<td>QBLVideoPlaying</td>
+<td>QuestLabVideoPlaying</td>
 <td>If the current scene has a video, this indicates whether or not that video is currently playing. This could be useful if a scene needs to end when the video is finished; a start event could be created that continually checks for the video to be finished, and jumps to the next scene when it has.</td>
 </tr>
 <tr>
-<td>QBLVideoTimeIndex</td>
+<td>QuestLabVideoTimeIndex</td>
 <td>If the current scene has a video, this is the time index, by number of seconds, the video is currently at.</td>
 </tr>
 </tbody>

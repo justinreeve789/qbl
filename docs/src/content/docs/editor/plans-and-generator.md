@@ -17,7 +17,7 @@ Buying a teacher plan makes a student account (the kind the sign-in page makes) 
 
 ## Free and curricular missions
 
-Every mission is either **free** (anyone can play it) or **curricular** (it comes with a teacher plan). Only QBL administrators set this, in a scenario's Settings ("Free or curricular").
+Every mission is either **free** (anyone can play it) or **curricular** (it comes with a teacher plan). Only QuestLab administrators set this, in a scenario's Settings ("Free or curricular").
 
 - A teacher with a plan can play every curricular mission and assign it to their students. Their students play it **through the assignment**: the teacher's plan counts, not the student's.
 - Without a plan, a teacher sees curricular missions marked 🔒 on the missions page and in Classes, and cannot assign them. Students do not see them.
@@ -44,7 +44,7 @@ The generator aligns it to curriculum standards, designs the story, scenes, char
 
 One mission is made at a time per teacher: you can write the next one while one is being made, and start it when that one is done.
 
-Teachers without the generator see what it is and a link to the plans; on a school license without it, they are asked to talk to whoever runs QBL for their school. Administrators also see **Everyone's generations**: the latest 50 by anyone, with who asked and roughly what each spent on AI services.
+Teachers without the generator see what it is and a link to the plans; on a school license without it, they are asked to talk to whoever runs QuestLab for their school. Administrators also see **Everyone's generations**: the latest 50 by anyone, with who asked and roughly what each spent on AI services.
 
 ### Credits
 

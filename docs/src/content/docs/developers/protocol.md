@@ -68,4 +68,4 @@ The client predicts its own movement and runs scene events locally, because even
 
 ## Reconnection
 
-A dropped connection keeps its seat for 30 seconds (`QBL_RECONNECT_SECONDS`). The avatar is shown faded to others meanwhile. The SDK reconnects by itself.
+A dropped connection keeps its seat for 30 seconds (`QuestLab_RECONNECT_SECONDS`). The avatar is shown faded to others meanwhile. The SDK reconnects by itself.

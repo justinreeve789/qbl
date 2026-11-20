@@ -5,7 +5,7 @@ description: "Pull assignment reports, a gradebook feed, student reports and dis
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
-QBL does not only record that a student *finished*. It records **what they answered, how many tries it took, and what evidence they produced** for each thing the mission set out to teach. The reports below give you that at four levels: one assignment, one student, a mission across classes, and your whole organization.
+QuestLab does not only record that a student *finished*. It records **what they answered, how many tries it took, and what evidence they produced** for each thing the mission set out to teach. The reports below give you that at four levels: one assignment, one student, a mission across classes, and your whole organization.
 
 All of them need `reports:read` (chat messages need `messages:read`). Students appear by `student_id`, `external_id` and pseudonym. The organization-wide reports take the filters `school_id`, `teacher_id` and `grade_level`.
 
@@ -16,7 +16,7 @@ All of them need `reports:read` (chat messages need `messages:read`). Students a
 | How is this student doing overall? | [`GET /students/{id}/report`](#one-student) |
 | Which questions do students find hard, and what do they wrongly answer? | [`GET /reports/learning`](#learning-across-missions) |
 | Which standards have we actually taught? | [`GET /reports/standards`](#standards-coverage) |
-| Who is using QBL, how often, for how long? | [`GET /reports/engagement`](#engagement) |
+| Who is using QuestLab, how often, for how long? | [`GET /reports/engagement`](#engagement) |
 | A one-glance picture for the district | [`GET /reports/summary`](#summary) |
 
 ## One assignment
@@ -317,7 +317,7 @@ Two more endpoints give raw activity: `GET /assignments/{id}/activity` (what stu
 
 ## How the numbers are worked out
 
-None of this is hidden. Everything below is how QBL computes the figures, so you can reproduce them or choose to ignore them.
+None of this is hidden. Everything below is how QuestLab computes the figures, so you can reproduce them or choose to ignore them.
 
 - **Time spent** is the game's own clock for the student's save in that game (seconds actually in the mission, not minutes the tab was open).
 - **Sessions and active minutes** (engagement) come from the activity log. A gap of more than **15 minutes** between two things a student did starts a new session; a session lasts from its first to its last line, and at least one minute.

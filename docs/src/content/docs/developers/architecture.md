@@ -31,10 +31,10 @@ Path | What it is
 `apps/server` | Colyseus game server. `ScenarioRoom` is a thin adapter around the shared `World`; `backend/` hides whether data comes from files or the API.
 `apps/client` | Phaser client. One data-driven `PlayScene` plays every scene of every scenario.
 `apps/editor` | The scenario editor: TypeScript and DOM, no framework. Forms are generated from lists of fields in `schema.ts`. See `apps/editor/README.md`.
-`apps/api` | The Laravel application: the QBL tables, the demo mission (shipped as an exported scenario ZIP), the store the editor and the seeder write through, the compiler that generates scenario JSON from the tables, and the controllers implementing the API contract.
+`apps/api` | The Laravel application: the QuestLab tables, the demo mission (shipped as an exported scenario ZIP), the store the editor and the seeder write through, the compiler that generates scenario JSON from the tables, and the controllers implementing the API contract.
 `scenarios` | Scenario JSON and media for the file backend. `starship.json` is generated from the demo's ZIP (`npm run seed:export`), with the files uploaded for it in `assets/starship/uploads`; do not edit them by hand.
 `docs` | This documentation.
-`docker` | Dockerfiles for the app, colyseus, editor, docs, apache and edge containers, the app entrypoint, the Apache configuration and the start scripts that write Apache's and Caddy's settings from `QBL_PUBLIC_URL`.
+`docker` | Dockerfiles for the app, colyseus, editor, docs, apache and edge containers, the app entrypoint, the Apache configuration and the start scripts that write Apache's and Caddy's settings from `QuestLab_PUBLIC_URL`.
 `tools` | `validate-scenario.ts`, `make-demo-audio.py`.
 
 ## Design decisions

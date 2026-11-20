@@ -11,12 +11,12 @@ The same few rules hold everywhere, so you only learn them once.
 
 - JSON in and out (`Content-Type: application/json`), UTF-8. Avatar uploads may be `multipart/form-data`.
 - One thing comes back as `{ "data": { … } }`. A list comes back as `{ "data": [ … ], "meta": { … } }`.
-- Every answer carries the header `QBL-API-Version: 1`.
+- Every answer carries the header `QuestLab-API-Version: 1`.
 - Send only the fields you mean to change in a `PATCH`. A field you leave out is left alone.
 
-## Ids: yours or QBL's
+## Ids: yours or QuestLab's
 
-QBL gives everything an integer **id**. You will usually have your own id for a person already, so wherever a teacher or student is named in a path, or in a field that ends in `_id`, you may write `ext:` followed by *your* `external_id` instead:
+QuestLab gives everything an integer **id**. You will usually have your own id for a person already, so wherever a teacher or student is named in a path, or in a field that ends in `_id`, you may write `ext:` followed by *your* `external_id` instead:
 
 ```http
 GET  /api/v1/students/ext:a91f0c7e
@@ -27,7 +27,7 @@ GET  /api/v1/enrollments?student_id=ext:a91f0c7e
 Fields that end in `_external_ids` take lists of your ids (`student_external_ids: ["a91f0c7e", "c0ffee12"]`), and `teacher_external_id` names one.
 
 <Aside type="caution" title="One exception: filtering the student list by teacher">
-`GET /students?teacher_id=` wants the **QBL id** of the teacher. `ext:` is not understood there and the list comes back empty. Look the teacher up first with `GET /teachers?external_id=t-5512` and use the `id` in the answer. Everywhere else, `ext:` works.
+`GET /students?teacher_id=` wants the **QuestLab id** of the teacher. `ext:` is not understood there and the list comes back empty. Look the teacher up first with `GET /teachers?external_id=t-5512` and use the `id` in the answer. Everywhere else, `ext:` works.
 </Aside>
 
 ## Times
@@ -39,10 +39,10 @@ Times in answers are ISO 8601 in UTC (`2026-11-20T15:04:05Z`). Times you send ma
 Lists of people and the activity feed take `limit` and `cursor`. `meta.next_cursor` is the cursor for the next page, or `null` on the last one.
 
 ```sh
-curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/students?limit=100"
+curl -s -H "Authorization: Bearer $TOKEN" "$QuestLab/api/v1/students?limit=100"
 # { "data": [ … ], "meta": { "next_cursor": "92150" } }
 
-curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/students?limit=100&cursor=92150"
+curl -s -H "Authorization: Bearer $TOKEN" "$QuestLab/api/v1/students?limit=100&cursor=92150"
 ```
 
 Treat a cursor as opaque: keep it and send it back unchanged.
@@ -65,7 +65,7 @@ A failed request has an HTTP status and a body in one shape. **Switch on `code`*
 {
   "error": {
     "code": "pii_not_accepted",
-    "message": "QBL does not store personally identifiable information. Remove: first_name, email. Identify people by your own opaque external_id instead.",
+    "message": "QuestLab does not store personally identifiable information. Remove: first_name, email. Identify people by your own opaque external_id instead.",
     "fields": {
       "first_name": "Not accepted: personally identifiable.",
       "email": "Not accepted: personally identifiable."
@@ -78,10 +78,10 @@ A failed request has an HTTP status and a body in one shape. **Switch on `code`*
 
 | Status | `code` | What it means |
 | --- | --- | --- |
-| 400 | `unsupported_grant_type`, `invalid_scope` | A token request QBL cannot grant. |
+| 400 | `unsupported_grant_type`, `invalid_scope` | A token request QuestLab cannot grant. |
 | 401 | `unauthenticated`, `invalid_token`, `invalid_client` | No token, a bad or expired one, or wrong client credentials. |
 | 403 | `insufficient_scope`, `forbidden` | The token lacks the scope named in the message. |
-| 404 | `not_found` | It does not exist, or it belongs to another organization. QBL never says which. |
+| 404 | `not_found` | It does not exist, or it belongs to another organization. QuestLab never says which. |
 | 409 | `conflict`, `inactive`, `limit_reached` | An `external_id` is already used; a launch link was asked for a deactivated account; a limit such as the number of avatars is reached. |
 | 410 | `launch_expired` | A launch link was already used or is more than five minutes old. |
 | 422 | `invalid_request`, `pii_not_accepted` | A field is wrong (see `fields`), or it would identify someone. |
@@ -131,7 +131,7 @@ Use `POST /students/batch`, which creates or updates by `external_id`, when you 
 
 ## Versioning
 
-The version is in the path: `/api/v1/…`. Within version 1, QBL will only ever:
+The version is in the path: `/api/v1/…`. Within version 1, QuestLab will only ever:
 
 - **add** endpoints, optional request fields, response fields, error codes, scopes, and values of open-ended fields (an activity `type`, say), and
 - **loosen** rules (a longer limit, a field that becomes optional).
@@ -139,5 +139,5 @@ The version is in the path: `/api/v1/…`. Within version 1, QBL will only ever:
 So write your client to **ignore fields it does not know**. Anything that would break a client that does so (renaming or removing a field, changing a type or a meaning, tightening a rule) becomes a new version, `/api/v2`, served **beside** v1. A version is supported for at least 12 months after its successor is released, and during that time its answers carry `Deprecation` and `Sunset` headers ([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745), [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)).
 
 <Aside>
-The player, the editor and the game server use other, unversioned endpoints described in the [HTTP API contract](/docs/developers/api/). Those belong to QBL itself and may change at any time. Build integrations on `/api/v1`.
+The player, the editor and the game server use other, unversioned endpoints described in the [HTTP API contract](/docs/developers/api/). Those belong to QuestLab itself and may change at any time. Build integrations on `/api/v1`.
 </Aside>

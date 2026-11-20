@@ -2,9 +2,9 @@
 title: "The district admin panel"
 ---
 
-The **district admin panel** is for the technical staff who run a school's or district's QuestLab account. It is in the editor under **District** (`/editor/#/district`), for the organization's admins and for QBL administrators.
+The **district admin panel** is for the technical staff who run a school's or district's QuestLab account. It is in the editor under **District** (`/editor/#/district`), for the organization's admins and for QuestLab administrators.
 
-QBL makes the organization and names its first admin. Admins can add other admins by the email address of their account.
+QuestLab makes the organization and names its first admin. Admins can add other admins by the email address of their account.
 
 ## What it does
 
@@ -14,7 +14,7 @@ QBL makes the organization and names its first admin. Admins can add other admin
 
 ## Integrations are turned on per organization
 
-Single sign-on, roster syncing, roster files and API clients are an **advanced feature**. They are off until QBL turns them on for an organization that asks. Until then the panel says so. (QBL administrators: the "For QBL administrators" card, or `php artisan qbl:org enable "<organization>"`.)
+Single sign-on, roster syncing, roster files and API clients are an **advanced feature**. They are off until QuestLab turns them on for an organization that asks. Until then the panel says so. (QuestLab administrators: the "For QuestLab administrators" card, or `php artisan qbl:org enable "<organization>"`.)
 
 ## SAML single sign-on
 

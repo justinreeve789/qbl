@@ -1,4 +1,4 @@
-# QBL documentation
+# QuestLab documentation
 
 The site served at `/docs/`, built with [Astro Starlight](https://starlight.astro.build/).
 

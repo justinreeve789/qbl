@@ -105,8 +105,8 @@ POST /api/v1/assignments
 
 A few things worth knowing:
 
-- **`external_id` is your id for the assignment**, for instance your LMS's assignment or gradebook-column id. It is unique in your organization, and `GET /assignments?external_id=canvas-assignment-9931` finds it again. Use it so you never have to store QBL's id.
-- **`note` is the teacher's instruction**, shown to students on their missions page. Use it: a good note is the difference between wandering and purpose. ([Teaching with QBL](/docs/educators/facilitation/) has ideas.)
+- **`external_id` is your id for the assignment**, for instance your LMS's assignment or gradebook-column id. It is unique in your organization, and `GET /assignments?external_id=canvas-assignment-9931` finds it again. Use it so you never have to store QuestLab's id.
+- **`note` is the teacher's instruction**, shown to students on their missions page. Use it: a good note is the difference between wandering and purpose. ([Teaching with QuestLab](/docs/educators/facilitation/) has ideas.)
 - **Students named only in a team** are added to the assignment too, and anyone assigned is enrolled with the teacher if they were not already.
 - **Students in no team** (the sixth student above) play together in one shared game. The `play_url` ends in `?group=a2`: that is the game for students in no team.
 

@@ -12,10 +12,10 @@ By default the service is [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a
 
 - The image (`ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0`) is about 5 GB on disk and the container uses about 1 GB of memory. A line takes one to three seconds to record on a CPU.
 - It is only reachable inside the Compose network (as `http://tts:8880`); no port is published.
-- With an NVIDIA GPU, set `QBL_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0` in `.env` and give the container the GPU.
-- Not wanted: set `QBL_TTS_DRIVER=none` (nothing is recorded; the browser reads every line) and `docker compose stop tts`.
+- With an NVIDIA GPU, set `QuestLab_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0` in `.env` and give the container the GPU.
+- Not wanted: set `QuestLab_TTS_DRIVER=none` (nothing is recorded; the browser reads every line) and `docker compose stop tts`.
 
-Outside Docker, run it with `docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` and set `QBL_TTS_URL=http://localhost:8880`.
+Outside Docker, run it with `docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` and set `QuestLab_TTS_URL=http://localhost:8880`.
 
 ## Giving characters voices and recording their lines
 
@@ -34,7 +34,7 @@ docker compose exec app php artisan qbl:voice {code} --force       # record ever
 **Any text, in a random voice:** `qbl:tts` says whatever you give it in a voice picked at random from the catalog and saves it as an MP3. It is for trying voices out and for one-off audio, such as a clip to upload as media; it does not touch any scenario.
 
 ```sh
-docker compose exec app php artisan qbl:tts "Welcome aboard, {{QBLPlayerName}}!"   # a random English voice: tts-<voice>.mp3
+docker compose exec app php artisan qbl:tts "Welcome aboard, {{QuestLabPlayerName}}!"   # a random English voice: tts-<voice>.mp3
 docker compose exec app php artisan qbl:tts "¿Listos?" --lang=es --gender=female    # a random Spanish woman
 docker compose exec app php artisan qbl:tts "Halt!" --trait=robot --trait=stern     # a voice that sounds like either
 docker compose exec app php artisan qbl:tts "Ready?" --count=5 --out=takes/         # five different voices, to compare
@@ -42,18 +42,18 @@ docker compose exec app php artisan qbl:tts --file=intro.txt --voice=captain --t
 docker compose cp app:/app/tts-captain.mp3 .                                        # copy a file out of the container
 ```
 
-The pick is from voices of `--lang` (default `en`, American and British; `any` for every language) that have a voice of their own on the service in use, so two picks never borrow the same one. `--gender` (female, male, neutral), `--age` (child, young, adult, elder) and `--trait` narrow it, and `--seed` makes it repeatable. With no text it says the catalog's sample line in the voice's language. `{{QBLPlayerName}}` is said as the stand-in word ("explorer"); other placeholders are refused. Recordings are cached like a scenario's, so saying the same text in the same voice again does not call the service.
+The pick is from voices of `--lang` (default `en`, American and British; `any` for every language) that have a voice of their own on the service in use, so two picks never borrow the same one. `--gender` (female, male, neutral), `--age` (child, young, adult, elder) and `--trait` narrow it, and `--seed` makes it repeatable. With no text it says the catalog's sample line in the voice's language. `{{QuestLabPlayerName}}` is said as the stand-in word ("explorer"); other placeholders are refused. Recordings are cached like a scenario's, so saying the same text in the same voice again does not call the service.
 
 **The mission generator** gives every character a voice from what the blueprint says of them (gender, age, how they sound, their personality and role), a different one each, and records their lines before packaging. `--no-voices` skips it. If the service is down the mission is still made, with a warning; record the lines later with `qbl:voice` or the editor.
 
 ### What is recorded
 
 - Every `dialogue` action said by a character (`speaker: character`) whose character has a voice (`tts_voice`), and every line such a character says in a `conversation`, unless the action has `narrate: false`. The player's own lines and choices are read by the browser. A voiced conversation gets `narrate: true` and each voiced line its own `narration_media_id`.
-- The player's name, `{{QBLPlayerName}}`, is said as a stand-in word ("explorer"; "explorador" in Spanish, and so on). In play the game shows the player's name and lights it while the stand-in is said.
+- The player's name, `{{QuestLabPlayerName}}`, is said as a stand-in word ("explorer"; "explorador" in Spanish, and so on). In play the game shows the player's name and lights it while the stand-in is said.
 - A line with any other `{{placeholder}}` cannot be recorded ahead of play, since its words are only known then. The browser reads it.
 - Recording again only records lines whose text or voice changed. The old recording is deleted. A line whose character loses its voice loses its recording.
 - A recording someone uploaded and attached by hand (`narration_media_id` on media without `speech.engine`) is never replaced.
-- Recordings are cached by service, voice and text (`QBL_TTS_CACHE_DIR`, `/data/speech` in Docker). A copy of a scenario, or a line changed back, costs nothing to record.
+- Recordings are cached by service, voice and text (`QuestLab_TTS_CACHE_DIR`, `/data/speech` in Docker). A copy of a scenario, or a line changed back, costs nothing to record.
 
 The voiced line gets `narrate: true` and `narration_media_id`. The recording is an audio media with its word timings in `params.speech`, which the document carries as the media's [`speech`](/docs/developers/extensions/#reading-text-aloud):
 
@@ -89,7 +89,7 @@ A character's `tts_voice` is a **key of this catalog** ("heart", "captain", "rob
 }
 ```
 
-On Kokoro, a voice is one of its 54 voices or a weighted blend of them (`af_bella(2)+af_sky(1)`), at a speed from 0.25 to 4. Blends are how the catalog has voices Kokoro does not ship with, such as children, a robot or a mentor. To add a voice, add an entry: give it a new key, say who it is, and say what it is on Kokoro. `qbl:voice --list` checks that every Kokoro voice it uses exists, and `qbl:voice --sample=<key>` lets you hear it. `QBL_TTS_VOICES` points at another catalog file.
+On Kokoro, a voice is one of its 54 voices or a weighted blend of them (`af_bella(2)+af_sky(1)`), at a speed from 0.25 to 4. Blends are how the catalog has voices Kokoro does not ship with, such as children, a robot or a mentor. To add a voice, add an entry: give it a new key, say who it is, and say what it is on Kokoro. `qbl:voice --list` checks that every Kokoro voice it uses exists, and `qbl:voice --sample=<key>` lets you hear it. `QuestLab_TTS_VOICES` points at another catalog file.
 
 ## Using another text-to-speech service
 
@@ -104,7 +104,7 @@ interface SpeechEngine
 }
 ```
 
-Two come with QBL:
+Two come with QuestLab:
 
 Driver | Class | Word timings
 ------ | ----- | ------------
@@ -116,20 +116,20 @@ To add a service:
 1. Write a class that implements `SpeechEngine`, with a static `fromConfig(array $config, ?HttpClient $http)`. Turn the service's word timings into `Speech::words()` (milliseconds, punctuation dropped); return none if it has none.
 2. Add it to `config/qbl_speech.php` under `engines`, with `class` and whatever settings it needs from `.env`.
 3. Say what each voice is on it in `voices.json`, under `engines.<name>`. The spec is the engine's own: `$voice` in `synthesize()` is exactly that entry. A voice with nothing for the new service borrows the nearest voice that has something (same language, then gender, then age), so mapping a handful is enough to start.
-4. Set `QBL_TTS_DRIVER` to its name, and record again with `qbl:voice {code} --force` if you want every line in the new voices. Characters keep their `tts_voice`, so nothing in the scenarios changes.
+4. Set `QuestLab_TTS_DRIVER` to its name, and record again with `qbl:voice {code} --force` if you want every line in the new voices. Characters keep their `tts_voice`, so nothing in the scenarios changes.
 
 ## Settings
 
 Variable | Default | What
 -------- | ------- | ----
-`QBL_TTS_DRIVER` | `kokoro` | `kokoro`, `openai`, or `none`.
-`QBL_TTS_URL` | `http://tts:8880` | Kokoro-FastAPI.
-`QBL_TTS_API_KEY` | | Only for a Kokoro-FastAPI started with `API_KEYS`.
-`QBL_TTS_IMAGE` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` | The `tts` container's image.
-`QBL_TTS_OPENAI_URL`, `QBL_TTS_OPENAI_KEY`, `QBL_TTS_OPENAI_MODEL` | `https://api.openai.com`, `OPENAI_API_KEY`, `gpt-4o-mini-tts` | With `QBL_TTS_DRIVER=openai`.
-`QBL_TTS_TIMEOUT` | 120 | Seconds to wait for one line.
-`QBL_TTS_CACHE_DIR` | `/data/speech` (Docker), `storage/app/speech` | Recordings already made.
-`QBL_TTS_VOICES` | `resources/speech/voices.json` | The voice catalog.
+`QuestLab_TTS_DRIVER` | `kokoro` | `kokoro`, `openai`, or `none`.
+`QuestLab_TTS_URL` | `http://tts:8880` | Kokoro-FastAPI.
+`QuestLab_TTS_API_KEY` | | Only for a Kokoro-FastAPI started with `API_KEYS`.
+`QuestLab_TTS_IMAGE` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` | The `tts` container's image.
+`QuestLab_TTS_OPENAI_URL`, `QuestLab_TTS_OPENAI_KEY`, `QuestLab_TTS_OPENAI_MODEL` | `https://api.openai.com`, `OPENAI_API_KEY`, `gpt-4o-mini-tts` | With `QuestLab_TTS_DRIVER=openai`.
+`QuestLab_TTS_TIMEOUT` | 120 | Seconds to wait for one line.
+`QuestLab_TTS_CACHE_DIR` | `/data/speech` (Docker), `storage/app/speech` | Recordings already made.
+`QuestLab_TTS_VOICES` | `resources/speech/voices.json` | The voice catalog.
 
 ## Editor API
 

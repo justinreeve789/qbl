@@ -6,12 +6,12 @@ How plans, Stripe, AI generator credits, the district admin panel and district s
 
 ## Plans and entitlements
 
-`config/qbl_billing.php` (every value from `.env`) defines the plans. With `QBL_BILLING_ENABLED=false` (the default) everyone may do everything, as before billing existed.
+`config/qbl_billing.php` (every value from `.env`) defines the plans. With `QuestLab_BILLING_ENABLED=false` (the default) everyone may do everything, as before billing existed.
 
 `App\Qbl\Billing\Entitlements::for($userId)` says what an account may do: `curricular`, `generator`, `students` (a limit, or null), and the credits it gets each month and in which period. A plan comes from:
 
 1. the account's **Stripe subscription** in `subscriptions`, while its status is `trialing`, `active` or `past_due` (Stripe retrying the card);
-2. its **organization's license** (`organizations.license`, set by QBL: `php artisan qbl:org license`, or the panel);
+2. its **organization's license** (`organizations.license`, set by QuestLab: `php artisan qbl:org license`, or the panel);
 3. the **admin** role: everything, credits not counted.
 
 With both a subscription and a license, the account gets the better of each.
@@ -39,24 +39,24 @@ Set-up:
 1. `STRIPE_SECRET` in `.env`, then `php artisan qbl:billing setup`: it makes the two products and monthly prices and prints `STRIPE_PRICE_TEACHER` / `STRIPE_PRICE_TEACHER_PLUS`.
 2. A webhook endpoint at `https://your-host/api/billing/webhook` for `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid` and `invoice.payment_failed`; its signing secret in `STRIPE_WEBHOOK_SECRET`.
 3. The customer portal (Stripe dashboard → Settings → Billing → Customer portal): allow cancelling and updating the payment method.
-4. `QBL_BILLING_ENABLED=true`.
+4. `QuestLab_BILLING_ENABLED=true`.
 
 Coupons are Stripe promotion codes: make them in Stripe's dashboard, or `php artisan qbl:billing coupon WELCOME20 --percent=20 --duration=repeating --months=3`.
 
 The flow:
 
-- `POST /api/billing/checkout {plan, promotion_code?}` makes a Stripe customer for the account (once) and a Checkout Session in subscription mode, with `trial_period_days` unless the account has had a trial (`subscriptions.trial_used_at`). A code typed on the Plans page is checked first (`POST /api/billing/promotion`) and applied as a discount; otherwise Stripe's own "Add promotion code" field is shown. `QBL_TRIAL_REQUIRES_CARD=false` makes the trial card-free (it is cancelled at the end if no card was added).
-- The **webhook** (signature checked, each event handled once, `stripe_events`) reads the subscription from Stripe and copies it into `subscriptions`: plan (from the price), status, trial end, the current period, whether it cancels at the period's end. An event about an older subscription never ends a newer, running one. When a plan starts, a student account that no school manages becomes a teacher (`QBL_BILLING_PROMOTES_TO_TEACHER`).
+- `POST /api/billing/checkout {plan, promotion_code?}` makes a Stripe customer for the account (once) and a Checkout Session in subscription mode, with `trial_period_days` unless the account has had a trial (`subscriptions.trial_used_at`). A code typed on the Plans page is checked first (`POST /api/billing/promotion`) and applied as a discount; otherwise Stripe's own "Add promotion code" field is shown. `QuestLab_TRIAL_REQUIRES_CARD=false` makes the trial card-free (it is cancelled at the end if no card was added).
+- The **webhook** (signature checked, each event handled once, `stripe_events`) reads the subscription from Stripe and copies it into `subscriptions`: plan (from the price), status, trial end, the current period, whether it cancels at the period's end. An event about an older subscription never ends a newer, running one. When a plan starts, a student account that no school manages becomes a teacher (`QuestLab_BILLING_PROMOTES_TO_TEACHER`).
 - `POST /api/billing/change {plan}` moves between the two plans, prorated. `POST /api/billing/portal` opens Stripe's customer portal.
 - `php artisan qbl:billing status|sync <email>` shows an account's plan, or reads its subscription from Stripe again.
 
-Schools and districts: `POST /api/billing/quote` keeps the request in `quote_requests` and emails `QBL_SALES_EMAIL`. Agree the plan, then give the organization a license (`php artisan qbl:org license "<organization>" --students=… --generator --credits=… --expires=…`).
+Schools and districts: `POST /api/billing/quote` keeps the request in `quote_requests` and emails `QuestLab_SALES_EMAIL`. Agree the plan, then give the organization a license (`php artisan qbl:org license "<organization>" --students=… --generator --credits=… --expires=…`).
 
 ## Credits
 
 `App\Qbl\Billing\Credits`, tables `credit_accounts` and `credit_ledger`.
 
-- **Refill**: when an account's credits are read, its balance is brought up to its current period first, once per period (`period_key`): `min(balance, carry-over limit) + monthly credits`, with the expired part and the grant in the ledger. The period is the Stripe billing period (`sub:<period start>`), the trial (`trial:<subscription>`, granting `QBL_PLUS_TRIAL_CREDITS`), or the calendar month for a license (`org:<id>:<YYYY-MM>`). No scheduled job is needed; an account idle for months gets one month's credits.
+- **Refill**: when an account's credits are read, its balance is brought up to its current period first, once per period (`period_key`): `min(balance, carry-over limit) + monthly credits`, with the expired part and the grant in the ledger. The period is the Stripe billing period (`sub:<period start>`), the trial (`trial:<subscription>`, granting `QuestLab_PLUS_TRIAL_CREDITS`), or the calendar month for a license (`org:<id>:<YYYY-MM>`). No scheduled job is needed; an account idle for months gets one month's credits.
 - **Spend**: one conditional `UPDATE … WHERE balance >= cost`, so two requests cannot spend the same credits.
 - **Refund**: what a reference (`generation:<id>`) spent, never more, however often it is asked.
 - `php artisan qbl:billing credits <email> --add=50 --note="…"` adjusts by hand.
@@ -65,11 +65,11 @@ Schools and districts: `POST /api/billing/quote` keeps the request in `quote_req
 
 `/api/editor/generations` (`App\Qbl\Generation\GenerationApi`): checks the plan, the description, that the teacher has no other run going and that the site can generate (an Anthropic key, the art style's anchors), creates the run, takes the credits, and queues `App\Jobs\RunGeneration`. The job runs the same generator as `php artisan qbl:generate` (resuming the queued run). A run that fails, or that the worker gives up on, is marked failed and its credits are given back.
 
-The **queue worker** runs in the `app` container (`QBL_QUEUE_WORKER`, default on; log lines `worker:`). Jobs may run for an hour, so `DB_QUEUE_RETRY_AFTER` is 3700 in the compose file; the job also refuses to start a run that is not `queued`, so one delivered twice does nothing.
+The **queue worker** runs in the `app` container (`QuestLab_QUEUE_WORKER`, default on; log lines `worker:`). Jobs may run for an hour, so `DB_QUEUE_RETRY_AFTER` is 3700 in the compose file; the job also refuses to start a run that is not `queued`, so one delivered twice does nothing.
 
 ## The district admin panel
 
-`/api/district/*` (`App\Qbl\District\DistrictApi`), the editor's `#/district`. Who may use it: QBL administrators (every organization) and the organization's admins (`organization_admins`; any account can be one, and it does not change the account's role). `/api/me` lists the organizations an account runs (`admin_of`).
+`/api/district/*` (`App\Qbl\District\DistrictApi`), the editor's `#/district`. Who may use it: QuestLab administrators (every organization) and the organization's admins (`organization_admins`; any account can be one, and it does not change the account's role). `/api/me` lists the organizations an account runs (`admin_of`).
 
 Everything but the overview and admins needs `organizations.integrations_enabled_at` (`php artisan qbl:org enable`). `php artisan qbl:org` also lists and creates organizations and names admins.
 
@@ -79,7 +79,7 @@ Everything but the overview and admins needs `organizations.integrations_enabled
 
 `App\Qbl\District\RosterSync` applies a source's schools, teachers and students through the public API's `Roster`, so the same privacy rules hold: opaque `external_id`s, pseudonyms, placeholder addresses. Enrollments are teacher–student links. People that source made (by `external_id` prefix) who are gone from it are deactivated; a source that lists nobody deactivates nobody. Each run is in `integration_runs`.
 
-- **Clever** (`CleverClient`): QBL's Clever application (`CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET`); the district's token is fetched with them, or given in the panel. Reads `/v3.0/schools`, `/v3.0/users?role=teacher|student` and `/v3.0/sections`, following Clever's pages. `external_id` = `clever:<id>`.
+- **Clever** (`CleverClient`): QuestLab's Clever application (`CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET`); the district's token is fetched with them, or given in the panel. Reads `/v3.0/schools`, `/v3.0/users?role=teacher|student` and `/v3.0/sections`, following Clever's pages. `external_id` = `clever:<id>`.
 - **Google Classroom** (`GoogleClassroomClient`): the district's service account signs a JWT (RS256) acting as a Workspace administrator, for `classroom.courses.readonly` and `classroom.rosters.readonly`. Reads active courses, their teachers (and owner) and students. `external_id` = `google:<account id>`.
 - **Roster file** (`RosterFile`): CSV, applied at once, nobody deactivated.
 

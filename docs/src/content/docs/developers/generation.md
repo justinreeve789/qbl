@@ -19,12 +19,12 @@ Step | What | Kept in
 1. Align | Chooses 1-3 primary standards (and up to 3 supporting ones) from those imported, and writes measurable learning objectives, vocabulary and misconceptions to address | `scenario_generations.alignment`
 2. Design | Writes the **blueprint**: story, scenes and how they connect, characters, items, interactions, the checklist, the briefing and the final report. It is checked, and sent back to be corrected until it can be built | `scenario_generations.blueprint`, `blueprint.json`
 3. Draw | Draws every picture: each character's design and animation strips (their portrait is cut from the design); the mission's small things, several to a picture; doors and holes; every background; the mission patch | `assets/` in the work folder, `scenario_generations.manifest`
-4. Build | Turns the blueprint into rows of the QBL tables, using the patterns from [Runtime extensions](/docs/developers/extensions/#patterns). Gives each character a voice from what the blueprint says of them, a different one each | 
+4. Build | Turns the blueprint into rows of the QuestLab tables, using the patterns from [Runtime extensions](/docs/developers/extensions/#patterns). Gives each character a voice from what the blueprint says of them, a different one each | 
 4½. Voice | Records every line the characters say, with the time of every word, on the server's text-to-speech service ([Characters' voices](/docs/developers/voices/)). Free with Kokoro. If the service is down this is a warning, not a failure | `voices/` in the work folder
 5. Package | Compiles the rows into `scenario.json` and packs it with its pictures as an import ZIP, plus a preview of each scene | `scenario.zip`, `previews/`
 6. Import | Imports the ZIP exactly as the editor's "Import a ZIP" does, as a private draft owned by `--owner`; records its standards; publishes it if `--publish` | `scenarios` and the rest; `scenario_standards`
 
-Each run has a work folder (`QBL_GEN_WORK_DIR`, `/data/generations/{id}` in Docker). If a run stops (a service is down, a key runs out of credit) carry on where it stopped, without paying for anything twice:
+Each run has a work folder (`QuestLab_GEN_WORK_DIR`, `/data/generations/{id}` in Docker). If a run stops (a service is down, a key runs out of credit) carry on where it stopped, without paying for anything twice:
 
 ```sh
 php artisan qbl:generate --resume=12
@@ -45,7 +45,7 @@ Option | Effect
 `--minutes=` | Rough playing time.
 `--notes=` | Anything else for the designer ("set it in ancient Egypt", "no reading above grade 2").
 `--owner=` | The teacher who owns the draft.
-`--style=` | The art style (a folder in `resources/art-styles`). Default `QBL_GEN_STYLE`, `qbl-adventure`.
+`--style=` | The art style (a folder in `resources/art-styles`). Default `QuestLab_GEN_STYLE`, `qbl-adventure`.
 `--images=` | `gemini`, `openai`, `scenario` or `placeholder`.
 `--design-only` | Stop after the blueprint, to review the plan cheaply before any picture is drawn. Then `--resume`.
 `--no-import` | Make the ZIP but do not import it.
@@ -53,7 +53,7 @@ Option | Effect
 `--no-judge` | Do not check pictures against the style (cheaper, less consistent).
 `--no-voices` | Do not record the characters' lines; the browser reads them aloud instead.
 `--attempts=` | Attempts per picture before the best is kept (default 3).
-`--budget=` | Most to spend on AI services for this run, in US dollars (default `QBL_GEN_BUDGET_USD`, 5; `0` for none). See [What it costs](#what-it-costs).
+`--budget=` | Most to spend on AI services for this run, in US dollars (default `QuestLab_GEN_BUDGET_USD`, 5; `0` for none). See [What it costs](#what-it-costs).
 
 ## What it costs
 
@@ -61,19 +61,19 @@ A run reports what it spends on AI services, priced from list prices (`Spend`): 
 
 Pictures are most of the cost. How it is kept down:
 
-- **Small things several to a picture.** A mission's items, the tables and rocks small things stand on, and the marker are drawn up to six to a picture, in a grid that is cut apart (`QBL_GEN_PROP_SHEETS`); the grid is judged once. A thing whose cell came out empty or spilled into the next is drawn on its own.
-- **A cheaper model for small cut-outs.** Things, sheets of things, doors and holes and the badge end up a few hundred pixels across: with Gemini they go to `QBL_GEN_GEMINI_PROPS_MODEL` (default `gemini-3.1-flash-image`) at `QBL_GEN_GEMINI_PROPS_SIZE` (1K, or 2K for a sheet with big things), about half the price of Gemini 3 Pro Image. Backgrounds, characters and their animations stay on `QBL_GEN_GEMINI_MODEL`, and so do style anchors. Every picture is still judged.
-- **Only the animations the mission plays.** Every character walks; a gesture is drawn only if it is seen: `wave` for a character students talk to, `cheer` for the guide at the end. Their standing picture is their idle (`QBL_GEN_IDLE_FRAMES=true` draws a breathing idle as well).
-- **Portraits cut from the character sheet** (`QBL_GEN_PORTRAITS=crop`): the sheet is drawn large, so its head and shoulders make a sharp portrait that is exactly the character's design. `draw` draws one more picture per character instead.
-- **A budget** (`QBL_GEN_BUDGET_USD`, `--budget=`). Once a run has spent it, no picture is redrawn for a better score (the best attempt is kept and flagged, as after the last attempt) and gestures are left out (the built-in moves stand in). Everything the mission needs is still made. At twice the budget the run stops; resume it with a higher one.
+- **Small things several to a picture.** A mission's items, the tables and rocks small things stand on, and the marker are drawn up to six to a picture, in a grid that is cut apart (`QuestLab_GEN_PROP_SHEETS`); the grid is judged once. A thing whose cell came out empty or spilled into the next is drawn on its own.
+- **A cheaper model for small cut-outs.** Things, sheets of things, doors and holes and the badge end up a few hundred pixels across: with Gemini they go to `QuestLab_GEN_GEMINI_PROPS_MODEL` (default `gemini-3.1-flash-image`) at `QuestLab_GEN_GEMINI_PROPS_SIZE` (1K, or 2K for a sheet with big things), about half the price of Gemini 3 Pro Image. Backgrounds, characters and their animations stay on `QuestLab_GEN_GEMINI_MODEL`, and so do style anchors. Every picture is still judged.
+- **Only the animations the mission plays.** Every character walks; a gesture is drawn only if it is seen: `wave` for a character students talk to, `cheer` for the guide at the end. Their standing picture is their idle (`QuestLab_GEN_IDLE_FRAMES=true` draws a breathing idle as well).
+- **Portraits cut from the character sheet** (`QuestLab_GEN_PORTRAITS=crop`): the sheet is drawn large, so its head and shoulders make a sharp portrait that is exactly the character's design. `draw` draws one more picture per character instead.
+- **A budget** (`QuestLab_GEN_BUDGET_USD`, `--budget=`). Once a run has spent it, no picture is redrawn for a better score (the best attempt is kept and flagged, as after the last attempt) and gestures are left out (the built-in moves stand in). Everything the mission needs is still made. At twice the budget the run stops; resume it with a higher one.
 
 The language model costs less, and is kept down too:
 
 - **Corrections as changes.** When the blueprint has problems, the model answers with only the changes that fix them (set this field, remove that one, add to a list) rather than writing the whole blueprint again, which cost as much as writing it the first time. Only if three rounds of changes do not fix it is it rewritten once.
 - **Prompt caching.** The instructions are cached on every call, the brief across the designer's corrections, and the style anchors across the judge's calls, so repeated calls read them at a twentieth of the price.
-- **A smaller model where it is enough.** Aligning to standards uses `QBL_GEN_ALIGN_MODEL` (default Sonnet); the judge uses `QBL_GEN_JUDGE_MODEL` (Sonnet). The mission itself is still written by `QBL_GEN_LLM_MODEL` (Opus).
+- **A smaller model where it is enough.** Aligning to standards uses `QuestLab_GEN_ALIGN_MODEL` (default Sonnet); the judge uses `QuestLab_GEN_JUDGE_MODEL` (Sonnet). The mission itself is still written by `QuestLab_GEN_LLM_MODEL` (Opus).
 
-For a mission like the test one (five scenes, two characters, eleven small things, three doors and holes), drawing once takes 17 pictures, about $1.95 at list prices, where it took 31, about $4.27, before; redraws come on top, up to the budget. Prices change: `QBL_GEN_PRICES` overrides any of them (JSON, the shape of `Spend::PRICES`).
+For a mission like the test one (five scenes, two characters, eleven small things, three doors and holes), drawing once takes 17 pictures, about $1.95 at list prices, where it took 31, about $4.27, before; redraws come on top, up to the budget. Prices change: `QuestLab_GEN_PRICES` overrides any of them (JSON, the shape of `Spend::PRICES`).
 
 ## What a generated mission contains
 
@@ -158,7 +158,7 @@ The platform's avatars (in `scenarios/assets/platform/`) and the demo's art were
 
 ### Sprite sheets
 
-Each character gets `walk` (6 frames), with their standing picture as `idle` (or a drawn 4-frame idle, with `QBL_GEN_IDLE_FRAMES=true`), plus the gestures the designer chose that the mission plays (`wave` for a character students talk to, `cheer` for the guide). **Every character walks, stands and has a portrait**, whatever happens: a walk that cannot be drawn in six frames is tried in four, and failing that it is made from the standing picture (it bobs, leans and swings its legs). The portrait is the head and shoulders cut from the character sheet (or drawn, with `QBL_GEN_PORTRAITS=draw`; one that cannot be drawn is cut from the sheet and flagged in the README). Each animation is drawn as one strip, from the character sheet. The strip is cut out and its figures found by connected regions (pieces such as a separately drawn hand are joined to their figure); a strip with the wrong number of figures is drawn again. Each frame is colour-matched to the sheet, scaled so the character keeps one size across animations, centred by its centre of mass and stood on a common baseline, then laid out one animation per row as an ordinary QBL sheet with `sheet` and `animations` (see [Animations](/docs/developers/extensions/#animations)). A gesture that cannot be drawn well is left out, and the built-in move of that name is used instead.
+Each character gets `walk` (6 frames), with their standing picture as `idle` (or a drawn 4-frame idle, with `QuestLab_GEN_IDLE_FRAMES=true`), plus the gestures the designer chose that the mission plays (`wave` for a character students talk to, `cheer` for the guide). **Every character walks, stands and has a portrait**, whatever happens: a walk that cannot be drawn in six frames is tried in four, and failing that it is made from the standing picture (it bobs, leans and swings its legs). The portrait is the head and shoulders cut from the character sheet (or drawn, with `QuestLab_GEN_PORTRAITS=draw`; one that cannot be drawn is cut from the sheet and flagged in the README). Each animation is drawn as one strip, from the character sheet. The strip is cut out and its figures found by connected regions (pieces such as a separately drawn hand are joined to their figure); a strip with the wrong number of figures is drawn again. Each frame is colour-matched to the sheet, scaled so the character keeps one size across animations, centred by its centre of mass and stood on a common baseline, then laid out one animation per row as an ordinary QuestLab sheet with `sheet` and `animations` (see [Animations](/docs/developers/extensions/#animations)). A gesture that cannot be drawn well is left out, and the built-in move of that name is used instead.
 
 ## Image services
 
@@ -169,9 +169,9 @@ Driver | Model (default) | Notes
 `scenario` | your trained model | `SCENARIO_API_KEY`, `SCENARIO_API_SECRET`, `SCENARIO_MODEL_ID`. Not yet run against the live API: check its request fields against Scenario's documentation first.
 `placeholder` | | Draws labelled shapes locally, for free, through the same cutting, slicing and packaging. For trying the pipeline, laying out a mission before paying for art, and the tests.
 
-The language model is Claude (`ANTHROPIC_API_KEY`): `QBL_GEN_LLM_MODEL` writes the mission, `QBL_GEN_ALIGN_MODEL` aligns it to standards, `QBL_GEN_JUDGE_MODEL` judges pictures.
+The language model is Claude (`ANTHROPIC_API_KEY`): `QuestLab_GEN_LLM_MODEL` writes the mission, `QuestLab_GEN_ALIGN_MODEL` aligns it to standards, `QuestLab_GEN_JUDGE_MODEL` judges pictures.
 
-These models think before they answer (on Opus 5.5 thinking is always on), and the thinking counts toward each answer's token limit, however short the teacher's prompt is. So every call gets `QBL_GEN_THINKING_TOKENS` (default 32000) on top of the room for its answer, up to the model's 128000. The mission blueprint, for instance, gets 32000 for the answer plus that room. It is only a ceiling, so unused room is not paid for. `QBL_GEN_LLM_EFFORT` (low, medium, high, xhigh, max; empty means each model's default) sets how hard they think. If a run stops with "ran out of room", the message says whether the model was still thinking. Raise `QBL_GEN_THINKING_TOKENS` or lower the effort. `QBL_GEN_LLM_TIMEOUT` (default 1800 seconds) is how long to wait for one answer.
+These models think before they answer (on Opus 5.5 thinking is always on), and the thinking counts toward each answer's token limit, however short the teacher's prompt is. So every call gets `QuestLab_GEN_THINKING_TOKENS` (default 32000) on top of the room for its answer, up to the model's 128000. The mission blueprint, for instance, gets 32000 for the answer plus that room. It is only a ceiling, so unused room is not paid for. `QuestLab_GEN_LLM_EFFORT` (low, medium, high, xhigh, max; empty means each model's default) sets how hard they think. If a run stops with "ran out of room", the message says whether the model was still thinking. Raise `QuestLab_GEN_THINKING_TOKENS` or lower the effort. `QuestLab_GEN_LLM_TIMEOUT` (default 1800 seconds) is how long to wait for one answer.
 
 **Every setting is in `.env`**: keys, models, API addresses, image sizes, the art style, judging, the budget, prices, which pictures are drawn, and limits. `.env.example` lists them all with their defaults; an empty value means the default. `docker-compose.yml` passes them to the `app` container, and `apps/api/config/qbl_generation.php` reads them.
 
@@ -194,7 +194,7 @@ Route | What
 
 **Cancelling** sets `scenario_generations.cancelled_at`. A run still queued is cancelled at once; a running one checks at every progress report, throws `GenerationCancelled`, and the job marks it `cancelled`. Either way the credits are given back once. A busy run with no progress for 30 minutes (`GenerationApi::STALE_SECONDS`: its worker went away) is marked failed, with its credits back, so the teacher can start another.
 
-Without Docker, the dev server (`npm run dev:editor`) cannot make missions; with `QBL_DEV_GENERATOR=1` it pretends, moving a run through every stage in about 70 seconds and ending with an empty draft (a number of seconds above 1 sets how long).
+Without Docker, the dev server (`npm run dev:editor`) cannot make missions; with `QuestLab_DEV_GENERATOR=1` it pretends, moving a run through every stage in about 70 seconds and ending with an empty draft (a number of seconds above 1 sets how long).
 
 ## Testing
 

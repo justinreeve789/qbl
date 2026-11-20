@@ -5,7 +5,7 @@ description: "Create schools, teachers and students, keep them in step with your
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
-This is the part your student information system (SIS) talks to. Your roster becomes QBL's roster, and **enrollments** decide whose students a teacher can assign missions to and read reports about.
+This is the part your student information system (SIS) talks to. Your roster becomes QuestLab's roster, and **enrollments** decide whose students a teacher can assign missions to and read reports about.
 
 Every endpoint here needs `roster:read` (to read) or `roster:write` (to change); deletion needs `privacy`. See [Authentication](/docs/api-v1/authentication/#scopes).
 
@@ -98,7 +98,7 @@ A **person** looks like this. Students have `grade_level` and `teacher_ids`; tea
 
 | Endpoint | Scope | Notes |
 | --- | --- | --- |
-| `GET /students`, `GET /teachers` | `roster:read` | Filters: `school_id`, `status` (`active` or `inactive`), `external_id`, `updated_since`, and for students `teacher_id` (the QBL id; see [conventions](/docs/api-v1/conventions/#ids-yours-or-qbls)). Paged. |
+| `GET /students`, `GET /teachers` | `roster:read` | Filters: `school_id`, `status` (`active` or `inactive`), `external_id`, `updated_since`, and for students `teacher_id` (the QuestLab id; see [conventions](/docs/api-v1/conventions/#ids-yours-or-qbls)). Paged. |
 | `POST /students`, `POST /teachers` | `roster:write` | `external_id` (required), `school_id`, `grade_level` (students), `display_name` (teachers), `status`, and `teacher_ids` or `teacher_external_ids` (students) or `student_ids` or `student_external_ids` (teachers). `409` if the `external_id` is taken. |
 | `POST /students/batch`, `POST /teachers/batch` | `roster:write` | Up to 1,000 at once, **created or updated by `external_id`**. |
 | `GET /students/{id}`, `GET /teachers/{id}` | `roster:read` | The id may be `ext:` and yours. |
@@ -153,7 +153,7 @@ A row that is refused comes back with `result: "error"` and the same `error` obj
       "index": 1, "external_id": "bad-1", "result": "error",
       "error": {
         "code": "pii_not_accepted",
-        "message": "QBL does not store personally identifiable information. Remove: email. Identify people by your own opaque external_id instead.",
+        "message": "QuestLab does not store personally identifiable information. Remove: email. Identify people by your own opaque external_id instead.",
         "fields": { "email": "Not accepted: personally identifiable." }
       }
     },

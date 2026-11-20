@@ -9,7 +9,7 @@ The player, the editor and the game server depend on a small set of endpoints. T
 
 Anything that honours this contract can be swapped in.
 
-These endpoints are QBL's own and may change. Schools, districts and other organizations connecting their systems use the versioned [public API](/docs/api-v1/) under `/api/v1` instead.
+These endpoints are QuestLab's own and may change. Schools, districts and other organizations connecting their systems use the versioned [public API](/docs/api-v1/) under `/api/v1` instead.
 
 ## Public endpoints (called by the browser)
 
@@ -21,13 +21,13 @@ Body `{ "email": "...", "password": "..." }`. Returns `{ "token": "...", "user":
 
 ### `POST /api/auth/register`
 
-Body `{ "name": "...", "email": "...", "password": "...", "password_confirmation": "..." }`. Creates a **student's** account and signs in with it: 201 with `{ "token": "...", "user": User }` (the user has its own `email`, as from `/auth/login`). 422 with `{ "message": "...", "errors": {...} }` when a field is missing or wrong, the password is under 8 characters or the two do not match, or **the address already has an account** (creating one never joins an existing account). 403 when the site has `QBL_ALLOW_REGISTRATION=false`. 429 after five tries in a minute from one network address.
+Body `{ "name": "...", "email": "...", "password": "...", "password_confirmation": "..." }`. Creates a **student's** account and signs in with it: 201 with `{ "token": "...", "user": User }` (the user has its own `email`, as from `/auth/login`). 422 with `{ "message": "...", "errors": {...} }` when a field is missing or wrong, the password is under 8 characters or the two do not match, or **the address already has an account** (creating one never joins an existing account). 403 when the site has `QuestLab_ALLOW_REGISTRATION=false`. 429 after five tries in a minute from one network address.
 
 The address is stored in lower case and is not checked. If its owner later signs in with Google, the account becomes theirs and its password and tokens stop working (see [Signing in with Google](#signing-in-with-google)).
 
 ### `POST /api/auth/guest`
 
-Body `{ "name": "..." }`. Returns `{ "token": "...", "user": User }` with role `guest`. The Laravel API only offers this when `QBL_ALLOW_GUESTS=true`. A guest token is accepted by the game server only for scenarios with `require_login: false`.
+Body `{ "name": "..." }`. Returns `{ "token": "...", "user": User }` with role `guest`. The Laravel API only offers this when `QuestLab_ALLOW_GUESTS=true`. A guest token is accepted by the game server only for scenarios with `require_login: false`.
 
 ### `POST /api/auth/logout`
 
@@ -47,7 +47,7 @@ Google sign-in is on when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
 
 If nobody is signed in, the browser is sent to `return` with the reason after the `#`: `#signin=cancelled`, `domain` (the address is not at an accepted domain), `unverified`, `expired` or `failed`.
 
-New accounts are students. `QBL_GOOGLE_DOMAINS` limits who may sign in to those domains. The role alone decides access: teachers and admins may use `/api/editor/*` and `/api/teach/*` (Classes and reports); an administrator changes a role with `php artisan qbl:update-role <email> --role=teacher`. An account that has only ever signed in with Google has no password.
+New accounts are students. `QuestLab_GOOGLE_DOMAINS` limits who may sign in to those domains. The role alone decides access: teachers and admins may use `/api/editor/*` and `/api/teach/*` (Classes and reports); an administrator changes a role with `php artisan qbl:update-role <email> --role=teacher`. An account that has only ever signed in with Google has no password.
 
 ### `GET /api/me`
 
@@ -175,7 +175,7 @@ Endpoint | Body | Returns
 
 ## Internal endpoints (called by the game server)
 
-Under `/api/internal`, authenticated with the header `X-QBL-Service-Key`, which must equal the API's `QBL_SERVICE_KEY`. These must not be reachable from the internet; in the provided Docker setup Apache answers 404 for `/api/internal` on its public port, and the game server reaches those routes through a second Apache port that exists only on the Docker network.
+Under `/api/internal`, authenticated with the header `X-QuestLab-Service-Key`, which must equal the API's `QuestLab_SERVICE_KEY`. These must not be reachable from the internet; in the provided Docker setup Apache answers 404 for `/api/internal` on its public port, and the game server reaches those routes through a second Apache port that exists only on the Docker network.
 
 Endpoint | Body | Returns
 -------- | ---- | -------
@@ -232,7 +232,7 @@ Rules the API enforces whatever the editor sends:
 * A row can only be created in, moved to, or made to refer to things in the same scenario (`scene_id`, `event_id`, `media_id`, ...).
 * Enumerated columns only take their documented values (action `type`, event `kind`, media `type`, condition `operator`, ...).
 * A condition belongs to exactly one of an event, an action, an item or a character.
-* Variable names are letters, digits and underscores, and may not start with `QBL`.
+* Variable names are letters, digits and underscores, and may not start with `QuestLab`.
 * Uploads are identified by their content. Images (PNG, JPEG, WebP, GIF), audio (MP3, WAV, OGG) and video (MP4, WebM) up to 25 MB are accepted; SVG is not.
 * A scenario's `code` cannot be changed.
 

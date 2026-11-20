@@ -53,7 +53,7 @@ Because the feed is **oldest first** and the cursor is stable, loading what is n
 ```js
 let cursor = loadSavedCursor();           // null the first time
 for (;;) {
-  const url = `${QBL}/api/v1/activity?limit=5000${cursor ? `&cursor=${cursor}` : ''}`;
+  const url = `${QuestLab}/api/v1/activity?limit=5000${cursor ? `&cursor=${cursor}` : ''}`;
   const { data, meta } = await (await fetch(url, { headers: auth })).json();
   if (data.length === 0) break;           // caught up
   await warehouse.insert(data);           // write the page first…
@@ -76,7 +76,7 @@ For one assignment, `GET /assignments/{id}/activity?student_id=&limit=` gives a 
 GET /api/v1/assignments/2/messages
 ```
 
-Needs `messages:read`, which is separate from `reports:read` on purpose: chat is the part of QBL you may want only a few people to read. It returns every chat, emote and private message in the assignment's games, with sender and recipient, for safety review.
+Needs `messages:read`, which is separate from `reports:read` on purpose: chat is the part of QuestLab you may want only a few people to read. It returns every chat, emote and private message in the assignment's games, with sender and recipient, for safety review.
 
 ```json
 {
@@ -121,7 +121,7 @@ Needs `privacy`. This is the answer to a parent's request to inspect their child
 }
 ```
 
-It is deliberately complete and **contains no name**, because QBL has none. Your system supplies the name that goes with `external_id` when you hand the report to the parent.
+It is deliberately complete and **contains no name**, because QuestLab has none. Your system supplies the name that goes with `external_id` when you hand the report to the parent.
 
 ## Delete a student or a teacher
 

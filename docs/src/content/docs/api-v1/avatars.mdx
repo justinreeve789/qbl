@@ -33,7 +33,7 @@ Send the picture as `multipart/form-data` (`image`, and optionally `portrait`), 
       -F image=@otter-sheet.png -F portrait=@otter-face.png \
       -F 'sheet={"columns":6,"rows":2}' \
       -F 'animations=[{"name":"idle","frames":[0,1]},{"name":"walk","frames":[6,7,8,9,10,11]}]' \
-      "$QBL/api/v1/avatars"
+      "$QuestLab/api/v1/avatars"
     ```
   </TabItem>
   <TabItem label="Answer (201)">
@@ -79,7 +79,7 @@ In the example the sheet is 384 × 256 pixels with six columns and two rows, so 
 In a multipart request, send `sheet` and `animations` as JSON strings.
 
 <Aside type="caution" title="Uploaded, never linked">
-Links to pictures elsewhere (`image_url` in the request) are refused. Avatars are copied into QBL, so no student's browser ever contacts a third-party server to draw a classmate. See [Privacy](/docs/api-v1/privacy/).
+Links to pictures elsewhere (`image_url` in the request) are refused. Avatars are copied into QuestLab, so no student's browser ever contacts a third-party server to draw a classmate. See [Privacy](/docs/api-v1/privacy/).
 </Aside>
 
 ## Change or retire one

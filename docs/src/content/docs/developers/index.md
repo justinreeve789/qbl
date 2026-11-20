@@ -3,9 +3,9 @@ title: Developers
 description: The scenario JSON, how the pieces fit together, and the HTTP and multiplayer contracts.
 ---
 
-This section is for people who work with QBL's data and code: writing or generating scenarios as JSON, running the platform, or building against its APIs. If you only want to make missions, start with [the editor](/docs/editor/).
+This section is for people who work with QuestLab's data and code: writing or generating scenarios as JSON, running the platform, or building against its APIs. If you only want to make missions, start with [the editor](/docs/editor/).
 
-QBL scenarios are interactive experiences built around media: audio, images, text, sprite sheets and video. On the backend the QBL API outputs a scenario as one JSON document; the Phaser game reads it and runs the scenario as scripted. The editor writes this JSON for you (**Publish** generates it), and a ZIP with a `scenario.json` can bring a hand-written or generated one in whole (see [Backups, copies and the starship hub](/docs/editor/backups-and-copies/#making-a-zip-by-hand)).
+QuestLab scenarios are interactive experiences built around media: audio, images, text, sprite sheets and video. On the backend the QuestLab API outputs a scenario as one JSON document; the Phaser game reads it and runs the scenario as scripted. The editor writes this JSON for you (**Publish** generates it), and a ZIP with a `scenario.json` can bring a hand-written or generated one in whole (see [Backups, copies and the starship hub](/docs/editor/backups-and-copies/#making-a-zip-by-hand)).
 
 ## The JSON reference
 

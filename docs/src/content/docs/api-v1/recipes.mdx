@@ -13,18 +13,18 @@ Every recipe below uses this client. It gets a token, **reuses it** until a minu
 
 <Tabs>
   <TabItem label="JavaScript (qbl.mjs)">
-    Node 18 or newer, no dependencies. Set `QBL`, `CLIENT_ID` and `CLIENT_SECRET` in the environment.
+    Node 18 or newer, no dependencies. Set `QuestLab`, `CLIENT_ID` and `CLIENT_SECRET` in the environment.
 
     ```js
-// qbl.mjs: a tiny client for the QBL public API (Node 18+, no dependencies)
-const QBL = process.env.QBL;                          // e.g. https://qbl.example
+// qbl.mjs: a tiny client for the QuestLab public API (Node 18+, no dependencies)
+const QuestLab = process.env.QuestLab;                          // e.g. https://qbl.example
 const { CLIENT_ID, CLIENT_SECRET } = process.env;
 
 let token = null, expiresAt = 0;
 
 async function getToken() {
   if (token && Date.now() < expiresAt - 60_000) return token;   // reuse until a minute before it expires
-  const res = await fetch(`${QBL}/api/v1/oauth/token`, {
+  const res = await fetch(`${QuestLab}/api/v1/oauth/token`, {
     method: 'POST',
     headers: {
       Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
@@ -41,7 +41,7 @@ async function getToken() {
 
 export async function api(method, path, body) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(`${QBL}/api/v1${path}`, {
+    const res = await fetch(`${QuestLab}/api/v1${path}`, {
       method,
       headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -75,11 +75,11 @@ export async function* pages(path) {
     Python 3.9 or newer and `requests`. Set the same three environment variables.
 
     ```python
-"""qbl.py: a tiny client for the QBL public API (Python 3.9+, needs `requests`)."""
+"""qbl.py: a tiny client for the QuestLab public API (Python 3.9+, needs `requests`)."""
 import os, time
 import requests
 
-QBL = os.environ["QBL"]                      # e.g. https://qbl.example
+QuestLab = os.environ["QuestLab"]                      # e.g. https://qbl.example
 CLIENT = (os.environ["CLIENT_ID"], os.environ["CLIENT_SECRET"])
 
 _token, _expires = None, 0.0
@@ -89,7 +89,7 @@ def _get_token() -> str:
     global _token, _expires
     if _token and time.time() < _expires - 60:          # reuse until a minute before it expires
         return _token
-    r = requests.post(f"{QBL}/api/v1/oauth/token", auth=CLIENT,
+    r = requests.post(f"{QuestLab}/api/v1/oauth/token", auth=CLIENT,
                       data={"grant_type": "client_credentials"}, timeout=10)
     r.raise_for_status()
     body = r.json()
@@ -106,7 +106,7 @@ class QblError(Exception):
 def api(method: str, path: str, body=None):
     global _token
     for _ in range(3):
-        r = requests.request(method, f"{QBL}/api/v1{path}", json=body, timeout=30,
+        r = requests.request(method, f"{QuestLab}/api/v1{path}", json=body, timeout=30,
                              headers={"Authorization": f"Bearer {_get_token()}"})
         if r.status_code == 401:                         # expired: get a new one and retry
             _token = None
@@ -171,22 +171,22 @@ Using it:
 
 ## Sync your roster every night
 
-The job: make QBL's teachers, students and classes match your student information system, without sending a single name.
+The job: make QuestLab's teachers, students and classes match your student information system, without sending a single name.
 
 <Steps>
 
 1. Turn each SIS id into an opaque `external_id` with a [keyed hash](/docs/api-v1/privacy/#make-your-external-ids-opaque).
 2. Send teachers, then students (with `teacher_external_ids`), in batches of up to 1,000. A batch creates and updates, so it is safe to run every night.
-3. Deactivate (never delete) anyone QBL has that the SIS no longer lists.
+3. Deactivate (never delete) anyone QuestLab has that the SIS no longer lists.
 
 </Steps>
 
 ```python
-"""Nightly roster sync: your SIS -> QBL. Names and emails stay in your SIS; only opaque ids go out."""
+"""Nightly roster sync: your SIS -> QuestLab. Names and emails stay in your SIS; only opaque ids go out."""
 import hashlib, hmac, os
 from qbl import api, pages
 
-KEY = os.environ["PSEUDONYM_KEY"].encode()      # the only key from QBL's ids back to children
+KEY = os.environ["PSEUDONYM_KEY"].encode()      # the only key from QuestLab's ids back to children
 
 
 def ext(sis_id: str) -> str:
@@ -216,7 +216,7 @@ def sync(sis_teachers, sis_students):
                     if row["result"] == "error":
                         print("refused", kind, row["external_id"], row["error"]["code"])
 
-    # Anyone QBL has that the SIS no longer lists has left: deactivate, never delete.
+    # Anyone QuestLab has that the SIS no longer lists has left: deactivate, never delete.
     wanted = {s["external_id"] for s in students}
     for person in pages("/students?status=active"):
         if person["external_id"] not in wanted:
@@ -230,17 +230,17 @@ A few details worth copying:
 - **Deactivate, do not delete.** A student who returns in January keeps their progress.
 - Run it from a scheduler (cron, a CI job) with the secrets in the environment, and keep one client with only `roster:read` and `roster:write` for it.
 
-## Put QBL grades in your gradebook
+## Put QuestLab grades in your gradebook
 
 The job: after students play, read each student's score for an assignment and write it where your LMS keeps grades.
 
 ```js
 import { api } from './client.mjs';
 
-// Your LMS gave the assignment its own id when you created it in QBL (external_id).
+// Your LMS gave the assignment its own id when you created it in QuestLab (external_id).
 export async function gradesFor(lmsAssignmentId) {
   const { data: found } = await api('GET', `/assignments?external_id=${encodeURIComponent(lmsAssignmentId)}`);
-  if (found.length === 0) throw new Error(`No QBL assignment for ${lmsAssignmentId}`);
+  if (found.length === 0) throw new Error(`No QuestLab assignment for ${lmsAssignmentId}`);
   const { data: rows } = await api('GET', `/assignments/${found[0].id}/grades`);
 
   return rows
@@ -274,18 +274,18 @@ Three calls cover most dashboards, all with `reports:read`:
 
 ```sh
 # The headline numbers
-curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/reports/summary"
+curl -s -H "Authorization: Bearer $TOKEN" "$QuestLab/api/v1/reports/summary"
 
 # Participation over time, by school, for a trend line (days start in your timezone)
 curl -s -H "Authorization: Bearer $TOKEN" \
-  "$QBL/api/v1/reports/engagement?interval=week&group_by=school&timezone=America/Denver"
+  "$QuestLab/api/v1/reports/engagement?interval=week&group_by=school&timezone=America/Denver"
 
 # Standards actually taught, and how students did on them
-curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/reports/standards"
+curl -s -H "Authorization: Bearer $TOKEN" "$QuestLab/api/v1/reports/standards"
 ```
 
 For anything deeper, load the [activity feed](/docs/api-v1/activity-and-privacy-requests/#the-activity-feed) into your warehouse and ask your own questions.
 
-## An "Open in QBL" button
+## An "Open in QuestLab" button
 
 See [Launch links](/docs/api-v1/launch-links/#a-open-in-qbl-button-server-side) for a complete server-side handler in JavaScript and Python.

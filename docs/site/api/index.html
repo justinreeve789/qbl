@@ -8,7 +8,7 @@
         
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>HTTP API contract - QBL JSON Documentation</title>
+        <title>HTTP API contract - QuestLab JSON Documentation</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/fontawesome.min.css" rel="stylesheet">
         <link href="../css/brands.min.css" rel="stylesheet">
@@ -24,7 +24,7 @@
     <body>
         <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <a class="navbar-brand" href="..">QuestLab JSON Documentation</a>
                 <!-- Expander button -->
                 <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -157,7 +157,7 @@
 <h3 id="post-apiauthlogin"><code>POST /api/auth/login</code></h3>
 <p>Body <code>{ "email": "...", "password": "..." }</code>. Returns <code>{ "token": "...", "user": User }</code>, or 422 with <code>{ "message": "..." }</code>.</p>
 <h3 id="post-apiauthguest"><code>POST /api/auth/guest</code></h3>
-<p>Body <code>{ "name": "..." }</code>. Returns <code>{ "token": "...", "user": User }</code> with role <code>guest</code>. The Laravel API only offers this when <code>QBL_ALLOW_GUESTS=true</code>. A guest token is accepted by the game server only for scenarios with <code>require_login: false</code>.</p>
+<p>Body <code>{ "name": "..." }</code>. Returns <code>{ "token": "...", "user": User }</code> with role <code>guest</code>. The Laravel API only offers this when <code>QuestLab_ALLOW_GUESTS=true</code>. A guest token is accepted by the game server only for scenarios with <code>require_login: false</code>.</p>
 <h3 id="post-apiauthlogout"><code>POST /api/auth/logout</code></h3>
 <p>Ends the token it is called with, so signing out works everywhere that token was kept. The game and the editor call it from their "Sign out" buttons and then forget the token.</p>
 <h3 id="get-apiauthproviders"><code>GET /api/auth/providers</code></h3>
@@ -170,7 +170,7 @@
 <li>The API finds the account by Google's id for it, or joins an existing account with the same verified address, or creates a new one. It issues a token and answers with a small page that stores the token where the game and the editor look for it (<code>localStorage["qbl.token"]</code>) and goes to <code>return</code>. The token is never put in an address.</li>
 </ol>
 <p>If nobody is signed in, the browser is sent to <code>return</code> with the reason after the <code>#</code>: <code>#signin=cancelled</code>, <code>domain</code> (the address is not at an accepted domain), <code>unverified</code>, <code>expired</code> or <code>failed</code>.</p>
-<p>New accounts are students. <code>QBL_GOOGLE_DOMAINS</code> limits who may sign in to those domains; accounts at <code>QBL_GOOGLE_TEACHER_DOMAINS</code> start as teachers. An account that has only ever signed in with Google has no password.</p>
+<p>New accounts are students. <code>QuestLab_GOOGLE_DOMAINS</code> limits who may sign in to those domains; accounts at <code>QuestLab_GOOGLE_TEACHER_DOMAINS</code> start as teachers. An account that has only ever signed in with Google has no password.</p>
 <h3 id="get-apime"><code>GET /api/me</code></h3>
 <p>Returns <code>{ "user": User }</code> or 401.</p>
 <h3 id="get-apiscenarioscodeplay"><code>GET /api/scenarios/{code}/play</code></h3>
@@ -309,7 +309,7 @@
 </code></pre>
 <p><code>role</code> is one of <code>student</code>, <code>teacher</code>, <code>admin</code>, <code>guest</code>. <code>avatar_media_id</code> is optional.</p>
 <h2 id="internal-endpoints-called-by-the-game-server">Internal endpoints (called by the game server)</h2>
-<p>Under <code>/api/internal</code>, authenticated with the header <code>X-QBL-Service-Key</code>, which must equal the API's <code>QBL_SERVICE_KEY</code>. These must not be reachable from the internet; in the provided Docker setup Apache answers 404 for <code>/api/internal</code> on its public port, and the game server reaches those routes through a second Apache port that exists only on the Docker network.</p>
+<p>Under <code>/api/internal</code>, authenticated with the header <code>X-QuestLab-Service-Key</code>, which must equal the API's <code>QuestLab_SERVICE_KEY</code>. These must not be reachable from the internet; in the provided Docker setup Apache answers 404 for <code>/api/internal</code> on its public port, and the game server reaches those routes through a second Apache port that exists only on the Docker network.</p>
 <table>
 <thead>
 <tr>
@@ -484,7 +484,7 @@
 <li>A row can only be created in, moved to, or made to refer to things in the same scenario (<code>scene_id</code>, <code>event_id</code>, <code>media_id</code>, ...).</li>
 <li>Enumerated columns only take their documented values (action <code>type</code>, event <code>kind</code>, media <code>type</code>, condition <code>operator</code>, ...).</li>
 <li>A condition belongs to exactly one of an event, an action, an item or a character.</li>
-<li>Variable names are letters, digits and underscores, and may not start with <code>QBL</code>.</li>
+<li>Variable names are letters, digits and underscores, and may not start with <code>QuestLab</code>.</li>
 <li>Uploads are identified by their content. Images (PNG, JPEG, WebP, GIF), audio (MP3, WAV, OGG) and video (MP4, WebM) up to 25 MB are accepted; SVG is not.</li>
 <li>A scenario's <code>code</code> cannot be changed.</li>
 </ul>

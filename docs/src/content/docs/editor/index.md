@@ -1,6 +1,6 @@
 ---
 title: The editor at a glance
-description: What the QBL editor is, who can use it, and where everything is.
+description: What the QuestLab editor is, who can use it, and where everything is.
 ---
 
 The editor is where teachers and content creators build **scenarios**: whole missions made of scenes that students walk around, with the hotspots, characters, conversations, questions and rewards that happen in them. It is served at `/editor/` and, for teachers and admins, it is also the dashboard you land on after signing in.

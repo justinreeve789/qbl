@@ -8,7 +8,7 @@
         
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Runtime extensions (spec v2) - QBL JSON Documentation</title>
+        <title>Runtime extensions (spec v2) - QuestLab JSON Documentation</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/fontawesome.min.css" rel="stylesheet">
         <link href="../css/brands.min.css" rel="stylesheet">
@@ -24,7 +24,7 @@
     <body>
         <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" href="..">QBL JSON Documentation</a>
+                <a class="navbar-brand" href="..">QuestLab JSON Documentation</a>
                 <!-- Expander button -->
                 <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -641,11 +641,11 @@
 </tr>
 </tbody>
 </table>
-<pre><code class="language-json">{ &quot;type&quot;: &quot;dialogue&quot;, &quot;speaker&quot;: &quot;character&quot;, &quot;character_id&quot;: 1, &quot;text&quot;: &quot;Welcome aboard, {{QBLPlayerName}}!&quot; }
+<pre><code class="language-json">{ &quot;type&quot;: &quot;dialogue&quot;, &quot;speaker&quot;: &quot;character&quot;, &quot;character_id&quot;: 1, &quot;text&quot;: &quot;Welcome aboard, {{QuestLabPlayerName}}!&quot; }
 </code></pre>
 <p>The bubble follows the speaker and keeps itself on screen. It sits above them when there is room, below when they are near the top of the screen, and to the right or left when there is room neither above nor below; sideways it slides along to stay inside the screen while its tail keeps pointing at the speaker. A sequence of dialogue actions is a conversation; put a <code>freeze</code> before it to hold the player still.</p>
 <p><strong>The story box</strong> (<code>style: "portrait"</code>) is for the characters and moments that carry the story. It is a panel across the bottom of the screen with the speaker's close-up portrait standing on its edge, their name, and the words appearing a few at a time. The player clicks, or presses Enter or Space, to continue: once to show the whole line, again to go on. The portrait is the character's <code>portrait_media_id</code> (or their ordinary picture), or for the player the portrait of their avatar (<code>avatar_portraits</code>).</p>
-<pre><code class="language-json">{ &quot;type&quot;: &quot;dialogue&quot;, &quot;style&quot;: &quot;portrait&quot;, &quot;speaker&quot;: &quot;character&quot;, &quot;character_id&quot;: 1, &quot;text&quot;: &quot;Welcome aboard, {{QBLPlayerName}}! I am Captain Vega.&quot; }
+<pre><code class="language-json">{ &quot;type&quot;: &quot;dialogue&quot;, &quot;style&quot;: &quot;portrait&quot;, &quot;speaker&quot;: &quot;character&quot;, &quot;character_id&quot;: 1, &quot;text&quot;: &quot;Welcome aboard, {{QuestLabPlayerName}}! I am Captain Vega.&quot; }
 </code></pre>
 <p>A story conversation is normally the player's own (<code>audience: player</code>, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.</p>
 <h3 id="animate">Animate</h3>
@@ -869,7 +869,7 @@
 <p>Conditions and variable actions are written the same way for both; only the variable's scope differs, so a scenario decides this once, where the variable is defined, and not in every action. A variable action on a shared variable is sent to the game server, applied there, and the new value reaches every player; hotspots and objectives whose conditions use it update for everyone. The editor marks shared variables wherever one is chosen.</p>
 <p>"Everyone playing together" is a group: the players who joined with the same group key (a class, a team), up to <code>max_players</code>. A shared variable with <code>persist</code> is saved with the group's game, so the path is still blocked when they come back tomorrow; a different group has its own. A player's own variables are reported by the browser and can be tampered with; shared variables are held by the server, but any player's event can change them, so they are not secrets either.</p>
 <p>Both examples are in the demo: the rockfall above the spring meadow (<code>rockfall</code>, shared, cleared again by the repair drone in the engine room) and the critters in the hydroponics bay (<code>critters_met</code>, each player's own).</p>
-<p>Additional reserved variables: <code>QBLSceneId</code>, <code>QBLPlayerName</code>, <code>QBLPlayerCount</code>, and for the player's account <code>QBLStars</code>, <code>QBLXp</code>, <code>QBLRank</code> (the rank's name) and <code>QBLAbility_&lt;key&gt;</code> (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as <code>{{placeholders}}</code> like any other variable.</p>
+<p>Additional reserved variables: <code>QuestLabSceneId</code>, <code>QuestLabPlayerName</code>, <code>QuestLabPlayerCount</code>, and for the player's account <code>QuestLabStars</code>, <code>QuestLabXp</code>, <code>QuestLabRank</code> (the rank's name) and <code>QuestLabAbility_&lt;key&gt;</code> (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as <code>{{placeholders}}</code> like any other variable.</p>
 <p>Additional condition operators: <code>&gt;=</code> and <code>&lt;=</code>.</p>
 <h2 id="items">Items</h2>
 <table>
@@ -1170,7 +1170,7 @@
 <tr>
 <td>ability</td>
 <td>string</td>
-<td>Abilities: a key. While equipped, <code>QBLAbility_&lt;key&gt;</code> is 1.</td>
+<td>Abilities: a key. While equipped, <code>QuestLabAbility_&lt;key&gt;</code> is 1.</td>
 </tr>
 </tbody>
 </table>
@@ -1181,7 +1181,7 @@
 </code></pre>
 <p>A player owns what they buy for good, and chooses what to have on: one wearable per slot, one pet, one animation (a way of standing: bounce, float, sway, pulse), and any number of moves and abilities. What a player wears is drawn on their avatar in every scenario and is seen by the other players.</p>
 <p><strong>Abilities do nothing by themselves.</strong> They are a flag scenarios can test, so what an ability unlocks is up to each author: a hotspot only its owners see, an extra line of dialogue, a shortcut. They never change walking speed or how far away a hotspot is revealed. In the demo, the survey map makes a map table appear at the landing site:</p>
-<pre><code class="language-json">{ &quot;shortname&quot;: &quot;survey-map&quot;, &quot;conditions&quot;: [{ &quot;variable&quot;: &quot;QBLAbility_stream_map&quot;, &quot;operator&quot;: &quot;=&quot;, &quot;operand&quot;: 1 }], &quot;...&quot;: &quot;...&quot; }
+<pre><code class="language-json">{ &quot;shortname&quot;: &quot;survey-map&quot;, &quot;conditions&quot;: [{ &quot;variable&quot;: &quot;QuestLabAbility_stream_map&quot;, &quot;operator&quot;: &quot;=&quot;, &quot;operand&quot;: 1 }], &quot;...&quot;: &quot;...&quot; }
 </code></pre>
 <h3 id="how-it-is-kept-honest">How it is kept honest</h3>
 <p>The game client never changes stars or XP itself. When an award action runs, the client tells the game server the action's id; the game server asks the backend, which looks the action up <strong>in the published document</strong>, checks whether this player already had it, and records the change in a ledger. A player can therefore not invent an award or collect a once-only award twice. What they <em>can</em> do is trigger an award whose event they have not really reached, because events run in the browser (see the trust model on the <a href="../protocol/">protocol</a> page). Treat stars as encouragement, not as grades.</p>

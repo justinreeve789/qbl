@@ -1,15 +1,15 @@
 openapi: 3.1.0
 info:
-  title: QBL public API
+  title: QuestLab public API
   version: "1"
   summary: Roster, assign, sign in and report, for schools, districts and businesses.
   description: |
-    The versioned API organizations use to connect their own systems to QBL. The full
+    The versioned API organizations use to connect their own systems to QuestLab. The full
     reference, including the privacy rules and how every figure is worked out, is at
     /docs/api-v1/.
 
     Within version 1 fields are only ever added, never renamed or removed: ignore fields you
-    do not know. Teachers and students in a path may be given as a QBL id or as `ext:` and
+    do not know. Teachers and students in a path may be given as a QuestLab id or as `ext:` and
     your own external_id.
 servers:
   - url: /api/v1
@@ -429,7 +429,7 @@ components:
       description: client_id and client_secret, for POST /oauth/token only
   parameters:
     Id: { name: id, in: path, required: true, schema: { type: integer } }
-    PersonRef: { name: id, in: path, required: true, schema: { type: string, example: 'ext:a91f0c7e' }, description: 'A QBL id, or ext: and your external_id' }
+    PersonRef: { name: id, in: path, required: true, schema: { type: string, example: 'ext:a91f0c7e' }, description: 'A QuestLab id, or ext: and your external_id' }
     Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
     Cursor: { name: cursor, in: query, schema: { type: string }, description: meta.next_cursor of the previous page }
     SchoolId: { name: school_id, in: query, schema: { type: integer } }
@@ -514,7 +514,7 @@ components:
         id: { type: integer }
         type: { enum: [student, teacher] }
         external_id: { type: string }
-        display_name: { type: string, description: For students always a pseudonym QBL made up }
+        display_name: { type: string, description: For students always a pseudonym QuestLab made up }
         school_id: { type: [integer, 'null'] }
         grade_level: { type: [string, 'null'] }
         teacher_ids: { type: array, items: { type: integer } }

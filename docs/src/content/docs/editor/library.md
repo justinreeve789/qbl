@@ -39,7 +39,7 @@ What the scenario remembers. The page is a table with one line per variable, edi
 
 Conditions and actions refer to variables by name, so renaming one does **not** update the conditions and actions that already use it. Text can show a variable's value with `{{variable_name}}`.
 
-A few reserved names are always there, such as `{{QBLPlayerName}}`. See [Variables](/docs/developers/extensions/#variables).
+A few reserved names are always there, such as `{{QuestLabPlayerName}}`. See [Variables](/docs/developers/extensions/#variables).
 
 ## Items
 
@@ -124,4 +124,4 @@ What players can do from buttons on their screen. Each card is drawn like the bu
 
 ## Shop
 
-What only this scenario sells in the marketplace: something to **wear**, a **pet**, **a way of standing**, a **move** or an **ability**, priced in stars. Each card shows the picture, the price and the kind; click it or **✏️ Edit** to open it in a panel, with what is for sale on the left and the settings for its kind (where it is worn and how big, the movement, the move or the ability key) on the right. Take an item off sale with **On sale** instead of deleting it, so players who bought it keep it. An ability sets the variable `QBLAbility_<key>` while it is equipped, which conditions can use to offer extras. See [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace).
+What only this scenario sells in the marketplace: something to **wear**, a **pet**, **a way of standing**, a **move** or an **ability**, priced in stars. Each card shows the picture, the price and the kind; click it or **✏️ Edit** to open it in a panel, with what is for sale on the left and the settings for its kind (where it is worn and how big, the movement, the move or the ability key) on the right. Take an item off sale with **On sale** instead of deleting it, so players who bought it keep it. An ability sets the variable `QuestLabAbility_<key>` while it is equipped, which conditions can use to offer extras. See [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace).

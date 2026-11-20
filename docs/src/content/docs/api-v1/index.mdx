@@ -1,17 +1,17 @@
 ---
 title: "The public API (v1)"
-description: "Roster classes, assign missions, sign people in and pull grades and learning reports from your own systems, without ever sending QBL a student's name."
+description: "Roster classes, assign missions, sign people in and pull grades and learning reports from your own systems, without ever sending QuestLab a student's name."
 ---
 
 import { Steps, Tabs, TabItem, Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Everything a teacher can do in QBL by hand, your school's systems can do by themselves: roster the classes, hand out missions, put an **Open in QBL** button in the LMS, and read back who finished what and what they understood.
+Everything a teacher can do in QuestLab by hand, your school's systems can do by themselves: roster the classes, hand out missions, put an **Open in QuestLab** button in the LMS, and read back who finished what and what they understood.
 
 The API lives at **`/api/v1`**. It is the one that is supported for schools, districts and other organizations, and it follows a [versioning promise](/docs/api-v1/conventions/#versioning): nothing in v1 will be taken away from under you.
 
 <CardGrid>
   <Card title="Roster without personal data" icon="seti:lock">
-    People are known by **your own opaque id**. Students play under a made-up pseudonym such as *Brave Otter 417*. QBL refuses names, emails and birth dates outright. See [Privacy](/docs/api-v1/privacy/).
+    People are known by **your own opaque id**. Students play under a made-up pseudonym such as *Brave Otter 417*. QuestLab refuses names, emails and birth dates outright. See [Privacy](/docs/api-v1/privacy/).
   </Card>
   <Card title="Assign and group" icon="pencil">
     Give a mission to a teacher's students with a due date and a note, and split them into [teams](/docs/api-v1/assignments/#teams) that each play their own copy of the game.
@@ -28,9 +28,9 @@ The API lives at **`/api/v1`**. It is the one that is supported for schools, dis
 
 | You want to… | You use | Page |
 | --- | --- | --- |
-| Keep QBL's classes in step with your student information system | `POST /students/batch`, `POST /enrollments` | [People and classes](/docs/api-v1/people/) |
+| Keep QuestLab's classes in step with your student information system | `POST /students/batch`, `POST /enrollments` | [People and classes](/docs/api-v1/people/) |
 | Assign a mission from your LMS and put the grade back in the gradebook | `POST /assignments`, `GET /assignments/{id}/grades` | [Assignments](/docs/api-v1/assignments/), [Recipes](/docs/api-v1/recipes/#put-qbl-grades-in-your-gradebook) |
-| Add an **Open in QBL** button to your portal | `POST /students/{id}/launch` | [Launch links](/docs/api-v1/launch-links/) |
+| Add an **Open in QuestLab** button to your portal | `POST /students/{id}/launch` | [Launch links](/docs/api-v1/launch-links/) |
 | Give students your school's own avatars | `POST /avatars` | [Avatars](/docs/api-v1/avatars/) |
 | Show a district dashboard of participation and standards coverage | `GET /reports/engagement`, `GET /reports/standards` | [Reports](/docs/api-v1/reports/) |
 | Load every student action into your warehouse | `GET /activity` | [Activity, exports and the audit log](/docs/api-v1/activity-and-privacy-requests/) |
@@ -38,7 +38,7 @@ The API lives at **`/api/v1`**. It is the one that is supported for schools, dis
 
 ## Your first ten minutes
 
-You need an API client (an id and a secret): [Authentication](/docs/api-v1/authentication/) shows where your district admin makes one. In the examples, `$QBL` is your server's address, for example `https://qbl.example`, and `jq` is just for picking the token out of the answer.
+You need an API client (an id and a secret): [Authentication](/docs/api-v1/authentication/) shows where your district admin makes one. In the examples, `$QuestLab` is your server's address, for example `https://qbl.example`, and `jq` is just for picking the token out of the answer.
 
 <Steps>
 
@@ -47,31 +47,31 @@ You need an API client (an id and a secret): [Authentication](/docs/api-v1/authe
    ```sh
    TOKEN=$(curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
      -d grant_type=client_credentials \
-     "$QBL/api/v1/oauth/token" | jq -r .access_token)
+     "$QuestLab/api/v1/oauth/token" | jq -r .access_token)
    ```
 
 2. **Check who you are.** The first call to make when something seems wrong.
 
    ```sh
-   curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/"
+   curl -s -H "Authorization: Bearer $TOKEN" "$QuestLab/api/v1/"
    ```
 
    ```json
-   { "data": { "api": "QBL", "version": "v1", "organization_id": 1,
+   { "data": { "api": "QuestLab", "version": "v1", "organization_id": 1,
      "scopes": ["roster:read", "roster:write", "assignments:read", "assignments:write",
                 "reports:read", "launch", "avatars:read", "avatars:write", "privacy",
                 "audit:read", "messages:read"],
      "documentation": "https://qbl.example/docs/developers/api-v1/" } }
    ```
 
-3. **Make a school and a teacher.** Your own ids go in `external_id`. QBL never needs the teacher's real name: `display_name` is whatever they want shown.
+3. **Make a school and a teacher.** Your own ids go in `external_id`. QuestLab never needs the teacher's real name: `display_name` is whatever they want shown.
 
    ```sh
    curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"name": "Riverside Middle", "external_id": "RMS"}' "$QBL/api/v1/schools"
+     -d '{"name": "Riverside Middle", "external_id": "RMS"}' "$QuestLab/api/v1/schools"
 
    curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"external_id": "t-5512", "display_name": "Ms. R", "school_id": 2}' "$QBL/api/v1/teachers"
+     -d '{"external_id": "t-5512", "display_name": "Ms. R", "school_id": 2}' "$QuestLab/api/v1/teachers"
    ```
 
    ```json
@@ -87,14 +87,14 @@ You need an API client (an id and a secret): [Authentication](/docs/api-v1/authe
      -d '{"students": [
            {"external_id": "a91f0c7e", "school_id": 2, "grade_level": "7"},
            {"external_id": "c0ffee12", "school_id": 2, "grade_level": "7"}]}' \
-     "$QBL/api/v1/students/batch"
+     "$QuestLab/api/v1/students/batch"
 
    curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
      -d '{"teacher_external_id": "t-5512", "student_external_ids": ["a91f0c7e", "c0ffee12"]}' \
-     "$QBL/api/v1/enrollments"
+     "$QuestLab/api/v1/enrollments"
    ```
 
-   Each student now has a pseudonym QBL made up. Read it back with `GET /students/ext:a91f0c7e`: it is the *only* name QBL knows them by.
+   Each student now has a pseudonym QuestLab made up. Read it back with `GET /students/ext:a91f0c7e`: it is the *only* name QuestLab knows them by.
 
 5. **Assign a mission.** Find its id in the catalogue (`GET /scenarios`), then:
 
@@ -105,20 +105,20 @@ You need an API client (an id and a secret): [Authentication](/docs/api-v1/authe
      "note": "Work with your team and take notes in your lab book.",
      "student_external_ids": ["a91f0c7e", "c0ffee12"],
      "teams": [{"name": "Comets", "student_external_ids": ["a91f0c7e", "c0ffee12"]}]
-   }' "$QBL/api/v1/assignments"
+   }' "$QuestLab/api/v1/assignments"
    ```
 
 6. **Send a student in.** Ask for a one-time link and redirect their browser to the `url` in the answer. It opens the assignment, in their own team's game.
 
    ```sh
    curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"assignment_id": 2}' "$QBL/api/v1/students/ext:a91f0c7e/launch"
+     -d '{"assignment_id": 2}' "$QuestLab/api/v1/students/ext:a91f0c7e/launch"
    ```
 
 7. **Read how it went.**
 
    ```sh
-   curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/assignments/2/grades"
+   curl -s -H "Authorization: Bearer $TOKEN" "$QuestLab/api/v1/assignments/2/grades"
    ```
 
 </Steps>
