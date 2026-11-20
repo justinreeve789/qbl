@@ -10,6 +10,7 @@ import { form, withValue, type FormContext } from '../fields';
 import { openPanel } from '../panel';
 import { CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
+import { gettingAround } from './routine';
 
 type Animations = Record<string, CharacterAnimation>;
 
@@ -60,6 +61,8 @@ function characterCard(ctx: FormContext, row: Row): HTMLElement {
   const close = resolvePortrait(character);
   const others = Object.keys(animations).filter((n) => !isPose(n));
   const conditions = store.where('conditions', 'character_id', id).length;
+  const settings = params(row, 'settings');
+  const steps = ((settings.routine as { steps?: unknown[] } | undefined)?.steps ?? []).length;
   const open = () => openCharacter(ctx, id);
 
   return h(
@@ -75,7 +78,8 @@ function characterCard(ctx: FormContext, row: Row): HTMLElement {
         title: animations[pose] ? `${POSE_LABELS[pose]}: drawn` : `${POSE_LABELS[pose]}: not drawn, another pose stands in`,
       }, animations[pose] ? '✓ ' : '', SHORT[pose])),
       others.length ? h('span', { class: 'chip pose set', 'data-tone': 'move', title: others.join(', ') }, `✨ ${others.length} more`) : null,
-      conditions ? h('span', { class: 'chip cond', title: 'Only in the scene while its conditions hold' }, `🔒 ${conditions} condition${conditions === 1 ? '' : 's'}`) : null),
+      conditions ? h('span', { class: 'chip cond', title: 'Only in the scene while its conditions hold' }, `🔒 ${conditions} condition${conditions === 1 ? '' : 's'}`) : null,
+      settings.roams === true || steps ? h('span', { class: 'chip roams', title: 'Walks around on its own, the same for everyone' }, steps ? `🗺️ Routine of ${steps}` : '🗺️ Walks around') : null),
     h('div', { class: 'row-actions' },
       h('button', { type: 'button', class: 'primary', 'data-open': 'character', onclick: open }, '✏️ Edit character'),
       h('span', { class: 'spacer' }),
@@ -124,6 +128,7 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
     form(CHARACTER_FIELDS, row, (key, value) => void store.patch('characters', id, { [key]: value }), ctx),
     form(CHARACTER_SETTINGS_FIELDS, params(row, 'settings'), (key, value, field) => void store.patch('characters', id, { settings: withValue(params(store.byId('characters', id)!, 'settings'), key, value, field) }, field.structural === true), ctx),
     rowConditions(ctx, 'character_id', id, 'Present only when', 'Always present.'),
+    gettingAround(ctx, row),
     h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the character “${row.name}”`) && void store.remove('characters', id) }, 'Delete character')));
 
   const others = Object.keys(animations).filter((n) => !isPose(n));

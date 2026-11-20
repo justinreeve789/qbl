@@ -67,6 +67,24 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 
 Place characters in scenes, where a click can run an indirect event. Players' avatars are characters too, but they are the platform's, the same in every scenario: a scenario does not define them.
 
+### Getting around
+
+Tick **Walks around on its own** to make the character part of the world rather than of each scene. There is then one of it for everyone playing together: all players see it in the same place, a [Walk](/docs/editor/events-and-actions/#walking) action can send it to another scene, and it stays where it went, between visits too. It starts where it is first placed (taking the scenes in order); placing it in other scenes only says what clicking it does there. **Walking speed** is how fast it goes when a walk does not say.
+
+A character that walks around on its own can have a **Routine**: steps it repeats by itself, for everyone, whether or not anyone is watching. **+ Add step** offers:
+
+* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does.
+* ⏳ **Wait**.
+* 💬 **Say something**: a speech bubble over the character.
+* 🤸 **Play an animation**.
+* 🔢 **Change a shared variable**.
+
+Each step can have conditions, and can let the next step start at once (untick **Wait for this to finish**, to talk while walking). Use the arrows to change the order. **Start again after the last step** makes it loop (it does unless you untick it).
+
+**Keeps to its routine only when** stops the character where it is while its conditions do not hold; it carries on where it left off when they hold again. Only **shared variables** (marked *shared by everyone*) count here and in the steps, because a routine belongs to no one player. To stop a character for a conversation, set a shared variable in the event that starts it, test it here, and set it back at the end.
+
+A player's Walk action comes first: the routine waits for the character to get there, then carries on.
+
 ## Objectives
 
 The checklist players see while they play. Each objective has its text (which may show a variable: `Collect samples ({{samples}}/3)`), a **Bonus** tick for optional ones, and two lists of conditions:

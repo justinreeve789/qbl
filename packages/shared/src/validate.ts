@@ -1,8 +1,11 @@
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
 import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
-import type { Action, Character, Condition, GameEvent, Id, Media, Scenario, Scene } from './types.js';
+import { ROUTINE_STEP_TYPES } from './types.js';
+import type { Action, Character, Condition, GameEvent, Id, Media, Npc, RoutineStep, Scenario, Scene, WalkAction } from './types.js';
 import { CHARACTER_POSES, isPose, normalizeNpc } from './characters.js';
+import { characterRoams, doorsOf, normalizeRoutine, routeBetween, startPlacement } from './walking.js';
+import { ScenarioIndex } from './scenario.js';
 import { placeholderVariables } from './text.js';
 import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
 
@@ -132,6 +135,7 @@ export function validateScenario(doc: unknown): ValidationResult {
     needMedia(c.media_id, `characters[${i}].media_id`, 'image');
     needMedia(c.portrait_media_id, `characters[${i}].portrait_media_id`, 'image');
     checkAnimations(c, `characters[${i}]`);
+    if (c.walk_speed != null && !(typeof c.walk_speed === 'number' && c.walk_speed > 0)) err(`characters[${i}].walk_speed`, 'walk_speed is a number of pixels per second greater than 0');
   });
   (s.avatar_media_ids ?? []).forEach((id, i) => needMedia(id, `avatar_media_ids[${i}]`, 'image'));
   if (s.avatars != null) {
@@ -248,6 +252,48 @@ export function validateScenario(doc: unknown): ValidationResult {
   unique(eventIds, 'event');
   unique(actionIds, 'action');
 
+  // Characters that roam can be in any scene; the others only where they are placed.
+  const npcs = new Map<Id, Npc>((s.characters ?? []).map((c) => [c.id, c]));
+  const canBeHere = (id: Id | undefined, scene: Scene) =>
+    id != null && (characterRoams(npcs.get(id)) || (scene.characters ?? []).some((c) => c.character_id === id));
+  let index: ScenarioIndex | null = null;
+  const scenarioIndex = () => (index ??= new ScenarioIndex(s));
+
+  /**
+   * Where a walk goes. `from` is the scene the walker is in, when that is known (a roaming
+   * character may be anywhere); `oneDoor` when it can only go through a door of that scene.
+   */
+  const checkWalk = (a: Pick<WalkAction, 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing'>, path: string, from: Scene | null, oneDoor: boolean) => {
+    const to = a.to ?? 'point';
+    if (a.speed != null && !(typeof a.speed === 'number' && a.speed > 0)) err(`${path}.speed`, 'speed is a number of pixels per second greater than 0');
+    if (a.facing != null && a.facing !== 'left' && a.facing !== 'right') err(`${path}.facing`, 'facing is "left" or "right"');
+    if (to === 'point') {
+      if (typeof a.position_x !== 'number' || typeof a.position_y !== 'number') err(path, 'position_x and position_y are required');
+      else if (from?.width && from.height && !isWalkable(walkContext(from, { width: from.width, height: from.height }), a.position_x, a.position_y)) {
+        warn(path, 'That spot is outside the walkable area: the walker stops at the nearest spot it can reach');
+      }
+    } else if (to === 'spawn') {
+      if (!a.spawn_point) err(`${path}.spawn_point`, 'spawn_point is required');
+      else if (from && !(from.spawn_points ?? []).some((p) => p.name === a.spawn_point)) err(`${path}.spawn_point`, `This scene has no spawn point "${a.spawn_point}"`);
+    } else if (to === 'scene') {
+      const target = s.scenes.find((x) => x.id === a.scene_id);
+      if (!target) {
+        err(`${path}.scene_id`, `Scene ${String(a.scene_id)} does not exist`);
+        return;
+      }
+      if (a.spawn_point && !(target.spawn_points ?? []).some((p) => p.name === a.spawn_point)) err(`${path}.spawn_point`, `Scene ${target.id} has no spawn point "${a.spawn_point}"`);
+      if (from && from.id !== target.id) {
+        if (oneDoor) {
+          if (!doorsOf(from).some((d) => d.to === target.id)) warn(`${path}.scene_id`, 'No hotspot in this scene jumps to that scene, so there is no door to walk through');
+        } else if (!routeBetween(scenarioIndex(), from.id, target.id)) {
+          warn(`${path}.scene_id`, 'No hotspots lead from this scene to that one, so there is no way to walk there');
+        }
+      }
+    } else {
+      err(`${path}.to`, 'to is "point", "spawn" or "scene"');
+    }
+  };
+
   const checkAction = (raw: Action, path: string, scene: Scene, inCta = false) => {
     const type = normalizeActionType(raw.type);
     if (!type) {
@@ -308,7 +354,7 @@ export function validateScenario(doc: unknown): ValidationResult {
         // A bubble needs someone to hang over; a portrait box can carry a voice from anywhere (a call from the ship).
         if (a.speaker === 'character' && a.style === 'portrait') {
           if (!characters.has(a.character_id as Id)) err(`${path}.character_id`, 'The speaking character does not exist');
-        } else if (a.speaker === 'character' && !(scene.characters ?? []).some((c) => c.character_id === a.character_id)) {
+        } else if (a.speaker === 'character' && !canBeHere(a.character_id, scene)) {
           err(`${path}.character_id`, 'The speaking character is not placed in this scene');
         }
         break;
@@ -331,7 +377,7 @@ export function validateScenario(doc: unknown): ValidationResult {
           if (!item) err(`${path}.item_id`, 'The item to animate does not exist');
           picture = item?.media_id != null ? media.get(item.media_id) : undefined;
         } else if (target === 'character') {
-          if (!(scene.characters ?? []).some((c) => c.character_id === a.character_id)) err(`${path}.character_id`, 'The character to animate is not placed in this scene');
+          if (!canBeHere(a.character_id, scene)) err(`${path}.character_id`, 'The character to animate is not placed in this scene');
           const found = (s.characters ?? []).find((c) => c.id === a.character_id);
           const character = found && normalizeNpc(found, (id) => media.get(id));
           // A character's own animations, besides the poses, are what it can be asked to play.
@@ -352,6 +398,26 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'wait':
         if (typeof a.duration !== 'number') err(`${path}.duration`, 'duration is required');
         break;
+      case 'walk': {
+        const target = a.target ?? 'character';
+        if (target !== 'character' && target !== 'player') {
+          err(`${path}.target`, 'target is "character" or "player"');
+          break;
+        }
+        const npc = target === 'character' ? npcs.get(a.character_id as Id) : undefined;
+        if (target === 'character') {
+          if (!npc) {
+            err(`${path}.character_id`, 'The character to walk does not exist');
+            break;
+          }
+          if (!canBeHere(npc.id, scene)) err(`${path}.character_id`, 'The character to walk is not placed in this scene. A character that walks between scenes must be set to walk around on its own');
+        }
+        // A roaming character may be anywhere when this runs, and can cross several rooms. Anyone
+        // else walks in this scene, and can only go out through one of its doors.
+        const roams = target === 'character' && characterRoams(npc);
+        checkWalk(a, path, roams ? null : scene, !roams);
+        break;
+      }
       case 'text_overlay':
         if (typeof a.text !== 'string') err(`${path}.text`, 'text is required');
         else if (a.text.length > 256) warn(`${path}.text`, 'text is longer than 256 characters');
@@ -473,6 +539,54 @@ export function validateScenario(doc: unknown): ValidationResult {
       }
       e.actions.forEach((a, ai) => checkAction(a, `${path}.actions[${ai}]`, scene));
     });
+  });
+
+  // Routines: what roaming characters do on their own, run by the game server for everyone.
+  const roomVariables = new Set((s.global_variables ?? []).filter((v) => v.scope === 'room').map((v) => v.variable_name));
+  const sharedOnly = (conds: Condition[] | undefined, path: string) => {
+    checkConditions(conds, path);
+    (conds ?? []).forEach((c, ci) => {
+      if (c.variable && variables.has(c.variable) && !roomVariables.has(c.variable)) {
+        warn(`${path}.conditions[${ci}]`, `"${c.variable}" is each player's own; a character walking for everyone only follows shared (room) variables, so this condition is left out`);
+      }
+    });
+  };
+  (s.characters ?? []).forEach((c, i) => {
+    const path = `characters[${i}]`;
+    if (c.routine != null) {
+      const steps = (c.routine as { steps?: unknown }).steps;
+      if (typeof c.routine !== 'object' || !Array.isArray(steps)) return err(`${path}.routine`, 'A routine has a list of steps');
+      sharedOnly(c.routine.conditions, `${path}.routine`);
+      (steps as RoutineStep[]).forEach((step, si) => {
+        const sp = `${path}.routine.steps[${si}]`;
+        if (!step || !(ROUTINE_STEP_TYPES as string[]).includes(step.type)) return err(`${sp}.type`, `A routine step is one of: ${ROUTINE_STEP_TYPES.join(', ')}`);
+        sharedOnly(step.conditions, sp);
+        switch (step.type) {
+          case 'walk':
+            checkWalk(step, sp, null, false);
+            break;
+          case 'wait':
+            if (!(typeof step.duration === 'number' && step.duration >= 0)) err(`${sp}.duration`, 'duration is a number of milliseconds');
+            break;
+          case 'dialogue':
+            if (typeof step.text !== 'string' || step.text === '') err(`${sp}.text`, 'text is required');
+            else checkText(step.text, `${sp}.text`);
+            break;
+          case 'animate':
+            if (typeof step.animation !== 'string' || (step.animation !== '' && !ANIMATION_NAME.test(step.animation))) err(`${sp}.animation`, 'animation is a name in lowercase letters, digits and underscores, or empty to stop');
+            break;
+          case 'variable':
+            if (!VARIABLE_OPS.includes(step.operator)) err(`${sp}.operator`, `Unknown operator "${step.operator}"`);
+            if (!variables.has(step.name)) err(`${sp}.name`, `Variable "${step.name}" is not declared in global_variables`);
+            else if (!roomVariables.has(step.name)) err(`${sp}.name`, `"${step.name}" is each player's own: a routine can only change shared (room) variables`);
+            break;
+          default:
+        }
+      });
+    }
+    if (characterRoams({ roams: c.roams, routine: normalizeRoutine(c.routine) }) && !startPlacement(s, c.id)) {
+      warn(path, 'The character walks around on its own but is not placed in any scene, so it has nowhere to start');
+    }
   });
 
   return done();

@@ -3,12 +3,12 @@ import {
   C2S, CloseCodes, isStaff, normalizeScenario, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
   type ActivityEntry, type ChatBroadcast, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
   type MessageEntry, type MoveMessage, type NoticeMessage, type ProgressMessage, type Scenario, type SceneMessage, type ShowBroadcast, type ShowMessage,
-  type SnapMessage, type TrackMessage, type VariableMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
+  type SnapMessage, type TrackMessage, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
 } from '@qbl/shared';
 import type { Backend, User } from '../backend/Backend.js';
 import { config } from '../config.js';
 import { ChatFilter } from './chat.js';
-import { ItemState, Player, RoomState } from './state.js';
+import { ItemState, NpcState, Player, RoomState } from './state.js';
 
 /** Set once at boot by index.ts. */
 export const services: { backend: Backend; chat: ChatFilter } = {
@@ -21,6 +21,8 @@ const CHAT_INTERVAL_MS = 800;
 const LOG_INTERVAL_MS = 5000;
 /** Things a player can do in a second that are worth a line in the activity log. */
 const TRACK_PER_SECOND = 5;
+/** How often characters that roam take a step: as often as the room state is sent. */
+const TICK_MS = 50;
 
 /** Who joined, and into which instance. Worked out in onAuth, handed to onJoin. */
 interface Seat extends User {
@@ -124,6 +126,11 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       this.world(client)?.animate(client.sessionId, msg);
     });
 
+    // A walk action of the player's event, for a character that roams: the world walks it, for everyone.
+    this.onMessage(C2S.Walk, (client: Client, msg: WalkMessage) => {
+      this.world(client)?.walk(client.sessionId, msg);
+    });
+
     this.onMessage(C2S.Avatar, (client: Client, msg: AvatarMessage) => {
       this.world(client)?.setAvatarVisible(client.sessionId, msg);
     });
@@ -175,6 +182,10 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       });
     });
 
+    // Characters that roam keep walking whether or not anyone is in their scene.
+    this.clock.setInterval(() => {
+      for (const world of this.ready.values()) world.tick();
+    }, TICK_MS);
     this.clock.setInterval(() => void this.saveAll(), config.saveIntervalSeconds * 1000);
     this.clock.setInterval(() => void this.flushLogs(), LOG_INTERVAL_MS);
   }
@@ -272,9 +283,12 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
           this.scenario,
           {
             // Everyone in the room is in one list; variables and items are the team's own.
-            state: { players: this.state.players, items: scopedMap(this.state.items, team), vars: scopedMap(this.state.vars, team) },
+            state: {
+              players: this.state.players, items: scopedMap(this.state.items, team), vars: scopedMap(this.state.vars, team), npcs: scopedMap(this.state.npcs, team),
+            },
             newPlayer: () => new Player(),
             newItem: () => new ItemState(),
+            newNpc: () => new NpcState(),
             now: () => Date.now(),
           },
           data,

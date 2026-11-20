@@ -30,7 +30,10 @@ export interface Field {
   options?: ReadonlyArray<readonly [value: string, label: string]>;
   /** media: which type of file may be picked. */
   mediaType?: 'image' | 'audio' | 'video';
-  /** spawn: the sibling field that holds the scene whose spawn points are listed. */
+  /**
+   * spawn: the sibling field that holds the scene whose spawn points are listed. `here`: the scene
+   * being edited, or, where there is none (a character's routine), every scene's.
+   */
   sceneKey?: string;
   /** event: only list events of these kinds. */
   eventKinds?: string[];
@@ -48,6 +51,8 @@ export interface Field {
   structural?: boolean;
   /** Take the full width of the form rather than half. Fields with a slider do unless this is false. */
   wide?: boolean;
+  /** Shown only when this says so, given the form's values: a field that only means something for some choices. */
+  when?: (values: Values) => boolean;
 }
 
 export interface Slider {
@@ -70,7 +75,7 @@ export interface FormContext {
 const NEW = '__new__';
 
 export function form(fields: readonly Field[], values: Values, commit: Commit, ctx: FormContext): HTMLElement {
-  return h('div', { class: 'form' }, ...fields.map((f) => control(f, values, commit, ctx)));
+  return h('div', { class: 'form' }, ...fields.filter((f) => !f.when || f.when(values)).map((f) => control(f, values, commit, ctx)));
 }
 
 function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HTMLElement {
@@ -148,9 +153,13 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     case 'character':
       return wrap(idSelect(ctx.store.rows('characters').map((r) => [r.id, String(r.name)]), value, set, 'Choose a character'));
     case 'spawn': {
-      const scene = ctx.store.byId('scenes', values[f.sceneKey ?? 'scene_id'] as number | null);
-      const points = ((params(scene ?? ({} as Row), 'layout').spawn_points as Array<{ name: string }> | undefined) ?? []).map((p) => [p.name, p.name] as const);
-      return wrap(select(points, value == null ? '' : String(value), (v) => set(v === '' ? null : v), 'The default spawn point'));
+      const pointsOf = (scene: Row | undefined) => ((params(scene ?? ({} as Row), 'layout').spawn_points as Array<{ name: string }> | undefined) ?? []).map((p) => p.name);
+      const names = f.sceneKey === 'here'
+        ? (ctx.sceneId != null ? pointsOf(ctx.store.byId('scenes', ctx.sceneId)) : [...new Set(ctx.store.rows('scenes').flatMap(pointsOf))])
+        : pointsOf(ctx.store.byId('scenes', values[f.sceneKey ?? 'scene_id'] as number | null));
+      const current = value == null ? '' : String(value);
+      const points = names.map((n) => [n, n] as const).concat(current && !names.includes(current) ? [[current, `${current} (not in this scene)`]] : []);
+      return wrap(select(points, current, (v) => set(v === '' ? null : v), f.placeholder ?? 'The default spawn point'));
     }
     case 'event': {
       const events = ctx.store.rows('events').filter((e) => !f.eventKinds || f.eventKinds.includes(e.kind as string));

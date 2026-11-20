@@ -2,10 +2,11 @@ import type {
   AvatarCharacter, Npc, Action, ActionType, GameEvent, GlossaryEntry, Hotspot, Id, Item, Label, Media, Placement, Scenario, Scene, SceneLayer, SpawnPoint,
 } from './types.js';
 import { characterMediaIds, normalizeNpc, scenarioAvatars } from './characters.js';
+import { characterRoams, normalizeRoutine } from './walking.js';
 
 const ACTION_TYPES: ActionType[] = [
   'animate', 'award', 'glossary', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
-  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait',
+  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk',
 ];
 
 /** "Image Fixed", "imageFixed" and "image_fixed" all become "image_fixed". */
@@ -98,7 +99,12 @@ export function normalizeScenario(input: Scenario): Scenario {
     // whoever finds it there can use it. That is what `unique` means, so every vehicle is unique.
     items: (input.items ?? []).map((item) => (item.vehicle && !item.unique ? { ...item, unique: true } : item)),
     // Characters written before they had animations get them from their picture and close-up.
-    characters: (input.characters ?? []).map((c) => normalizeNpc(c, (id) => assets.get(id))),
+    // A character with a routine roams: the routine walks it around the world.
+    characters: (input.characters ?? []).map((c) => {
+      const npc = normalizeNpc(c, (id) => assets.get(id));
+      const routine = normalizeRoutine(npc.routine);
+      return { ...npc, routine, roams: characterRoams({ roams: npc.roams, routine }) };
+    }),
     avatars: scenarioAvatars(input, (id) => assets.get(id)),
     assets: [...assets.values()].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100)),
     scenes,
@@ -162,6 +168,11 @@ function walkActions(scene: Scene, visit: (a: Action) => void): void {
   for (const e of eventsOf(scene)) for (const a of e.actions) walk(a);
 }
 
+/** Visit every action of a scene's events, including those on infobox buttons. */
+export function forEachAction(scene: Scene, visit: (a: Action) => void): void {
+  walkActions(scene, visit);
+}
+
 /** Scene ids reachable from each scene through jump actions (including those on infobox buttons). */
 export function computeJumpTargets(scenario: Scenario): Record<string, Id[]> {
   const out: Record<string, Id[]> = {};
@@ -217,6 +228,8 @@ export function collectGlobalMediaIds(scenario: Scenario): Id[] {
   for (const item of scenario.items ?? []) {
     if ((item.vehicle || item.wearable) && item.media_id != null) ids.add(item.media_id);
   }
+  // A character that roams can walk into any scene.
+  for (const c of scenario.characters ?? []) if (characterRoams(c)) for (const id of characterMediaIds(c)) ids.add(id);
   return [...ids];
 }
 
