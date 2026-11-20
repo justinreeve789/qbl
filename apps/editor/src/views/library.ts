@@ -140,7 +140,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
  * One media file in a pop-up: a large preview and its details on one side, and for a picture
  * the sprite sheet tool on the other, with room for the sheet's grid and its animations.
  */
-function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
+export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
   const { store } = ctx;
   const category = (media: Row) => mediaCategory(ctx, media);
   openPanel({
@@ -275,7 +275,7 @@ export function objectivesPage(ctx: FormContext): HTMLElement {
   const cards = read().map((objective, index) =>
     h(
       'div',
-      { class: 'card' },
+      { class: 'card', 'data-objective': index },
       form(OBJECTIVE_FIELDS, objective as unknown as Record<string, unknown>, (key, value, field) => replace(index, withValue({ ...at(index) }, key, value, field) as unknown as Objective), ctx),
       inlineConditions(ctx, () => at(index).show_when, (list, structural) => replace(index, withValue({ ...at(index) }, 'show_when', list.length ? list : null) as unknown as Objective, structural), 'Listed only when', 'Always listed.'),
       inlineConditions(ctx, () => at(index).complete_when, (list, structural) => replace(index, { ...at(index), complete_when: list }, structural), 'Ticked off when', 'Add a condition, or it is never ticked off.'),

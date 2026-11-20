@@ -1,4 +1,5 @@
 import { validateScenario } from '@qbl/shared';
+import { issueItem } from './issues';
 import { playUrl, previewUrl } from '../config';
 import { mediaUrl, params, sceneLabel } from '../describe';
 import { clear, confirmDelete, h, toast, help } from '../dom';
@@ -181,21 +182,30 @@ export function publishPage(ctx: FormContext): HTMLElement {
     clear(results, h('p', { class: 'muted' }, 'Checking…'));
     await store.settled();
     let report;
+    let doc: unknown;
     try {
-      report = validateScenario(await store.api.preview(store.scenarioId));
+      doc = await store.api.preview(store.scenarioId);
+      report = validateScenario(doc);
     } catch (err) {
       return clear(results, h('p', { class: 'issue error' }, err instanceof Error ? err.message : 'Could not load the scenario.'));
     }
-    const issue = (level: string) => (i: { path: string; message: string }) => h('li', { class: `issue ${level}` }, h('code', null, i.path || 'scenario'), ' ', i.message);
+    const { errors, warnings } = report;
+    const count = (n: number, what: string) => `${n} ${what}${n === 1 ? '' : 's'}`;
     clear(
       results,
       report.ok
-        ? h('p', { class: 'issue ok' }, report.warnings.length ? 'No errors. The warnings below are worth a look.' : 'No problems found.')
-        : h('p', { class: 'issue error' }, `${report.errors.length} error${report.errors.length === 1 ? '' : 's'} to fix before this can be published.`),
-      h('ul', null, ...report.errors.map(issue('error')), ...report.warnings.map(issue('warning'))),
+        ? h('p', { class: 'issue ok' }, warnings.length ? `No errors. ${warnings.length === 1 ? 'The warning below is' : `The ${count(warnings.length, 'warning')} below are`} worth a look.` : 'No problems found.')
+        : h('p', { class: 'issue error' }, `${count(errors.length, 'error')} to fix before this can be published.`, warnings.length ? h('span', { class: 'muted' }, ` Also ${count(warnings.length, 'warning')}.`) : null),
+      errors.length || warnings.length
+        ? h('ul', { class: 'issues' }, ...errors.map((i) => issueItem(ctx, doc, i)), ...warnings.map((i) => issueItem(ctx, doc, i)))
+        : null,
+      errors.length || warnings.length ? h('p', { class: 'muted small' }, '“Go there” opens the place to fix. Come back with the Publish tab: it checks again each time it opens.') : null,
     );
     if (thenPublish && report.ok && (await store.publish())) toast('Published. Players now get this version.');
   }
+
+  // Checked on opening, so coming back after a fix shows what is left.
+  queueMicrotask(() => void run(false));
 
   const status = !scenario.published_at
     ? 'Not published yet. Players cannot open it.'

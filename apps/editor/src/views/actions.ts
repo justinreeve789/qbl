@@ -4,7 +4,7 @@ import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
 import { confirmDelete, h, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext, type Values } from '../fields';
-import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults } from '../schema';
+import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, tidyWalk } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 
 /** Which action cards are open. Kept outside the view so a redraw does not close them. */
@@ -24,6 +24,11 @@ function choice(type: string, values: Record<string, unknown>): Record<string, s
 }
 
 const typeOptions = ACTION_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${ACTIONS[t].label}`] as const);
+
+/** Have this action's card open the next time its event is drawn. */
+export function revealAction(id: number) {
+  open.add(id);
+}
 
 export function sortedActions(ctx: FormContext, eventId: number): Row[] {
   return ctx.store.where('actions', 'event_id', eventId).sort((a, b) => Number(a.sequence) - Number(b.sequence) || a.id - b.id);
@@ -73,7 +78,11 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     const commit = (key: string, value: unknown, field: Field) => {
       if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
       if (COLUMNS.has(key)) void store.patch('actions', id, { [key]: value }, key === 'media_id');
-      else void store.patch('actions', id, { params: withValue(params(current()), key, value, field) }, field.structural === true);
+      else {
+        let next = withValue(params(current()), key, value, field);
+        if (type === 'walk' && key === 'to') next = tidyWalk(next);
+        void store.patch('actions', id, { params: next }, field.structural === true);
+      }
     };
 
     const body = h(
@@ -186,7 +195,9 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
     const label = h('input', { type: 'text', value: cta.text ?? '', placeholder: 'Button text', 'aria-label': 'Button text', onchange: () => replace(index, { ...at(index), text: label.value }) });
     const commit = (key: string, value: unknown, field: Field) => {
       if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
-      replace(index, { ...at(index), action: { ...withValue(at(index).action ?? {}, key, value, field), type } }, key === 'media_id' || field.structural === true);
+      let action = withValue(at(index).action ?? {}, key, value, field);
+      if (type === 'walk' && key === 'to') action = tidyWalk(action);
+      replace(index, { ...at(index), action: { ...action, type } }, key === 'media_id' || field.structural === true);
     };
 
     return h(

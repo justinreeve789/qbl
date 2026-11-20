@@ -91,8 +91,26 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       return `Play video ${media()}`;
     case 'wait':
       return `Wait ${values.duration ?? 0} ms`;
+    case 'walk': {
+      const who = values.target === 'player' ? 'The player' : String(store.byId('characters', values.character_id as number | null)?.name ?? 'A character');
+      return `${who} walks ${walkDestination(store, values)}`;
+    }
     default:
       return type;
+  }
+}
+
+/** Where a walk goes, in a few words: "to 450, 300", "to spawn point door", "to the lab". */
+export function walkDestination(store: Store, values: Record<string, unknown>): string {
+  switch ((values.to as string | undefined) ?? 'point') {
+    case 'spawn':
+      return `to spawn point ${values.spawn_point ?? '?'}`;
+    case 'scene': {
+      const scene = sceneLabel(store.byId('scenes', values.scene_id as number | null));
+      return values.spawn_point ? `to ${scene}, then to ${values.spawn_point}` : `to ${scene}`;
+    }
+    default:
+      return `to ${values.position_x ?? '?'}, ${values.position_y ?? '?'}`;
   }
 }
 

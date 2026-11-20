@@ -91,6 +91,12 @@ export class PlayScene extends Phaser.Scene {
       ctx.connection.animate(action.animation);
       return mine.moveDuration(action.animation);
     };
+    this.host.walkControl = (action, actor) => {
+      if (action.target !== 'player') return this.runtime.system(PropsSystem).walkCharacter(action, actor);
+      // Another player walked by their own event: their position reaches us through the room.
+      if (actor && actor !== ctx.connection.sessionId) return null;
+      return this.runtime.system(LocalPlayerSystem).walkScripted(action);
+    };
     this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);
@@ -143,6 +149,8 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
+    // Offline, the characters that roam are moved here; online the game server moves them.
+    this.ctx.connection.tick();
     this.ctx.syncRoomVariables();
     for (const system of this.systems) system.update?.(time, delta);
   }
