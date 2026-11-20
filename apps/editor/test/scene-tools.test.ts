@@ -83,17 +83,24 @@ test('items and characters: define them, with conditions', async () => {
   await page.click('.tabs >> text=Variables');
   prompts.push('has_ticket');
   await page.click('text=New variable');
-  await page.waitForSelector('.row-card');
+  await page.waitForSelector('.var-row[data-variable]');
 
   await page.click('.tabs >> text=Items');
+  // A new item opens in its own panel; a vehicle's speed is offered once it is a vehicle.
   await page.click('text=New item');
-  await page.waitForSelector('.grid .card');
-  await type('.card [data-field=name] input', 'rowing boat');
-  await page.locator('.card [data-field=media_id] select').selectOption({ label: 'boat.png' });
-  await page.locator('.card [data-field=vehicle] input').check();
-  await type('.card [data-field=speed_multiplier] input[type=number]', '1.4');
-  await page.click('.card >> text=+ Add condition');
-  await page.waitForSelector('.card .condition');
+  const item = 'dialog[data-panel=item]';
+  await page.waitForSelector(item);
+  await type(`${item} [data-field=name] input`, 'rowing boat');
+  await page.locator(`${item} [data-field=media_id] select`).selectOption({ label: 'boat.png' });
+  assert.equal(await page.locator(`${item} [data-field=speed_multiplier]`).count(), 0, 'no speed for something that is not a vehicle');
+  await page.locator(`${item} [data-field=vehicle] input`).check();
+  await page.waitForSelector(`${item} [data-field=speed_multiplier]`);
+  await type(`${item} [data-field=speed_multiplier] input[type=number]`, '1.4');
+  await page.click(`${item} >> text=+ Add condition`);
+  await page.waitForSelector(`${item} .condition`);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
+  assert.match(await page.innerText('[data-thing^=items-]'), /rowing boat[\s\S]*Vehicle[\s\S]*1 condition/);
 
   await page.click('.tabs >> text=Characters');
   await page.click('text=New character');
@@ -284,10 +291,14 @@ test('media sub-tabs, scenario music and scene music', async () => {
 test('objectives and settings', async () => {
   await page.click('.tabs >> text=Objectives');
   await page.click('text=New objective');
-  await page.waitForSelector('.stack .card');
-  await type('.card [data-field=text] input', 'Buy a ticket');
-  await page.locator('.card .conditions').nth(1).locator('text=+ Add condition').click();
-  await page.waitForSelector('.card .condition');
+  const objective = 'dialog[data-panel=objective]';
+  await page.waitForSelector(objective);
+  await type(`${objective} [data-field=text] input`, 'Buy a ticket');
+  await page.locator(`${objective} .conditions`).nth(1).locator('text=+ Add condition').click();
+  await page.waitForSelector(`${objective} .condition`);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
+  assert.match(await page.innerText('[data-objective=objective-1]'), /Buy a ticket[\s\S]*Ticked off when\s*has_ticket = 1/);
 
   await page.click('.tabs >> text=Settings');
   await type('[data-field=title] input', 'Tools and more');

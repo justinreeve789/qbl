@@ -62,13 +62,18 @@ test('the glossary page: words, and which are there from the start', async () =>
   await page.click('.tabs a[data-tab=glossary]');
   await page.waitForSelector('.page h1:has-text("Glossary")');
   await page.click('button:has-text("New word")');
-  await page.waitForSelector('[data-word]');
-  await type('[data-word] [data-field=term] input', 'pH');
-  await type('[data-word] [data-field=definition] textarea', 'How acidic or basic water is.');
-  assert.match(await page.innerText('[data-word] .muted'), /No action gives this word yet/);
-  await page.check('[data-word] [data-field=initial] input');
-  await page.waitForFunction(() => document.querySelector('[data-word] .muted')?.textContent?.includes('from the start'));
+  const word = 'dialog[data-panel=word]';
+  await page.waitForSelector(word);
+  await type(`${word} [data-field=term] input`, 'pH');
+  await type(`${word} [data-field=definition] textarea`, 'How acidic or basic water is.');
+  assert.match(await page.innerText(`${word} .word-status`), /No action gives this word yet/);
+  await page.check(`${word} [data-field=initial] input`);
+  await page.waitForFunction(() => document.querySelector('dialog[data-panel=word] .word-status')?.textContent?.includes('from the start'));
+  assert.match(await page.innerText(`${word} .word-preview`), /pH[\s\S]*How acidic or basic water is\./, 'the preview shows the word as players read it');
   assert.deepEqual((await draft()).glossary, [{ id: 'word-1', term: 'pH', definition: 'How acidic or basic water is.', initial: true }]);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
+  assert.match(await page.innerText('[data-word] .word-status'), /from the start/);
 });
 
 test('scene groups: a group limited to teams, and a scene that says otherwise', async () => {

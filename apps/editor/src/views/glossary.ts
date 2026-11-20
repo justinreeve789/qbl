@@ -1,6 +1,10 @@
 import { sceneTeamOnly } from '@qbl/shared';
+import { mediaUrl } from '../describe';
 import { confirmDelete, h, help } from '../dom';
 import { form, withValue, type Field, type FormContext } from '../fields';
+import { emojiIcon } from '../icons';
+import { closePanel, openPanel } from '../panel';
+import { emptyState, groupTone, listPage, section, tileActions } from './kit';
 
 /** Kept in the scenario's settings, as the objectives and moves are. */
 interface Entry { id: string | number; term?: string; definition?: string; media_id?: number | null; initial?: boolean }
@@ -15,54 +19,105 @@ const ENTRY_FIELDS: Field[] = [
 
 const GROUP_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text' },
-  { key: 'team_only', label: 'Players see only their own team in these scenes', kind: 'bool', hint: 'For when a teacher puts students into teams: a group limited to teams shows each player only their teammates. A scene can say otherwise for itself (in its own settings).' },
+  { key: 'team_only', label: '🛡️ Players see only their own team', kind: 'bool', hint: 'For when a teacher puts students into teams: a group limited to teams shows each player only their teammates. A scene can say otherwise for itself (in its own settings).' },
 ];
 
 /**
  * The scenario's glossary: the words it teaches. Players see the ones they have in the game's
- * side panel. Each word is either there from the start or given by an action.
+ * side panel. Each word is either there from the start or given by an action. The page shows
+ * each word as players will read it; a word opens in a pop-up panel to change it.
  */
 export function glossaryPage(ctx: FormContext): HTMLElement {
   const { store } = ctx;
-  const read = () => (store.settings.glossary as Entry[] | undefined) ?? [];
-  const write = (list: Entry[], structural: boolean) => void store.patchSettings({ glossary: list.length ? list : null }, structural);
-  const at = (index: number): Entry => read()[index] ?? { id: '' };
-  const replace = (index: number, entry: Entry, structural = false) => write(read().map((e, i) => (i === index ? entry : e)), structural);
-
+  const list = readEntries(ctx);
   const add = () => {
-    const ids = new Set(read().map((e) => String(e.id)));
-    let n = read().length + 1;
+    const ids = new Set(list.map((e) => String(e.id)));
+    let n = list.length + 1;
     while (ids.has(`word-${n}`)) n++;
-    write([...read(), { id: `word-${n}`, term: 'New word', definition: 'What it means.' }], true);
+    const id = `word-${n}`;
+    writeEntries(ctx, [...readEntries(ctx), { id, term: 'New word', definition: 'What it means.' }], true);
+    openWord(ctx, id);
   };
-  // How many actions give each word, so an author can see a word nobody will ever get.
+  const newButton = () => h('button', { type: 'button', class: 'primary', onclick: add }, 'New word');
+  const given = givenCounts(ctx);
+
+  const cards = list.map((entry) => {
+    const url = mediaUrl(store, store.byId('media', entry.media_id ?? null));
+    const open = () => openWord(ctx, entry.id);
+    const term = entry.term || 'Unnamed word';
+    return h('div', { class: 'card tile word-card', 'data-word': String(entry.id), style: '--tone: var(--tone-word)' },
+      h('button', { type: 'button', class: 'word-face', title: `Edit ${term}`, onclick: open },
+        url ? h('img', { class: 'word-picture', src: url, alt: '' }) : h('span', { class: 'word-picture none', 'aria-hidden': 'true' }, term.slice(0, 1).toUpperCase()),
+        h('span', { class: 'word-text' }, h('strong', { class: 'word-term' }, term), h('span', { class: 'word-definition' }, entry.definition || 'No meaning written yet.'))),
+      h('div', { class: 'chips' }, wordStatus(entry, given.get(String(entry.id)) ?? 0)),
+      tileActions(open, 'Edit', () => confirmDelete(`the word “${entry.term ?? ''}”`) && writeEntries(ctx, readEntries(ctx).filter((e) => e.id !== entry.id), true)));
+  });
+
+  return listPage(
+    { title: 'Glossary', count: list.length, actions: [newButton()], about: 'The words this mission teaches, with what they mean. Players collect them as they play and can look them up at any time in the game’s side panel. Which words each student has collected is part of the teacher’s report. Click a word to change it.' },
+    cards.length ? h('div', { class: 'grid tiles word-grid' }, ...cards) : emptyState('📖', 'No words yet: players have no glossary.', newButton()),
+  );
+}
+
+const readEntries = (ctx: FormContext) => (ctx.store.settings.glossary as Entry[] | undefined) ?? [];
+const writeEntries = (ctx: FormContext, list: Entry[], structural: boolean) => void ctx.store.patchSettings({ glossary: list.length ? list : null }, structural);
+
+/** How many actions give each word, so an author can see a word nobody will ever get. */
+function givenCounts(ctx: FormContext): Map<string, number> {
   const given = new Map<string, number>();
-  for (const action of store.rows('actions')) {
+  for (const action of ctx.store.rows('actions')) {
     if (action.type !== 'glossary') continue;
     const id = String((action.params as { entry_id?: unknown } | null)?.entry_id ?? '');
     given.set(id, (given.get(id) ?? 0) + 1);
   }
+  return given;
+}
 
-  const cards = read().map((entry, index) => {
-    const uses = given.get(String(entry.id)) ?? 0;
-    return h(
-      'div',
-      { class: 'card', 'data-word': String(entry.id) },
-      form(ENTRY_FIELDS, entry as unknown as Record<string, unknown>, (key, value, field) => replace(index, withValue({ ...at(index) }, key, value, field) as unknown as Entry, key === 'initial'), ctx),
-      h('p', { class: 'muted' }, entry.initial ? 'Every player has it from the start.' : uses ? `Given by ${uses} action${uses === 1 ? '' : 's'}.` : 'No action gives this word yet: add an “Add a glossary word” action where players meet it.'),
-      h('div', { class: 'row-actions' },
-        h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the word “${entry.term ?? ''}”`) && write(read().filter((_, i) => i !== index), true) }, 'Delete')),
-    );
+/** How players come to have the word, as a chip: from the start, from actions, or (a warning) from nothing. */
+function wordStatus(entry: Entry, uses: number): HTMLElement {
+  const [text, kind, icon] = entry.initial
+    ? ['Every player has it from the start.', 'ok', '📘'] as const
+    : uses ? [`Given by ${uses} action${uses === 1 ? '' : 's'}.`, 'ok', '🎁'] as const
+    : ['No action gives this word yet: add an “Add a glossary word” action where players meet it.', 'warn', '⚠️'] as const;
+  return h('span', { class: `chip ${kind} word-status`, title: text }, emojiIcon(icon), h('span', { class: 'chip-text' }, text));
+}
+
+/** One word in a pop-up: the word, its picture and meaning, and how players get it; beside it, how it looks to them. */
+export function openWord(ctx: FormContext, id: string | number) {
+  const { store } = ctx;
+  const at = () => readEntries(ctx).find((e) => e.id === id);
+  const replace = (entry: Entry, structural = false) => writeEntries(ctx, readEntries(ctx).map((e) => (e.id === id ? entry : e)), structural);
+  openPanel({
+    key: `word-${id}`,
+    kind: 'word',
+    store,
+    size: 'medium',
+    tone: 'var(--tone-word)',
+    title: () => (at() ? h('span', null, at()!.term || 'Unnamed word') : null),
+    body: () => {
+      const entry = at();
+      if (!entry) return null;
+      const url = mediaUrl(store, store.byId('media', entry.media_id ?? null));
+      const preview = h('div', { class: 'word-preview' },
+        h('span', { class: 'word-preview-label' }, 'In the player’s glossary'),
+        url ? h('img', { src: url, alt: '' }) : null,
+        h('strong', null, entry.term || 'Unnamed word'),
+        h('p', null, entry.definition || ''));
+      return h('div', { class: 'two-panel word-panel' },
+        section('📖 The word', 'var(--tone-word)', 'word',
+          form(ENTRY_FIELDS, entry as unknown as Record<string, unknown>, (key, value, field) => replace(withValue({ ...at()! }, key, value, field) as unknown as Entry, true), ctx),
+          h('div', { class: 'chips' }, wordStatus(entry, givenCounts(ctx).get(String(entry.id)) ?? 0)),
+          h('div', { class: 'row-actions' }, h('button', {
+            type: 'button', class: 'danger',
+            onclick: () => {
+              if (!confirmDelete(`the word “${entry.term ?? ''}”`)) return;
+              closePanel(`word-${id}`);
+              writeEntries(ctx, readEntries(ctx).filter((e) => e.id !== id), true);
+            },
+          }, 'Delete word'))),
+        h('div', { class: 'panel-column' }, preview));
+    },
   });
-
-  return h(
-    'div',
-    { class: 'page' },
-    h('div', { class: 'page-head' },
-      h('div', null, h('h1', null, 'Glossary', help('The words this mission teaches, with what they mean. Players collect them as they play and can look them up at any time in the game’s side panel. Which words each student has collected is part of the teacher’s report.'))),
-      h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'primary', onclick: add }, 'New word'))),
-    cards.length ? h('div', { class: 'grid' }, ...cards) : h('p', { class: 'empty' }, 'No words yet: players have no glossary.'),
-  );
 }
 
 /**
@@ -85,18 +140,20 @@ export function sceneGroupsCard(ctx: FormContext): HTMLElement {
     const scenes = store.rows('scenes').filter((s) => s.group_id === group.id).length;
     return h(
       'div',
-      { class: 'card flat', 'data-group': group.id },
+      { class: 'group-row', 'data-group': group.id, style: `--tone: ${groupTone(index)}` },
+      h('span', { class: 'group-dot', 'aria-hidden': 'true' }),
       form(GROUP_FIELDS, group as unknown as Record<string, unknown>, (key, value, field) => write(read().map((g, i) => (i === index ? (withValue({ ...at(index) }, key, value, field) as unknown as Group) : g)), key === 'team_only' || key === 'name'), ctx),
-      h('div', { class: 'row-actions' }, h('span', { class: 'muted' }, `${scenes} scene${scenes === 1 ? '' : 's'}`), h('button', { type: 'button', class: 'danger', onclick: () => remove(group) }, 'Delete group')),
+      h('span', { class: 'chip' }, `${scenes} scene${scenes === 1 ? '' : 's'}`),
+      h('button', { type: 'button', class: 'danger icon tile-delete', title: 'Delete group', 'aria-label': `Delete group ${group.name ?? ''}`, onclick: () => remove(group) }, '🗑'),
     );
   });
   return h(
     'div',
-    { class: 'card', 'data-card': 'scene-groups' },
+    { class: 'card groups-card', 'data-card': 'scene-groups' },
     h('div', { class: 'card-title' },
-      h('h2', null, 'Scene groups', help('Put scenes that belong together into a group: the rooms of the starship, the places on one planet. A group can be limited to teams, so that players there see only their own team; an observation deck where everyone meets can stay open. Choose each scene’s group on its card below.')),
+      h('h2', null, '🗂️ Scene groups', help('Put scenes that belong together into a group: the rooms of the starship, the places on one planet. A group can be limited to teams, so that players there see only their own team; an observation deck where everyone meets can stay open. Choose each scene’s group on its card below; a scene’s card takes its group’s colour.')),
       h('button', { type: 'button', onclick: add }, 'New group')),
-    rows.length ? h('div', { class: 'grid' }, ...rows) : h('p', { class: 'muted' }, 'No groups: in every scene players see everyone who is playing with them, unless the scene’s own settings say otherwise.'),
+    rows.length ? h('div', { class: 'group-rows' }, ...rows) : h('p', { class: 'muted small' }, 'No groups: in every scene players see everyone who is playing with them, unless the scene’s own settings say otherwise.'),
   );
 }
 
@@ -110,7 +167,8 @@ export function sceneGroupControl(ctx: FormContext, scene: { id: number; group_i
     'aria-label': 'Scene group',
     onchange: () => void store.patch('scenes', scene.id, { group_id: select.value === '' ? null : Number(select.value) }, true),
   }, h('option', { value: '' }, 'No group'), ...groups.map((g) => h('option', { value: String(g.id), selected: scene.group_id === g.id }, g.name ?? `Group ${g.id}`)));
-  return h('div', { class: 'scene-group' },
+  const index = groups.findIndex((g) => g.id === scene.group_id);
+  return h('div', { class: 'scene-group', style: index >= 0 ? `--tone: ${groupTone(index)}` : null },
     groups.length ? select : null,
     h('span', { class: `badge${teamOnly ? ' team' : ''}`, title: own != null ? 'Set on the scene itself' : 'From the scene’s group' }, teamOnly ? '🛡️ Own team only' : '👥 Everyone'));
 }

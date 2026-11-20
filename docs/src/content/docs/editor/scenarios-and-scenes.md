@@ -33,14 +33,14 @@ Teachers also reach this dialog from the **New scenario** button on their missio
 
 ## The Scenes page
 
-The Scenes page shows one card per scene, with its background as a thumbnail, its size, and how many hotspots, other events and spawn points it has.
+The Scenes page shows one card per scene, with its background as a thumbnail, its subtitle, and labels for its size and how many hotspots, other events and spawn points it has. A scene in a group takes the group's colour along the top of its card.
 
 * **New scene** asks for a short name (for example `forest-path`) and opens the new scene.
-* **Edit** opens the [scene editor](/docs/editor/scene-editor/). **▶ Test** plays the draft starting in that scene.
+* Click the thumbnail or **✏️ Edit** to open the [scene editor](/docs/editor/scene-editor/). **▶ Test** plays the draft starting in that scene.
 * **←** and **→** change the scene's place in the list. The order is for your own tidiness; players move between scenes only through jump actions.
-* **Start here** makes a scene the one players arrive in. The current one carries a **Start scene** badge.
-* **Delete** removes the scene and everything in it. A scenario always keeps at least one scene.
+* **🚩** makes a scene the one players arrive in. The current one is marked **🚩 Start scene** on its thumbnail.
+* **🗑** removes the scene and everything in it. A scenario always keeps at least one scene.
 
 ### Scene groups
 
-Scenes that belong together, such as the rooms of the starship or the places on one planet, can be put in a **scene group** (the card at the top of the page: **New group**). Pick a scene's group on its card. A group has one setting, **Players see only their own team in these scenes**, for missions a teacher runs with teams: a limited scene shows each player only their teammates, while a meeting place stays open to everyone. A single scene can override its group in its own settings. See [Teams in a scene](/docs/developers/extensions/#teams-in-a-scene).
+Scenes that belong together, such as the rooms of the starship or the places on one planet, can be put in a **scene group** (the card at the top of the page: **New group**). Pick a scene's group on its card. Each group has a colour, shown beside its name and on its scenes' cards. A group has one setting, **Players see only their own team**, for missions a teacher runs with teams: a limited scene shows each player only their teammates, while a meeting place stays open to everyone. A single scene can override its group in its own settings. See [Teams in a scene](/docs/developers/extensions/#teams-in-a-scene).

@@ -134,3 +134,24 @@ test('a problem in the media opens that picture\'s panel', async () => {
   await page.waitForSelector('dialog[data-panel="media"][open]');
   assert.equal(errors.length, 0, errors.join('\n'));
 });
+
+test('a problem in an objective opens that objective\'s panel', async () => {
+  // A new objective has nothing that ticks it off yet. (The media panel from before is closed first.)
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
+  await page.click('.tabs >> text=Objectives');
+  await page.click('text=New objective');
+  await page.waitForSelector('dialog[data-panel="objective"]');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
+  await saved();
+  await page.click('.tabs >> text=Publish');
+
+  const objective = issue('An objective needs at least one condition that completes it');
+  await objective.waitFor();
+  await objective.locator('.issue-go').click();
+  await page.waitForSelector('dialog[data-panel="objective"][open]');
+  assert.match(await page.innerText('dialog[data-panel="objective"] .panel-title'), /Objective 1/);
+  await page.waitForSelector('dialog[data-panel="objective"] [data-section="conditions"].flash');
+  assert.equal(errors.length, 0, errors.join('\n'));
+});

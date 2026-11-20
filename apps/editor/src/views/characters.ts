@@ -46,7 +46,7 @@ export function charactersPage(ctx: FormContext): HTMLElement {
     'div',
     { class: 'page' },
     h('div', { class: 'page-head' },
-      h('div', null, h('h1', null, 'Characters', help('People and creatures players meet. Define them here, then place them in scenes, where clicking one can run an event. A character is drawn from its animations: give it a picture standing facing right and it can already stand, walk and turn (mirrored); add walking frames, the other side, a close-up and moves as you have them. Click a character to edit it.'))),
+      h('div', null, h('h1', null, 'Characters', h('span', { class: 'count' }, String(cards.length)), help('People and creatures players meet. Define them here, then place them in scenes, where clicking one can run an event. A character is drawn from its animations: give it a picture standing facing right and it can already stand, walk and turn (mirrored); add walking frames, the other side, a close-up and moves as you have them. Click a character to edit it.'))),
       h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'primary', onclick: () => void add() }, 'New character'))),
     cards.length ? h('div', { class: 'grid characters' }, ...cards) : h('p', { class: 'empty' }, 'No characters yet.'),
   );
