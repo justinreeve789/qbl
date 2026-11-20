@@ -128,7 +128,8 @@ class MissionBuilder
      * @param  array  $alignment  StandardsAligner::align().
      * @param  array<string, array{path: string, width: int, height: int, params?: array, frame_width?: int, frame_height?: int}>  $assets
      *                                                                                                                                      "bg:<scene>", "char:<key>", "portrait:<key>", "item:<key>", "passage:<scene>:<to>", "surface:<kind>", "marker", "badge".
-     * @param  array{min_players?: int, max_players?: int, generation_id?: ?int, style?: string}  $options
+     * @param  array{min_players?: int, max_players?: int, generation_id?: ?int, style?: string, voices?: array<string, string>}  $options
+     *                                                                                                                          voices: a catalog voice for each character, by key
      * @return array{rows: array, files: array<int, string>, evidence: array<string, array>}
      */
     public function build(array $blueprint, array $alignment, array $assets, array $options = []): array
@@ -249,7 +250,9 @@ class MissionBuilder
             $id = $this->id('characters');
             // Drawn from the sheet: its idle and walk are the poses, its gestures the character's own animations.
             $animations = NpcCharacter::animationsFromPicture(['id' => $mediaId] + (array) ($sheet['params'] ?? []), $portrait);
-            $this->rows['characters'][] = ['id' => $id, 'name' => $c['name'], 'media_id' => $mediaId, 'settings' => array_filter(['scale' => 0.8, 'animations' => $animations])];
+            // The voice its lines are recorded in (ScenarioGenerator picks them; App\Qbl\Speech\Voicer records them).
+            $voice = $options['voices'][$c['key']] ?? null;
+            $this->rows['characters'][] = ['id' => $id, 'name' => $c['name'], 'media_id' => $mediaId, 'settings' => array_filter(['scale' => 0.8, 'animations' => $animations, 'tts_voice' => $voice])];
             $this->characterRows[$c['key']] = array_key_last($this->rows['characters']);
             $this->characterIds[$c['key']] = [$id, $c, $sheet];
             $this->variable("label_{$c['key']}", 'Talk to '.$c['name'], persist: false);

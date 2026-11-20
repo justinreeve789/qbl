@@ -6,6 +6,7 @@
  * multiplayer runtime; they are all optional and documented in
  * docs/src/content/docs/developers/extensions.md.
  */
+import type { MediaSpeech } from './speech.js';
 
 export type Id = number;
 export type VarValue = string | number;
@@ -44,6 +45,11 @@ export interface Media {
    * plays like a sprite sheet whose animation is the whole file.
    */
   apng?: MediaApng;
+  /**
+   * [ext] A recording of speech: what it says and when each word is said, so the words can be lit
+   * as they are spoken. Made by `qbl:voice` and the mission generator.
+   */
+  speech?: MediaSpeech;
   /** [ext] Pixel size of the file, when known. */
   width?: number;
   height?: number;
@@ -301,7 +307,8 @@ export interface CallToAction {
 /**
  * [ext] Reading text aloud. `narrate` overrides the scenario's `narration` setting for one action.
  * `narration_media_id` is a recording to play instead of the browser's voice; the words are then
- * highlighted at an even pace over the recording's length.
+ * highlighted as the recording says them when the recording has word timings (`speech` on the
+ * media), and otherwise at an even pace over its length.
  */
 export interface Narrated {
   narrate?: boolean;
@@ -852,11 +859,19 @@ export interface Character {
   scale?: number;
   /** By name: the poses, and any others. */
   animations?: Record<string, CharacterAnimation>;
-  /** [ext] How the character sounds when its lines are read aloud: 0 to 2, 1 is the voice's own. */
+  /** [ext] How the browser's voice sounds reading the character's lines that have no recording: 0 to 2, 1 is the voice's own. */
   voice_pitch?: number;
   voice_rate?: number;
   /** [ext] Part of the name of a browser voice to prefer for this character, e.g. "female" or "Daniel". */
   voice_name?: string;
+  /**
+   * [ext] The voice the character's lines are recorded in: a key of the server's voice catalog
+   * (apps/api/resources/speech/voices.json), e.g. "heart" or "robot", not any one service's own voice
+   * name, so it survives a change of text-to-speech service. The editor's "Record voices" and
+   * `php artisan qbl:voice` record the lines; a line without a recording is read by the browser's voice
+   * (`voice_pitch`, `voice_rate`, `voice_name`).
+   */
+  tts_voice?: string;
   params?: Params;
 }
 

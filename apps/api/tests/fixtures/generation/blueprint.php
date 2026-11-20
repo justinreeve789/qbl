@@ -35,7 +35,7 @@ return [
         ['key' => 'burrow', 'title' => 'Root Burrow', 'description' => 'Under the orchard, where the pipes run.', 'background' => 'an earthy burrow under the orchard with thick roots hanging from the ceiling and glowing mushrooms', 'ground_line' => 0.66, 'kind' => 'underground', 'exits' => []],
     ],
     'characters' => [
-        ['key' => 'keeper', 'name' => 'Keeper Ama', 'role' => 'Runs the orchard', 'appearance' => 'a tall friendly woman with dark curly hair tied up, wearing green overalls with big pockets, a straw sun hat and yellow boots, skin tone skin 4', 'personality' => 'warm and practical', 'guide' => true, 'scene' => 'landing', 'x' => 0.35, 'gestures' => ['wave', 'cheer'], 'wanders' => true],
+        ['key' => 'keeper', 'name' => 'Keeper Ama', 'role' => 'Runs the orchard', 'appearance' => 'a tall friendly woman with dark curly hair tied up, wearing green overalls with big pockets, a straw sun hat and yellow boots, skin tone skin 4', 'personality' => 'warm and practical', 'voice' => ['gender' => 'female', 'age' => 'adult', 'sound' => 'warm, calm'], 'guide' => true, 'scene' => 'landing', 'x' => 0.35, 'gestures' => ['wave', 'cheer'], 'wanders' => true],
         ['key' => 'bot', 'name' => 'Pip', 'role' => 'A small gardening robot', 'appearance' => 'a small round teal robot on one wheel with two thin arms and a single big eye', 'personality' => 'chirpy', 'scene' => 'hive', 'x' => 0.7, 'gestures' => ['point'], 'wanders' => true, 'chatter' => ['Beep! Too wet, too wet!', '']],
     ],
     'items' => [

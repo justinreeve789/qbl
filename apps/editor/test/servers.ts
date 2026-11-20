@@ -17,11 +17,12 @@ export interface TestSite {
 }
 
 /**
- * Everything the editor needs, on one address, as in production:
+ * Everything the editor needs, on one address, as in production (`env`: more for the dev API, such
+ * as QBL_TTS_URL):
  *   /editor/                 the editor, bundled from source
  *   /api, /media, ...        the dev API (apps/api/dev/server.php): the same PHP classes Laravel uses, over SQLite
  */
-export async function startSite(): Promise<TestSite> {
+export async function startSite(env: Record<string, string> = {}): Promise<TestSite> {
   const data = mkdtempSync(join(tmpdir(), 'qbl-editor-test-'));
   const dist = join(data, 'dist');
   await build({
@@ -37,7 +38,7 @@ export async function startSite(): Promise<TestSite> {
   const page = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>QBL Editor</title><link rel="stylesheet" href="/editor/main.css"></head><body><div id="app"></div><script type="module" src="/editor/main.js"></script></body></html>';
 
   const apiPort = await freePort();
-  const php = spawn('php', ['-S', `127.0.0.1:${apiPort}`, join(repo, 'apps/api/dev/server.php')], { env: { ...process.env, QBL_DEV_DATA: join(data, 'api') }, stdio: 'ignore' });
+  const php = spawn('php', ['-S', `127.0.0.1:${apiPort}`, join(repo, 'apps/api/dev/server.php')], { env: { ...process.env, QBL_DEV_DATA: join(data, 'api'), ...env }, stdio: 'ignore' });
   await waitFor(`http://127.0.0.1:${apiPort}/api/me`);
 
   const types: Record<string, string> = { '.js': 'text/javascript', '.css': 'text/css' };

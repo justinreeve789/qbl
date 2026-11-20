@@ -31,6 +31,7 @@ class GenerateScenario extends Command
         {--attempts= : Attempts per picture before the best is kept}
         {--budget= : Most to spend on AI services for this run, in US dollars (default QBL_GEN_BUDGET_USD; 0 for none)}
         {--no-judge : Do not have each picture checked against the style anchors}
+        {--no-voices : Do not record what characters say (the browser reads it aloud instead)}
         {--offline : Draw nothing new: finish with the pictures the run already has (with --resume)}
         {--without-anchors : Go ahead even though the art style has no approved anchors}
         {--design-only : Stop after the blueprint (no pictures; cheap, to review the plan)}
@@ -94,6 +95,7 @@ class GenerateScenario extends Command
                 'attempts' => $this->option('attempts') ? (int) $this->option('attempts') : null,
                 'budget' => $this->option('budget') !== null ? (float) $this->option('budget') : null,
                 'anchors_required' => ! $this->option('without-anchors') && ! $this->option('design-only'),
+                'voices' => $this->option('no-voices') ? false : null,
             ], $log);
             $result = $generator->generate($prompt, $options, $owner?->id, $this->option('resume') ? (int) $this->option('resume') : null);
         } catch (GenerationError|StoreError $e) {

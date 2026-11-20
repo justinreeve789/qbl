@@ -202,7 +202,9 @@ class MissionDesigner
           until an interaction, step or twist is done.
         - Characters (NPCs) stand in one scene; students click them to talk. One is the guide, who briefs the crew
           at the start and debriefs them at the end. Every character is drawn standing, walking and in a close-up
-          portrait. A character can wander (pace about near their spot) and mutter a line now and then.
+          portrait. A character can wander (pace about near their spot) and mutter a line now and then. Their lines
+          are recorded in a voice chosen from what `voice` says (gender, age, how it sounds): give each character a
+          voice of their own, so students can tell them apart by ear.
         - Items are drawn to their real size (size_cm), next to students who are 130 cm tall: a vial is tiny, a
           crate comes up to a student's waist, a door is taller than them. Where an interaction's item is
           (placement): on the ground students walk on, at the back where the floor meets the scenery, on a

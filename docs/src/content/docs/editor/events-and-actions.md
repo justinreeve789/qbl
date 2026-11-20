@@ -171,4 +171,4 @@ To give stars or XP for a choice, put the award in an indirect event and have th
 
 ### Reading aloud
 
-Text-showing actions have **Read aloud** and **Recording to play instead**. The browser's own voice reads the text and lights each word as it is spoken; a recording is lit at an even pace over its length. Set it for the whole mission in Settings, and override it per action. Players can switch it off for themselves.
+Text-showing actions have **Read aloud** and **Recording to play instead**. The browser's own voice reads the text and lights each word as it is spoken. Lines of characters who have a recorded voice (Characters, **🎙️ Record voices**) play their recording, lit word by word as it is said; a recording you attach yourself is lit at an even pace over its length. Set it for the whole mission in Settings, and override it per action. Players can switch it off for themselves.

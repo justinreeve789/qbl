@@ -26,6 +26,10 @@ class EditorController extends Controller
         );
 
         // A file to send (an exported scenario), made for this request and removed once sent.
+        // Something to play in the page (a voice sample) rather than save.
+        if (isset($body['download']) && ! empty($body['download']['inline'])) {
+            return response()->file($body['download']['path'], ['Content-Type' => $body['download']['type'], 'Cache-Control' => 'private, max-age=3600'])->deleteFileAfterSend(true);
+        }
         if (isset($body['download'])) {
             return response()->download($body['download']['path'], $body['download']['name'], ['Content-Type' => $body['download']['type']])->deleteFileAfterSend(true);
         }

@@ -1,0 +1,1241 @@
+{
+  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\" and a speed; for openai a voice and instructions. A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md.",
+  "stand_ins": {
+    "en": "explorer",
+    "es": "explorador",
+    "fr": "explorateur",
+    "it": "esploratore",
+    "pt": "explorador",
+    "hi": "खोजकर्ता",
+    "ja": "探検家",
+    "zh": "探险家"
+  },
+  "samples": {
+    "en": "Hello, explorer! I'm so glad you're here. Shall we get started?",
+    "es": "¡Hola, explorador! Me alegra que estés aquí. ¿Empezamos?",
+    "fr": "Bonjour, explorateur ! Quel plaisir de te voir ici. On commence ?",
+    "it": "Ciao, esploratore! Sono felice che tu sia qui. Cominciamo?",
+    "pt": "Olá, explorador! Que bom que você está aqui. Vamos começar?",
+    "hi": "नमस्ते, खोजकर्ता! तुम्हारा स्वागत है। चलो शुरू करें?",
+    "ja": "こんにちは、探検家さん！さあ、始めましょう。",
+    "zh": "你好，探险家！我们开始吧。"
+  },
+  "voices": [
+    {
+      "key": "heart",
+      "name": "Heart",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "warm",
+        "friendly",
+        "clear",
+        "kind",
+        "encouraging"
+      ],
+      "description": "A warm, friendly woman who explains things clearly. A natural guide or teacher.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_heart"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "bella",
+      "name": "Bella",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "bright",
+        "energetic",
+        "excited",
+        "cheerful",
+        "enthusiastic"
+      ],
+      "description": "A bright young woman, full of energy: an eager scientist, a cheerful helper.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_bella"
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Bright and enthusiastic."
+        }
+      }
+    },
+    {
+      "key": "mentor",
+      "name": "Mentor",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "warm",
+        "upbeat",
+        "encouraging",
+        "patient",
+        "teacher"
+      ],
+      "description": "Heart and Bella together: an upbeat, encouraging mentor.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_heart(1)+af_bella(1)"
+        },
+        "openai": {
+          "voice": "coral",
+          "instructions": "Upbeat and encouraging, like a favourite teacher."
+        }
+      }
+    },
+    {
+      "key": "nicole",
+      "name": "Nicole",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "soft",
+        "calm",
+        "gentle",
+        "quiet",
+        "mysterious",
+        "dreamy"
+      ],
+      "description": "Soft and close, almost a whisper: a calm healer, a librarian, a mysterious spirit.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_nicole",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "sage",
+          "instructions": "Soft, calm and gentle, close to a whisper."
+        }
+      }
+    },
+    {
+      "key": "sky",
+      "name": "Sky",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "light",
+        "curious",
+        "breezy",
+        "friendly"
+      ],
+      "description": "A light, curious young voice.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_sky",
+          "speed": 1.05
+        },
+        "openai": {
+          "voice": "nova",
+          "instructions": "Light and curious."
+        }
+      }
+    },
+    {
+      "key": "pip",
+      "name": "Pip",
+      "gender": "female",
+      "age": "child",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "playful",
+        "cheerful",
+        "curious",
+        "excited",
+        "kid"
+      ],
+      "description": "A playful, quick voice for a girl or a small cheerful creature.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_sky(1)+af_bella(1)",
+          "speed": 1.12
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Speak like an excited, playful young girl."
+        }
+      }
+    },
+    {
+      "key": "sarah",
+      "name": "Sarah",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "confident",
+        "practical",
+        "clear",
+        "smart",
+        "scientist"
+      ],
+      "description": "Confident and practical: an engineer, a doctor, a ranger.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_sarah"
+        },
+        "openai": {
+          "voice": "sage"
+        }
+      }
+    },
+    {
+      "key": "nova",
+      "name": "Nova",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "crisp",
+        "professional",
+        "precise",
+        "announcer"
+      ],
+      "description": "Crisp and professional: a station announcer, a mission controller.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_nova"
+        },
+        "openai": {
+          "voice": "nova"
+        }
+      }
+    },
+    {
+      "key": "aoede",
+      "name": "Aoede",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "smooth",
+        "thoughtful",
+        "wise",
+        "calm",
+        "storyteller"
+      ],
+      "description": "Smooth and thoughtful: a wise elder of a village, a storyteller.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_aoede",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "ballad",
+          "instructions": "Smooth and thoughtful, like a storyteller."
+        }
+      }
+    },
+    {
+      "key": "kore",
+      "name": "Kore",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "steady",
+        "serious",
+        "determined",
+        "brave",
+        "commander"
+      ],
+      "description": "Steady and serious: a commander, a captain, a guard.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_kore"
+        },
+        "openai": {
+          "voice": "sage",
+          "instructions": "Steady, serious and determined."
+        }
+      }
+    },
+    {
+      "key": "jessica",
+      "name": "Jessica",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "chatty",
+        "friendly",
+        "casual",
+        "funny"
+      ],
+      "description": "Chatty and casual: a friendly shopkeeper, a classmate.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_jessica",
+          "speed": 1.05
+        },
+        "openai": {
+          "voice": "coral",
+          "instructions": "Chatty and casual."
+        }
+      }
+    },
+    {
+      "key": "river",
+      "name": "River",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "relaxed",
+        "easygoing",
+        "kind"
+      ],
+      "description": "Relaxed and easygoing.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_river"
+        },
+        "openai": {
+          "voice": "nova",
+          "instructions": "Relaxed and easygoing."
+        }
+      }
+    },
+    {
+      "key": "grandma",
+      "name": "Grandma",
+      "gender": "female",
+      "age": "elder",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "kindly",
+        "slow",
+        "gentle",
+        "wise",
+        "grandmotherly"
+      ],
+      "description": "A kindly, unhurried older woman.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_heart(2)+af_nicole(1)",
+          "speed": 0.88
+        },
+        "openai": {
+          "voice": "sage",
+          "instructions": "Speak like a kindly, unhurried grandmother."
+        }
+      }
+    },
+    {
+      "key": "emma",
+      "name": "Emma",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "kind",
+        "proper",
+        "clear",
+        "polite",
+        "teacher"
+      ],
+      "description": "Kind and well-spoken: a museum curator, a headteacher.",
+      "engines": {
+        "kokoro": {
+          "voice": "bf_emma"
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "Speak with a British accent, kind and well-spoken."
+        }
+      }
+    },
+    {
+      "key": "isabella",
+      "name": "Isabella",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "lively",
+        "warm",
+        "adventurous",
+        "explorer"
+      ],
+      "description": "Lively and warm: an adventurer, an archaeologist.",
+      "engines": {
+        "kokoro": {
+          "voice": "bf_isabella"
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "Speak with a British accent, lively and warm."
+        }
+      }
+    },
+    {
+      "key": "alice",
+      "name": "Alice",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "curious",
+        "bright",
+        "quick"
+      ],
+      "description": "A curious, quick young voice.",
+      "engines": {
+        "kokoro": {
+          "voice": "bf_alice",
+          "speed": 1.05
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Speak with a British accent, curious and quick."
+        }
+      }
+    },
+    {
+      "key": "lily",
+      "name": "Lily",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "gentle",
+        "shy",
+        "sweet",
+        "soft"
+      ],
+      "description": "Gentle and a little shy.",
+      "engines": {
+        "kokoro": {
+          "voice": "bf_lily"
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Speak with a British accent, gentle and a little shy."
+        }
+      }
+    },
+    {
+      "key": "professor-emma",
+      "name": "Professor Emma",
+      "gender": "female",
+      "age": "elder",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "wise",
+        "precise",
+        "learned",
+        "calm",
+        "professor"
+      ],
+      "description": "A learned older professor, precise and calm.",
+      "engines": {
+        "kokoro": {
+          "voice": "bf_emma(2)+bf_isabella(1)",
+          "speed": 0.9
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "Speak with a British accent, like a calm, learned old professor."
+        }
+      }
+    },
+    {
+      "key": "michael",
+      "name": "Michael",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "warm",
+        "steady",
+        "reassuring",
+        "friendly",
+        "dad"
+      ],
+      "description": "Warm and steady: a reassuring captain, a park ranger, a dad.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_michael"
+        },
+        "openai": {
+          "voice": "ash"
+        }
+      }
+    },
+    {
+      "key": "captain",
+      "name": "Captain",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "commanding",
+        "deep",
+        "warm",
+        "confident",
+        "leader",
+        "captain"
+      ],
+      "description": "A deep, commanding voice with warmth: a captain, a leader.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_michael(1)+am_fenrir(1)",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "Commanding but warm, like a ship's captain."
+        }
+      }
+    },
+    {
+      "key": "fenrir",
+      "name": "Fenrir",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "deep",
+        "strong",
+        "bold",
+        "brave",
+        "hero",
+        "guard"
+      ],
+      "description": "Deep and strong: a guard, a hero, a big friendly giant.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_fenrir"
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "Deep, strong and bold."
+        }
+      }
+    },
+    {
+      "key": "puck",
+      "name": "Puck",
+      "gender": "male",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "playful",
+        "mischievous",
+        "funny",
+        "cheeky",
+        "trickster"
+      ],
+      "description": "Playful and a bit mischievous: a trickster, a joker.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_puck",
+          "speed": 1.05
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "Playful and a bit mischievous."
+        }
+      }
+    },
+    {
+      "key": "scout",
+      "name": "Scout",
+      "gender": "male",
+      "age": "child",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "excited",
+        "eager",
+        "playful",
+        "curious",
+        "kid"
+      ],
+      "description": "An eager, excited voice for a boy or a small creature.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_puck(1)+am_liam(1)",
+          "speed": 1.12
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "Speak like an excited, eager young boy."
+        }
+      }
+    },
+    {
+      "key": "liam",
+      "name": "Liam",
+      "gender": "male",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "friendly",
+        "eager",
+        "helpful",
+        "upbeat"
+      ],
+      "description": "Friendly and eager to help: an apprentice, a new recruit.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_liam",
+          "speed": 1.05
+        },
+        "openai": {
+          "voice": "ash",
+          "instructions": "Friendly and eager to help."
+        }
+      }
+    },
+    {
+      "key": "echo",
+      "name": "Echo",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "calm",
+        "even",
+        "patient",
+        "quiet"
+      ],
+      "description": "Calm and even.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_echo"
+        },
+        "openai": {
+          "voice": "echo"
+        }
+      }
+    },
+    {
+      "key": "eric",
+      "name": "Eric",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "confident",
+        "businesslike",
+        "brisk",
+        "inventor"
+      ],
+      "description": "Confident and brisk: a busy inventor, a mayor, a merchant.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_eric"
+        },
+        "openai": {
+          "voice": "echo",
+          "instructions": "Confident and brisk."
+        }
+      }
+    },
+    {
+      "key": "onyx",
+      "name": "Onyx",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "deep",
+        "grave",
+        "serious",
+        "mysterious",
+        "villain"
+      ],
+      "description": "Deep and grave: a stern keeper, a mysterious stranger.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_onyx",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "Deep, grave and serious."
+        }
+      }
+    },
+    {
+      "key": "grandpa",
+      "name": "Grandpa",
+      "gender": "male",
+      "age": "elder",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "jolly",
+        "kindly",
+        "grandfatherly",
+        "wise",
+        "old"
+      ],
+      "description": "A jolly, kindly old man.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_santa",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "ballad",
+          "instructions": "Speak like a jolly, kindly old grandfather."
+        }
+      }
+    },
+    {
+      "key": "george",
+      "name": "George",
+      "gender": "male",
+      "age": "elder",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "wise",
+        "learned",
+        "warm",
+        "professor",
+        "old"
+      ],
+      "description": "A wise, learned older man: a professor, a wizard, a museum keeper.",
+      "engines": {
+        "kokoro": {
+          "voice": "bm_george",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "Speak with a British accent, like a wise old professor."
+        }
+      }
+    },
+    {
+      "key": "fable",
+      "name": "Fable",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "expressive",
+        "storyteller",
+        "lively",
+        "dramatic"
+      ],
+      "description": "Expressive and lively: a storyteller, an actor.",
+      "engines": {
+        "kokoro": {
+          "voice": "bm_fable"
+        },
+        "openai": {
+          "voice": "fable"
+        }
+      }
+    },
+    {
+      "key": "lewis",
+      "name": "Lewis",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "deep",
+        "serious",
+        "stern",
+        "knight"
+      ],
+      "description": "Deep and serious: a knight, a stern inspector.",
+      "engines": {
+        "kokoro": {
+          "voice": "bm_lewis",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "Speak with a British accent, deep and serious."
+        }
+      }
+    },
+    {
+      "key": "daniel",
+      "name": "Daniel",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "calm",
+        "polite",
+        "precise",
+        "butler"
+      ],
+      "description": "Calm and polite: a butler, a scientist, a librarian.",
+      "engines": {
+        "kokoro": {
+          "voice": "bm_daniel"
+        },
+        "openai": {
+          "voice": "echo",
+          "instructions": "Speak with a British accent, calm and polite."
+        }
+      }
+    },
+    {
+      "key": "robot",
+      "name": "Robot",
+      "gender": "neutral",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "robot",
+        "robotic",
+        "even",
+        "precise",
+        "computer",
+        "machine",
+        "ai"
+      ],
+      "description": "Even and precise: a robot, a ship's computer, an AI.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_alloy(1)+am_echo(1)",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "alloy",
+          "instructions": "Speak like a friendly, precise robot: even and measured."
+        }
+      }
+    },
+    {
+      "key": "alloy",
+      "name": "Alloy",
+      "gender": "neutral",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "neutral",
+        "matter-of-fact",
+        "clear",
+        "narrator"
+      ],
+      "description": "Neutral and matter-of-fact: a narrator, an information kiosk.",
+      "engines": {
+        "kokoro": {
+          "voice": "af_alloy"
+        },
+        "openai": {
+          "voice": "alloy"
+        }
+      }
+    },
+    {
+      "key": "sprite",
+      "name": "Sprite",
+      "gender": "neutral",
+      "age": "child",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "squeaky",
+        "quick",
+        "mischievous",
+        "magical",
+        "creature",
+        "alien",
+        "tiny"
+      ],
+      "description": "Quick and squeaky: a tiny creature, a sprite, a little alien.",
+      "engines": {
+        "kokoro": {
+          "voice": "am_puck(1)+af_sky(1)",
+          "speed": 1.2
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "Speak like a tiny, quick, mischievous creature."
+        }
+      }
+    },
+    {
+      "key": "dora",
+      "name": "Dora",
+      "gender": "female",
+      "age": "adult",
+      "lang": "es",
+      "accent": "Spanish",
+      "traits": [
+        "warm",
+        "friendly",
+        "clear"
+      ],
+      "description": "Una voz cálida y amable.",
+      "engines": {
+        "kokoro": {
+          "voice": "ef_dora"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "alex-es",
+      "name": "Alex",
+      "gender": "male",
+      "age": "adult",
+      "lang": "es",
+      "accent": "Spanish",
+      "traits": [
+        "friendly",
+        "steady"
+      ],
+      "description": "Una voz amable y firme.",
+      "engines": {
+        "kokoro": {
+          "voice": "em_alex"
+        },
+        "openai": {
+          "voice": "ash"
+        }
+      }
+    },
+    {
+      "key": "santa-es",
+      "name": "Abuelo",
+      "gender": "male",
+      "age": "elder",
+      "lang": "es",
+      "accent": "Spanish",
+      "traits": [
+        "jolly",
+        "kindly",
+        "old"
+      ],
+      "description": "Un abuelo alegre.",
+      "engines": {
+        "kokoro": {
+          "voice": "em_santa"
+        },
+        "openai": {
+          "voice": "ballad"
+        }
+      }
+    },
+    {
+      "key": "siwis",
+      "name": "Siwis",
+      "gender": "female",
+      "age": "adult",
+      "lang": "fr",
+      "accent": "French",
+      "traits": [
+        "warm",
+        "clear",
+        "friendly"
+      ],
+      "description": "Une voix chaleureuse et claire.",
+      "engines": {
+        "kokoro": {
+          "voice": "ff_siwis"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "sara-it",
+      "name": "Sara",
+      "gender": "female",
+      "age": "adult",
+      "lang": "it",
+      "accent": "Italian",
+      "traits": [
+        "warm",
+        "friendly"
+      ],
+      "description": "Una voce calda e amichevole.",
+      "engines": {
+        "kokoro": {
+          "voice": "if_sara"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "nicola",
+      "name": "Nicola",
+      "gender": "male",
+      "age": "adult",
+      "lang": "it",
+      "accent": "Italian",
+      "traits": [
+        "friendly",
+        "steady"
+      ],
+      "description": "Una voce amichevole e sicura.",
+      "engines": {
+        "kokoro": {
+          "voice": "im_nicola"
+        },
+        "openai": {
+          "voice": "ash"
+        }
+      }
+    },
+    {
+      "key": "dora-pt",
+      "name": "Dora",
+      "gender": "female",
+      "age": "adult",
+      "lang": "pt-BR",
+      "accent": "Brazilian",
+      "traits": [
+        "warm",
+        "friendly"
+      ],
+      "description": "Uma voz calorosa e simpática.",
+      "engines": {
+        "kokoro": {
+          "voice": "pf_dora"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "alex-pt",
+      "name": "Alex",
+      "gender": "male",
+      "age": "adult",
+      "lang": "pt-BR",
+      "accent": "Brazilian",
+      "traits": [
+        "friendly",
+        "steady"
+      ],
+      "description": "Uma voz simpática e firme.",
+      "engines": {
+        "kokoro": {
+          "voice": "pm_alex"
+        },
+        "openai": {
+          "voice": "ash"
+        }
+      }
+    },
+    {
+      "key": "alpha-hi",
+      "name": "Alpha",
+      "gender": "female",
+      "age": "adult",
+      "lang": "hi",
+      "accent": "Hindi",
+      "traits": [
+        "warm",
+        "clear"
+      ],
+      "description": "A warm, clear Hindi voice.",
+      "engines": {
+        "kokoro": {
+          "voice": "hf_alpha"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "beta-hi",
+      "name": "Beta",
+      "gender": "female",
+      "age": "young",
+      "lang": "hi",
+      "accent": "Hindi",
+      "traits": [
+        "bright",
+        "friendly"
+      ],
+      "description": "A bright, friendly Hindi voice.",
+      "engines": {
+        "kokoro": {
+          "voice": "hf_beta"
+        },
+        "openai": {
+          "voice": "shimmer"
+        }
+      }
+    },
+    {
+      "key": "omega-hi",
+      "name": "Omega",
+      "gender": "male",
+      "age": "adult",
+      "lang": "hi",
+      "accent": "Hindi",
+      "traits": [
+        "steady",
+        "calm"
+      ],
+      "description": "A steady Hindi voice.",
+      "engines": {
+        "kokoro": {
+          "voice": "hm_omega"
+        },
+        "openai": {
+          "voice": "ash"
+        }
+      }
+    },
+    {
+      "key": "psi-hi",
+      "name": "Psi",
+      "gender": "male",
+      "age": "young",
+      "lang": "hi",
+      "accent": "Hindi",
+      "traits": [
+        "friendly",
+        "upbeat"
+      ],
+      "description": "A friendly, upbeat Hindi voice.",
+      "engines": {
+        "kokoro": {
+          "voice": "hm_psi"
+        },
+        "openai": {
+          "voice": "verse"
+        }
+      }
+    },
+    {
+      "key": "alpha-ja",
+      "name": "Alpha",
+      "gender": "female",
+      "age": "adult",
+      "lang": "ja",
+      "accent": "Japanese",
+      "traits": [
+        "warm",
+        "clear"
+      ],
+      "description": "A warm Japanese voice. No word timings: words are lit at an even pace.",
+      "engines": {
+        "kokoro": {
+          "voice": "jf_alpha"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "kumo",
+      "name": "Kumo",
+      "gender": "male",
+      "age": "adult",
+      "lang": "ja",
+      "accent": "Japanese",
+      "traits": [
+        "calm",
+        "steady"
+      ],
+      "description": "A calm Japanese voice. No word timings: words are lit at an even pace.",
+      "engines": {
+        "kokoro": {
+          "voice": "jm_kumo"
+        },
+        "openai": {
+          "voice": "ash"
+        }
+      }
+    },
+    {
+      "key": "xiaoxiao",
+      "name": "Xiaoxiao",
+      "gender": "female",
+      "age": "adult",
+      "lang": "zh",
+      "accent": "Mandarin",
+      "traits": [
+        "warm",
+        "clear"
+      ],
+      "description": "A warm Mandarin voice. No word timings: words are lit at an even pace.",
+      "engines": {
+        "kokoro": {
+          "voice": "zf_xiaoxiao"
+        },
+        "openai": {
+          "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "yunxi",
+      "name": "Yunxi",
+      "gender": "male",
+      "age": "adult",
+      "lang": "zh",
+      "accent": "Mandarin",
+      "traits": [
+        "friendly",
+        "steady"
+      ],
+      "description": "A friendly Mandarin voice. No word timings: words are lit at an even pace.",
+      "engines": {
+        "kokoro": {
+          "voice": "zm_yunxi"
+        },
+        "openai": {
+          "voice": "ash"
+        }
+      }
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import { openPanel } from '../panel';
 import { CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
 import { gettingAround } from './routine';
+import { recordAllButton, voiceSection } from './voices';
 
 type Animations = Record<string, CharacterAnimation>;
 
@@ -47,7 +48,7 @@ export function charactersPage(ctx: FormContext): HTMLElement {
     { class: 'page' },
     h('div', { class: 'page-head' },
       h('div', null, h('h1', null, 'Characters', h('span', { class: 'count' }, String(cards.length)), help('People and creatures players meet. Define them here, then place them in scenes, where clicking one can run an event. A character is drawn from its animations: give it a picture standing facing right and it can already stand, walk and turn (mirrored); add walking frames, the other side, a close-up and moves as you have them. Click a character to edit it.'))),
-      h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'primary', onclick: () => void add() }, 'New character'))),
+      h('div', { class: 'row-actions' }, cards.length ? recordAllButton(ctx) : null, h('button', { type: 'button', class: 'primary', onclick: () => void add() }, 'New character'))),
     cards.length ? h('div', { class: 'grid characters' }, ...cards) : h('p', { class: 'empty' }, 'No characters yet.'),
   );
 }
@@ -126,6 +127,7 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
       h('figure', null, animationPreview(store, walk?.animation, 'anim-preview large', mirrored(walk)), h('figcaption', null, 'Walking')),
       h('figure', { class: 'portrait-figure' }, animationPreview(store, close?.animation, 'anim-preview portrait', mirrored(close)), h('figcaption', null, 'Portrait'))),
     form(CHARACTER_FIELDS, row, (key, value) => void store.patch('characters', id, { [key]: value }), ctx),
+    voiceSection(ctx, row),
     form(CHARACTER_SETTINGS_FIELDS, params(row, 'settings'), (key, value, field) => void store.patch('characters', id, { settings: withValue(params(store.byId('characters', id)!, 'settings'), key, value, field) }, field.structural === true), ctx),
     rowConditions(ctx, 'character_id', id, 'Present only when', 'Always present.'),
     gettingAround(ctx, row),

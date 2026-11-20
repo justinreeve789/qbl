@@ -337,7 +337,32 @@ check(is_file($drawn['portrait:bot']['path']) && $drawn['portrait:bot']['width']
 check((bool) array_filter($director->manifest(), fn ($m) => $m['key'] === 'strip:bot:walk' && ! empty($m['below_bar'])), 'flagged for a person to look at');
 
 // ------------------------------------------------------------------ the whole run
-$factory = new GenerationFactory($config, $store, new NoNetwork, $model);
+/** Records every line instantly, as a few frames of MP3 with each word 300 ms. */
+final class FakeVoices implements App\Qbl\Speech\SpeechEngine
+{
+    public array $said = [];
+
+    public function name(): string
+    {
+        return 'kokoro';
+    }
+
+    public function synthesize(string $text, array $voice, ?string $lang = null): App\Qbl\Speech\Speech
+    {
+        $this->said[] = [$text, $voice['voice'] ?? null];
+        $words = App\Qbl\Speech\Speech::words(array_map(fn ($w, $i) => [$w, $i * 0.3, $i * 0.3 + 0.25], preg_split('/\s+/', $text), array_keys(preg_split('/\s+/', $text))));
+
+        return new App\Qbl\Speech\Speech('ID3'."\x04\x00\x00\x00\x00\x00\x00".str_repeat("\xFF\xFB\x90\x64".str_repeat("\x00", 413), 6).$text, 'mp3', $words, $words ? $words[array_key_last($words)]['e'] : null);
+    }
+
+    public function voices(): array
+    {
+        return [];
+    }
+}
+$voices = new FakeVoices;
+$speech = new App\Qbl\Speech\SpeechFactory(['voices' => __DIR__.'/../resources/speech/voices.json'], null, $voices);
+$factory = new GenerationFactory($config, $store, new NoNetwork, $model, speech: $speech);
 check((function () use ($factory) {
     try {
         $factory->generator(['images' => 'gemini']);
@@ -366,6 +391,26 @@ same($run['status'], 'done', 'the run is recorded as done');
 
 $scenarioId = $result['scenario_id'];
 $scenario = $store->scenario($scenarioId);
+
+// The characters' voices.
+$built = $store->bundle($scenarioId);
+$given = array_column(array_map(fn ($c) => ['name' => $c['name'], 'voice' => $c['settings']['tts_voice'] ?? null], $built['characters']), 'voice', 'name');
+same(count(array_filter($given)), 2, 'every character is given a voice');
+same(count(array_unique($given)), 2, 'a different one each');
+$voiceCatalog = $speech->catalog();
+same($voiceCatalog->get($given['Pip'])['gender'] ?? null, 'neutral', 'the robot sounds like one');
+$spoken = array_filter($built['actions'], fn ($a) => $a['type'] === 'dialogue' && ($a['params']['speaker'] ?? '') === 'character');
+$voicedLines = array_filter($spoken, fn ($a) => isset($a['params']['narration_media_id']));
+$unvoiced = array_filter($spoken, fn ($a) => ! isset($a['params']['narration_media_id']));
+check(count($voicedLines) >= 5, 'the characters\' lines are recorded ('.count($voicedLines).' of '.count($spoken).')');
+check(! array_filter($unvoiced, fn ($a) => ! preg_match('/\{\{(?!\s*QBLPlayerName)/', (string) $a['params']['text'])), 'every line left to the browser shows a variable that is only known in play');
+check(! array_filter($voices->said, fn ($s) => str_contains($s[0], '{{')), 'no placeholder is ever said');
+$mediaById = array_column($built['media'], null, 'id');
+$aLine = array_values($voicedLines)[0];
+$rec = $mediaById[$aLine['params']['narration_media_id']] ?? null;
+same([$rec['type'] ?? null, $rec['params']['speech']['engine'] ?? null, $aLine['params']['narrate'] ?? null], ['audio', 'kokoro', true], 'a line plays its recording, which keeps its word timings');
+check(is_file("$work/media/".$rec['filepath']), 'and the recording is stored with the scenario');
+check(in_array('Recording the characters\' lines (kokoro)', $log, true), 'the run says it records the lines');
 same($scenario['title'], 'The Quiet Hive', 'the scenario is imported');
 same(strlen($scenario['code']), 16, 'it has its own code');
 same($scenario['settings']['visibility'] ?? null, 'private', 'it is a private draft');

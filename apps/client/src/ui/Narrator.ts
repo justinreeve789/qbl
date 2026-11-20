@@ -1,4 +1,4 @@
-import { estimateWordTimes, speechDuration, speechWords, wordAt } from '@qbl/shared';
+import { alignWordTimes, estimateWordTimes, speechDuration, speechWords, wordAt, wordAtTime, type MediaSpeech } from '@qbl/shared';
 
 /** How a line should sound. All optional: the browser's default voice reads at its own pace. */
 export interface SpeakOptions {
@@ -12,6 +12,8 @@ export interface SpeakOptions {
   lang?: string;
   /** A recording to play instead of the browser's voice. */
   audioUrl?: string;
+  /** When the recording says each word (its media's `speech`): the words are lit as they are said. */
+  timings?: MediaSpeech;
 }
 
 const PREFERENCE = 'qbl.narration';
@@ -23,10 +25,14 @@ const BOUNDARY_GRACE_MS = 700;
  *
  * It uses the voice built into the browser (the Web Speech API). That costs nothing, needs no
  * server and no recordings, works offline with a device's own voices, and reports each word as
- * it is spoken ("boundary" events), which is what drives the highlight. Where a browser's voice
- * does not report its progress (some Android voices), or a recording is played instead, the
- * words are paced evenly over the time the line takes, weighted by their length and by the
- * pauses punctuation makes.
+ * it is spoken ("boundary" events), which is what drives the highlight.
+ *
+ * A recording (a character's text-to-speech voice, or a teacher's own) is played instead when the
+ * line has one. If the recording comes with word timings, the highlight follows the recording's own
+ * clock, so it stays with the voice even if the audio is slow to start or stutters. Where there are
+ * no timings, or a browser's voice does not report its progress (some Android voices), the words are
+ * paced evenly over the time the line takes, weighted by their length and by the pauses
+ * punctuation makes.
  *
  * One thing is read at a time: starting a line stops the one before.
  */
@@ -103,11 +109,32 @@ export class Narrator {
 
     if (o.audioUrl) {
       const audio = new Audio(o.audioUrl);
+      const said = alignWordTimes(text, o.timings);
+      let frame = 0;
       release = () => {
+        cancelAnimationFrame(frame);
         audio.pause();
         audio.removeAttribute('src');
       };
-      audio.addEventListener('loadedmetadata', () => pace(Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : speechDuration(text)), { once: true });
+      if (said) {
+        // Each frame, the word the recording has reached.
+        let lit = -1;
+        const follow = () => {
+          if (over) return;
+          const i = wordAtTime(said, audio.currentTime * 1000);
+          if (i !== lit && i >= 0) {
+            lit = i;
+            onWord(i);
+          }
+          frame = requestAnimationFrame(follow);
+        };
+        audio.addEventListener('playing', () => {
+          cancelAnimationFrame(frame);
+          frame = requestAnimationFrame(follow);
+        });
+      } else {
+        audio.addEventListener('loadedmetadata', () => pace(Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : speechDuration(text)), { once: true });
+      }
       audio.addEventListener('ended', finish, { once: true });
       audio.addEventListener('error', finish, { once: true });
       void audio.play().catch(finish);

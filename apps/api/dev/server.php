@@ -18,6 +18,12 @@ if (PHP_SAPI !== 'cli-server') {
 foreach (['StoreError', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
+// The rest (the voices, the HTTP client they use) as they are needed.
+spl_autoload_register(function (string $class) {
+    if (str_starts_with($class, 'App\\') && is_file($file = __DIR__.'/../app/'.str_replace('\\', '/', substr($class, 4)).'.php')) {
+        require $file;
+    }
+});
 
 use App\Qbl\EditorApi;
 use App\Qbl\ScenarioStore;
@@ -260,10 +266,17 @@ if ($path === '/api/me/progress' || $path === '/api/shop' || preg_match('#^/api/
 }
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
-    [$status, $answer] = (new EditorApi($store))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files);
+    // Voices: Kokoro on this machine (docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0), or QBL_TTS_DRIVER=none.
+    $speech = new App\Qbl\Speech\SpeechFactory([
+        'driver' => getenv('QBL_TTS_DRIVER') ?: 'kokoro',
+        'engines' => ['kokoro' => ['class' => App\Qbl\Speech\Engines\KokoroEngine::class, 'url' => getenv('QBL_TTS_URL') ?: 'http://localhost:8880']],
+        'voices' => __DIR__.'/../resources/speech/voices.json',
+        'cache_dir' => "$dataDir/speech",
+    ]);
+    [$status, $answer] = (new EditorApi($store, $speech))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files);
     if (isset($answer['download'])) {
         header('Content-Type: '.$answer['download']['type']);
-        header('Content-Disposition: attachment; filename="'.$answer['download']['name'].'"');
+        header('Content-Disposition: '.(empty($answer['download']['inline']) ? 'attachment' : 'inline').'; filename="'.$answer['download']['name'].'"');
         readfile($answer['download']['path']);
         unlink($answer['download']['path']);
         exit;
