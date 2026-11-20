@@ -1,0 +1,5 @@
+build/
+dist/
+# The signing key. Never commit it; keep a copy somewhere safe.
+*.keystore
+*.jks

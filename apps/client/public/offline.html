@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1c172e" />
+    <title>QuestLab: no connection</title>
+    <link rel="icon" href="/icons/favicon-32.png" type="image/png" />
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body { display: grid; place-items: center; background: #1c172e; color: #fff; text-align: center;
+        font-family: Montserrat, system-ui, -apple-system, 'Segoe UI', sans-serif; padding: 24px; box-sizing: border-box; }
+      main { display: grid; gap: 16px; justify-items: center; max-width: 360px; }
+      img { width: 96px; height: 96px; }
+      h1 { margin: 0; font-size: 1.4rem; }
+      p { margin: 0; color: #d6d0ee; line-height: 1.5; }
+      button { padding: 12px 22px; border: 0; border-radius: 12px; background: #2f8fd6; color: #fff;
+        font: inherit; font-weight: 700; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" />
+      <h1>You're offline</h1>
+      <p>QuestLab needs the internet to play with your class. We'll try again as soon as you're back online.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+    <script>
+      // Back online: load the page the player was opening.
+      window.addEventListener('online', function () { location.reload(); });
+    </script>
+  </body>
+</html>

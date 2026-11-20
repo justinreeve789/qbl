@@ -1,0 +1,12 @@
+{
+  "name": "qbl-android",
+  "private": true,
+  "type": "module",
+  "description": "Builds the QuestLab Android app: a Trusted Web Activity that opens the site as an app.",
+  "scripts": {
+    "build": "node build-apk.mjs"
+  },
+  "dependencies": {
+    "@bubblewrap/core": "^1.27.0"
+  }
+}

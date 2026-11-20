@@ -1,6 +1,7 @@
 import { DEFAULT_RANKS, type CharacterPicture, type SiteLink } from '@qbl/shared';
 import { icon } from './icons';
 import { pictureNode } from './picture';
+import { installOffer, onInstallOffer } from '../pwa';
 
 /** A player's picture: their avatar standing, as an image or one frame of a sprite sheet. */
 export type AvatarPicture = CharacterPicture;
@@ -95,6 +96,10 @@ export class AccountMenu {
       e.stopPropagation();
       this.close();
       this.button.focus();
+    });
+    // The browser may offer to install the site as an app at any moment: shown when it does.
+    onInstallOffer(() => {
+      if (this.isOpen) this.draw();
     });
     // A press anywhere else puts it away.
     document.addEventListener('pointerdown', (e) => {
@@ -207,7 +212,10 @@ export class AccountMenu {
       parts.push(ul);
     };
 
-    list('actions', this.actions.map((a) => {
+    const actions = [...this.actions];
+    const install = installOffer();
+    if (install) actions.push({ key: 'install', label: 'Install the app', icon: 'install', run: () => void install() });
+    list('actions', actions.map((a) => {
       const b = el('button', 'qbl-me-item');
       b.type = 'button';
       b.dataset.action = a.key;

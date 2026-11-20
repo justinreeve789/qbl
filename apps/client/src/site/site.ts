@@ -3,6 +3,10 @@
  * log-in button. Signing in itself happens on /missions (the game's sign-in screen).
  */
 import './site.css';
+import { setUpApp } from '../pwa';
+
+// No account menu here to offer installing from: the browser's own offer stays.
+setUpApp({ menu: false });
 
 // Bubbles pop and peeking characters rise as their part of the page scrolls into view.
 const reveal = document.querySelectorAll<HTMLElement>('[data-reveal]');

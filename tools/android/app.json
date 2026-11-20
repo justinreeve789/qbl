@@ -1,0 +1,16 @@
+{
+  "packageId": "cc.questlab.app",
+  "host": "dev.questlab.cc",
+  "name": "QuestLab",
+  "launcherName": "QuestLab",
+  "startUrl": "/missions",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "themeColor": "#1c172e",
+  "backgroundColor": "#1c172e",
+  "navigationColor": "#1c172e",
+  "display": "standalone",
+  "orientation": "default",
+  "minSdkVersion": 24,
+  "extraFingerprints": []
+}
