@@ -44,6 +44,14 @@ export interface UiPort {
    */
   portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle;
   /**
+   * One line of a conversation and the answers the player can give, for a dialogue tree. `portrait`:
+   * a story box with the speaker's close-up and the answers listed under the line. `bubble`: the
+   * line in a bubble over the speaker (`anchor`, as for dialogue) and the answers in a box across
+   * the bottom of the screen. It cannot be closed without answering; `choice` settles with the
+   * index of the answer picked, or null when the game closes it.
+   */
+  choose(text: string, answers: string[], o: { style: 'portrait' | 'bubble'; name?: string; portrait?: CharacterPicture; anchor?: () => BubbleAnchor | null; speak?: SpeakOptions }): InfoboxHandle;
+  /**
    * Stars, XP and rank, shown in the account menu (and the stars on its button), and the way into
    * the marketplace. Null: the player has none (guests).
    */

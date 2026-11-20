@@ -208,6 +208,7 @@ export type ActionType =
   | 'glossary'
   | 'shop'
   | 'dialogue'
+  | 'conversation'
   | 'avatar'
   | 'animate'
   | 'freeze'
@@ -438,6 +439,71 @@ export interface DialogueAction extends ActionBase, Narrated {
 }
 
 /**
+ * [ext] A conversation the player takes part in: a dialogue tree. It is a set of lines, each said
+ * by the player or a character. After a line the player picks what to say next from its choices,
+ * and each choice leads to another line (or ends the conversation), so the talk branches and can
+ * come back round to a line already said ("Anything else?"). A line with no choices simply goes on
+ * to its `next` line.
+ *
+ * It starts at `start` (default: the first line) and ends when a line or a choice leads nowhere.
+ * It is the player's own, like an infobox: an event whose audience is the scene does not show it
+ * to the other players. The action waits until the conversation is over.
+ */
+export interface ConversationAction extends ActionBase, Narrated {
+  type: 'conversation';
+  lines: ConversationLine[];
+  /** The id of the line it starts with. Default: the first line. */
+  start?: string;
+  /** `portrait` (default): a story box with the speaker's close-up. `bubble`: speech bubbles over the speakers. */
+  style?: 'bubble' | 'portrait';
+}
+
+/** One line of a conversation. */
+export interface ConversationLine {
+  /** Unique within the conversation: what choices and `next` point at. A few letters and digits ("l3"). */
+  id: string;
+  /** Who says it. Default: the player. */
+  speaker?: 'player' | 'character';
+  character_id?: Id;
+  /** May contain {{variable}} placeholders. */
+  text: string;
+  /** A recording of this line, played instead of the browser's voice. */
+  narration_media_id?: Id;
+  /**
+   * The line is said only while these hold. When they do not, the conversation passes over it to
+   * its `next` line, so one line can stand in for another ("Back again?" or "Hello, stranger").
+   */
+  conditions?: Condition[];
+  /** What the player can say in reply. Only those whose conditions hold are offered. */
+  choices?: ConversationChoice[];
+  /**
+   * Where it goes when this line has no choices to offer: another line's id. Absent or null: the
+   * conversation ends.
+   */
+  next?: string | null;
+}
+
+/** Something the player can say in reply to a line. */
+export interface ConversationChoice {
+  /** The button's text. May contain {{variable}} placeholders. */
+  text: string;
+  /** The line it leads to. Absent or null: choosing it ends the conversation. */
+  next?: string | null;
+  /**
+   * Done when it is chosen, in order, before the next line: set a variable, give a glossary word,
+   * play a sound, run an event. They need no ids. A jump ends the conversation.
+   */
+  actions?: Array<Omit<Action, 'id'> & { id?: Id }>;
+  /** Offered only while these hold. */
+  conditions?: Condition[];
+  /**
+   * For the teacher's report: this is a right answer. When any choice of a line is marked, the
+   * report says whether each student's first answer to it was right.
+   */
+  correct?: boolean;
+}
+
+/**
  * [ext] Give the player stars (currency) and/or XP (experience), or take them away with negative
  * numbers. Stars and XP belong to the player's account and carry across every scenario. The
  * game server grants each award action once per player, unless it is marked `repeatable`.
@@ -517,7 +583,7 @@ export interface WalkAction extends ActionBase {
 export type WalkDestination = 'point' | 'spawn' | 'scene';
 
 export type Action =
-  | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
+  | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
   | VariableAction | VideoAction | WaitAction | WalkAction;

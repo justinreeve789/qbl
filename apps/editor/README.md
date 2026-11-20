@@ -30,7 +30,8 @@ It is plain TypeScript and DOM, with no UI framework: a few hundred lines of hel
 - **Events**: start, end, hotspot and indirect events, each with conditions and an ordered list
   of actions. All fourteen action types in the docs have a form, including infobox buttons with
   their own actions and conditions, and so do the added ones: avatar, freeze, dialogue, award
-  (stars and XP) and shop (open the marketplace).
+  (stars and XP) and shop (open the marketplace). A conversation (dialogue tree) is drawn as a
+  map in its action card and edited line by line in a pop-up panel (`views/conversation.ts`).
 - **Library**: media (upload or by address, in sub-tabs by what it is used for), variables,
   items, characters, objectives.
 - **Moves**: what players can do from buttons on their screen (jump, crouch, dance), each with

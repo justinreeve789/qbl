@@ -224,6 +224,20 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...narration,
     ],
   },
+  conversation: {
+    label: 'Conversation',
+    about: 'A dialogue tree: lines said by the player and characters, where the player picks what to say next.',
+    fields: [
+      {
+        key: 'style', label: 'Shown as', kind: 'select', wide: true, placeholder: 'A story box with each speaker’s portrait', options: [['bubble', 'Speech bubbles over the speakers']],
+        hint: 'In a story box the player’s answers are listed under the line. With bubbles each line hangs over whoever says it and the answers wait in a box at the bottom of the screen; a character speaking in a bubble must be placed in this scene. Either way the player cannot walk off while choosing.',
+      },
+      {
+        key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'As the scenario’s setting says', options: [['true', 'Yes: read the lines aloud'], ['false', 'No: never read them aloud']],
+        hint: 'Each line is read in its speaker’s voice (set on the Characters page), or a line’s own recording is played. Players can switch reading aloud off for themselves.',
+      },
+    ],
+  },
   freeze: {
     label: 'Freeze or release player',
     about: 'Stop the player from walking (while a character talks), or let them walk again.',
@@ -312,7 +326,7 @@ export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
 /** An icon and a colour for each action type, by what kind of thing it does. */
 const SAY = '#2f6fed', SHOW = '#8e5bd6', SOUND = '#0f9d8a', FLOW = '#c77b12', PLAYER = '#d6457a', STATE = '#3b8f4a';
 export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: string]> = {
-  infobox: ['📋', SAY], dialogue: ['💬', SAY], text_overlay: ['🔤', SAY],
+  infobox: ['📋', SAY], dialogue: ['💬', SAY], conversation: ['🔀', SAY], text_overlay: ['🔤', SAY],
   image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
@@ -325,6 +339,20 @@ export const ACTION_COMMON: Field[] = [
   { key: 'blocking', label: 'Wait for this to finish before the next action', kind: 'bool', default: true, wide: true },
 ];
 
+/**
+ * A new conversation: a character greets the player, who can ask a question (the answer comes back
+ * to the greeting) or say goodbye. `characterId`: who speaks; without one the player does.
+ */
+export function starterConversation(characterId?: number | null): Record<string, unknown> {
+  const who = characterId != null ? { speaker: 'character', character_id: characterId } : {};
+  return {
+    lines: [
+      { id: 'l1', ...who, text: 'Hello! What would you like to know?', choices: [{ text: 'Who are you?', next: 'l2' }, { text: 'Goodbye!' }] },
+      { id: 'l2', ...who, text: 'I look after this place.', next: 'l1' },
+    ],
+  };
+}
+
 /** Starting values for a new action of each type, so it is valid as soon as it is added. */
 export function actionDefaults(type: ActionType): Record<string, unknown> {
   switch (type) {
@@ -334,6 +362,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return {};
     case 'dialogue':
       return { text: 'Hello!' };
+    case 'conversation':
+      return starterConversation();
     case 'freeze':
       return { frozen: true };
     case 'animate':
