@@ -1,6 +1,7 @@
 import type {
-  Action, ActionType, GameEvent, GlossaryEntry, Hotspot, Id, Item, Label, Media, Placement, Scenario, Scene, SceneLayer, SpawnPoint,
+  AvatarCharacter, Npc, Action, ActionType, GameEvent, GlossaryEntry, Hotspot, Id, Item, Label, Media, Placement, Scenario, Scene, SceneLayer, SpawnPoint,
 } from './types.js';
+import { characterMediaIds, normalizeNpc, scenarioAvatars } from './characters.js';
 
 const ACTION_TYPES: ActionType[] = [
   'animate', 'award', 'glossary', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
@@ -96,7 +97,9 @@ export function normalizeScenario(input: Scenario): Scenario {
     // A vehicle is one object in the world: it goes where it is driven, stays where it is left, and
     // whoever finds it there can use it. That is what `unique` means, so every vehicle is unique.
     items: (input.items ?? []).map((item) => (item.vehicle && !item.unique ? { ...item, unique: true } : item)),
-    characters: input.characters ?? [],
+    // Characters written before they had animations get them from their picture and close-up.
+    characters: (input.characters ?? []).map((c) => normalizeNpc(c, (id) => assets.get(id))),
+    avatars: scenarioAvatars(input, (id) => assets.get(id)),
     assets: [...assets.values()].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100)),
     scenes,
   };
@@ -190,13 +193,23 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
   const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
   for (const p of scene.items ?? []) add(items.get(p.item_id)?.media_id);
   const chars = new Map((scenario.characters ?? []).map((c) => [c.id, c]));
-  for (const p of scene.characters ?? []) add(chars.get(p.character_id)?.media_id);
+  for (const p of scene.characters ?? []) {
+    const c = chars.get(p.character_id);
+    for (const id of characterMediaIds(c)) add(id);
+    // Not normalized yet: the older picture fields.
+    if (!c?.animations) {
+      add(c?.media_id);
+      add(c?.portrait_media_id);
+    }
+  }
   return [...ids];
 }
 
 /** Media needed everywhere: avatars, attachable items (they travel with players) and splash screens. */
 export function collectGlobalMediaIds(scenario: Scenario): Id[] {
-  const ids = new Set<Id>(scenario.avatar_media_ids ?? []);
+  // Every avatar's pictures: players bring theirs into every scene.
+  const ids = new Set<Id>(scenario.avatars ? scenario.avatars.flatMap((a) => characterMediaIds(a)) : scenario.avatar_media_ids ?? []);
+  if (!scenario.avatars) for (const id of Object.values(scenario.avatar_portraits ?? {})) ids.add(id);
   if (scenario.music_media_id != null) ids.add(scenario.music_media_id);
   // What players wear travels with them, so a scenario's shop pictures are needed everywhere.
   for (const item of scenario.shop_items ?? []) if (item.media_id != null) ids.add(item.media_id);
@@ -228,10 +241,15 @@ export class ScenarioIndex {
   readonly items = new Map<Id, Item>();
   readonly events = new Map<Id, { event: GameEvent; scene: Scene }>();
   readonly hotspots = new Map<Id, { hotspot: Hotspot; scene: Scene }>();
+  /** The scenario's characters (NPCs) and the avatars players choose from, by id. */
+  readonly characters = new Map<Id, Npc>();
+  readonly avatars = new Map<Id, AvatarCharacter>();
 
   constructor(readonly scenario: Scenario) {
     for (const m of scenario.assets ?? []) this.media.set(m.id, m);
     for (const i of scenario.items ?? []) this.items.set(i.id, i);
+    for (const c of scenario.characters ?? []) this.characters.set(c.id, c);
+    for (const a of scenario.avatars ?? []) this.avatars.set(a.id, a);
     for (const scene of scenario.scenes) {
       this.scenes.set(scene.id, scene);
       for (const e of eventsOf(scene)) this.events.set(e.id, { event: e, scene });

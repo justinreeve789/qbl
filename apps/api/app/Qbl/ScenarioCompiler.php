@@ -171,7 +171,8 @@ class ScenarioCompiler
                 'priority' => self::int($m['priority'] ?? 100),
                 'sheet' => is_array($params['sheet'] ?? null) ? $params['sheet'] : null,
                 'animations' => is_array($params['sheet'] ?? null) && ! empty($params['animations']) ? array_values($params['animations']) : null,
-                'params' => array_diff_key($params, ['sheet' => 1, 'animations' => 1]) ?: null,
+                'apng' => is_array($params['apng'] ?? null) ? $params['apng'] : null,
+                'params' => array_diff_key($params, ['sheet' => 1, 'animations' => 1, 'apng' => 1]) ?: null,
             ]);
         }
 

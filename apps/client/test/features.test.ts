@@ -342,7 +342,8 @@ test('in a preview an award is given once, unless it repeats', async () => {
 
 test('a sprite-sheet avatar stands, walks and makes moves; moves are buttons that come and go', async () => {
   const scenario = loadScenario();
-  scenario.avatar_media_ids = [120];
+  // Only Sprocket, whose pictures are a sprite sheet, to choose from.
+  scenario.avatars = scenario.avatars!.filter((a) => a.id === 120);
   scenario.session = { scene_id: 10 };
   const g = new Game(scenario);
   await g.wait(100);
@@ -413,7 +414,8 @@ test('a single picture can make the built-in moves; a move bought in the marketp
   scenario.shop_items!.push({ id: 14, name: 'Spin', kind: 'move', price: 25, move: 'spin' });
   const g = new Game(scenario);
   await g.wait(100);
-  const me = g.world.objects.find((o) => o.kind === 'image' && o.key === 'media-101')!;
+  // Avatars and characters are sprites, whatever their pictures are; these two are single pictures.
+  const me = g.world.objects.find((o) => o.kind === 'sprite' && o.key === 'media-101')!;
   const ground = me.y;
   g.ui.pressMove('jump');
   await g.wait(300);
@@ -434,7 +436,7 @@ test('a single picture can make the built-in moves; a move bought in the marketp
   assert.ok(me.scaleX > 0);
 
   // The captain waves as she greets the player.
-  const captain = g.world.objects.find((o) => o.kind === 'image' && o.key === 'media-109' && o !== me)!;
+  const captain = g.world.objects.find((o) => o.kind === 'sprite' && o.key === 'media-109' && o !== me)!;
   const greeting = g.scene.def.indirect_events!.find((e) => e.shortname === 'captain-greeting')!;
   void (g.scene as any).engine.trigger(greeting);
   let leaned = 0;

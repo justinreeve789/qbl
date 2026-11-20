@@ -335,12 +335,13 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   // A character with a close-up.
   await page.click('.tabs >> text=Characters');
   await page.click('text=New character');
-  await page.waitForSelector('.card [data-field=portrait_media_id]');
+  await page.waitForSelector('.card [data-animation=portrait]');
   const card = page.locator('.card').first();
   await card.locator('[data-field=name] input').fill('Old Toad');
   await card.locator('[data-field=name] input').blur();
   await saved();
-  await card.locator('[data-field=portrait_media_id] select').selectOption({ label: 'frog.png' });
+  // Its close-up is its portrait animation; nothing else is drawn yet.
+  await card.locator('[data-animation=portrait] select').selectOption({ label: 'frog.png' });
   await saved();
   await page.click('.tabs >> text=Media');
   assert.equal(await page.locator('text=Players can choose this as their avatar').count(), 0, 'avatars are the platform\'s: a scenario does not choose them');
@@ -373,45 +374,87 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
 
   const bundle = await api<{ scenario: { settings: Record<string, unknown> }; events: Array<Record<string, unknown>>; characters: Array<Record<string, unknown>>; variables: Array<Record<string, unknown>> }>(`/editor/scenarios/${scenarioId}`);
   assert.equal(bundle.events.find((e) => e.shortname === 'arrive')!.audience, 'scene');
-  const frog = (bundle.characters[0]!.settings as { portrait_media_id: number }).portrait_media_id;
+  const frog = (bundle.characters[0]!.settings as { animations: { portrait: { media_id: number } } }).animations.portrait.media_id;
   assert.ok(frog > 0);
   assert.equal(bundle.variables.find((v) => v.variable_name === 'frogs_found')!.scope, 'room');
 });
 
-test('animations: an animated PNG becomes a sprite sheet, frames are picked for a new animation, and moves and animate actions use them', async () => {
+test('animations: an animated PNG plays as it is, a character takes frames of it, and a sprite sheet defines animations', async () => {
   await page.click('.tabs >> text=Media');
   await page.click('.subtabs [data-tab=all]');
   const before = await page.locator('[data-media]').count();
   await page.setInputFiles('.page input[type=file]', [{ name: 'hop.apng', mimeType: 'image/png', buffer: readFileSync(new URL('./fixtures/hop.apng', import.meta.url)) }]);
   await page.waitForFunction((n) => document.querySelectorAll('[data-media]').length === n + 1, before);
   await saved();
-  const media = async () => (await api<{ media: Array<Record<string, any>> }>(`/editor/scenarios/${scenarioId}`)).media.find((m) => m.filename === 'hop-sheet.png')!;
-  // Four 40 x 60 frames, laid out two by two, playing at the file's own speed (100 + 100 + 200 + 100 ms).
-  assert.deepEqual([(await media()).width, (await media()).height], [80, 120]);
-  assert.deepEqual((await media()).params.sheet, { columns: 2, rows: 2 });
-  assert.deepEqual((await media()).params.animations, [{ name: 'idle', frames: [0, 1, 2, 3], duration: 500 }]);
+  const media = async (name: string) => (await api<{ media: Array<Record<string, any>> }>(`/editor/scenarios/${scenarioId}`)).media.find((m) => m.filename === name)!;
+  // Four 40 x 60 frames at the file's own speed (100 + 100 + 200 + 100 ms), kept as the file it is.
+  const hop = await media('hop.apng');
+  assert.deepEqual([hop.width, hop.height, hop.params.apng], [40, 60, { frames: 4, duration: 500, plays: 0 }]);
+  assert.equal(hop.params.sheet, undefined, 'it is not laid out as a sheet');
+  assert.match(await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'hop.apng' }) }).innerText(), /Animated PNG: 4 frames, 500 ms/);
 
-  // The sheet tool: add an animation and click the frames that make it up.
-  const card = page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'hop-sheet.png' }) });
-  await card.locator('[data-fold=media-sheet] > summary').click();
-  assert.equal(await card.locator('.sheet-cell').count(), 4);
-  assert.deepEqual(await card.locator('.sheet-cell.in .sheet-place').allInnerTexts(), ['1', '2', '3', '4'], 'the frames of the animation being edited are lit, with their place in it');
-  await card.locator('text=+ Add animation').click();
-  await page.waitForFunction(() => document.querySelectorAll('.sheet-animation[data-animation]').length === 2);
-  assert.equal(await card.locator('.sheet-animation.editing input[type=text]').inputValue(), 'walk', 'the next usual name is offered');
-  await card.locator('.sheet-cell[data-frame="3"]').click();
-  await page.waitForFunction(() => document.querySelectorAll('.sheet-cell.in').length === 1);
-  await card.locator('.sheet-cell[data-frame="1"]').click();
-  await page.waitForFunction(() => document.querySelectorAll('.sheet-cell.in').length === 2);
+  // Old Toad stands as the whole animated PNG, and hops on some of its frames.
+  await page.click('.tabs >> text=Characters');
+  const toad = page.locator('.character-card', { has: page.locator('.card-title', { hasText: 'Old Toad' }) });
+  await toad.locator('[data-animation=stand_right] select').selectOption({ label: 'hop.apng (animated)' });
   await saved();
-  assert.deepEqual((await media()).params.animations[1], { name: 'walk', frames: [3, 1] });
-  // The preview steps through those frames.
+  assert.match(await toad.locator('[data-animation=stand_left]').innerText(), /Uses Standing, facing right, mirrored/, 'the other side is filled in, mirrored');
+  assert.match(await toad.locator('[data-animation=walk_right]').innerText(), /Uses Standing, facing right/);
+  await toad.locator('.anim-add input').fill('hop');
+  await toad.locator('text=+ Add animation').click();
+  await page.waitForSelector('.character-card [data-animation=hop]');
+  await page.waitForSelector('.character-card .frame-grid .sheet-cell');
+  assert.equal(await toad.locator('.frame-grid .sheet-cell:not([disabled])').count(), 4, 'its frames are cut from the file to pick from');
+  await toad.locator('.frame-grid .sheet-cell[data-frame="3"]').click();
+  await saved();
+  await page.waitForFunction(() => document.querySelectorAll('.frame-grid .sheet-cell.in').length === 1);
+  await toad.locator('.frame-grid .sheet-cell[data-frame="1"]').click();
+  await saved();
+  await page.waitForFunction(() => document.querySelectorAll('.frame-grid .sheet-cell.in').length === 2);
+  const toadRow = async () => (await api<{ characters: Array<Record<string, any>> }>(`/editor/scenarios/${scenarioId}`)).characters.find((c) => c.name === 'Old Toad')!;
+  assert.deepEqual((await toadRow()).settings.animations.hop, { media_id: hop.id, frames: [3, 1] });
+  assert.deepEqual((await toadRow()).settings.animations.stand_right, { media_id: hop.id });
+  // Its preview steps through those frames.
   const seen = new Set<string>();
-  for (let i = 0; i < 8; i++) {
-    seen.add((await card.locator('.sheet-preview').getAttribute('data-frame')) ?? '');
+  for (let i = 0; i < 10; i++) {
+    seen.add((await toad.locator('[data-animation=hop] .anim-preview').getAttribute('data-frame')) ?? '');
     await page.waitForTimeout(60);
   }
   assert.deepEqual([...seen].sort(), ['1', '3']);
+  await toad.locator('[data-animation=hop] input.anim-duration').fill('300');
+  await toad.locator('[data-animation=hop] input.anim-duration').blur();
+  await saved();
+  assert.deepEqual((await toadRow()).settings.animations.hop, { media_id: hop.id, frames: [3, 1], duration: 300 });
+
+  // The sheet tool, for items and pictures: say the grid, add an animation and click its frames.
+  await page.click('.tabs >> text=Media');
+  const card = page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'frog.png' }) });
+  await card.locator('[data-fold=media-sheet] > summary').click();
+  await card.locator('[data-field=columns] input').fill('2');
+  await card.locator('[data-field=columns] input').blur();
+  await saved();
+  await card.locator('[data-field=rows] input').fill('2');
+  await card.locator('[data-field=rows] input').blur();
+  await saved();
+  assert.deepEqual((await media('frog.png')).params.sheet, { columns: 2, rows: 2 });
+  assert.equal(await card.locator('.sheet-cell').count(), 4);
+  await card.locator('text=+ Add animation').click();
+  await page.waitForFunction(() => document.querySelectorAll('.sheet-animation[data-animation]').length === 1);
+  assert.equal(await card.locator('.sheet-animation.editing input[type=text]').inputValue(), 'idle', 'the first usual name is offered');
+  await card.locator('.sheet-cell[data-frame="3"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-fold=media-sheet] .sheet-cell.in').length === 1);
+  await card.locator('.sheet-cell[data-frame="1"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-fold=media-sheet] .sheet-cell.in').length === 2);
+  await saved();
+  assert.deepEqual((await media('frog.png')).params.animations[0], { name: 'idle', frames: [3, 1] });
+  // Back to one picture: the frog is Old Toad's close-up and the pond's label.
+  await card.locator('[data-field=columns] input').fill('1');
+  await card.locator('[data-field=columns] input').blur();
+  await saved();
+  await card.locator('[data-field=rows] input').fill('1');
+  await card.locator('[data-field=rows] input').blur();
+  await saved();
+  assert.equal((await media('frog.png')).params.sheet, undefined);
 
   // A move for everyone, on the Moves page.
   await page.click('.tabs >> text=Moves');
@@ -467,12 +510,12 @@ test('publish, then play the published JSON in the game', async () => {
   assert.equal(start.audience, 'scene');
   const shown = (game.ctx.connection as unknown as { shared: Array<{ action_id: number }> }).shared.map((s) => s.action_id);
   assert.deepEqual(shown, start.actions.filter((a) => a.type !== 'award').map((a) => a.id));
-  assert.ok(document.characters![0]!.portrait_media_id, 'the character has its close-up');
+  assert.ok(document.characters![0]!.animations?.portrait, 'the character has its close-up');
+  assert.deepEqual(Object.keys(document.characters![0]!.animations!).sort(), ['hop', 'portrait', 'stand_right'], 'and its animations');
+  const hopMedia = document.assets!.find((m) => m.id === document.characters![0]!.animations!.stand_right!.media_id)!;
+  assert.deepEqual(hopMedia.apng, { frames: 4, duration: 500, plays: 0 }, 'the animated PNG arrives as one');
 
-  // The sheet and its animations are in the document, and the move is a button on the player's screen.
-  const hop = document.assets!.find((m) => m.filename === 'hop-sheet.png')!;
-  assert.deepEqual(hop.sheet, { columns: 2, rows: 2 });
-  assert.deepEqual(hop.animations!.map((a) => [a.name, a.frames]), [['idle', [0, 1, 2, 3]], ['walk', [3, 1]]]);
+  // The move is a button on the player's screen.
   assert.deepEqual(game.ui.moveButtons.map((m) => m.animation), ['jump']);
 
   await game.click(600, 500);

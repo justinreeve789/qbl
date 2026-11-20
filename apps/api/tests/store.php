@@ -7,7 +7,7 @@
  *
  * These are the same classes Laravel uses in production; only the database differs.
  */
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -245,6 +245,38 @@ check(! is_file("$mediaDir/{$upload['filepath']}"), 'which removes the uploaded 
 [, $bundle] = $call('GET', "scenarios/$sid");
 same($bundle['items'][0]['media_id'], null, 'and things that used it keep existing without it');
 same($call('DELETE', "scenarios/$sid/rows/items/{$item['id']}")[0], 204, 'items can be deleted');
+
+// An animated PNG is noted as one when it is uploaded: its frames and its timing.
+$chunk = fn (string $type, string $data) => pack('N', strlen($data)).$type.$data.pack('N', crc32($type.$data));
+$pixels = fn (string $rgba) => gzcompress("\0".$rgba.$rgba."\0".$rgba.$rgba);
+$fctl = fn (int $seq, int $ms) => pack('NNNNNnnCC', $seq, 2, 2, 0, 0, $ms, 1000, 0, 0);
+$apngFile = sys_get_temp_dir().'/qbl-test-anim.png';
+file_put_contents($apngFile, "\x89PNG\r\n\x1a\n".$chunk('IHDR', pack('NNCCCCC', 2, 2, 8, 6, 0, 0, 0)).$chunk('acTL', pack('NN', 2, 0))
+    .$chunk('fcTL', $fctl(0, 300)).$chunk('IDAT', $pixels("\xff\0\0\xff")).$chunk('fcTL', $fctl(1, 500)).$chunk('fdAT', pack('N', 2).$pixels("\0\0\xff\xff")).$chunk('IEND', ''));
+[$status, $body] = $call('POST', "scenarios/$sid/media/upload", [], null, ['file' => ['tmp_name' => $apngFile, 'name' => 'blink.png']]);
+$blink = $body['row'] ?? [];
+same([$status, $blink['params']['apng'] ?? null], [201, ['frames' => 2, 'duration' => 800, 'plays' => 0]], 'an animated PNG upload says how many frames it has and how long it plays');
+[, $body] = $call('POST', "scenarios/$sid/media/upload", [], null, ['file' => ['tmp_name' => $png, 'name' => 'still.png']]);
+$still = $body['row'];
+same(isset($still['params']['apng']), false, 'a still PNG does not');
+$asset = array_values(array_filter($store->compile($sid)['assets'], fn ($m) => $m['id'] === $blink['id']))[0];
+same([$asset['apng']['frames'], isset($asset['params']['apng'])], [2, false], 'the scenario document carries it on the media');
+
+// A character is drawn from its animations, each a picture of this scenario's.
+$animations = ['stand_right' => ['media_id' => $blink['id']], 'walk_right' => ['media_id' => $still['id'], 'frames' => ['0'], 'duration' => '450', 'flip' => false, 'extra' => 1], 'wave' => ['media_id' => $blink['id'], 'repeat' => true]];
+[$status, $body] = $call('POST', "scenarios/$sid/rows/characters", ['name' => 'Guide', 'settings' => ['scale' => 0.9, 'animations' => $animations]]);
+$guide = $body['row'] ?? [];
+same([$status, $guide['settings']['animations'] ?? null], [201, ['stand_right' => ['media_id' => $blink['id']], 'walk_right' => ['media_id' => $still['id'], 'frames' => [0], 'duration' => 450], 'wave' => ['media_id' => $blink['id'], 'repeat' => true]]], 'a character keeps its animations, tidied');
+same($call('PATCH', "scenarios/$sid/rows/characters/{$guide['id']}", ['settings' => ['animations' => ['stand_right' => ['media_id' => 1]]]])[0], 422, "another scenario's picture is refused");
+same($call('PATCH', "scenarios/$sid/rows/characters/{$guide['id']}", ['settings' => ['animations' => ['Stand Right' => ['media_id' => $still['id']]]]])[0], 422, 'so is a name the game cannot use');
+same($call('PATCH', "scenarios/$sid/rows/characters/{$guide['id']}", ['settings' => ['animations' => [['media_id' => $still['id']]]]])[0], 422, 'and a list where names belong');
+same($compiled = array_values(array_filter($store->compile($sid)['characters'], fn ($c) => $c['id'] === $guide['id']))[0]['animations']['wave'], ['media_id' => $blink['id'], 'repeat' => true], 'the document carries them');
+$call('DELETE', "scenarios/$sid/rows/media/{$blink['id']}");
+[, $bundle] = $call('GET', "scenarios/$sid");
+$left = array_values(array_filter($bundle['characters'], fn ($c) => $c['id'] === $guide['id']))[0];
+same(array_keys($left['settings']['animations']), ['walk_right'], 'deleting a picture takes away the animations drawn from it, and only those');
+same($call('DELETE', "scenarios/$sid/rows/characters/{$guide['id']}")[0], 204, 'characters can be deleted');
+$call('DELETE', "scenarios/$sid/rows/media/{$still['id']}");
 
 // A scenario's address cannot be taken or changed through the API.
 same($call('PATCH', "scenarios/$sid", ['shortname' => 'starshipexplorer'])[0], 422, 'a shortname spelled like another scenario\'s code is refused');

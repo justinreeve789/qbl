@@ -1,8 +1,9 @@
 import * as Phaser from 'phaser';
-import { animationRepeats, BUILT_IN_MOVES, findAnimation, parseIds, shadeTint, type Id, type PlayerRec, type ShopItem } from '@qbl/shared';
-import { ensureDefaultAvatar, mediaKey, shopTexture } from '../core/assets';
+import { parseIds, shadeTint, type Id, type PlayerRec, type ShopItem } from '@qbl/shared';
+import { mediaKey, shopTexture } from '../core/assets';
 import { Depth } from '../core/depth';
 import type { GameContext } from '../core/GameContext';
+import { CharacterFigure } from './CharacterFigure';
 import { Figure } from './Figure';
 
 const NAME_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -23,14 +24,12 @@ const BUBBLE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
 };
 
 /**
- * One player's figure: sprite, name, speech bubble and whatever they are
- * wearing or riding. `x`/`y` is the position of the feet.
+ * One player's figure: the avatar character they chose, with their name, speech bubble and
+ * whatever they are wearing or riding. `x`/`y` is the position of the feet.
  */
-export class Avatar {
+export class Avatar extends CharacterFigure {
   x: number;
   y: number;
-  private figure: Figure;
-  private sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
   /** Walking right now: the sheet's walk plays, and whatever is ridden moves too. */
   private moving = false;
   /** The last animation request seen for this player (`name:count` from the room state). */
@@ -61,18 +60,17 @@ export class Avatar {
    * It applies to the figure and to everything it wears or rides.
    */
   constructor(
-    private scene: Phaser.Scene, private ctx: GameContext, private rec: PlayerRec, private zoom: number, readonly isLocal: boolean,
+    scene: Phaser.Scene, private ctx: GameContext, private rec: PlayerRec, private zoom: number, readonly isLocal: boolean,
     private depth: (x: number, y: number) => number = () => 1,
     /** How shaded a figure standing at a point is, 0 to 1, from the scene's shadow spots. */
     private shade: (x: number, y: number) => number = () => 0,
   ) {
+    // The room carries the id of the avatar the player chose.
+    super(scene, (id) => ctx.index.media.get(id), ctx.index.avatars.get(rec.avatar), rec.x, rec.y);
     this.x = rec.x;
     this.y = rec.y;
-    const media = ctx.index.media.get(rec.avatar);
-    const key = media && scene.textures.exists(mediaKey(media.id)) ? mediaKey(media.id) : ensureDefaultAvatar(scene);
-    this.baseScale = (media?.scale_y ?? 1) * zoom;
-    this.figure = new Figure(scene, media, key, this.x, this.y);
-    this.sprite = this.figure.object.setOrigin(0.5, 1).setScale(this.baseScale);
+    this.baseScale = this.scale * zoom;
+    this.sprite.setScale(this.baseScale);
     this.label = scene.add.text(this.x, this.y, rec.name, NAME_STYLE).setOrigin(0.5, 1).setDepth(Depth.name);
     this.bubble = scene.add.text(this.x, this.y, '', BUBBLE_STYLE).setOrigin(0.5, 1).setDepth(Depth.bubble).setVisible(false);
     this.setFacing(rec.facing === 'left' ? 'left' : 'right');
@@ -81,7 +79,7 @@ export class Avatar {
     // A dance already going on when they come into view carries on; a finished jump is not replayed.
     this.animToken = rec.anim ?? '';
     const going = this.animToken.split(':')[0] ?? '';
-    if (going && this.figure.play(going) > 0) this.figure.play('');
+    if (going && this.play(going) > 0) this.play('');
     // Someone already hidden when they come into view starts hidden, without a fade.
     if (rec.hidden) this.fade = this.fadeTarget = 0;
     this.applyVisibility();
@@ -133,7 +131,7 @@ export class Avatar {
   setMoving(moving: boolean) {
     if (moving === this.moving) return;
     this.moving = moving;
-    if (moving && this.figure.acting) this.figure.play('');
+    if (moving && this.acting) this.play('');
     this.layout();
   }
 
@@ -144,21 +142,8 @@ export class Avatar {
   setAnimation(token: string) {
     if (token === this.animToken) return;
     this.animToken = token;
-    this.figure.play(token.split(':')[0] ?? '');
+    this.play(token.split(':')[0] ?? '');
     this.layout();
-  }
-
-  /** The move the figure is making now, or ''. */
-  get acting(): string {
-    return this.figure.acting;
-  }
-
-  /** How long a move would last on this figure, in milliseconds; 0 if it loops or means nothing here. */
-  moveDuration(name: string): number {
-    const drawn = findAnimation(this.figure.media, name);
-    if (drawn) return animationRepeats(drawn) ? 0 : Math.max(1, drawn.duration ?? drawn.frames.length * 100);
-    const builtIn = BUILT_IN_MOVES[name];
-    return builtIn && !builtIn.repeat ? builtIn.duration : 0;
   }
 
   /** Play an animation on something this player is wearing or riding. False if they have no such item. */
@@ -167,11 +152,11 @@ export class Avatar {
     return figure ? figure.play(name) : null;
   }
 
-  /** Advance a fade in progress. */
-  tick(delta: number) {
+  /** Advance moves, what is worn and ridden, and a fade in progress. */
+  override tick(delta: number) {
     // A move that ends on this tick still needs one more layout, to put the figure back as it was.
-    const acting = this.figure.acting !== '' || [...this.attached.values()].some((f) => f.acting !== '');
-    this.figure.tick(delta);
+    const acting = this.acting !== '' || [...this.attached.values()].some((f) => f.acting !== '');
+    super.tick(delta);
     for (const f of this.attached.values()) f.tick(delta);
     // An animation, a move or a pet keeps things moving while the figure stands still.
     if (this.move || acting || this.petAt || [...this.worn.values()].some((w) => w.item.kind === 'pet')) {
@@ -267,14 +252,14 @@ export class Avatar {
   private layout(delta = 0) {
     // Depth: the figure and what it carries shrink or grow together with where it stands.
     const k = this.depth(this.x, this.y);
-    // The sheet's idle or walk for the way it faces (avatar art faces right unless a walk was drawn for the left).
-    this.sprite.setFlipX(this.figure.auto(this.moving, this.facing));
+    // The avatar's standing or walking pose for the way it faces.
+    this.sprite.setFlipX(this.auto(this.moving, this.facing));
     this.sprite.setScale(this.baseScale * k);
     const h = this.sprite.displayHeight || 160 * k;
     // A bought animation: the figure moves on the spot while it stands, and what it wears moves with it.
     const t = this.clock;
-    const style = this.figure.acting ? null : this.move;
-    const pose = this.figure.pose();
+    const style = this.acting ? null : this.move;
+    const pose = this.bend();
     const lift = pose.lift * h + (style === 'bounce' ? Math.abs(Math.sin(t / 260)) * 0.07 * h : style === 'float' ? (0.06 + Math.sin(t / 700) * 0.03) * h : 0);
     const lean = pose.lean + (style === 'sway' ? Math.sin(t / 500) * 0.07 : 0);
     const pulse = style === 'pulse' ? 1 + Math.sin(t / 400) * 0.04 : 1;
@@ -355,11 +340,11 @@ export class Avatar {
     }
   }
 
-  destroy() {
+  override destroy() {
     for (const w of this.worn.values()) w.image.destroy();
     this.worn.clear();
     this.bubbleTimer?.remove();
-    this.sprite.destroy();
+    super.destroy();
     this.label.destroy();
     this.bubble.destroy();
     for (const figure of this.attached.values()) figure.destroy();

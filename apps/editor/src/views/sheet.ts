@@ -45,7 +45,7 @@ export function sheetEditor(ctx: FormContext, media: Row): HTMLElement {
     return h('label', { class: 'field', 'data-field': key }, h('span', { class: 'field-label' }, label), input);
   };
   const grid = h('div', { class: 'form' }, number(sheet?.columns, 'Frames across', 'columns'), number(sheet?.rows, 'Frames down', 'rows'));
-  if (!sheet) return h('div', { class: 'sheet-editor' }, grid, h('p', { class: 'muted' }, 'A sprite sheet is one picture holding the frames of its animations in a grid. Say how many frames it has across and down to define animations on it. An animated PNG is laid out as a sheet when you upload it.'));
+  if (!sheet) return h('div', { class: 'sheet-editor' }, grid, h('p', { class: 'muted' }, 'A sprite sheet is one picture holding frames in a grid. Say how many frames it has across and down. Characters then take the frames they need on the Characters page, so one sheet can serve several of them; animations defined here are for items, vehicles and pictures in scenes.'));
 
   const list = animations();
   const count = sheet.count ?? sheet.columns * sheet.rows;
@@ -135,7 +135,7 @@ export function sheetEditor(ctx: FormContext, media: Row): HTMLElement {
     { class: 'sheet-editor' },
     grid,
     h('div', { class: 'sheet-stage' }, picture, preview),
-    h('p', { class: 'muted' }, active ? `Click frames to put them into “${active.name}”, in the order they should play. “idle” plays while a figure stands and “walk” while it moves (mirrored for the other direction, unless you also define walk_left and walk_right). Any other name is played by a “Play an animation” action or a move.` : 'Add an animation, then click the frames that make it up.'),
+    h('p', { class: 'muted' }, active ? `Click frames to put them into “${active.name}”, in the order they should play. For an item or vehicle, “idle” plays while it stands and “walk” while it is ridden (mirrored for the other direction, unless you also define walk_left and walk_right); any other name is played by a “Play an animation” action. Characters’ animations are on the Characters page.` : 'Add an animation, then click the frames that make it up.'),
     options,
     h('div', { class: 'sheet-animations' }, h('div', { class: 'sheet-animation head' }, h('span', null), h('span', null, 'Name'), h('span', null, 'One pass (ms)'), h('span', null, 'Repeats'), h('span', null, 'Frames'), h('span', null)), ...rows),
     add,

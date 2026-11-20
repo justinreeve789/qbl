@@ -1,23 +1,19 @@
-import { dialogueDuration, isNarrated, resolveMediaUrl, type Id, type Narrated } from '@qbl/shared';
+import { characterPicture, dialogueDuration, isNarrated, resolveMediaUrl, type CharacterPicture, type Id, type Narrated } from '@qbl/shared';
 import type { SpeakOptions } from '../../ui/UiPort';
 import type { BubbleAnchor } from '../../ui/bubble';
 import type { Presenter, PresenterContext } from '../Presenter';
 
 /** Who is speaking: their name, and the close-up used in a portrait box. */
-function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: string | undefined): { name?: string; portrait?: string } {
+function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: string | undefined): { name?: string; portrait?: CharacterPicture } {
   const { scenario, index, connection } = pc.ctx;
-  const url = (mediaId: Id | null | undefined) => {
-    const media = mediaId != null ? index.media.get(mediaId) : undefined;
-    return (media && resolveMediaUrl(scenario, media)) || undefined;
-  };
+  // A character without a close-up is shown standing.
+  const portrait = (who: Parameters<typeof characterPicture>[0]) => characterPicture(who, 'portrait', (id) => index.media.get(id), (m) => resolveMediaUrl(scenario, m)) ?? undefined;
   if (characterId != null) {
-    const c = (scenario.characters ?? []).find((x) => x.id === characterId);
-    // A character without a close-up is shown by its ordinary picture.
-    return { name: c?.name, portrait: url(c?.portrait_media_id ?? c?.media_id) };
+    const c = index.characters.get(characterId);
+    return { name: c?.name, portrait: portrait(c) };
   }
   const player = connection.state.players.get(actor ?? connection.sessionId);
-  const avatar = player?.avatar;
-  return { name: player?.name, portrait: url(scenario.avatar_portraits?.[String(avatar)] ?? avatar) };
+  return { name: player?.name, portrait: portrait(player ? index.avatars.get(player.avatar) : undefined) };
 }
 
 /**
@@ -26,7 +22,7 @@ function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: str
  */
 export function speech(pc: PresenterContext, action: Narrated, characterId?: Id): SpeakOptions {
   const { scenario } = pc.ctx;
-  const character = characterId != null ? (scenario.characters ?? []).find((c) => c.id === characterId) : undefined;
+  const character = characterId != null ? pc.ctx.index.characters.get(characterId) : undefined;
   return {
     lang: scenario.default_language,
     pitch: character?.voice_pitch,

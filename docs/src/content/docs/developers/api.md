@@ -61,7 +61,7 @@ Returns `{ "scenario": Scenario }`: the published scenario document with the cal
 
 `?group=` names the instance being joined (`public` if absent, `a12` for an assignment, `t7` for a team; see [Classes, missions and teams](/docs/editor/classes/)). The save returned is the caller's save in that instance. 403 if the caller does not belong to it, or if the scenario is private and was not assigned to them.
 
-The document's avatars (`avatar_media_ids`, `avatar_portraits` and their images in `assets`) are the platform's, added as the document is served.
+The document's avatars (`avatars`, and the pictures they use in `assets`) are the platform's, added as the document is served.
 
 ### Missions and avatars
 

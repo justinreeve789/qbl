@@ -6,6 +6,7 @@ import {
 import { mediaKey } from '../core/assets';
 import { Depth } from '../core/depth';
 import { Figure } from '../entities/Figure';
+import { NpcFigure } from '../entities/NpcFigure';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
 
@@ -21,14 +22,6 @@ interface PlacedItem {
   exists: boolean;
 }
 
-const NAME_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
-  fontFamily: 'Montserrat, system-ui, sans-serif',
-  fontSize: '16px',
-  color: '#ffe9a8',
-  stroke: '#000000',
-  strokeThickness: 4,
-};
-
 /**
  * Items and characters (NPCs) placed in the scene.
  *
@@ -41,14 +34,14 @@ export class PropsSystem implements SceneSystem {
   private objects: Phaser.GameObjects.GameObject[] = [];
   private pointerOver = 0;
 
-  private characters = new Map<Id, { figure: Figure; image: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite; name: string; size: number; facing: 'left' | 'right'; y: number }>();
+  private characters = new Map<Id, NpcFigure>();
 
   constructor(private rt: SceneRuntime) {}
 
   /** Where a placed character stands (feet) and how tall it is drawn, for speech bubbles. */
   characterAt(characterId: Id): { x: number; y: number; height: number; name: string } | null {
     const c = this.characters.get(characterId);
-    return c ? { x: c.image.x, y: c.image.y, height: c.image.displayHeight, name: c.name } : null;
+    return c ? { x: c.feet.x, y: c.feet.y, height: c.sprite.displayHeight, name: c.name } : null;
   }
 
   create() {
@@ -101,28 +94,21 @@ export class PropsSystem implements SceneSystem {
 
   private character(placement: CharacterPlacement) {
     const { ctx, scene, zoom, engine, def } = this.rt;
-    const character = ctx.scenario.characters?.find((c) => c.id === placement.character_id);
-    if (!character || character.media_id == null || !scene.textures.exists(mediaKey(character.media_id))) return;
+    const character = ctx.index.characters.get(placement.character_id);
+    // A character with no picture loaded is not drawn: there is nothing to see or click.
+    if (!character || !Object.values(character.animations ?? {}).some((a) => scene.textures.exists(mediaKey(a.media_id)))) return;
     if (!testConditions(character.conditions, ctx.vars.get)) return;
-    const figure = new Figure(scene, ctx.index.media.get(character.media_id), mediaKey(character.media_id), placement.position_x, placement.position_y);
     const size = (character.scale ?? 1) * zoom * scaleAt(def, placement.position_x, placement.position_y);
-    const facing = placement.facing === 'left' ? 'left' : 'right';
-    const image = figure.object.setOrigin(0.5, 1).setScale(size).setDepth(placement.position_y);
+    const figure = new NpcFigure(scene, (id) => ctx.index.media.get(id), character, placement, size);
     // A character standing in the shade is as dark as a player would be there.
-    image.setTint(shadeTint(shadeAt(def, placement.position_x, placement.position_y)));
-    image.setFlipX(figure.auto(false, facing));
-    this.characters.set(character.id, { figure, image, name: character.name, size, facing, y: placement.position_y });
-    const name = scene.add
-      .text(placement.position_x, placement.position_y - image.displayHeight - 6, character.name, NAME_STYLE)
-      .setOrigin(0.5, 1)
-      .setDepth(placement.position_y + 1);
+    figure.sprite.setTint(shadeTint(shadeAt(def, placement.position_x, placement.position_y)));
+    this.characters.set(character.id, figure);
     if (placement.event_id != null) {
       const eventId = placement.event_id;
-      this.interactive(image, () => {
+      this.interactive(figure.sprite, () => {
         if (!ctx.ui.capturesInput && !this.rt.leaving) void engine.triggerById(eventId);
       });
     }
-    this.objects.push(image, name);
   }
 
   /** Re-check each item's "exists" conditions. */
@@ -135,7 +121,11 @@ export class PropsSystem implements SceneSystem {
    * the name means nothing to it), or null when there is no such thing on the floor here.
    */
   animate(what: 'item' | 'character', id: Id, name: string): number | null {
-    const target = what === 'item' ? this.items.get(id) : this.characters.get(id);
+    if (what === 'character') {
+      const c = this.characters.get(id);
+      return c && c.sprite.visible ? c.play(name) : null;
+    }
+    const target = this.items.get(id);
     if (!target || !target.image.visible) return null;
     return target.figure.play(name);
   }
@@ -143,7 +133,7 @@ export class PropsSystem implements SceneSystem {
   /** Bring item sprites in line with the room state. `delta` advances their animations. */
   update(_time = 0, delta = 0) {
     for (const p of this.items.values()) this.pose(p.figure, p.image, p.size, p.feet, delta);
-    for (const c of this.characters.values()) this.pose(c.figure, c.image, c.size, c.y, delta);
+    for (const c of this.characters.values()) c.update(delta);
     const { state, me } = this.rt.ctx.connection;
     const mine = parseIds(me?.attachments ?? '');
     for (const p of this.items.values()) {
@@ -196,6 +186,8 @@ export class PropsSystem implements SceneSystem {
   destroy() {
     for (const p of this.items.values()) p.image.destroy();
     for (const o of this.objects) o.destroy();
+    for (const c of this.characters.values()) c.destroy();
+    this.characters.clear();
     this.items.clear();
     this.objects = [];
   }

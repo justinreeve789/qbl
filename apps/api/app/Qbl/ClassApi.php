@@ -61,7 +61,7 @@ class ClassApi
             return [200, ['missions' => $this->classes->missions($me)]];
         }
         if ($parts === ['avatars'] && $method === 'GET') {
-            return [200, ['avatars' => array_map(fn ($a) => ['media_id' => $a['media_id'], 'name' => $a['name'], 'image_url' => $a['image_url'], 'portrait_url' => $a['portrait_url'], 'sheet' => $a['settings']['sheet'] ?? null], Avatars::forUser($this->pdo, $me)), 'avatar_media_id' => $this->avatarOf($me)]];
+            return [200, ['avatars' => array_map(fn ($a) => Avatars::present($a), Avatars::forUser($this->pdo, $me)), 'avatar_media_id' => $this->avatarOf($me)]];
         }
         if ($parts === ['me', 'avatar'] && $method === 'PUT') {
             $id = (int) ($body['avatar_media_id'] ?? 0);

@@ -2,6 +2,7 @@
 
 namespace App\Qbl;
 
+use App\Qbl\Characters\NpcCharacter;
 use PDO;
 use RuntimeException;
 
@@ -335,7 +336,7 @@ class ScenarioStore
             $attrs['scenario_id'] = $scenarioId;
         }
         $attrs += $this->defaults($scenarioId, $table, $attrs);
-        $row = $this->encode($table, $attrs);
+        $row = $this->encode($table, $this->cleanCharacter($scenarioId, $table, $attrs));
         $this->assertValid($scenarioId, $table, $row, true);
         $now = self::now();
         $id = $this->insert($table, $row + ['created_at' => $now, 'updated_at' => $now]);
@@ -348,12 +349,22 @@ class ScenarioStore
     {
         $this->assertOwned($scenarioId, $table, $rowId);
         unset($attrs['scenario_id']);
-        $row = $this->encode($table, $attrs);
+        $row = $this->encode($table, $this->cleanCharacter($scenarioId, $table, $attrs));
         $this->assertValid($scenarioId, $table, $row, false);
         $this->update($table, $rowId, $row);
         $this->touch($scenarioId);
 
         return $this->decode($table, $this->one("SELECT * FROM `$table` WHERE `id` = ?", [$rowId]));
+    }
+
+    /** A character's animations, checked, each picture one of the scenario's (see NpcCharacter). */
+    private function cleanCharacter(int $scenarioId, string $table, array $attrs): array
+    {
+        if ($table === 'characters' && is_array($attrs['settings'] ?? null)) {
+            $attrs['settings'] = NpcCharacter::cleanSettings($attrs['settings'], fn (int $mediaId) => $this->scenarioOf('media', $mediaId) === $scenarioId);
+        }
+
+        return $attrs;
     }
 
     /** Delete a row and everything that only exists because of it. */
@@ -390,6 +401,23 @@ class ScenarioStore
                     foreach (['actions', 'labels', 'items', 'characters', 'shop_items'] as $user) {
                         $this->run("UPDATE `$user` SET `media_id` = NULL WHERE `media_id` = ?", [$rowId]);
                     }
+                    // A character loses the animations drawn from it; its other poses fill in for them.
+                    foreach ($this->all('SELECT `id`, `settings` FROM `characters` WHERE `scenario_id` = ?', [$scenarioId]) as $c) {
+                        $settings = json_decode((string) $c['settings'], true) ?: [];
+                        $kept = array_filter((array) ($settings['animations'] ?? []), fn ($a) => (int) ($a['media_id'] ?? 0) !== $rowId);
+                        $portrait = isset($settings['portrait_media_id']) && (int) $settings['portrait_media_id'] === $rowId;
+                        if (count($kept) !== count((array) ($settings['animations'] ?? [])) || $portrait) {
+                            if ($kept) {
+                                $settings['animations'] = $kept;
+                            } else {
+                                unset($settings['animations']);
+                            }
+                            if ($portrait) {
+                                unset($settings['portrait_media_id']);
+                            }
+                            $this->run('UPDATE `characters` SET `settings` = ? WHERE `id` = ?', [json_encode($settings ?: new \stdClass, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $c['id']]);
+                        }
+                    }
                     $this->removeUploadedFile($rowId);
                     break;
             }
@@ -408,6 +436,8 @@ class ScenarioStore
             throw new StoreError(422, 'The file is missing or larger than 25 MB.');
         }
         [$type, $filepath, $url, $size] = $this->storeFile($scenarioId, $tmpPath);
+        // An animated PNG says so, with its frames and timing: the game cuts it into frames.
+        $apng = $type === 'image' ? Apng::info($this->mediaDir.'/'.$filepath) : null;
 
         return $this->createRow($scenarioId, 'media', [
             'type' => $type,
@@ -416,7 +446,7 @@ class ScenarioStore
             'url' => $url,
             'width' => $size ? $size[0] : null,
             'height' => $size ? $size[1] : null,
-        ]);
+        ] + ($apng ? ['params' => ['apng' => $apng]] : []));
     }
 
     /**
@@ -480,7 +510,7 @@ class ScenarioStore
                 $source = $overrides + $rows['scenario'];
                 $settings = (array) ($source['settings'] ?? []);
                 // Avatars are the platform's; a scenario brought in from elsewhere does not bring its own.
-                unset($settings['avatar_media_ids'], $settings['avatar_portraits']);
+                unset($settings['avatar_media_ids'], $settings['avatar_portraits'], $settings['avatars']);
                 $row = $this->encode('scenarios', ['shortname' => $code, 'start_scene_id' => null, 'intro_media_portrait_id' => null, 'intro_media_landscape_id' => null, 'settings' => $settings] + $source);
                 if (trim((string) ($row['title'] ?? '')) === '') {
                     throw new StoreError(422, 'A scenario needs a title.');

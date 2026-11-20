@@ -38,9 +38,24 @@ export interface Media {
   sheet?: MediaSheet;
   /** [ext] Named animations over the sheet's frames. Anything drawn with this media can play them. */
   animations?: MediaAnimation[];
+  /**
+   * [ext] The picture is an animated PNG: how many frames it has and how long one pass takes, as
+   * the file says. Set when the file is uploaded. The game cuts it into frames as it loads, so it
+   * plays like a sprite sheet whose animation is the whole file.
+   */
+  apng?: MediaApng;
   /** [ext] Pixel size of the file, when known. */
   width?: number;
   height?: number;
+}
+
+/** [ext] What an animated PNG holds. */
+export interface MediaApng {
+  frames: number;
+  /** Milliseconds one pass of every frame takes, at the file's own speed. */
+  duration: number;
+  /** How many times the file says to play: 0 is forever. */
+  plays?: number;
 }
 
 // ----------------------------------------------------------- animations
@@ -53,6 +68,13 @@ export interface MediaSheet {
   rows: number;
   /** How many frames there are, when the last row is not full. Default columns x rows. */
   count?: number;
+}
+
+/** How many frames a picture has: a sheet's or an animated PNG's, or 1 for a still picture. */
+export function frameCount(media: Pick<Media, 'sheet' | 'apng'> | null | undefined): number {
+  if (media?.sheet) return Math.max(1, media.sheet.count ?? media.sheet.columns * media.sheet.rows);
+  if (media?.apng) return Math.max(1, media.apng.frames);
+  return 1;
 }
 
 /**
@@ -685,22 +707,71 @@ export interface Item {
   params?: Params;
 }
 
+/**
+ * [ext] One of a character's animations: a still picture, an animated PNG, or a run of frames on a
+ * sprite sheet. The picture is ordinary media, so one sheet can serve several characters, each
+ * taking the frames it needs.
+ */
+export interface CharacterAnimation {
+  /** The picture: an image, an animated PNG, or a sprite sheet (an image with `sheet`). */
+  media_id: Id;
+  /** Sheets and animated PNGs: frame numbers, in the order they are shown. Default: every frame. */
+  frames?: number[];
+  /** Milliseconds one pass takes. Default: an animated PNG's own speed, a sheet's `duration`, or 100 per frame. */
+  duration?: number;
+  /** Play again from the start when it ends. Default: true for the poses and looping moves, false for everything else. */
+  repeat?: boolean;
+  /** Draw the picture mirrored, so art drawn facing one way can serve the other. */
+  flip?: boolean;
+}
+
+/**
+ * [ext] Anyone who walks around a scene: a player's avatar or a character the scenario places (an
+ * NPC). Both are drawn the same way, from their animations. Five of those have a meaning of their
+ * own, the poses (CHARACTER_POSES): standing and walking each way, and the close-up shown in a story
+ * box. Any other name (`jump`, `wave`, `dig`...) is played when an `animate` action or a move asks
+ * for it. A pose that is missing is filled in from another one (see `resolvePose`), so a single
+ * picture is enough to make a character.
+ */
 export interface Character {
   id: Id;
-  scenario_id?: Id;
   name: string;
-  conditions?: Condition[];
-  /** [ext] */
-  media_id?: Id;
-  /** [ext] A close-up of the character's face, shown in portrait dialogue. */
-  portrait_media_id?: Id;
+  /** Display scale of the pictures. Default 1. */
   scale?: number;
+  /** By name: the poses, and any others. */
+  animations?: Record<string, CharacterAnimation>;
   /** [ext] How the character sounds when its lines are read aloud: 0 to 2, 1 is the voice's own. */
   voice_pitch?: number;
   voice_rate?: number;
   /** [ext] Part of the name of a browser voice to prefer for this character, e.g. "female" or "Daniel". */
   voice_name?: string;
   params?: Params;
+}
+
+/** A character a scenario defines and places in its scenes. */
+export interface Npc extends Character {
+  scenario_id?: Id;
+  /** The character is there only while these hold. */
+  conditions?: Condition[];
+  /**
+   * [ext] Before animations: the character's picture. Read when `animations` is empty: a still
+   * picture faces right; on a sprite sheet the media's `idle`, `walk`, `walk_left` and `walk_right`
+   * become the poses and its other animations the character's.
+   */
+  media_id?: Id;
+  /** [ext] Before animations: the close-up shown in portrait dialogue. Read when `animations` is empty. */
+  portrait_media_id?: Id;
+}
+
+/**
+ * [ext] An avatar players choose from. Avatars belong to the platform, not to a scenario, so a
+ * player keeps theirs everywhere; the server adds the set, and the pictures it uses, to every
+ * document it serves. A player's choice (`avatar_media_id` on their account, `avatar` in the room)
+ * is an avatar's `id`.
+ */
+export interface AvatarCharacter extends Character {
+  /** Set on avatars the platform supplies; absent on ones a document defines for itself. */
+  platform?: boolean;
 }
 
 // --------------------------------------------------------------- scenes
@@ -888,18 +959,20 @@ export interface Scenario {
 
   /** [ext] */
   items?: Item[];
-  characters?: Character[];
+  characters?: Npc[];
+  /** [ext] The avatars players can choose from. Normally the platform's, added as the document is served. */
+  avatars?: AvatarCharacter[];
   /** [ext] Prefix for relative media urls. */
   asset_base_url?: string;
   /** [ext] default 'emotes' */
   chat_mode?: ChatMode;
   /** [ext] Avatar walking speed in scene pixels per second. Default 420. */
   move_speed?: number;
-  /** [ext] Media ids players can pick as their avatar. */
+  /** [ext] Before `avatars`: media ids players can pick as their avatar. Read when `avatars` is absent. */
   avatar_media_ids?: Id[];
   /** [ext] What players can do from buttons on their screen while the conditions hold: jump, crouch, dance. */
   moves?: Move[];
-  /** [ext] A close-up portrait for an avatar, by the avatar's media id. Shown when the player speaks in portrait dialogue. */
+  /** [ext] Before `avatars`: a close-up portrait for an avatar, by the avatar's media id. Read when `avatars` is absent. */
   avatar_portraits?: Record<string, Id>;
   /** [ext] The mission checklist. */
   objectives?: Objective[];

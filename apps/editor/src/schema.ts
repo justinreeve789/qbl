@@ -168,7 +168,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'text', label: 'What they say', kind: 'textarea', wide: true, hint: 'Use {{variable_name}} to show a variable.' },
       {
         key: 'style', label: 'Shown as', kind: 'select', wide: true, placeholder: 'A speech bubble over the speaker', options: [['portrait', 'A story box with the speaker’s portrait']],
-        hint: 'A bubble stays on screen by moving below or beside the speaker. A story box crosses the bottom of the screen with the speaker’s close-up and name, and waits for the player to continue: for the characters and moments that carry the story. Give characters a portrait on the Characters page, and avatars one on the Media page.',
+        hint: 'A bubble stays on screen by moving below or beside the speaker. A story box crosses the bottom of the screen with the speaker’s close-up and name, and waits for the player to continue: for the characters and moments that carry the story. A character’s close-up is its “portrait” animation, on the Characters page; avatars come with theirs.',
       },
       { key: 'speaker', label: 'Who speaks', kind: 'select', placeholder: 'The player', options: [['character', 'A character']], structural: true },
       { key: 'character_id', label: 'Character', kind: 'character', hint: 'For a bubble the character must be placed in this scene. A story box can carry a voice from anywhere.' },
@@ -185,7 +185,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
   },
   animate: {
     label: 'Play an animation',
-    about: 'Make the player’s avatar, an item, a vehicle or a character jump, dance or do anything its sprite sheet has.',
+    about: 'Make the player’s avatar, an item, a vehicle or a character jump, dance or play any animation it has.',
     fields: [
       {
         key: 'target', label: 'On', kind: 'select', wide: true, structural: true, placeholder: 'The player’s avatar',
@@ -197,7 +197,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'target_id', label: 'Action', kind: 'action' },
       {
         key: 'animation', label: 'Animation', kind: 'animation', wide: true,
-        hint: 'A name from the picture’s sprite sheet (define them on the Media page), or a built-in move every picture can make: jump, spin, crouch, wave, dance. Leave empty to stop what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
+        hint: 'One of the character’s animations (on the Characters page), a name from an item’s sprite sheet (on the Media page), or a built-in move everything can make: jump, spin, crouch, wave, dance. Leave empty to stop what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
       },
     ],
   },
@@ -527,15 +527,13 @@ export const SHOP_MOVE: Field = { key: 'move', label: 'Animation', kind: 'animat
 export const SHOP_ABILITY: Field = { key: 'ability', label: 'Ability key', kind: 'text', placeholder: 'translator', hint: 'While a player has this ability equipped, the variable QBLAbility_<key> is 1. Use it in conditions to offer them something extra: a hidden hotspot, a translated sign, a shortcut.' };
 
 export const CHARACTER_FIELDS: Field[] = [
-  { key: 'name', label: 'Name', kind: 'text' },
-  { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image' },
+  { key: 'name', label: 'Name', kind: 'text', wide: true },
 ];
 export const CHARACTER_SETTINGS_FIELDS: Field[] = [
   { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1', slider: { min: 0.1, max: 3 } },
   { key: 'voice_pitch', label: 'Voice: pitch (0 to 2)', kind: 'number', min: 0, max: 2, step: 0.1, placeholder: '1', slider: { min: 0, max: 2 }, hint: 'How the character sounds when its lines are read aloud. Lower is deeper.' },
   { key: 'voice_rate', label: 'Voice: pace (0.5 to 2)', kind: 'number', min: 0.5, max: 2, step: 0.1, placeholder: '1', slider: { min: 0.5, max: 2 } },
   { key: 'voice_name', label: 'Voice: prefer one called', kind: 'text', placeholder: 'Any', hint: 'Part of the name of a voice on the player’s device, such as “female”, “Daniel” or “Google UK”. Devices differ: where no voice matches, the default one reads.' },
-  { key: 'portrait_media_id', label: 'Close-up portrait', kind: 'media', mediaType: 'image', structural: true, hint: 'Shown beside what the character says in a story box. Without one, the character’s ordinary image is used.' },
 ];
 
 /** Something players can do from a button on their screen while its conditions hold. */

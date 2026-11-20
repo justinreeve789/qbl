@@ -7,6 +7,7 @@ use App\Models\User;
 use Database\Seeders\AvatarSeeder;
 use Database\Seeders\ShippedScenarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -106,12 +107,18 @@ class ClassesTest extends TestCase
         $this->seed(AvatarSeeder::class);
         $this->seed(AvatarSeeder::class);
         $document = $this->getJson('/api/scenarios/starshipexplorer/play')->json('scenario');
-        $this->assertSame(range(900001, 900010), $document['avatar_media_ids']);
-        $this->assertSame(950010, $document['avatar_portraits']['900010']);
-        $sprocket = collect($document['assets'])->firstWhere('id', 900010);
-        $this->assertSame(['columns' => 6, 'rows' => 3], $sprocket['sheet']);
-        $this->assertSame('/scenario-assets/platform/avatars/sprocket-sheet.png', $sprocket['url']);
-        foreach (collect($document['assets'])->where('id', '>=', 900000) as $media) {
+        $this->assertSame(range(900001, 900010), array_column($document['avatars'], 'id'));
+        $this->assertArrayNotHasKey('avatar_media_ids', $document, 'avatars are characters now');
+        $nova = $document['avatars'][0];
+        $this->assertSame(['stand_right' => ['media_id' => 900001], 'portrait' => ['media_id' => 950001]], $nova['animations'], 'one picture facing right, and its close-up');
+        // Sprocket is drawn from a platform sheet, which seeding twice does not repeat.
+        $this->assertSame(2, DB::table('platform_media')->count());
+        $sprocket = $document['avatars'][9];
+        $sheet = collect($document['assets'])->firstWhere('id', $sprocket['animations']['walk_right']['media_id']);
+        $this->assertSame(['columns' => 6, 'rows' => 3], $sheet['sheet']);
+        $this->assertSame('/scenario-assets/platform/avatars/sprocket-sheet.png', $sheet['url']);
+        $this->assertSame([6, 7, 8, 9, 10, 11], $sprocket['animations']['walk_right']['frames']);
+        foreach (collect($document['assets'])->where('id', '>=', 800000) as $media) {
             $this->assertFileExists(base_path('../../scenarios/assets/platform/'.substr($media['url'], strlen('/scenario-assets/platform/'))));
         }
 
@@ -126,6 +133,6 @@ class ClassesTest extends TestCase
 
         // A teacher previewing a draft sees the same avatars.
         $teacher = $this->user('Teacher', 'teacher');
-        $this->assertSame(range(900001, 900010), $this->as($teacher)->getJson('/api/editor/scenarios/1/preview')->assertOk()->json('scenario.avatar_media_ids'));
+        $this->assertSame(range(900001, 900010), array_column($this->as($teacher)->getJson('/api/editor/scenarios/1/preview')->assertOk()->json('scenario.avatars'), 'id'));
     }
 }

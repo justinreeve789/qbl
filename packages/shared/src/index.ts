@@ -1,4 +1,6 @@
 export * from './types.js';
+export * from './characters.js';
+export * from './apng.js';
 export * from './variables.js';
 export * from './geometry.js';
 export * from './scenario.js';

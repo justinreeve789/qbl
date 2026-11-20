@@ -1,4 +1,4 @@
-import { BUILT_IN_MOVES } from '@qbl/shared';
+import { BUILT_IN_MOVES, isPose } from '@qbl/shared';
 import type { Row } from './api';
 import { actionLabel, eventLabel, EVENT_KINDS, mediaLabel, mediaUrl, params, sceneLabel } from './describe';
 import { h, help, toast } from './dom';
@@ -94,9 +94,10 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       return wrap(input);
     }
     case 'animation': {
-      // Any name can be typed; the list offers the ones this scenario's sprite sheets define and the built-in moves.
+      // Any name can be typed; the list offers the characters' own animations, the ones sprite sheets define and the built-in moves.
       const names = new Set<string>(Object.keys(BUILT_IN_MOVES));
       for (const m of ctx.store.rows('media')) for (const a of ((params(m).animations as Array<{ name: string }> | undefined) ?? [])) names.add(a.name);
+      for (const c of ctx.store.rows('characters')) for (const n of Object.keys((params(c, 'settings').animations as Record<string, unknown> | undefined) ?? {})) if (!isPose(n)) names.add(n);
       const id = `animations-${Math.random().toString(36).slice(2)}`;
       const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder ?? 'jump', list: id, onchange: () => set(input.value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_') || null) });
       return wrap(input, h('datalist', { id }, ...[...names].sort().map((n) => h('option', { value: n }))));

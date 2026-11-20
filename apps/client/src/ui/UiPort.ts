@@ -1,5 +1,5 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, Badge, ChatMode, ObjectiveStatus, SiteLink } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, CharacterPicture, ChatMode, ObjectiveStatus, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
 
 export type { SpeakOptions };
@@ -42,7 +42,7 @@ export interface UiPort {
    * With `duration` 0 it stays until the player clicks or presses Enter or Space to continue.
    * `watching`: it comes from another player's event, so it never takes this player's input.
    */
-  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle;
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle;
   /**
    * Stars, XP and rank, shown in the account menu (and the stars on its button), and the way into
    * the marketplace. Null: the player has none (guests).
@@ -102,7 +102,7 @@ export interface AccountView {
   guest: boolean;
   /** Under the name: "Teacher", "Playing as a guest". */
   subtitle?: string;
-  avatar?: { url: string | null; sheet?: { columns: number; rows: number } | null } | null;
+  avatar?: CharacterPicture | null;
   /** The site's places the menu links to (see `siteLinks`). */
   links: SiteLink[];
 }
@@ -169,8 +169,8 @@ export interface ProfileView {
   xp?: number;
   nextRankXp?: number | null;
   badges?: Badge[];
-  /** The avatar's picture, and its grid when the picture is a sprite sheet (the first frame is shown). */
-  avatar: { url: string | null; sheet?: { columns: number; rows: number } };
+  /** The avatar standing: a picture, or one frame of a sprite sheet. */
+  avatar: CharacterPicture;
   /** What the avatar has on: wearables by slot, and a pet. */
   worn: Array<{ name: string; url: string; kind: string; slot?: string }>;
 }

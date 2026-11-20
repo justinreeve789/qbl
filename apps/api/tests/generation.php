@@ -244,7 +244,9 @@ $sheet = array_values(array_filter($doc['assets'], fn ($m) => $m['id'] === $doc[
 same(array_column($sheet['animations'], 'name'), ['idle', 'walk', 'wave', 'cheer'], 'the guide has idle, walk and her two gestures');
 same($sheet['sheet'], ['columns' => 6, 'rows' => 4], 'her sheet is a 6 x 4 grid');
 same([$sheet['width'], $sheet['height']], [6 * 240, 4 * 320], 'the sheet is whole cells');
-check(is_string($doc['characters'][0]['portrait_media_id'] ?? null) || is_int($doc['characters'][0]['portrait_media_id'] ?? null), 'she has a portrait');
+$guideAnimations = $doc['characters'][0]['animations'] ?? [];
+same([$guideAnimations['stand_right']['media_id'] ?? null, $guideAnimations['walk_right']['media_id'] ?? null, isset($guideAnimations['wave'], $guideAnimations['cheer'])], [$sheet['id'], $sheet['id'], true], 'she is drawn from it: standing, walking and her gestures');
+check(is_int($guideAnimations['portrait']['media_id'] ?? null) && $guideAnimations['portrait']['media_id'] !== $sheet['id'], 'she has a portrait');
 foreach ($doc['assets'] as $m) {
     check(str_starts_with((string) $m['url'], '/media/'.$scenarioId.'/') && is_file("$work/media/".$m['filepath']), "media {$m['filename']} was stored with the scenario");
 }

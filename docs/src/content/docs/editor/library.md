@@ -13,7 +13,9 @@ Media is filed under sub-tabs by what it is used for: **Backgrounds**, **NPCs**,
 
 Each card previews the file and has two folds:
 
-* **🎞️ Sprite sheet and animations** (images). A sprite sheet is one picture holding the frames of an animation in a grid. Say how many **Frames across** and **Frames down**, then add named animations and click frames on the sheet to put them in order. Shift-click adds every frame up to the one you click. A small preview plays the animation. Names such as `idle` and `walk` are played automatically, and `jump`, `spin`, `crouch`, `wave` and `dance` are built-in moves. An animated PNG is converted to a sheet on upload.
+* **🎞️ Sprite sheet and animations** (images). A sprite sheet is one picture holding frames in a grid. Say how many **Frames across** and **Frames down**: characters can then take frames from it on the Characters page, and several characters can share one sheet. Animations named here are for items, vehicles and pictures: add one and click frames on the sheet to put them in order (shift-click adds every frame up to the one you click); a small preview plays it. `idle` and `walk` play by themselves, and `jump`, `spin`, `crouch`, `wave` and `dance` are built-in moves.
+
+An **animated PNG** is kept as it is: its card says how many frames it has and how long it plays. It plays by itself wherever it is used, and on the Characters page an animation can take all of its frames or some of them.
 * **Details**: name, address, type, load order, scale and size.
 
 :::caution
@@ -37,12 +39,29 @@ Things players can pick up, wear or ride: **Unique** (only one player can hold i
 
 ## Characters
 
-People and creatures players meet. Give a character a **Name**, an **Image** and a scale. Two things make them better:
+People and creatures players meet. Each card shows the character **Standing** and its **Portrait**, then its **Name**, its **🎞️ Animations**, its size and voice, and when it is present.
 
-* **Close-up portrait**: shown beside what the character says in a *story box*. Without one, the ordinary image is used.
-* **Voice**: pitch, pace and a preferred voice name, for when a line is read aloud by the browser.
+A character is drawn from its animations. Each is a picture (a still image, an animated PNG or a sprite sheet) and, for a sheet or an animated PNG, the frames to play. Five come first, the **poses**, which the game shows by itself:
 
-Place characters in scenes, where a click can run an indirect event.
+* **Standing, facing right** and **Standing, facing left**: while it stands.
+* **Walking right** and **Walking left**: while it moves.
+* **Close-up portrait**: beside what it says in a *story box*.
+
+You need not fill them all. A pose left empty says what it uses instead (*Uses Standing, facing right, mirrored*): one standing picture is enough for a character that stands, turns and glides; add walking frames, the other side and a close-up as you have them. The first time a character gets a standing picture, a close-up is cut from the top of it, which you can replace.
+
+For each animation you can set:
+
+* **Picture**. Sheets and animated PNGs are marked in the list.
+* **Frames**, in the order they play: type `0 1 2` or `0-3`, or press **Pick frames** and click them on the picture (shift-click adds every frame up to the one you click). Empty: every frame.
+* **One pass (ms)**: how long it takes. Empty: an animated PNG's own speed, or 100 ms a frame.
+* **Repeats**: poses loop; other animations play once unless you say otherwise.
+* **Mirror**: draw it flipped, so art facing one way serves the other.
+
+**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture. A *Play an animation* action plays it; one named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
+
+**Voice**: pitch, pace and a preferred voice name, for when a line is read aloud by the browser.
+
+Place characters in scenes, where a click can run an indirect event. Players' avatars are characters too, but they are the platform's, the same in every scenario: a scenario does not define them.
 
 ## Objectives
 
@@ -59,7 +78,7 @@ The words the mission teaches. Each has a **Word**, an optional **Picture** and 
 
 ## Moves
 
-What players can do from buttons on their screen: pick an **Animation** (a built-in move or a name from avatar sprite sheets), the text **On the button** and an **Icon**. Each move can have conditions.
+What players can do from buttons on their screen: pick an **Animation** (a built-in move or the name of one of the avatars' animations), the text **On the button** and an **Icon**. Each move can have conditions.
 
 ## Shop
 

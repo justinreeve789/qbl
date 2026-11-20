@@ -418,7 +418,8 @@ export class World {
   }
 
   private pickAvatar(wanted?: Id): number {
-    const allowed = this.scenario.avatar_media_ids ?? [];
+    // The scenario is normalized, so its avatars include any it lists the older way.
+    const allowed = (this.scenario.avatars ?? []).map((a) => a.id);
     if (wanted != null && allowed.includes(wanted)) return wanted;
     return allowed[0] ?? 0;
   }

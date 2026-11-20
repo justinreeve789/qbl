@@ -1,7 +1,8 @@
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
-import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation } from './types.js';
-import type { Action, Condition, GameEvent, Id, Media, Scenario, Scene } from './types.js';
+import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
+import type { Action, Character, Condition, GameEvent, Id, Media, Scenario, Scene } from './types.js';
+import { CHARACTER_POSES, isPose, normalizeNpc } from './characters.js';
 import { placeholderVariables } from './text.js';
 import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
 
@@ -104,9 +105,47 @@ export function validateScenario(doc: unknown): ValidationResult {
   };
 
   (s.items ?? []).forEach((it, i) => needMedia(it.media_id, `items[${i}].media_id`, 'image'));
-  (s.characters ?? []).forEach((c, i) => needMedia(c.media_id, `characters[${i}].media_id`, 'image'));
-  (s.characters ?? []).forEach((c, i) => needMedia(c.portrait_media_id, `characters[${i}].portrait_media_id`, 'image'));
+  // A character's animations: each names a picture, and frames the picture has.
+  const checkAnimations = (c: Pick<Character, 'animations'>, path: string) => {
+    if (c.animations == null) return;
+    if (typeof c.animations !== 'object' || Array.isArray(c.animations)) return err(`${path}.animations`, 'animations is an object of animations by name');
+    for (const [name, a] of Object.entries(c.animations)) {
+      const ap = `${path}.animations.${name}`;
+      if (!ANIMATION_NAME.test(name)) err(ap, 'An animation name is lowercase letters, digits and underscores, starting with a letter');
+      if (!a || typeof a !== 'object' || a.media_id == null) {
+        err(`${ap}.media_id`, 'An animation needs a picture');
+        continue;
+      }
+      needMedia(a.media_id, `${ap}.media_id`, 'image');
+      const picture = media.get(a.media_id);
+      if (a.frames != null) {
+        const count = frameCount(picture);
+        if (!Array.isArray(a.frames)) err(`${ap}.frames`, 'frames is a list of frame numbers');
+        else if (picture && !picture.sheet && !picture.apng && a.frames.length) warn(`${ap}.frames`, 'The picture is not a sprite sheet or an animated PNG, so it has no frames to choose from');
+        else if (picture && a.frames.some((f) => !Number.isInteger(f) || f < 0 || f >= count)) err(`${ap}.frames`, `Frames are numbered 0 to ${count - 1}`);
+      }
+      if (a.duration != null && !(typeof a.duration === 'number' && a.duration > 0)) err(`${ap}.duration`, 'duration is a number of milliseconds');
+    }
+    if (!CHARACTER_POSES.some((pose) => pose !== 'portrait' && c.animations![pose])) warn(`${path}.animations`, 'No standing or walking picture: the character cannot be seen in a scene');
+  };
+  (s.characters ?? []).forEach((c, i) => {
+    needMedia(c.media_id, `characters[${i}].media_id`, 'image');
+    needMedia(c.portrait_media_id, `characters[${i}].portrait_media_id`, 'image');
+    checkAnimations(c, `characters[${i}]`);
+  });
   (s.avatar_media_ids ?? []).forEach((id, i) => needMedia(id, `avatar_media_ids[${i}]`, 'image'));
+  if (s.avatars != null) {
+    if (!Array.isArray(s.avatars)) err('avatars', 'avatars is a list');
+    else {
+      const avatarIds = new Set<Id>();
+      s.avatars.forEach((a, i) => {
+        if (typeof a.id !== 'number' || avatarIds.has(a.id)) err(`avatars[${i}].id`, 'An avatar needs an id of its own');
+        avatarIds.add(a.id);
+        if (typeof a.name !== 'string' || a.name.trim() === '') warn(`avatars[${i}].name`, 'An avatar should have a name');
+        checkAnimations(a, `avatars[${i}]`);
+      });
+    }
+  }
   // Sprite sheets and the animations defined on them.
   (s.assets ?? []).forEach((m, i) => {
     const p = `assets[${i}]`;
@@ -293,15 +332,19 @@ export function validateScenario(doc: unknown): ValidationResult {
           picture = item?.media_id != null ? media.get(item.media_id) : undefined;
         } else if (target === 'character') {
           if (!(scene.characters ?? []).some((c) => c.character_id === a.character_id)) err(`${path}.character_id`, 'The character to animate is not placed in this scene');
-          const character = (s.characters ?? []).find((c) => c.id === a.character_id);
-          picture = character?.media_id != null ? media.get(character.media_id) : undefined;
+          const found = (s.characters ?? []).find((c) => c.id === a.character_id);
+          const character = found && normalizeNpc(found, (id) => media.get(id));
+          // A character's own animations, besides the poses, are what it can be asked to play.
+          if (a.animation !== '' && character && !BUILT_IN_MOVES[a.animation] && (isPose(a.animation) || !character.animations?.[a.animation])) {
+            warn(`${path}.animation`, isPose(a.animation) ? `"${a.animation}" is a pose the character takes by itself, not one to play` : `The character has no animation called "${a.animation}", and that is not a built-in move`);
+          }
         } else if (target === 'action') {
           if (a.target_id == null || actionScene.get(a.target_id) !== scene.id) err(`${path}.target_id`, 'The action to animate is not in this scene');
         } else if (target !== 'player') {
           err(`${path}.target`, 'target is "player", "item", "character" or "action"');
         }
         // Avatars differ from player to player, and an action's picture is its own business; those are not checked.
-        if ((target === 'item' || target === 'character') && a.animation !== '' && !findAnimation(picture, a.animation) && !BUILT_IN_MOVES[a.animation]) {
+        if (target === 'item' && a.animation !== '' && !findAnimation(picture, a.animation) && !BUILT_IN_MOVES[a.animation]) {
           warn(`${path}.animation`, `Its picture has no animation called "${a.animation}", and that is not a built-in move`);
         }
         break;

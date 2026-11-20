@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { normalizeScenario, type ObjectiveStatus, type Scenario, type User } from '@qbl/shared';
+import { normalizeScenario, type CharacterPicture, type ObjectiveStatus, type Scenario, type User } from '@qbl/shared';
 import { queueScene } from '../src/core/assets';
 import { GameContext } from '../src/core/GameContext';
 import { ObjectivesFeature } from '../src/features/ObjectivesFeature';
@@ -81,11 +81,11 @@ export class HeadlessUi implements UiPort {
   }
   /** Portrait boxes showing now. `next()` is the player clicking to continue. */
   stories: Array<{ name?: string; text: string; portrait?: string; watching: boolean; next(): void }> = [];
-  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean; speak?: SpeakOptions }) {
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }) {
     this.say(text, o.speak);
     let finish!: () => void;
     const done = new Promise<void>((r) => (finish = r));
-    const entry = { name: o.name, text, portrait: o.portrait, watching: !!o.watching, next: () => end() };
+    const entry = { name: o.name, text, portrait: o.portrait?.url ?? undefined, watching: !!o.watching, next: () => end() };
     const end = () => {
       const i = this.stories.indexOf(entry);
       if (i >= 0) this.stories.splice(i, 1);
@@ -181,7 +181,7 @@ export class Game {
   private objectives = new ObjectivesFeature();
 
   constructor(readonly scenario: Scenario = loadScenario(), user: User = { id: 'u1', name: 'Tester', role: 'student' }) {
-    const connection = new OfflineConnection(scenario, user, scenario.avatar_media_ids?.[0], () => this.world.now);
+    const connection = new OfflineConnection(scenario, user, scenario.avatars?.[0]?.id, () => this.world.now);
     this.ctx = new GameContext(scenario, user, connection, this.ui);
     // Like a preview: an account to try awards and the marketplace with, kept only in memory.
     this.ctx.rewards.pretend();

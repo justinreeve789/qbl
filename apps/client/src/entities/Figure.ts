@@ -2,15 +2,34 @@ import type * as Phaser from 'phaser';
 import {
   animationRepeats, automaticAnimation, BUILT_IN_MOVES, findAnimation, type Media,
 } from '@qbl/shared';
-import { mediaAnimation, mediaSheet } from '../core/assets';
+import { characterAnimation, mediaAnimation, mediaSheet, whenApngReady } from '../core/assets';
 
 /** How a built-in move bends a picture at one moment: lift and lean, and stretch across and up. */
 export interface Pose { lift: number; lean: number; scaleX: number; scaleY: number }
-const NEUTRAL: Pose = { lift: 0, lean: 0, scaleX: 1, scaleY: 1 };
+export const NEUTRAL: Pose = { lift: 0, lean: 0, scaleX: 1, scaleY: 1 };
+
+/** How a built-in move bends a picture `t` milliseconds into it. */
+export function bend(name: string, t: number, duration: number): Pose {
+  const p = Math.min(1, t / duration);
+  switch (name) {
+    case 'jump':
+      return { ...NEUTRAL, lift: Math.sin(Math.PI * p) * 0.38, scaleY: 1 + Math.sin(Math.PI * p) * 0.06 };
+    case 'spin':
+      return { ...NEUTRAL, scaleX: Math.cos(2 * Math.PI * p) };
+    case 'crouch':
+      return { ...NEUTRAL, scaleY: 1 - Math.sin(Math.PI * p) * 0.32, scaleX: 1 + Math.sin(Math.PI * p) * 0.08 };
+    case 'wave':
+      return { ...NEUTRAL, lean: Math.sin(p * 6 * Math.PI) * 0.12 };
+    case 'dance':
+      return { ...NEUTRAL, lift: Math.abs(Math.sin(t / 180)) * 0.07, lean: Math.sin(t / 240) * 0.11 };
+    default:
+      return NEUTRAL;
+  }
+}
 
 /**
- * One picture in the scene that can be animated: an avatar, a vehicle, an item, a character, or
- * an image an action is showing.
+ * One picture in the scene that can be animated: a vehicle, an item, or an image an action is
+ * showing. Avatars and characters are drawn by CharacterFigure, from their own animations.
  *
  * If its media is a sprite sheet, the animations defined on the sheet are played by name:
  * `idle` and the walks by themselves, anything else when asked. If it is a single picture, or
@@ -26,6 +45,17 @@ export class Figure {
 
   constructor(private scene: Phaser.Scene, readonly media: Media | undefined, texture: string, x: number, y: number) {
     const sheet = media ? mediaSheet(scene, media) : null;
+    if (media?.apng && !sheet) {
+      // An animated PNG plays all of itself, over and over, once its frames are cut out.
+      const sprite = scene.add.sprite(x, y, texture);
+      this.object = sprite;
+      const loop = () => {
+        const drawn = characterAnimation(scene, media, 'stand_right', { media_id: media.id });
+        if (drawn.anim && sprite.active) sprite.play(drawn.anim);
+      };
+      if (whenApngReady(scene, media, loop)) loop();
+      return;
+    }
     this.object = sheet ? scene.add.sprite(x, y, sheet, findAnimation(media, 'idle')?.frames[0] ?? 0) : scene.add.image(x, y, texture);
   }
 
@@ -74,22 +104,7 @@ export class Figure {
   pose(): Pose {
     const act = this.act;
     if (!act || act.frames) return NEUTRAL;
-    const t = this.clock - act.started;
-    const p = Math.min(1, t / act.duration);
-    switch (act.name) {
-      case 'jump':
-        return { ...NEUTRAL, lift: Math.sin(Math.PI * p) * 0.38, scaleY: 1 + Math.sin(Math.PI * p) * 0.06 };
-      case 'spin':
-        return { ...NEUTRAL, scaleX: Math.cos(2 * Math.PI * p) };
-      case 'crouch':
-        return { ...NEUTRAL, scaleY: 1 - Math.sin(Math.PI * p) * 0.32, scaleX: 1 + Math.sin(Math.PI * p) * 0.08 };
-      case 'wave':
-        return { ...NEUTRAL, lean: Math.sin(p * 6 * Math.PI) * 0.12 };
-      case 'dance':
-        return { ...NEUTRAL, lift: Math.abs(Math.sin(t / 180)) * 0.07, lean: Math.sin(t / 240) * 0.11 };
-      default:
-        return NEUTRAL;
-    }
+    return bend(act.name, this.clock - act.started, act.duration);
   }
 
   private show(name: string | null) {

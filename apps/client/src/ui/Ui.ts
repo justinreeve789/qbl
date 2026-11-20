@@ -1,8 +1,9 @@
-import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type ChatMode, type ObjectiveStatus } from '@qbl/shared';
+import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type CharacterPicture, type ChatMode, type ObjectiveStatus } from '@qbl/shared';
 import { sanitizeHtml } from './sanitize';
 import { placeBubble, type BubbleAnchor } from './bubble';
 import { AccountMenu, type MenuStats } from './AccountMenu';
 import { emojiIcon, icon } from './icons';
+import { pictureNode } from './picture';
 import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
 import type { AccountActions, AccountView, ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
@@ -155,14 +156,11 @@ export class Ui implements UiPort {
     return { done, cancel: end };
   }
 
-  portraitDialogue(text: string, o: { name?: string; portrait?: string; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle {
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle {
     const node = el('div', `qbl-story${o.watching ? ' watching' : ''}`);
     const frame = el('div', 'qbl-story-portrait');
-    if (o.portrait) {
-      const img = el('img');
-      img.src = o.portrait;
-      img.alt = '';
-      frame.append(img);
+    if (o.portrait?.url) {
+      frame.append(pictureNode(o.portrait, 'qbl-story-picture'));
     } else {
       frame.append(el('span', '', (o.name ?? '?').slice(0, 1).toUpperCase()));
     }
@@ -533,18 +531,7 @@ export class Ui implements UiPort {
       card.setAttribute('aria-label', `${v.name}'s profile`);
       const figure = el('div', 'qbl-profile-avatar');
       if (v.avatar.url) {
-        if (v.avatar.sheet) {
-          // A sprite sheet: its first frame, not the whole sheet.
-          const frame = el('span', 'qbl-profile-frame');
-          frame.style.backgroundImage = `url("${v.avatar.url}")`;
-          frame.style.backgroundSize = `${v.avatar.sheet.columns * 100}% ${v.avatar.sheet.rows * 100}%`;
-          figure.append(frame);
-        } else {
-          const img = el('img', 'qbl-profile-frame');
-          img.src = v.avatar.url;
-          img.alt = '';
-          figure.append(img);
-        }
+        figure.append(pictureNode(v.avatar, 'qbl-profile-frame'));
       } else {
         figure.append(icon('account', { size: 96 }));
       }
