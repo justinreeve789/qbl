@@ -1,4 +1,4 @@
-import { validateScenario } from '@qbl/shared';
+import { codeProblem, normalizeCode, SCENARIO_CODE_MAX, validateScenario } from '@qbl/shared';
 import { issueItem } from './issues';
 import { playUrl, previewUrl } from '../config';
 import { mediaUrl, params, sceneLabel } from '../describe';
@@ -198,8 +198,6 @@ export async function checkAndPublish(store: FormContext['store']): Promise<{ pu
 export function publishPage(ctx: FormContext): HTMLElement {
   const { store } = ctx;
   const scenario = store.scenario;
-  const code = String(scenario.code ?? '');
-  const link = playUrl(code);
   const results = h('div', { class: 'results', 'aria-live': 'polite' });
   const publish = h('button', { type: 'button', class: 'primary', onclick: () => void run(true) }, 'Check and publish');
 
@@ -229,6 +227,8 @@ export function publishPage(ctx: FormContext): HTMLElement {
     if (thenPublish && report.ok && (await store.publish())) toast('Published. Players now get this version.');
   }
 
+  const linkBox = playerLink(ctx);
+
   // Checked on opening, so coming back after a fix shows what is left.
   queueMicrotask(() => void run(false));
 
@@ -256,11 +256,80 @@ export function publishPage(ctx: FormContext): HTMLElement {
       'section',
       { class: 'card settings-section', 'data-section': 'link', style: '--tone: var(--accent)' },
       h('h2', { class: 'section-head' }, '🔗 Player link'),
-      h('div', { class: 'link-box' },
-        h('code', { class: 'code' }, code),
-        h('a', { class: 'link-url', href: link, target: '_blank', rel: 'noopener' }, link),
-        h('button', { type: 'button', onclick: () => void navigator.clipboard?.writeText(link).then(() => toast('Link copied.')) }, '📋 Copy link')),
-      h('p', { class: 'muted small' }, 'The 16-letter code is this scenario’s permanent address. It never changes, so a link you have shared keeps working.'),
+      linkBox,
     ),
   );
+}
+
+/**
+ * The "Player link" box: the code, the link, Copy, and Change code. Changing the code opens a
+ * small form in place, checked as it is typed with the same rules the API uses.
+ */
+function playerLink(ctx: FormContext): HTMLElement {
+  const { store } = ctx;
+  const box = h('div', { 'data-player-link': '' });
+
+  const show = () => {
+    const code = String(store.scenario.code ?? '');
+    const link = playUrl(code);
+    clear(
+      box,
+      h('div', { class: 'link-box' },
+        h('code', { class: 'code', 'data-code': '' }, code),
+        h('a', { class: 'link-url', href: link, target: '_blank', rel: 'noopener' }, link),
+        h('button', { type: 'button', onclick: () => void navigator.clipboard?.writeText(link).then(() => toast('Link copied.')) }, '📋 Copy link'),
+        h('button', { type: 'button', 'data-action': 'change-code', onclick: edit }, '✏️ Change code')),
+      h('p', { class: 'muted small' }, 'Players open the scenario at this address. You can change the code to something easier to type; the old link then stops working.'),
+    );
+  };
+
+  const edit = () => {
+    const old = String(store.scenario.code ?? '');
+    const input = h('input', {
+      type: 'text', value: old, maxlength: SCENARIO_CODE_MAX, spellcheck: 'false', autocomplete: 'off', autocapitalize: 'none',
+      'aria-label': 'New code', 'data-field': 'code', oninput: () => update(),
+      onkeydown: (e: KeyboardEvent) => {
+        if (e.key === 'Enter') void save();
+        if (e.key === 'Escape') show();
+      },
+    });
+    const preview = h('span', { class: 'link-url muted' });
+    const message = h('p', { class: 'small', role: 'status', 'data-code-message': '' });
+    const saveButton = h('button', { type: 'button', class: 'primary', onclick: () => void save() }, 'Save code');
+
+    const update = (refused?: string) => {
+      const code = normalizeCode(input.value);
+      const problem = refused ?? (code === old ? null : codeProblem(code));
+      preview.textContent = playUrl(code || '…');
+      saveButton.disabled = code === old || problem !== null;
+      message.className = `small ${problem ? 'issue error' : 'muted'}`;
+      message.textContent = problem ?? (code === old ? 'Type the new code: 4 to 32 lowercase letters, digits and hyphens.' : `⚠️ /${old} will stop working. Anyone with the old link, including students in your classes, needs the new one.`);
+    };
+
+    async function save() {
+      const code = normalizeCode(input.value);
+      if (code === old || codeProblem(code)) return;
+      saveButton.disabled = true;
+      const refused = await store.changeCode(code);
+      if (refused) return update(refused);
+      toast(`Code changed. Players now open /${code}.`);
+      show();
+    }
+
+    clear(
+      box,
+      h('div', { class: 'link-box code-edit' },
+        h('label', { class: 'code-input' }, h('span', { class: 'muted' }, '/'), input),
+        preview,
+        saveButton,
+        h('button', { type: 'button', onclick: show }, 'Cancel')),
+      message,
+    );
+    update();
+    input.focus();
+    input.select();
+  };
+
+  show();
+  return box;
 }

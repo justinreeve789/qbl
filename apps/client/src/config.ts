@@ -1,8 +1,10 @@
+import { codeFromPath } from '@qbl/shared';
+
 const env = import.meta.env;
 const params = new URLSearchParams(window.location.search);
 
-/** Players open /{code}: the scenario's unique 16-letter code. */
-const codeInPath = /^\/([A-Za-z]{16})\/?$/.exec(window.location.pathname)?.[1]?.toLowerCase() ?? null;
+/** Players open /{code}: the scenario's unique code (16 random letters, or one its editor chose). */
+const codeInPath = codeFromPath(window.location.pathname);
 const number = (value: string | null) => (value && /^\d+$/.test(value) ? Number(value) : null);
 
 /** Same-origin paths by default: Apache (or the Vite dev proxy) routes /api and the game socket. */

@@ -37,7 +37,7 @@ The site's addresses:
 | ------- | ---------- |
 | `/` | The marketing page (`apps/client/index.html`, Tailwind compiled at build time). Its "Log in" button goes to `/missions` |
 | `/missions` | The game: the sign-in screen if needed, then the missions page. **A teacher or admin who signs in here lands in the editor (`/editor/`), their dashboard**; the Missions link brings them back to this page. Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
-| `/{code}` | One scenario, by its 16-letter code |
+| `/{code}` | One scenario, by its code (16 random letters, or one chosen on the Publish page) |
 | `/play?…` | The game with the parameters below (editor previews use `/play?preview=…`) |
 | `/editor/`, `/docs/` | The editor and the documentation |
 
@@ -385,7 +385,7 @@ See "Animations" in `docs/src/content/docs/developers/extensions.md`.
 
 ## The editor
 
-Open `/editor`, sign in, and create a scenario. It gets its permanent 16-letter code and a first scene.
+Open `/editor`, sign in, and create a scenario. It gets a code of 16 random letters (changeable on its Publish page) and a first scene.
 
 - **Scenes** are drawn to scale with everything in them. Add background and foreground layers (stretched to the scene, or repeated with a drift and parallax), walkable and blocked areas, spawn points, items and characters, and drag any of them into place. A scene larger than the screen scrolls as players walk.
 - **Depth and discovery**: scale areas draw avatars, vehicles and items smaller towards the back of a scene; a hotspot can be given a distance within which it fades into view.

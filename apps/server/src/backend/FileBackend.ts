@@ -21,7 +21,7 @@ export class FileBackend implements Backend {
     return `guest.${Buffer.from(clean).toString('base64url')}.${randomBytes(6).toString('hex')}`;
   }
 
-  /** Find a scenario by its 16-letter code or by its file name (the shortname). */
+  /** Find a scenario by its code or by its file name (the shortname). */
   async getScenario(key: string): Promise<Scenario> {
     if (!SAFE.test(key)) throw new Error(`Bad scenario key "${key}"`);
     try {

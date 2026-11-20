@@ -12,7 +12,7 @@ The **Settings** tab holds what applies to the whole scenario, in sections: **Ab
 | **Title**, **Subtitle**, **Description** | What players see on the mission's card |
 | **Start scene** | Where players arrive |
 | **Most players in one room** | A limit on how many play together. Empty means no limit |
-| **Language**, **Short name** | A language tag and a readable name. Players use the 16-letter code, not the short name |
+| **Language**, **Short name** | A language tag and a readable name. Players use the scenario's code, not the short name |
 | **Save each player's progress between visits** | On by default |
 | **Players must sign in (no guests)** | On by default |
 | **Background music** and **Music volume** | Plays in every scene that does not have its own |
@@ -51,7 +51,9 @@ The Publish tab checks the scenario each time it opens, so after a fix, click **
 
 **Check only** lists errors and warnings without publishing, and **▶ Test the draft** plays the draft.
 
-The Publish tab also shows the **Player link** with a **Copy link** button. The 16-letter code is the scenario's permanent address and never changes, so a link you have shared keeps working through every republish. The badge in the header says where you are: **Draft** (never published, so players cannot open it), **Unpublished changes**, or **Published**.
+The Publish tab also shows the **Player link** with a **Copy link** button. The code in it is the scenario's address. It stays the same through every republish, so a link you have shared keeps working.
+
+**✏️ Change code** replaces the 16 random letters with a code that is easier to type, such as `cloudy-pond`: 4 to 32 lowercase letters, digits and hyphens, starting with a letter. It must not be in use by another scenario or be one of the site's own addresses (`missions`, `editor`, `docs` and so on). The new code works at once, whether or not the scenario is published, and it does not count as an unpublished change. **The old code stops working**: anyone with the old link, students in your classes included, needs the new one. Assignments and saved progress are kept. Only an admin can change the code of a shared sample. The badge in the header says where you are: **Draft** (never published, so players cannot open it), **Unpublished changes**, or **Published**.
 
 ## Getting the mission to students
 

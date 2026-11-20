@@ -30,7 +30,7 @@ class Scenario extends Model
         return $document;
     }
 
-    /** Find a published scenario by its 16-letter code, or by shortname. */
+    /** Find a published scenario by its code, or by shortname. */
     public static function findPublished(string $key): ?self
     {
         return static::query()

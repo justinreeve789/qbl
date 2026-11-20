@@ -202,7 +202,7 @@ export function scenarioListView(api: Api, open: (id: number) => void, options: 
     h(
       'div',
       { class: 'page-head' },
-      h('div', null, h('h1', null, 'Scenarios', help('A scenario is a whole mission: its scenes, and everything that can happen in them. Each has a 16-letter code players use to open it. Export downloads one as a ZIP file (its JSON and uploaded files) to keep as a backup; Import a ZIP makes a new scenario from such a file.'))),
+      h('div', null, h('h1', null, 'Scenarios', help('A scenario is a whole mission: its scenes, and everything that can happen in them. Each has a code players use to open it (you can change it on its Publish page). Export downloads one as a ZIP file (its JSON and uploaded files) to keep as a backup; Import a ZIP makes a new scenario from such a file.'))),
       h('div', { class: 'row-actions' },
         zip,
         h('button', { type: 'button', onclick: () => zip.click() }, 'Import a ZIP'),

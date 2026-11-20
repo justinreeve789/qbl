@@ -13,7 +13,7 @@ All coordinates are scene pixels with the origin at the top left. An avatar's po
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 spec_version | int | 1 | Version of the spec the document was written against.
-code | string | | The scenario's unique 16-letter code (lowercase `a` to `z`). It is generated when the scenario is created, never changes, and is its address: players open `/{code}`. `shortname` stays as a readable name and can be edited freely.
+code | string | | The scenario's unique code and its address: players open `/{code}`. It is 16 random lowercase letters when the scenario is created; the editor can change it to 4 to 32 lowercase letters, digits and hyphens (starting with a letter, not one of the site's own paths), after which the old code no longer opens it. `shortname` stays as a readable name and can be edited freely.
 items | array | | Item definitions (see [Items](/docs/developers/item/)). Scenes place them with `scenes[].items`.
 characters | array | | Character definitions (see [Characters](/docs/developers/character/)). Scenes place them with `scenes[].characters`.
 asset_base_url | string | | Prefix for media `url` values that are neither absolute nor rooted. A `url` that starts with `/` (such as `/media/12/ab12….png`, a file uploaded in the editor) is used as it is.

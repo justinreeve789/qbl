@@ -255,6 +255,8 @@ export class Api {
     (await this.call<{ row: Row }>('PATCH', `/editor/scenarios/${id}/rows/${table}/${rowId}`, attrs)).row;
   deleteRow = (id: number, table: Table, rowId: number) => this.call<void>('DELETE', `/editor/scenarios/${id}/rows/${table}/${rowId}`);
   preview = async (id: number) => (await this.call<{ scenario: Scenario }>('GET', `/editor/scenarios/${id}/preview`)).scenario;
+  /** Give the scenario a new player code; the old one stops working. Refused with a message when the code is not allowed or is taken. */
+  changeCode = async (id: number, code: string) => (await this.call<{ scenario: Row }>('PUT', `/editor/scenarios/${id}/code`, { code })).scenario;
   publish = async (id: number) => (await this.call<{ scenario: Row }>('POST', `/editor/scenarios/${id}/publish`)).scenario;
 
   // Classes: a teacher's students and the missions given to them. The routes are documented in App\Qbl\ClassApi.

@@ -1018,7 +1018,7 @@ export interface Session {
 
 export interface Scenario {
   id: Id;
-  /** [ext] The unique 16-letter code players use to open the scenario: /{code}. */
+  /** [ext] The unique code players use to open the scenario: /{code}. 16 random letters when created; the editor can change it (see codeProblem in site.ts). */
   code?: string;
   shortname: string;
   title: string;
