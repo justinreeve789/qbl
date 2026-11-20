@@ -92,6 +92,9 @@ class AssetDirector
     /** @var callable|null */
     private $log;
 
+    /** @var callable|null fn(int, int, string): pictures drawn, for the progress bar */
+    private $progress;
+
     public function __construct(
         private ImageGenerator $images,
         private ArtStyle $style,
@@ -110,6 +113,12 @@ class AssetDirector
         }
     }
 
+    /** Be told how many of the mission's pictures are drawn, before each one and at the end (see drawMission). */
+    public function onProgress(callable $progress): void
+    {
+        $this->progress = $progress;
+    }
+
     public function manifest(): array
     {
         return array_values($this->manifest);
@@ -124,38 +133,70 @@ class AssetDirector
         $accents = $b['art_direction']['accent_colors'] ?? [];
         $setting = $b['art_direction']['setting'] ?? '';
         $assets = [];
+        // Progress is counted in the pictures estimate() expects, so the bar moves as the money is spent.
+        // Redraws are not known ahead: they slow a step down rather than add steps.
+        $total = max(1, $this->estimate($b)['pictures']);
+        $done = 0;
+        $tick = function (string $detail) use (&$done, $total) {
+            $this->progress && ($this->progress)(min($done, $total), $total, $detail);
+        };
+        $titles = array_column($b['scenes'], 'title', 'key');
 
-        foreach ($b['characters'] as $c) {
-            $assets += $this->character($c, $setting, $accents, self::gesturesUsed($b, $c));
+        foreach (array_values($b['characters']) as $i => $c) {
+            $tick(sprintf('Drawing %s (character %d of %d)', $c['name'], $i + 1, count($b['characters'])));
+            $gestures = self::gesturesUsed($b, $c);
+            $assets += $this->character($c, $setting, $accents, $gestures);
+            // Their sheet, the walk, each gesture, and the idle strip and portrait when those are drawn.
+            $done += 2 + count($gestures) + ($this->pictures['idle_frames'] ? 1 : 0) + ($this->pictures['portraits'] === 'draw' ? 1 : 0);
         }
+        $afterThings = $done;
         // Small things, several to a picture where it can: items, the tables and rocks they stand on, the marker.
         $things = self::things($b, (string) ($this->style->bible()['marker'] ?? 'a small glowing beacon'));
-        if ($this->pictures['prop_sheets'] && count($things) > 1) {
+        $sheets = $this->pictures['prop_sheets'] && count($things) > 1;
+        $afterThings += $sheets ? (int) ceil(count($things) / self::SHEET_MAX) : count($things);
+        if ($sheets) {
             $todo = array_filter($things, fn ($t) => ! ($this->cached($t['key'])['asset'] ?? null));
-            foreach (array_chunk($todo, self::SHEET_MAX, true) as $n => $chunk) {
+            $chunks = array_chunk($todo, self::SHEET_MAX, true);
+            foreach ($chunks as $n => $chunk) {
+                $tick(sprintf('Drawing the props: %s', self::listed(array_column($chunk, 'label'))));
                 if (count($chunk) > 1) {
                     $this->thingsSheet(array_values($chunk), $accents, $n + 1);
                 }
+                $done++;
             }
         }
         foreach ($things as $t) {
+            if (! $sheets) {
+                $tick('Drawing '.$t['label']);
+                $done++;
+            }
             // Already drawn on a sheet (or by an earlier run), or drawn on its own.
             $assets[$t['asset']] = $this->cutout($t['key'], $t['kind'], $t['subject'], $t['kind'] === 'vehicle' ? '3:2' : '1:1', $this->style->anchorsFor($t['kind']), [], $t['accents'] ? $accents : [], height: $t['fit']['height'] ?? null, width: $t['fit']['width'] ?? null, label: $t['label'], pull: true, longest: $t['fit']['longest'] ?? null);
         }
+        // Whatever the sheets did (some cells drawn again alone, some reused), the props are done.
+        $done = $afterThings;
         // The doors, holes and ladders that lead between scenes.
         foreach (Connections::ends($b) as $scene => $ends) {
             foreach ($ends as $end) {
                 if ($end['via'] !== 'edge') {
+                    $tick(sprintf('Drawing the %s to %s', str_replace('_', ' ', $end['via']), $titles[$end['to']] ?? $end['to']));
                     $assets["passage:$scene:{$end['to']}"] = $this->passage($end, $accents);
+                    $done++;
                 }
             }
         }
-        foreach ($b['scenes'] as $scene) {
+        foreach (array_values($b['scenes']) as $i => $scene) {
+            $tick(sprintf('Painting %s (scene %d of %d)', $scene['title'] ?? $scene['key'], $i + 1, count($b['scenes'])));
             $assets["bg:{$scene['key']}"] = $this->background($scene, $layouts[$scene['key']] ?? [], $setting, $accents, $b['art_direction']['time_of_day'] ?? null);
+            $done++;
         }
         if (! empty($b['badge'])) {
+            $tick('Drawing the badge: '.$b['badge']['name']);
             $assets['badge'] = $this->cutout('badge', 'badge', "{$b['badge']['name']}: {$b['badge']['appearance']}", '1:1', [], [], $accents, height: 110, label: $b['badge']['name']);
+            $done++;
         }
+        $done = $total;
+        $tick('All the pictures are drawn');
 
         return $assets;
     }
@@ -261,6 +302,14 @@ class AssetDirector
         }
 
         return ['pictures' => array_sum($by), 'usd' => round($usd, 2), 'by_kind' => $by];
+    }
+
+    /** "a, b and c", for the progress bar. */
+    private static function listed(array $names): string
+    {
+        $names = array_values(array_map(fn ($n) => preg_replace(['/^surface (indoor|outdoor)$/', '/^marker$/'], ['a $1 surface', 'the marker'], (string) $n), $names));
+
+        return count($names) > 1 ? implode(', ', array_slice($names, 0, -1)).' and '.end($names) : (string) ($names[0] ?? 'the props');
     }
 
     /** Where an interaction's item goes; the same rule MissionBuilder uses. */

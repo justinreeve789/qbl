@@ -88,6 +88,9 @@ $store = new ScenarioStore($pdo, "$work/media", '/media');
 foreach ([...ScenarioStore::sqliteSchema(), ...StandardsStore::sqliteSchema(), ...GenerationRuns::sqliteSchema()] as $sql) {
     $pdo->exec($sql);
 }
+// Every progress report a run makes, in order, to check the editor's progress bar against.
+$pdo->exec('CREATE TABLE progress_log (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `run` INTEGER, `status`, `progress`)');
+$pdo->exec('CREATE TRIGGER log_progress AFTER UPDATE OF progress ON scenario_generations BEGIN INSERT INTO progress_log (run, status, progress) VALUES (NEW.id, NEW.status, NEW.progress); END');
 $blueprint = require __DIR__.'/fixtures/generation/blueprint.php';
 $config = [
     'llm' => ['api_key' => 'test', 'model' => 'test', 'judge_model' => 'test'],
@@ -389,6 +392,25 @@ $run = (new GenerationRuns($pdo))->get($result['run']);
 same(array_column($run['alignment']['standards'], 'code'), ['TEST-3-LS1-1'], 'a standard that was not offered is dropped');
 same($run['status'], 'done', 'the run is recorded as done');
 
+// ------------------------------------------------------------------ progress, for the editor's bar
+$reports = array_map(fn ($r) => ['status' => $r['status']] + json_decode($r['progress'], true), $pdo->query('SELECT status, progress FROM progress_log WHERE run = '.(int) $result['run'].' ORDER BY id')->fetchAll(PDO::FETCH_ASSOC));
+$stagesSeen = array_values(array_unique(array_column($reports, 'stage')));
+same($stagesSeen, ['aligning', 'designing', 'drawing', 'building', 'voicing', 'importing'], 'progress goes through every stage in order (voicing too, with voices set up)');
+same($reports[0]['stages'], $stagesSeen, 'and says from the start which stages there will be');
+same(array_column($reports, 'status'), array_column($reports, 'stage'), 'the run\'s status follows the stage');
+$percents = array_column($reports, 'percent');
+check($percents === array_values(array_filter($percents, fn ($p, $i) => $i === 0 || $p >= $percents[$i - 1], ARRAY_FILTER_USE_BOTH)), 'the bar never goes backwards');
+same((float) end($percents), 100.0, 'and ends full');
+$drawing = array_values(array_filter($reports, fn ($r) => $r['stage'] === 'drawing' && $r['total'] !== null));
+$estimate = $factory->director("$work/estimate-only")->estimate($run['blueprint']);
+same(end($drawing)['total'], $estimate['pictures'], 'drawing is counted in the pictures the estimate expects');
+same([end($drawing)['done'], end($drawing)['detail']], [$estimate['pictures'], 'All the pictures are drawn'], 'and finishes at all of them');
+$details = implode("\n", array_column($reports, 'detail'));
+foreach (['Drawing Keeper Ama (character 1 of 2)', 'Drawing the props:', 'Painting Orchard Landing (scene 1 of', 'Drawing the door to', 'Recording line 1 of', 'Fixing 1 problem in the design (round 1)'] as $said) {
+    check(str_contains($details, $said), "progress says what it is doing: \"$said\"");
+}
+check(count(array_unique(array_column($drawing, 'done'))) > 5, 'and moves picture by picture, not only stage by stage');
+
 $scenarioId = $result['scenario_id'];
 $scenario = $store->scenario($scenarioId);
 
@@ -605,6 +627,21 @@ $resumed = $generator->generate('', [], null, $result['run']);
 same(count($model->calls), $before, 'resuming a finished run asks the model nothing again');
 check((bool) array_filter($log, fn ($m) => str_contains($m, 'Reusing')), 'and draws no picture again');
 check($resumed['scenario_id'] !== $scenarioId, 'resuming imports again (a fresh draft)');
+
+// Cancelled from the editor: it stops at the next report, as cancelled (not failed), and draws nothing more.
+$runs = new GenerationRuns($pdo);
+$stopId = $runs->create('A mission that is stopped before it is made', ['grade' => '3', 'frameworks' => ['TEST-SCI']], null);
+$runs->update($stopId, ['cancelled_at' => gmdate('Y-m-d H:i:s')]);
+check((function () use ($generator, $stopId) {
+    try {
+        $generator->generate('', [], null, $stopId);
+    } catch (App\Qbl\Generation\GenerationCancelled) {
+        return true;
+    }
+
+    return false;
+})(), 'a cancelled run stops');
+same([$runs->get($stopId)['status'], $runs->get($stopId)['alignment']], ['cancelled', null], 'as cancelled, before asking the model anything');
 
 $design = $generator->generate('Another mission', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design']);
 same($design['status'], 'designed', '--design-only stops after the blueprint');

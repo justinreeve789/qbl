@@ -28,14 +28,24 @@ A teacher's plan also sets how many students they can add in Classes.
 
 ## The AI mission generator
 
-**Generate** in the editor (Teacher Plus, and school plans that include it): describe the mission (the topic, what students should learn, the setting), and optionally the grade, subject, number of players, minutes and any notes. The generator aligns it to curriculum standards, designs the story, scenes, characters and questions, draws every picture in the house style, and builds it. That takes a few minutes; the page shows how far it has got, and you can leave and come back. The result is a **private draft** in your scenarios: look it over, then publish and assign it.
+**Generate** in the editor (Teacher Plus, school plans that include it, and administrators; anyone when billing is off): describe the mission (the topic, what students should learn, the setting), and optionally the grade, subject, number of players, minutes and any notes. The **Try** buttons fill in an example to start from. You can also get there from the Scenarios page: **✨ Generate with AI**, or **New scenario** → **Generate it with AI**, which starts the description with the title you typed.
 
-One mission is made at a time per teacher.
+The generator aligns it to curriculum standards, designs the story, scenes, characters and questions, draws every picture in the house style, records the characters' voices, and builds it. That takes about ten minutes, on the server: you can carry on working.
+
+- **On the Generate page** the mission's card shows its steps (Standards, Story, Pictures, Build, Voices, Save), a progress bar, what it is doing right now ("Painting the Greenhouse (scene 3 of 5) · picture 12 of 17") and roughly how long is left.
+- **Anywhere else in the editor** a ✨ chip at the top shows the step and percent (and the browser tab shows the percent). Click it to go back to the Generate page.
+- **When it is made**, a message says so, with **Open it**. The result is a **private draft** in your scenarios: look it over, then publish and assign it.
+- **Cancel** stops it. One still waiting stops at once; one being made stops before its next picture. Either way its credits are given back.
+- **Try again** (on one that failed or was cancelled) and **Make another like it** put its description back in the form.
+
+One mission is made at a time per teacher: you can write the next one while one is being made, and start it when that one is done.
+
+Teachers without the generator see what it is and a link to the plans; on a school license without it, they are asked to talk to whoever runs QBL for their school. Administrators also see **Everyone's generations**: the latest 50 by anyone, with who asked and roughly what each spent on AI services.
 
 ### Credits
 
 A generated mission costs **10 credits**. Teacher Plus gives **100 credits at the start of each billing month** (20 during the free trial). Credits you do not use **carry over** to the next month, up to **100**; above that they expire when the new month's credits arrive. So the most you can have is 200.
 
-If a generation fails, its credits are **given back**. **Plan** in the editor shows your balance and every change to it.
+The Generate page shows your balance beside the title, and under the button what you will have left. If a generation fails or you cancel it, its credits are **given back**. One whose server stopped part way (no progress for half an hour) is marked failed and given back too. **Plan** in the editor shows your balance and every change to it. Administrators are not charged.
 
 The numbers above are this site's defaults; the site's administrator can change them.

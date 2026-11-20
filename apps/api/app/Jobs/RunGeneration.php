@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Qbl\Billing\Credits;
 use App\Qbl\Generation\GenerationApi;
+use App\Qbl\Generation\GenerationCancelled;
 use App\Qbl\Generation\GenerationFactory;
 use App\Qbl\Generation\GenerationRuns;
 use Illuminate\Bus\Queueable;
@@ -17,7 +18,9 @@ use Throwable;
 /**
  * Make a mission a teacher asked for in the editor (App\Qbl\Generation\GenerationApi): the same
  * work as `php artisan qbl:generate`, on the queue worker. Runs once: a run that fails is marked
- * failed and its credits are given back, and the teacher can start another.
+ * failed and its credits are given back, and the teacher can start another. The run reports its
+ * progress as it goes (GenerationProgress), and stops between two pictures when its teacher
+ * cancels it: marked cancelled, credits back.
  */
 class RunGeneration implements ShouldQueue
 {
@@ -42,6 +45,8 @@ class RunGeneration implements ShouldQueue
         $log = fn (string $line) => Log::info("generation {$this->generationId}: $line");
         try {
             $factory->generator([], $log)->generate((string) $run['prompt'], [], $run['user_id'] !== null ? (int) $run['user_id'] : null, $this->generationId);
+        } catch (GenerationCancelled) {
+            GenerationApi::cancelled($pdo, $credits, $this->generationId);
         } catch (Throwable $e) {
             report($e);
             GenerationApi::failed($pdo, $credits, $this->generationId, $e->getMessage());

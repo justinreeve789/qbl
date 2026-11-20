@@ -24,6 +24,7 @@ use App\Qbl\ClassApi;
 use App\Qbl\ClassStore;
 use App\Qbl\EditorApi;
 use App\Qbl\Generation\GenerationApi;
+use App\Qbl\Generation\GenerationProgress;
 use App\Qbl\Generation\GenerationRuns;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Http\HttpResponse;
@@ -340,6 +341,74 @@ $broken = new GenerationApi($pdo, $entitlements, $credits, fn () => null, fn () 
 $credits->adjust(2, 50, 'more');
 same($broken->handle('POST', [], ['prompt' => 'Plants need light: a greenhouse mystery'], ['id' => 2, 'role' => 'teacher'])[0], 503, 'a site that cannot generate says so before charging');
 same($credits->summary(2)['balance'], 50, 'and charges nothing');
+
+// Progress, cancelling, the editor's progress chip, and what administrators see.
+$clock = time();
+$gen = new GenerationApi($pdo, $entitlements, $credits, function (int $id) use (&$queued) {
+    $queued[] = $id;
+}, null, true, function () use (&$clock) {
+    return $clock;
+});
+$teacher = ['id' => 2, 'role' => 'teacher'];
+[$status, $body] = $gen->handle('POST', [], ['prompt' => 'Plants need light: a greenhouse mystery for grade 4'], $teacher);
+$runId = $body['generation']['id'];
+same([$status, $body['credits']['balance'] ?? null], [202, 40], 'starting one says the credits left');
+same([$body['generation']['progress']['stage'], $body['generation']['progress']['percent'], $body['generation']['progress']['stages']], ['queued', 0, ['aligning', 'designing', 'drawing', 'building', 'voicing', 'importing']], 'a queued run has an empty bar, and the stages it will go through');
+same($gen->handle('GET', ['active'], [], $teacher)[1]['generation']['id'] ?? null, $runId, 'the progress chip finds the one being made');
+same($gen->handle('GET', ['active'], [], ['id' => 1, 'role' => 'teacher'])[1]['generation'], null, 'and only your own');
+same($gen->handle('GET', ['active'], [], ['id' => 11, 'role' => 'student'])[0], 403, 'students cannot ask');
+same($gen->handle('POST', [(string) $runId, 'cancel'], [], ['id' => 1, 'role' => 'teacher'])[0], 404, 'another teacher cannot stop it');
+[$status, $body] = $gen->handle('POST', [(string) $runId, 'cancel'], [], $teacher);
+same([$status, $body['generation']['status'], $body['generation']['busy'], $body['credits']['balance']], [200, 'cancelled', false, 50], 'a queued run stops at once, with its credits back');
+same($gen->handle('GET', ['active'], [], $teacher)[1]['generation'], null, 'and is no longer being made');
+same($gen->handle('POST', [(string) $runId, 'cancel'], [], $teacher)[0], 409, 'a stopped run cannot be stopped again');
+
+// One the worker is making: asked to stop, it stops at its next report, and then its credits come back.
+[, $body] = $gen->handle('POST', [], ['prompt' => 'Plants need light: a greenhouse mystery for grade 4'], $teacher);
+$runId = $body['generation']['id'];
+$runs = new GenerationRuns($pdo);
+$progress = new GenerationProgress($runs, $runId, GenerationProgress::stagesFor(true), fn () => 1.234);
+$progress->stage('drawing', null, 10);
+$progress->count(4, null, 'Painting the Greenhouse (scene 2 of 5)');
+$shown = $gen->handle('GET', [(string) $runId], [], $teacher)[1]['generation'];
+same([$shown['status'], $shown['progress']['done'], $shown['progress']['total'], $shown['progress']['detail']], ['drawing', 4, 10, 'Painting the Greenhouse (scene 2 of 5)'], 'the run says how far it has got');
+same($shown['progress']['percent'], GenerationProgress::percent('drawing', 0.4), 'and its percent of the whole');
+check(! array_key_exists('usd', $shown), 'a teacher is not shown what it spent');
+same($gen->handle('GET', [(string) $runId], [], ['id' => 3, 'role' => 'admin'])[1]['generation']['usd'], 1.23, 'an administrator is');
+$progress->fraction(0.1);
+same($runs->get($runId)['progress']['percent'], GenerationProgress::percent('drawing', 0.4), 'the bar never goes backwards');
+[$status, $body] = $gen->handle('POST', [(string) $runId, 'cancel'], [], $teacher);
+same([$body['generation']['status'], $body['generation']['cancelling'], $body['credits']['balance']], ['drawing', true, 40], 'a run being made is asked to stop (the worker stops it)');
+check((function () use ($progress) {
+    try {
+        $progress->count(5);
+    } catch (App\Qbl\Generation\GenerationCancelled) {
+        return true;
+    }
+
+    return false;
+})(), 'the worker stops at its next picture');
+GenerationApi::cancelled($pdo, $credits, $runId);
+GenerationApi::cancelled($pdo, $credits, $runId);
+same([$runs->get($runId)['status'], $credits->summary(2)['balance']], ['cancelled', 50], 'and gives the credits back, once');
+
+// A run whose worker went away (the container restarted) does not keep the teacher waiting.
+[, $body] = $gen->handle('POST', [], ['prompt' => 'Plants need light: a greenhouse mystery for grade 4'], $teacher);
+$runId = $body['generation']['id'];
+$runs->update($runId, ['status' => 'designing']);
+$clock += GenerationApi::STALE_SECONDS - 60;
+same($gen->handle('GET', ['active'], [], $teacher)[1]['generation']['status'] ?? null, 'designing', 'a slow run is left alone');
+$clock += 120;
+$list = $gen->handle('GET', [], [], $teacher)[1];
+same([$list['generations'][0]['status'], $credits->summary(2)['balance']], ['failed', 50], 'one that has not moved for half an hour is failed, credits back');
+check(str_contains($list['generations'][0]['error'], 'Try again'), 'saying so');
+same($gen->handle('POST', [], ['prompt' => 'Plants need light: a greenhouse mystery for grade 4'], $teacher)[0], 202, 'and another can be started');
+
+// Administrators see everyone's; teachers do not.
+same($gen->handle('GET', ['all'], [], $teacher)[0], 403, 'a teacher cannot list everyone\'s generations');
+$all = $gen->handle('GET', ['all'], [], ['id' => 3, 'role' => 'admin'])[1]['generations'];
+check(count($all) >= 4 && isset($all[0]['user']['name']) && array_key_exists('usd', $all[0]), 'an administrator can, with who asked and what each spent');
+same($gen->handle('GET', ['nonsense'], [], $teacher)[0], 404, 'anything else is not found');
 
 // ClassApi passes plans through to Classes.
 $classApi = new ClassApi($pdo, null, $entitlements);

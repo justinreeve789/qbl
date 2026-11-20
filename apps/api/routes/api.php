@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/auth/guest',[AuthController::class, 'guest'])->middleware('throttle:10,1');
+Route::post('/auth/guest', [AuthController::class, 'guest'])->middleware('throttle:10,1');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 // The profile page: the name over the player's character, and the password.
 Route::patch('/me', [AuthController::class, 'update'])->middleware(['auth:sanctum', 'throttle:20,1']);
@@ -53,7 +53,8 @@ Route::post('/billing/quote', [BillingController::class, 'quote'])->middleware('
 Route::any('/billing/{path?}', BillingController::class)->where('path', 'checkout|change|portal|promotion|credits')->middleware('throttle:30,1');
 
 // The AI mission generator from the editor, paid in credits; the work runs on the queue worker.
-Route::any('/editor/generations/{path?}', GenerationController::class)->where('path', '[0-9]*')->middleware(['auth:sanctum', 'throttle:30,1']);
+// The editor asks how a generation is going every few seconds, from any page: a looser limit than most.
+Route::any('/editor/generations/{path?}', GenerationController::class)->where('path', '[0-9a-z/]*')->middleware(['auth:sanctum', 'throttle:90,1']);
 
 // The district admin panel (App\Qbl\District\DistrictApi lists the routes), and signing in through a
 // district's own system: SAML, Clever (Google Workspace domains go through GoogleAuthController).

@@ -47,9 +47,9 @@ class EditorApi
     ) {}
 
     /**
-     * @param  array|null  $user   ['id' => int, 'name' => string, 'role' => string], or null if not signed in
+     * @param  array|null  $user  ['id' => int, 'name' => string, 'role' => string], or null if not signed in
      * @param  array  $files  uploaded files: ['file' => ['tmp_name' => ..., 'name' => ...]]
-     * @return array{0: int, 1: array|null}  HTTP status and JSON body
+     * @return array{0: int, 1: array|null} HTTP status and JSON body
      */
     public function handle(string $method, string $path, array $body, ?array $user, array $files = []): array
     {

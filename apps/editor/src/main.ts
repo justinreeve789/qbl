@@ -9,7 +9,8 @@ import './editor.css';
 import { Store } from './store';
 import { classesView } from './views/classes';
 import { districtView } from './views/district';
-import { generateView } from './views/generate';
+import { generateView, prefillGenerator } from './views/generate';
+import { progressBar, runName, STAGE_NAMES, tracker } from './generations';
 import { planView } from './views/plan';
 import { session } from './session';
 import { loginView, scenarioListView } from './views/home';
@@ -34,7 +35,44 @@ const saving = h('span', { class: 'saving', 'aria-live': 'polite' });
 const account = h('div', { class: 'account' });
 const view = h('div', { class: 'view' });
 const nav = h('nav', { class: 'top-nav', 'aria-label': 'Site' });
-root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QBL Editor'), nav, saving, h('span', { class: 'spacer' }), account), view);
+const generating = h('div', { class: 'gen-chip-host', 'aria-live': 'polite' });
+root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QBL Editor'), nav, saving, h('span', { class: 'spacer' }), generating, account), view);
+
+/**
+ * The AI generator's run, from any page: a chip in the header with its progress (it opens the
+ * Generate page), the percent in the tab's title, and a message with "Open" when it is made.
+ */
+const baseTitle = document.title;
+let chip: { id: number; node: HTMLElement; bar: ReturnType<typeof progressBar>; label: HTMLElement } | null = null;
+tracker.subscribe((g) => {
+  if (!g) {
+    chip = null;
+    clear(generating);
+    document.title = baseTitle;
+    return;
+  }
+  if (chip?.id !== g.id) {
+    const bar = progressBar(g, () => tracker.skew, true);
+    const label = h('span', { class: 'gen-chip-label' });
+    const node = h('a', { class: 'gen-chip', href: '#/generate', 'data-generation': g.id }, h('span', { class: 'gen-chip-spark', 'aria-hidden': 'true' }, '✨'), h('span', { class: 'gen-chip-text' }, label, bar));
+    chip = { id: g.id, node, bar, label };
+    clear(generating, node);
+  }
+  const pct = Math.floor(g.progress.percent);
+  const stage = g.cancelling ? 'Stopping' : STAGE_NAMES[g.progress.stage]?.short ?? g.progress.stage;
+  chip.label.textContent = `${stage} · ${pct}%`;
+  chip.node.title = `Making “${runName(g, 60)}”: ${g.progress.detail ?? STAGE_NAMES[g.progress.stage]?.long ?? ''}. Click to see it.`;
+  chip.bar.update(g);
+  document.title = `(${pct}%) ${baseTitle}`;
+});
+tracker.onFinished((g) => {
+  document.title = baseTitle;
+  if (g.status === 'done' && g.scenario_id) {
+    toast(`“${runName(g, 60)}” is ready: a draft in your scenarios.`, 'info', { label: 'Open it', run: () => go(`#/s/${g.scenario_id}`) });
+  } else if (g.status === 'failed') {
+    toast('The mission could not be made. Any credits it cost were given back.', 'error', { label: 'See why', run: () => go('#/generate') });
+  }
+});
 
 /**
  * The site's places, as on the missions page and in the game's menu: Missions (the game),
@@ -82,10 +120,18 @@ let user: User | null = null;
 let store: Store | null = null;
 let dispose: (() => void) | null = null;
 let routing = 0;
+/** Whose generator runs the tracker is following. */
+let followed: number | null = null;
 
 const go = (hash: string) => {
   if (window.location.hash === hash) void route();
   else window.location.hash = hash;
+};
+
+/** From the Scenarios page: the generator, with what they typed as the start of its description. */
+const toGenerator = (prompt?: string) => {
+  if (prompt) prefillGenerator(prompt);
+  go('#/generate');
 };
 
 function show(node: HTMLElement, fill = false) {
@@ -137,6 +183,17 @@ async function route() {
   session.role = user?.role ?? '';
   drawAccount();
   drawNav();
+  // Follow the teacher's generator runs from every page (only teachers and administrators make them).
+  if (user && (user.role === 'teacher' || user.role === 'admin')) {
+    if (followed !== user.id) {
+      followed = user.id;
+      tracker.start(api);
+    }
+  } else if (followed !== null) {
+    followed = null;
+    tracker.stop();
+  }
+  generating.hidden = window.location.hash === '#/generate';
   if (!user) {
     return show(loginView(api, (signedIn) => {
       user = signedIn;
@@ -166,11 +223,11 @@ async function route() {
     // becomes the list's, so going back or reloading does not open the dialog again.
     window.history.replaceState(null, '', '#/');
     drawNav();
-    return show(scenarioListView(api, (id) => go(`#/s/${id}`), { startNew: true }));
+    return show(scenarioListView(api, (id) => go(`#/s/${id}`), { startNew: true, generate: toGenerator }));
   }
 
   const match = /^#\/s\/(\d+)(?:\/(?:scene\/(\d+)|([a-z]+)))?$/.exec(window.location.hash);
-  if (!match) return show(scenarioListView(api, (id) => go(`#/s/${id}`)));
+  if (!match) return show(scenarioListView(api, (id) => go(`#/s/${id}`), { generate: toGenerator }));
 
   const scenarioId = Number(match[1]);
   if (store?.scenarioId !== scenarioId) {

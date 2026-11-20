@@ -83,7 +83,7 @@ export function loginView(api: Api, done: (user: User) => void, refused?: User, 
  * Ask for a new scenario's title and how it should start. The starship is the hub missions are
  * launched from, so a new scenario can begin as its own copy of it.
  */
-function newScenarioDialog(): Promise<{ title: string; template?: 'starship' } | null> {
+function newScenarioDialog(generate: boolean): Promise<{ title: string; template?: 'starship'; generate?: true } | null> {
   return new Promise((resolve) => {
     const title = h('input', { type: 'text', name: 'title', required: true, maxlength: 200, autocomplete: 'off' });
     const choice = (value: string, checked: boolean, name: string, about: string) =>
@@ -96,6 +96,7 @@ function newScenarioDialog(): Promise<{ title: string; template?: 'starship' } |
       choice('starship', true, 'Start aboard the starship',
         'A copy of the ship’s eight rooms, its crew, the marketplace and the things that go on aboard. It is this scenario’s own copy: change anything, and add the places your mission goes to.'),
       choice('empty', false, 'Start empty', 'One blank scene.'),
+      generate ? choice('generate', false, '✨ Generate it with AI', 'Describe the mission and it is written, drawn and voiced for you in about ten minutes, as a draft to look over. Costs generator credits.') : null,
       h('div', { class: 'row-actions' },
         h('button', { type: 'submit', class: 'primary' }, 'Create'),
         h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel')),
@@ -105,7 +106,7 @@ function newScenarioDialog(): Promise<{ title: string; template?: 'starship' } |
     dialog.addEventListener('close', () => {
       const start = (form.elements.namedItem('start') as RadioNodeList).value;
       dialog.remove();
-      resolve(dialog.returnValue === 'create' && title.value.trim() ? { title: title.value.trim(), ...(start === 'starship' ? { template: 'starship' as const } : {}) } : null);
+      resolve(dialog.returnValue === 'create' && title.value.trim() ? { title: title.value.trim(), ...(start === 'starship' ? { template: 'starship' as const } : {}), ...(start === 'generate' ? { generate: true as const } : {}) } : null);
     });
     document.body.append(dialog);
     dialog.showModal();
@@ -116,16 +117,17 @@ function newScenarioDialog(): Promise<{ title: string; template?: 'starship' } |
 /**
  * The scenarios this person can edit, and public missions by others that they can make a copy of.
  * `startNew` opens the "New scenario" dialog straight away (`#/new`, linked from the teacher's
- * missions page).
+ * missions page). `generate` goes to the AI generator, with a start for its description.
  */
-export function scenarioListView(api: Api, open: (id: number) => void, options: { startNew?: boolean } = {}): HTMLElement {
+export function scenarioListView(api: Api, open: (id: number) => void, options: { startNew?: boolean; generate?: (prompt?: string) => void } = {}): HTMLElement {
   const list = h('div', { class: 'grid' }, h('p', { class: 'muted' }, 'Loading…'));
   const others = h('div', null);
   const fail = (err: unknown, fallback: string) => toast(err instanceof Error ? err.message : fallback, 'error');
 
   const create = async () => {
-    const wanted = await newScenarioDialog();
+    const wanted = await newScenarioDialog(!!options.generate);
     if (!wanted) return;
+    if (wanted.generate) return options.generate?.(wanted.title);
     try {
       open((await api.create(wanted.title, wanted.template)).id);
     } catch (err) {
@@ -209,6 +211,7 @@ export function scenarioListView(api: Api, open: (id: number) => void, options: 
       h('div', { class: 'row-actions' },
         zip,
         h('button', { type: 'button', onclick: () => zip.click() }, 'Import a ZIP'),
+        options.generate ? h('button', { type: 'button', 'data-action': 'generate', title: 'Describe a mission and have it made with AI', onclick: () => options.generate?.() }, '✨ Generate with AI') : null,
         h('button', { type: 'button', class: 'primary', onclick: create }, 'New scenario')),
     ),
     list,

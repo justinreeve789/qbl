@@ -175,9 +175,28 @@ The language model is Claude (`ANTHROPIC_API_KEY`): `QBL_GEN_LLM_MODEL` writes t
 
 Gemini's image models are not on its free tier: the key's project needs billing turned on in Google AI Studio. Without it every request is refused with a quota of 0, and the generator says so.
 
+## From the editor: the queue, progress and cancelling
+
+The editor's **Generate** page (`apps/editor/src/views/generate.ts`) calls `App\Qbl\Generation\GenerationApi` under `/api/editor/generations`. Starting one checks the plan (`Entitlements`), takes the credits (`Credits`) and dispatches `App\Jobs\RunGeneration` to the queue worker in the app container, which runs the same `ScenarioGenerator` as `qbl:generate`.
+
+Route | What
+----- | ----
+`GET editor/generations` | my runs, the cost, my plan and credits
+`POST editor/generations` | start one (202)
+`GET editor/generations/active` | the one being made now, or null (the editor's header chip asks every 4 seconds while there is one)
+`GET editor/generations/all` | administrators: everyone's latest 50, with who asked and `usd` spent
+`GET editor/generations/{id}` | one run
+`POST editor/generations/{id}/cancel` | stop it
+
+**Progress** (`GenerationProgress`) is kept on the run's row, `scenario_generations.progress`: the stage, the stages it will go through, the percent, what it is doing, pictures (or lines) done of the total, and when it and the stage started. Each stage owns a slice of the bar weighted by how long it usually takes (drawing is 26-88%). Drawing is counted in the same pictures as the cost estimate (`AssetDirector::estimate`), reported before each one. The bar never goes back. Between reports the editor creeps it forward within the step it is in, never past the next report.
+
+**Cancelling** sets `scenario_generations.cancelled_at`. A run still queued is cancelled at once; a running one checks at every progress report, throws `GenerationCancelled`, and the job marks it `cancelled`. Either way the credits are given back once. A busy run with no progress for 30 minutes (`GenerationApi::STALE_SECONDS`: its worker went away) is marked failed, with its credits back, so the teacher can start another.
+
+Without Docker, the dev server (`npm run dev:editor`) cannot make missions; with `QBL_DEV_GENERATOR=1` it pretends, moving a run through every stage in about 70 seconds and ending with an empty draft (a number of seconds above 1 sets how long).
+
 ## Testing
 
-`npm run test:generation` runs the whole pipeline with no network: a stand-in model answers from `apps/api/tests/fixtures/generation/blueprint.php` (a mission with every feature: a door, a hole, roles, a twist, predictions, a debrief...), and the placeholder draws the pictures. With the JavaScript side installed (`npm install`), it then checks the generated scenario with the game's own validator, and plays it **from the briefing to the debrief through the real engine** (`apps/client/test/generated-mission.test.ts`): a student chooses a role, goes through the door, sees the twist, digs the channel, jumps into the hole, changes roles, makes a prediction, runs the experiment, answers the debrief wrong and then right.
+`npm run test:generation` runs the whole pipeline with no network, and checks every progress report it makes: a stand-in model answers from `apps/api/tests/fixtures/generation/blueprint.php` (a mission with every feature: a door, a hole, roles, a twist, predictions, a debrief...), and the placeholder draws the pictures. With the JavaScript side installed (`npm install`), it then checks the generated scenario with the game's own validator, and plays it **from the briefing to the debrief through the real engine** (`apps/client/test/generated-mission.test.ts`): a student chooses a role, goes through the door, sees the twist, digs the channel, jumps into the hole, changes roles, makes a prediction, runs the experiment, answers the debrief wrong and then right.
 
 ## Reviewing a generated mission
 
@@ -194,4 +213,4 @@ Generated content is a first draft from a language model: check facts, reading l
 - Music and sound effects (scenes have none; add them in the editor).
 - Starting a generated mission from a copy of the starship hub, with a console that launches it.
 - Regenerating one picture or one scene of an imported mission from the editor.
-- Running generation from the editor as a queued job, with progress shown there.
+- Regenerating from where a failed editor run stopped (the editor starts afresh; `qbl:generate --resume` can carry on).

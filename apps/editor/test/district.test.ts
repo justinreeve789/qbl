@@ -58,6 +58,7 @@ test('the generator page takes a description and says when the site cannot make 
   await page.click('.top-nav [data-place=generate]');
   await page.waitForSelector('form[data-form=generate]');
   await page.fill('form[data-form=generate] textarea[name=prompt]', 'A rainforest mystery about how plants need light, for grade 4');
+  await page.click('form[data-form=generate] details[data-fold=generate-options] summary');
   await page.fill('form[data-form=generate] input[name=grade]', '4');
   await page.click('form[data-form=generate] button[type=submit]');
   await page.waitForSelector('.toast.error');

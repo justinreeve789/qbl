@@ -33,6 +33,8 @@ class GenerationController extends Controller
                 }
                 $factory->generator([]);
             },
+            // Whether runs record voices here: a stage of the progress bar.
+            (string) config('qbl_speech.driver', 'none') !== 'none',
         );
         [$status, $body] = $api->handle(
             $request->method(),

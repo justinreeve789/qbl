@@ -196,18 +196,41 @@ export interface BillingStatus {
 }
 export interface LedgerLine { delta: number; balance_after: number; reason: 'grant' | 'expire' | 'spend' | 'refund' | 'adjust'; ref: string | null; note: string | null; at: string }
 
+/** How far a generation has got (App\Qbl\Generation\GenerationProgress). Times are UTC ISO. */
+export interface GenerationProgress {
+  stage: string;
+  stages: string[];
+  percent: number;
+  detail: string | null;
+  /** Pictures drawn (drawing) or lines recorded (voicing), of `total`. */
+  done: number | null;
+  total: number | null;
+  started_at: string | null;
+  stage_started_at: string | null;
+  updated_at?: string | null;
+}
+export interface GenerationOptions { grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string }
 export interface Generation {
   id: number;
   prompt: string;
+  /** queued, aligning, designing, drawing, building, voicing, importing; then done, failed or cancelled. */
   status: string;
   busy: boolean;
+  /** Asked to stop; the worker stops before its next picture. */
+  cancelling: boolean;
   title: string | null;
   scenario_id: number | null;
-  options: Record<string, unknown>;
+  options: GenerationOptions;
   error: string | null;
+  progress: GenerationProgress;
   created_at: string;
   updated_at: string;
+  /** Administrators only: what it has spent on AI services, in US dollars. */
+  usd?: number | null;
+  /** In the administrators' list of everyone's. */
+  user?: { name: string | null; email: string | null };
 }
+export interface GeneratorPlan { generator: boolean; plan_name: string; source: string; billing: boolean; credits: CreditSummary | null }
 
 // ------------------------------------------------------------- district admin panel
 
@@ -280,9 +303,10 @@ export class Api {
     }
   }
 
-  private async call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  /** `quiet`: not shown as saving (for asking how something is going). */
+  private async call<T>(method: string, path: string, body?: unknown, quiet = false): Promise<T> {
     const form = body instanceof FormData;
-    this.onBusy(++this.pending > 0);
+    if (!quiet) this.onBusy(++this.pending > 0);
     try {
       const res = await fetch(`/api${path}`, {
         method,
@@ -298,7 +322,7 @@ export class Api {
       if (!res.ok) throw new ApiError(res.status, data?.message ?? `Request failed (${res.status})`);
       return data as T;
     } finally {
-      this.onBusy(--this.pending > 0);
+      if (!quiet) this.onBusy(--this.pending > 0);
     }
   }
 
@@ -418,10 +442,13 @@ export class Api {
   changePlan = (plan: string) => this.call<BillingStatus>('POST', '/billing/change', { plan });
 
   // The AI mission generator (App\Qbl\Generation\GenerationApi).
-  generations = () => this.call<{ generations: Generation[]; cost: number; plan: { generator: boolean; plan_name: string; credits: CreditSummary | null } }>('GET', '/editor/generations');
-  generation = async (id: number) => (await this.call<{ generation: Generation }>('GET', `/editor/generations/${id}`)).generation;
-  generate = async (form: { prompt: string; grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string }) =>
-    (await this.call<{ generation: Generation }>('POST', '/editor/generations', form)).generation;
+  // Asked every few seconds while one is being made: quietly, so the header does not flash "Saving…".
+  generations = () => this.call<{ generations: Generation[]; cost: number; plan: GeneratorPlan; now: string }>('GET', '/editor/generations', undefined, true);
+  generation = (id: number) => this.call<{ generation: Generation; now: string }>('GET', `/editor/generations/${id}`, undefined, true);
+  activeGeneration = () => this.call<{ generation: Generation | null; now: string }>('GET', '/editor/generations/active', undefined, true);
+  everyonesGenerations = () => this.call<{ generations: Generation[]; now: string }>('GET', '/editor/generations/all', undefined, true);
+  generate = (form: { prompt: string } & GenerationOptions) => this.call<{ generation: Generation; credits: CreditSummary | null; now: string }>('POST', '/editor/generations', form);
+  cancelGeneration = (id: number) => this.call<{ generation: Generation; credits: CreditSummary | null; now: string }>('POST', `/editor/generations/${id}/cancel`);
 
   // The district admin panel (App\Qbl\District\DistrictApi).
   orgs = () => this.call<{ organizations: OrgSummary[]; platform_admin: boolean }>('GET', '/district/orgs');

@@ -338,7 +338,7 @@ docker compose exec app php artisan qbl:billing status teacher@school.org       
 docker compose exec app php artisan qbl:org license "Riverside Unified" --generator --credits=100 --expires=2027-06-30
 ```
 
-The generator from the editor and the district panel's roster syncs run on a **queue worker** inside the `app` container (`QBL_QUEUE_WORKER=true`; log lines `worker:`). See [docs/src/content/docs/developers/billing.md](docs/src/content/docs/developers/billing.md).
+The generator from the editor and the district panel's roster syncs run on a **queue worker** inside the `app` container (`QBL_QUEUE_WORKER=true`; log lines `worker:`). While a mission is being made the editor shows its progress on the Generate page and in a ✨ chip at the top of every page, and the teacher can cancel it (credits back). After upgrading, run `php artisan migrate` (adds `scenario_generations.progress` and `cancelled_at`). See [docs/src/content/docs/developers/billing.md](docs/src/content/docs/developers/billing.md).
 
 ## The district admin panel
 

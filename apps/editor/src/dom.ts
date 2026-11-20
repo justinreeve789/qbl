@@ -69,14 +69,19 @@ let toastHost: HTMLElement | null = null;
  * A short message at the bottom of the screen. While a pop-up panel is open the messages go
  * inside it: a modal dialog sits above everything else on the page, so they would be hidden.
  */
-export function toast(message: string, kind: 'info' | 'error' = 'info') {
+/** A short message in the corner. With `action`, a button beside it (and it stays longer). */
+export function toast(message: string, kind: 'info' | 'error' = 'info', action?: { label: string; run: () => void }) {
   toastHost ??= h('div', { class: 'toasts', role: 'status' });
   const dialogs = [...document.querySelectorAll<HTMLDialogElement>('dialog[open]')];
   const parent = dialogs[dialogs.length - 1] ?? document.body;
   if (toastHost.parentElement !== parent) parent.append(toastHost);
-  const node = h('div', { class: `toast ${kind}` }, message);
+  const node = h('div', { class: `toast ${kind}${action ? ' with-action' : ''}` }, h('span', null, message),
+    action ? h('button', { type: 'button', class: 'toast-action', onclick: () => {
+      node.remove();
+      action.run();
+    } }, action.label) : null);
   toastHost.append(node);
-  window.setTimeout(() => node.remove(), kind === 'error' ? 7000 : 3000);
+  window.setTimeout(() => node.remove(), action ? 12000 : kind === 'error' ? 7000 : 3000);
 }
 
 /** Ask before something that cannot be undone. */

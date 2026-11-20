@@ -7,7 +7,7 @@ use PDO;
 /** The scenario_generations table: one row per run of the generator. Plain PHP over PDO. */
 class GenerationRuns
 {
-    private const JSON = ['options', 'alignment', 'blueprint', 'manifest'];
+    private const JSON = ['options', 'alignment', 'blueprint', 'manifest', 'progress'];
 
     public function __construct(private PDO $pdo)
     {
@@ -50,8 +50,28 @@ class GenerationRuns
         $this->pdo->prepare("UPDATE `scenario_generations` SET $sets WHERE `id` = ?")->execute([...array_values($fields), $id]);
     }
 
+    /** Whether the run's teacher has asked for it to stop (read afresh: another request sets it). */
+    public function cancelRequested(int $id): bool
+    {
+        $st = $this->pdo->prepare('SELECT `cancelled_at` FROM `scenario_generations` WHERE `id` = ?');
+        $st->execute([$id]);
+
+        return (bool) $st->fetchColumn();
+    }
+
+    /** Columns added since the table was first made, for SQLite databases made before them (the dev server). */
+    public static function sqliteUpgrade(PDO $pdo): void
+    {
+        $have = array_column($pdo->query('PRAGMA table_info(`scenario_generations`)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+        foreach (['progress', 'cancelled_at'] as $column) {
+            if ($have && ! in_array($column, $have, true)) {
+                $pdo->exec("ALTER TABLE `scenario_generations` ADD COLUMN `$column`");
+            }
+        }
+    }
+
     public static function sqliteSchema(): array
     {
-        return ['CREATE TABLE IF NOT EXISTS `scenario_generations` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `user_id` INTEGER, `scenario_id` INTEGER, `prompt`, `options`, `status`, `alignment`, `blueprint`, `manifest`, `error`, `created_at`, `updated_at`)'];
+        return ['CREATE TABLE IF NOT EXISTS `scenario_generations` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `user_id` INTEGER, `scenario_id` INTEGER, `prompt`, `options`, `status`, `alignment`, `blueprint`, `manifest`, `error`, `progress`, `cancelled_at`, `created_at`, `updated_at`)'];
     }
 }
