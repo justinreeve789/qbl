@@ -9,6 +9,7 @@ import { PlayersFeature } from '../src/features/PlayersFeature';
 import { TeamsFeature } from '../src/features/TeamsFeature';
 import type { OfflineConnection } from '../src/net/Connection';
 import { HotspotSystem } from '../src/systems/HotspotSystem';
+import { PropsSystem } from '../src/systems/PropsSystem';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { RemotePlayersSystem } from '../src/systems/RemotePlayersSystem';
 import { Game } from './harness';
@@ -312,4 +313,19 @@ test('a student, or a teacher in a game without teams, has no team to choose', a
   await g.wait(16);
   t2.refresh();
   assert.equal(g.ui.teamList, null);
+});
+
+test("a character's or avatar's picture is drawn at its media's Scale X / Y, times the character's own size", async () => {
+  const stretched = (assets: Scenario['assets']) => assets!.map((m) => (m.id === 4 ? { ...m, scale_x: 0.5, scale_y: 2 } : m.id === 9 ? { ...m, scale_x: 1.5, scale_y: 1.5 } : m));
+  const plain = await play();
+  const npcOf = (g: Game) => (g.scene.system(PropsSystem) as any).characters.get(1).sprite;
+  const before = { npc: { x: npcOf(plain).scaleX, y: npcOf(plain).scaleY }, avatar: (local(plain).avatar as any).sprite.scaleY };
+  const g = await play({ assets: stretched(mission().assets), characters: [{ id: 1, name: 'Captain Vega', media_id: 4, scale: 0.8 }] });
+  const npc = npcOf(g);
+  assert.ok(Math.abs(npc.scaleX - before.npc.x * 0.8 * 0.5) < 1e-9, 'the character: its own size times the picture\'s Scale X');
+  assert.ok(Math.abs(npc.scaleY - before.npc.y * 0.8 * 2) < 1e-9, 'and Scale Y');
+  const sprite = (local(g).avatar as any).sprite;
+  assert.ok(Math.abs(sprite.scaleY - before.avatar * 1.5) < 1e-9, "the player's avatar too");
+  local(g).avatar.setPosition(500, 400);
+  assert.ok(Math.abs(sprite.scaleY - before.avatar * 1.5) < 1e-9, 'and it keeps that size as it moves');
 });

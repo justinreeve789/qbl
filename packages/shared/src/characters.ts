@@ -25,7 +25,20 @@ export function isPose(name: string): name is CharacterPose {
   return (CHARACTER_POSES as readonly string[]).includes(name);
 }
 
-type MediaLookup = (id: Id) => Pick<Media, 'id' | 'sheet' | 'apng' | 'animations' | 'scale_y' | 'filename'> | undefined;
+type MediaLookup = (id: Id) => Pick<Media, 'id' | 'sheet' | 'apng' | 'animations' | 'filename'> | undefined;
+
+/**
+ * How much a picture is stretched where it is drawn: its media's `scale_x` and `scale_y` (1 when
+ * missing or not a positive number). A character is drawn at its own `scale` times this, for
+ * whichever picture it shows, so a sheet shared by several characters is sized once, on the media.
+ */
+export function pictureScale(media: Pick<Media, 'scale_x' | 'scale_y'> | null | undefined): { x: number; y: number } {
+  const k = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  };
+  return { x: k(media?.scale_x), y: k(media?.scale_y) };
+}
 
 /** An animation picked for a moment, with whether to draw it mirrored. */
 export interface ChosenAnimation {
@@ -154,7 +167,7 @@ export function scenarioAvatars(scenario: Pick<Scenario, 'avatars' | 'avatar_med
     return strip({
       id,
       name: picture?.filename?.replace(/\.[a-z0-9]+$/i, '') || `Avatar ${i + 1}`,
-      scale: picture?.scale_y != null && picture.scale_y !== 1 ? picture.scale_y : undefined,
+      // No `scale`: the picture's own scale_x/scale_y apply where it is drawn (pictureScale).
       animations: animationsFromPicture(picture ?? { id }, scenario.avatar_portraits?.[String(id)] ?? null),
     }) as AvatarCharacter;
   });

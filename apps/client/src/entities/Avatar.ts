@@ -254,7 +254,9 @@ export class Avatar extends CharacterFigure {
     const k = this.depth(this.x, this.y);
     // The avatar's standing or walking pose for the way it faces.
     this.sprite.setFlipX(this.auto(this.moving, this.facing));
-    this.sprite.setScale(this.baseScale * k);
+    // After `auto`: the picture it now shows may be stretched on its media (Scale X / Y).
+    const { x: sx, y: sy } = this.stretch;
+    this.sprite.setScale(this.baseScale * k * sx, this.baseScale * k * sy);
     const h = this.sprite.displayHeight || 160 * k;
     // A bought animation: the figure moves on the spot while it stands, and what it wears moves with it.
     const t = this.clock;
@@ -264,7 +266,7 @@ export class Avatar extends CharacterFigure {
     const lean = pose.lean + (style === 'sway' ? Math.sin(t / 500) * 0.07 : 0);
     const pulse = style === 'pulse' ? 1 + Math.sin(t / 400) * 0.04 : 1;
     // A built-in move (a hop, a turn, a duck) bends the picture itself.
-    this.sprite.setScale(this.baseScale * k * pulse * pose.scaleX, this.baseScale * k * pulse * pose.scaleY);
+    this.sprite.setScale(this.baseScale * k * sx * pulse * pose.scaleX, this.baseScale * k * sy * pulse * pose.scaleY);
     this.sprite.setPosition(this.x, this.y - lift).setDepth(this.y).setRotation(lean);
     this.layoutWorn(h, lift, delta);
     const dir = this.facing === 'left' ? -1 : 1;

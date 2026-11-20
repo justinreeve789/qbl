@@ -1,4 +1,4 @@
-import { scaleAt, type ScaleArea, type ShadowSpot } from '@qbl/shared';
+import { pictureScale, scaleAt, type Media, type ScaleArea, type ShadowSpot } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -467,8 +467,10 @@ export class SceneCanvas {
       });
       if (url && size) {
         // Items and characters stand on their position: it is the middle of their bottom edge.
-        const w = size.x * scale;
-        const hgt = size.y * scale;
+        // A character's picture is also stretched by its media's Scale X / Y, as in the game.
+        const stretch = standing ? pictureScale(standing.media as Pick<Media, 'scale_x' | 'scale_y'>) : { x: 1, y: 1 };
+        const w = size.x * scale * stretch.x;
+        const hgt = size.y * scale * stretch.y;
         const mirrored = which === 'characters' ? standing!.flip : placement.facing === 'left';
         const flip = mirrored ? `translate(${2 * x} 0) scale(-1 1)` : null;
         // One frame of a sheet: the sheet seen through a window the size of a frame.

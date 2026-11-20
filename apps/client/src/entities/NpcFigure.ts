@@ -45,7 +45,9 @@ export class NpcFigure extends CharacterFigure {
   private layout() {
     const bend = this.bend();
     this.sprite.setFlipX(this.auto(false, this.facing));
-    this.sprite.setScale(this.size * bend.scaleX, this.size * bend.scaleY).setRotation(bend.lean);
+    // After `auto`: the picture it now shows may be stretched on its media (Scale X / Y).
+    const { x: sx, y: sy } = this.stretch;
+    this.sprite.setScale(this.size * sx * bend.scaleX, this.size * sy * bend.scaleY).setRotation(bend.lean);
     this.sprite.setPosition(this.feet.x, this.feet.y - bend.lift * (this.sprite.displayHeight || 0));
     this.label.setPosition(this.feet.x, this.feet.y - Math.abs(this.sprite.displayHeight) - 6);
   }

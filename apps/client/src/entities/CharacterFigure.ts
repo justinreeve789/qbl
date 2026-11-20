@@ -1,6 +1,6 @@
 import type * as Phaser from 'phaser';
 import {
-  animationDuration, BUILT_IN_MOVES, characterAnimationRepeats, isPose, resolvePose,
+  animationDuration, BUILT_IN_MOVES, characterAnimationRepeats, isPose, pictureScale, resolvePose,
   type Character, type CharacterAnimation, type ChosenAnimation, type Id, type Media,
 } from '@qbl/shared';
 import { characterAnimation, ensureDefaultAvatar, mediaKey, whenApngReady } from '../core/assets';
@@ -29,6 +29,8 @@ export class CharacterFigure {
   private poseMoving = false;
   /** Animated PNGs this figure is waiting for. */
   private waiting = new Set<Id>();
+  /** The media of the picture shown now; none for the stand-in figure. */
+  private picture: Media | undefined;
 
   constructor(
     protected scene: Phaser.Scene,
@@ -45,6 +47,15 @@ export class CharacterFigure {
   /** The character's own size. */
   get scale(): number {
     return this.character?.scale ?? 1;
+  }
+
+  /**
+   * How the picture shown now is stretched: its media's Scale X and Y. Poses can be different
+   * pictures, so this can change as the figure turns, walks or makes a move: multiply it in each
+   * time the sprite is scaled, after `auto`/`play` chose the picture.
+   */
+  get stretch(): { x: number; y: number } {
+    return pictureScale(this.picture);
   }
 
   /** The move being made right now, or ''. */
@@ -66,6 +77,7 @@ export class CharacterFigure {
     }
     const pose = resolvePose(this.character, moving, facing);
     if (!pose) {
+      this.picture = undefined;
       this.showTexture(ensureDefaultAvatar(this.scene));
       return facing === 'left';
     }
@@ -148,9 +160,11 @@ export class CharacterFigure {
   private show(chosen: ChosenAnimation) {
     const media = this.mediaOf(chosen.animation.media_id);
     if (!media || !this.scene.textures.exists(mediaKey(media.id))) {
+      this.picture = undefined;
       this.showTexture(ensureDefaultAvatar(this.scene));
       return;
     }
+    this.picture = media;
     const drawn = characterAnimation(this.scene, media, chosen.name, chosen.animation);
     // An animated PNG still being cut into frames: its first frame now, the animation when it is ready.
     if (!drawn.anim && media.apng && !this.waiting.has(media.id)) {

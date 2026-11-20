@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   animationDuration, animationFrames, apngFrameImages, apngInfo, characterAnimationRepeats, characterMediaIds, characterMoves, collectGlobalMediaIds,
-  collectSceneMediaIds, normalizeScenario, readApng, resolvePortrait, resolvePose, validateScenario, type Character, type Scenario,
+  collectSceneMediaIds, normalizeScenario, pictureScale, readApng, resolvePortrait, resolvePose, validateScenario, type Character, type Scenario,
 } from '../src/index.js';
 
 const one = (animations: Character['animations']): Character => ({ id: 1, name: 'C', animations });
@@ -57,6 +57,13 @@ const base = (extra: Partial<Scenario>): Scenario => ({
   ...extra,
 });
 
+test("a picture's scale_x and scale_y: positive numbers count, anything else is 1", () => {
+  assert.deepEqual(pictureScale({ scale_x: 0.5, scale_y: 2 }), { x: 0.5, y: 2 });
+  assert.deepEqual(pictureScale({ scale_x: '1.5' as unknown as number }), { x: 1.5, y: 1 }, 'a number sent as text still counts');
+  assert.deepEqual(pictureScale({ scale_x: 0, scale_y: -1 }), { x: 1, y: 1 });
+  assert.deepEqual(pictureScale(undefined), { x: 1, y: 1 });
+});
+
 test('older documents: a character picture and close-up, and a list of avatar pictures, become animations', () => {
   const s = normalizeScenario(base({
     assets: [
@@ -78,7 +85,7 @@ test('older documents: a character picture and close-up, and a list of avatar pi
   const [robot, plain] = s.avatars!;
   assert.equal(robot!.id, 3, "an avatar keeps its picture's id, so players' choices still match");
   assert.equal(robot!.name, 'Robot');
-  assert.equal(robot!.scale, 1.3, "an avatar's size was its picture's");
+  assert.equal(robot!.scale, undefined, "the picture's scale stays on the picture (pictureScale), not copied to the avatar");
   assert.deepEqual(robot!.animations, {
     stand_right: { media_id: 3, frames: [0, 1], duration: 900 },
     walk_right: { media_id: 3, frames: [4, 5, 6, 7] },
