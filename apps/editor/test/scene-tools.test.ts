@@ -91,7 +91,7 @@ test('items and characters: define them, with conditions', async () => {
   await type('.card [data-field=name] input', 'rowing boat');
   await page.locator('.card [data-field=media_id] select').selectOption({ label: 'boat.png' });
   await page.locator('.card [data-field=vehicle] input').check();
-  await type('.card [data-field=speed_multiplier] input', '1.4');
+  await type('.card [data-field=speed_multiplier] input[type=number]', '1.4');
   await page.click('.card >> text=+ Add condition');
   await page.waitForSelector('.card .condition');
 
@@ -121,8 +121,8 @@ test('layers: a repeated, drifting sky behind and a foreground in front', async 
   await page.click('[title="Add: background layers"]');
   await inspector('[data-field=media_id] select').selectOption({ label: 'sky.png' });
   await inspector('[data-field=tile] input').check();
-  await type('.inspector [data-field=scroll_speed_x] input', '-12');
-  await type('.inspector [data-field=parallax] input', '0.4');
+  await type('.inspector [data-field=scroll_speed_x] input[type=number]', '-12');
+  await type('.inspector [data-field=parallax] input[type=number]', '0.4');
   await page.waitForSelector('.stage .layer.tiled');
 
   await page.click('[title="Add: foreground layers"]');
@@ -199,7 +199,7 @@ test('spawn points, a placed item, and a character that runs an event when click
 test('depth, reveal and avatar visibility: a scale area, a hotspot that appears when near, a hide action', async () => {
   await page.selectOption('.add-menu', 'scale_areas');
   await page.waitForSelector('.stage-overlay rect.scale-area.selected');
-  await type('.inspector [data-field=scale_top] input', '40');
+  await type('.inspector [data-field=scale_top] input[type=number]', '40');
   await type('.inspector [data-field=height] input', '300');
   await dragBy('.stage-overlay rect.handle >> nth=1', 0, 20); // the bottom-right corner
   let scene = (await draft()).scenes[0]!;
@@ -209,8 +209,8 @@ test('depth, reveal and avatar visibility: a scale area, a hotspot that appears 
 
   await page.selectOption('.add-menu', 'hotspot-click');
   await page.waitForFunction(() => document.querySelector('.outline-item.selected')?.textContent?.startsWith('Hotspot'));
-  await type('.inspector [data-field=reveal_radius] input', '500');
-  await type('.inspector [data-field=reveal_full_radius] input', '200');
+  await type('.inspector [data-field=reveal_radius] input[type=number]', '500');
+  await type('.inspector [data-field=reveal_full_radius] input[type=number]', '200');
   await page.waitForSelector('.stage-overlay circle.reveal-ring.full');
   await inspector('.add-action').selectOption('avatar');
   await page.waitForSelector('details.action[open]');
@@ -225,7 +225,7 @@ test('depth, reveal and avatar visibility: a scale area, a hotspot that appears 
   assert.deepEqual([spot.actions[0]!.type, (spot.actions[0] as { visible: boolean }).visible], ['avatar', true]);
 
   await page.click('.outline-item >> text=depth');
-  await type('.inspector [data-field=speed_effect] input', '60');
+  await type('.inspector [data-field=speed_effect] input[type=number]', '60');
   assert.equal((await draft()).scenes[0]!.scale_areas![0]!.speed_effect, 60);
   await page.click('.outline-item >> text=Hotspot');
   await inspector('.add-action').selectOption('freeze');
@@ -264,7 +264,7 @@ test('media sub-tabs, scenario music and scene music', async () => {
 
   await page.click('.tabs >> text=Settings');
   await page.locator('[data-field=music_media_id] select').selectOption({ label: 'theme.wav' });
-  await type('[data-field=music_volume] input', '0.4');
+  await type('[data-field=music_volume] input[type=number]', '0.4');
   await page.click('.tabs >> text=Scenes');
   await page.click('.scene-card >> text=Edit');
   await page.waitForSelector('.stage-overlay polygon');
@@ -285,7 +285,7 @@ test('objectives and settings', async () => {
   await page.click('.tabs >> text=Settings');
   await type('[data-field=title] input', 'Tools and more');
   await page.locator('[data-field=chat_mode] select').selectOption('off');
-  await type('[data-field=move_speed] input', '300');
+  await type('[data-field=move_speed] input[type=number]', '300');
 
   const doc = await draft();
   assert.deepEqual(doc.objectives, [{ id: 'objective-1', text: 'Buy a ticket', complete_when: [{ variable: 'has_ticket', operator: '=', operand: 1 }] }]);

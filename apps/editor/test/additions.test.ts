@@ -100,8 +100,8 @@ test('scene groups: a group limited to teams, and a scene that says otherwise', 
 test('a shadow spot is added to the scene, drawn, and edited', async () => {
   await page.locator('select:has(option[value=shadow_spots])').selectOption('shadow_spots');
   await page.waitForSelector('svg .shadow-spot.selected');
-  await type('.inspector [data-field=strength] input', '80');
-  await type('.inspector [data-field=radius] input', '200');
+  await type('.inspector [data-field=strength] input[type=number]', '80');
+  await type('.inspector [data-field=radius] input[type=number]', '200');
   const spots = (await draft()).scenes[0]!.shadow_spots!;
   assert.equal(spots.length, 1);
   assert.deepEqual([spots[0]!.radius, spots[0]!.radius_y, spots[0]!.strength, spots[0]!.name], [200, 70, 80, 'shade']);
@@ -120,7 +120,7 @@ test('a hotspot label can be background, or a solid object players walk around',
   await page.waitForSelector('.inspector [data-field=solid]');
   await page.check('.inspector [data-field=solid] input');
   await page.waitForSelector('.inspector [data-field=solid_radius]');
-  await type('.inspector [data-field=solid_radius] input', '90');
+  await type('.inspector [data-field=solid_radius] input[type=number]', '90');
   label = (await draft()).scenes[0]!.hotspots![0]!.labels![0]!;
   assert.deepEqual([label.solid, label.solid_radius], [true, 90]);
 });

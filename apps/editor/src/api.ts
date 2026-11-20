@@ -128,6 +128,16 @@ export class Api {
   onBusy: (busy: boolean) => void = () => {};
   private pending = 0;
 
+  /** Wait before sending a change. It counts as saving, so "Saved" is not shown while a change is still to be sent. */
+  async pause(ms: number): Promise<void> {
+    this.onBusy(++this.pending > 0);
+    try {
+      await new Promise((done) => setTimeout(done, ms));
+    } finally {
+      this.onBusy(--this.pending > 0);
+    }
+  }
+
   private async call<T>(method: string, path: string, body?: unknown): Promise<T> {
     const form = body instanceof FormData;
     this.onBusy(++this.pending > 0);

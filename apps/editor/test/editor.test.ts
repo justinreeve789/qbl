@@ -117,7 +117,7 @@ test('add a hotspot with a label, an infobox, a button that changes a variable, 
   await type('[data-field=shortname] input', 'lily-pad');
   await type('[data-field=position_x] input', '600');
   await type('[data-field=position_y] input', '500');
-  await type('[data-field=radius] input', '70');
+  await type('[data-field=radius] input[type=number]', '70');
 
   await page.click('text=+ Add label');
   await page.waitForSelector('.labels .card');
