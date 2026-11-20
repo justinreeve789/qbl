@@ -24,6 +24,10 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 #gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--qbl-bg); font-size: 1.1rem; }
 #gate[hidden] { display: none; }
 #gate { white-space: pre-wrap; padding: 24px; box-sizing: border-box; text-align: center; }
+/* A card taller than the screen (creating an account on a laptop or a phone) scrolls. Auto margins
+   centre it when it fits and, unlike place-items, never push its top above the screen when it does not. */
+#gate { overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(24px + var(--safe-b)); }
+#gate:not(.home) > * { margin: auto; }
 .qbl-card { display: grid; gap: 14px; box-sizing: border-box; width: min(92vw, 420px); max-width: 100%; padding: 28px; border-radius: 16px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.15); }
 .qbl-card h1 { margin: 0 0 6px; font-size: 1.4rem; }
 .qbl-card label { display: grid; gap: 6px; font-size: 0.9rem; }
