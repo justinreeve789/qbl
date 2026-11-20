@@ -96,11 +96,12 @@ export class NpcFigure extends CharacterFigure {
     const { x, y } = this.feet;
     const size = this.around.size(x, y);
     const bend = this.bend();
-    this.sprite.setFlipX(this.auto(this.moving, this.facing));
-    this.sprite.setScale(size * bend.scaleX, size * bend.scaleY).setRotation(bend.lean);
-    this.sprite.setPosition(x, y - bend.lift * (this.sprite.displayHeight || 0)).setDepth(y);
-    this.sprite.setTint(shadeTint(this.around.shade(x, y)));
-    this.label.setPosition(x, y - Math.abs(this.sprite.displayHeight) - 6).setDepth(y + 1);
+    this.sprite.setFlipX(this.auto(false, this.facing));
+    // After `auto`: the picture it now shows may be stretched on its media (Scale X / Y).
+    const { x: sx, y: sy } = this.stretch;
+    this.sprite.setScale(this.size * sx * bend.scaleX, this.size * sy * bend.scaleY).setRotation(bend.lean);
+    this.sprite.setPosition(this.feet.x, this.feet.y - bend.lift * (this.sprite.displayHeight || 0));
+    this.label.setPosition(this.feet.x, this.feet.y - Math.abs(this.sprite.displayHeight) - 6);
   }
 
   override destroy() {

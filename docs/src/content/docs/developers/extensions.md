@@ -536,7 +536,7 @@ Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 id, name | int, string | | As in the base docs.
 animations | object | | The character's animations, by name. See below.
-scale | decimal | 1.0 | Display scale of its pictures.
+scale | decimal | 1.0 | Display scale of its pictures. Each picture is also stretched by its own media `scale_x` and `scale_y`, so a sheet shared by several characters can be sized once, on the media, and each character sized on top of that.
 voice_pitch, voice_rate, voice_name | | | How its lines are read aloud. See [Reading text aloud](#reading-text-aloud).
 conditions | array | | Scenario characters only: the character is there only while these hold.
 media_id, portrait_media_id | int | | *Before animations.* One picture and a close-up. Read only when `animations` is empty (see below).
