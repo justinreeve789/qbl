@@ -65,9 +65,15 @@ export function redraw(container: HTMLElement, ...children: Child[]) {
 
 let toastHost: HTMLElement | null = null;
 
-/** A short message at the bottom of the screen. */
+/**
+ * A short message at the bottom of the screen. While a pop-up panel is open the messages go
+ * inside it: a modal dialog sits above everything else on the page, so they would be hidden.
+ */
 export function toast(message: string, kind: 'info' | 'error' = 'info') {
-  toastHost ??= document.body.appendChild(h('div', { class: 'toasts', role: 'status' }));
+  toastHost ??= h('div', { class: 'toasts', role: 'status' });
+  const dialogs = [...document.querySelectorAll<HTMLDialogElement>('dialog[open]')];
+  const parent = dialogs[dialogs.length - 1] ?? document.body;
+  if (toastHost.parentElement !== parent) parent.append(toastHost);
   const node = h('div', { class: `toast ${kind}` }, message);
   toastHost.append(node);
   window.setTimeout(() => node.remove(), kind === 'error' ? 7000 : 3000);

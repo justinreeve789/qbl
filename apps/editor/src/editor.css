@@ -335,53 +335,180 @@ details.action.drop-after { box-shadow: 0 4px 0 0 var(--warn); }
 .sheet-place { position: absolute; right: 2px; bottom: 2px; padding: 0 5px; border-radius: 999px; background: #ffd24a; color: #1b1d21; font-size: 11px; font-weight: 700; }
 .sheet-preview { width: 92px; flex: none; aspect-ratio: 2 / 3; background-color: var(--field); background-repeat: no-repeat; border: 2px solid #ffd24a; border-radius: var(--radius); }
 .sheet-animations { display: grid; gap: 4px; margin-bottom: 8px; }
-.sheet-animation { display: grid; grid-template-columns: auto minmax(70px, 1fr) 84px 104px minmax(0, 1.2fr) auto; gap: 6px; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius); }
+.sheet-animation { display: grid; grid-template-columns: auto minmax(70px, 1fr) 84px 124px minmax(0, 1.2fr) auto; gap: 6px; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius); }
 .sheet-animation.head { font-size: 11px; color: var(--muted); padding-bottom: 0; }
 .sheet-animation.editing { border-color: #ffd24a; background: rgba(255, 210, 74, 0.1); }
 .sheet-frames { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---- characters: their animations, by name */
-.grid.characters { grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); }
-.character-stage { display: flex; gap: 14px; align-items: flex-end; margin-bottom: 8px; }
-.character-stage figure { margin: 0; display: grid; justify-items: center; gap: 2px; }
-.character-stage figcaption { font-size: 11px; color: var(--muted); }
-.anim-preview { display: grid; place-items: end center; width: 44px; height: 56px; flex: none; background: var(--field) repeating-conic-gradient(#23262c 0% 25%, #1a1c21 0% 50%) 0 0 / 12px 12px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+/* ------------------------------------------------ colours for kinds of things
+   One colour per kind of media, and per kind of character animation, used on the cards, the
+   sub-tabs and the pop-up panels alike, so a thing is recognised by its colour wherever it is. */
+:root {
+  --tone-all: #8fc1ff;
+  --tone-background: #3ecf7c;
+  --tone-character: #ff7ac6;
+  --tone-item: #ff9d3b;
+  --tone-vehicle: #2fd0e0;
+  --tone-audio: #b18cff;
+  --tone-video: #ff6b6b;
+  --tone-shop: #f5c653;
+  --tone-other: #9fb1d4;
+  --tone-details: #62d992;
+  --tone-stand: #4c9aff;
+  --tone-walk: #ff9d3b;
+  --tone-portrait: #f2c94c;
+  --tone-move: #b18cff;
+  --edge: #5f6673;
+  --checker: repeating-conic-gradient(#2b2f37 0% 25%, #1d2025 0% 50%) 0 0 / 16px 16px;
+}
+[data-tone='stand'] { --tone-c: var(--tone-stand); }
+[data-tone='walk'] { --tone-c: var(--tone-walk); }
+[data-tone='portrait'] { --tone-c: var(--tone-portrait); }
+[data-tone='move'] { --tone-c: var(--tone-move); }
+
+/* Small labels: what kind of thing, its size, how it is drawn. */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 3px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--edge);
+  background: #3a3e47; color: #f3f5f9; font-size: 11.5px; font-weight: 600; line-height: 19px; white-space: nowrap;
+}
+.chip .icon-label.twa { margin-right: 2px; font-size: 1em; }
+.chip.tone { background: color-mix(in srgb, var(--tone) 24%, transparent); border-color: var(--tone); color: #fff; }
+.chip.anim { background: rgba(177, 140, 255, 0.2); border-color: var(--tone-move); color: #fff; }
+.chip.cond { background: rgba(245, 198, 83, 0.14); border-color: var(--warn); color: var(--warn); }
+.chip.pose { background: transparent; border-style: dashed; border-color: color-mix(in srgb, var(--tone-c) 55%, var(--edge)); color: #c4cad5; }
+.chip.pose.set { border-style: solid; background: color-mix(in srgb, var(--tone-c) 26%, transparent); border-color: var(--tone-c); color: #fff; }
+.small { font-size: 12px; }
+
+/* Media sub-tabs, each in its kind's colour. */
+.subtabs [data-tab='all'] { --tone: var(--tone-all); }
+.subtabs [data-tab='background'] { --tone: var(--tone-background); }
+.subtabs [data-tab='character'] { --tone: var(--tone-character); }
+.subtabs [data-tab='item'] { --tone: var(--tone-item); }
+.subtabs [data-tab='vehicle'] { --tone: var(--tone-vehicle); }
+.subtabs [data-tab='audio'] { --tone: var(--tone-audio); }
+.subtabs [data-tab='video'] { --tone: var(--tone-video); }
+.subtabs [data-tab='shop'] { --tone: var(--tone-shop); }
+.subtabs [data-tab='other'] { --tone: var(--tone-other); }
+.subtabs button { border-color: color-mix(in srgb, var(--tone) 65%, var(--edge)); }
+.subtabs button:hover:not(:disabled) { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 16%, var(--surface-2)); }
+.subtabs button.current { background: var(--tone); border-color: var(--tone); color: #15171b; }
+.subtabs button.current small { background: rgba(0, 0, 0, 0.22); color: #15171b; }
+
+/* ---- media cards: a picture, its name and what it is; everything else opens in a panel */
+.grid.media-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.card.media-card { display: flex; flex-direction: column; gap: 4px; padding: 10px; border-top: 4px solid var(--tone, var(--accent-solid)); }
+.media-card .card-title { margin: 4px 0 0; min-width: 0; }
+.media-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.media-thumb { display: grid; place-items: center; width: 100%; height: 150px; padding: 4px; background: var(--checker); border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; }
+.media-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.media-thumb:hover:not(:disabled) { border-color: var(--tone); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone) 45%, transparent); }
+.media-card > .preview { margin: 0; }
+.media-card .row-actions { margin-top: auto; padding-top: 6px; flex-wrap: nowrap; }
+.media-card .row-actions button { padding: 4px 8px; font-size: 13.5px; }
+button.media-delete { padding: 4px 9px; }
+.media-apng { font-size: 12.5px; }
+
+/* ---- pop-up panels (panel.ts) */
+dialog.modal.panel {
+  width: min(96vw, 1180px); max-height: 92vh; padding: 0; overflow: hidden; flex-direction: column;
+  background: #24272d; border: 1px solid #8a91a0; border-top: 5px solid var(--tone, var(--accent-solid)); border-radius: 12px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+}
+dialog.modal.panel[open] { display: flex; }
+dialog.modal.panel.medium { width: min(96vw, 920px); }
+dialog.modal.panel::backdrop { background: rgba(6, 8, 12, 0.74); }
+dialog.modal.panel .field { margin-bottom: 0; }
+.panel-bar {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--edge);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tone, var(--accent-solid)) 30%, #30333a), #30333a 75%);
+}
+dialog.modal.panel .panel-title { margin: 0; flex: 1; min-width: 0; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-title small { font-size: 13px; font-weight: 400; }
+.title-code { margin-left: 8px; padding: 1px 6px; border-radius: 4px; background: rgba(0, 0, 0, 0.35); color: #e4e8ef; font-size: 12px; font-weight: 400; }
+.panel-close { flex: none; width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 50%; background: rgba(0, 0, 0, 0.32); font-size: 22px; line-height: 1; }
+.panel-close:hover:not(:disabled) { border-color: #fff; background: rgba(0, 0, 0, 0.55); }
+.panel-body { min-height: 0; overflow: auto; padding: 16px 18px 20px; }
+.panel .toasts { position: fixed; }
+.panel-section { min-width: 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--edge); border-left: 4px solid var(--tone); border-radius: 10px; }
+.section-head { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; color: #fff; font-size: 13px; letter-spacing: 0.05em; }
+.section-head::after { content: ''; flex: 1; height: 2px; margin-left: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--tone), transparent); }
+.preview.large { max-height: 280px; }
+.preview.checker { background: var(--checker); border: 1px solid var(--edge); padding: 4px; }
+
+.media-panel { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.media-panel.single { grid-template-columns: minmax(0, 600px); justify-content: center; }
+
+/* The sprite sheet tool: the sheet with a button over every frame, a preview, and the list of animations. */
+.sheet-picture { max-width: 720px; }
+.sheet-preview { width: 120px; }
+
+/* ---- characters: a card each, a panel for one, and a panel for one of its animations */
+.grid.characters { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.card.character-card { display: flex; flex-direction: column; gap: 4px; border-top: 4px solid var(--tone-character); }
+.character-stage {
+  display: flex; gap: 14px; align-items: flex-end; justify-content: center; width: 100%; padding: 12px 10px 8px; margin-bottom: 4px;
+  border: 1px solid var(--edge); border-radius: 10px; color: inherit; white-space: normal;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 122, 198, 0.24), transparent 70%), linear-gradient(#2c3038, #1c1f24);
+}
+button.character-stage:hover:not(:disabled) { border-color: var(--tone-character); box-shadow: 0 0 0 2px rgba(255, 122, 198, 0.35); }
+.character-stage figure { margin: 0; display: grid; justify-items: center; gap: 3px; }
+.character-stage figcaption { font-size: 11px; font-weight: 600; color: #e4e8ef; letter-spacing: 0.04em; text-transform: uppercase; }
+.character-card .row-actions { margin-top: auto; padding-top: 6px; }
+
+.anim-preview { display: grid; place-items: end center; width: 52px; height: 64px; flex: none; background: var(--checker); border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; }
 .anim-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .anim-preview .anim-frame { display: block; width: 100%; max-height: 100%; background-repeat: no-repeat; }
 .anim-preview.none { place-items: center; color: var(--muted); font-size: 12px; }
 .anim-preview.large { width: 120px; height: 160px; }
-.anim-preview.portrait { width: 84px; height: 100px; border: 2px solid #e6c36a; border-radius: 10px; place-items: start center; }
+.anim-preview.portrait { width: 84px; height: 100px; border: 2px solid var(--tone-portrait); border-radius: 10px; place-items: start center; }
 .anim-preview.portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
-.anim-table { display: grid; gap: 4px; margin-bottom: 8px; }
-.anim-row { display: grid; grid-template-columns: 44px 150px minmax(120px, 1fr) auto auto; grid-template-areas: 'p n pic pick del' 'p t t t mir'; gap: 4px 6px; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius); }
-.anim-row + .anim-row { border-top-color: var(--line); }
-.anim-row > .anim-preview { grid-area: p; align-self: start; }
+.anim-preview.xl { width: 190px; height: 250px; border: 2px solid var(--tone, var(--edge)); }
+
+.character-panel { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.character-stage.big { margin-bottom: 12px; }
+.character-side .form { grid-template-columns: 1fr; }
+
+.anim-group { margin: 0 0 14px; padding: 2px 0 2px 10px; border-left: 3px solid var(--tone-c); }
+.anim-group > h4 { margin: 0 0 6px; font-size: 13px; color: var(--tone-c); }
+.anim-row {
+  display: grid; grid-template-columns: 52px minmax(120px, 170px) minmax(140px, 1fr) auto; grid-template-areas: 'p n pic btn' 'p s s s';
+  gap: 4px 8px; align-items: center; padding: 6px 8px; margin-bottom: 6px; background: #22252b; border: 1px solid #4a505b; border-radius: 8px;
+}
+.anim-row:hover { border-color: var(--tone-c); }
+.anim-row > .anim-preview, .anim-row > .anim-open-preview { grid-area: p; align-self: start; }
+.anim-open-preview { display: block; padding: 0; border: 0; background: none; }
+.anim-open-preview:hover:not(:disabled) .anim-preview { border-color: var(--tone-c); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone-c) 40%, transparent); }
 .anim-row > .anim-name { grid-area: n; }
 .anim-row > .anim-picture { grid-area: pic; min-width: 0; }
-.anim-row > .anim-timing, .anim-row > .anim-still, .anim-row > .anim-uses { grid-area: t; }
-.anim-row > .anim-mirror { grid-area: mir; }
-.anim-row > .anim-pick { grid-area: pick; }
-.anim-row > .anim-delete { grid-area: del; }
-.anim-row.empty { opacity: 0.85; grid-template-areas: 'p n pic pic pic' 'p t t t t'; }
-.anim-row.empty .anim-uses { font-size: 12px; }
-.anim-row.picking { border-color: #ffd24a; background: rgba(255, 210, 74, 0.1); }
-.anim-name { display: grid; justify-items: start; text-align: left; font-size: 13px; line-height: 1.2; }
-.anim-name code { font-size: 11px; color: var(--muted); }
-.anim-timing { display: grid; grid-template-columns: minmax(70px, 1fr) 90px 128px; gap: 4px; }
-.anim-timing input, .anim-timing select { min-width: 0; }
-.anim-mirror { font-size: 12px; white-space: nowrap; }
-.anim-still { font-size: 12px; }
-.anim-add { display: flex; gap: 6px; align-items: center; }
-.anim-add input { max-width: 200px; }
-.frame-grid { margin: 4px 0 6px; }
-.frame-grid .sheet-picture { max-width: 520px; }
-.media-apng { font-size: 12px; }
+.anim-row > .anim-summary { grid-area: s; display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+.anim-row > .anim-buttons { grid-area: btn; display: flex; gap: 4px; }
+.anim-row.empty { background: transparent; border-style: dashed; grid-template-areas: 'p n pic pic' 'p s s s'; }
+.anim-row.empty > .anim-preview { opacity: 0.6; }
+.anim-uses { color: #cfd5de; font-style: italic; }
+.anim-name { display: grid; justify-items: start; text-align: left; font-size: 13px; font-weight: 600; line-height: 1.25; }
+.anim-name code { font-size: 11px; font-weight: 400; color: #c4cad5; }
+button.anim-configure { background: color-mix(in srgb, var(--tone-c) 28%, var(--button)); border-color: var(--tone-c); font-weight: 600; }
+.anim-add { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.anim-add input { max-width: 220px; }
 
-/* A media card whose sprite sheet is open takes the whole row, so the sheet and its animations have room. */
-.grid > .card:has(details[data-fold='media-sheet'][open]) { grid-column: 1 / -1; }
-.card:has(details[data-fold='media-sheet'][open]) > .preview { max-height: 120px; }
-.sheet-picture { max-width: 720px; }
-.sheet-preview { width: 120px; }
+.animation-panel { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; align-items: start; }
+.anim-stage {
+  position: sticky; top: 0; display: grid; gap: 8px; justify-items: center; padding: 14px 10px; border: 1px solid var(--edge); border-radius: 10px;
+  background: radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--tone, #fff) 30%, transparent), transparent 70%), linear-gradient(#2c3038, #1c1f24);
+}
+.anim-order { margin: 0; font-size: 12.5px; text-align: center; line-height: 1.9; }
+.anim-order b { display: inline-block; min-width: 20px; padding: 0 5px; border-radius: 999px; background: #ffd24a; color: #1b1d21; line-height: 18px; }
+.animation-panel .form { grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.frame-grid { margin-top: 12px; padding: 10px; background: #1c1f24; border: 1px solid var(--edge); border-radius: 10px; }
+.frame-grid-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.frame-grid .sheet-picture { max-width: 100%; }
+
+@media (max-width: 860px) {
+  .media-panel, .character-panel, .animation-panel { grid-template-columns: 1fr; }
+  .anim-stage { position: static; }
+  .anim-row { grid-template-columns: 52px minmax(0, 1fr); grid-template-areas: 'p n' 'p pic' 'p s' 'p btn'; }
+  .anim-row.empty { grid-template-areas: 'p n' 'p pic' 'p s'; }
+}
 
 /* ---------- classes ---------- */
 .top-nav { display: flex; gap: 4px; margin-left: 18px; }
