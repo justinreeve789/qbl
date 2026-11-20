@@ -27,7 +27,8 @@ class ClassStore
     /** @return list<array{id:int,name:string,email:string}> */
     public function students(int $teacherId): array
     {
-        return $this->all('SELECT u.id, u.name, u.email FROM teacher_student ts JOIN users u ON u.id = ts.student_id WHERE ts.teacher_id = ? ORDER BY u.name, u.id', [$teacherId]);
+        return array_map(fn ($s) => ['id' => $s['id'], 'name' => $s['name'], 'email' => self::shownEmail($s['email'])],
+            $this->all('SELECT u.id, u.name, u.email FROM teacher_student ts JOIN users u ON u.id = ts.student_id WHERE ts.teacher_id = ? ORDER BY u.name, u.id', [$teacherId]));
     }
 
     /** Add someone to a teacher's students by the address they sign in with. */
@@ -247,7 +248,7 @@ class ClassStore
     {
         return [
             'CREATE TABLE IF NOT EXISTS `teacher_student` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `teacher_id` INTEGER, `student_id` INTEGER, `created_at`, `updated_at`, UNIQUE (`teacher_id`, `student_id`))',
-            'CREATE TABLE IF NOT EXISTS `assignments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `teacher_id` INTEGER, `scenario_id` INTEGER, `due_at`, `note`, `created_at`, `updated_at`)',
+            'CREATE TABLE IF NOT EXISTS `assignments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `teacher_id` INTEGER, `scenario_id` INTEGER, `due_at`, `note`, `external_id`, `created_at`, `updated_at`)',
             'CREATE TABLE IF NOT EXISTS `teams` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `assignment_id` INTEGER, `name`, `created_at`, `updated_at`)',
             'CREATE TABLE IF NOT EXISTS `assignment_student` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `assignment_id` INTEGER, `student_id` INTEGER, `team_id` INTEGER, `created_at`, `updated_at`, UNIQUE (`assignment_id`, `student_id`))',
         ];
@@ -319,9 +320,18 @@ class ClassStore
 
         return [
             'id' => (int) $a['id'], 'scenario' => $scenario ? self::card($scenario) : null, 'due_at' => $a['due_at'], 'note' => $a['note'], 'group' => 'a'.$a['id'],
-            'students' => array_map(fn ($s) => ['id' => (int) $s['id'], 'name' => $s['name'], 'email' => $s['email'], 'team_id' => $s['team_id'] === null ? null : (int) $s['team_id']], $students),
+            'students' => array_map(fn ($s) => ['id' => (int) $s['id'], 'name' => $s['name'], 'email' => self::shownEmail($s['email']), 'team_id' => $s['team_id'] === null ? null : (int) $s['team_id']], $students),
             'teams' => $teams,
         ];
+    }
+
+    /**
+     * Accounts a school rosters through /api/v1 have a placeholder address (….invalid) that
+     * nobody should see or type; they are shown without one.
+     */
+    private static function shownEmail(?string $email): string
+    {
+        return $email === null || str_ends_with($email, '.invalid') ? '' : $email;
     }
 
     private static function visibility(array $scenario): string

@@ -30,4 +30,7 @@ return [
     // Where files uploaded in the editor are written, and the URL prefix the web server serves them under.
     'media_dir' => env('QBL_MEDIA_DIR', storage_path('app/media')),
     'media_url' => env('QBL_MEDIA_URL', '/media'),
+
+    // Requests per minute each access token may make to /api/v1 (the public API for schools).
+    'api_rate_limit' => (int) env('QBL_API_RATE_LIMIT', 600),
 ];

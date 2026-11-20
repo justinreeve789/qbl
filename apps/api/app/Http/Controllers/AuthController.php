@@ -128,6 +128,7 @@ class AuthController extends Controller
      */
     private function own(User $user): array
     {
-        return $user->toQbl() + ($user->role === 'guest' ? [] : ['email' => $user->email]);
+        // Guests, and accounts a school rosters through /api/v1, have made-up addresses that are never shown.
+        return $user->toQbl() + ($user->role === 'guest' || str_ends_with((string) $user->email, '.invalid') ? [] : ['email' => $user->email]);
     }
 }

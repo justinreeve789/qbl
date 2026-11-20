@@ -270,6 +270,7 @@ Other commands:
 ```sh
 npm test                                   # shared unit tests + client tests that play the game headlessly
 npm run test:api                           # seeding, JSON generation, codes, publishing, editor API (needs PHP with SQLite)
+npm run test:api-v1                        # the public API for schools (/api/v1): roster, privacy, assignments, launch links, avatars, reports
 npm run test:generation                    # the AI mission generator, with a stand-in model and placeholder pictures
 npm run test:laravel                       # the same API through real Laravel (needs `composer install` in apps/api)
 npm run test:editor                        # the editor in a headless browser (needs PHP; once: npx playwright install chromium)
@@ -278,6 +279,19 @@ npm run seed:export                        # regenerate scenarios/starship.json 
 npm run typecheck
 npm run build
 ```
+
+## The public API for schools and districts
+
+Schools, districts and businesses connect their own systems (SIS, LMS, portal, data warehouse) through a versioned API under **`/api/v1`**: rostering teachers and students, enrollments, assignments and teams, importing their own avatars, one-time sign-in links, and reports on grades, engagement and learning, plus an activity feed and a per-student export and deletion. It takes no personally identifiable information: people are known by the organization's own opaque id and play under a pseudonym. Reference: [docs/src/content/docs/developers/api-v1.md](docs/src/content/docs/developers/api-v1.md) (served at `/docs/developers/api-v1/`); OpenAPI description at `/docs/api/v1/openapi.yaml`.
+
+An administrator makes each organization's client:
+
+```sh
+docker compose exec app php artisan qbl:api-client create "Riverside School District" --kind=district --name="SIS sync" --scopes=roster:read,roster:write,reports:read
+docker compose exec app php artisan qbl:api-client list        # also: rotate <client_id>, revoke <client_id>, scopes
+```
+
+and, so organizations' retention periods are honoured, runs `docker compose exec -T app php artisan qbl:privacy-purge` daily from the host's cron.
 
 ## How a mission is put together
 
