@@ -80,7 +80,10 @@ Every change is saved as it is made. There is no save button.
 **A new attribute** of an action, scene, layer, item or anything else: add one entry to its list
 in `schema.ts`. The form, saving and (for actions) the generated JSON follow from that. If it
 is a new column rather than something kept in `params`/`settings`/`layout`, also add it to
-`ScenarioStore::SCHEMA` and the migration.
+`ScenarioStore::SCHEMA` and the migration. A number with a natural range (a volume, a radius,
+parallax, a percentage) gets a slider beside its box with `slider: { min, max }`; `max: 'scene'`
+is the longer side of the scene being edited. The box still takes any value within the field's
+own `min`/`max`, and a value past the slider's end moves the end out to it.
 
 **A new action type**: add it to `ACTIONS` in `schema.ts` (and to `ActionType` in
 `packages/shared`, `ScenarioStore::ENUMS`, and a presenter in the game client).
@@ -95,6 +98,11 @@ arrive in the order they were made. If the API refuses one, the scenario is load
 screen goes back to what the database holds. Forms are rebuilt only when rows are added or
 removed ("structural" changes); otherwise the canvas and lists redraw and the field being typed
 in is left alone.
+
+A patch of a row made while the same row's previous patch is still waiting in the queue is folded
+into it. A slider saves as it is dragged, inside `store.live()`: those patches also wait 150 ms
+after the row's last one, so a drag sends a few requests with the latest value while the canvas
+follows every step. The wait counts as "Saving…".
 
 ## Running it
 

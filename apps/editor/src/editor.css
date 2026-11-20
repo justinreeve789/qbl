@@ -129,6 +129,11 @@ textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, C
 .field.check { flex-direction: row; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .field.check small { flex-basis: 100%; }
 .media-pick { display: flex; gap: 6px; align-items: center; }
+/* A slider with its number box: drag for a rough value, type for an exact one. */
+.slider { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.slider-bar { flex: 1 1 90px; min-width: 90px; margin: 0; height: 26px; accent-color: var(--accent-solid); cursor: pointer; }
+.slider-bar.unset { opacity: 0.45; }
+.slider input[type='number'] { flex: none; }
 .thumb { width: 34px; height: 34px; object-fit: contain; background: var(--field); border-radius: 4px; flex: none; }
 .sub-head { color: var(--warn); display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 12px 0 6px; font-weight: 600; font-size: 13px; }
 .sub-head select { width: auto; max-width: 60%; font-weight: 400; }
