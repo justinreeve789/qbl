@@ -8,7 +8,7 @@
     "noEmit": true,
     "noImplicitOverride": false,
     "declaration": false,
-    "paths": { "@qbl/shared": ["../../packages/shared/src/index.ts"] }
+    "paths": { "@qbl/shared": ["../../packages/shared/src/index.ts"], "@qbl/shared/physics-sim": ["../../packages/shared/src/physics-sim.ts"] }
   },
   "include": ["src"]
 }

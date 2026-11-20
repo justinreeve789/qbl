@@ -7,6 +7,7 @@ import { SceneCanvas } from './canvas';
 import { inspector } from './inspector';
 import { SceneModel, type Point, type Selection, type Side } from './model';
 import { outline, type Addable } from './outline';
+import { freshId } from './physicsPanels';
 
 const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['hotspot-click', 'Hotspot players click'],
@@ -27,6 +28,11 @@ const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['shadow_spots', 'Shadow spot (shade)'],
   ['background_media', 'Background layer'],
   ['foreground_media', 'Foreground layer'],
+  ['physics-body', 'Physics: a ball or block'],
+  ['physics-cup', 'Physics: a glass of water'],
+  ['physics-water', 'Physics: a tank of water'],
+  ['physics-joint', 'Physics: a joint (pin, string, spring)'],
+  ['physics-build', 'Physics: an area to build a bridge in'],
 ];
 
 const ZOOMS: ReadonlyArray<readonly [string, string]> = [['0', 'Fit'], ['0.25', '25%'], ['0.5', '50%'], ['0.75', '75%'], ['1', '100%'], ['1.5', '150%'], ['2', '200%']];
@@ -165,6 +171,67 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
         const layers = model.layers(what);
         return void model.setLayers(what, [...layers, {}], true).then(() => select_({ kind: 'layer', which: what, index: layers.length }));
       }
+      case 'physics-body':
+      case 'physics-cup':
+      case 'physics-water':
+      case 'physics-joint':
+      case 'physics-build':
+        return void addPhysics(what, { x: Math.round(at.x), y: Math.round(at.y) });
+    }
+  }
+
+  /** Something for the scene's physics experiment, switching physics on (and avatars off) if it was not on yet. */
+  async function addPhysics(what: Addable, at: Point) {
+    if (!model.physics()) {
+      await model.setPhysics({ enabled: true, mode: 'individual' }, true);
+      if (model.row.show_avatars !== false) {
+        await store.patch('scenes', sceneId, { show_avatars: false }, true);
+        toast('Physics is on, and avatars are hidden in this scene. Show them again in the scene settings if you want them.');
+      }
+    }
+    const physics = model.physics();
+    const bodies = model.physicsList('bodies');
+    if (what === 'physics-body') {
+      await model.setPhysicsPart('bodies', [...bodies, { id: freshId(physics, 'ball'), name: 'Ball', shape: 'circle', x: at.x, y: at.y, radius: 30, material: 'rubber' }], true);
+      return select_({ kind: 'physics-body', index: bodies.length });
+    }
+    if (what === 'physics-cup') {
+      const id = freshId(physics, 'glass');
+      await model.setPhysics({
+        ...model.physics()!,
+        bodies: [...bodies, { id, name: 'Glass', shape: 'cup', x: at.x, y: at.y, width: 240, height: 320, wall: 12, fixed: true, material: 'glass' }],
+        water: [...model.physicsList('water'), { id: freshId(physics, 'water'), name: 'Water', body_id: id, level: 140, marks: true }],
+      }, true);
+      return select_({ kind: 'physics-body', index: bodies.length });
+    }
+    if (what === 'physics-water') {
+      const water = model.physicsList('water');
+      await model.setPhysicsPart('water', [...water, { id: freshId(physics, 'tank'), name: 'Tank', x: at.x - 200, y: at.y - 150, width: 400, height: 300, level: 200 }], true);
+      return select_({ kind: 'physics-water', index: water.length });
+    }
+    if (what === 'physics-joint') {
+      const body = bodies.find((b) => !b.fixed);
+      if (!body) return toast('Add a body that can move first: the joint holds it.', 'error');
+      const joints = model.physicsList('joints');
+      // A string from the body up to a point above it: a pendulum.
+      await model.setPhysicsPart('joints', [...joints, { id: freshId(physics, 'string'), type: 'string', body_a: body.id, x: body.x, y: body.y, x2: body.x, y2: Math.max(0, body.y - 200) }], true);
+      return select_({ kind: 'physics-joint', index: joints.length });
+    }
+    if (what === 'physics-build') {
+      if (model.physics()?.build) return select_({ kind: 'physics-build' });
+      const grid = 40;
+      const x = Math.round((at.x - 400) / grid) * grid;
+      const y = Math.round((at.y - 200) / grid) * grid;
+      await model.setPhysicsPart('build', {
+        x, y, width: 800, height: 400, grid, max_length: 200, budget: 3000,
+        anchors: [{ x: x + grid, y: y + 240 }, { x: x + 800 - grid, y: y + 240 }],
+        beams: [
+          { material: 'wood', label: 'Road', deck: true, cost_per_meter: 100 },
+          { material: 'wood', label: 'Wood', cost_per_meter: 50 },
+          { material: 'steel', label: 'Steel', cost_per_meter: 200 },
+        ],
+      }, true);
+      return select_({ kind: 'physics-build' });
     }
   }
 

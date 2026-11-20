@@ -87,6 +87,7 @@ That is development: plain HTTP on http://localhost:8080, no certificate, no `.e
 | http://localhost:8080 | The marketing page |
 | http://localhost:8080/missions | The game: sign in, then the missions page (teachers and admins go on to the editor) |
 | http://localhost:8080/starshipexplorer | The demo mission by its code. Every scenario is at `/{code}` |
+| http://localhost:8080/physicslab | The Physics Lab: five physics experiments (bounce, sink or float, a bridge built together, pendulums, a balance) |
 | http://localhost:8080/editor | The editor |
 | http://localhost:8080/docs | The documentation |
 
@@ -460,6 +461,8 @@ The demo mission, **Starship Explorer**, is shipped as a scenario ZIP, the same 
 Both paths play the same document. `npm run test:api` checks that JSON generated from the seeded database is the ZIP's `scenario.json`, that `scenarios/starship.json` and its uploads are current, that seeding again does not disturb an edited scenario, and that seeding refuses to overwrite rows belonging to another scenario.
 
 The demo's music and rocket sound are synthesised by `tools/make-demo-audio.py`.
+
+The **Physics Lab** (`physicslab`) is shipped the same way, as `apps/api/database/seeders/scenarios/physics-lab.zip`, with its ids in the 750000s so they cannot meet a server's own rows. Its backgrounds are not uploads: they are served from `scenarios/assets/physicslab` (its `asset_base_url` is `/scenario-assets/physicslab`). `scenarios/physics-lab.json` is the same document for the file backend. All three were made by `node tools/make-physics-lab.mjs` (it needs `rsvg-convert` and ImageMagick); once seeded, change it in the editor and export it like the starship.
 
 ## The app: installing QuestLab on phones and computers
 

@@ -6,7 +6,7 @@ import { characterRoams, normalizeRoutine } from './walking.js';
 
 const ACTION_TYPES: ActionType[] = [
   'animate', 'award', 'glossary', 'shop', 'dialogue', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
-  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk',
+  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk', 'physics',
 ];
 
 /** "Image Fixed", "imageFixed" and "image_fixed" all become "image_fixed". */
@@ -205,6 +205,9 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
     if (a.type === 'award') add(a.badge_media_id);
     if (a.type === 'conversation') for (const line of a.lines ?? []) add(line.narration_media_id);
   });
+  // Pictures on the bodies of a physics experiment, and on what its tray holds.
+  for (const b of scene.physics?.bodies ?? []) add(b.media_id);
+  for (const e of scene.physics?.tray ?? []) add(e.body?.media_id);
   const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
   for (const p of scene.items ?? []) add(items.get(p.item_id)?.media_id);
   const chars = new Map((scenario.characters ?? []).map((c) => [c.id, c]));

@@ -3,7 +3,7 @@ import {
   resolvedHandle,
   type Action, type ActionHandle, type ChoiceHandle, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
 } from '@qbl/shared';
-import type { AnimateAction, AwardAction, GlossaryAction } from '@qbl/shared';
+import type { AnimateAction, AwardAction, GlossaryAction, PhysicsAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import { deferred, type Presenter, type PresenterContext, type PresenterMap, type Target } from './Presenter';
 import { stopMusic } from './presenters/audio';
@@ -102,6 +102,13 @@ export class ActionHost implements EngineHost, PresenterContext {
 
   freeze(frozen: boolean) {
     this.freezeControl?.(frozen);
+  }
+
+  /** Set by the scene: drives the scene's physics experiment. */
+  physicsControl: ((action: PhysicsAction) => void) | null = null;
+
+  physics(action: PhysicsAction) {
+    this.physicsControl?.(action);
   }
 
   /** Set by the scene: shows or hides the local player's avatar. */

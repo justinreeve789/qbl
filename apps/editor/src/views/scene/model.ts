@@ -1,5 +1,6 @@
 import type { Row } from '../../api';
 import { mediaUrl, params } from '../../describe';
+import type { ScenePhysics } from '@qbl/shared';
 import type { Store } from '../../store';
 
 /** What is selected in the scene editor. */
@@ -12,7 +13,16 @@ export type Selection =
   | { kind: 'character'; index: number }
   | { kind: 'area'; which: AreaList; index: number }
   | { kind: 'scale'; index: number }
-  | { kind: 'shadow'; index: number };
+  | { kind: 'shadow'; index: number }
+  /** The scene's physics experiment: its settings, readouts, tray and watches. */
+  | { kind: 'physics' }
+  | { kind: 'physics-body'; index: number }
+  | { kind: 'physics-water'; index: number }
+  | { kind: 'physics-joint'; index: number }
+  | { kind: 'physics-build' };
+
+/** The lists of a physics experiment that are placed in the scene. */
+export type PhysicsList = 'bodies' | 'water' | 'joints';
 
 export type LayerList = 'background_media' | 'foreground_media';
 export type AreaList = 'walkable_areas' | 'blocked_areas';
@@ -57,6 +67,33 @@ export class SceneModel {
     return this.store.patch('scenes', this.sceneId, { layout: { ...params(this.row, 'layout'), [key]: list } }, structural);
   }
 
+  /** The scene's physics experiment as stored (switched on or not), or null when it has none. */
+  physics(): ScenePhysics | null {
+    const p = params(this.row, 'layout').physics;
+    return p && typeof p === 'object' && !Array.isArray(p) ? (p as ScenePhysics) : null;
+  }
+
+  setPhysics(physics: ScenePhysics | null, structural = false) {
+    const layout = { ...params(this.row, 'layout') };
+    if (physics) layout.physics = physics;
+    else delete layout.physics;
+    return this.store.patch('scenes', this.sceneId, { layout }, structural);
+  }
+
+  /** One of the experiment's lists, as stored. */
+  physicsList<K extends PhysicsList>(key: K): NonNullable<ScenePhysics[K]> {
+    const list = this.physics()?.[key];
+    return (Array.isArray(list) ? list : []) as NonNullable<ScenePhysics[K]>;
+  }
+
+  /** Replace one of the experiment's lists (or its building area), switching physics on if it was off. */
+  setPhysicsPart<K extends keyof ScenePhysics>(key: K, value: ScenePhysics[K], structural = false) {
+    const physics: ScenePhysics = { enabled: true, ...(this.physics() ?? {}) };
+    if (value == null) delete physics[key];
+    else physics[key] = value;
+    return this.setPhysics(physics, structural);
+  }
+
   events(kind?: string): Row[] {
     return this.store
       .where('events', 'scene_id', this.sceneId)
@@ -88,6 +125,7 @@ export class SceneModel {
         shadow_spots: this.layout('shadow_spots').map((a) => ({ ...a, x: x(a.x), y: y(a.y), radius: x(a.radius), ...(a.radius_y != null ? { radius_y: y(a.radius_y) } : {}) })),
         items: this.layout('items').map(moved),
         characters: this.layout('characters').map(moved),
+        ...(this.physics() ? { physics: scalePhysics(this.physics()!, x, y) } : {}),
       },
     }, true);
     for (const event of this.events('hotspot')) {
@@ -146,4 +184,17 @@ export class SceneModel {
 /** Remove empty values from a JSON object so optional attributes are simply absent. */
 export function compact(bag: Bag): Bag {
   return Object.fromEntries(Object.entries(bag).filter(([, v]) => v != null && v !== '' && v !== false));
+}
+
+/** An experiment's places, moved as a scene resizes. Sizes are left as they are: a ball stays a ball. */
+function scalePhysics(p: ScenePhysics, x: (v: unknown) => unknown, y: (v: unknown) => unknown): ScenePhysics {
+  const num = (v: unknown) => v as number;
+  return {
+    ...p,
+    bodies: p.bodies?.map((b) => ({ ...b, x: num(x(b.x)), y: num(y(b.y)) })),
+    water: p.water?.map((w) => (w.body_id ? w : { ...w, x: num(x(w.x)), y: num(y(w.y)) })),
+    joints: p.joints?.map((j) => ({ ...j, x: num(x(j.x)), y: num(y(j.y)), ...(j.x2 != null ? { x2: num(x(j.x2)), y2: num(y(j.y2)) } : {}) })),
+    ...(p.build ? { build: { ...p.build, x: num(x(p.build.x)), y: num(y(p.build.y)), anchors: p.build.anchors.map((a) => ({ x: num(x(a.x)), y: num(y(a.y)) })), preset: [] } } : {}),
+    ...(p.floor_y != null ? { floor_y: num(y(p.floor_y)) } : {}),
+  };
 }

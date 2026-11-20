@@ -2,7 +2,7 @@ import { lineToSay, offeredChoices, startLineId } from './conversation.js';
 import { ScenarioIndex } from './scenario.js';
 import {
   SHOWN_TO_SCENE,
-  type Action, type AnimateAction, type AwardAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
+  type Action, type AnimateAction, type AwardAction, type PhysicsAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
   type TranslateAction, type WalkAction,
 } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
@@ -60,6 +60,8 @@ export interface EngineHost {
   converse?(action: ConversationAction, line: ConversationLine, choices: ConversationChoice[], engine: SceneEngine): ChoiceHandle;
   /** Stop the player from walking (true) or let them walk again (false). */
   freeze?(frozen: boolean): void;
+  /** Drive the scene's physics experiment. */
+  physics?(action: PhysicsAction): void;
   /** Ask the game server to grant an award action's stars and XP. */
   award?(action: AwardAction): void;
   /** Add a word to the player's glossary. */
@@ -384,6 +386,10 @@ export class SceneEngine {
             this.track(run, action, h);
             if (action.blocking !== false) await this.wait(run, h);
           }
+          break;
+        }
+        case 'physics': {
+          this.host.physics?.(action);
           break;
         }
         case 'freeze': {

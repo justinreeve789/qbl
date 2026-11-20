@@ -59,6 +59,7 @@ export default defineConfig({
             { label: 'Events and actions', slug: 'editor/events-and-actions' },
             { label: 'Infoboxes and questions', slug: 'editor/infoboxes' },
             { label: 'Conversations', slug: 'editor/conversations' },
+            { label: 'Physics experiments', slug: 'editor/physics' },
             { label: 'The library', slug: 'editor/library' },
             { label: 'Patterns that work', slug: 'editor/patterns' },
             { label: 'Settings, testing and publishing', slug: 'editor/settings-and-publishing' },

@@ -30,6 +30,7 @@ Coordinates are in **scene pixels**, measured from the top left of the scene. Ev
 | **Indirect event** | Runs only when another event, or a click on a character, starts it |
 | **Spawn point** | A place players can arrive |
 | **Item**, **Character** | Something from the [library](/docs/editor/library/) placed in this scene |
+| **Physics: a ball or block**, **a glass of water**, **a tank of water**, **a joint**, **an area to build a bridge in** | Parts of a [physics experiment](/docs/editor/physics/), switching physics on in the scene if it was not |
 | **Walkable area**, **Blocked area** | Where feet may and may not go |
 | **Scale area (depth)** | Makes things smaller towards the back of the scene |
 | **Shadow spot (shade)** | A patch of shade figures darken in |

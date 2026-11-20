@@ -13,13 +13,15 @@ export type Addable =
   | 'background_media' | 'foreground_media'
   | 'start' | 'end' | 'indirect' | 'hotspot-click' | 'hotspot-walk'
   | 'edge-left' | 'edge-right' | 'edge-top' | 'edge-bottom'
-  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots';
+  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots'
+  | 'physics-body' | 'physics-cup' | 'physics-water' | 'physics-joint' | 'physics-build';
 
 /** An icon and a colour for each kind of thing a scene holds. */
 const LOOK: Record<string, readonly [icon: string, tone: string]> = {
   'Background layers': ['🏞️', '#8e5bd6'], 'Foreground layers': ['🌿', '#8e5bd6'],
   'Start events': ['▶️', '#c77b12'], 'Hotspots': ['🎯', '#2f6fed'], 'Indirect events': ['🔁', '#c77b12'], 'End events': ['⏹️', '#c77b12'],
   'Spawn points': ['🚩', '#d9a400'], 'Items here': ['🎒', '#d6457a'], 'Characters here': ['🧑‍🚀', '#d6457a'],
+  'Physics bodies': ['⚽', '#0f7a9d'], 'Water': ['🌊', '#0f7a9d'], 'Joints': ['🔗', '#0f7a9d'], 'Bridge building': ['🌉', '#0f7a9d'],
   'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Shadow spots': ['🌑', '#5b6b8c'], 'Blocked areas': ['🟥', '#c0392b'],
 };
 
@@ -90,9 +92,29 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     section('Spawn points', 'spawn', model.layout('spawn_points').map((p, index) => entry({ kind: 'spawn', index }, String(p.name ?? '')))),
     section('Items here', 'item', model.layout('items').map((p, index) => entry({ kind: 'item', index }, name('items', p.item_id)))),
     section('Characters here', 'character', model.layout('characters').map((p, index) => entry({ kind: 'character', index }, name('characters', p.character_id)))),
+    ...physicsSections(model, entry, section),
     section('Walkable areas', 'walkable_areas', model.layout<Point[]>('walkable_areas').map((a, index) => entry({ kind: 'area', which: 'walkable_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
     section('Scale areas', 'scale_areas', model.layout('scale_areas').map((a, index) => entry({ kind: 'scale', index }, String(a.name || `Scale area ${index + 1}`), `${a.scale_top}% → ${a.scale_bottom}%`))),
     section('Shadow spots', 'shadow_spots', model.layout('shadow_spots').map((a, index) => entry({ kind: 'shadow', index }, String(a.name || `Shadow ${index + 1}`), `${a.strength ?? 60}%`))),
     section('Blocked areas', 'blocked_areas', model.layout<Point[]>('blocked_areas').map((a, index) => entry({ kind: 'area', which: 'blocked_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
   );
+}
+
+/** The physics experiment's things, when the scene has one. */
+function physicsSections(
+  model: SceneModel,
+  entry: (selection: Selection, text: string, note?: string) => { text: string; node: HTMLElement },
+  section: (title: string, add: Addable | null, items: Array<{ text: string; node: HTMLElement }>, sort?: boolean) => HTMLElement,
+): HTMLElement[] {
+  const physics = model.physics();
+  if (!physics) return [];
+  const name = (t: { id: string; name?: string }) => t.name || t.id;
+  const build = physics.build;
+  return [
+    h('ul', null, entry({ kind: 'physics' }, `🧲 Physics experiment${physics.enabled ? '' : ' (off)'}`, physics.mode === 'shared' ? 'shared' : 'each their own').node),
+    section('Physics bodies', 'physics-body', (physics.bodies ?? []).map((b, index) => entry({ kind: 'physics-body', index }, name(b), `${b.shape}${b.fixed ? ' · fixed' : b.held ? ' · held' : ''}`))),
+    section('Water', 'physics-water', (physics.water ?? []).map((w, index) => entry({ kind: 'physics-water', index }, name(w), w.body_id ? `in ${w.body_id}` : 'tank'))),
+    section('Joints', 'physics-joint', (physics.joints ?? []).map((j, index) => entry({ kind: 'physics-joint', index }, name(j), j.type))),
+    section('Bridge building', build ? null : 'physics-build', build ? [entry({ kind: 'physics-build' }, 'Building area', `${build.anchors.length} footings, ${build.beams.length} kinds of beam`)] : []),
+  ];
 }

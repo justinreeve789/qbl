@@ -1,4 +1,4 @@
-import { pictureScale, scaleAt, type Media, type ScaleArea, type ShadowSpot } from '@qbl/shared';
+import { outlineAt, PHYSICS_MATERIALS, pictureScale, scaleAt, waterContainer, type Media, type ScaleArea, type ShadowSpot } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -234,6 +234,7 @@ export class SceneCanvas {
     this.drawSpawns(selected, u, shapes);
     this.drawPlacements('items', selected, u, shapes);
     this.drawPlacements('characters', selected, u, shapes);
+    this.drawPhysics(selected, u, shapes, top);
     if (selected.kind === 'event' && !this.picking) this.drawActionMarkers(selected.id, u, top);
     if (this.picking) this.drawPicking(u, W, H, top);
 
@@ -361,6 +362,131 @@ export class SceneCanvas {
         }, s('title', null, title)));
       }
     });
+  }
+
+  // ----------------------------------------------------------------- physics
+
+  /**
+   * A physics experiment as it will start: bodies in their materials' colours, water at its
+   * level, joints and strings, and the bridge-building area with its footings. Bodies, water
+   * tanks, joint ends, the building area and its footings can all be dragged.
+   */
+  private drawPhysics(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
+    const physics = this.model.physics();
+    if (!physics) return;
+    const off = physics.enabled ? '' : ' off';
+    const commit = () => void this.model.setPhysics({ ...physics });
+    const bodies = physics.bodies ?? [];
+    const byId = new Map(bodies.map((b) => [b.id, b]));
+    const name = (t: { id: string; name?: string }) => t.name || t.id;
+
+    // Water first: what is in it is drawn over it.
+    (physics.water ?? []).forEach((water, index) => {
+      const selection: Selection = { kind: 'physics-water', index };
+      const isSelected = sameSelection(selection, selected);
+      const cup = water.body_id ? byId.get(water.body_id) : undefined;
+      const box = waterContainer(water, cup ? { def: cup, x: cup.x, y: cup.y } : null);
+      if (!box) return;
+      const level = Math.max(0, Math.min(box.height, Number(water.level ?? 0)));
+      const start = { x: Number(water.x ?? 0), y: Number(water.y ?? 0) };
+      if (!water.body_id) shapes.push(s('rect', { class: `phys-tank${isSelected ? ' selected' : ''}${off}`, x: box.x, y: box.y, width: box.width, height: box.height }));
+      shapes.push(s('rect', {
+        class: `phys-water${isSelected ? ' selected' : ''}${off}`, x: box.x, y: box.y + box.height - level, width: box.width, height: level,
+        style: water.color ? `fill:${water.color}` : '',
+        onpointerdown: (e: PointerEvent) => this.begin(e, selection, water.body_id ? undefined : {
+          move: (to, from) => Object.assign(water, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }),
+          end: commit,
+        }),
+      }, s('title', null, name(water))));
+    });
+
+    bodies.forEach((body, index) => {
+      const selection: Selection = { kind: 'physics-body', index };
+      const isSelected = sameSelection(selection, selected);
+      const material = PHYSICS_MATERIALS[body.material ?? 'wood'] ?? PHYSICS_MATERIALS.wood!;
+      const fill = body.color || material.color;
+      const start = { x: body.x, y: body.y };
+      const drag = {
+        move: (to: Point, from: Point) => Object.assign(body, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }),
+        end: commit,
+      };
+      const cls = `phys-body${isSelected ? ' selected' : ''}${body.fixed ? ' fixed' : ''}${body.hidden ? ' hidden' : ''}${body.held ? ' held' : ''}${body.shape === 'cup' ? ' cup' : ''}${off}`;
+      const angle = ((body.angle ?? 0) * Math.PI) / 180;
+      const parts = body.shape === 'circle'
+        ? [s('circle', { cx: body.x, cy: body.y, r: Math.max(1, body.radius ?? 40) })]
+        : outlineAt(body, body.x, body.y, angle).map((points) => s('polygon', { points: points.map((p) => `${p.x},${p.y}`).join(' ') }));
+      shapes.push(s('g', {
+        class: cls, style: `--fill:${fill}`,
+        onpointerdown: (e: PointerEvent) => this.begin(e, selection, drag),
+      }, ...parts, s('title', null, `${name(body)} (${material.label}${body.fixed ? ', fixed' : ''})`)));
+      if (body.label || isSelected) {
+        shapes.push(s('text', { class: 'shape-name', x: body.x, y: body.y, 'font-size': 12 * u, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, body.label || name(body)));
+      }
+    });
+
+    (physics.joints ?? []).forEach((joint, index) => {
+      const selection: Selection = { kind: 'physics-joint', index };
+      const isSelected = sameSelection(selection, selected);
+      const ends = joint.type === 'string' || joint.type === 'spring' || joint.type === 'rope';
+      const commitJoint = commit;
+      if (ends) {
+        shapes.push(s('line', {
+          class: `phys-joint ${joint.type}${isSelected ? ' selected' : ''}${off}`, x1: joint.x, y1: joint.y, x2: joint.x2 ?? joint.x, y2: joint.y2 ?? joint.y,
+          onpointerdown: (e: PointerEvent) => this.begin(e, selection),
+        }, s('title', null, name(joint))));
+      }
+      shapes.push(s('circle', {
+        class: `phys-pin${isSelected ? ' selected' : ''}${off}`, cx: joint.x, cy: joint.y, r: 6 * u,
+        onpointerdown: (e: PointerEvent) => this.begin(e, selection),
+      }, s('title', null, `${name(joint)} (${joint.type})`)));
+      if (!isSelected) return;
+      const handles: Array<[number, number, string, (to: Point) => void]> = [
+        [joint.x, joint.y, 'Drag to move this end', (to) => Object.assign(joint, { x: to.x, y: to.y })],
+      ];
+      if (ends) handles.push([joint.x2 ?? joint.x, joint.y2 ?? joint.y, 'Drag to move the other end', (to) => Object.assign(joint, { x2: to.x, y2: to.y })]);
+      for (const [hx, hy, title, move] of handles) {
+        top.push(s('circle', { class: 'handle', cx: hx, cy: hy, r: 6 * u, onpointerdown: (e: PointerEvent) => this.begin(e, null, { move, end: commitJoint }) }, s('title', null, title)));
+      }
+    });
+
+    const build = physics.build;
+    if (build) {
+      const selection: Selection = { kind: 'physics-build' };
+      const isSelected = sameSelection(selection, selected);
+      const grid = build.grid && build.grid > 0 ? build.grid : 25;
+      const start = { x: build.x, y: build.y, anchors: build.anchors.map((a) => ({ ...a })), preset: (build.preset ?? []).map((b) => ({ ...b, a: { ...b.a }, b: { ...b.b } })) };
+      const snap = (v: number) => Math.round(v / grid) * grid;
+      shapes.push(s('rect', {
+        class: `phys-build${isSelected ? ' selected' : ''}${off}`, x: build.x, y: build.y, width: build.width, height: build.height,
+        onpointerdown: (e: PointerEvent) => this.begin(e, selection, isSelected ? {
+          // The area moves in whole grid steps, taking its footings and starting design with it.
+          move: (to, from) => {
+            const dx = snap(to.x - from.x);
+            const dy = snap(to.y - from.y);
+            Object.assign(build, {
+              x: start.x + dx, y: start.y + dy,
+              anchors: start.anchors.map((a) => ({ x: a.x + dx, y: a.y + dy })),
+              preset: start.preset.map((b) => ({ ...b, a: { x: b.a.x + dx, y: b.a.y + dy }, b: { x: b.b.x + dx, y: b.b.y + dy } })),
+            });
+          },
+          end: commit,
+        } : undefined),
+      }, s('title', null, 'Bridge building area')));
+      shapes.push(s('text', { class: 'shape-name', x: build.x + 8 * u, y: build.y + 16 * u, 'font-size': 12 * u }, 'Bridge building'));
+      for (const beam of build.preset ?? []) {
+        shapes.push(s('line', { class: 'phys-beam', x1: beam.a.x, y1: beam.a.y, x2: beam.b.x, y2: beam.b.y }));
+      }
+      build.anchors.forEach((anchor, i) => {
+        const at = { x: anchor.x, y: anchor.y };
+        shapes.push(s('polygon', {
+          class: `phys-anchor${isSelected ? ' selected' : ''}`, points: `${anchor.x},${anchor.y} ${anchor.x - 12 * u},${anchor.y + 16 * u} ${anchor.x + 12 * u},${anchor.y + 16 * u}`,
+          onpointerdown: (e: PointerEvent) => this.begin(e, selection, {
+            move: (to, from) => Object.assign(anchor, { x: build.x + snap(at.x - build.x + to.x - from.x), y: build.y + snap(at.y - build.y + to.y - from.y) }),
+            end: commit,
+          }),
+        }, s('title', null, `Footing ${i + 1}: drag to move`)));
+      });
+    }
   }
 
   // ------------------------------------------------------------- scale areas

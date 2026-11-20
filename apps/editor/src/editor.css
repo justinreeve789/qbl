@@ -1336,3 +1336,30 @@ button.danger-outline:hover:not(:disabled) { border-color: var(--danger); }
   .gen-chip-text { min-width: 0; }
   .gen-chip-label { font-size: 11px; }
 }
+
+/* ---------- physics experiments ---------- */
+.phys-body { cursor: move; }
+.phys-body > circle, .phys-body > polygon { fill: var(--fill); fill-opacity: 0.85; stroke: #1a1a1a; stroke-width: 1.5; }
+.phys-body.cup > polygon { fill-opacity: 0.35; stroke: #e8f6ff; }
+.phys-body.fixed > circle, .phys-body.fixed > polygon { stroke-dasharray: 6 3; }
+.phys-body.hidden > circle, .phys-body.hidden > polygon { fill-opacity: 0.12; stroke: #fff; stroke-dasharray: 3 4; }
+.phys-body.held > circle, .phys-body.held > polygon { stroke: #ffd24a; stroke-width: 2.5; }
+.phys-body.selected > circle, .phys-body.selected > polygon { stroke: #ffd24a; stroke-width: 3; }
+.phys-water { fill: #3d9be0; fill-opacity: 0.45; stroke: #bfe0ff; stroke-width: 1.5; cursor: pointer; }
+.phys-water.selected { stroke: #ffd24a; stroke-width: 3; }
+.phys-tank { fill: transparent; stroke: #bfe0ff; stroke-width: 1.5; stroke-dasharray: 5 4; pointer-events: none; }
+.phys-joint { stroke: #1a1a1a; stroke-width: 2.5; cursor: pointer; }
+.phys-joint.spring { stroke-dasharray: 4 3; }
+.phys-joint.rope { stroke: #b8925a; stroke-width: 4; }
+.phys-joint.selected { stroke: #ffd24a; }
+.phys-pin { fill: #2d2d3a; stroke: #fff; stroke-width: 1.5; cursor: pointer; }
+.phys-pin.selected { fill: #ffd24a; }
+.phys-build { fill: rgba(255, 255, 255, 0.06); stroke: #fff; stroke-width: 1.5; stroke-dasharray: 8 6; cursor: pointer; }
+.phys-build.selected { stroke: #ffd24a; stroke-width: 2.5; cursor: move; }
+.phys-anchor { fill: #ffd24a; stroke: #1a1a1a; stroke-width: 1.5; cursor: move; }
+.phys-beam { stroke: #b47c48; stroke-width: 6; pointer-events: none; }
+.off { opacity: 0.45; }
+.physics-list { display: grid; gap: 6px; }
+.physics-item { border: 1px solid var(--line, rgba(127, 127, 127, 0.35)); border-radius: 8px; padding: 4px 10px; }
+.physics-item > summary { cursor: pointer; padding: 4px 0; font-weight: 600; }
+.physics-item[open] > summary { margin-bottom: 6px; }

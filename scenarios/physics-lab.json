@@ -1,0 +1,1999 @@
+{
+  "spec_version": 2,
+  "chat_mode": "emotes",
+  "move_speed": 420,
+  "asset_base_url": "/scenario-assets/physicslab",
+  "objectives": [
+    {
+      "id": "bounce",
+      "text": "Bounce lab: drop the balls and find which bounces highest",
+      "complete_when": [
+        {
+          "variable": "bounce_done",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "text": "Sink or float: make the water in the glass rise by 1 cm",
+      "complete_when": [
+        {
+          "variable": "water_rise",
+          "operator": ">=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "eureka",
+      "text": "Sink or float: make the overflow can spill",
+      "optional": true,
+      "complete_when": [
+        {
+          "variable": "eureka",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "bridge",
+      "text": "Bridge builders: build a bridge that carries 2,000 N (best so far: {{bridge_record}} N)",
+      "complete_when": [
+        {
+          "variable": "bridge_passed",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "pendulum",
+      "text": "Pendulums: time the four pendulums",
+      "complete_when": [
+        {
+          "variable": "pendulum_done",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "balance",
+      "text": "Balance beam: level the beam",
+      "complete_when": [
+        {
+          "variable": "balanced",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    }
+  ],
+  "id": 750001,
+  "code": "physicslab",
+  "shortname": "physicslab",
+  "title": "Physics Lab",
+  "subtitle": "Bounce, sink or float, build a bridge, swing a pendulum, balance a beam",
+  "description": "Five physics experiments in one lab. Students drop balls of different materials, sink and float things in water, build and load a bridge together, time pendulums and balance a beam, reading real measurements as they go.",
+  "start_scene_id": 750001,
+  "enable_save_session": true,
+  "require_login": false,
+  "allow_groups": true,
+  "max_players": 30,
+  "default_language": "en-us",
+  "global_variables": [
+    {
+      "id": 750028,
+      "variable_name": "visited_lab",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750029,
+      "variable_name": "bounce_done",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750030,
+      "variable_name": "rubber_bounce",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750039,
+      "variable_name": "water_rise",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750040,
+      "variable_name": "spilled",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750041,
+      "variable_name": "eureka",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750052,
+      "variable_name": "bridge_load",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750053,
+      "variable_name": "bridge_record",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750054,
+      "variable_name": "bridge_passed",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750065,
+      "variable_name": "period_short",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750066,
+      "variable_name": "period_long",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750067,
+      "variable_name": "pendulum_done",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750076,
+      "variable_name": "balanced",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 750001
+    }
+  ],
+  "assets": [
+    {
+      "id": 750007,
+      "type": "image",
+      "url": "backgrounds/hall.jpg",
+      "filename": "hall.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750036,
+      "type": "image",
+      "url": "backgrounds/bounce.jpg",
+      "filename": "bounce.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750049,
+      "type": "image",
+      "url": "backgrounds/water.jpg",
+      "filename": "water.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750062,
+      "type": "image",
+      "url": "backgrounds/bridge.jpg",
+      "filename": "bridge.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750073,
+      "type": "image",
+      "url": "backgrounds/pendulum.jpg",
+      "filename": "pendulum.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 750001
+    },
+    {
+      "id": 750082,
+      "type": "image",
+      "url": "backgrounds/balance.jpg",
+      "filename": "balance.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 750001
+    }
+  ],
+  "shop_items": [],
+  "items": [],
+  "characters": [],
+  "scenes": [
+    {
+      "id": 750001,
+      "shortname": "hall",
+      "scenario_id": 750001,
+      "sequence": 1,
+      "subtitle": "The physics lab",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": true,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 750007,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [
+        [
+          {
+            "x": 0,
+            "y": 800
+          },
+          {
+            "x": 1920,
+            "y": 800
+          },
+          {
+            "x": 1920,
+            "y": 1080
+          },
+          {
+            "x": 0,
+            "y": 1080
+          }
+        ]
+      ],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 960
+        },
+        {
+          "name": "from-bounce",
+          "position_x": 260,
+          "position_y": 870
+        },
+        {
+          "name": "from-water",
+          "position_x": 600,
+          "position_y": 870
+        },
+        {
+          "name": "from-bridge",
+          "position_x": 960,
+          "position_y": 870
+        },
+        {
+          "name": "from-pendulum",
+          "position_x": 1320,
+          "position_y": 870
+        },
+        {
+          "name": "from-balance",
+          "position_x": 1660,
+          "position_y": 870
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "start_events": [
+        {
+          "id": 750010,
+          "scene_id": 750001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [
+            {
+              "id": 750009,
+              "type": "variable",
+              "variable": "visited_lab",
+              "operator": "=",
+              "operand": 0
+            }
+          ],
+          "actions": [
+            {
+              "id": 750008,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Welcome to the physics lab. Walk up to a door and click it to try an experiment.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 8000,
+              "event_id": 750010,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "id": 750012,
+          "scene_id": 750001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 750011,
+              "type": "variable",
+              "blocking": true,
+              "name": "visited_lab",
+              "operator": "set",
+              "operand": 1,
+              "event_id": 750012,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 750014,
+          "scene_id": 750001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 260,
+          "position_y": 600,
+          "radius": 140,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750013,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750002,
+              "spawn_point": "default",
+              "event_id": 750014,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750015,
+              "event_id": 750014,
+              "type": "text",
+              "position_x": 260,
+              "position_y": 380,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Bounce lab",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 750017,
+          "scene_id": 750001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 600,
+          "position_y": 600,
+          "radius": 140,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750016,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750003,
+              "spawn_point": "default",
+              "event_id": 750017,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750018,
+              "event_id": 750017,
+              "type": "text",
+              "position_x": 600,
+              "position_y": 380,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Sink or float",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 750020,
+          "scene_id": 750001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 960,
+          "position_y": 600,
+          "radius": 140,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750019,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750004,
+              "spawn_point": "default",
+              "event_id": 750020,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750021,
+              "event_id": 750020,
+              "type": "text",
+              "position_x": 960,
+              "position_y": 380,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Bridge builders",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 750023,
+          "scene_id": 750001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 1320,
+          "position_y": 600,
+          "radius": 140,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750022,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750005,
+              "spawn_point": "default",
+              "event_id": 750023,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750024,
+              "event_id": 750023,
+              "type": "text",
+              "position_x": 1320,
+              "position_y": 380,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Pendulums",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 750026,
+          "scene_id": 750001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 1660,
+          "position_y": 600,
+          "radius": 140,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750025,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750006,
+              "spawn_point": "default",
+              "event_id": 750026,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750027,
+              "event_id": 750026,
+              "type": "text",
+              "position_x": 1660,
+              "position_y": 380,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Balance beam",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": []
+    },
+    {
+      "id": 750002,
+      "shortname": "bounce",
+      "scenario_id": 750001,
+      "sequence": 2,
+      "subtitle": "Which ball bounces highest?",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 750036,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "physics": {
+        "enabled": true,
+        "mode": "individual",
+        "pixels_per_meter": 200,
+        "floor_y": 980,
+        "controls": {
+          "gravity": true
+        },
+        "bodies": [
+          {
+            "id": "rubber",
+            "name": "rubber ball",
+            "shape": "circle",
+            "x": 560,
+            "y": 546,
+            "radius": 34,
+            "material": "rubber",
+            "held": true,
+            "label": "Rubber"
+          },
+          {
+            "id": "plastic",
+            "name": "plastic ball",
+            "shape": "circle",
+            "x": 760,
+            "y": 546,
+            "radius": 34,
+            "material": "plastic",
+            "held": true,
+            "label": "Plastic"
+          },
+          {
+            "id": "glass",
+            "name": "glass ball",
+            "shape": "circle",
+            "x": 960,
+            "y": 546,
+            "radius": 34,
+            "material": "glass",
+            "held": true,
+            "label": "Glass"
+          },
+          {
+            "id": "wood",
+            "name": "wood ball",
+            "shape": "circle",
+            "x": 1160,
+            "y": 546,
+            "radius": 34,
+            "material": "wood",
+            "held": true,
+            "label": "Wood"
+          },
+          {
+            "id": "clay",
+            "name": "clay ball",
+            "shape": "circle",
+            "x": 1360,
+            "y": 546,
+            "radius": 34,
+            "material": "clay",
+            "held": true,
+            "label": "Clay"
+          }
+        ],
+        "readouts": [
+          {
+            "id": "rubber-bounce",
+            "label": "Rubber bounced",
+            "measure": "bounce_height",
+            "body_id": "rubber",
+            "variable": "rubber_bounce"
+          },
+          {
+            "id": "plastic-bounce",
+            "label": "Plastic bounced",
+            "measure": "bounce_height",
+            "body_id": "plastic"
+          },
+          {
+            "id": "glass-bounce",
+            "label": "Glass bounced",
+            "measure": "bounce_height",
+            "body_id": "glass"
+          },
+          {
+            "id": "wood-bounce",
+            "label": "Wood bounced",
+            "measure": "bounce_height",
+            "body_id": "wood"
+          },
+          {
+            "id": "clay-bounce",
+            "label": "Clay bounced",
+            "measure": "bounce_height",
+            "body_id": "clay"
+          }
+        ],
+        "watches": [
+          {
+            "id": "all-still",
+            "name": "Every ball has stopped",
+            "when": "rest",
+            "hold": 1.5,
+            "variable": "bounce_done",
+            "set": 1,
+            "event_id": 750032
+          }
+        ]
+      },
+      "start_events": [
+        {
+          "id": 750038,
+          "scene_id": 750002,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 750037,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Five balls, each of a different material, 2 m above the floor. Press Drop and read how high each one bounces. Drag a ball up or down first to drop it from somewhere else.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 15000,
+              "event_id": 750038,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 750034,
+          "scene_id": 750002,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 190,
+          "position_y": 1040,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750033,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750001,
+              "spawn_point": "from-bounce",
+              "event_id": 750034,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750035,
+              "event_id": 750034,
+              "type": "text",
+              "position_x": 190,
+              "position_y": 1040,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the hall",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 750032,
+          "scene_id": 750002,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "compare",
+          "actions": [
+            {
+              "id": 750031,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Compare the bounce heights. A bouncy ball gives back most of the energy it hits the floor with; clay keeps almost none. Reset and drop them from higher, or try the Moon’s gravity.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 12000,
+              "event_id": 750032,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 750003,
+      "shortname": "water",
+      "scenario_id": 750001,
+      "sequence": 3,
+      "subtitle": "Sink or float",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 750049,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "physics": {
+        "enabled": true,
+        "mode": "individual",
+        "pixels_per_meter": 2000,
+        "depth": 0.08,
+        "floor_y": 900,
+        "bodies": [
+          {
+            "id": "glass",
+            "name": "Glass",
+            "shape": "cup",
+            "x": 640,
+            "y": 690,
+            "width": 320,
+            "height": 420,
+            "wall": 14,
+            "fixed": true,
+            "material": "glass"
+          },
+          {
+            "id": "can",
+            "name": "Overflow can",
+            "shape": "cup",
+            "x": 1300,
+            "y": 720,
+            "width": 260,
+            "height": 360,
+            "wall": 14,
+            "fixed": true,
+            "material": "steel",
+            "color": "#c3ccd6"
+          },
+          {
+            "id": "rock",
+            "name": "Rock",
+            "shape": "polygon",
+            "x": 1700,
+            "y": 860,
+            "points": [
+              {
+                "x": 34,
+                "y": 0
+              },
+              {
+                "x": 24,
+                "y": 24
+              },
+              {
+                "x": -6,
+                "y": 24
+              },
+              {
+                "x": -34,
+                "y": 15
+              },
+              {
+                "x": -32,
+                "y": -17
+              },
+              {
+                "x": -6,
+                "y": -27
+              },
+              {
+                "x": 25,
+                "y": -21
+              }
+            ],
+            "material": "rock"
+          }
+        ],
+        "water": [
+          {
+            "id": "glass-water",
+            "name": "Water in the glass",
+            "body_id": "glass",
+            "level": 180,
+            "marks": true
+          },
+          {
+            "id": "can-water",
+            "name": "Water in the overflow can",
+            "body_id": "can",
+            "level": 342
+          }
+        ],
+        "tray": [
+          {
+            "id": "small-rock",
+            "label": "Small rock",
+            "count": 3,
+            "body": {
+              "shape": "polygon",
+              "points": [
+                {
+                  "x": 29,
+                  "y": 0
+                },
+                {
+                  "x": 20,
+                  "y": 21
+                },
+                {
+                  "x": -5,
+                  "y": 20
+                },
+                {
+                  "x": -29,
+                  "y": 13
+                },
+                {
+                  "x": -27,
+                  "y": -14
+                },
+                {
+                  "x": -5,
+                  "y": -23
+                },
+                {
+                  "x": 21,
+                  "y": -17
+                }
+              ],
+              "material": "rock"
+            }
+          },
+          {
+            "id": "big-rock",
+            "label": "Big rock",
+            "count": 2,
+            "body": {
+              "shape": "polygon",
+              "points": [
+                {
+                  "x": 60,
+                  "y": 0
+                },
+                {
+                  "x": 42,
+                  "y": 42
+                },
+                {
+                  "x": -11,
+                  "y": 41
+                },
+                {
+                  "x": -59,
+                  "y": 27
+                },
+                {
+                  "x": -56,
+                  "y": -30
+                },
+                {
+                  "x": -11,
+                  "y": -46
+                },
+                {
+                  "x": 43,
+                  "y": -36
+                }
+              ],
+              "material": "rock"
+            }
+          },
+          {
+            "id": "steel-ball",
+            "label": "Steel ball",
+            "count": 3,
+            "body": {
+              "shape": "circle",
+              "radius": 32,
+              "material": "steel"
+            }
+          },
+          {
+            "id": "cork",
+            "label": "Cork",
+            "count": 3,
+            "body": {
+              "shape": "box",
+              "width": 90,
+              "height": 50,
+              "material": "cork"
+            }
+          },
+          {
+            "id": "wood",
+            "label": "Wood block",
+            "count": 3,
+            "body": {
+              "shape": "box",
+              "width": 80,
+              "height": 80,
+              "material": "wood"
+            }
+          },
+          {
+            "id": "ice",
+            "label": "Ice cube",
+            "count": 3,
+            "body": {
+              "shape": "box",
+              "width": 70,
+              "height": 70,
+              "material": "ice"
+            }
+          }
+        ],
+        "readouts": [
+          {
+            "id": "level",
+            "label": "Water in the glass",
+            "measure": "water_level",
+            "water_id": "glass-water"
+          },
+          {
+            "id": "rise",
+            "label": "It rose by",
+            "measure": "water_rise",
+            "water_id": "glass-water",
+            "variable": "water_rise"
+          },
+          {
+            "id": "pushed",
+            "label": "Pushed aside",
+            "measure": "displaced",
+            "water_id": "glass-water"
+          },
+          {
+            "id": "spilt",
+            "label": "Spilled from the can",
+            "measure": "spilled",
+            "water_id": "can-water",
+            "variable": "spilled"
+          }
+        ],
+        "watches": [
+          {
+            "id": "risen",
+            "name": "The water rose 1 cm",
+            "when": "reading",
+            "readout_id": "rise",
+            "operator": ">=",
+            "value": 1,
+            "event_id": 750043
+          },
+          {
+            "id": "overflow",
+            "name": "The can overflowed",
+            "when": "spill",
+            "water_id": "can-water",
+            "variable": "eureka",
+            "set": 1,
+            "event_id": 750045
+          }
+        ]
+      },
+      "start_events": [
+        {
+          "id": 750051,
+          "scene_id": 750003,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 750050,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Drop the rock into the glass and watch the water level. Take more things from the tray: which sink, and which float? The can on the right is full to the brim.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 15000,
+              "event_id": 750051,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 750047,
+          "scene_id": 750003,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 190,
+          "position_y": 1040,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750046,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750001,
+              "spawn_point": "from-water",
+              "event_id": 750047,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750048,
+              "event_id": 750047,
+              "type": "text",
+              "position_x": 190,
+              "position_y": 1040,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the hall",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 750043,
+          "scene_id": 750003,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "risen",
+          "actions": [
+            {
+              "id": 750042,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "The water rose! Whatever is under water pushes aside its own volume of water, so the level goes up.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 9000,
+              "event_id": 750043,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "id": 750045,
+          "scene_id": 750003,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "eureka",
+          "actions": [
+            {
+              "id": 750044,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Eureka! The water that spilled out of the full can is the volume of what you put in (if it sank all the way under).",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 10000,
+              "event_id": 750045,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 750004,
+      "shortname": "bridge",
+      "scenario_id": 750001,
+      "sequence": 4,
+      "subtitle": "Bridge builders",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 750062,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "physics": {
+        "enabled": true,
+        "mode": "shared",
+        "pixels_per_meter": 100,
+        "floor_y": null,
+        "press": {
+          "enabled": true,
+          "rate": 400,
+          "max": 20000
+        },
+        "bodies": [
+          {
+            "id": "left-cliff",
+            "name": "Left cliff",
+            "shape": "box",
+            "x": 280,
+            "y": 840,
+            "width": 560,
+            "height": 480,
+            "fixed": true,
+            "material": "rock",
+            "hidden": true
+          },
+          {
+            "id": "right-cliff",
+            "name": "Right cliff",
+            "shape": "box",
+            "x": 1640,
+            "y": 840,
+            "width": 560,
+            "height": 480,
+            "fixed": true,
+            "material": "rock",
+            "hidden": true
+          }
+        ],
+        "build": {
+          "x": 520,
+          "y": 360,
+          "width": 880,
+          "height": 440,
+          "grid": 40,
+          "max_length": 200,
+          "budget": 3000,
+          "anchors": [
+            {
+              "x": 560,
+              "y": 600
+            },
+            {
+              "x": 1360,
+              "y": 600
+            },
+            {
+              "x": 560,
+              "y": 720
+            },
+            {
+              "x": 1360,
+              "y": 720
+            }
+          ],
+          "beams": [
+            {
+              "material": "wood",
+              "label": "Road",
+              "deck": true,
+              "cost_per_meter": 100,
+              "thickness": 14
+            },
+            {
+              "material": "wood",
+              "label": "Wood",
+              "cost_per_meter": 50
+            },
+            {
+              "material": "steel",
+              "label": "Steel",
+              "cost_per_meter": 200
+            },
+            {
+              "material": "rope",
+              "label": "Rope",
+              "cost_per_meter": 20
+            }
+          ]
+        },
+        "tray": [
+          {
+            "id": "weight",
+            "label": "20 kg",
+            "count": 10,
+            "body": {
+              "shape": "box",
+              "width": 40,
+              "height": 40,
+              "mass": 20,
+              "material": "steel",
+              "label": "20"
+            }
+          },
+          {
+            "id": "crate",
+            "label": "100 kg crate",
+            "count": 3,
+            "body": {
+              "shape": "box",
+              "width": 70,
+              "height": 70,
+              "mass": 100,
+              "material": "wood",
+              "label": "100"
+            }
+          }
+        ],
+        "readouts": [
+          {
+            "id": "cost",
+            "label": "Cost",
+            "measure": "cost"
+          },
+          {
+            "id": "load",
+            "label": "Carrying",
+            "measure": "load",
+            "variable": "bridge_load"
+          },
+          {
+            "id": "record",
+            "label": "Most it held",
+            "measure": "max_load",
+            "variable": "bridge_record"
+          },
+          {
+            "id": "pressed",
+            "label": "Broke while pressing with",
+            "measure": "break_force"
+          },
+          {
+            "id": "strain",
+            "label": "Most strained beam",
+            "measure": "stress"
+          }
+        ],
+        "watches": [
+          {
+            "id": "strong",
+            "name": "Carried 2000 N",
+            "when": "reading",
+            "readout_id": "record",
+            "operator": ">=",
+            "value": 2000,
+            "variable": "bridge_passed",
+            "set": 1,
+            "event_id": 750056
+          },
+          {
+            "id": "snap",
+            "name": "Something broke",
+            "when": "break",
+            "event_id": 750058
+          }
+        ]
+      },
+      "start_events": [
+        {
+          "id": 750064,
+          "scene_id": 750004,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 750063,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Build a bridge across the canyon: drag from a yellow footing to lay a beam, then from its end to lay the next. Road is what weights sit on. Press Test it, then load it with weights or hold the Press tool on it. Everyone here builds the same bridge.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 15000,
+              "event_id": 750064,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 750060,
+          "scene_id": 750004,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 190,
+          "position_y": 1040,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750059,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750001,
+              "spawn_point": "from-bridge",
+              "event_id": 750060,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750061,
+              "event_id": 750060,
+              "type": "text",
+              "position_x": 190,
+              "position_y": 1040,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the hall",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 750056,
+          "scene_id": 750004,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "strong",
+          "actions": [
+            {
+              "id": 750055,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Your bridge carried 2,000 N, the weight of about 200 kg. Can you make it hold more for less money?",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 10000,
+              "event_id": 750056,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "id": 750058,
+          "scene_id": 750004,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "snap",
+          "actions": [
+            {
+              "id": 750057,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Snap! Beams that form triangles share the load. Go back to building and strengthen where it broke.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 9000,
+              "event_id": 750058,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 750005,
+      "shortname": "pendulum",
+      "scenario_id": 750001,
+      "sequence": 5,
+      "subtitle": "Pendulums",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 750073,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "physics": {
+        "enabled": true,
+        "mode": "individual",
+        "pixels_per_meter": 200,
+        "floor_y": 1060,
+        "paused": true,
+        "controls": {
+          "gravity": true
+        },
+        "bodies": [
+          {
+            "id": "bob-A",
+            "name": "Bob A",
+            "shape": "circle",
+            "x": 414,
+            "y": 234,
+            "radius": 22,
+            "material": "steel",
+            "label": "A"
+          },
+          {
+            "id": "bob-B",
+            "name": "Bob B",
+            "shape": "circle",
+            "x": 829,
+            "y": 328,
+            "radius": 26,
+            "material": "steel",
+            "label": "B"
+          },
+          {
+            "id": "bob-C",
+            "name": "Bob C",
+            "shape": "circle",
+            "x": 1209,
+            "y": 328,
+            "radius": 26,
+            "material": "wood",
+            "label": "C"
+          },
+          {
+            "id": "bob-D",
+            "name": "Bob D",
+            "shape": "circle",
+            "x": 1657,
+            "y": 516,
+            "radius": 26,
+            "material": "steel",
+            "label": "D"
+          }
+        ],
+        "joints": [
+          {
+            "id": "string-A",
+            "type": "string",
+            "body_a": "bob-A",
+            "x": 414,
+            "y": 234,
+            "x2": 380,
+            "y2": 140
+          },
+          {
+            "id": "string-B",
+            "type": "string",
+            "body_a": "bob-B",
+            "x": 829,
+            "y": 328,
+            "x2": 760,
+            "y2": 140
+          },
+          {
+            "id": "string-C",
+            "type": "string",
+            "body_a": "bob-C",
+            "x": 1209,
+            "y": 328,
+            "x2": 1140,
+            "y2": 140
+          },
+          {
+            "id": "string-D",
+            "type": "string",
+            "body_a": "bob-D",
+            "x": 1657,
+            "y": 516,
+            "x2": 1520,
+            "y2": 140
+          }
+        ],
+        "readouts": [
+          {
+            "id": "period-A",
+            "label": "A (0.5 m, steel) swing",
+            "measure": "period",
+            "body_id": "bob-A",
+            "variable": "period_short"
+          },
+          {
+            "id": "period-B",
+            "label": "B (1 m, steel) swing",
+            "measure": "period",
+            "body_id": "bob-B"
+          },
+          {
+            "id": "period-C",
+            "label": "C (1 m, wood) swing",
+            "measure": "period",
+            "body_id": "bob-C"
+          },
+          {
+            "id": "period-D",
+            "label": "D (2 m, steel) swing",
+            "measure": "period",
+            "body_id": "bob-D",
+            "variable": "period_long"
+          },
+          {
+            "id": "swings-D",
+            "label": "D swings",
+            "measure": "swings",
+            "body_id": "bob-D",
+            "hidden": true
+          }
+        ],
+        "watches": [
+          {
+            "id": "timed",
+            "name": "D has swung three times",
+            "when": "reading",
+            "readout_id": "swings-D",
+            "operator": ">=",
+            "value": 3,
+            "variable": "pendulum_done",
+            "set": 1,
+            "event_id": 750069
+          }
+        ]
+      },
+      "start_events": [
+        {
+          "id": 750075,
+          "scene_id": 750005,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 750074,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Press Play to let all four pendulums go at once. B and C have the same string but different weights; A, B and D have different strings. Which takes longest to swing? You can grab a bob, pull it aside and let go.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 15000,
+              "event_id": 750075,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 750071,
+          "scene_id": 750005,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 190,
+          "position_y": 1040,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750070,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750001,
+              "spawn_point": "from-pendulum",
+              "event_id": 750071,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750072,
+              "event_id": 750071,
+              "type": "text",
+              "position_x": 190,
+              "position_y": 1040,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the hall",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 750069,
+          "scene_id": 750005,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "compare",
+          "actions": [
+            {
+              "id": 750068,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "B (steel) and C (wood) swing in the same time: the weight makes no difference. A longer string swings more slowly: four times the length takes twice the time.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 12000,
+              "event_id": 750069,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 750006,
+      "shortname": "balance",
+      "scenario_id": 750001,
+      "sequence": 6,
+      "subtitle": "Balance beam",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 750082,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "physics": {
+        "enabled": true,
+        "mode": "individual",
+        "pixels_per_meter": 400,
+        "floor_y": 1000,
+        "bodies": [
+          {
+            "id": "beam",
+            "name": "Beam",
+            "shape": "box",
+            "x": 960,
+            "y": 600,
+            "width": 1000,
+            "height": 18,
+            "mass": 10,
+            "friction": 1,
+            "damping": 2,
+            "material": "wood",
+            "marks": true
+          },
+          {
+            "id": "hanger",
+            "name": "Hanger",
+            "shape": "box",
+            "x": 960,
+            "y": 535,
+            "width": 10,
+            "height": 112,
+            "mass": 0.5,
+            "material": "steel",
+            "draggable": false
+          },
+          {
+            "id": "two",
+            "name": "2 kg weight",
+            "shape": "box",
+            "x": 760,
+            "y": 556,
+            "width": 70,
+            "height": 70,
+            "mass": 2,
+            "friction": 1,
+            "material": "steel",
+            "color": "#e9823c",
+            "label": "2 kg"
+          }
+        ],
+        "joints": [
+          {
+            "id": "pivot",
+            "type": "pin",
+            "body_a": "hanger",
+            "x": 960,
+            "y": 480,
+            "min_angle": -25,
+            "max_angle": 25
+          },
+          {
+            "id": "weld",
+            "type": "weld",
+            "body_a": "hanger",
+            "body_b": "beam",
+            "x": 960,
+            "y": 595,
+            "visible": false
+          }
+        ],
+        "tray": [
+          {
+            "id": "one",
+            "label": "1 kg",
+            "count": 4,
+            "body": {
+              "shape": "box",
+              "width": 60,
+              "height": 60,
+              "mass": 1,
+              "friction": 1,
+              "material": "steel",
+              "color": "#3d8fd6",
+              "label": "1 kg"
+            }
+          },
+          {
+            "id": "half",
+            "label": "500 g",
+            "count": 4,
+            "body": {
+              "shape": "box",
+              "width": 46,
+              "height": 46,
+              "mass": 0.5,
+              "friction": 1,
+              "material": "steel",
+              "color": "#2fa36b",
+              "label": "½"
+            }
+          },
+          {
+            "id": "two-more",
+            "label": "2 kg",
+            "count": 1,
+            "body": {
+              "shape": "box",
+              "width": 70,
+              "height": 70,
+              "mass": 2,
+              "friction": 1,
+              "material": "steel",
+              "color": "#e9823c",
+              "label": "2 kg"
+            }
+          }
+        ],
+        "readouts": [
+          {
+            "id": "tilt",
+            "label": "Tilt",
+            "measure": "angle",
+            "body_id": "beam"
+          }
+        ],
+        "watches": [
+          {
+            "id": "level",
+            "name": "The beam is level",
+            "when": "balanced",
+            "body_id": "beam",
+            "value": 1,
+            "hold": 2,
+            "variable": "balanced",
+            "set": 1,
+            "event_id": 750078
+          }
+        ]
+      },
+      "start_events": [
+        {
+          "id": 750084,
+          "scene_id": 750006,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 750083,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "The 2 kg weight sits 0.5 m left of the middle, so the beam tips. Take weights from the tray and put them on the right to level it. The ruler shows how far from the middle each one is.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 15000,
+              "event_id": 750084,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 750080,
+          "scene_id": 750006,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 190,
+          "position_y": 1040,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 750079,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 750001,
+              "spawn_point": "from-balance",
+              "event_id": 750080,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 750081,
+              "event_id": 750080,
+              "type": "text",
+              "position_x": 190,
+              "position_y": 1040,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the hall",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 750078,
+          "scene_id": 750006,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "level",
+          "actions": [
+            {
+              "id": 750077,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Balanced! Each side’s turning effect is its weight times its distance from the middle: 2 kg × 0.5 m is the same as 1 kg × 1 m.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 12000,
+              "event_id": 750078,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

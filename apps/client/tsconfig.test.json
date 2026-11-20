@@ -4,6 +4,7 @@
     "types": [],
     "paths": {
       "@qbl/shared": ["../../packages/shared/src/index.ts"],
+      "@qbl/shared/physics-sim": ["../../packages/shared/src/physics-sim.ts"],
       "phaser": ["./test/fakePhaser.ts"],
       "@colyseus/sdk": ["./test/fakeColyseus.ts"]
     }

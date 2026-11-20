@@ -20,7 +20,9 @@ export type FieldKind =
   /** Yes, no, or left to something else to decide (the placeholder). `options` are the labels for yes and no. Stored as true, false or absent. */
   | 'tristate'
   /** One of the scenario's glossary entries, or one of its scene groups. */
-  | 'glossary' | 'group';
+  | 'glossary' | 'group'
+  /** One of the things of the scene's physics experiment, by its id: `physics` says which list. */
+  | 'physics';
 
 export interface Field {
   key: string;
@@ -39,6 +41,8 @@ export interface Field {
   sceneKey?: string;
   /** event: only list events of these kinds. */
   eventKinds?: string[];
+  /** physics: which of the experiment's things to choose from. */
+  physics?: 'bodies' | 'cups' | 'water' | 'joints' | 'tray' | 'readouts';
   /** bool, select: the value when the attribute is absent. */
   default?: boolean | string;
   min?: number;
@@ -242,6 +246,15 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     case 'group': {
       const groups = (ctx.store.settings.scene_groups as Array<{ id: number; name?: string }> | undefined) ?? [];
       return wrap(idSelect(groups.map((g) => [g.id, String(g.name ?? `Group ${g.id}`)]), value, set, f.placeholder ?? 'None'));
+    }
+    case 'physics': {
+      const scene = ctx.sceneId != null ? ctx.store.byId('scenes', ctx.sceneId) : undefined;
+      const physics = (params(scene ?? ({} as Row), 'layout').physics ?? {}) as Record<string, unknown>;
+      const list = (key: string) => (Array.isArray(physics[key]) ? (physics[key] as Array<Record<string, unknown>>) : []);
+      const things = f.physics === 'cups' ? list('bodies').filter((b) => b.shape === 'cup') : list(f.physics ?? 'bodies');
+      const name = (t: Record<string, unknown>) => String(t.name || t.label || (f.physics === 'readouts' ? t.measure : '') || t.id);
+      const options = things.map((t) => [String(t.id), name(t) === String(t.id) ? String(t.id) : `${name(t)} (${String(t.id)})`] as const);
+      return wrap(select(options, value == null ? '' : String(value), (v) => set(v === '' ? null : v), f.placeholder ?? 'Choose'));
     }
     case 'scene':
       return wrap(idSelect(ctx.store.rows('scenes').map((r) => [r.id, sceneLabel(r)]), value, set, f.placeholder ?? 'Choose a scene'));

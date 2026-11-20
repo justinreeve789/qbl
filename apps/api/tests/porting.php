@@ -378,6 +378,32 @@ if (class_exists(ZipArchive::class)) {
     fwrite(STDERR, "SKIPPED: the ZIP checks need PHP's zip extension.\n");
 }
 
+// ---- the Physics Lab: experiments are kept in the scene's layout and survive every trip
+if (class_exists(ZipArchive::class)) {
+    $labZip = dirname(__DIR__).'/database/seeders/scenarios/physics-lab.zip';
+    $labDoc = json_decode(file_get_contents(dirname(__DIR__, 3).'/scenarios/physics-lab.json'), true);
+    $labId = (new ScenarioArchive($store))->seed($labZip);
+    same($labId, 750001, 'the Physics Lab is seeded with its own ids');
+    $lab = json_decode(json_encode($store->compile($labId)), true);
+    $physicsOf = fn (array $doc) => array_column(array_map(fn ($s) => ['shortname' => $s['shortname'], 'physics' => $s['physics'] ?? null], $doc['scenes']), 'physics', 'shortname');
+    same($physicsOf($lab), $physicsOf($labDoc), 'every experiment comes back from the database as it was shipped: bodies, water, joints, the bridge, tray, readouts and watches');
+    same(array_values(array_map(fn ($a) => $a['type'], array_merge(...array_map(fn ($s) => array_merge(...array_map(fn ($e) => $e['actions'], $s['indirect_events'] ?? [])), $lab['scenes'])))), array_fill(0, 7, 'text_overlay'), 'the watches\' events are there');
+    same([$lab['scenes'][3]['shortname'], array_key_exists('floor_y', $lab['scenes'][3]['physics']), $lab['scenes'][3]['physics']['floor_y']], ['bridge', true, null], 'a bridge with no floor keeps its floor_y of null');
+
+    // A copy gets new event ids: the watches follow them.
+    $labCopy = $store->importRows($store->bundle($labId), 1, ['title' => 'Lab copy']);
+    $copied = json_decode(json_encode($store->compile($labCopy)), true);
+    $watched = [];
+    foreach ($copied['scenes'] as $scene) {
+        $own = array_column($scene['indirect_events'] ?? [], 'id');
+        foreach ($scene['physics']['watches'] ?? [] as $w) {
+            $watched[] = isset($w['event_id']) && in_array($w['event_id'], $own, true);
+        }
+    }
+    same([count($watched), array_unique($watched)], [7, [true]], 'in a copy, every watch runs the copy\'s own event');
+    $store->deleteScenario($labCopy);
+}
+
 // tidy up
 exec('rm -rf '.escapeshellarg($dir));
 echo $failures ? "$failures of $checks checks FAILED\n" : "porting: all $checks checks passed\n";

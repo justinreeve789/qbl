@@ -3,6 +3,7 @@ import {
   C2S, ROOM_NAME, S2C, scopedMap, World,
   type ChatBroadcast, type EmoteBroadcast, type Id, type ItemMessage, type ItemRec, type JoinOptions,
   type MoveMessage, type NoticeMessage, type NpcRec, type PlayerRec, type ProgressMessage, type RewardMessage, type Scenario, type SceneMessage,
+  type PhysicsMessage, type PhysicsStateMessage, type PhysicsTickMessage, type PhysicsWatchMessage,
   type ShowBroadcast, type ShowMessage, type SnapMessage, type TrackMessage, type User, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WorldState,
 } from '@qbl/shared';
 
@@ -17,6 +18,10 @@ export interface ConnectionEvents {
   show: ShowBroadcast;
   /** A private message, to this player or from them. */
   whisper: WhisperBroadcast;
+  /** A shared physics experiment: all of it, then where things are, then what it noticed. */
+  physicsState: PhysicsStateMessage;
+  physicsTick: PhysicsTickMessage;
+  physicsWatch: PhysicsWatchMessage;
   /** Connection lost; the SDK is retrying. */
   drop: void;
   reconnect: void;
@@ -41,6 +46,7 @@ export abstract class GameConnection {
 
   private handlers: Handlers = {
     chat: new Set(), emote: new Set(), snap: new Set(), notice: new Set(), reward: new Set(), show: new Set(), whisper: new Set(),
+    physicsState: new Set(), physicsTick: new Set(), physicsWatch: new Set(),
     drop: new Set(), reconnect: new Set(), leave: new Set(),
   };
 
@@ -88,6 +94,8 @@ export abstract class GameConnection {
   track(msg: TrackMessage) { this.send(C2S.Track, msg); }
   /** A walk action for a character that roams: the server walks it, for everyone. */
   walk(msg: WalkMessage) { this.send(C2S.Walk, msg); }
+  /** Something done to the shared physics experiment of the scene. Only the game server runs shared experiments. */
+  physics(msg: PhysicsMessage) { this.send(C2S.Physics, msg); }
 }
 
 /** A Colyseus room on the game server. */
@@ -103,6 +111,9 @@ export class OnlineConnection extends GameConnection {
     room.onMessage(S2C.Progress, (m: RewardMessage) => this.emit('reward', m));
     room.onMessage(S2C.Show, (m: ShowBroadcast) => this.emit('show', m));
     room.onMessage(S2C.Whisper, (m: WhisperBroadcast) => this.emit('whisper', m));
+    room.onMessage(S2C.PhysicsState, (m: PhysicsStateMessage) => this.emit('physicsState', m));
+    room.onMessage(S2C.PhysicsTick, (m: PhysicsTickMessage) => this.emit('physicsTick', m));
+    room.onMessage(S2C.PhysicsWatch, (m: PhysicsWatchMessage) => this.emit('physicsWatch', m));
     room.onDrop(() => this.emit('drop', undefined));
     room.onReconnect(() => this.emit('reconnect', undefined));
     room.onLeave((code: number) => this.emit('leave', code));
