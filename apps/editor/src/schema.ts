@@ -569,6 +569,10 @@ export const ITEM_SETTINGS_FIELDS: Field[] = [
   { key: 'attach_offset_y', label: 'Offset Y', kind: 'number', placeholder: '0' },
   { key: 'attach_layer', label: 'Drawn', kind: 'select', placeholder: 'In front of the avatar', options: [['front', 'In front of the avatar'], ['behind', 'Behind the avatar']] },
   { key: 'art_faces', label: 'The artwork faces', kind: 'select', placeholder: 'Right', options: [['left', 'Left'], ['right', 'Right']] },
+  {
+    key: 'hide_rider_below', label: 'Hide the avatar below', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'Show the whole avatar', slider: { min: 0, max: 1 },
+    hint: 'How far down the item’s picture the avatar stops being drawn: 0 is the top of the picture, 1 the bottom. Use it so a rider sits in a UFO or a car instead of their legs showing beneath it.',
+  },
   { key: 'speed_multiplier', label: 'Vehicle speed multiplier', kind: 'number', min: 0.1, step: 0.1, placeholder: '1.5', slider: { min: 0.1, max: 4 } },
 ];
 

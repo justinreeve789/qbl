@@ -1411,6 +1411,7 @@
             "attach_offset_y": 4,
             "attach_layer": "front",
             "speed_multiplier": 1.3,
+            "hide_rider_below": 0.4,
             "id": 2,
             "scenario_id": 1,
             "name": "UFO",
