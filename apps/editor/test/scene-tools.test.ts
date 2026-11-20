@@ -97,15 +97,17 @@ test('items and characters: define them, with conditions', async () => {
 
   await page.click('.tabs >> text=Characters');
   await page.click('text=New character');
-  await page.waitForSelector('.grid .card');
-  await type('.card [data-field=name] input', 'Ferry keeper');
-  await page.locator('.card [data-animation=stand_right] select').selectOption({ label: 'guide.png' });
+  await page.waitForSelector('dialog[data-panel=character]');
+  await type('dialog[data-panel=character] [data-field=name] input', 'Ferry keeper');
+  await page.locator('dialog[data-panel=character] [data-animation=stand_right] select').selectOption({ label: 'guide.png' });
   // The character gets a close-up of its own, cut from the top third of its picture and shown beside it.
   await page.waitForFunction(() => {
-    const portrait = document.querySelector('.card .anim-preview.portrait img')?.getAttribute('src') ?? '';
-    return /^\/media\//.test(portrait) && portrait !== document.querySelector('.card .anim-preview.large img')?.getAttribute('src');
+    const portrait = document.querySelector('.character-card .anim-preview.portrait img')?.getAttribute('src') ?? '';
+    return /^\/media\//.test(portrait) && portrait !== document.querySelector('.character-card .anim-preview.large img')?.getAttribute('src');
   });
   await saved();
+  await page.click('dialog[data-panel=character] .panel-close');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
 
   const doc = await draft();
   const boat = doc.items![0]!;
@@ -310,7 +312,7 @@ test('delete a scene, a media file, and then the whole scenario', async () => {
 
   await page.click('.tabs >> text=Media');
   await page.click('.subtabs [data-tab=all]');
-  await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'boat.png' }) }).locator('text=Delete').click();
+  await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'boat.png' }) }).locator('.media-delete').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 5);
   const doc = await draft();
   // Not counting the platform's avatars, which every scenario is served with.

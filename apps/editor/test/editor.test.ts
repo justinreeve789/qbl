@@ -335,14 +335,19 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   // A character with a close-up.
   await page.click('.tabs >> text=Characters');
   await page.click('text=New character');
-  await page.waitForSelector('.card [data-animation=portrait]');
-  const card = page.locator('.card').first();
+  // A new character opens in its panel.
+  const card = page.locator('dialog[data-panel=character]');
+  await card.locator('[data-animation=portrait]').waitFor();
   await card.locator('[data-field=name] input').fill('Old Toad');
   await card.locator('[data-field=name] input').blur();
   await saved();
+  assert.match(await card.locator('.panel-title').innerText(), /Old Toad/, 'the panel\'s heading follows the name');
   // Its close-up is its portrait animation; nothing else is drawn yet.
   await card.locator('[data-animation=portrait] select').selectOption({ label: 'frog.png' });
   await saved();
+  await card.locator('.panel-close').click();
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
+  assert.match(await page.locator('.character-card .card-title').first().innerText(), /Old Toad/, 'the card behind has caught up with the name');
   await page.click('.tabs >> text=Media');
   assert.equal(await page.locator('text=Players can choose this as their avatar').count(), 0, 'avatars are the platform\'s: a scenario does not choose them');
 
@@ -395,20 +400,24 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
 
   // Old Toad stands as the whole animated PNG, and hops on some of its frames.
   await page.click('.tabs >> text=Characters');
-  const toad = page.locator('.character-card', { has: page.locator('.card-title', { hasText: 'Old Toad' }) });
+  await page.locator('.character-card', { has: page.locator('.card-title', { hasText: 'Old Toad' }) }).locator('[data-open=character]').click();
+  const toad = page.locator('dialog[data-panel=character]');
   await toad.locator('[data-animation=stand_right] select').selectOption({ label: 'hop.apng (animated)' });
   await saved();
   assert.match(await toad.locator('[data-animation=stand_left]').innerText(), /Uses Standing, facing right, mirrored/, 'the other side is filled in, mirrored');
   assert.match(await toad.locator('[data-animation=walk_right]').innerText(), /Uses Standing, facing right/);
   await toad.locator('.anim-add input').fill('hop');
   await toad.locator('text=+ Add animation').click();
-  await page.waitForSelector('.character-card [data-animation=hop]');
-  await page.waitForSelector('.character-card .frame-grid .sheet-cell');
-  assert.equal(await toad.locator('.frame-grid .sheet-cell:not([disabled])').count(), 4, 'its frames are cut from the file to pick from');
-  await toad.locator('.frame-grid .sheet-cell[data-frame="3"]').click();
+  await toad.locator('[data-animation=hop]').waitFor();
+  // The new animation opens in a panel of its own, over the character's, to pick its frames.
+  const hopPanel = page.locator('dialog[data-panel=animation]');
+  await hopPanel.locator('.frame-grid .sheet-cell').first().waitFor();
+  assert.match(await hopPanel.locator('.panel-title').innerText(), /Old Toad · hop/);
+  assert.equal(await hopPanel.locator('.frame-grid .sheet-cell:not([disabled])').count(), 4, 'its frames are cut from the file to pick from');
+  await hopPanel.locator('.frame-grid .sheet-cell[data-frame="3"]').click();
   await saved();
   await page.waitForFunction(() => document.querySelectorAll('.frame-grid .sheet-cell.in').length === 1);
-  await toad.locator('.frame-grid .sheet-cell[data-frame="1"]').click();
+  await hopPanel.locator('.frame-grid .sheet-cell[data-frame="1"]').click();
   await saved();
   await page.waitForFunction(() => document.querySelectorAll('.frame-grid .sheet-cell.in').length === 2);
   const toadRow = async () => (await api<{ characters: Array<Record<string, any>> }>(`/editor/scenarios/${scenarioId}`)).characters.find((c) => c.name === 'Old Toad')!;
@@ -421,15 +430,22 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
     await page.waitForTimeout(60);
   }
   assert.deepEqual([...seen].sort(), ['1', '3']);
-  await toad.locator('[data-animation=hop] input.anim-duration').fill('300');
-  await toad.locator('[data-animation=hop] input.anim-duration').blur();
+  await hopPanel.locator('input.anim-duration').fill('300');
+  await hopPanel.locator('input.anim-duration').blur();
   await saved();
   assert.deepEqual((await toadRow()).settings.animations.hop, { media_id: hop.id, frames: [3, 1], duration: 300 });
+  assert.match(await toad.locator('[data-animation=hop] .anim-summary').innerText(), /2 frames[\s\S]*300 ms/, 'the character\'s list sums it up');
+  // Escape puts away the animation's panel, then the character's.
+  await page.keyboard.press('Escape');
+  await hopPanel.waitFor({ state: 'detached' });
+  await page.keyboard.press('Escape');
+  await toad.waitFor({ state: 'detached' });
+  assert.match(await page.locator('.character-card [data-pose=stand_right]').innerText(), /✓/, 'the card shows which poses are drawn');
 
   // The sheet tool, for items and pictures: say the grid, add an animation and click its frames.
   await page.click('.tabs >> text=Media');
-  const card = page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'frog.png' }) });
-  await card.locator('[data-fold=media-sheet] > summary').click();
+  await page.locator('[data-media]', { has: page.locator('.card-title', { hasText: 'frog.png' }) }).locator('[data-open=sheet]').click();
+  const card = page.locator('dialog[data-panel=media]');
   await card.locator('[data-field=columns] input').fill('2');
   await card.locator('[data-field=columns] input').blur();
   await saved();
@@ -442,9 +458,9 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
   await page.waitForFunction(() => document.querySelectorAll('.sheet-animation[data-animation]').length === 1);
   assert.equal(await card.locator('.sheet-animation.editing input[type=text]').inputValue(), 'idle', 'the first usual name is offered');
   await card.locator('.sheet-cell[data-frame="3"]').click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-fold=media-sheet] .sheet-cell.in').length === 1);
+  await page.waitForFunction(() => document.querySelectorAll('[data-section=sheet] .sheet-cell.in').length === 1);
   await card.locator('.sheet-cell[data-frame="1"]').click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-fold=media-sheet] .sheet-cell.in').length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('[data-section=sheet] .sheet-cell.in').length === 2);
   await saved();
   assert.deepEqual((await media('frog.png')).params.animations[0], { name: 'idle', frames: [3, 1] });
   // Back to one picture: the frog is Old Toad's close-up and the pond's label.
@@ -455,6 +471,8 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
   await card.locator('[data-field=rows] input').blur();
   await saved();
   assert.equal((await media('frog.png')).params.sheet, undefined);
+  await card.locator('.panel-close').click();
+  await card.waitFor({ state: 'detached' });
 
   // A move for everyone, on the Moves page.
   await page.click('.tabs >> text=Moves');

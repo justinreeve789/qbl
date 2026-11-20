@@ -11,12 +11,14 @@ The images, sounds and videos the scenario uses. **Upload files** (pictures: PNG
 
 Media is filed under sub-tabs by what it is used for: **Backgrounds**, **NPCs**, **Items**, **Vehicles**, **Sounds and music**, **Video**, **Shop items** and **Other images**. A file follows how you use it; one uploaded while a sub-tab is open is filed there until its use says otherwise, and **Details → Filed under** overrides it.
 
-Each card previews the file and has two folds:
+Each card previews the file, says what it is filed under and its size, and marks a sprite sheet or an animated PNG. Each kind has a colour, on its card and on its sub-tab. Click a picture or **✏️ Details** to open the file in a panel over the page; **🎞️ Sprite sheet** opens the same panel at its sprite sheet. Press Escape, the ×, or click outside the panel to close it. The panel has two parts:
 
+* **📝 Details**: a large preview, then name, address, type, load order, scale, size and **Filed under**.
 * **🎞️ Sprite sheet and animations** (images). A sprite sheet is one picture holding frames in a grid. Say how many **Frames across** and **Frames down**: characters can then take frames from it on the Characters page, and several characters can share one sheet. Animations named here are for items, vehicles and pictures: add one and click frames on the sheet to put them in order (shift-click adds every frame up to the one you click); a small preview plays it. `idle` and `walk` play by themselves, and `jump`, `spin`, `crouch`, `wave` and `dance` are built-in moves.
 
 An **animated PNG** is kept as it is: its card says how many frames it has and how long it plays. It plays by itself wherever it is used, and on the Characters page an animation can take all of its frames or some of them.
-* **Details**: name, address, type, load order, scale and size.
+
+The 🗑 on a card deletes the file, as does **Delete** in its panel.
 
 :::caution
 Deleting media leaves anything that used it without a picture.
@@ -39,7 +41,9 @@ Things players can pick up, wear or ride: **Unique** (only one player can hold i
 
 ## Characters
 
-People and creatures players meet. Each card shows the character **Standing** and its **Portrait**, then its **Name**, its **🎞️ Animations**, its size and voice, and when it is present.
+People and creatures players meet. Each card shows the character **Standing** and its **Portrait**, its name, and a label for each pose: a solid one for a pose that is drawn (✓), a dashed one for a pose another stands in for, and how many more animations it has. Click the character or **✏️ Edit character** to open it in a panel; **New character** opens the new one straight away.
+
+The panel has the character on one side (how it stands, walks and looks in close-up, its **Name**, size and voice, and when it is present) and its **🎬 Animations** on the other, grouped and coloured by kind: 🧍 standing (blue), 🚶 walking (orange), 🖼️ the close-up (gold) and ✨ moves and other animations (purple).
 
 A character is drawn from its animations. Each is a picture (a still image, an animated PNG or a sprite sheet) and, for a sheet or an animated PNG, the frames to play. Five come first, the **poses**, which the game shows by itself:
 
@@ -49,15 +53,15 @@ A character is drawn from its animations. Each is a picture (a still image, an a
 
 You need not fill them all. A pose left empty says what it uses instead (*Uses Standing, facing right, mirrored*): one standing picture is enough for a character that stands, turns and glides; add walking frames, the other side and a close-up as you have them. The first time a character gets a standing picture, a close-up is cut from the top of it, which you can replace.
 
-For each animation you can set:
+Each animation in the list shows a preview, its **Picture** (choose one there to draw a pose) and a summary: frames, speed, whether it loops, mirrored. **⚙️ Frames & timing** (or clicking its preview) opens the animation in a panel of its own, over the character's, with a large preview and:
 
 * **Picture**. Sheets and animated PNGs are marked in the list.
-* **Frames**, in the order they play: type `0 1 2` or `0-3`, or press **Pick frames** and click them on the picture (shift-click adds every frame up to the one you click). Empty: every frame.
+* **Frames**, in the order they play: type `0 1 2` or `0-3`, or click them on the picture below (shift-click adds every frame up to the one you click). Each picked frame shows its place in the order, and the preview's caption reads it out (*Plays 2 → 0*). **Use every frame** empties the list. Empty: every frame.
 * **One pass (ms)**: how long it takes. Empty: an animated PNG's own speed, or 100 ms a frame.
 * **Repeats**: poses loop; other animations play once unless you say otherwise.
 * **Mirror**: draw it flipped, so art facing one way serves the other.
 
-**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture. A *Play an animation* action plays it; one named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
+**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it; one named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
 
 **Voice**: pitch, pace and a preferred voice name, for when a line is read aloud by the browser.
 
