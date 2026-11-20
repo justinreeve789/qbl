@@ -2,6 +2,8 @@
 
 namespace App\Qbl;
 
+use App\Qbl\Billing\Entitlements;
+
 /**
  * The editor's HTTP API, as a function from a request to a response.
  *
@@ -24,10 +26,14 @@ namespace App\Qbl;
  *   GET    scenarios/{id}/export                  the scenario as a ZIP file (scenario.json and the uploaded files)
  *   GET    scenarios/{id}/preview                 the scenario JSON generated from the tables as they are now
  *   POST   scenarios/{id}/publish                 generate the JSON and make it what players get
+ *
+ * The AI generator's routes (editor/generations) are App\Qbl\Generation\GenerationApi's.
+ * A scenario's tier (settings.tier: free or curricular) is changed by administrators only.
  */
 class EditorApi
 {
-    public function __construct(private ScenarioStore $store) {}
+    /** `$entitlements`: plans, when billing is on (a copy of a curricular mission needs one). */
+    public function __construct(private ScenarioStore $store, private ?Entitlements $entitlements = null) {}
 
     /**
      * @param  array|null  $user   ['id' => int, 'name' => string, 'role' => string], or null if not signed in
@@ -78,6 +84,9 @@ class EditorApi
         $scenario = $this->store->scenario($id);
         // A copy to make one's own: of a scenario one can edit as it is now, or of anyone's public mission as it was published.
         if ($scenario && array_slice($parts, 2) === ['duplicate'] && $method === 'POST') {
+            if (ClassStore::isCurricular($scenario) && ($user['role'] ?? '') !== 'admin' && $this->entitlements && ! $this->entitlements->curricular((int) $user['id'])) {
+                throw new StoreError(402, 'That is one of the curricular missions, which come with a Teacher plan.');
+            }
             if ($this->store->canEdit($scenario, $user)) {
                 $rows = $this->store->bundle($id);
             } elseif ($scenario['published_at'] !== null && ($scenario['settings']['visibility'] ?? 'public') !== 'private') {
@@ -92,12 +101,17 @@ class EditorApi
             // The same answer whether it does not exist or belongs to someone else.
             throw new StoreError(404, 'Scenario not found.');
         }
+        // A curricular mission a teacher can edit (a shared sample, or their own copy) is still only
+        // theirs to open, preview or export while their plan includes curricular missions.
+        if (ClassStore::isCurricular($scenario) && ($user['role'] ?? '') !== 'admin' && $this->entitlements && ! $this->entitlements->curricular((int) $user['id'])) {
+            throw new StoreError(402, 'That is one of the curricular missions, which come with a Teacher plan.');
+        }
         $rest = array_slice($parts, 2);
 
         if ($rest === []) {
             return match ($method) {
                 'GET' => [200, $this->store->bundle($id)],
-                'PATCH', 'PUT' => [200, ['scenario' => $this->store->updateScenario($id, $body)]],
+                'PATCH', 'PUT' => [200, ['scenario' => $this->store->updateScenario($id, $this->keepTier($scenario, $body, $user))]],
                 'DELETE' => $this->deleted(fn () => $this->store->deleteScenario($id)),
                 default => throw new StoreError(405, 'Method not allowed.'),
             };
@@ -153,6 +167,32 @@ class EditorApi
         }
 
         throw new StoreError(404, 'Not found.');
+    }
+
+    /**
+     * A mission's tier (settings.tier: "free" or "curricular") is set by administrators only: the
+     * curricular missions are what the teacher plans sell. Settings sent without a tier keep the one it has.
+     */
+    private function keepTier(array $scenario, array $body, array $user): array
+    {
+        if (! is_array($body['settings'] ?? null)) {
+            return $body;
+        }
+        $now = ClassStore::isCurricular($scenario) ? 'curricular' : 'free';
+        $asked = $body['settings']['tier'] ?? $now;
+        if (! in_array($asked, ['free', 'curricular'], true)) {
+            throw new StoreError(422, 'A mission\'s tier is "free" or "curricular".');
+        }
+        if ($asked !== $now && ($user['role'] ?? '') !== 'admin') {
+            throw new StoreError(403, 'Only an administrator can change whether a mission is free or curricular.');
+        }
+        if ($asked === 'curricular') {
+            $body['settings']['tier'] = 'curricular';
+        } else {
+            unset($body['settings']['tier']);
+        }
+
+        return $body;
     }
 
     private function id(string $part): int

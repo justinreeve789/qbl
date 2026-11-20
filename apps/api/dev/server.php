@@ -19,6 +19,13 @@ foreach (['StoreError', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'C
     require __DIR__."/../app/Qbl/$class.php";
 }
 
+// Everything else (plans and credits, the generator's API, the district panel) is loaded when used.
+spl_autoload_register(function (string $class) {
+    if (str_starts_with($class, 'App\\') && is_file($file = __DIR__.'/../app/'.str_replace('\\', '/', substr($class, 4)).'.php')) {
+        require $file;
+    }
+});
+
 use App\Qbl\EditorApi;
 use App\Qbl\ScenarioStore;
 
@@ -50,8 +57,18 @@ if (str_starts_with($path, '/scenario-assets/')) {
 
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");
 $store = new ScenarioStore($pdo, "$dataDir/media", '/media');
-foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema()) as $sql) {
+foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema(), App\Qbl\Api\Clients::sqliteSchema(), App\Qbl\Billing\Credits::sqliteSchema(),
+    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
+}
+foreach (['organizations' => ['integrations_enabled_at', 'license'], 'users' => ['self_registered_at', 'email_verified_at']] as $table => $columns) {
+    foreach ($columns as $column) {
+        try {
+            $pdo->exec("ALTER TABLE `$table` ADD COLUMN `$column`");
+        } catch (PDOException) {
+            // There already.
+        }
+    }
 }
 // First run (no scenarios yet): add the shipped scenarios (the demo mission) from their ZIPs, as
 // the Laravel seeder does, and publish them. After that they are left alone.
@@ -257,6 +274,42 @@ if ($path === '/api/me/progress' || $path === '/api/shop' || preg_match('#^/api/
     } catch (App\Qbl\StoreError $e) {
         respond($e->status, ['message' => $e->getMessage()]);
     }
+}
+// Laravel's env(), for reading config files here.
+if (! function_exists('env')) {
+    function env(string $key, mixed $default = null): mixed
+    {
+        $value = getenv($key);
+
+        return $value === false ? $default : match (strtolower($value)) {
+            'true' => true, 'false' => false, 'null', '' => null, default => $value,
+        };
+    }
+}
+// Plans and billing: off here (everything open), as on a site without QBL_BILLING_ENABLED.
+// QBL_DEV_BILLING=1: on, to look at the plans pages (nothing can be bought: there is no Stripe here).
+$plans = new App\Qbl\Billing\Plans(['enabled' => (bool) getenv('QBL_DEV_BILLING')] + require __DIR__.'/../config/qbl_billing.php');
+$entitlements = new App\Qbl\Billing\Entitlements($pdo, $plans);
+$credits = new App\Qbl\Billing\Credits($pdo, $entitlements);
+if (preg_match('#^/api/billing(?:/(checkout|change|portal|promotion|credits))?$#', $path, $m)) {
+    respond(...(new App\Qbl\Billing\BillingApi($entitlements, $credits, new App\Qbl\Billing\Subscriptions($pdo, $plans, null, 'http://localhost')))->handle($method, $m[1] ?? '', $body, $user));
+}
+// The generator needs the real backend (keys, the queue worker): here it says so.
+if (preg_match('#^/api/editor/generations(?:/(\d+))?$#', $path, $m)) {
+    respond(...(new App\Qbl\Generation\GenerationApi($pdo, $entitlements, $credits, fn () => null, fn () => throw new RuntimeException('the development server does not make missions; use Docker.')))
+        ->handle($method, isset($m[1]) ? [$m[1]] : [], $body, $user));
+}
+// The district admin panel, with its integrations' secrets merely encoded (NOT FOR DEPLOYMENT).
+if (str_starts_with($path, '/api/district/')) {
+    $http = new App\Qbl\Generation\Http\CurlHttpClient(0);
+    $district = null;
+    $district = new App\Qbl\District\DistrictApi($pdo, new App\Qbl\District\Integrations($pdo, 'base64_encode', 'base64_decode'), new App\Qbl\District\RosterSync($pdo),
+        new App\Qbl\District\CleverClient($http, '', ''), new App\Qbl\District\GoogleClassroomClient($http), 'http://localhost:5173',
+        function (int $run) use (&$district) {
+            $district->performSync($run);
+        });
+    $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
+    respond(...$district->handle($method, substr($path, strlen('/api/district')), $body, $user, $files));
 }
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];

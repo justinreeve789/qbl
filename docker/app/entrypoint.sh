@@ -126,4 +126,16 @@ else
   fi
 fi
 
+# ---- the queue worker ------------------------------------------------------------------------------
+# Work that takes minutes runs here, not in a web request: missions from the editor's AI generator,
+# and the district admin panel's roster syncs (Clever, Google Classroom). Restarted if it stops.
+# QBL_QUEUE_WORKER=false turns it off (run "php artisan queue:work" elsewhere instead).
+if [ "${QBL_QUEUE_WORKER:-true}" = true ]; then
+  echo "qbl: starting the queue worker (AI missions, roster syncs)"
+  (while true; do
+    php artisan queue:work --tries=1 --timeout=3600 --sleep=3 --memory=2048 2>&1 | label worker
+    sleep 5
+  done) &
+fi
+
 exec "$@"

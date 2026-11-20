@@ -8,6 +8,9 @@ const SIGN_IN_PROBLEMS: Record<string, string> = {
   unverified: 'Google has not verified that email address yet.',
   expired: 'That sign-in took too long. Please try again.',
   failed: 'Google sign-in did not work. Please try again.',
+  sso: 'Signing in through your school did not work. Please try again.',
+  noaccount: 'Your school has not added you to QuestLab yet.',
+  inactive: 'Your school has turned this account off.',
 };
 
 /** Sign-in. The game and the editor share the sign-in, so someone signed in to one is signed in to both. */

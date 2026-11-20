@@ -109,6 +109,35 @@ services:
       CSP_BASE_URL: ${CSP_BASE_URL:-}
       # Each run's pictures, blueprint and ZIP, kept so a run can be resumed.
       QBL_GEN_WORK_DIR: /data/generations
+      # The queue worker in this container runs the editor's AI generations and the district panel's
+      # roster syncs. A job may take up to an hour, so the queue must not hand it out again sooner.
+      QBL_QUEUE_WORKER: ${QBL_QUEUE_WORKER:-true}
+      QUEUE_CONNECTION: database
+      DB_QUEUE_RETRY_AFTER: "3700"
+      # Plans and Stripe billing, and AI generator credits. Off: everything is open to everyone.
+      # See "Plans and billing" in the README and .env.example.
+      QBL_BILLING_ENABLED: ${QBL_BILLING_ENABLED:-false}
+      STRIPE_SECRET: ${STRIPE_SECRET:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_TEACHER: ${STRIPE_PRICE_TEACHER:-}
+      STRIPE_PRICE_TEACHER_PLUS: ${STRIPE_PRICE_TEACHER_PLUS:-}
+      STRIPE_AUTOMATIC_TAX: ${STRIPE_AUTOMATIC_TAX:-false}
+      QBL_TRIAL_DAYS: ${QBL_TRIAL_DAYS:-7}
+      QBL_TRIAL_REQUIRES_CARD: ${QBL_TRIAL_REQUIRES_CARD:-true}
+      QBL_BILLING_PROMOTES_TO_TEACHER: ${QBL_BILLING_PROMOTES_TO_TEACHER:-true}
+      QBL_FREE_STUDENT_LIMIT: ${QBL_FREE_STUDENT_LIMIT:-0}
+      QBL_TEACHER_STUDENT_LIMIT: ${QBL_TEACHER_STUDENT_LIMIT:-40}
+      QBL_PRICE_TEACHER: ${QBL_PRICE_TEACHER:-30}
+      QBL_PRICE_TEACHER_PLUS: ${QBL_PRICE_TEACHER_PLUS:-50}
+      QBL_PLUS_MONTHLY_CREDITS: ${QBL_PLUS_MONTHLY_CREDITS:-100}
+      QBL_PLUS_CREDIT_CARRYOVER: ${QBL_PLUS_CREDIT_CARRYOVER:-100}
+      QBL_PLUS_TRIAL_CREDITS: ${QBL_PLUS_TRIAL_CREDITS:-20}
+      QBL_CREDITS_PER_GENERATION: ${QBL_CREDITS_PER_GENERATION:-10}
+      QBL_SALES_EMAIL: ${QBL_SALES_EMAIL:-}
+      QBL_SALES_PHONE: ${QBL_SALES_PHONE:-}
+      # Clever (district admin panel): QBL's Clever application. See "District admin panel" in the README.
+      CLEVER_CLIENT_ID: ${CLEVER_CLIENT_ID:-}
+      CLEVER_CLIENT_SECRET: ${CLEVER_CLIENT_SECRET:-}
       # The client (the marketing page and the game) is built by Vite when app starts. true: it is
       # also rebuilt whenever apps/client or packages/shared changes. false: built once per start
       # (docker compose restart app after a change), which saves memory on a server.

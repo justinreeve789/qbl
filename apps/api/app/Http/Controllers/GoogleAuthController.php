@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Support\SignInPage;
 use App\Models\User;
+use App\Qbl\District\GoogleClassroomClient;
+use App\Qbl\District\Integrations;
+use App\Qbl\District\Sso;
+use App\Qbl\StoreError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -92,6 +97,22 @@ class GoogleAuthController extends Controller
             return $back('unverified');
         }
         $domain = Str::after($email, '@');
+
+        // A school's or district's Workspace domain, claimed in the district admin panel: its people
+        // get the organization's account (by Google's id for them, as Classroom rosters know them),
+        // with no name or address kept. An account already tied to this Google account keeps working.
+        $district = User::where('google_id', $google->getId())->exists() ? null : app(Integrations::class)->googleDomain($domain);
+        if ($district) {
+            try {
+                $user = User::findOrFail(app(Sso::class)->resolve($district['organization_id'], GoogleClassroomClient::PREFIX.$google->getId(), null, (bool) $district['config']['create_users']));
+            } catch (StoreError $e) {
+                return $back($e->status === 403 && str_contains($e->getMessage(), 'turned') ? 'inactive' : 'noaccount');
+            }
+            $page = SignInPage::handoff($user, $return === '/missions' ? SignInPage::localPath(null, $user->role) : $return, 'google');
+
+            return $page->withCookie($forget);
+        }
+
         $allowed = config('qbl.google.domains');
         if ($allowed && ! in_array($domain, $allowed, true)) {
             return $back('domain');

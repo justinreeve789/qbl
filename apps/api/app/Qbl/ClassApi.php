@@ -2,6 +2,7 @@
 
 namespace App\Qbl;
 
+use App\Qbl\Billing\Entitlements;
 use PDO;
 
 /**
@@ -33,10 +34,10 @@ class ClassApi
 {
     private ClassStore $classes;
 
-    /** `$ranks`: the platform's ranks, for profiles. Default: ProgressStore's. */
-    public function __construct(private PDO $pdo, private ?array $ranks = null)
+    /** `$ranks`: the platform's ranks, for profiles. Default: ProgressStore's. `$entitlements`: plans, when billing is on. */
+    public function __construct(private PDO $pdo, private ?array $ranks = null, ?Entitlements $entitlements = null)
     {
-        $this->classes = new ClassStore($pdo);
+        $this->classes = new ClassStore($pdo, $entitlements);
     }
 
     /** @return array{0: int, 1: array|null} HTTP status and JSON body */

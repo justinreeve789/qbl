@@ -53,9 +53,9 @@ const CODE_SHAPE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 /** The site's own first path segments. A scenario code may not be one of them. */
 export const RESERVED_CODES: readonly string[] = [
-  'about', 'admin', 'api', 'app', 'assets', 'auth', 'classes', 'docs', 'editor', 'game', 'help', 'home', 'index',
-  'login', 'logout', 'media', 'missions', 'new', 'play', 'profile', 'register', 'scenario-assets', 'scenarios',
-  'settings', 'shop', 'signin', 'signout', 'signup', 'static', 'teach', 'wardrobe',
+  'about', 'admin', 'api', 'app', 'assets', 'auth', 'billing', 'classes', 'district', 'docs', 'editor', 'game', 'help', 'home', 'index',
+  'login', 'logout', 'media', 'missions', 'new', 'play', 'plans', 'pricing', 'profile', 'register', 'scenario-assets', 'scenarios',
+  'settings', 'shop', 'signin', 'signout', 'signup', 'sso', 'static', 'teach', 'wardrobe',
 ];
 
 /** A code as it is stored: trimmed and lowercase. */

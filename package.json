@@ -23,10 +23,12 @@
     "test:porting": "php apps/api/tests/porting.php",
     "test:activity": "php apps/api/tests/activity.php",
     "test:api-v1": "php apps/api/tests/api_v1.php",
+    "test:billing": "php apps/api/tests/billing.php",
+    "test:district": "php apps/api/tests/district.php",
     "test:generation": "php -d memory_limit=2G apps/api/tests/generation.php",
     "make:hub": "php tools/make-hub.php",
     "test:editor": "npm run test -w @qbl/editor",
-    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:generation && npm run test:editor",
+    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:billing && npm run test:district && npm run test:generation && npm run test:editor",
     "test:laravel": "cd apps/api && php artisan test"
   },
   "devDependencies": {

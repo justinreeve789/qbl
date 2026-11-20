@@ -1129,3 +1129,45 @@ h2.section-head { font-size: 15px; letter-spacing: 0.02em; margin-bottom: 12px; 
   .page { padding: 16px 12px 40px; }
   .page-head { flex-wrap: wrap; }
 }
+
+/* ---- Plan & credits, the generator, the district admin panel ------------------------------- */
+a.button { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text); }
+a.button.primary { color: var(--accent-text); }
+.plan-includes { list-style: none; padding: 0; margin: 8px 0; line-height: 1.7; }
+.plan-includes li.no { color: var(--muted); }
+.credit-balance { margin: 4px 0; font-size: 15px; }
+.credit-balance strong { font-size: 32px; margin-right: 4px; }
+table.ledger { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+table.ledger th, table.ledger td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.ledger td.plus { color: #8be9a8; }
+table.ledger td.minus { color: #ffb4b4; }
+.field-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+.field-row .field { flex: 1 1 120px; }
+.generate-form textarea { width: 100%; }
+.card.generation.failed { border-top-color: var(--danger); }
+.card.generation.done { border-top-color: var(--ok); }
+.progress { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; margin: 8px 0; }
+.progress span { display: block; height: 100%; background: var(--accent-solid); transition: width 0.6s ease; }
+.tiles-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.stat { flex: 1 1 120px; display: flex; flex-direction: column; padding: 10px 14px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); }
+.stat strong { font-size: 24px; }
+.stat span { color: var(--muted); font-size: 13px; }
+.section-title { margin: 22px 0 10px; }
+a.org-card { color: var(--text); text-decoration: none; display: block; }
+a.org-card:hover { border-color: var(--accent); }
+.card.qbl-only { border-top-color: #e0a63a; }
+.card.integration.on { border-top-color: var(--ok); }
+.card.integration .field, .card.integration label.check { margin: 6px 0; }
+.card.integration textarea, .card.integration input[type='text'], .card.integration input[type='password'] { width: 100%; }
+label.check { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.copy-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; margin: 6px 0; }
+.copy-row .field-label { grid-column: 1 / -1; }
+.copy-row code { overflow-wrap: anywhere; background: var(--surface-2); padding: 3px 6px; border-radius: 4px; font-size: 12px; }
+.secret-box { margin: 10px 0; padding: 10px; border: 1px dashed #e0a63a; border-radius: 6px; background: rgba(224, 166, 58, 0.08); }
+.secret-box[hidden] { display: none; }
+.client-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.client-form .scopes { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px 10px; font-size: 13px; }
+li.revoked { opacity: 0.6; }
+ul.runs { list-style: none; padding: 0; margin: 0; }
+ul.runs > li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.license-form { margin-top: 10px; }

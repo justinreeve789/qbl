@@ -12,7 +12,38 @@ export const SIGN_IN_PROBLEMS: Record<string, string> = {
   unverified: 'Google has not verified that email address yet.',
   expired: 'That sign-in took too long. Please try again.',
   failed: 'Google sign-in did not work. Please try again.',
+  // Signing in through a school's or district's own system (SAML, Clever, a claimed Google domain).
+  sso: 'Signing in through your school did not work. Please try again, or ask your teacher.',
+  noaccount: 'Your school has not added you to QuestLab yet. Ask your teacher.',
+  inactive: 'Your school has turned this account off. Ask your teacher about it.',
 };
+
+/** The plans page's view of plans and the account's own (App\Qbl\Billing\BillingApi). */
+export interface PlanCard {
+  key: string;
+  name: string;
+  price: number;
+  summary: string;
+  curricular: boolean;
+  generator: boolean;
+  students: number | null;
+  monthly_credits: number;
+  credit_carryover: number;
+  trial_credits?: number;
+}
+export interface Billing {
+  enabled: boolean;
+  payments: boolean;
+  trial_days: number;
+  plans: PlanCard[];
+  costs: { generation: number };
+  /** A number to call about a school or district quote, when the site gives one. */
+  sales_phone?: string | null;
+  entitlements?: { plan: string; plan_name: string; source: string; trial: boolean; curricular: boolean; generator: boolean; students: number | null; organization: { name: string } | null };
+  subscription?: { plan: string | null; status: string | null; trial_ends_at: string | null; current_period_end: string | null; cancel_at_period_end: boolean; trial_used: boolean; manageable: boolean } | null;
+  credits?: { balance: number; monthly: number } | null;
+}
+export interface QuoteRequest { name: string; email: string; organization: string; role?: string; phone?: string; students?: number; message?: string }
 
 /** Read and clear a `#signin=problem` left by a failed Google sign-in. */
 export function takeSignInProblem(): string | undefined {
@@ -213,6 +244,14 @@ export class Api {
   }
 
   /** What the player can play: public missions and those assigned to them. Null where the backend has no such list. */
+  // Plans and billing.
+  billing = () => this.call<Billing>('GET', '/billing');
+  checkout = async (plan: string, promotionCode?: string) => (await this.call<{ url: string }>('POST', '/billing/checkout', { plan, ...(promotionCode ? { promotion_code: promotionCode } : {}) })).url;
+  changePlan = (plan: string) => this.call<Billing>('POST', '/billing/change', { plan });
+  billingPortal = async () => (await this.call<{ url: string }>('POST', '/billing/portal')).url;
+  promotion = async (code: string) => (await this.call<{ promotion: { code: string; description: string } }>('POST', '/billing/promotion', { code })).promotion;
+  quote = async (request: QuoteRequest) => (await this.call<{ message: string }>('POST', '/billing/quote', request)).message;
+
   async missions(): Promise<Mission[] | null> {
     try {
       return (await this.call<{ missions: Mission[] }>('GET', '/missions')).missions;

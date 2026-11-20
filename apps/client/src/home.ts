@@ -21,6 +21,10 @@ export interface Mission {
   due_at?: string | null;
   note?: string | null;
   started_at?: string | null;
+  /** free, or curricular (comes with a teacher plan). */
+  tier?: 'free' | 'curricular';
+  /** A curricular mission the plan does not include (a teacher's own, or for an assignment the teacher's). */
+  locked?: boolean;
 }
 
 /**
@@ -45,9 +49,9 @@ export function avatarPicture(avatar: AvatarChoice): CharacterPicture {
 export interface MissionCard {
   mission: Mission;
   href: string;
-  action: 'Start' | 'Continue';
+  action: 'Start' | 'Continue' | 'See plans';
   /** Short labels under the title: who assigned it, the team, when it is due. */
-  tags: { text: string; tone: 'plain' | 'team' | 'due' | 'late' }[];
+  tags: { text: string; tone: 'plain' | 'team' | 'due' | 'late' | 'locked' }[];
 }
 
 /** Times from the API are UTC, written "2026-12-01 15:00:00". */
@@ -81,6 +85,12 @@ export function missionCard(mission: Mission, now: Date, locale?: string): Missi
     }
   }
   const query = mission.group === 'public' ? '' : `?group=${encodeURIComponent(mission.group)}`;
+  // A curricular mission without the plan for it: open ones lead to the plans; an assigned one
+  // stays where it is (the teacher's plan has lapsed) and says it is closed for now.
+  if (mission.locked) {
+    if (mission.kind === 'public') return { mission, href: '/plans', action: 'See plans', tags: [...tags, { text: '🔒 With a teacher plan', tone: 'locked' }] };
+    tags.push({ text: '🔒 Closed for now', tone: 'locked' });
+  }
   return { mission, href: `/${mission.code}${query}`, action: mission.started_at ? 'Continue' : 'Start', tags };
 }
 
@@ -121,6 +131,8 @@ export interface HomeOptions {
    * missions. The page is drawn at once and this part fills in when it arrives.
    */
   desk?: Promise<TeacherDesk>;
+  /** The account is run by a school or district (rostered, or signed in through it): its plan is the school's. */
+  managed?: boolean;
 }
 
 
@@ -254,6 +266,10 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
     };
     actions.push({ key: 'profile', label: 'Profile: name and password', icon: 'profile', run: () => onProfile(renamed) });
   }
+  // Plans: what a teacher plan gives, the free trial, billing. Not for guests, nor for accounts a school runs.
+  if (user.role !== 'guest' && !options.managed) {
+    actions.push({ key: 'plans', label: 'Plans and billing', icon: 'plan', run: () => window.location.assign('/plans') });
+  }
   if (avatars.length) {
     actions.push({ key: 'character', label: 'Change your character', icon: 'account', run: () => {
       if (picker.hidden) togglePicker();
@@ -272,7 +288,7 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
     const cards = el('div', 'qbl-missions');
     for (const mission of list) {
       const card = missionCard(mission, now);
-      const a = el('a', `qbl-mission ${mission.kind}`);
+      const a = el('a', `qbl-mission ${mission.kind}${mission.locked ? ' locked' : ''}`);
       a.href = card.href;
       const art = el('div', 'qbl-mission-art');
       if (mission.image) art.style.backgroundImage = `url("${mission.image}")`;

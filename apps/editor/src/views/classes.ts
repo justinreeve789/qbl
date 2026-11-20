@@ -53,7 +53,7 @@ export function classesView(api: Api): HTMLElement {
       'div',
       { class: 'card', 'data-card': 'students' },
       h('h2', null, `My students (${students.length})`),
-      h('p', { class: 'muted' }, 'Add a student by the email address they sign in with. They need to have signed in once.'),
+      h('p', { class: 'muted' }, 'Add a student by the email address they sign in with. They need to have signed in once. How many you can have depends on your ', h('a', { href: '#/plan' }, 'plan'), '.'),
       form,
       students.length
         ? h('ul', { class: 'people' }, ...students.map((s) =>
@@ -74,7 +74,9 @@ export function classesView(api: Api): HTMLElement {
   const assignmentForm = (existing: Assignment | null, done: () => void) => {
     const chosen = new Set<number>(existing ? existing.students.map((s) => s.id) : students.map((s) => s.id));
     let teams: Team[] = existing ? existing.teams.map((t) => ({ ...t, student_ids: [...t.student_ids] })) : [];
-    const scenario = h('select', { 'aria-label': 'Mission' }, ...scenarios.map((s) => h('option', { value: s.id }, s.visibility === 'private' ? `${s.title} (private)` : s.title)));
+    // Curricular missions the teacher's plan does not include are listed, but cannot be chosen.
+    const scenario = h('select', { 'aria-label': 'Mission' }, ...scenarios.map((s) => h('option', { value: s.id, disabled: s.locked, title: s.locked ? 'Comes with a teacher plan' : null },
+      `${s.title}${s.visibility === 'private' ? ' (private)' : ''}${s.locked ? ' 🔒 teacher plan' : ''}`)));
     const due = h('input', { type: 'datetime-local', value: toLocalInput(existing?.due_at ?? null), 'aria-label': 'Due' });
     const note = h('input', { type: 'text', maxlength: 255, value: existing?.note ?? '', placeholder: 'Optional: shown on the student’s mission card', 'aria-label': 'Note' });
     const people = h('div', { class: 'assign-people' });

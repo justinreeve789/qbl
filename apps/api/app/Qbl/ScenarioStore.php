@@ -247,9 +247,9 @@ class ScenarioStore
 
     /** The site's own first path segments; see RESERVED_CODES in packages/shared/src/site.ts, which must list the same. */
     public const RESERVED_CODES = [
-        'about', 'admin', 'api', 'app', 'assets', 'auth', 'classes', 'docs', 'editor', 'game', 'help', 'home', 'index',
-        'login', 'logout', 'media', 'missions', 'new', 'play', 'profile', 'register', 'scenario-assets', 'scenarios',
-        'settings', 'shop', 'signin', 'signout', 'signup', 'static', 'teach', 'wardrobe',
+        'about', 'admin', 'api', 'app', 'assets', 'auth', 'billing', 'classes', 'district', 'docs', 'editor', 'game', 'help', 'home', 'index',
+        'login', 'logout', 'media', 'missions', 'new', 'play', 'plans', 'pricing', 'profile', 'register', 'scenario-assets', 'scenarios',
+        'settings', 'shop', 'signin', 'signout', 'signup', 'sso', 'static', 'teach', 'wardrobe',
     ];
 
     /**

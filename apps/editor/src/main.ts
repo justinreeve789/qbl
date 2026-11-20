@@ -1,13 +1,17 @@
 import { siteLinks, type SiteLink } from '@qbl/shared';
 import { Api, ApiError, type User } from './api';
 import { config } from './config';
-import { icon } from './icons';
+import { emojiIcon, icon } from './icons';
 import { clear, h, toast } from './dom';
 // Twemoji Awesome: the one set every icon in the interface is drawn from (see icons.ts).
 import '../../../packages/shared/assets/twemoji-awesome.css';
 import './editor.css';
 import { Store } from './store';
 import { classesView } from './views/classes';
+import { districtView } from './views/district';
+import { generateView } from './views/generate';
+import { planView } from './views/plan';
+import { session } from './session';
 import { loginView, scenarioListView } from './views/home';
 import { TABS, workspace, type Tab } from './views/workspace';
 // The profile dialog, shared with the missions page.
@@ -17,6 +21,9 @@ import { openProfile } from '../../../packages/shared/browser/profile';
  * The editor. Addresses are kept in the fragment so the server needs no rules for them:
  *   #/                       the scenarios you can edit
  *   #/classes                your students, and the missions assigned to them
+ *   #/generate               the AI mission generator (paid in credits)
+ *   #/plan                   your plan and generator credits
+ *   #/district[/{id}]        the district admin panel (for an organization's admins and QBL administrators)
  *   #/s/{id}                 one scenario: its scenes
  *   #/s/{id}/{tab}           media, variables, items, characters, objectives, settings, publish
  *   #/s/{id}/scene/{scene}   the scene editor
@@ -41,16 +48,27 @@ function placeHref(link: SiteLink): string {
   return link.href;
 }
 
+/** The editor's own pages beside the site's places: the generator, the plan, and (for those who run one) the district. */
+const PAGES: Array<{ key: string; hash: string; label: string; emoji: string; hint: string; staff: boolean }> = [
+  { key: 'generate', hash: '#/generate', label: 'Generate', emoji: '✨', hint: 'Make a mission with AI', staff: true },
+  { key: 'plan', hash: '#/plan', label: 'Plan', emoji: '💳', hint: 'Your plan and generator credits', staff: true },
+  { key: 'district', hash: '#/district', label: 'District', emoji: '🏛️', hint: 'Sign-in, rosters and API clients for a school or district', staff: false },
+];
+
+/** Whether this account may open the district admin panel. */
+const runsDistrict = (u: User | null) => !!u && (u.role === 'admin' || (u.admin_of?.length ?? 0) > 0);
+
 function drawNav() {
-  const here: SiteLink['key'] = window.location.hash === '#/classes' ? 'classes' : 'editor';
-  const links = user && (user.role === 'teacher' || user.role === 'admin') ? siteLinks(user.role) : [];
-  clear(nav, ...links.map((link) => h('a', {
-    href: placeHref(link),
-    title: link.hint,
-    'data-place': link.key,
-    class: link.key === here ? 'current' : null,
-    'aria-current': link.key === here ? 'page' : null,
-  }, icon(link.icon), link.label)));
+  const hash = window.location.hash;
+  const here = hash === '#/classes' ? 'classes' : PAGES.find((p) => hash.startsWith(p.hash))?.key ?? 'editor';
+  const staff = !!user && (user.role === 'teacher' || user.role === 'admin');
+  const links = staff ? siteLinks(user!.role) : [];
+  const mark = (key: string) => ({ class: key === here ? 'current' : null, 'aria-current': key === here ? 'page' : null });
+  clear(
+    nav,
+    ...links.map((link) => h('a', { href: placeHref(link), title: link.hint, 'data-place': link.key, ...mark(link.key) }, icon(link.icon), link.label)),
+    ...PAGES.filter((p) => (p.staff ? staff : runsDistrict(user))).map((p) => h('a', { href: p.hash, title: p.hint, 'data-place': p.key, ...mark(p.key) }, emojiIcon(p.emoji), p.label)),
+  );
 }
 
 let hideSaved = 0;
@@ -116,6 +134,7 @@ function drawAccount() {
 
 async function route() {
   const turn = ++routing;
+  session.role = user?.role ?? '';
   drawAccount();
   drawNav();
   if (!user) {
@@ -124,6 +143,10 @@ async function route() {
       void route();
     }));
   }
+  // The district admin panel is for whoever runs an organization, teacher or not.
+  const district = /^#\/district(?:\/(\d+))?$/.exec(window.location.hash);
+  if (district && runsDistrict(user)) return show(districtView(api, district[1] ? Number(district[1]) : null, go));
+  if (user.role !== 'teacher' && user.role !== 'admin' && runsDistrict(user)) return go('#/district');
   if (user.role !== 'teacher' && user.role !== 'admin') {
     // Not a dead end: the game and the editor share one sign-in per browser, so the usual cause is
     // a guest or student sign-in left from playing. The form says which account this is and what
@@ -136,6 +159,8 @@ async function route() {
   }
 
   if (window.location.hash === '#/classes') return show(classesView(api));
+  if (window.location.hash === '#/plan') return show(planView(api));
+  if (window.location.hash === '#/generate') return show(generateView(api, (id) => go(`#/s/${id}`)));
   if (window.location.hash === '#/new') {
     // From the missions page's "New scenario": the list, with the dialog open over it. The address
     // becomes the list's, so going back or reloading does not open the dialog again.

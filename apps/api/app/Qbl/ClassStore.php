@@ -2,6 +2,7 @@
 
 namespace App\Qbl;
 
+use App\Qbl\Billing\Entitlements;
 use PDO;
 
 /**
@@ -16,11 +17,15 @@ use PDO;
  * An instance is named by a group key, which is what the game server's rooms and the save tables
  * are keyed by: "public", "a12" (assignment 12, no teams) or "t7" (team 7).
  *
+ * With billing on (an Entitlements is given), plans apply: curricular missions (settings.tier)
+ * are for accounts whose plan includes them, and their students through their assignments; and a
+ * teacher may have as many students as their plan allows. Without one, everything is open.
+ *
  * Plain PHP over PDO, like the other stores, so it is tested without a framework.
  */
 class ClassStore
 {
-    public function __construct(private PDO $pdo) {}
+    public function __construct(private PDO $pdo, private ?Entitlements $entitlements = null) {}
 
     // ------------------------------------------------------------------ students
 
@@ -42,6 +47,7 @@ class ClassStore
             throw new StoreError(422, 'That is your own account.');
         }
         if (! $this->one('SELECT id FROM teacher_student WHERE teacher_id = ? AND student_id = ?', [$teacherId, $user['id']])) {
+            $this->entitlements?->checkStudentLimit($teacherId);
             $this->run('INSERT INTO teacher_student (teacher_id, student_id, created_at, updated_at) VALUES (?, ?, ?, ?)', [$teacherId, $user['id'], $this->now(), $this->now()]);
         }
 
@@ -57,13 +63,17 @@ class ClassStore
 
     // --------------------------------------------------------------- assignments
 
-    /** The published scenarios a teacher can assign: public ones, and their own. Admins can assign any. */
+    /**
+     * The published scenarios a teacher can assign: public ones, and their own. Admins can assign any.
+     * Curricular missions are listed for everyone, `locked` when the teacher's plan does not include them.
+     */
     public function assignable(int $teacherId, bool $admin = false): array
     {
         $out = [];
+        $curricular = $admin || $this->curricular($teacherId);
         foreach ($this->all('SELECT id, code, title, subtitle, description, user_id, settings, document FROM scenarios WHERE published_at IS NOT NULL ORDER BY title, id') as $s) {
             if ($admin || self::visibility($s) === 'public' || (int) $s['user_id'] === $teacherId) {
-                $out[] = self::card($s);
+                $out[] = self::card($s) + ['locked' => ! $curricular && self::isCurricular($s)];
             }
         }
 
@@ -82,15 +92,24 @@ class ClassStore
      */
     public function assign(int $teacherId, int $scenarioId, array $studentIds, ?string $dueAt = null, ?string $note = null, array $teams = [], bool $admin = false): array
     {
-        if (! in_array($scenarioId, array_column($this->assignable($teacherId, $admin), 'id'), true)) {
-            throw new StoreError(422, 'That scenario is not published, or is not yours to assign.');
-        }
+        $this->checkAssignable($teacherId, $scenarioId, $admin);
         $this->mine($teacherId, $studentIds);
         $this->run('INSERT INTO assignments (teacher_id, scenario_id, due_at, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)', [$teacherId, $scenarioId, self::date($dueAt), self::text($note), $this->now(), $this->now()]);
         $id = (int) $this->pdo->lastInsertId();
         $this->place($teacherId, $id, $studentIds, $teams);
 
         return $this->assignment($this->one('SELECT * FROM assignments WHERE id = ?', [$id]));
+    }
+
+    private function checkAssignable(int $teacherId, int $scenarioId, bool $admin): void
+    {
+        $card = array_values(array_filter($this->assignable($teacherId, $admin), fn ($c) => $c['id'] === $scenarioId))[0] ?? null;
+        if (! $card) {
+            throw new StoreError(422, 'That scenario is not published, or is not yours to assign.');
+        }
+        if ($card['locked']) {
+            throw new StoreError(402, 'That is one of the curricular missions, which come with a Teacher plan. See Plans to start a free trial.');
+        }
     }
 
     /** Change an assignment's due date, note, students or teams. Only what is given changes. */
@@ -145,21 +164,34 @@ class ClassStore
         foreach ($this->all('SELECT id, code, title, subtitle, description, user_id, settings, document FROM scenarios WHERE published_at IS NOT NULL ORDER BY title, id') as $s) {
             $scenarios[(int) $s['id']] = $s;
         }
+        $mine = $this->curricular($userId);
+        $teachers = [];
         foreach ($rows as $r) {
             $scenario = $scenarios[(int) $r['scenario_id']] ?? null;
             if (! $scenario) {
                 continue; // unpublished or deleted since it was assigned
             }
             $group = $r['team_id'] ? 't'.$r['team_id'] : 'a'.$r['assignment_id'];
-            $out[] = self::card($scenario) + [
+            // An assigned curricular mission is open while the teacher's plan includes it.
+            $teacherId = (int) $this->one('SELECT teacher_id FROM assignments WHERE id = ?', [$r['assignment_id']])['teacher_id'];
+            $locked = self::isCurricular($scenario) && ! ($teachers[$teacherId] ??= $this->curricular($teacherId));
+            $out[] = self::card($scenario) + ['locked' => $locked] + [
                 'kind' => 'assigned', 'group' => $group, 'assignment_id' => (int) $r['assignment_id'], 'teacher' => $r['teacher'],
                 'due_at' => $r['due_at'], 'note' => $r['note'], 'team' => $r['team'], 'started_at' => $started[$scenario['id'].'/'.$group] ?? null,
             ];
         }
+        // Public curricular missions: playable with a plan that includes them; shown locked to
+        // teachers without one (so they know what a plan gives), and not shown to anyone else.
+        $staff = in_array($this->one('SELECT role FROM users WHERE id = ?', [$userId])['role'] ?? '', ['teacher', 'admin'], true);
         foreach ($scenarios as $scenario) {
-            if (self::visibility($scenario) === 'public') {
-                $out[] = self::card($scenario) + ['kind' => 'public', 'group' => 'public', 'started_at' => $started[$scenario['id'].'/public'] ?? null];
+            if (self::visibility($scenario) !== 'public') {
+                continue;
             }
+            $locked = ! $mine && self::isCurricular($scenario);
+            if ($locked && ! $staff) {
+                continue;
+            }
+            $out[] = self::card($scenario) + ['locked' => $locked, 'kind' => 'public', 'group' => 'public', 'started_at' => $started[$scenario['id'].'/public'] ?? null];
         }
 
         return $out;
@@ -176,7 +208,14 @@ class ClassStore
         if (! $scenario) {
             return false;
         }
-        if ($role === 'admin' || (int) $scenario['user_id'] === $userId) {
+        if ($role === 'admin') {
+            return true;
+        }
+        // Before the author's own pass: a copy of a curricular mission is curricular too.
+        if ($this->needsPlan($scenarioId, $userId, $group)) {
+            return false;
+        }
+        if ((int) $scenario['user_id'] === $userId) {
             return true;
         }
         if (preg_match('/^([at])(\d+)$/', $group, $m)) {
@@ -197,6 +236,38 @@ class ClassStore
 
         // Any other name is an open group of a public scenario, as before.
         return self::visibility($scenario) === 'public';
+    }
+
+    /**
+     * Whether a plan stands between this player and this instance of a curricular mission: in an
+     * assignment's or a team's instance the teacher's plan counts, anywhere else the player's own.
+     * Always false for free missions and with billing off. (Even a mission's author needs the plan:
+     * a teacher's copy of a curricular mission is curricular, and only administrators set the tier.)
+     */
+    public function needsPlan(int $scenarioId, ?int $userId, string $group): bool
+    {
+        if (! $this->entitlements || ! $this->entitlements->plans()->enabled()) {
+            return false;
+        }
+        $scenario = $this->one('SELECT id, user_id, settings FROM scenarios WHERE id = ?', [$scenarioId]);
+        if (! $scenario || ! self::isCurricular($scenario)) {
+            return false;
+        }
+        if ($userId !== null && preg_match('/^([at])(\d+)$/', $group, $m)) {
+            $assignment = $m[1] === 't'
+                ? $this->one('SELECT a.teacher_id FROM teams t JOIN assignments a ON a.id = t.assignment_id WHERE t.id = ?', [(int) $m[2]])
+                : $this->one('SELECT teacher_id FROM assignments WHERE id = ?', [(int) $m[2]]);
+            if ($assignment) {
+                return ! $this->curricular((int) $assignment['teacher_id']);
+            }
+        }
+
+        return ! $this->curricular($userId);
+    }
+
+    private function curricular(?int $userId): bool
+    {
+        return ! $this->entitlements || $this->entitlements->curricular($userId);
     }
 
     /**
@@ -334,6 +405,14 @@ class ClassStore
         return $email === null || str_ends_with($email, '.invalid') ? '' : $email;
     }
 
+    /** Whether a scenario is one of the curricular missions (settings.tier "curricular"), which need a plan. */
+    public static function isCurricular(array $scenario): bool
+    {
+        $settings = is_string($scenario['settings'] ?? null) ? (json_decode($scenario['settings'], true) ?: []) : ($scenario['settings'] ?? []);
+
+        return ($settings['tier'] ?? 'free') === 'curricular';
+    }
+
     private static function visibility(array $scenario): string
     {
         $settings = is_string($scenario['settings'] ?? null) ? (json_decode($scenario['settings'], true) ?: []) : ($scenario['settings'] ?? []);
@@ -360,7 +439,7 @@ class ClassStore
             }
         }
 
-        return ['id' => (int) $s['id'], 'code' => $s['code'], 'title' => $s['title'], 'subtitle' => $s['subtitle'] ?? null, 'description' => $s['description'] ?? null, 'image' => $image, 'visibility' => self::visibility($s)];
+        return ['id' => (int) $s['id'], 'code' => $s['code'], 'title' => $s['title'], 'subtitle' => $s['subtitle'] ?? null, 'description' => $s['description'] ?? null, 'image' => $image, 'visibility' => self::visibility($s), 'tier' => self::isCurricular($s) ? 'curricular' : 'free'];
     }
 
     private static function date(mixed $value): ?string

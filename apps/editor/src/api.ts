@@ -22,6 +22,8 @@ export interface User {
   has_password?: boolean;
   uses_google?: boolean;
   name_locked?: boolean;
+  /** The organizations this person runs in the district admin panel (QBL administrators run them all). */
+  admin_of?: Array<{ id: number; name: string }>;
 }
 
 export interface ScenarioSummary {
@@ -47,6 +49,10 @@ export interface MissionSummary {
   title: string;
   subtitle?: string | null;
   visibility: 'public' | 'private';
+  /** free: anyone may play it. curricular: it comes with a teacher plan. */
+  tier?: 'free' | 'curricular';
+  /** The teacher's plan does not include it (a curricular mission without a plan). */
+  locked?: boolean;
 }
 
 export interface Team {
@@ -114,6 +120,105 @@ export interface AssignmentDraft {
   due_at: string | null;
   note: string | null;
   teams: Team[];
+}
+
+// ------------------------------------------------------------------ plans and credits
+
+export interface PlanInfo {
+  key: string;
+  name: string;
+  price: number;
+  summary: string;
+  curricular: boolean;
+  generator: boolean;
+  students: number | null;
+  monthly_credits: number;
+  credit_carryover: number;
+  trial_credits?: number;
+}
+export interface Entitlements {
+  plan: string;
+  plan_name: string;
+  source: 'none' | 'subscription' | 'organization' | 'admin' | 'billing_off';
+  curricular: boolean;
+  generator: boolean;
+  students: number | null;
+  students_used?: number;
+  credits_enforced: boolean;
+  monthly_credits: number;
+  credit_carryover: number;
+  trial: boolean;
+  organization: { id: number; name: string } | null;
+}
+export interface CreditSummary { enforced: boolean; balance: number; monthly: number; carryover: number; trial: boolean }
+export interface BillingStatus {
+  enabled: boolean;
+  payments: boolean;
+  trial_days: number;
+  plans: PlanInfo[];
+  costs: { generation: number };
+  entitlements: Entitlements;
+  subscription: { plan: string | null; status: string | null; trial_ends_at: string | null; current_period_end: string | null; cancel_at_period_end: boolean; trial_used: boolean; manageable: boolean } | null;
+  credits: CreditSummary | null;
+}
+export interface LedgerLine { delta: number; balance_after: number; reason: 'grant' | 'expire' | 'spend' | 'refund' | 'adjust'; ref: string | null; note: string | null; at: string }
+
+export interface Generation {
+  id: number;
+  prompt: string;
+  status: string;
+  busy: boolean;
+  title: string | null;
+  scenario_id: number | null;
+  options: Record<string, unknown>;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ------------------------------------------------------------- district admin panel
+
+export type IntegrationKind = 'saml' | 'clever' | 'google';
+export interface Integration {
+  kind: IntegrationKind;
+  enabled: boolean;
+  configured: boolean;
+  config: Record<string, unknown>;
+  /** Whether each secret is set (never the secret). */
+  secrets: Record<string, boolean>;
+  last_sync_at: string | null;
+}
+export interface SyncRun {
+  id: number;
+  kind: 'clever' | 'google' | 'upload';
+  status: 'queued' | 'running' | 'done' | 'failed';
+  summary: null | {
+    schools: { created: number; updated: number };
+    teachers: { created: number; updated: number; failed: number };
+    students: { created: number; updated: number; failed: number };
+    deactivated: number;
+    enrollments: number;
+    problems: string[];
+    warnings: string[];
+  };
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+export interface ApiClientInfo { client_id: string; name: string; scopes: string[]; last_used_at: string | null; revoked_at: string | null; created_at: string }
+export interface License { active?: boolean; plan_name?: string | null; curricular?: boolean; generator?: boolean; students?: number | null; monthly_credits?: number; credit_carryover?: number; expires_at?: string | null }
+export interface OrgSummary { id: number; name: string; kind: string; integrations_enabled: boolean; teachers: number; students: number; license: License | null }
+export interface OrgOverview {
+  organization: { id: number; name: string; kind: string; external_id: string | null; data_retention_days: number | null; integrations_enabled: boolean; integrations_enabled_at: string | null; license: License | null; created_at: string };
+  counts: { schools: number; teachers: number; students: number; inactive: number };
+  admins: Array<{ id: number; name: string; email: string }>;
+  platform_admin: boolean;
+  integrations?: Integration[];
+  addresses?: Record<string, string | boolean | string[]>;
+  clients?: ApiClientInfo[];
+  scopes?: Record<string, string>;
+  runs?: SyncRun[];
+  roster_columns?: string[];
 }
 
 export class ApiError extends Error {
@@ -272,6 +377,40 @@ export class Api {
   report = async (id: number) => (await this.call<{ report: Report }>('GET', `/teach/assignments/${id}/report`)).report;
   activity = async (id: number, studentId?: number) => (await this.call<{ activity: ActivityLine[] }>('GET', `/teach/assignments/${id}/activity${studentId != null ? `/${studentId}` : ''}`)).activity;
   messageLog = async (id: number) => (await this.call<{ messages: MessageLine[] }>('GET', `/teach/assignments/${id}/messages`)).messages;
+
+  // Plans, billing and credits (App\Qbl\Billing\BillingApi).
+  billing = () => this.call<BillingStatus>('GET', '/billing');
+  credits = () => this.call<{ credits: CreditSummary; ledger: LedgerLine[] }>('GET', '/billing/credits');
+  billingPortal = async () => (await this.call<{ url: string }>('POST', '/billing/portal')).url;
+  changePlan = (plan: string) => this.call<BillingStatus>('POST', '/billing/change', { plan });
+
+  // The AI mission generator (App\Qbl\Generation\GenerationApi).
+  generations = () => this.call<{ generations: Generation[]; cost: number; plan: { generator: boolean; plan_name: string; credits: CreditSummary | null } }>('GET', '/editor/generations');
+  generation = async (id: number) => (await this.call<{ generation: Generation }>('GET', `/editor/generations/${id}`)).generation;
+  generate = async (form: { prompt: string; grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string }) =>
+    (await this.call<{ generation: Generation }>('POST', '/editor/generations', form)).generation;
+
+  // The district admin panel (App\Qbl\District\DistrictApi).
+  orgs = () => this.call<{ organizations: OrgSummary[]; platform_admin: boolean }>('GET', '/district/orgs');
+  createOrg = async (name: string, kind: string) => (await this.call<{ organization: OrgSummary }>('POST', '/district/orgs', { name, kind })).organization;
+  org = (id: number) => this.call<OrgOverview>('GET', `/district/orgs/${id}`);
+  updateOrg = (id: number, attrs: Record<string, unknown>) => this.call<OrgOverview>('PATCH', `/district/orgs/${id}`, attrs);
+  addOrgAdmin = (id: number, email: string) => this.call<{ admin: { id: number; name: string; email: string }; warning?: string }>('POST', `/district/orgs/${id}/admins`, { email });
+  removeOrgAdmin = (id: number, userId: number) => this.call<void>('DELETE', `/district/orgs/${id}/admins/${userId}`);
+  saveIntegration = async (id: number, kind: IntegrationKind, body: { enabled?: boolean; config?: Record<string, unknown>; secrets?: Record<string, string>; idp_metadata_xml?: string }) =>
+    (await this.call<{ integration: Integration }>('PUT', `/district/orgs/${id}/integrations/${kind}`, body)).integration;
+  removeIntegration = (id: number, kind: IntegrationKind) => this.call<void>('DELETE', `/district/orgs/${id}/integrations/${kind}`);
+  testIntegration = async (id: number, kind: IntegrationKind) => (await this.call<{ check: { ok: boolean; message: string } }>('POST', `/district/orgs/${id}/integrations/${kind}/test`)).check;
+  syncIntegration = async (id: number, kind: IntegrationKind) => (await this.call<{ run: SyncRun }>('POST', `/district/orgs/${id}/integrations/${kind}/sync`)).run;
+  syncRuns = async (id: number) => (await this.call<{ runs: SyncRun[] }>('GET', `/district/orgs/${id}/runs`)).runs;
+  async uploadRoster(id: number, file: File): Promise<SyncRun> {
+    const form = new FormData();
+    form.append('file', file);
+    return (await this.call<{ run: SyncRun }>('POST', `/district/orgs/${id}/roster`, form)).run;
+  }
+  createClient = async (id: number, name: string, scopes: string[]) => (await this.call<{ client: { client_id: string; client_secret: string } }>('POST', `/district/orgs/${id}/clients`, { name, scopes })).client;
+  rotateClient = async (id: number, clientId: string) => (await this.call<{ client: { client_id: string; client_secret: string } }>('POST', `/district/orgs/${id}/clients/${clientId}/rotate`)).client;
+  revokeClient = (id: number, clientId: string) => this.call<void>('DELETE', `/district/orgs/${id}/clients/${clientId}`);
 
   async upload(id: number, file: File): Promise<Row> {
     const form = new FormData();
