@@ -87,6 +87,11 @@ export function confirmDelete(what: string): boolean {
 /** Which folding groups the author has changed from how they start, so a redraw keeps them that way. */
 const foldState = new Map<string, boolean>();
 
+/** Have the fold with this key open the next time it is drawn (to show something inside it). */
+export function openFold(key: string) {
+  foldState.set(key, true);
+}
+
 /**
  * A group that folds away under its heading, to keep long panels easy to move around in.
  * `key` names the group across redraws: folding "Labels" on one hotspot keeps it folded on the next.

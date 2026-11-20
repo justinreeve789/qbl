@@ -6,6 +6,7 @@ export * from './geometry.js';
 export * from './scenario.js';
 export * from './engine.js';
 export * from './validate.js';
+export * from './locate.js';
 export * from './protocol.js';
 export * from './world.js';
 export * from './text.js';
