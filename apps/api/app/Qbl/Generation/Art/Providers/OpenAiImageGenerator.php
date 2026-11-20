@@ -3,6 +3,7 @@
 namespace App\Qbl\Generation\Art\Providers;
 
 use App\Qbl\Generation\Art\ImageGenerator;
+use App\Qbl\Generation\Art\PricedImageGenerator;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\Http\HttpClient;
 
@@ -10,8 +11,13 @@ use App\Qbl\Generation\Http\HttpClient;
  * OpenAI's GPT Image models. With reference pictures the request goes to /images/edits (up to 16
  * pictures, sent as data URLs); without, to /images/generations. It can draw transparent backgrounds.
  */
-class OpenAiImageGenerator implements ImageGenerator
+class OpenAiImageGenerator implements ImageGenerator, PricedImageGenerator
 {
+    public function pricing(array $hints): array
+    {
+        return [$this->model, null];
+    }
+
     public function __construct(
         private HttpClient $http,
         private string $apiKey,

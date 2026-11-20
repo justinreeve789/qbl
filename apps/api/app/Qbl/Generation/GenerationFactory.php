@@ -31,6 +31,10 @@ class GenerationFactory
 
     private ?LanguageModel $judgeLlm = null;
 
+    private ?LanguageModel $alignLlm = null;
+
+    private ?Spend $spend = null;
+
     public function __construct(
         private array $config,
         private ScenarioStore $store,
@@ -43,6 +47,7 @@ class GenerationFactory
         $this->http ??= new CurlHttpClient;
         $this->llm = $llm;
         $this->judgeLlm = $llm;
+        $this->alignLlm = $llm;
     }
 
     public function config(string $key, mixed $default = null): mixed
@@ -65,12 +70,29 @@ class GenerationFactory
 
     public function llm(): LanguageModel
     {
-        return $this->llm ??= new AnthropicModel($this->http, (string) $this->config('llm.api_key'), (string) $this->config('llm.model'), (string) $this->config('llm.base_url', 'https://api.anthropic.com'));
+        return $this->llm ??= $this->anthropic((string) $this->config('llm.model'));
     }
 
     public function judgeLlm(): LanguageModel
     {
-        return $this->judgeLlm ??= new AnthropicModel($this->http, (string) $this->config('llm.api_key'), (string) $this->config('llm.judge_model'), (string) $this->config('llm.base_url', 'https://api.anthropic.com'));
+        return $this->judgeLlm ??= $this->anthropic((string) $this->config('llm.judge_model'));
+    }
+
+    /** The model that aligns to standards: a smaller one than the designer's (QBL_GEN_ALIGN_MODEL). */
+    public function alignLlm(): LanguageModel
+    {
+        return $this->alignLlm ??= $this->anthropic((string) $this->config('llm.align_model', $this->config('llm.model')));
+    }
+
+    /** What runs spend, shared by every model and the art director (each run counts into its own file). */
+    public function spend(): Spend
+    {
+        return $this->spend ??= new Spend((float) $this->config('budget', 0), (array) $this->config('prices', []));
+    }
+
+    private function anthropic(string $model): AnthropicModel
+    {
+        return new AnthropicModel($this->http, (string) $this->config('llm.api_key'), $model, (string) $this->config('llm.base_url', 'https://api.anthropic.com'), $this->spend());
     }
 
     public function standards(): StandardsStore
@@ -92,7 +114,7 @@ class GenerationFactory
         $c = fn (string $k, $d = '') => (string) $this->config("images.$driver.$k", $d);
 
         return match ($driver) {
-            'gemini' => new GeminiImageGenerator($this->http, $c('api_key'), $c('model', 'gemini-3-pro-image'), $c('base_url', 'https://generativelanguage.googleapis.com/v1beta'), $c('image_size', '2K')),
+            'gemini' => new GeminiImageGenerator($this->http, $c('api_key'), $c('model', 'gemini-3-pro-image'), $c('base_url', 'https://generativelanguage.googleapis.com/v1beta'), $c('image_size', '2K'), $c('props_model', ''), $c('props_size', '')),
             'openai' => new OpenAiImageGenerator($this->http, $c('api_key'), $c('model', 'gpt-image-2'), $c('quality', 'high'), $c('base_url', 'https://api.openai.com/v1')),
             'scenario' => new ScenarioImageGenerator($this->http, $c('api_key'), $c('api_secret'), $c('model_id'), $c('base_url', 'https://api.cloud.scenario.com/v1')),
             'offline' => new OfflineImageGenerator,
@@ -102,7 +124,7 @@ class GenerationFactory
     }
 
     /**
-     * @param  array{style?: ?string, images?: ?string, judge?: ?bool, attempts?: ?int, anchors_required?: bool}  $options
+     * @param  array{style?: ?string, images?: ?string, judge?: ?bool, attempts?: ?int, anchors_required?: bool, budget?: ?float}  $options
      */
     public function generator(array $options = [], ?callable $log = null): ScenarioGenerator
     {
@@ -117,16 +139,22 @@ class GenerationFactory
         $judge = $judging ? new StyleJudge($this->judgeLlm(), (float) $this->config('judge.min_score', 7)) : null;
         $attempts = (int) ($options['attempts'] ?? $this->config('judge.max_attempts', 3));
         $images = $this->images($driver, $style);
+        $spend = $this->spend();
+        if (isset($options['budget'])) {
+            $spend->setBudget((float) $options['budget']);
+        }
+        $pictures = (array) $this->config('pictures', []);
 
         return new ScenarioGenerator(
             new GenerationRuns($this->store->pdo()),
             $this->standards(),
-            new StandardsAligner($this->standards(), $this->llm()),
+            new StandardsAligner($this->standards(), $this->alignLlm()),
             new MissionDesigner($this->llm(), (array) $this->config('limits', ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 14])),
-            fn (string $dir) => new AssetDirector($images, $style, $judge, $dir, max(1, $attempts), $log),
+            fn (string $dir) => new AssetDirector($images, $style, $judge, $dir, max(1, $attempts), $log, $spend, $pictures),
             $this->store,
             (string) $this->config('work_dir'),
             $log,
+            $spend,
         );
     }
 

@@ -7,6 +7,7 @@ use App\Qbl\Generation\Build\MissionBuilder;
 use App\Qbl\Generation\Curriculum\StandardsAligner;
 use App\Qbl\Generation\Curriculum\StandardsStore;
 use App\Qbl\Generation\Design\BlueprintValidator;
+use App\Qbl\Generation\Design\Connections;
 use App\Qbl\Generation\Design\MissionDesigner;
 use App\Qbl\ScenarioArchive;
 use App\Qbl\ScenarioStore;
@@ -22,7 +23,8 @@ use App\Qbl\ScenarioStore;
  *   6. import   through ScenarioArchive, as a private draft; record its standards; optionally publish
  *
  * Each stage's result is saved on the run (scenario_generations) and in its work folder, so a run
- * that stops is resumed from where it stopped.
+ * that stops is resumed from where it stopped. What it spends on AI services is counted in the work
+ * folder (spend.json, see Spend), estimated before drawing, and reported at the end.
  */
 class ScenarioGenerator
 {
@@ -42,6 +44,7 @@ class ScenarioGenerator
         private ScenarioStore $store,
         private string $workRoot,
         ?callable $log = null,
+        private ?Spend $spend = null,
     ) {
         $this->log = $log;
     }
@@ -79,6 +82,8 @@ class ScenarioGenerator
         }
         $this->say("Generation $id (work folder $dir)");
         $warnings = [];
+        // What this run spends is counted into its work folder, carrying on from where a resumed run was.
+        $this->spend?->attach("$dir/spend.json");
 
         try {
             // ------------------------------------------------------------ 1. align
@@ -103,16 +108,21 @@ class ScenarioGenerator
                 $this->runs->update($id, ['blueprint' => $blueprint]);
             }
             file_put_contents("$dir/blueprint.json", json_encode($blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-            $this->say(sprintf('"%s": %d scenes, %d characters, %d items, %d interactions', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions'])));
+            $this->say(sprintf('"%s": %d scenes, %d characters, %d items, %d interactions, %d crew roles, %d twists', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions']), count($blueprint['roles'] ?? []), count($blueprint['twists'] ?? [])));
+            $director = ($this->director)($dir);
+            $estimate = $director->estimate($blueprint);
+            $this->say(sprintf('Drawing it will take about %d pictures, about $%.2f%s.', $estimate['pictures'], $estimate['usd'], $this->spend ? sprintf(' (spent so far: $%.2f%s)', $this->spend->total(), $this->spend->budget() > 0 ? sprintf(' of a $%.2f budget', $this->spend->budget()) : '') : ''));
+            if ($this->spend && $this->spend->budget() > 0 && $this->spend->total() + $estimate['usd'] > $this->spend->budget()) {
+                $warnings[] = sprintf('The estimate ($%.2f with what is spent) is over the budget of $%.2f: some pictures may be kept below the style bar or animations left out. Raise it with --budget=... if you want them all.', $this->spend->total() + $estimate['usd'], $this->spend->budget());
+            }
             if (($options['stop_after'] ?? null) === 'design') {
                 $this->status($id, 'designed');
 
-                return ['run' => $id, 'status' => 'designed', 'scenario_id' => null, 'zip' => null, 'warnings' => $warnings];
+                return ['run' => $id, 'status' => 'designed', 'scenario_id' => null, 'zip' => null, 'warnings' => $warnings, 'estimate' => $estimate, 'spend' => $this->spend?->summary()];
             }
 
             // ------------------------------------------------------------ 3. draw
             $this->status($id, 'drawing');
-            $director = ($this->director)($dir);
             $assets = $director->drawMission($blueprint, self::layouts($blueprint));
             $manifest = $director->manifest();
             $this->runs->update($id, ['manifest' => $manifest]);
@@ -125,20 +135,27 @@ class ScenarioGenerator
             // ------------------------------------------------------------ 4, 5. build and package
             $this->status($id, 'building');
             $built = (new MissionBuilder)->build($blueprint, $alignment, $assets, $options + ['generation_id' => $id]);
-            $package = ScenarioPackage::write($built, $dir, $alignment, $manifest);
+            $spent = $this->spend ? 'Made for '.$this->spend->describe().'.' : null;
+            $package = ScenarioPackage::write($built, $dir, $alignment, $manifest, $blueprint, $spent);
             $this->say("Packaged {$package['zip']}");
+            if ($spent) {
+                $this->say($spent);
+            }
             if (($options['import'] ?? true) === false) {
                 $this->status($id, 'packaged');
 
-                return ['run' => $id, 'status' => 'packaged', 'scenario_id' => null, 'zip' => $package['zip'], 'warnings' => $warnings];
+                return ['run' => $id, 'status' => 'packaged', 'scenario_id' => null, 'zip' => $package['zip'], 'warnings' => $warnings, 'spend' => $this->spend?->summary()];
             }
 
             // ------------------------------------------------------------ 6. import
             $scenarioId = $this->import($package['zip'], $userId, $alignment, $built['evidence'], (bool) ($options['publish'] ?? false));
             $this->runs->update($id, ['scenario_id' => $scenarioId, 'status' => 'done']);
 
-            return ['run' => $id, 'status' => 'done', 'scenario_id' => $scenarioId, 'zip' => $package['zip'], 'warnings' => $warnings];
+            return ['run' => $id, 'status' => 'done', 'scenario_id' => $scenarioId, 'zip' => $package['zip'], 'warnings' => $warnings, 'spend' => $this->spend?->summary()];
         } catch (\Throwable $e) {
+            if ($this->spend) {
+                $this->say('Spent so far: '.$this->spend->describe().'.');
+            }
             $this->runs->update($id, ['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 4000)]);
             throw $e;
         }
@@ -161,16 +178,31 @@ class ScenarioGenerator
         return $scenarioId;
     }
 
-    /** What each scene's edges lead to, for the background prompts: scene => [edge => "to the Lab"]. */
+    /**
+     * What each background must leave room for: where its edges lead, where its doors, holes and ladders
+     * stand, and where things hang on its wall. scene => [exits => [edge => "towards the Lab"],
+     * passages => [[via, x, towards]], wall => [x...]].
+     */
     public static function layouts(array $b): array
     {
         $titles = array_column($b['scenes'], 'title', 'key');
+        $scenes = array_column($b['scenes'], null, 'key');
+        $items = array_column($b['items'] ?? [], null, 'key');
         $out = [];
-        foreach ($b['scenes'] as $scene) {
-            foreach ($scene['exits'] as $x) {
-                $out[$scene['key']]['exits'][$x['edge']] = 'towards '.($titles[$x['to']] ?? $x['to']);
-                $back = BlueprintValidator::OPPOSITE[$x['edge']];
-                $out[$x['to']]['exits'][$back] ??= 'towards '.$scene['title'];
+        foreach (Connections::ends($b) as $key => $ends) {
+            foreach ($ends as $end) {
+                $towards = 'towards '.($titles[$end['to']] ?? $end['to']);
+                if ($end['via'] === 'edge') {
+                    $out[$key]['exits'][$end['edge']] = $towards;
+                } else {
+                    $out[$key]['passages'][] = ['via' => $end['via'], 'x' => $end['x'], 'towards' => $towards];
+                }
+            }
+        }
+        foreach ($b['interactions'] as $it) {
+            $scene = $scenes[$it['scene']] ?? null;
+            if ($scene && ! empty($it['item']) && isset($items[$it['item']]) && AssetDirector::placementOf($it, $items[$it['item']], $scene) === 'wall') {
+                $out[$it['scene']]['wall'][] = (float) ($it['x'] ?? 0.5);
             }
         }
 
