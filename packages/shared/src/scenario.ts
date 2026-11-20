@@ -5,7 +5,7 @@ import { characterMediaIds, normalizeNpc, scenarioAvatars } from './characters.j
 import { characterRoams, normalizeRoutine } from './walking.js';
 
 const ACTION_TYPES: ActionType[] = [
-  'animate', 'award', 'glossary', 'shop', 'dialogue', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
+  'animate', 'award', 'glossary', 'shop', 'dialogue', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
   'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk',
 ];
 
@@ -164,16 +164,19 @@ function walkActions(scene: Scene, visit: (a: Action) => void): void {
     if (a.type === 'infobox') {
       for (const cta of a.call_to_actions ?? []) if (cta.action) walk(cta.action as Action);
     }
+    if (a.type === 'conversation') {
+      for (const line of a.lines ?? []) for (const c of line.choices ?? []) for (const inner of c.actions ?? []) walk(inner as Action);
+    }
   };
   for (const e of eventsOf(scene)) for (const a of e.actions) walk(a);
 }
 
-/** Visit every action of a scene's events, including those on infobox buttons. */
+/** Visit every action of a scene's events, including those on infobox buttons and conversation choices. */
 export function forEachAction(scene: Scene, visit: (a: Action) => void): void {
   walkActions(scene, visit);
 }
 
-/** Scene ids reachable from each scene through jump actions (including those on infobox buttons). */
+/** Scene ids reachable from each scene through jump actions (including those on infobox buttons and conversation choices). */
 export function computeJumpTargets(scenario: Scenario): Record<string, Id[]> {
   const out: Record<string, Id[]> = {};
   for (const scene of scenario.scenes) {
@@ -200,6 +203,7 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
     add(a.media_id);
     if ('narration_media_id' in a) add(a.narration_media_id);
     if (a.type === 'award') add(a.badge_media_id);
+    if (a.type === 'conversation') for (const line of a.lines ?? []) add(line.narration_media_id);
   });
   const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
   for (const p of scene.items ?? []) add(items.get(p.item_id)?.media_id);

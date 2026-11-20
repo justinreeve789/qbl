@@ -55,6 +55,8 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
   const sizeNote = h('span', { class: 'muted' });
 
   const select_ = (next: Selection) => {
+    // A spot being chosen belongs to the form of what was selected.
+    canvas.cancelPick();
     selection = next;
     inspectorHost.scrollTop = 0;
     drawAll();
@@ -72,7 +74,7 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
   const drawOutline = () => redraw(outlineHost, outline(model, { selection: () => selection, select: select_, add }));
   const drawInspector = () => {
     refreshers = [];
-    redraw(inspectorHost, inspector(model, selection, { select: select_, natural, closed: leave }, refreshers));
+    redraw(inspectorHost, inspector(model, selection, { select: select_, natural, closed: leave, pickSpot: (request) => canvas.pick(request) }, refreshers));
   };
   const drawCanvas = () => {
     canvas.draw();

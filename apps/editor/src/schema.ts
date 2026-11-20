@@ -13,6 +13,11 @@ const position: Field[] = [
   { key: 'position_x', label: 'X', kind: 'number', hint: 'Scene pixels from the left. You can also drag the marker on the canvas.' },
   { key: 'position_y', label: 'Y', kind: 'number', hint: 'Scene pixels from the top.' },
 ];
+/** Where an action shows something: as `position`, and the spot can be picked by clicking the scene. */
+const shownAt: Field[] = [
+  { ...position[0]!, spot: { y: 'position_y', prompt: 'Click where it should appear.' } },
+  position[1]!,
+];
 const scale: Field[] = [
   { key: 'scale_x', label: 'Scale X', kind: 'number', placeholder: '1', step: 0.05, slider: { min: 0.1, max: 3 } },
   { key: 'scale_y', label: 'Scale Y', kind: 'number', placeholder: '1', step: 0.05, slider: { min: 0.1, max: 3 } },
@@ -51,11 +56,14 @@ const spritemap: Field[] = [
 const to = (v: Record<string, unknown>) => (v.to as string | undefined) ?? 'point';
 export const WALK_FIELDS: Field[] = [
   {
-    key: 'to', label: 'Walk to', kind: 'select', wide: true, structural: true, placeholder: 'A spot in the scene',
-    options: [['spawn', 'A spawn point in the scene'], ['scene', 'Another scene, through its doors']],
+    key: 'to', label: 'Walk to', kind: 'select', wide: true, structural: true, default: 'point',
+    options: [['point', 'A spot in the scene'], ['spawn', 'A spawn point in the scene'], ['scene', 'Another scene, through its doors']],
     hint: 'To another scene, the walker heads for a hotspot whose jump goes there (a door), goes through it and arrives at the spawn point that jump names, as a player would. A character that walks around on its own can go through several rooms to get there; anyone else only through a door of this scene.',
   },
-  { key: 'position_x', label: 'X', kind: 'number', hint: 'Scene pixels from the left. The walker goes around whatever is in the way, and stops at the nearest spot it can stand on.', when: (v) => to(v) === 'point' },
+  {
+    key: 'position_x', label: 'X', kind: 'number', when: (v) => to(v) === 'point', spot: { y: 'position_y', prompt: 'Click where the walker should go.' },
+    hint: 'Scene pixels from the left. The walker goes around whatever is in the way, and stops at the nearest spot it can stand on. “Pick on the scene” chooses the spot with a click; in the scene editor you can also drag its marker.',
+  },
   { key: 'position_y', label: 'Y', kind: 'number', hint: 'Scene pixels from the top.', when: (v) => to(v) === 'point' },
   { key: 'spawn_point', label: 'Spawn point', kind: 'spawn', sceneKey: 'here', placeholder: 'Choose a spawn point', when: (v) => to(v) === 'spawn' },
   { key: 'scene_id', label: 'Scene', kind: 'scene', structural: true, when: (v) => to(v) === 'scene' },
@@ -158,12 +166,12 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
   image_fixed: {
     label: 'Image in scene',
     about: 'An image placed in the scene.',
-    fields: [{ key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true }, ...position, ...scale, duration('Leave empty to keep it until it is cancelled.'), layer],
+    fields: [{ key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true }, ...shownAt, ...scale, duration('Leave empty to keep it until it is cancelled.'), layer],
   },
   spritemap: {
     label: 'Spritemap',
     about: 'An animated sprite sheet placed in the scene.',
-    fields: [{ key: 'media_id', label: 'Sprite sheet', kind: 'media', mediaType: 'image', wide: true }, ...position, ...scale, ...spritemap, layer],
+    fields: [{ key: 'media_id', label: 'Sprite sheet', kind: 'media', mediaType: 'image', wide: true }, ...shownAt, ...scale, ...spritemap, layer],
   },
   video: {
     label: 'Video',
@@ -216,6 +224,20 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...narration,
     ],
   },
+  conversation: {
+    label: 'Conversation',
+    about: 'A dialogue tree: lines said by the player and characters, where the player picks what to say next.',
+    fields: [
+      {
+        key: 'style', label: 'Shown as', kind: 'select', wide: true, placeholder: 'A story box with each speaker’s portrait', options: [['bubble', 'Speech bubbles over the speakers']],
+        hint: 'In a story box the player’s answers are listed under the line. With bubbles each line hangs over whoever says it and the answers wait in a box at the bottom of the screen; a character speaking in a bubble must be placed in this scene. Either way the player cannot walk off while choosing.',
+      },
+      {
+        key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'As the scenario’s setting says', options: [['true', 'Yes: read the lines aloud'], ['false', 'No: never read them aloud']],
+        hint: 'Each line is read in its speaker’s voice (set on the Characters page), or a line’s own recording is played. Players can switch reading aloud off for themselves.',
+      },
+    ],
+  },
   freeze: {
     label: 'Freeze or release player',
     about: 'Stop the player from walking (while a character talks), or let them walk again.',
@@ -232,12 +254,13 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
         options: [['item', 'An item or vehicle'], ['character', 'A character in this scene'], ['action', 'A picture another action is showing']],
         hint: 'The player’s avatar is animated for everyone in the scene. An item being ridden or worn is animated too, wherever it is.',
       },
-      { key: 'item_id', label: 'Item', kind: 'item' },
-      { key: 'character_id', label: 'Character', kind: 'character' },
+      // Structural: the animation list below is the chosen item's or character's.
+      { key: 'item_id', label: 'Item', kind: 'item', structural: true },
+      { key: 'character_id', label: 'Character', kind: 'character', structural: true },
       { key: 'target_id', label: 'Action', kind: 'action' },
       {
-        key: 'animation', label: 'Animation', kind: 'animation', wide: true,
-        hint: 'One of the character’s animations (on the Characters page), a name from an item’s sprite sheet (on the Media page), or a built-in move everything can make: jump, spin, crouch, wave, dance. Leave empty to stop what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
+        key: 'animation', label: 'Animation', kind: 'animation', wide: true, placeholder: 'None: stop what is playing',
+        hint: 'For a character, one of the animations defined for it on the Characters page. For an item, one from its picture’s sprite sheet (on the Media page) or a built-in move: jump, spin, crouch, wave, dance. None stops what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
       },
     ],
   },
@@ -289,7 +312,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     about: 'Move, resize or fade something another action is showing.',
     fields: [
       { key: 'target_id', label: 'Action to animate', kind: 'action', wide: true },
-      { key: 'position_x', label: 'To X', kind: 'number' },
+      { key: 'position_x', label: 'To X', kind: 'number', spot: { y: 'position_y', prompt: 'Click where it should move to.' }, hint: 'Scene pixels from the left. Empty: it keeps its X. “Pick on the scene” chooses both with a click.' },
       { key: 'position_y', label: 'To Y', kind: 'number' },
       ...scale,
       { key: 'alpha', label: 'Opacity (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, slider: { min: 0, max: 1 } },
@@ -303,7 +326,7 @@ export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
 /** An icon and a colour for each action type, by what kind of thing it does. */
 const SAY = '#2f6fed', SHOW = '#8e5bd6', SOUND = '#0f9d8a', FLOW = '#c77b12', PLAYER = '#d6457a', STATE = '#3b8f4a';
 export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: string]> = {
-  infobox: ['📋', SAY], dialogue: ['💬', SAY], text_overlay: ['🔤', SAY],
+  infobox: ['📋', SAY], dialogue: ['💬', SAY], conversation: ['🔀', SAY], text_overlay: ['🔤', SAY],
   image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
@@ -316,6 +339,20 @@ export const ACTION_COMMON: Field[] = [
   { key: 'blocking', label: 'Wait for this to finish before the next action', kind: 'bool', default: true, wide: true },
 ];
 
+/**
+ * A new conversation: a character greets the player, who can ask a question (the answer comes back
+ * to the greeting) or say goodbye. `characterId`: who speaks; without one the player does.
+ */
+export function starterConversation(characterId?: number | null): Record<string, unknown> {
+  const who = characterId != null ? { speaker: 'character', character_id: characterId } : {};
+  return {
+    lines: [
+      { id: 'l1', ...who, text: 'Hello! What would you like to know?', choices: [{ text: 'Who are you?', next: 'l2' }, { text: 'Goodbye!' }] },
+      { id: 'l2', ...who, text: 'I look after this place.', next: 'l1' },
+    ],
+  };
+}
+
 /** Starting values for a new action of each type, so it is valid as soon as it is added. */
 export function actionDefaults(type: ActionType): Record<string, unknown> {
   switch (type) {
@@ -325,6 +362,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return {};
     case 'dialogue':
       return { text: 'Hello!' };
+    case 'conversation':
+      return starterConversation();
     case 'freeze':
       return { frozen: true };
     case 'animate':
@@ -560,6 +599,10 @@ export const ITEM_SETTINGS_FIELDS: Field[] = [
   { key: 'attach_offset_y', label: 'Offset Y', kind: 'number', placeholder: '0' },
   { key: 'attach_layer', label: 'Drawn', kind: 'select', placeholder: 'In front of the avatar', options: [['front', 'In front of the avatar'], ['behind', 'Behind the avatar']] },
   { key: 'art_faces', label: 'The artwork faces', kind: 'select', placeholder: 'Right', options: [['left', 'Left'], ['right', 'Right']] },
+  {
+    key: 'hide_rider_below', label: 'Hide the avatar below', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'Show the whole avatar', slider: { min: 0, max: 1 },
+    hint: 'How far down the item’s picture the avatar stops being drawn: 0 is the top of the picture, 1 the bottom. Use it so a rider sits in a UFO or a car instead of their legs showing beneath it.',
+  },
   { key: 'speed_multiplier', label: 'Vehicle speed multiplier', kind: 'number', min: 0.1, step: 0.1, placeholder: '1.5', slider: { min: 0.1, max: 4 } },
 ];
 

@@ -6,7 +6,7 @@
  *
  *   php apps/api/tests/porting.php
  */
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi', 'ActivityStore', 'Api/Sql', 'Api/Reports'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -264,6 +264,32 @@ if (class_exists(ZipArchive::class)) {
     same([$status, $back['characters'][0]['settings']['routine']['steps'][0]['scene_id'], $back['characters'][0]['settings']['routine']['loop']], [201, $labBack['id'], false], 'and a ZIP export brings the routine back in, pointing at the imported scene');
     $store->deleteScenario((int) $in['scenario']['id']);
 }
+// ---- a conversation keeps its lines, and the ids in them point at the copies
+$talk = $store->createRow($roam, 'actions', ['event_id' => $roamEvent['id'], 'type' => 'conversation', 'params' => ['style' => 'portrait', 'start' => 'l1', 'lines' => [
+    ['id' => 'l1', 'speaker' => 'character', 'character_id' => $guide['id'], 'text' => 'Shall we go to the lab?', 'narration_media_id' => $roamMedia['id'], 'choices' => [
+        ['text' => 'Yes', 'correct' => true, 'next' => 'l2', 'actions' => [['type' => 'jump', 'scene_id' => $lab['id']]]],
+        ['text' => 'No'],
+    ]],
+    ['id' => 'l2', 'text' => 'Off we go.'],
+]]]);
+same([$talk['type'], count($talk['params']['lines'])], ['conversation', 2], 'a conversation action can be added, with its lines');
+$compiled = ScenarioCompiler::compile($store->bundle($roam));
+$firstScene = (string) $store->bundle($roam)['scenes'][0]['id'];
+check(in_array($lab['id'], $compiled['jump_targets']->{$firstScene} ?? [], true), 'a jump in a conversation\'s choice is one of the scene\'s jump targets');
+[$status, $body] = $api->handle('POST', "scenarios/$roam/duplicate", [], $teacher);
+$b = $store->bundle((int) $body['scenario']['id']);
+$labCopy = array_values(array_filter($b['scenes'], fn ($sc) => $sc['shortname'] === 'lab'))[0];
+$talkCopy = array_values(array_filter($b['actions'], fn ($a) => $a['type'] === 'conversation'))[0]['params'];
+$line = $talkCopy['lines'][0];
+same(
+    [$line['character_id'], $line['narration_media_id'], $line['choices'][0]['actions'][0]['scene_id'], $line['choices'][0]['next'], $talkCopy['start']],
+    [$b['characters'][0]['id'], $b['media'][0]['id'], $labCopy['id'], 'l2', 'l1'],
+    'in the copy, the speaker, the recording and the choice\'s jump point at the copies; line ids stay as they were'
+);
+$store->deleteScenario((int) $body['scenario']['id']);
+$questions = (new ReflectionMethod(\App\Qbl\Api\Reports::class, 'questions'))->invoke(null, ScenarioCompiler::compile($store->bundle($roam)));
+same($questions[$talk['id'].':l1'] ?? null, ['prompt' => 'Shall we go to the lab?', 'correct' => ['Yes' => true]], 'a conversation line with choices is a question in the reports, logged as action:line');
+check(! isset($questions[$talk['id'].':l2']), 'a line with nothing to choose is not');
 $store->deleteScenario($roam);
 
 // Someone else's scenario: only once published and public, and then as it was published.

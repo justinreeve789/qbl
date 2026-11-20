@@ -1,5 +1,6 @@
 import { BUILT_IN_MOVES, isPose } from '@qbl/shared';
 import type { Row } from './api';
+import { characterOf } from './characters';
 import { actionLabel, eventLabel, EVENT_KINDS, mediaLabel, mediaUrl, params, sceneLabel } from './describe';
 import { h, help, toast } from './dom';
 import type { Store } from './store';
@@ -37,8 +38,8 @@ export interface Field {
   sceneKey?: string;
   /** event: only list events of these kinds. */
   eventKinds?: string[];
-  /** bool: the value when the attribute is absent. */
-  default?: boolean;
+  /** bool, select: the value when the attribute is absent. */
+  default?: boolean | string;
   min?: number;
   max?: number;
   step?: number;
@@ -53,6 +54,26 @@ export interface Field {
   wide?: boolean;
   /** Shown only when this says so, given the form's values: a field that only means something for some choices. */
   when?: (values: Values) => boolean;
+  /**
+   * number: the X of a spot in the scene, whose Y is the field named `y`. Where the form can pick
+   * spots (`FormContext.pickSpot`), a button after the two lets the spot be chosen by clicking the
+   * scene. `prompt` says what the click chooses ("Click where the walker should go").
+   */
+  spot?: { y: string; prompt: string };
+}
+
+/** A spot to be chosen by clicking a scene. */
+export interface SpotRequest {
+  /** What the click chooses, shown while choosing. */
+  prompt: string;
+  /** The spot as it is now, if it has one, drawn so it can be seen while choosing. */
+  at: { x: number; y: number } | null;
+  /** The scene to show, where the form is not about one scene (a character's routine). */
+  sceneId?: number;
+  /** Called with the spot clicked, in scene pixels. */
+  done(at: { x: number; y: number }): void;
+  /** Called when choosing stops without a spot: Escape, Cancel, another choice begun, or the returned function called. */
+  cancelled?(): void;
 }
 
 export interface Slider {
@@ -70,12 +91,76 @@ export interface FormContext {
   store: Store;
   /** The scene being edited, for pickers that list things in it. */
   sceneId?: number;
+  /** Lets a spot be chosen by clicking the scene: the scene editor's canvas, or a pop-up of a scene. Without it there is no button. */
+  pickSpot?: (request: SpotRequest) => () => void;
+  /** Where there is no `sceneId`: the scene a spot is most likely in, shown first when picking one. */
+  spotScene?: number;
+  /** The character whose form this is (a routine step), for pickers that list its things. */
+  characterId?: number;
 }
 
 const NEW = '__new__';
 
 export function form(fields: readonly Field[], values: Values, commit: Commit, ctx: FormContext): HTMLElement {
-  return h('div', { class: 'form' }, ...fields.filter((f) => !f.when || f.when(values)).map((f) => control(f, values, commit, ctx)));
+  const shown = fields.filter((f) => !f.when || f.when(values));
+  const nodes = new Map<Field, HTMLElement>(shown.map((f) => [f, control(f, values, commit, ctx)]));
+  const children: HTMLElement[] = [];
+  for (const f of shown) {
+    children.push(nodes.get(f)!);
+    // The button for a spot goes after its Y, so it sits under the pair.
+    const x = ctx.pickSpot ? shown.find((other) => other.spot?.y === f.key) : undefined;
+    if (x) children.push(spotButton(x, f, nodes.get(x)!, nodes.get(f)!, values, commit, ctx));
+  }
+  return h('div', { class: 'form' }, ...children);
+}
+
+/**
+ * “Pick on the scene”: choose the spot an X and a Y field name by clicking the scene, rather than
+ * typing the numbers. Both boxes show the spot clicked and both values are saved.
+ */
+function spotButton(xField: Field, yField: Field, xNode: HTMLElement, yNode: HTMLElement, values: Values, commit: Commit, ctx: FormContext): HTMLElement {
+  const boxes = () => [xNode.querySelector<HTMLInputElement>('input[type=number]'), yNode.querySelector<HTMLInputElement>('input[type=number]')] as const;
+  const read = (box: HTMLInputElement | null, key: string): number | null => {
+    const raw = box ? box.value.trim() : String(values[key] ?? '');
+    return raw === '' || Number.isNaN(Number(raw)) ? null : Number(raw);
+  };
+  const idle = '📍 Pick on the scene';
+  let cancel: (() => void) | null = null;
+  const stop = () => {
+    cancel = null;
+    button.textContent = idle;
+    button.classList.remove('picking');
+    button.setAttribute('aria-pressed', 'false');
+  };
+  const button = h('button', {
+    type: 'button', class: 'spot-pick', 'aria-pressed': 'false', title: 'Choose the spot by clicking the scene instead of typing X and Y',
+    onclick: () => {
+      if (cancel) return cancel();
+      const [bx, by] = boxes();
+      const x = read(bx, xField.key);
+      const y = read(by, yField.key);
+      button.textContent = 'Click the scene… (Esc to stop)';
+      button.classList.add('picking');
+      button.setAttribute('aria-pressed', 'true');
+      cancel = ctx.pickSpot!({
+        prompt: xField.spot!.prompt,
+        at: x != null && y != null ? { x, y } : null,
+        sceneId: ctx.sceneId ?? ctx.spotScene,
+        done: (at) => {
+          stop();
+          const [bx2, by2] = boxes();
+          if (bx2) bx2.value = String(at.x);
+          if (by2) by2.value = String(at.y);
+          // Sliders, if either has one, follow their box.
+          for (const box of [bx2, by2]) box?.dispatchEvent(new Event('change'));
+          if (!bx2) commit(xField.key, at.x, xField);
+          if (!by2) commit(yField.key, at.y, yField);
+        },
+        cancelled: stop,
+      });
+    },
+  }, idle);
+  return h('div', { class: 'field wide spot-field', 'data-field': `${xField.key}-pick` }, button);
 }
 
 function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HTMLElement {
@@ -98,15 +183,8 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       });
       return wrap(input);
     }
-    case 'animation': {
-      // Any name can be typed; the list offers the characters' own animations, the ones sprite sheets define and the built-in moves.
-      const names = new Set<string>(Object.keys(BUILT_IN_MOVES));
-      for (const m of ctx.store.rows('media')) for (const a of ((params(m).animations as Array<{ name: string }> | undefined) ?? [])) names.add(a.name);
-      for (const c of ctx.store.rows('characters')) for (const n of Object.keys((params(c, 'settings').animations as Record<string, unknown> | undefined) ?? {})) if (!isPose(n)) names.add(n);
-      const id = `animations-${Math.random().toString(36).slice(2)}`;
-      const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder ?? 'jump', list: id, onchange: () => set(input.value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_') || null) });
-      return wrap(input, h('datalist', { id }, ...[...names].sort().map((n) => h('option', { value: n }))));
-    }
+    case 'animation':
+      return wrap(animationPicker(f, value, values, set, ctx));
     case 'value': {
       const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder, onchange: () => set(parseValue(input.value)) });
       return wrap(input);
@@ -131,8 +209,10 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder ?? '#ffffff', onchange: () => set(input.value.trim() || null) });
       return wrap(input);
     }
-    case 'select':
-      return wrap(select(f.options ?? [], value == null ? '' : String(value), (v) => set(v === '' ? null : v), f.placeholder));
+    case 'select': {
+      const current = value == null || value === '' ? (typeof f.default === 'string' ? f.default : '') : String(value);
+      return wrap(select(f.options ?? [], current, (v) => set(v === '' ? null : v), f.placeholder));
+    }
     case 'tristate': {
       const [yes, no] = [f.options?.[0]?.[1] ?? 'Yes', f.options?.[1]?.[1] ?? 'No'];
       const current = value == null || value === '' ? '' : String(value === true || value === 'true' || value === 1);
@@ -296,6 +376,86 @@ export function select(
   for (const [v, label] of options) node.append(h('option', { value: v }, label));
   if (value !== '' && !options.some(([v]) => v === value)) node.append(h('option', { value }, `${value} (missing)`));
   node.value = value;
+  return node;
+}
+
+type Choice = readonly [value: string, label: string];
+type ChoiceGroup = { label: string; choices: Choice[]; empty?: string };
+
+const builtInChoices = (except: readonly string[] = []): Choice[] =>
+  Object.entries(BUILT_IN_MOVES).filter(([n]) => !except.includes(n)).map(([n, m]) => [n, `${m.icon} ${m.label}`] as const);
+const named = (names: Iterable<string>): Choice[] => [...new Set(names)].sort().map((n) => [n, n] as const);
+
+/**
+ * The animations an animation field offers, grouped. A character (the one an animate action names,
+ * or the routine's own) offers only the animations defined for it on the Characters page, not its
+ * poses; an item, its sprite sheet's and the built-in moves; anything else, every name the scenario
+ * knows of. Null while an animate action is on a character but none is chosen yet.
+ */
+export function animationChoices(values: Values, ctx: FormContext): ChoiceGroup[] | null {
+  const { store } = ctx;
+  const onCharacter = ctx.characterId != null || values.target === 'character';
+  if (onCharacter) {
+    const characterId = ctx.characterId ?? (values.character_id as number | null | undefined);
+    const character = characterId != null ? store.byId('characters', characterId) : undefined;
+    if (!character) return null;
+    const own = Object.keys(characterOf(store, character).animations ?? {}).filter((n) => !isPose(n));
+    return [{ label: `${String(character.name || 'This character')}’s animations`, choices: named(own), empty: 'None yet: add some on the Characters page' }];
+  }
+  const item = values.target === 'item' && values.item_id != null ? store.byId('items', values.item_id as number) : undefined;
+  if (item) {
+    const media = store.byId('media', item.media_id as number | null);
+    const own = ((media ? (params(media).animations as Array<{ name: string }> | undefined) : undefined) ?? []).map((a) => a.name);
+    return [
+      { label: `${String(item.name || 'This item')}’s sprite sheet`, choices: named(own) },
+      { label: 'Built-in moves', choices: builtInChoices(own) },
+    ].filter((g) => g.choices.length);
+  }
+  const sheets = store.rows('media').flatMap((m) => ((params(m).animations as Array<{ name: string }> | undefined) ?? []).map((a) => a.name));
+  const characters = store.rows('characters').flatMap((c) => Object.keys(characterOf(store, c).animations ?? {}).filter((n) => !isPose(n)));
+  return [
+    { label: 'Built-in moves', choices: builtInChoices() },
+    { label: 'Characters’ animations', choices: named(characters.filter((n) => !(n in BUILT_IN_MOVES))) },
+    { label: 'From sprite sheets', choices: named(sheets.filter((n) => !(n in BUILT_IN_MOVES))) },
+  ].filter((g) => g.choices.length);
+}
+
+/**
+ * After an animate action's target, character or item changes: an animation the new one does not
+ * have gives way to the first one it does (or none). Left alone while no character is chosen.
+ */
+export function tidyAnimate<T extends Values>(values: T, ctx: FormContext): T {
+  const current = values.animation as string | null | undefined;
+  const groups = animationChoices(values, ctx);
+  if (!current || !groups) return values;
+  const names = groups.flatMap((g) => g.choices.map(([v]) => v));
+  if (names.includes(current)) return values;
+  const next: Values = { ...values };
+  if (names[0]) next.animation = names[0];
+  else delete next.animation;
+  return next as T;
+}
+
+/** A dropdown of the animations there are to play: for a character, only the ones defined for it. */
+function animationPicker(f: Field, value: unknown, values: Values, set: (v: unknown) => void, ctx: FormContext): HTMLElement {
+  const current = value == null ? '' : String(value);
+  const groups = animationChoices(values, ctx);
+  const node = h('select', { class: 'animation-choice', onchange: () => set(node.value || null) });
+  if (!groups) {
+    node.append(h('option', { value: '' }, 'Choose a character first'));
+    node.disabled = true;
+    return node;
+  }
+  node.append(h('option', { value: '' }, f.placeholder ?? 'Choose an animation'));
+  for (const g of groups) {
+    const group = h('optgroup', { label: g.label });
+    for (const [v, label] of g.choices) group.append(h('option', { value: v }, label));
+    if (!g.choices.length && g.empty) group.append(h('option', { value: '', disabled: true }, g.empty));
+    node.append(group);
+  }
+  // A name saved earlier that is not on the list any more: kept, and said so, until another is chosen.
+  if (current && !groups.some((g) => g.choices.some(([v]) => v === current))) node.append(h('option', { value: current }, `${current} (not defined)`));
+  node.value = current;
   return node;
 }
 

@@ -145,8 +145,31 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-story.watching .qbl-story-portrait { left: 14px; bottom: 12px; width: 84px; height: 96px; font-size: 40px; }
 .qbl-story.watching .qbl-story-text { font-size: 15px; min-height: 0; }
 .qbl-story.watching .qbl-story-name { margin-top: -26px; font-size: 13px; }
+/* A conversation's answers: under the line in the story box, or alone in a box when the line is a bubble. */
+.qbl-story.choosing { cursor: default; }
+.qbl-story.answers-only { padding: 14px 18px; min-height: 0; cursor: default; }
+.qbl-answers { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.qbl-story.answers-only .qbl-answers { margin: 0; }
+.qbl-answers[hidden] { display: none; }
+.qbl-answers li { animation: qbl-answer-in 0.18s ease-out backwards; }
+.qbl-answers li:nth-child(2) { animation-delay: 0.04s; }
+.qbl-answers li:nth-child(3) { animation-delay: 0.08s; }
+.qbl-answers li:nth-child(n + 4) { animation-delay: 0.12s; }
+@keyframes qbl-answer-in { from { opacity: 0; transform: translateY(6px); } }
+.qbl-answer {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border-radius: 12px; text-align: left;
+  border: 2px solid rgba(230, 195, 106, 0.4); background: rgba(255, 255, 255, 0.07); color: #fff; font: inherit; font-size: 17px; line-height: 1.3; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+.qbl-answer:hover, .qbl-answer:focus-visible { background: rgba(230, 195, 106, 0.2); border-color: #e6c36a; outline: none; transform: translateX(3px); }
+.qbl-answer-key {
+  flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: #e6c36a; color: #1b1f27; font-size: 14px; font-weight: 700;
+}
+.qbl-bubble.asking { cursor: default; }
 @media (max-width: 560px) {
   .qbl-story { padding-left: 118px; min-height: 110px; }
+  .qbl-answer { font-size: 15px; padding: 9px 12px; }
   .qbl-story-portrait { width: 86px; height: 104px; left: 14px; }
   .qbl-story-text { font-size: 16px; }
 }

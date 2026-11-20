@@ -117,19 +117,17 @@ export class Ui implements UiPort {
     return h;
   }
 
-  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null; speak?: SpeakOptions }): ActionHandle {
+  /** A speech bubble that follows `anchor` every frame, keeping itself on screen. `remove` takes it away. */
+  private bubble(text: string, name: string | undefined, anchor: () => BubbleAnchor | null): { node: HTMLElement; words: HTMLElement; remove(): void } {
     const node = el('div', 'qbl-bubble');
-    if (o.name) node.append(el('strong', 'qbl-bubble-name', o.name));
+    if (name) node.append(el('strong', 'qbl-bubble-name', name));
     const words = el('span', '', text);
     node.append(words);
     node.setAttribute('role', 'status');
     this.root.append(node);
-
     let frame = 0;
-    let finish!: () => void;
-    const done = new Promise<void>((r) => (finish = r));
     const follow = () => {
-      const at = o.anchor();
+      const at = anchor();
       node.style.visibility = at ? 'visible' : 'hidden';
       if (at) {
         const p = placeBubble(at, { width: node.offsetWidth, height: node.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
@@ -140,23 +138,42 @@ export class Ui implements UiPort {
       }
       frame = requestAnimationFrame(follow);
     };
+    follow();
+    return {
+      node,
+      words,
+      remove: () => {
+        cancelAnimationFrame(frame);
+        node.remove();
+      },
+    };
+  }
+
+  dialogue(text: string, o: { name?: string; duration: number; anchor: () => BubbleAnchor | null; speak?: SpeakOptions }): ActionHandle {
+    const bubble = this.bubble(text, o.name, o.anchor);
+    let finish!: () => void;
+    const done = new Promise<void>((r) => (finish = r));
     const end = () => {
-      cancelAnimationFrame(frame);
       window.clearTimeout(timer);
       reading.stop();
-      node.remove();
+      bubble.remove();
       finish();
     };
     // Read aloud, the bubble stays until the voice has finished, however long that takes.
-    const reading = this.read(words, o.speak);
+    const reading = this.read(bubble.words, o.speak);
     const timer = window.setTimeout(() => void reading.over.then(end), o.duration);
     // A click closes it early, for readers who are done.
-    node.addEventListener('click', end);
-    follow();
+    bubble.node.addEventListener('click', end);
     return { done, cancel: end };
   }
 
-  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle {
+  /**
+   * The story box: the speaker's close-up standing on its edge, their name, and the line, which
+   * arrives a few letters at a time unless it is read aloud (then it is all there and each word
+   * lights up as it is spoken). `revealAll` shows the rest at once; `revealed` settles when all
+   * of it is showing. `stop` ends the reading and the letters.
+   */
+  private storyBox(text: string, o: { name?: string; portrait?: CharacterPicture; watching?: boolean; speak?: SpeakOptions }) {
     const node = el('div', `qbl-story${o.watching ? ' watching' : ''}`);
     const frame = el('div', 'qbl-story-portrait');
     if (o.portrait?.url) {
@@ -168,58 +185,175 @@ export class Ui implements UiPort {
     if (o.name) body.append(el('strong', 'qbl-story-name', o.name));
     const line = el('p', 'qbl-story-text');
     body.append(line);
-    const more = el('span', 'qbl-story-more', o.duration > 0 ? '' : '▶');
-    body.append(more);
     node.append(frame, body);
     node.setAttribute('role', o.watching ? 'status' : 'dialog');
     node.setAttribute('aria-label', o.name ? `${o.name} says` : 'Dialogue');
     this.root.append(node);
 
-    // Read aloud, the whole line is there at once and each word lights up as it is spoken.
     line.textContent = text;
     const reading = this.read(line, o.speak);
     if (!reading.active) line.textContent = '';
-    // Otherwise the words arrive a few at a time. A first click shows them all; the next one continues.
     let shown = reading.active ? text.length : 0;
+    let whole!: () => void;
+    const revealed = new Promise<void>((r) => (whole = r));
+    const revealAll = () => {
+      window.clearInterval(reveal);
+      shown = text.length;
+      line.textContent = text;
+      whole();
+    };
     const reveal = window.setInterval(() => {
-      if (reading.active) return window.clearInterval(reveal);
+      if (reading.active) return revealAll();
       shown = Math.min(text.length, shown + 2);
       line.textContent = text.slice(0, shown);
-      if (shown >= text.length) window.clearInterval(reveal);
+      if (shown >= text.length) revealAll();
     }, 24);
+    if (reading.active) revealAll();
     // Screen readers get the whole line at once.
     line.setAttribute('aria-label', text);
+    return {
+      node,
+      body,
+      reading,
+      revealAll,
+      revealed,
+      get complete() {
+        return shown >= text.length;
+      },
+      stop: () => {
+        window.clearInterval(reveal);
+        reading.stop();
+      },
+    };
+  }
+
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle {
+    const story = this.storyBox(text, o);
+    story.body.append(el('span', 'qbl-story-more', o.duration > 0 ? '' : '▶'));
 
     let timer = 0;
     const modal = !o.watching;
     if (modal) this.modals++;
     const h = handle(() => {
-      window.clearInterval(reveal);
       window.clearTimeout(timer);
-      reading.stop();
+      story.stop();
       window.removeEventListener('keydown', onKey, true);
       if (modal) this.modals--;
-      node.remove();
+      story.node.remove();
     });
-    const next = () => {
-      if (shown < text.length) {
-        shown = text.length;
-        line.textContent = text;
-        window.clearInterval(reveal);
-      } else {
-        h.finish();
-      }
-    };
+    // A first click shows the whole line; the next one continues.
+    const next = () => (story.complete ? h.finish() : story.revealAll());
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
       e.stopPropagation();
       next();
     };
-    node.addEventListener('click', next);
+    story.node.addEventListener('click', next);
     if (modal) window.addEventListener('keydown', onKey, true);
-    if (o.duration > 0) timer = window.setTimeout(() => void reading.over.then(h.finish), o.duration);
+    if (o.duration > 0) timer = window.setTimeout(() => void story.reading.over.then(h.finish), o.duration);
     return h;
+  }
+
+  /**
+   * A line of a conversation and the answers the player can give. As a story box the answers are
+   * listed in the box under the line, once the line is all showing; as a bubble the line hangs over
+   * the speaker and the answers wait in a box across the bottom of the screen. The player clicks
+   * one, or presses its number. There is no closing it without answering: the game can, with
+   * `close`, and `choice` then settles with null.
+   */
+  choose(text: string, answers: string[], o: { style: 'portrait' | 'bubble'; name?: string; portrait?: CharacterPicture; anchor?: () => BubbleAnchor | null; speak?: SpeakOptions }): InfoboxHandle {
+    const list = el('ol', 'qbl-answers');
+    list.setAttribute('aria-label', 'What do you say?');
+    const buttons = answers.map((label, i) => {
+      const b = el('button', 'qbl-answer');
+      b.type = 'button';
+      b.dataset.answer = String(i);
+      b.append(el('span', 'qbl-answer-key', i < 9 ? String(i + 1) : '•'), el('span', 'qbl-answer-text', label));
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pick(i);
+      });
+      const item = el('li');
+      item.append(b);
+      list.append(item);
+      return b;
+    });
+
+    let result: number | null = null;
+    let settle!: (index: number | null) => void;
+    const choice = new Promise<number | null>((r) => (settle = r));
+    const previous = document.activeElement as HTMLElement | null;
+    let ready = false;
+    const offer = () => {
+      ready = true;
+      list.hidden = false;
+      buttons[0]?.focus({ preventScroll: true });
+    };
+
+    let story: ReturnType<Ui['storyBox']> | null = null;
+    let bubble: ReturnType<Ui['bubble']> | null = null;
+    let tray: HTMLElement | null = null;
+    let reading = { stop() {} };
+    if (o.style === 'bubble' && o.anchor) {
+      bubble = this.bubble(text, o.name, o.anchor);
+      bubble.node.classList.add('asking');
+      reading = this.read(bubble.words, o.speak);
+      tray = el('div', 'qbl-story answers-only');
+      tray.setAttribute('role', 'dialog');
+      tray.setAttribute('aria-label', o.name ? `Answer ${o.name}` : 'Answer');
+      tray.append(list);
+      this.root.append(tray);
+      offer();
+    } else {
+      story = this.storyBox(text, o);
+      story.node.classList.add('choosing');
+      list.hidden = true;
+      story.body.append(list);
+      // A click on the line (not on an answer) shows the rest of it at once.
+      story.node.addEventListener('click', () => story!.revealAll());
+      void story.revealed.then(() => {
+        if (!finished) offer();
+      });
+    }
+
+    this.modals++;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      this.modals--;
+      window.removeEventListener('keydown', onKey, true);
+      story?.stop();
+      story?.node.remove();
+      reading.stop();
+      bubble?.remove();
+      tray?.remove();
+      previous?.focus?.({ preventScroll: true });
+      settle(result);
+    };
+    const pick = (i: number) => {
+      if (!ready || finished) return;
+      result = i;
+      finish();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (!ready && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        e.stopPropagation();
+        story?.revealAll();
+        return;
+      }
+      const n = Number(e.key);
+      if (ready && Number.isInteger(n) && n >= 1 && n <= Math.min(9, answers.length)) {
+        e.preventDefault();
+        e.stopPropagation();
+        pick(n - 1);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return { choice, close: finish };
   }
 
   imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number }): OverlayHandle {

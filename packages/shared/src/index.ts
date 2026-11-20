@@ -5,6 +5,7 @@ export * from './variables.js';
 export * from './geometry.js';
 export * from './pathfinder.js';
 export * from './walking.js';
+export * from './conversation.js';
 export * from './roaming.js';
 export * from './scenario.js';
 export * from './engine.js';

@@ -2,11 +2,12 @@ import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
 import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
 import { ROUTINE_STEP_TYPES } from './types.js';
-import type { Action, Character, Condition, GameEvent, Id, Media, Npc, RoutineStep, Scenario, Scene, WalkAction } from './types.js';
+import type { Action, Character, Condition, ConversationAction, GameEvent, Id, Media, Npc, RoutineStep, Scenario, Scene, WalkAction } from './types.js';
 import { CHARACTER_POSES, isPose, normalizeNpc } from './characters.js';
 import { characterRoams, doorsOf, normalizeRoutine, routeBetween, startPlacement } from './walking.js';
 import { ScenarioIndex } from './scenario.js';
 import { placeholderVariables } from './text.js';
+import { LINE_ID, reachableLines } from './conversation.js';
 import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
 
 export interface Issue {
@@ -295,7 +296,58 @@ export function validateScenario(doc: unknown): ValidationResult {
     }
   };
 
-  const checkAction = (raw: Action, path: string, scene: Scene, inCta = false) => {
+  /** `inCta`: the action is on an infobox button (`true`) or a conversation's choice (`'choice'`), not in an event. */
+  /** A conversation: its lines, who says them, where its choices lead, and what they do. */
+  const checkConversation = (a: ConversationAction, path: string, scene: Scene) => {
+    if (a.style != null && a.style !== 'bubble' && a.style !== 'portrait') err(`${path}.style`, 'style is "bubble" or "portrait"');
+    if (!Array.isArray(a.lines) || a.lines.length === 0) {
+      err(`${path}.lines`, 'A conversation needs at least one line');
+      return;
+    }
+    const ids = new Set<string>();
+    a.lines.forEach((line, li) => {
+      const lp = `${path}.lines[${li}]`;
+      if (typeof line?.id !== 'string' || !LINE_ID.test(line.id)) err(`${lp}.id`, 'A line id is 1 to 32 letters, digits, - or _');
+      else if (ids.has(line.id)) err(`${lp}.id`, `Two lines are called "${line.id}"`);
+      else ids.add(line.id);
+    });
+    if (a.start != null && a.start !== '' && !ids.has(a.start)) err(`${path}.start`, `There is no line "${a.start}" to start with`);
+    const lead = (to: string | null | undefined, at: string) => {
+      if (to != null && to !== '' && !ids.has(to)) err(at, `There is no line "${to}" to go on to (it may have been deleted)`);
+    };
+    a.lines.forEach((line, li) => {
+      const lp = `${path}.lines[${li}]`;
+      if (typeof line.text !== 'string' || line.text.trim() === '') err(`${lp}.text`, 'What is said is required');
+      else checkText(line.text, `${lp}.text`);
+      if (line.speaker != null && line.speaker !== 'player' && line.speaker !== 'character') err(`${lp}.speaker`, 'speaker is "player" or "character"');
+      if (line.speaker === 'character') {
+        // A bubble needs someone to hang over; a story box can carry a voice from anywhere.
+        if ((a.style ?? 'portrait') === 'portrait') {
+          if (!characters.has(line.character_id as Id)) err(`${lp}.character_id`, 'The speaking character does not exist');
+        } else if (!canBeHere(line.character_id, scene)) {
+          err(`${lp}.character_id`, 'The speaking character is not placed in this scene');
+        }
+      }
+      if (line.narration_media_id != null) needMedia(line.narration_media_id, `${lp}.narration_media_id`, 'audio');
+      checkConditions(line.conditions, lp);
+      lead(line.next, `${lp}.next`);
+      (line.choices ?? []).forEach((c, ci) => {
+        const cp = `${lp}.choices[${ci}]`;
+        if (typeof c?.text !== 'string' || c.text.trim() === '') err(`${cp}.text`, 'A choice needs something to say');
+        else checkText(c.text, `${cp}.text`);
+        checkConditions(c.conditions, cp);
+        lead(c.next, `${cp}.next`);
+        (c.actions ?? []).forEach((inner, ai) => checkAction(inner as Action, `${cp}.actions[${ai}]`, scene, 'choice'));
+      });
+      if ((line.choices ?? []).length && line.next) warn(`${lp}.next`, 'A line with choices goes where the chosen one leads; its “then” is only used when none of them is offered');
+    });
+    const reached = reachableLines(a);
+    a.lines.forEach((line, li) => {
+      if (typeof line.id === 'string' && ids.has(line.id) && !reached.has(line.id)) warn(`${path}.lines[${li}]`, `Line "${line.id}" is never said: no choice or line leads to it`);
+    });
+  };
+
+  const checkAction = (raw: Action, path: string, scene: Scene, inCta: boolean | 'choice' = false) => {
     const type = normalizeActionType(raw.type);
     if (!type) {
       err(`${path}.type`, `Unknown action type "${String(raw.type)}"`);
@@ -344,7 +396,8 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'award':
         if (typeof a.stars !== 'number' && typeof a.xp !== 'number') err(path, 'An award needs stars, XP or both');
         // Awards are checked by the backend against the events' actions, which a button's action is not part of.
-        if (inCta) warn(path, 'An award on a button is not given. Put it in an event and have the button run that event');
+        if (inCta === 'choice') warn(path, 'An award in a conversation choice is not given. Put it in an event and have the choice run that event');
+        else if (inCta) warn(path, 'An award on a button is not given. Put it in an event and have the button run that event');
         if (a.badge != null && (typeof a.badge !== 'string' || a.badge.trim() === '')) err(`${path}.badge`, 'A badge needs a name');
         if (a.badge_media_id != null) needMedia(a.badge_media_id, `${path}.badge_media_id`, 'image');
         break;
@@ -369,6 +422,9 @@ export function validateScenario(doc: unknown): ValidationResult {
         } else if (a.speaker === 'character' && !canBeHere(a.character_id, scene)) {
           err(`${path}.character_id`, 'The speaking character is not placed in this scene');
         }
+        break;
+      case 'conversation':
+        checkConversation(a, path, scene);
         break;
       case 'freeze':
         if (typeof a.frozen !== 'boolean') err(`${path}.frozen`, 'frozen must be true or false');

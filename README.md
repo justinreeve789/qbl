@@ -401,7 +401,7 @@ Open `/editor`, sign in, and create a scenario. It gets a code of 16 random lett
 
 - **Scenes** are drawn to scale with everything in them. Add background and foreground layers (stretched to the scene, or repeated with a drift and parallax), walkable and blocked areas, spawn points, items and characters, and drag any of them into place. A scene larger than the screen scrolls as players walk.
 - **Depth and discovery**: scale areas draw avatars, vehicles and items smaller towards the back of a scene; a hotspot can be given a distance within which it fades into view.
-- **Events**: start, end, hotspot and indirect events, each with conditions and an ordered list of actions. Every action type in the docs has a form, as do the added actions: `avatar` (hide or show the player), `freeze` (hold the player still), `dialogue` (a speech bubble or a story box with a portrait), `award` (give or take stars and XP) and `shop` (open the marketplace). Each event says who sees it: the player who sets it off, or everyone in the scene. "Exit along the left edge" and its siblings create the walk-in hotspot and jump action that move players between scenes.
+- **Events**: start, end, hotspot and indirect events, each with conditions and an ordered list of actions. Every action type in the docs has a form, as do the added actions: `avatar` (hide or show the player), `freeze` (hold the player still), `dialogue` (a speech bubble or a story box with a portrait), `conversation` (a dialogue tree: the player picks what to say, edited as a map and in a pop-up panel), `award` (give or take stars and XP) and `shop` (open the marketplace). Each event says who sees it: the player who sets it off, or everyone in the scene. "Exit along the left edge" and its siblings create the walk-in hotspot and jump action that move players between scenes.
 - **Library**: media (upload, or by address; filed under backgrounds, characters, avatars, items, vehicles, shop items, sounds, video), variables (each marked as a player's own or shared), items, characters with their portraits, and the objectives checklist.
 - **Shop**: the items only this scenario sells, with their price, picture and what they do.
 - **Test this scene** opens the game on the draft, in that scene, playing alone with nothing saved, so you can check that actions behave. Nothing has to be published first.
@@ -424,6 +424,33 @@ The demo mission, **Starship Explorer**, is shipped as a scenario ZIP, the same 
 Both paths play the same document. `npm run test:api` checks that JSON generated from the seeded database is the ZIP's `scenario.json`, that `scenarios/starship.json` and its uploads are current, that seeding again does not disturb an edited scenario, and that seeding refuses to overwrite rows belonging to another scenario.
 
 The demo's music and rocket sound are synthesised by `tools/make-demo-audio.py`.
+
+## The app: installing QuestLab on phones and computers
+
+The site is a progressive web app (PWA). Its files are in `apps/client/public` and Vite copies them into the build:
+
+- `manifest.webmanifest`: name, colours, icons; it opens at `/missions`.
+- `sw.js`: a small service worker. It keeps Vite's hashed bundles in a cache, and with no connection shows `offline.html`, which retries by itself. It does not touch the API, the game socket, media, the editor or the docs, and it is not registered under `vite` (development). Raise `VERSION` in it when `offline.html` or the icons change.
+- `icons/`: drawn by `node tools/make-app-icons.mjs` from the "QL" mark.
+- `.well-known/assetlinks.json`: written by the Android build (below).
+
+Chrome, Edge and Samsung Internet offer to install the site; the account menu then shows **Install the app** (`apps/client/src/pwa.ts`). On an iPhone or iPad: Share → Add to Home Screen.
+
+### The Android app
+
+`tools/android` builds an Android app (a Trusted Web Activity): a small shell that opens the live site full screen in the phone's Chrome. It shows whatever the server has, so deploying the site updates the app. Rebuild it only to change its name, icon, colours or address (`tools/android/app.json`; package `cc.questlab.app`, site `dev.questlab.cc`).
+
+```sh
+cd tools/android && npm install
+ANDROID_HOME=~/android-sdk QBL_ANDROID_KEYSTORE=~/questlab.keystore QBL_ANDROID_KEYSTORE_PASSWORD=… npm run build
+```
+
+It needs Java 17+ and an Android SDK with `sdkmanager "platforms;android-36" "build-tools;35.0.0"`. Out come `dist/questlab-<version>.apk` (to install directly) and `.aab` (for the Play Store), and `apps/client/public/.well-known/assetlinks.json`.
+
+- **The signing key** (`QBL_ANDROID_KEYSTORE`, made on the first build if missing) must be kept, with its password, outside the repository: every update of the app has to be signed with the same key. `*.keystore` is ignored by git.
+- **The site must serve `/.well-known/assetlinks.json`**, with the key's fingerprint, before the app opens without an address bar. It is committed, so deploying the client is enough. A different key, or a different site (`QBL_ANDROID_HOST`), means building again and committing the new file.
+- **Play Store**: Google re-signs uploaded apps with its own key. Add that key's SHA-256 (Play Console → Test and release → App integrity) to `extraFingerprints` in `app.json`, build, and deploy the new `assetlinks.json`. Raise `versionCode` for every upload.
+- Phones need Android 7.0 or newer and Chrome (or another browser that supports Trusted Web Activities). Without one, the app opens the site in a browser tab.
 
 ## Roadmap
 

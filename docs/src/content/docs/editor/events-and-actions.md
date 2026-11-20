@@ -51,6 +51,7 @@ Picture labels can be made **Solid**, so players walk around them. A solid label
 
 Under 🎬 Actions, **+ Add action…** lists every type with a one-line description. A new action arrives with sensible starting values so it is valid straight away.
 
+* Anything with an **X** and **Y** in the scene (**Walk** to a spot, **Translate**, **Image in scene**, **Spritemap**) has **📍 Pick on the scene** under them: press it, then click the scene to set both. While choosing, a click on a character or hotspot picks the spot under it instead of selecting it. These spots are drawn on the canvas while the event is selected, and can be dragged there.
 * Actions run **in the order listed**. **Drag the ⠿ grip** at the left of a card to move it; drop it on the upper or lower half of another card to put it before or after.
 * Click a card to open it. Its one-line summary tells you what it does when it is closed.
 * **Wait for this to finish before the next action** (on by default) makes the event pause until this action is done. Turn it off to let the next action start at once, for a sound that plays under a conversation.
@@ -65,6 +66,7 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 | ------ | ------------ |
 | 📋 **Infobox** | A box of text (HTML), with optional buttons. [Details below](#infobox-and-questions) |
 | 💬 **Dialogue** | A speech bubble over the speaker, or a *story box* with a portrait. The speaker is the player or a **Character** |
+| 🔀 **Conversation** | A dialogue tree: lines said by the player and characters, where the player picks what to say next. [Details below](#conversations) |
 | 🔤 **Text overlay** | Text over the screen: where, how long, size, colour and style |
 
 **Show something**
@@ -119,7 +121,7 @@ An **award** is given **once per student** by default, however often the event r
 
 **Walk** moves someone on foot: around whatever is in the way, with their walking pictures, turning the way they go. Choose **Who walks** and **Walk to**; only the fields for that destination are shown.
 
-* **A spot in the scene**: its **X** and **Y**.
+* **A spot in the scene**: its **X** and **Y**. Press **📍 Pick on the scene** and click the scene where the walker should go, rather than typing the numbers; **Esc** or **Cancel** stops without changing them. While the event is selected, the spot is drawn on the canvas as a marker, with a dashed line from where the character stands, and the marker can be dragged.
 * **A spawn point in the scene**: one of the scene's spawn points.
 * **Another scene, through its doors**: the walker heads for a hotspot of this scene whose jump goes to that scene (an exit made on the scene map is one), goes through it and arrives at the spawn point the jump names. **Then walk on to** sends a character that walks around on its own on to a spawn point there.
 
@@ -138,6 +140,34 @@ A **question** is a standard pattern built from these pieces:
 3. The right-answer event sets a variable, gives the award and shows an explanation. A wrong-answer event just explains and lets the player try again.
 
 The [walkthrough](/docs/editor/walkthrough/pond/#the-question) builds exactly this. Because the report records the first answer a student chose, a question works as a check on what they thought *before* any feedback. More patterns (a menu that stays open, a hands-on experiment, collecting things) are under [Patterns](/docs/developers/extensions/#patterns).
+
+### Conversations
+
+A **Conversation** is a talk the player takes part in: a character says something, the player picks a reply from a few **choices**, and each choice leads to what is said next. It is one action, however many lines it has. (A **Dialogue** says a single line; use it for remarks and short announcements.)
+
+A new conversation starts as a small tree you can change: the character placed in the scene greets the player, who can ask *Who are you?* (the answer comes back round to the greeting) or say *Goodbye!*.
+
+**In the action's card** the conversation is drawn as a **map**, followed from the start: each line with who says it, and under a line with choices, each choice and where it leads. 🔁 *Back to* marks a choice that returns to a line shown above it; 🚩 marks the end. Lines nothing leads to are listed as *Never said*. Click any line, or **Edit the conversation**, to open it.
+
+**The conversation panel** lists every line on the left (▶ marks the start; *Starts with* changes it) and edits one line on the right:
+
+* **Who says it** (the player or a character), **What they say**, and a **Recording of this line** if you have one. **Said only when** makes a line conditional: when its conditions do not hold, the conversation skips it and goes on to its *Then go on to* line. That is how to greet a returning player differently.
+* **Reached from** shows the lines and choices that lead here; click one to go there. **← Back** returns to the line you were on.
+* **Then the player says…** holds the choices. Each has the player's words, **Leads to** (another line, **➕ A new line…**, or *Ends the conversation*; **Go →** opens that line), **A right answer** for the report, **Also do** (actions done when it is picked, such as setting a variable or running an event), and **Offered only when** conditions. Use ↑ ↓ to order them.
+* A line with no choices has **Then go on to**: the next line, or the end.
+* **Line id** is the line's name in the scenario file (`l1`, `l2`…); renaming it keeps every choice that pointed at it. **Delete line** turns choices that led to it into endings.
+
+Picking **➕ A new line…** creates the reply, said by whoever said the line it answers, and opens it, so you can write a branch from top to bottom and use **← Back** to return to the question.
+
+In the game the line appears as the action's **Shown as** says: in a story box with the speaker's portrait and the choices listed under it (the default), or in a speech bubble with the choices in a box at the bottom of the screen. Players click a choice or press its number, and cannot walk away while choosing. The action waits until the conversation is over.
+
+:::tip
+Every line with choices counts as a **question** in the report: it shows each student's first answer and how many tries they took. Tick **A right answer** on the right choices and the report also says whether the first answer was right. A wrong answer that leads to a hint and back to the question is the pattern for "try again".
+:::
+
+:::note
+To give stars or XP for a choice, put the award in an indirect event and have the choice **Run event** it: awards are only given for an event's own actions. A **Jump** in a choice ends the conversation.
+:::
 
 ### Reading aloud
 

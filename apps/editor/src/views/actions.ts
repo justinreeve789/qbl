@@ -3,9 +3,10 @@ import type { ActionType } from '@qbl/shared';
 import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
 import { confirmDelete, h, help } from '../dom';
-import { form, select, withValue, type Field, type FormContext, type Values } from '../fields';
-import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, tidyWalk } from '../schema';
+import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
+import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, starterConversation, tidyWalk } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
+import { conversationMap } from './conversation';
 
 /** Which action cards are open. Kept outside the view so a redraw does not close them. */
 const open = new Set<number>();
@@ -15,6 +16,8 @@ let dragging: number | null = null;
 
 /** Columns of the actions table; every other attribute of an action lives in `params`. */
 const COLUMNS = new Set(['media_id', 'blocking']);
+/** An animate action's fields that say what is animated: changing one can leave its animation behind. */
+const ANIMATE_SUBJECT = new Set(['target', 'character_id', 'item_id']);
 
 /** Yes/no attributes that are shown as a choice between two named states. */
 function choice(type: string, values: Record<string, unknown>): Record<string, string> {
@@ -24,6 +27,26 @@ function choice(type: string, values: Record<string, unknown>): Record<string, s
 }
 
 const typeOptions = ACTION_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${ACTIONS[t].label}`] as const);
+
+/** Actions that cannot be one of a button's or a choice's: a conversation is edited as a row of its own. */
+const nestedTypeOptions = typeOptions.filter(([t]) => t !== 'conversation');
+
+/**
+ * What a choice in a conversation can do. Not repeat (it belongs to an event), not an award
+ * (awards are granted for an event's own actions: have the choice run an event that gives it).
+ */
+const choiceTypeOptions = nestedTypeOptions.filter(([t]) => t !== 'repeat' && t !== 'award');
+
+/**
+ * Starting values for a new action. A new conversation is spoken by the first character placed in
+ * this scene, or else the first of the scenario's.
+ */
+function startingParams(ctx: FormContext, type: ActionType): Record<string, unknown> {
+  if (type !== 'conversation') return actionDefaults(type);
+  const scene = ctx.sceneId != null ? ctx.store.byId('scenes', ctx.sceneId) : undefined;
+  const placed = scene ? ((params(scene, 'layout').characters as Array<{ character_id?: number }> | undefined) ?? [])[0]?.character_id : undefined;
+  return starterConversation(placed ?? ctx.store.rows('characters')[0]?.id ?? null);
+}
 
 /** Have this action's card open the next time its event is drawn. */
 export function revealAction(id: number) {
@@ -46,7 +69,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     add.value = '';
     if (!type) return;
     const sequence = actions.reduce((max, a) => Math.max(max, Number(a.sequence)), 0) + 1;
-    const row = await store.add('actions', { event_id: eventId, type, sequence, blocking: true, params: actionDefaults(type as ActionType) });
+    const row = await store.add('actions', { event_id: eventId, type, sequence, blocking: true, params: startingParams(ctx, type as ActionType) });
     if (row) {
       open.add(row.id);
       store.emit();
@@ -81,6 +104,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
       else {
         let next = withValue(params(current()), key, value, field);
         if (type === 'walk' && key === 'to') next = tidyWalk(next);
+        if (type === 'animate' && ANIMATE_SUBJECT.has(key)) next = tidyAnimate(next, ctx);
         void store.patch('actions', id, { params: next }, field.structural === true);
       }
     };
@@ -95,10 +119,11 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
           'label',
           { class: 'field wide' },
           h('span', { class: 'field-label' }, 'Type', help(def.about)),
-          select(typeOptions, type, (next) => void store.patch('actions', id, { type: next, media_id: null, params: actionDefaults(next as ActionType) }, true)),
+          select(typeOptions, type, (next) => void store.patch('actions', id, { type: next, media_id: null, params: startingParams(ctx, next as ActionType) }, true)),
         ),
       ),
       form(def.fields, { ...actionValues(action), ...choice(type, params(action)) }, commit, ctx),
+      type === 'conversation' ? conversationMap(ctx, id) : null,
       type === 'infobox'
         ? buttonsEditor(
             ctx,
@@ -197,6 +222,7 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
       if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
       let action = withValue(at(index).action ?? {}, key, value, field);
       if (type === 'walk' && key === 'to') action = tidyWalk(action);
+      if (type === 'animate' && ANIMATE_SUBJECT.has(key)) action = tidyAnimate(action, ctx);
       replace(index, { ...at(index), action: { ...action, type } }, key === 'media_id' || field.structural === true);
     };
 
@@ -207,7 +233,7 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
         'div',
         { class: 'cta-head' },
         label,
-        select(typeOptions, type, (next) => {
+        select(nestedTypeOptions, type, (next) => {
           const action = next ? { type: next, ...actionDefaults(next as ActionType) } : undefined;
           replace(index, withValue({ ...at(index) }, 'action', action) as Cta, true);
         }, 'Just close the box'),
@@ -236,5 +262,66 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
     { class: 'ctas wide' },
     h('div', { class: 'sub-head' }, h('span', null, 'Buttons'), h('button', { type: 'button', class: 'link', onclick: () => write([...read(), { text: 'OK' }], true) }, '+ Add button')),
     rows.length ? h('div', null, ...rows) : h('p', { class: 'muted' }, 'No buttons: the box has only a close button.'),
+  );
+}
+
+// ------------------------------------------------------- actions of a choice
+
+/**
+ * A list of actions kept inside another action's JSON (what a conversation's choice does). Each
+ * has a type and that type's fields; they run in order. `read` returns the list as it is now.
+ */
+export function inlineActions(
+  ctx: FormContext,
+  read: () => Values[],
+  write: (list: Values[], structural: boolean) => void,
+  title = 'Also do',
+  empty = 'Nothing else.',
+): HTMLElement {
+  const at = (index: number): Values => read()[index] ?? {};
+  const replace = (index: number, action: Values, structural = false) => write(read().map((a, i) => (i === index ? action : a)), structural);
+
+  const rows = read().map((action, index) => {
+    const type = action.type as ActionType;
+    const def = ACTIONS[type];
+    const commit = (key: string, value: unknown, field: Field) => {
+      if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
+      let next = withValue(at(index), key, value, field);
+      if (type === 'walk' && key === 'to') next = tidyWalk(next);
+      // A new subject has its own animations: keep the one chosen only if it has it.
+      if (type === 'animate' && ANIMATE_SUBJECT.has(key)) next = tidyAnimate(next, ctx);
+      replace(index, { ...next, type }, key === 'media_id' || field.structural === true);
+    };
+    return h(
+      'div',
+      { class: 'cta inline-action', 'data-inline-action': index, style: def ? `--tone:${ACTION_LOOK[type][1]}` : null },
+      h(
+        'div',
+        { class: 'cta-head' },
+        select(choiceTypeOptions, type, (next) => next && replace(index, { type: next, ...actionDefaults(next as ActionType) }, true)),
+        h('button', { type: 'button', class: 'icon', title: 'Remove', 'aria-label': 'Remove this action', onclick: () => write(read().filter((_, i) => i !== index), true) }, '×'),
+      ),
+      def ? form(def.fields, { ...action, ...choice(type, action) }, commit, ctx) : null,
+      type === 'infobox'
+        ? buttonsEditor(
+            ctx,
+            () => (at(index).call_to_actions as Cta[] | undefined) ?? [],
+            (inner, structural) => replace(index, { ...withValue(at(index), 'call_to_actions', inner.length ? inner : null), type }, structural),
+          )
+        : null,
+    );
+  });
+
+  const add = select(choiceTypeOptions.map(([t, label]) => [t, `${label}: ${ACTIONS[t as ActionType].about}`] as const), '', (type) => {
+    add.value = '';
+    if (type) write([...read(), { type, ...actionDefaults(type as ActionType) }], true);
+  }, '+ Add an action…');
+  add.classList.add('add-action');
+
+  return h(
+    'div',
+    { class: 'ctas wide inline-actions' },
+    h('div', { class: 'sub-head' }, h('span', null, title, help('Done in order when the player picks this, before the next line: set a variable, add a glossary word, play a sound, walk somewhere, run an event. A jump ends the conversation. To give stars or XP, run an event that has an award in it.')), add),
+    rows.length ? h('div', null, ...rows) : h('p', { class: 'muted' }, empty),
   );
 }

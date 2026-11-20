@@ -4,7 +4,7 @@ import type { BubbleAnchor } from '../../ui/bubble';
 import type { Presenter, PresenterContext } from '../Presenter';
 
 /** Who is speaking: their name, and the close-up used in a portrait box. */
-function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: string | undefined): { name?: string; portrait?: CharacterPicture } {
+export function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: string | undefined): { name?: string; portrait?: CharacterPicture } {
   const { scenario, index, connection } = pc.ctx;
   // A character without a close-up is shown standing.
   const portrait = (who: Parameters<typeof characterPicture>[0]) => characterPicture(who, 'portrait', (id) => index.media.get(id), (m) => resolveMediaUrl(scenario, m)) ?? undefined;
@@ -61,8 +61,19 @@ export const dialogue: Presenter<'dialogue'> = (action, pc, actor) => {
   const who = byCharacter ? { character_id: action.character_id } : { actor };
   const speaker = pc.locate(who);
   if (byCharacter && !speaker) pc.warn(`dialogue ${action.id}: character ${action.character_id} is not in this scene`);
+  const anchor = bubbleAnchor(pc, who);
 
-  const anchor = (): BubbleAnchor | null => {
+  return pc.ctx.ui.dialogue(text, {
+    name: byCharacter ? speaker?.name : actor ? speakerOf(pc, undefined, actor).name : undefined,
+    duration: action.duration && action.duration > 0 ? action.duration : dialogueDuration(action.text),
+    anchor,
+    speak,
+  });
+};
+
+/** Where a speaker is on the page, for a bubble over them: asked every frame. Null while they are not in view. */
+export function bubbleAnchor(pc: PresenterContext, who: { character_id?: Id; actor?: string }): () => BubbleAnchor | null {
+  return () => {
     const at = pc.locate(who);
     if (!at) return null;
     const cam = pc.scene.cameras.main;
@@ -74,11 +85,4 @@ export const dialogue: Presenter<'dialogue'> = (action, pc, actor) => {
     const bottom = canvas.top + (at.y - cam.worldView.y) * sy;
     return { x, bottom, top: bottom - at.height * sy, width: at.height * sx * 0.5 };
   };
-
-  return pc.ctx.ui.dialogue(text, {
-    name: byCharacter ? speaker?.name : actor ? speakerOf(pc, undefined, actor).name : undefined,
-    duration: action.duration && action.duration > 0 ? action.duration : dialogueDuration(action.text),
-    anchor,
-    speak,
-  });
-};
+}

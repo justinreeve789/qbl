@@ -278,7 +278,7 @@ duration | int | | Milliseconds on screen. Absent: a bubble stays long enough to
 { "type": "dialogue", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QBLPlayerName}}!" }
 ```
 
-The bubble follows the speaker and keeps itself on screen. It sits above them when there is room, below when they are near the top of the screen, and to the right or left when there is room neither above nor below; sideways it slides along to stay inside the screen while its tail keeps pointing at the speaker. A sequence of dialogue actions is a conversation; put a `freeze` before it to hold the player still.
+The bubble follows the speaker and keeps itself on screen. It sits above them when there is room, below when they are near the top of the screen, and to the right or left when there is room neither above nor below; sideways it slides along to stay inside the screen while its tail keeps pointing at the speaker. A sequence of dialogue actions is a conversation; put a `freeze` before it to hold the player still. For one where the player chooses what to say, use a [conversation](#conversations-dialogue-trees).
 
 **The story box** (`style: "portrait"`) is for the characters and moments that carry the story. It is a panel across the bottom of the screen with the speaker's close-up portrait standing on its edge, their name, and the words appearing a few at a time. The player clicks, or presses Enter or Space, to continue: once to show the whole line, again to go on. The portrait is the speaker's `portrait` animation (or the character standing, if it has none): a character's, or for the player their avatar's.
 
@@ -288,6 +288,69 @@ The bubble follows the speaker and keeps itself on screen. It sits above them wh
 
 A story conversation is normally the player's own (`audience: player`, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.
 
+### Conversations (dialogue trees)
+
+A new action type, `conversation`, is a conversation the player takes part in: a **dialogue tree**. It is a list of lines, each said by the player or a character. After a line the player picks what to say next from its **choices**, and each choice leads to another line, or ends the conversation. Choices can lead back to a line already said, so a conversation can return to a "hub" ("Anything else?"). A line without choices goes straight on to its `next` line.
+
+It is separate from `dialogue`, which says one line. The whole tree lives inside the one action, so it travels with the event, is duplicated and exported with it, and needs no ids of its own beyond the lines' names.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+lines | array | | The lines, below. At least one.
+start | string | the first line | The `id` of the line it starts with.
+style | string | portrait | `portrait`: each line in a story box with the speaker's close-up, the choices listed under it. `bubble`: each line in a bubble over its speaker, the choices in a box at the bottom of the screen.
+narrate | bool | the scenario's | Read the lines aloud, each in its speaker's voice. See [Reading text aloud](#reading-text-aloud).
+
+**A line**
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+id | string | | Unique within the conversation: 1 to 32 letters, digits, `-` and `_`. What choices and `next` point at.
+speaker | string | player | `player`, or `character`.
+character_id | int | | The character, when `speaker` is `character`. As a bubble it must be placed in the scene; a story box can carry a voice from anywhere.
+text | string | | What is said. `{{variable}}` placeholders work.
+narration_media_id | int | | A recording of this line, played instead of the browser's voice.
+conditions | array | | The line is said only while these hold. Otherwise the conversation passes over it to its `next`, so one line can stand in for another ("Back again?" before "Hello, stranger").
+choices | array | | What the player can say in reply, below. Only those whose conditions hold are offered.
+next | string | | Where it goes when it has no choices to offer: another line's `id`. Absent: the conversation ends.
+
+**A choice**
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+text | string | | The answer as the player sees it. `{{variable}}` placeholders work.
+next | string | | The line it leads to. Absent: choosing it ends the conversation.
+actions | array | | Actions done when it is chosen, in order, before the next line. They need no ids. A `jump` ends the conversation (and the event, as a jump of its own would).
+conditions | array | | Offered only while these hold.
+correct | bool | | For the teacher's report: a right answer. When any choice of a line is marked, the report says whether each student's first answer to it was right.
+
+```json
+{
+  "type": "conversation",
+  "lines": [
+    { "id": "hello", "speaker": "character", "character_id": 1, "text": "Ready for your briefing, {{QBLPlayerName}}?", "next": "ask" },
+    {
+      "id": "ask", "speaker": "character", "character_id": 1, "text": "What do plants need to grow?",
+      "choices": [
+        { "text": "Sunlight and water", "correct": true, "next": "right", "actions": [{ "type": "variable", "name": "briefed", "operator": "set", "operand": 1 }] },
+        { "text": "Only soil", "next": "wrong" }
+      ]
+    },
+    { "id": "wrong", "speaker": "character", "character_id": 1, "text": "Not quite. Think about the sun.", "next": "ask" },
+    { "id": "right", "speaker": "character", "character_id": 1, "text": "Exactly. Off you go!" }
+  ]
+}
+```
+
+How it runs:
+
+* The action waits until the conversation is over (unless `blocking` is `false`), so the event's next action comes after it.
+* While the player is choosing they cannot walk away. A line with nothing to choose is shown as a `dialogue` would be: a story box the player clicks on from, or a bubble that stays long enough to read. Players pick an answer by clicking it or pressing its number.
+* What a choice does happens inside the event, as if its actions were the event's own: a `freeze` lasts to the end of the event, a `run_event` waits, a `cancel` naming the conversation ends it. A choice's actions cannot `repeat` the event. An `award` in a choice is not granted (awards are checked against the events' own actions): have the choice `run_event` an event that gives it.
+* It is the player's own, like an infobox: an event whose audience is the scene does not show it to the other players.
+* Each answer is logged as a `choice` with the reference `<action id>:<line id>`, so the report lists every line with choices as a question, with the first answer and how many tries it took.
+* Lines that lead round in a circle with no choice to leave are stopped after 200 lines. The validator reports choices and lines that lead to a line that is not there, lines no choice leads to, and duplicate ids.
+
 ### Reading text aloud
 
 Dialogue, infoboxes and text overlays can be read aloud, with **each word highlighted as it is spoken**. The voice is the one built into the player's browser (the Web Speech API): it costs nothing, needs no recordings and no server, and works with whatever voices the device has. The browser reports each word as it starts speaking it, and that is what moves the highlight; where a voice does not report its progress, the words are paced evenly over the time the line takes, allowing for longer words and for the pauses punctuation makes.
@@ -295,9 +358,9 @@ Dialogue, infoboxes and text overlays can be read aloud, with **each word highli
 Parameter | Applies to | Default | Description
 --------- | ---------- | ------- | -----------
 narration | scenario | off | `on`: read everything unless an action says otherwise.
-narrate | dialogue, infobox, text_overlay | the scenario's | `true` or `false` for this action.
-narration_media_id | dialogue, infobox, text_overlay | | An audio recording to play instead of the browser's voice. When the recording has word timings (`speech`, below), each word is lit as the recording says it; otherwise the words are paced evenly over its length.
-speech | media (audio) | | The recording's words and when each is said: `{text, voice?, engine?, words: [{w, s, e}], duration?}`, in milliseconds. Recordings made by the server's text-to-speech service have it. See [Characters' voices](/docs/developers/voices/).
+narrate | dialogue, conversation, infobox, text_overlay | the scenario's | `true` or `false` for this action.
+narration_media_id | dialogue, infobox, text_overlay, a conversation's line | | An audio recording to play instead of the browser's voice. When the recording has word timings (`speech`, below), each word is lit as the recording says it; otherwise the words are paced evenly over its length.
+speech | media (audio) | | The recording's words and when each is said: `{text, line?, voice?, engine?, words: [{w, s, e}], duration?}`, in milliseconds. Recordings made by the server's text-to-speech service have it. See [Characters' voices](/docs/developers/voices/).
 tts_voice | character | | The voice the character's lines are recorded in: a key of the server's voice catalog ("heart", "captain", "robot"). See [Characters' voices](/docs/developers/voices/).
 voice_pitch, voice_rate | character | 1 | How the browser's voice sounds reading the character's lines that have no recording: 0 to 2, and 0.5 to 2.
 voice_name | character | | For lines with no recording: part of the name of a browser voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
@@ -515,6 +578,7 @@ blocking_radius | decimal | 40 | Size of the obstacle for `blocking` items.
 attach_offset_x, attach_offset_y | decimal | 0 | Where the item sits relative to the avatar's feet while worn or ridden. X is mirrored when the avatar faces left.
 attach_layer | string | front | `front` or `behind` the avatar.
 art_faces | string | right | Which way the artwork faces. It is mirrored to match the avatar.
+hide_rider_below | decimal | | While worn or ridden, the avatar (and what it wears) is not drawn below this line: a fraction of the item's picture height, 0 at its top and 1 at its bottom. Lets a rider sit in a UFO or a car instead of their legs showing beneath it. Unset: the whole avatar is drawn.
 speed_multiplier | decimal | 1.5 | Vehicles: walking speed while riding.
 
 Items are positioned by the bottom centre of their image, like avatars.
