@@ -20,7 +20,7 @@ export const ICONS = {
   scenes: '🗺️', media: '🖼️', variables: '🔢', items: '🎒', characters: '🧑‍🚀', objectives: '✅', settings: '⚙️', publish: '🚀', reports: '📊', groups: '🗂️',
   play: '▶️', shadow: '🌑',
   // the site's places (site.ts) and the account menu
-  editor: '✏️', classes: '🏫', docs: '📚', 'sign-out': '🚪', chat: '💬',
+  editor: '✏️', classes: '🏫', docs: '📚', 'sign-out': '🚪', chat: '💬', install: '📲',
   // the teacher's missions page
   new: '➕', 'look-in': '👀', scenarios: '🧩', students: '🧑‍🎓', due: '📅',
 } as const;

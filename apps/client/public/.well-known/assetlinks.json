@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cc.questlab.app",
+      "sha256_cert_fingerprints": [
+        "AD:8D:E1:8B:3E:48:6D:1E:EB:CE:E0:93:97:D1:08:76:49:B2:F0:A8:CF:68:34:34:8F:93:AF:8D:90:B3:D0:0E"
+      ]
+    }
+  }
+]
