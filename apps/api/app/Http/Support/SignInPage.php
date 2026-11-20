@@ -25,12 +25,12 @@ class SignInPage
     }
 
     /**
-     * Only ever go back to a page of this site: a path, never another host. With none, each role's
-     * own home: the editor for teachers, the missions page for everyone else.
+     * Only ever go back to a page of this site: a path, never another host. With none, the
+     * missions page, where everyone lands after signing in (teachers reach the editor from its menu).
      */
-    public static function localPath(mixed $path, ?string $role = null): string
+    public static function localPath(mixed $path): string
     {
-        $fallback = in_array($role, ['teacher', 'admin'], true) ? '/editor/#/' : '/missions';
+        $fallback = '/missions';
         if (! is_string($path) || $path === '') {
             return $fallback;
         }

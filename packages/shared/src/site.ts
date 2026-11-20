@@ -19,10 +19,10 @@ const LINKS: SiteLink[] = [
 ];
 
 /**
- * The page a user lands on after signing in, and where the marketing page's log-in button takes
- * someone already signed in. Teachers and admins work in the editor, so that is their dashboard;
- * everyone else plays, so theirs is the missions page. A teacher still reaches the missions page
- * (their assignments, "Look in", missions to try) from the Missions link.
+ * Each role's dashboard: where the marketing page's log-in button takes someone already signed
+ * in. Teachers and admins work in the editor, so that is theirs; everyone else plays, so theirs
+ * is the missions page. Signing in is different: it lands everyone, teachers too, on the missions
+ * page (their assignments, "Look in", missions to try), whose menu has the Editor and Classes.
  */
 export function homePath(role: string | undefined): string {
   return role === 'teacher' || role === 'admin' ? '/editor/#/' : '/missions';

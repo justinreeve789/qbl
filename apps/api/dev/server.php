@@ -122,7 +122,7 @@ $issue = function (array $u): array {
 
 // Google sign-in needs the real backend and Google's servers; the stand-in does not offer it.
 if ($path === '/api/auth/providers') {
-    respond(200, ['google' => false, 'guest' => true, 'register' => true]);
+    respond(200, ['google' => false, 'guest' => true, 'register' => true, 'teacher' => true]);
 }
 // Creating an account: checked like the real API, then signed in like any other address here.
 if ($path === '/api/auth/register' && $method === 'POST') {
@@ -139,8 +139,9 @@ if ($path === '/api/auth/register' && $method === 'POST') {
     if ($problem) {
         respond(422, ['message' => $problem]);
     }
-    $account = ['id' => crc32($email) % 100000 + 10, 'name' => mb_substr($name, 0, 60), 'email' => $email, 'role' => 'student'];
-    $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, 'student']);
+    $role = ($body['role'] ?? null) === 'teacher' ? 'teacher' : 'student';
+    $account = ['id' => crc32($email) % 100000 + 10, 'name' => mb_substr($name, 0, 60), 'email' => $email, 'role' => $role];
+    $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, $role]);
     respond(201, $issue($account));
 }
 if ($path === '/api/auth/login' && $method === 'POST') {

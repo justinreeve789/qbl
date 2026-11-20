@@ -43,8 +43,9 @@ class AuthController extends Controller
 
     /**
      * Create an account with a name, an email address and a password, for people who would
-     * rather not use Google. It is a student's account, like every new Google account: only an
-     * administrator changes a role (qbl:update-role). The address is not checked, so it never
+     * rather not use Google. It is a student's account unless the person says they are a teacher
+     * (`role: "teacher"`) and the site lets them (QBL_ALLOW_TEACHER_SIGNUP). No other role can be
+     * asked for: admins are made with qbl:update-role. The address is not checked, so it never
      * joins an account that already exists.
      */
     public function register(Request $request): JsonResponse
@@ -57,6 +58,7 @@ class AuthController extends Controller
             // Guests' made-up addresses end in @guest.invalid; nobody may take one.
             'email' => ['required', 'string', 'email', 'max:255', 'not_regex:/@guest\.invalid$/'],
             'password' => ['required', 'string', 'confirmed', Password::min(8)],
+            'role' => ['nullable', 'string'],
         ], [
             'name.required' => 'Enter your name.',
             'name.max' => 'Use a name of at most 60 characters.',
@@ -67,6 +69,12 @@ class AuthController extends Controller
             'password.min' => 'Use a password of at least 8 characters.',
             'password.confirmed' => 'The two passwords are not the same.',
         ]);
+
+        // Anything but "teacher" (an old sign-up form sends nothing) makes a student's account.
+        $teacher = ($data['role'] ?? null) === User::ROLE_TEACHER;
+        if ($teacher && ! config('qbl.allow_teacher_registration')) {
+            throw ValidationException::withMessages(['role' => 'Teachers’ accounts are made by an administrator on this site. Create a student’s account, then ask them to make it a teacher’s.']);
+        }
 
         $name = Str::limit(trim(strip_tags($data['name'])), 60, '');
         if ($name === '') {
@@ -82,7 +90,7 @@ class AuthController extends Controller
                 'name' => $name,
                 'email' => $data['email'],
                 'password' => $data['password'],
-                'role' => User::ROLE_STUDENT,
+                'role' => $teacher ? User::ROLE_TEACHER : User::ROLE_STUDENT,
             ]);
         } catch (UniqueConstraintViolationException) {
             // The same address registered by another request a moment ago.
@@ -172,6 +180,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'confirmed', Password::min(8)],
+            'role' => ['nullable', 'string'],
         ], [
             'current_password.required' => 'Enter your current password.',
             'password.required' => 'Choose a new password.',
@@ -232,6 +241,7 @@ class AuthController extends Controller
             'token' => ['required', 'string'],
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string', 'confirmed', Password::min(8)],
+            'role' => ['nullable', 'string'],
         ], [
             'token.required' => 'This link is not complete. Open the link from the email again.',
             'email.required' => 'This link is not complete. Open the link from the email again.',

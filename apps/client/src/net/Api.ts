@@ -3,6 +3,9 @@ import { config } from '../config';
 import type { AvatarChoice, Mission } from '../home';
 import type { TeachAssignment, TeachScenario, TeacherDesk } from '../teach';
 
+/** What someone creating an account says they are. */
+export type SignUpRole = 'student' | 'teacher';
+
 const TOKEN_KEY = 'qbl.token';
 
 /** Why a Google sign-in came back without signing anyone in (`#signin=...` on the page it returns to). */
@@ -111,25 +114,34 @@ export class Api {
   }
 
   /** Create a (student's) account with a password, and sign in with it. */
-  async register(account: { name: string; email: string; password: string; password_confirmation: string }): Promise<User> {
+  /** Create an account and sign in with it. `role: 'teacher'` asks for a teacher's account (the server may refuse). */
+  async register(account: { name: string; email: string; password: string; password_confirmation: string; role?: SignUpRole }): Promise<User> {
     const data = await this.call<{ token: string; user: User }>('POST', '/auth/register', account);
     this.remember(data.token);
     return data.user;
   }
 
-  /** Which ways of signing in the server offers. An older server, or one that is down, offers none of the optional ones. */
-  async providers(): Promise<{ google: boolean; register: boolean }> {
+  /**
+   * Which ways of signing in the server offers. An older server, or one that is down, offers none
+   * of the optional ones. `teacher`: someone creating an account may choose to be a teacher.
+   */
+  async providers(): Promise<{ google: boolean; register: boolean; teacher: boolean }> {
     try {
-      const p = await this.call<{ google?: boolean; register?: boolean }>('GET', '/auth/providers');
-      return { google: !!p.google, register: !!p.register };
+      const p = await this.call<{ google?: boolean; register?: boolean; teacher?: boolean }>('GET', '/auth/providers');
+      return { google: !!p.google, register: !!p.register, teacher: !!p.teacher };
     } catch {
-      return { google: false, register: false };
+      return { google: false, register: false, teacher: false };
     }
   }
 
-  /** Where to send the browser to sign in with Google. It comes back to `returnTo` with a token already stored. */
-  googleUrl(returnTo: string): string {
-    return `${config.apiUrl}/api/auth/google/redirect?return=${encodeURIComponent(returnTo)}`;
+  /**
+   * Where to send the browser to sign in with Google. It comes back to `returnTo` with a token
+   * already stored. `role`: what a new account should be ("Sign up with Google" as a teacher);
+   * an account that already exists keeps its own.
+   */
+  googleUrl(returnTo: string, role?: SignUpRole): string {
+    const role_ = role === 'teacher' ? '&role=teacher' : '';
+    return `${config.apiUrl}/api/auth/google/redirect?return=${encodeURIComponent(returnTo)}${role_}`;
   }
 
   /** The signed-in user, or null if there is no valid token. */
