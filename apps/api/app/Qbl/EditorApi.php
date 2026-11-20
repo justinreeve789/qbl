@@ -2,6 +2,9 @@
 
 namespace App\Qbl;
 
+use App\Qbl\Speech\SpeechError;
+use App\Qbl\Speech\SpeechFactory;
+
 /**
  * The editor's HTTP API, as a function from a request to a response.
  *
@@ -24,10 +27,18 @@ namespace App\Qbl;
  *   GET    scenarios/{id}/export                  the scenario as a ZIP file (scenario.json and the uploaded files)
  *   GET    scenarios/{id}/preview                 the scenario JSON generated from the tables as they are now
  *   POST   scenarios/{id}/publish                 generate the JSON and make it what players get
+ *   GET    scenarios/{id}/voices                  the voices characters can be given, and how many lines are recorded
+ *   GET    scenarios/{id}/voices/{key}/sample     a voice saying a sample line (MP3)
+ *   POST   scenarios/{id}/voices/record           {limit?, force?, character_id?}: record characters' lines, a few per call
+ *   POST   scenarios/{id}/voices/assign           {all?}: give a voice to each character that has none
  */
 class EditorApi
 {
-    public function __construct(private ScenarioStore $store) {}
+    public function __construct(
+        private ScenarioStore $store,
+        /** Recorded voices (config/qbl_speech.php); the voice routes answer 503 without it. */
+        private ?SpeechFactory $speech = null,
+    ) {}
 
     /**
      * @param  array|null  $user   ['id' => int, 'name' => string, 'role' => string], or null if not signed in
@@ -127,6 +138,9 @@ class EditorApi
 
             return [200, ['scenario' => $this->store->scenario($id)]];
         }
+        if (($rest[0] ?? '') === 'voices') {
+            return $this->voices($id, $method, array_slice($rest, 1), $body);
+        }
         if ($rest === ['media', 'upload'] && $method === 'POST') {
             $file = $files['file'] ?? null;
             if (! $file || empty($file['tmp_name'])) {
@@ -150,6 +164,55 @@ class EditorApi
                     default => throw new StoreError(405, 'Method not allowed.'),
                 };
             }
+        }
+
+        throw new StoreError(404, 'Not found.');
+    }
+
+    /** Characters' voices: the list to choose from, hearing one, and recording the lines. */
+    private function voices(int $id, string $method, array $rest, array $body): array
+    {
+        if (! $this->speech) {
+            throw new StoreError(503, 'Voices are not set up on this server.');
+        }
+        try {
+            $catalog = $this->speech->catalog();
+            $engine = $this->speech->engine();
+            if ($rest === [] && $method === 'GET') {
+                $lang = $this->store->scenario($id)['default_language'] ?? 'en';
+                $status = $engine ? $this->speech->scenarioVoicer($this->store)->record($id, ['dry' => true]) : null;
+
+                return [200, [
+                    'engine' => $engine?->name(),
+                    'voices' => array_values(array_map(fn ($v) => $catalog->describe($v), $catalog->forLanguage($lang))),
+                    'lines' => $status ? ['total' => $status['lines'], 'recorded' => $status['kept'], 'to_record' => $status['remaining']] : null,
+                ]];
+            }
+            if (! $engine) {
+                throw new StoreError(503, 'Recording voices is switched off on this server (QBL_TTS_DRIVER=none). Lines are read by the browser\'s voice.');
+            }
+            if (count($rest) === 2 && $rest[1] === 'sample' && $method === 'GET') {
+                $voice = $catalog->get($rest[0]) ?? throw new StoreError(404, 'There is no such voice.');
+                $said = $this->speech->voicer()->sample($voice['key'], $voice['lang']);
+                $path = tempnam(sys_get_temp_dir(), 'qbl-sample');
+                file_put_contents($path, $said->audio);
+
+                return [200, ['download' => ['path' => $path, 'name' => "{$voice['key']}.{$said->format}", 'type' => 'audio/mpeg', 'inline' => true]]];
+            }
+            if ($rest === ['record'] && $method === 'POST') {
+                // A few at a time, so no request runs long: the editor calls again while some remain.
+                $limit = max(1, min(20, (int) ($body['limit'] ?? 6)));
+                $result = $this->speech->scenarioVoicer($this->store)->record($id, [
+                    'limit' => $limit, 'seconds' => 12, 'force' => (bool) ($body['force'] ?? false), 'character_id' => isset($body['character_id']) ? (int) $body['character_id'] : null,
+                ]);
+
+                return [200, $result];
+            }
+            if ($rest === ['assign'] && $method === 'POST') {
+                return [200, ['voices' => $this->speech->scenarioVoicer($this->store)->assign($id, (bool) ($body['all'] ?? false))]];
+            }
+        } catch (SpeechError $e) {
+            throw new StoreError(503, $e->getMessage());
         }
 
         throw new StoreError(404, 'Not found.');

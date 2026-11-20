@@ -34,6 +34,38 @@ export interface ScenarioSummary {
   updated_at: string | null;
 }
 
+/** A voice characters' lines can be recorded in (resources/speech/voices.json on the server). */
+export interface VoiceChoice {
+  key: string;
+  name: string;
+  gender: 'female' | 'male' | 'neutral';
+  age: 'child' | 'young' | 'adult' | 'elder';
+  lang: string;
+  accent: string | null;
+  traits: string[];
+  description: string;
+  /** "Heart: woman, American". */
+  label: string;
+}
+
+export interface VoiceStatus {
+  /** The service that records ("kokoro"), or null when recording is switched off. */
+  engine: string | null;
+  voices: VoiceChoice[];
+  /** Lines said by characters with a voice: how many have an up-to-date recording. */
+  lines: { total: number; recorded: number; to_record: number } | null;
+}
+
+/** What one call to record voices did (App\Qbl\Speech\ScenarioVoicer::record). */
+export interface VoiceRecording {
+  lines: number;
+  recorded: number;
+  kept: number;
+  removed: number;
+  remaining: number;
+  skipped: Array<{ action_id: number; why: string }>;
+}
+
 export interface Student {
   id: number;
   name: string;
@@ -272,6 +304,26 @@ export class Api {
   report = async (id: number) => (await this.call<{ report: Report }>('GET', `/teach/assignments/${id}/report`)).report;
   activity = async (id: number, studentId?: number) => (await this.call<{ activity: ActivityLine[] }>('GET', `/teach/assignments/${id}/activity${studentId != null ? `/${studentId}` : ''}`)).activity;
   messageLog = async (id: number) => (await this.call<{ messages: MessageLine[] }>('GET', `/teach/assignments/${id}/messages`)).messages;
+
+  // Characters' voices: recorded by the server's text-to-speech service, with word timings.
+  voices = (id: number) => this.call<VoiceStatus>('GET', `/editor/scenarios/${id}/voices`);
+  recordVoices = (id: number, attrs: { limit?: number; force?: boolean; character_id?: number } = {}) => this.call<VoiceRecording>('POST', `/editor/scenarios/${id}/voices/record`, attrs);
+  assignVoices = async (id: number, all = false) => (await this.call<{ voices: Record<string, string> }>('POST', `/editor/scenarios/${id}/voices/assign`, { all })).voices;
+
+  /** A voice saying a sample line, as an address an <audio> can play (revoke it when done). */
+  async voiceSample(id: number, key: string): Promise<string> {
+    this.onBusy(++this.pending > 0);
+    try {
+      const res = await fetch(`/api/editor/scenarios/${id}/voices/${encodeURIComponent(key)}/sample`, { headers: { Accept: 'audio/mpeg, application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) } });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { message?: string } | null;
+        throw new ApiError(res.status, data?.message ?? `Request failed (${res.status})`);
+      }
+      return URL.createObjectURL(await res.blob());
+    } finally {
+      this.onBusy(--this.pending > 0);
+    }
+  }
 
   async upload(id: number, file: File): Promise<Row> {
     const form = new FormData();

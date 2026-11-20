@@ -11,6 +11,8 @@ use App\Qbl\Generation\Design\Connections;
 use App\Qbl\Generation\Design\MissionDesigner;
 use App\Qbl\ScenarioArchive;
 use App\Qbl\ScenarioStore;
+use App\Qbl\Speech\VoicePicker;
+use App\Qbl\Speech\Voicer;
 
 /**
  * Makes a whole mission from a teacher's prompt:
@@ -45,6 +47,8 @@ class ScenarioGenerator
         private string $workRoot,
         ?callable $log = null,
         private ?Spend $spend = null,
+        /** @var ?array{picker: VoicePicker, voicer: Voicer} gives characters voices and records their lines */
+        private ?array $voices = null,
     ) {
         $this->log = $log;
     }
@@ -134,7 +138,16 @@ class ScenarioGenerator
 
             // ------------------------------------------------------------ 4, 5. build and package
             $this->status($id, 'building');
-            $built = (new MissionBuilder)->build($blueprint, $alignment, $assets, $options + ['generation_id' => $id]);
+            $voices = $this->voices ? self::voicesFor($blueprint, $this->voices['picker']) : [];
+            $built = (new MissionBuilder)->build($blueprint, $alignment, $assets, $options + ['generation_id' => $id, 'voices' => $voices]);
+            if ($this->voices && $voices) {
+                $this->status($id, 'voicing');
+                $this->say('Recording the characters\' lines ('.$this->voices['voicer']->engine()->name().')');
+                $voiced = $this->voices['voicer']->voiceBuilt($built, "$dir/voices", $blueprint['language'] ?? 'en', $this->log);
+                $built = $voiced['built'];
+                $warnings = array_merge($warnings, $voiced['warnings']);
+                $this->say("  {$voiced['recorded']} lines recorded".($voiced['skipped'] ? ", {$voiced['skipped']} left to the browser (they have {{placeholders}})" : ''));
+            }
             $spent = $this->spend ? 'Made for '.$this->spend->describe().'.' : null;
             $package = ScenarioPackage::write($built, $dir, $alignment, $manifest, $blueprint, $spent);
             $this->say("Packaged {$package['zip']}");
@@ -159,6 +172,26 @@ class ScenarioGenerator
             $this->runs->update($id, ['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 4000)]);
             throw $e;
         }
+    }
+
+    /**
+     * A voice for each character, from what the blueprint says of them: a different one each while
+     * they last.
+     *
+     * @return array<string, string> by character key
+     */
+    public static function voicesFor(array $blueprint, VoicePicker $picker): array
+    {
+        $wanted = [];
+        foreach ($blueprint['characters'] as $c) {
+            $v = (array) ($c['voice'] ?? []);
+            $wanted[$c['key']] = [
+                'gender' => $v['gender'] ?? null, 'age' => $v['age'] ?? null, 'accent' => $v['accent'] ?? null,
+                'describe' => implode(' ', array_filter([$v['sound'] ?? null, $c['personality'] ?? null, $c['role'] ?? null, $c['appearance'] ?? null, ! empty($c['guide']) ? 'warm friendly clear guide' : null])),
+            ];
+        }
+
+        return $picker->pick($wanted, $blueprint['language'] ?? 'en');
     }
 
     /** Import a package (this run's, or one from elsewhere) as a private draft, and record its standards. */

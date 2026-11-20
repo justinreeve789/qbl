@@ -67,6 +67,7 @@ export default defineConfig({
             { label: 'Runtime extensions (spec v2)', slug: 'developers/extensions' },
             { label: 'Save data', slug: 'developers/save-data' },
             { label: 'Generating missions with AI', slug: 'developers/generation' },
+            { label: "Characters' voices (text-to-speech)", slug: 'developers/voices' },
             { label: 'Architecture', slug: 'developers/architecture' },
             { label: 'HTTP API contract', slug: 'developers/api' },
             { label: 'Public API (v1) for schools', slug: 'developers/api-v1' },

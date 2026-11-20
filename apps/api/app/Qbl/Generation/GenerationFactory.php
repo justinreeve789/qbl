@@ -19,6 +19,8 @@ use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Llm\AnthropicModel;
 use App\Qbl\Generation\Llm\LanguageModel;
 use App\Qbl\ScenarioStore;
+use App\Qbl\Speech\SpeechError;
+use App\Qbl\Speech\SpeechFactory;
 
 /**
  * Puts the generator together from configuration (config/qbl_generation.php), in plain PHP, so Laravel,
@@ -43,6 +45,8 @@ class GenerationFactory
         ?LanguageModel $llm = null,
         /** For tests: a picture source to use whatever the driver says. */
         private ?ImageGenerator $images = null,
+        /** The characters' voices (config/qbl_speech.php); none when null. */
+        private ?SpeechFactory $speech = null,
     ) {
         $this->http ??= new CurlHttpClient;
         $this->llm = $llm;
@@ -155,7 +159,30 @@ class GenerationFactory
             (string) $this->config('work_dir'),
             $log,
             $spend,
+            $this->voices($options['voices'] ?? null, $log),
         );
+    }
+
+    /**
+     * What gives the characters voices and records their lines; null when that is switched off
+     * ($wanted false, or QBL_TTS_DRIVER=none) or the voices are not set up.
+     *
+     * @return ?array{picker: \App\Qbl\Speech\VoicePicker, voicer: \App\Qbl\Speech\Voicer}
+     */
+    private function voices(?bool $wanted, ?callable $log): ?array
+    {
+        if ($wanted === false || ! $this->speech) {
+            return null;
+        }
+        try {
+            $voicer = $this->speech->voicer();
+        } catch (SpeechError $e) {
+            $log && $log('Voices are not set up, so the lines will be read by the browser: '.$e->getMessage());
+
+            return null;
+        }
+
+        return $voicer ? ['picker' => $this->speech->picker(), 'voicer' => $voicer] : null;
     }
 
     public function director(string $dir, ?string $styleKey = null, ?string $driver = null, ?callable $log = null): AssetDirector

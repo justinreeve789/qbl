@@ -98,6 +98,12 @@ final class BlueprintSchema
                         'role' => $text('Their part in the story.', 200),
                         'appearance' => $text('Only what they look like: species or kind of being, body shape, height relative to a child, clothing, colours (name 3-4 main colours), one or two distinctive features. Full body. Friendly and appropriate for children. No text or logos on clothing.', 500),
                         'personality' => $text('How they talk and behave, in a few words.', 200),
+                        'voice' => ['type' => 'object', 'description' => 'What they sound like, to choose the voice their lines are recorded in.', 'properties' => [
+                            'gender' => ['type' => 'string', 'enum' => ['female', 'male', 'neutral'], 'description' => 'neutral for a robot, a computer or a creature that is neither.'],
+                            'age' => ['type' => 'string', 'enum' => ['child', 'young', 'adult', 'elder']],
+                            'accent' => ['type' => 'string', 'enum' => ['American', 'British'], 'description' => 'Only when it matters to the character.'],
+                            'sound' => $text('A few words on how the voice sounds: warm, deep, squeaky, robotic, calm, excited.', 80),
+                        ]],
                         'guide' => ['type' => 'boolean', 'description' => 'True for the one character who briefs the students and receives the final report.'],
                         'scene' => $key,
                         'x' => ['type' => 'number', 'minimum' => 0.12, 'maximum' => 0.88, 'description' => 'Where they stand, as a fraction of the scene width.'],

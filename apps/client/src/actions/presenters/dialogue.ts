@@ -17,18 +17,21 @@ function speakerOf(pc: PresenterContext, characterId: Id | undefined, actor: str
 }
 
 /**
- * How a narrated action is read: with a recording when it has one, and otherwise by the
- * browser's voice in the scenario's language, in the character's voice when one is speaking.
+ * How a narrated action is read: with a recording when it has one (and, when the recording has
+ * word timings, with each word lit as it is said), and otherwise by the browser's voice in the
+ * scenario's language, in the character's voice when one is speaking.
  */
 export function speech(pc: PresenterContext, action: Narrated, characterId?: Id): SpeakOptions {
   const { scenario } = pc.ctx;
   const character = characterId != null ? pc.ctx.index.characters.get(characterId) : undefined;
+  const recording = action.narration_media_id != null ? pc.ctx.index.media.get(action.narration_media_id) : undefined;
   return {
     lang: scenario.default_language,
     pitch: character?.voice_pitch,
     rate: character?.voice_rate,
     voice: character?.voice_name,
     audioUrl: (action.narration_media_id != null && pc.ctx.mediaUrl(action.narration_media_id)) || undefined,
+    timings: recording?.speech,
   };
 }
 

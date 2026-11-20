@@ -356,6 +356,13 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (typeof a.text !== 'string' || a.text === '') err(`${path}.text`, 'text is required');
         else checkText(a.text, `${path}.text`);
         if (a.style != null && a.style !== 'bubble' && a.style !== 'portrait') err(`${path}.style`, 'style is "bubble" or "portrait"');
+        {
+          // A line recorded in a character's voice, changed since: the recording says the old words.
+          const said = a.narration_media_id != null ? media.get(a.narration_media_id)?.speech : undefined;
+          if (said?.engine && said.line != null && typeof a.text === 'string' && said.line !== a.text) {
+            warn(`${path}.narration_media_id`, 'The line was changed after it was recorded, so the recording says something else. Record the voices again (Characters, “Record voices”)');
+          }
+        }
         // A bubble needs someone to hang over; a portrait box can carry a voice from anywhere (a call from the ship).
         if (a.speaker === 'character' && a.style === 'portrait') {
           if (!characters.has(a.character_id as Id)) err(`${path}.character_id`, 'The speaking character does not exist');

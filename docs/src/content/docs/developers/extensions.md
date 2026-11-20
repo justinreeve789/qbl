@@ -296,9 +296,11 @@ Parameter | Applies to | Default | Description
 --------- | ---------- | ------- | -----------
 narration | scenario | off | `on`: read everything unless an action says otherwise.
 narrate | dialogue, infobox, text_overlay | the scenario's | `true` or `false` for this action.
-narration_media_id | dialogue, infobox, text_overlay | | An audio recording to play instead of the browser's voice. The words are highlighted at an even pace over its length.
-voice_pitch, voice_rate | character | 1 | How the character sounds: 0 to 2, and 0.5 to 2.
-voice_name | character | | Part of the name of a voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
+narration_media_id | dialogue, infobox, text_overlay | | An audio recording to play instead of the browser's voice. When the recording has word timings (`speech`, below), each word is lit as the recording says it; otherwise the words are paced evenly over its length.
+speech | media (audio) | | The recording's words and when each is said: `{text, voice?, engine?, words: [{w, s, e}], duration?}`, in milliseconds. Recordings made by the server's text-to-speech service have it. See [Characters' voices](/docs/developers/voices/).
+tts_voice | character | | The voice the character's lines are recorded in: a key of the server's voice catalog ("heart", "captain", "robot"). See [Characters' voices](/docs/developers/voices/).
+voice_pitch, voice_rate | character | 1 | How the browser's voice sounds reading the character's lines that have no recording: 0 to 2, and 0.5 to 2.
+voice_name | character | | For lines with no recording: part of the name of a browser voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
 
 ```json
 { "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "narrate": true, "text": "Welcome aboard, {{QBLPlayerName}}!" }
@@ -306,7 +308,7 @@ voice_name | character | | Part of the name of a voice to prefer ("female", "Dan
 
 A speech bubble that is being read stays until the voice has finished. One thing is read at a time: a new line stops the one before. Players have a switch for reading aloud at the foot of the side panel (it is offered when the scenario has anything to read) and their choice is kept in their browser. In the demo the story's portrait dialogue is read.
 
-Browser voices vary in quality from device to device. For a consistent voice, record the lines (or generate them once with a text-to-speech service) and attach them with `narration_media_id`; a service that returns word timings could drive the highlight exactly, which is the natural next step if the built-in voices are not good enough.
+Browser voices vary in quality from device to device. For a consistent voice, give characters a recorded voice: the server records their lines once with its text-to-speech service (Kokoro, in the `tts` container), with the time of every word, and the highlight follows the recording exactly. See [Characters' voices](/docs/developers/voices/). A recording of your own can be attached with `narration_media_id` too; its words are paced evenly.
 
 ### Glossary
 
@@ -537,7 +539,8 @@ Parameter | Type | Default | Description
 id, name | int, string | | As in the base docs.
 animations | object | | The character's animations, by name. See below.
 scale | decimal | 1.0 | Display scale of its pictures. Each picture is also stretched by its own media `scale_x` and `scale_y`, so a sheet shared by several characters can be sized once, on the media, and each character sized on top of that.
-voice_pitch, voice_rate, voice_name | | | How its lines are read aloud. See [Reading text aloud](#reading-text-aloud).
+tts_voice | | | The voice its lines are recorded in, a key of the server's voice catalog. See [Characters' voices](/docs/developers/voices/).
+voice_pitch, voice_rate, voice_name | | | How the browser reads its lines that have no recording. See [Reading text aloud](#reading-text-aloud).
 conditions | array | | Scenario characters only: the character is there only while these hold.
 media_id, portrait_media_id | int | | *Before animations.* One picture and a close-up. Read only when `animations` is empty (see below).
 

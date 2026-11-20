@@ -19,7 +19,8 @@ Step | What | Kept in
 1. Align | Chooses 1-3 primary standards (and up to 3 supporting ones) from those imported, and writes measurable learning objectives, vocabulary and misconceptions to address | `scenario_generations.alignment`
 2. Design | Writes the **blueprint**: story, scenes and how they connect, characters, items, interactions, the checklist, the briefing and the final report. It is checked, and sent back to be corrected until it can be built | `scenario_generations.blueprint`, `blueprint.json`
 3. Draw | Draws every picture: each character's design and animation strips (their portrait is cut from the design); the mission's small things, several to a picture; doors and holes; every background; the mission patch | `assets/` in the work folder, `scenario_generations.manifest`
-4. Build | Turns the blueprint into rows of the QBL tables, using the patterns from [Runtime extensions](/docs/developers/extensions/#patterns) | 
+4. Build | Turns the blueprint into rows of the QBL tables, using the patterns from [Runtime extensions](/docs/developers/extensions/#patterns). Gives each character a voice from what the blueprint says of them, a different one each | 
+4½. Voice | Records every line the characters say, with the time of every word, on the server's text-to-speech service ([Characters' voices](/docs/developers/voices/)). Free with Kokoro. If the service is down this is a warning, not a failure | `voices/` in the work folder
 5. Package | Compiles the rows into `scenario.json` and packs it with its pictures as an import ZIP, plus a preview of each scene | `scenario.zip`, `previews/`
 6. Import | Imports the ZIP exactly as the editor's "Import a ZIP" does, as a private draft owned by `--owner`; records its standards; publishes it if `--publish` | `scenarios` and the rest; `scenario_standards`
 
@@ -50,6 +51,7 @@ Option | Effect
 `--no-import` | Make the ZIP but do not import it.
 `--publish` | Publish the imported draft.
 `--no-judge` | Do not check pictures against the style (cheaper, less consistent).
+`--no-voices` | Do not record the characters' lines; the browser reads them aloud instead.
 `--attempts=` | Attempts per picture before the best is kept (default 3).
 `--budget=` | Most to spend on AI services for this run, in US dollars (default `QBL_GEN_BUDGET_USD`, 5; `0` for none). See [What it costs](#what-it-costs).
 
