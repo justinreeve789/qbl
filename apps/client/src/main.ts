@@ -455,12 +455,16 @@ async function start() {
     connection.leave();
     window.location.assign(href);
   };
-  const face = avatarId != null ? (scenario.assets ?? []).find((m) => m.id === avatarId) : undefined;
+  // The player's character standing, as the chooser shows it (the room gives the first avatar when
+  // none was chosen). An avatar's id is not its picture's id: since avatars became characters, the
+  // picture is whichever media its standing pose uses.
+  const mine = (scenario.avatars ?? []).find((a) => a.id === avatarId) ?? scenario.avatars?.[0];
+  const face = mine ? characterPicture(mine, 'stand', (id) => ctx.index.media.get(id), (m) => resolveMediaUrl(scenario, m)) : null;
   ui.account({
     name: user.name,
     guest: user.role === 'guest',
     subtitle: user.role === 'guest' ? 'Playing as a guest' : isStaff(user.role) ? (user.role === 'admin' ? 'Administrator' : 'Teacher') : undefined,
-    avatar: face ? { url: resolveMediaUrl(scenario, face), sheet: face.sheet ? { columns: face.sheet.columns, rows: face.sheet.rows } : null } : null,
+    avatar: face?.url ? face : null,
     links: preview ? [] : siteLinks(user.role),
   }, {
     leave,
