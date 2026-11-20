@@ -141,13 +141,76 @@ if ($path === '/api/auth/guest' && $method === 'POST') {
 if ($path === '/api/auth/logout' && $method === 'POST') {
     respond(200, ['ok' => true]);
 }
+// "Forgot your password?": the same answer as Laravel's; the link (which works for any address here) goes to this server's output.
+if ($path === '/api/auth/forgot-password' && $method === 'POST') {
+    $email = strtolower(trim((string) ($body['email'] ?? '')));
+    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        respond(422, ['message' => 'That does not look like an email address.']);
+    }
+    error_log('Password reset link for '.$email.': http://'.($_SERVER['HTTP_HOST'] ?? 'localhost').'/missions#'.http_build_query(['reset-password' => 'dev', 'email' => $email], '', '&', PHP_QUERY_RFC3986));
+    respond(202, ['ok' => true, 'message' => 'If an account with a password uses that address, a link to choose a new password is on its way. It works for 60 minutes. Check your spam folder too.']);
+}
+// Choosing a new password with the link: any token but "expired" works, and signs in as that address does here.
+if ($path === '/api/auth/reset-password' && $method === 'POST') {
+    $email = strtolower(trim((string) ($body['email'] ?? '')));
+    $password = (string) ($body['password'] ?? '');
+    $problem = match (true) {
+        ($body['token'] ?? '') === '' || $email === '' => 'This link is not complete. Open the link from the email again.',
+        strlen($password) < 8 => 'Use a password of at least 8 characters.',
+        $password !== (string) ($body['password_confirmation'] ?? '') => 'The two passwords are not the same.',
+        $body['token'] === 'expired' => 'This link has expired or was already used. Ask for a new one.',
+        default => null,
+    };
+    if ($problem) {
+        respond(422, ['message' => $problem]);
+    }
+    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'email' => $email, 'role' => str_starts_with($email, 'admin') ? 'admin' : (str_starts_with($email, 'student') ? 'student' : 'teacher')];
+    $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, $account['role']]);
+    respond(200, $issue($account));
+}
+// The profile page. Every account here "has a password"; a current password of "wrong-password" is refused, to try the message.
+if ($path === '/api/me/password' && $method === 'PUT') {
+    if (! $user || $user['role'] === 'guest') {
+        respond($user ? 409 : 401, ['message' => $user ? 'This account has no password to change.' : 'Unauthenticated.']);
+    }
+    $password = (string) ($body['password'] ?? '');
+    $problem = match (true) {
+        ($body['current_password'] ?? '') === '' => 'Enter your current password.',
+        $body['current_password'] === 'wrong-password' => 'That is not your current password.',
+        strlen($password) < 8 => 'Use a password of at least 8 characters.',
+        $password !== (string) ($body['password_confirmation'] ?? '') => 'The two new passwords are not the same.',
+        default => null,
+    };
+    if ($problem) {
+        respond(422, ['message' => $problem]);
+    }
+    respond(200, ['ok' => true, 'signed_out_elsewhere' => 0]);
+}
 if ($path === '/api/me') {
     if (! $user) {
         respond(401, ['message' => 'Unauthenticated.']);
     }
-    $chosen = $pdo->prepare('SELECT `avatar_media_id` FROM `users` WHERE `id` = ?');
-    $chosen->execute([$user['id']]);
-    respond(200, ['user' => array_filter($user + ['avatar_media_id' => (int) $chosen->fetchColumn() ?: null], fn ($v) => $v !== null)]);
+    if ($method === 'PATCH') {
+        // Checked like the Laravel app (AuthController::update). The name is kept on the row; the token still carries the old one.
+        $name = trim((string) preg_replace('/\s+/u', ' ', strip_tags((string) ($body['name'] ?? ''))));
+        $problem = match (true) {
+            $user['role'] === 'guest' => 'Guests choose a name each time they play. Create an account to keep one.',
+            $name === '' => 'Enter a name.',
+            mb_strlen($name) > 60 => 'Use a name of at most 60 characters.',
+            (bool) preg_match('/[^\s@]+@[^\s@]+\.[A-Za-z]{2,}/', $name) || (bool) preg_match('/(?:\+?\d[\s().\-]*){7,}/', $name) => 'Other players see this name, so leave out email addresses and phone numbers.',
+            default => null,
+        };
+        if ($problem) {
+            respond($user['role'] === 'guest' ? 403 : 422, ['message' => $problem]);
+        }
+        $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$user['id'], $name, $user['email'] ?? null, $user['role']]);
+        $pdo->prepare('UPDATE `users` SET `name` = ? WHERE `id` = ?')->execute([$name, $user['id']]);
+    }
+    $row = $pdo->prepare('SELECT `name`, `avatar_media_id` FROM `users` WHERE `id` = ?');
+    $row->execute([$user['id']]);
+    $row = $row->fetch(PDO::FETCH_ASSOC) ?: [];
+    $own = $user['role'] === 'guest' ? [] : ['has_password' => true, 'uses_google' => false, 'name_locked' => false];
+    respond(200, ['user' => array_filter(['name' => $row['name'] ?? $user['name']] + $user + ['avatar_media_id' => (int) ($row['avatar_media_id'] ?? 0) ?: null] + $own, fn ($v) => $v !== null)]);
 }
 // Missions, avatars and the teacher's classes, with the same rules as the Laravel app (App\Qbl\ClassApi).
 if (preg_match('#^/api/(missions|avatars|me/avatar|players/\d+/profile|teach(/.*)?)$#', $path, $m)) {

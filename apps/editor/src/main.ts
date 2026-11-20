@@ -10,6 +10,8 @@ import { Store } from './store';
 import { classesView } from './views/classes';
 import { loginView, scenarioListView } from './views/home';
 import { TABS, workspace, type Tab } from './views/workspace';
+// The profile dialog, shared with the missions page.
+import { openProfile } from '../../../packages/shared/browser/profile';
 
 /**
  * The editor. Addresses are kept in the fragment so the server needs no rules for them:
@@ -75,10 +77,29 @@ function show(node: HTMLElement, fill = false) {
   clear(view, node);
 }
 
+/** The profile page (name, password), over whatever page is open. The same dialog as on the missions page. */
+function openOwnProfile() {
+  if (!user) return;
+  openProfile(user, {
+    load: async () => (await api.me()) ?? user!,
+    rename: (name) => api.rename(name),
+    changePassword: (change) => api.changePassword(change),
+    sendResetLink: (email) => api.forgotPassword(email),
+  }, {
+    onChange: (changed) => {
+      if (!user) return;
+      user = { ...user, name: changed.name };
+      drawAccount();
+    },
+  });
+}
+
 function drawAccount() {
   clear(
     account,
-    user ? h('span', { class: 'who' }, `👤 ${user.name}`) : null,
+    user
+      ? h('button', { type: 'button', class: 'who', 'data-profile': '', title: 'Your profile: name and password', onclick: openOwnProfile }, icon('account'), user.name)
+      : null,
     user
       ? h('button', {
           type: 'button', class: 'signout',

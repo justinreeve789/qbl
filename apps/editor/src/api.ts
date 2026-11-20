@@ -18,6 +18,10 @@ export interface User {
   role: string;
   /** The account's address, as the API tells an account about itself. Guests have none. */
   email?: string;
+  /** What the profile page may change (see packages/shared/browser/profile.ts). */
+  has_password?: boolean;
+  uses_google?: boolean;
+  name_locked?: boolean;
 }
 
 export interface ScenarioSummary {
@@ -186,6 +190,20 @@ export class Api {
       if (err instanceof ApiError && err.status === 401) return null;
       throw err;
     }
+  }
+
+  /** The profile page: the name over the person's character in missions. */
+  async rename(name: string): Promise<User> {
+    return (await this.call<{ user: User }>('PATCH', '/me', { name })).user;
+  }
+
+  /** Change the password, given the current one. Other sign-ins of the account end; this one stays. */
+  changePassword = (change: { current_password: string; password: string; password_confirmation: string }) =>
+    this.call<{ signed_out_elsewhere?: number }>('PUT', '/me/password', change);
+
+  /** Email a link for choosing a new password. Resolves to what to tell the person. */
+  async forgotPassword(email: string): Promise<string> {
+    return (await this.call<{ message?: string }>('POST', '/auth/forgot-password', { email })).message ?? 'Check your email for a link.';
   }
 
   /** Forget who is signed in, here and on the server, so the token stops working everywhere. */

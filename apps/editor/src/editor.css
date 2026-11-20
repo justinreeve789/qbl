@@ -276,6 +276,9 @@ input::placeholder, textarea::placeholder { color: #aab1bd; }
 .tabs a:not(.button) { color: #e2e6ed; }
 .tabs a.current { background: var(--bg); border-bottom-color: var(--warn); }
 .top .who { color: #fff; font-size: 13px; }
+/* The signed-in name opens the profile page. */
+.top button.who { display: inline-flex; align-items: center; max-width: 220px; background: transparent; border-color: transparent; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top button.who:hover:not(:disabled), .top button.who:focus-visible { border-color: #8a91a0; }
 .top button.signout { background: transparent; border-color: #8a91a0; }
 .crumbs .spacer { flex: 1; }
 .publish-now { margin-left: 8px; }

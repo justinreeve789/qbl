@@ -1,6 +1,6 @@
 import { isStaff, siteLinks, type User } from '@qbl/shared';
 import { buildTeacherDesk, TEACH_PATHS, teacherMissionsHeading, type TeacherDesk } from './teach';
-import { AccountMenu } from './ui/AccountMenu';
+import { AccountMenu, type MenuAction } from './ui/AccountMenu';
 import { icon } from './ui/icons';
 
 /** A scenario the player can play, as `GET /api/missions` lists it. */
@@ -110,6 +110,11 @@ export interface HomeOptions {
   onAvatar(id: number): void;
   onSignOut(): void;
   /**
+   * Open the profile page (the name over the character, the password). `renamed` is called with
+   * a new name so the page can show it. Absent (a guest): not offered.
+   */
+  onProfile?(renamed: (name: string) => void): void;
+  /**
    * For teachers and admins: their assignments, scenarios and students, shown above the
    * missions. The page is drawn at once and this part fills in when it arrives.
    */
@@ -199,8 +204,9 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   };
   drawFace();
   const greeting = el('div');
+  const welcome = el('h1', undefined, `Welcome, ${user.name}`);
   greeting.append(
-    el('h1', undefined, `Welcome, ${user.name}`),
+    welcome,
     el('p', undefined, staff ? 'Build missions, assign them to your classes, and look in while they play.' : 'Choose a mission to begin.'),
   );
   who.append(face, greeting);
@@ -237,12 +243,22 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
     if (!picker.hidden) drawPicker();
   };
   face.addEventListener('click', togglePicker);
+  const actions: MenuAction[] = [];
+  if (options.onProfile) {
+    const onProfile = options.onProfile;
+    const renamed = (name: string) => {
+      welcome.textContent = `Welcome, ${name}`;
+      menu.setName(name);
+    };
+    actions.push({ key: 'profile', label: 'Profile: name and password', icon: 'profile', run: () => onProfile(renamed) });
+  }
   if (avatars.length) {
-    menu.setActions([{ key: 'character', label: 'Change your character', icon: 'account', run: () => {
+    actions.push({ key: 'character', label: 'Change your character', icon: 'account', run: () => {
       if (picker.hidden) togglePicker();
       picker.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    } }]);
+    } });
   }
+  menu.setActions(actions);
   page.appendChild(picker);
 
   if (staff) page.appendChild(buildTeacherDesk(options.desk ?? Promise.reject(new Error('no desk')), user, now));

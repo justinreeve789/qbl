@@ -7,6 +7,8 @@ import { buildHome } from './home';
 import { Api, ApiError, takeSignInProblem } from './net/Api';
 import { OfflineConnection, OnlineConnection, type GameConnection } from './net/Connection';
 import { BootScene } from './scenes/BootScene';
+// The profile dialog, shared with the editor.
+import { openProfile } from '../../../packages/shared/browser/profile';
 import { PlayScene } from './scenes/PlayScene';
 import { Ui } from './ui/Ui';
 // Twemoji Awesome: the one set every icon in the interface is drawn from (see ui/icons.ts).
@@ -34,20 +36,45 @@ function field(label: string, type: string, name: string, value = '', more: Part
   return wrap;
 }
 
-/** `/missions#create-account` (the marketing page's "Create an account") opens the sign-in form ready to make one. */
-function takeCreateAccount(): boolean {
-  if (window.location.hash !== '#create-account') return false;
-  history.replaceState(null, '', window.location.pathname + window.location.search);
-  return true;
+/**
+ * A link that opens the sign-in form in a particular way, read from after the # and cleared:
+ *   /missions#create-account              ready to make an account (the marketing page, the editor)
+ *   /missions#forgot-password             ready to ask for a password link (the editor's sign-in)
+ *   /missions#reset-password=…&email=…    choosing a new password, from the emailed link
+ */
+type FormLink = { kind: 'create' } | { kind: 'forgot' } | { kind: 'reset'; token: string; email: string };
+
+function takeFormLink(): FormLink | null {
+  const hash = window.location.hash.slice(1);
+  let link: FormLink | null = null;
+  if (hash === 'create-account') link = { kind: 'create' };
+  else if (hash === 'forgot-password') link = { kind: 'forgot' };
+  else if (hash.startsWith('reset-password=')) {
+    const params = new URLSearchParams(hash);
+    const token = params.get('reset-password') ?? '';
+    const email = params.get('email') ?? '';
+    link = token && email ? { kind: 'reset', token, email } : { kind: 'forgot' };
+  }
+  // The token is a secret: it leaves the address at once, so it is not kept in the history.
+  if (link) history.replaceState(null, '', window.location.pathname + window.location.search);
+  return link;
 }
 
+// Such a link opened in a tab already on this page changes only the #, which runs nothing: start again with it.
+window.addEventListener('hashchange', () => {
+  if (/^#(create-account|forgot-password|reset-password=.+)$/.test(window.location.hash)) window.location.reload();
+});
+
+type SignInMode = 'login' | 'register' | 'guest' | 'forgot' | 'reset';
+
 /** Ask who is playing. Resolves once the API has issued a token. */
-function signIn(message?: string): Promise<User> {
+function signIn(message?: string, link: FormLink | null = null): Promise<User> {
   // A draft preview belongs to an editor account, so it always asks for a full sign-in.
   const mode0 = config.preview != null ? 'login' : config.authMode;
-  // Creating an account needs the Laravel API (login mode); a preview needs an existing editor account.
+  // Creating an account, and choosing a new password, need the Laravel API (login mode); a preview needs an existing editor account.
   const mayRegister = config.authMode === 'login' && config.preview == null;
-  const askedToRegister = takeCreateAccount() && mayRegister;
+  const askedToRegister = link?.kind === 'create' && mayRegister;
+  const reset = mayRegister && link?.kind === 'reset' ? link : null;
   return new Promise((resolve) => {
     const form = document.createElement('form');
     form.className = 'qbl-card';
@@ -58,7 +85,9 @@ function signIn(message?: string): Promise<User> {
     error.textContent = message ?? '';
     // In login mode a "play as guest" link swaps the form; the API decides whether guests are allowed.
     // "Create an account" swaps it for a name, email and password form, when the server allows that.
-    let mode: 'login' | 'register' | 'guest' = askedToRegister ? 'register' : mode0;
+    let mode: SignInMode = askedToRegister ? 'register' : reset ? 'reset' : mayRegister && link?.kind === 'forgot' ? 'forgot' : mode0;
+    // The address typed last, carried from one form to the next.
+    let email = reset?.email ?? '';
     let offers = { google: false, register: askedToRegister };
     const fields = document.createElement('div');
     fields.className = 'qbl-fields';
@@ -78,11 +107,25 @@ function signIn(message?: string): Promise<User> {
     const google = document.createElement('button');
     google.type = 'button';
     google.className = 'qbl-button qbl-google';
+    // "Forgot your password?" in the sign-in form; the way back from the forms it opens.
+    const forgot = document.createElement('button');
+    forgot.type = 'button';
+    forgot.className = 'qbl-link';
+    forgot.dataset.forgotPassword = '';
     const render = () => {
       form.dataset.mode = mode;
       fields.replaceChildren(
         ...(mode === 'login'
-          ? [field('Email', 'email', 'email'), field('Password', 'password', 'password')]
+          ? [field('Email', 'email', 'email', email, { autocomplete: 'username' }), field('Password', 'password', 'password')]
+          : mode === 'forgot'
+            ? [field('Email', 'email', 'email', email, { autocomplete: 'username' })]
+          : mode === 'reset'
+            ? [
+                // For password managers: which account the new password is for.
+                Object.assign(field('Email', 'email', 'username', email, { autocomplete: 'username', readOnly: true, required: false }), { hidden: true }),
+                field('New password (at least 8 characters)', 'password', 'password', '', { minLength: 8, autocomplete: 'new-password' }),
+                field('Type it again', 'password', 'password_confirmation', '', { minLength: 8, autocomplete: 'new-password' }),
+              ]
           : mode === 'register'
             ? [
                 field('Your name', 'text', 'name', '', { maxLength: 60, autocomplete: 'name' }),
@@ -92,25 +135,45 @@ function signIn(message?: string): Promise<User> {
               ]
             : [field('Your name', 'text', 'name', localStorage.getItem('qbl.name') ?? '')]),
       );
-      title.textContent = mode === 'register' ? 'Create an account' : 'Quest-Based Learning';
-      button.textContent = mode === 'register' ? 'Create account' : 'Continue';
-      note.hidden = mode !== 'register';
+      const passwordForm = mode === 'forgot' || mode === 'reset';
+      title.textContent = mode === 'register' ? 'Create an account' : mode === 'forgot' ? 'Forgot your password?' : mode === 'reset' ? 'Choose a new password' : 'Quest-Based Learning';
+      button.textContent = mode === 'register' ? 'Create account' : mode === 'forgot' ? 'Email me a link' : mode === 'reset' ? 'Save password and sign in' : 'Continue';
+      note.textContent = mode === 'forgot'
+        ? 'Type the email address you sign in with. We will email you a link for choosing a new password. If you sign in with Google, use Google’s “Forgot password” instead.'
+        : mode === 'reset'
+          ? `For ${email}. Choose a password of at least 8 characters.`
+          : 'New accounts are for students. Teachers: once you have an account, ask your administrator to make it a teacher’s.';
+      note.hidden = mode !== 'register' && !passwordForm;
       swap.textContent = mode === 'guest' ? 'Sign in with an account' : 'Play as a guest instead';
-      swap.hidden = config.authMode !== 'login' || config.preview != null || mode === 'register';
+      swap.hidden = config.authMode !== 'login' || config.preview != null || mode === 'register' || passwordForm;
       create.textContent = mode === 'register' ? 'I already have an account' : 'New here? Create an account';
-      create.hidden = !mayRegister || !offers.register || mode === 'guest';
+      create.hidden = !mayRegister || !offers.register || mode === 'guest' || passwordForm;
+      forgot.textContent = mode === 'login' ? 'Forgot your password?' : mode === 'reset' ? 'Ask for a new link' : 'Back to sign in';
+      forgot.hidden = !mayRegister || (mode !== 'login' && !passwordForm);
       google.textContent = mode === 'register' ? 'Sign up with Google' : 'Sign in with Google';
-      google.hidden = !offers.google;
-      (fields.querySelector('input') as HTMLInputElement).focus();
+      google.hidden = !offers.google || passwordForm;
+      (fields.querySelector('label:not([hidden]) input') as HTMLInputElement).focus();
+    };
+    // Moving to another form: keep the address typed, and drop the last message.
+    const typedEmail = () => {
+      const input = fields.querySelector<HTMLInputElement>('input[name="email"]');
+      if (input) email = input.value.trim();
+      error.textContent = '';
+      delete error.dataset.tone;
     };
     swap.addEventListener('click', () => {
+      typedEmail();
       mode = mode === 'guest' ? 'login' : 'guest';
-      error.textContent = '';
       render();
     });
     create.addEventListener('click', () => {
+      typedEmail();
       mode = mode === 'register' ? 'login' : 'register';
-      error.textContent = '';
+      render();
+    });
+    forgot.addEventListener('click', () => {
+      typedEmail();
+      mode = mode === 'login' || mode === 'reset' ? 'forgot' : 'login';
       render();
     });
     google.addEventListener('click', () => {
@@ -125,10 +188,10 @@ function signIn(message?: string): Promise<User> {
     void api.providers().then((p) => {
       // Asked for by address, the form stays a sign-up form even if the server turned it off: it says why on submit.
       offers = { google: p.google, register: p.register || askedToRegister };
-      create.hidden = !mayRegister || !offers.register || mode === 'guest';
-      google.hidden = !offers.google;
+      create.hidden = !mayRegister || !offers.register || mode === 'guest' || mode === 'forgot' || mode === 'reset';
+      google.hidden = !offers.google || mode === 'forgot' || mode === 'reset';
     });
-    form.append(title, note, fields, error, button, google, create, swap);
+    form.append(title, note, fields, error, button, google, forgot, create, swap);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = new FormData(form);
@@ -136,6 +199,17 @@ function signIn(message?: string): Promise<User> {
       try {
         if (mode === 'login') {
           resolve(await api.login(String(data.get('email')), String(data.get('password'))));
+        } else if (mode === 'forgot') {
+          email = String(data.get('email')).trim();
+          const sent = await api.forgotPassword(email);
+          error.textContent = sent;
+          error.dataset.tone = 'ok';
+          button.disabled = false;
+        } else if (mode === 'reset') {
+          const password = String(data.get('password'));
+          if (password.length < 8) throw new Error('Use a password of at least 8 characters.');
+          if (password !== data.get('password_confirmation')) throw new Error('The two passwords are not the same.');
+          resolve(await api.resetPassword({ token: reset!.token, email, password, password_confirmation: password }));
         } else if (mode === 'register') {
           if (data.get('password') !== data.get('password_confirmation')) throw new Error('The two passwords are not the same.');
           resolve(
@@ -152,6 +226,7 @@ function signIn(message?: string): Promise<User> {
           resolve(await api.guest(name));
         }
       } catch (err) {
+        delete error.dataset.tone;
         error.textContent = err instanceof Error ? err.message : 'Could not sign in.';
         button.disabled = false;
       }
@@ -257,6 +332,20 @@ async function showHome(user: User): Promise<boolean> {
       api.signOut();
       window.location.reload();
     },
+    // The profile page, over this one. Guests have no account to change.
+    onProfile: user.role === 'guest' ? undefined : (renamed) => {
+      openProfile(user, {
+        load: async () => (await api.me()) ?? user,
+        rename: (name) => api.rename(name),
+        changePassword: (change) => api.changePassword(change),
+        sendResetLink: (email) => api.forgotPassword(email),
+      }, {
+        onChange: (account) => {
+          user.name = account.name;
+          renamed(account.name);
+        },
+      });
+    },
     desk: isStaff(user.role) ? api.teacherDesk() : undefined,
   }));
   return true;
@@ -277,13 +366,17 @@ async function loadDraft(scenarioId: number): Promise<Scenario> {
 }
 
 async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
-  let user = await api.me();
+  // A link to a password form (from an email, or the editor's sign-in) shows that form even to a
+  // browser that is signed in: it is usually for another account, which then replaces this one.
+  let link = takeFormLink();
+  let user = link?.kind === 'reset' || link?.kind === 'forgot' ? null : await api.me();
   // Signed in just now (here, or on the way back from Google), as opposed to arriving signed in.
   let fresh = takeSigningIn() && user != null;
   let message: string | undefined;
   for (;;) {
     if (!user) {
-      user = await signIn(message ?? takeSignInProblem());
+      user = await signIn(message ?? takeSignInProblem(), link);
+      link = null;
       fresh = true;
     }
     show('Loading…');

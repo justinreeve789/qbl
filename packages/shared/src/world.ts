@@ -13,6 +13,14 @@ export interface User {
   avatar_media_id?: Id;
   /** Ids of the shop items the player has equipped, comma-separated: what their avatar wears. */
   look?: string;
+  /**
+   * What an account is told about itself only (sign-in, `GET /api/me`; never other players):
+   * its address, and what its profile page may change.
+   */
+  email?: string;
+  has_password?: boolean;
+  uses_google?: boolean;
+  name_locked?: boolean;
 }
 
 /** State shared by everyone in one group's instance of a scenario. */

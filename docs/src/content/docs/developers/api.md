@@ -51,7 +51,39 @@ New accounts are students. `QBL_GOOGLE_DOMAINS` limits who may sign in to those 
 
 ### `GET /api/me`
 
-Returns `{ "user": User }` or 401. Here, and in the answer to `POST /api/auth/login`, the user also has its own `email` (guests have none), so a page can say exactly which account is signed in; nobody else is given it.
+Returns `{ "user": User }` or 401. Here, and in the answers that sign in (`/auth/login`, `/auth/register`, `/auth/reset-password`), the user also has what only the account itself is told (nobody else is given it):
+
+| Field | |
+| ----- | - |
+| `email` | Its address, so a page can say exactly which account is signed in. Absent for guests and for accounts a school made through `/api/v1` (their addresses are made up) |
+| `has_password` | It signs in with a password, which the profile page can change. False for accounts that have only used Google, and for rostered accounts (launch links) |
+| `uses_google` | It has signed in with Google |
+| `name_locked` | A rostered student: their name is the pseudonym their school's account was given, and only the school changes it |
+
+Guests get none of these.
+
+### The profile page
+
+The missions page (the account menu's "Profile: name and password") and the editor (the name in its header) open the same dialog (`packages/shared/browser/profile.ts`), which uses these:
+
+| Call | Body | Answer |
+| ---- | ---- | ------ |
+| `PATCH /api/me` | `{ "name": "Captain Ada" }` | `{ "user": User }`. The name over the player's character, in every list and to teachers. Tags are removed and spaces squeezed; 1 to 60 characters; 422 for anything that looks like an email address or phone number. 403 for guests and for a rostered student (`name_locked`) |
+| `PUT /api/me/password` | `{ "current_password", "password", "password_confirmation" }` | `{ "ok": true, "signed_out_elsewhere": 2 }`. Every other token of the account ends; the one used stays. 422 when the current password is wrong, or the new one is under 8 characters or typed differently. 409 for an account with no password (`has_password` false) |
+
+A name change shows in a mission from the next time the player joins it.
+
+### `POST /api/auth/forgot-password`
+
+Body `{ "email": "..." }`. Emails a link for choosing a new password and answers 202 `{ "ok": true, "message": "..." }`, **the same answer whether or not there is such an account**, so it cannot be used to find out who has one. A link is sent only to an account that has a password (`has_password`): one that signs in with Google uses Google's. Asked again within a minute, nothing more is sent. 422 if the address is not one.
+
+The link is `{APP_URL}/missions#reset-password={token}&email={address}`: the game's sign-in screen, ready to choose a new password. The token is after the `#`, so it never reaches a server log or another site. It works once, for 60 minutes (`auth.passwords.users.expire`), and a newer link replaces it.
+
+Mail goes out through Laravel's mailer (`MAIL_*` settings; see "Email" in the README). With `MAIL_MAILER=log`, the default, nothing is sent and the link is written to the log. Without mail, an administrator prints a link for someone with `php artisan qbl:reset-link <email>`.
+
+### `POST /api/auth/reset-password`
+
+Body `{ "token", "email", "password", "password_confirmation" }` (the token and address from the link). Sets the password and signs in: `{ "token": "...", "user": User }`. Every earlier token of the account ends. Using the link proves the address, as signing in with Google does, so a self-created account stops counting as unproven. 422 with "This link has expired or was already used" for a wrong, used or old token.
 
 ### `GET /api/scenarios/{code}/play`
 
