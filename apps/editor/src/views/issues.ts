@@ -157,6 +157,8 @@ export function whereIs(ctx: FormContext, doc: unknown, issue: Pick<Issue, 'path
   return { trail: ['The scenario'] };
 }
 
+const clipText = (v: string | number) => { const s = String(v); return s.length > 40 ? `${s.slice(0, 39)}…` : s; };
+
 function conditionName(c: NonNullable<IssuePlace['condition']>): string {
   const which = c.of === 'complete_when' ? ' (ticked off when)' : c.of === 'show_when' ? ' (listed only when)' : '';
   return `Condition ${nth(c.index)}${which}`;
@@ -185,6 +187,12 @@ function eventPlace(ctx: FormContext, place: IssuePlace, trail: string[]): Issue
       const field = place.field ? labelIn(Object.values(ACTIONS).flatMap((a) => a.fields), place.field) : undefined;
       return { trail, field };
     }
+    if (action.line) {
+      trail.push(`Line “${clipText(action.line.text ?? action.line.id ?? nth(action.line.index))}”`);
+      if (action.line.choice) trail.push(`Choice “${clipText(action.line.choice.text ?? nth(action.line.choice.index))}”`);
+      if (place.condition) trail.push(conditionName(place.condition));
+      return { trail };
+    }
     if (place.condition) trail.push(conditionName(place.condition));
     return { trail, field: labelIn([...(def?.fields ?? []), ...ACTION_COMMON], place.field) };
   }
@@ -211,10 +219,13 @@ function sceneGo(base: string, sceneId: number, place: IssuePlace): IssueWhere['
           openFold('event-actions');
           revealAction(place.action.id);
           const card = `.inspector [data-action="${place.action.id}"]`;
-          // A button's fields are inside its row of the infobox's buttons.
+          // A button's fields are inside its row of the infobox's buttons; a conversation's line is on its map.
+          const line = place.action.line?.id;
           pending = place.action.button
             ? { selector: `${card} .ctas .cta:nth-child(${place.action.button.index + 1})`, field }
-            : { selector: card, field: place.condition ? undefined : field };
+            : line
+              ? { selector: `${card} .talk-map [data-line="${CSS.escape(line)}"]` }
+              : { selector: card, field: place.condition ? undefined : field };
           return;
         }
         if (place.label) {

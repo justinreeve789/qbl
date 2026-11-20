@@ -53,6 +53,13 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       return 'Open the marketplace';
     case 'dialogue':
       return `${values.speaker === 'character' ? String(store.byId('characters', values.character_id as number | null)?.name ?? 'Character') : 'Player'} ${values.style === 'portrait' ? 'says, in a story box' : 'says'}: ${clip(String(values.text ?? ''))}`;
+    case 'conversation': {
+      const lines = Array.isArray(values.lines) ? (values.lines as Array<Record<string, unknown>>) : [];
+      const first = lines.find((l) => l.id === values.start) ?? lines[0];
+      const choices = lines.reduce((n, l) => n + (Array.isArray(l.choices) ? l.choices.length : 0), 0);
+      const who = first?.speaker === 'character' ? String(store.byId('characters', first.character_id as number | null)?.name ?? 'Character') : 'Player';
+      return `${lines.length} line${lines.length === 1 ? '' : 's'}, ${choices} choice${choices === 1 ? '' : 's'}${first ? `: ${who}: ${clip(String(first.text ?? ''), 36)}` : ''}`;
+    }
     case 'freeze':
       return values.frozen === false ? 'Let the player move again' : 'Stop the player from moving';
     case 'animate': {

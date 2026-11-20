@@ -269,6 +269,16 @@ class ScenarioCompiler
                 self::collectJumps($cta['action'], $targets);
             }
         }
+        // A conversation's choices can jump too.
+        foreach ((array) ($action['lines'] ?? []) as $line) {
+            foreach ((array) ($line['choices'] ?? []) as $choice) {
+                foreach ((array) ($choice['actions'] ?? []) as $inner) {
+                    if (is_array($inner) && isset($inner['type'])) {
+                        self::collectJumps($inner, $targets);
+                    }
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------ helpers

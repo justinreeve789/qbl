@@ -29,8 +29,15 @@ export type ScenarioList = (typeof SCENARIO_LISTS)[number];
 export interface IssuePlace {
   scene?: { index: number; id?: Id; name?: string };
   event?: { list: EventList; kind: EventKind; index: number; id?: Id; name?: string };
-  /** An action of the event. `button` is set when the path goes on into one of an infobox's buttons. */
-  action?: { index: number; id?: Id; type?: string; button?: { index: number; text?: string } };
+  /**
+   * An action of the event. `button` is set when the path goes on into one of an infobox's buttons,
+   * `line` when it goes into a line of a conversation (and `line.choice` into one of its choices).
+   */
+  action?: {
+    index: number; id?: Id; type?: string;
+    button?: { index: number; text?: string };
+    line?: { index: number; id?: string; text?: string; choice?: { index: number; text?: string } };
+  };
   /** A label, or a condition, of the event or action. */
   label?: { index: number };
   condition?: { index: number; of?: string };
@@ -101,6 +108,18 @@ export function locateIssue(doc: unknown, path: string): IssuePlace {
           i += 2;
           // A button's own action is part of the button.
           if (name() === 'action') i += 1;
+        } else if (name() === 'lines' && typeof t[i + 1] === 'number') {
+          const lineIndex = t[i + 1] as number;
+          const line = obj(at(action?.lines, lineIndex));
+          place.action.line = { index: lineIndex, id: str(line?.id), text: str(line?.text) };
+          i += 2;
+          if (name() === 'choices' && typeof t[i + 1] === 'number') {
+            const choiceIndex = t[i + 1] as number;
+            place.action.line.choice = { index: choiceIndex, text: str(at(line?.choices, choiceIndex)?.text) };
+            i += 2;
+            // What a choice does is part of the choice.
+            if (name() === 'actions' && typeof t[i + 1] === 'number') i += 2;
+          }
         }
       } else if (name() === 'labels' && typeof t[i + 1] === 'number') {
         place.label = { index: t[i + 1] as number };

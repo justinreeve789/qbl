@@ -33,7 +33,7 @@ export class HeadlessUi implements UiPort {
   constructor(private world: FakeWorld) {}
 
   get capturesInput() {
-    return this.boxes.length > 0;
+    return this.boxes.length > 0 || this.asks.length > 0;
   }
 
   private overlay(list: string[], value: string, duration?: number): OverlayHandle {
@@ -94,6 +94,22 @@ export class HeadlessUi implements UiPort {
     this.stories.push(entry);
     if (o.duration > 0) this.world.schedule(o.duration, end);
     return { done, cancel: end };
+  }
+  /** Conversation lines waiting for an answer: what is said, by whom, the answers, and picking one. */
+  asks: Array<{ text: string; name?: string; style: string; answers: string[]; pick(i: number): void }> = [];
+  choose(text: string, answers: string[], o: { style: 'portrait' | 'bubble'; name?: string; speak?: SpeakOptions }): InfoboxHandle {
+    this.say(text, o.speak);
+    let resolve!: (i: number | null) => void;
+    const choice = new Promise<number | null>((r) => (resolve = r));
+    const entry = { text, name: o.name, style: o.style, answers, pick: (i: number | null) => close(i) };
+    const close = (i: number | null) => {
+      const at = this.asks.indexOf(entry);
+      if (at < 0) return;
+      this.asks.splice(at, 1);
+      resolve(i);
+    };
+    this.asks.push(entry);
+    return { choice, close: () => close(null) };
   }
   textOverlay(text: string, o: { duration?: number; speak?: SpeakOptions }) {
     this.say(text, o.speak);
@@ -263,6 +279,17 @@ export class Game {
     const i = box.buttons.findIndex((b) => b.startsWith(label));
     if (i < 0) throw new Error(`No button "${label}" among ${JSON.stringify(box.buttons)}`);
     box.choose(i);
+    await settle();
+    await this.wait(48);
+  }
+
+  /** Answer the conversation line waiting for one, by the answer's text (or the start of it). */
+  async answer(label: string) {
+    const ask = this.ui.asks.at(-1);
+    if (!ask) throw new Error(`No conversation is waiting for an answer (wanted "${label}")`);
+    const i = ask.answers.findIndex((a) => a.startsWith(label));
+    if (i < 0) throw new Error(`No answer "${label}" among ${JSON.stringify(ask.answers)}`);
+    ask.pick(i);
     await settle();
     await this.wait(48);
   }

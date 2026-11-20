@@ -625,7 +625,11 @@ class Reports
         return array_column($this->all('SELECT id, external_id FROM users WHERE id IN ('.self::marks($userIds).')', $userIds), 'external_id', 'id');
     }
 
-    /** Every question in a mission (an infobox with buttons), by action id: its prompt and which answers are right, if marked. */
+    /**
+     * Every question in a mission, by the reference its answers are logged with: an infobox with
+     * buttons (its action id) and a conversation line with choices (`action id:line id`). Its prompt
+     * and which answers are right, if marked.
+     */
     private static function questions(array $document): array
     {
         $out = [];
@@ -641,6 +645,20 @@ class Reports
                     }
                 }
                 $out[(string) $node['id']] = ['prompt' => trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags((string) ($node['content'] ?? ''))))) ?: null, 'correct' => $correct];
+            }
+            if (($node['type'] ?? null) === 'conversation' && isset($node['id'])) {
+                foreach ((array) ($node['lines'] ?? []) as $line) {
+                    if (! is_array($line) || empty($line['choices']) || ! isset($line['id'])) {
+                        continue;
+                    }
+                    $correct = [];
+                    foreach ((array) $line['choices'] as $choice) {
+                        if (array_key_exists('correct', (array) $choice)) {
+                            $correct[strip_tags((string) ($choice['text'] ?? ''))] = (bool) $choice['correct'];
+                        }
+                    }
+                    $out[$node['id'].':'.$line['id']] = ['prompt' => trim(preg_replace('/\s+/', ' ', strip_tags((string) ($line['text'] ?? '')))) ?: null, 'correct' => $correct];
+                }
             }
             foreach ($node as $child) {
                 $walk($child);
