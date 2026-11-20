@@ -232,12 +232,13 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
         options: [['item', 'An item or vehicle'], ['character', 'A character in this scene'], ['action', 'A picture another action is showing']],
         hint: 'The player’s avatar is animated for everyone in the scene. An item being ridden or worn is animated too, wherever it is.',
       },
-      { key: 'item_id', label: 'Item', kind: 'item' },
-      { key: 'character_id', label: 'Character', kind: 'character' },
+      // Structural: the animation list below is the chosen item's or character's.
+      { key: 'item_id', label: 'Item', kind: 'item', structural: true },
+      { key: 'character_id', label: 'Character', kind: 'character', structural: true },
       { key: 'target_id', label: 'Action', kind: 'action' },
       {
-        key: 'animation', label: 'Animation', kind: 'animation', wide: true,
-        hint: 'One of the character’s animations (on the Characters page), a name from an item’s sprite sheet (on the Media page), or a built-in move everything can make: jump, spin, crouch, wave, dance. Leave empty to stop what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
+        key: 'animation', label: 'Animation', kind: 'animation', wide: true, placeholder: 'None: stop what is playing',
+        hint: 'For a character, one of the animations defined for it on the Characters page. For an item, one from its picture’s sprite sheet (on the Media page) or a built-in move: jump, spin, crouch, wave, dance. None stops what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
       },
     ],
   },

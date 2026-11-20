@@ -3,7 +3,7 @@ import { characterRoams, normalizeRoutine, ROUTINE_STEP_TYPES, startPlacement, t
 import type { Row } from '../api';
 import { actionSummary, params, sceneLabel, walkDestination } from '../describe';
 import { fold, h, help } from '../dom';
-import { form, select, withValue, type Field, type FormContext, type Values } from '../fields';
+import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
 import { ACTION_LOOK, ACTIONS, tidyWalk, WALK_FIELDS } from '../schema';
 import { inlineConditions, type ConditionValue } from './conditions';
 
@@ -125,7 +125,9 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     if (!type) return;
     const list = steps();
     open.add(`${id}:${list.length}`);
-    setSteps([...list, { type, ...STEP_DEFAULTS[type as RoutineStepType] } as RoutineStep]);
+    // A new animation step starts with one of the character's own animations.
+    const values = { type, ...STEP_DEFAULTS[type as RoutineStepType] };
+    setSteps([...list, (type === 'animate' ? tidyAnimate(values, { ...ctx, characterId: id }) : values) as RoutineStep]);
   }, '+ Add step…');
   add.classList.add('add-action');
 
@@ -142,7 +144,7 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     const body = h(
       'div',
       { class: 'card-body' },
-      form(STEP_FIELDS[type] ?? [], values, commit, ctx),
+      form(STEP_FIELDS[type] ?? [], values, commit, { ...ctx, characterId: id }),
       form([{ key: 'blocking', label: 'Wait for this to finish before the next step', kind: 'bool', default: true, wide: true }], values, commit, ctx),
       inlineConditions(
         ctx,

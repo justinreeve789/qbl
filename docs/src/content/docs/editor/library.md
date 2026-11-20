@@ -65,7 +65,7 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 * **Repeats**: poses loop; other animations play once unless you say otherwise.
 * **Mirror**: draw it flipped, so art facing one way serves the other.
 
-**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it; one named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
+**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it: on a character, its list offers only the animations added here (not the standing, walking and close-up pictures). One named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
 
 **Voice**: pitch, pace and a preferred voice name, for when a line is read aloud by the browser.
 
