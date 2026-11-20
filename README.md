@@ -294,7 +294,7 @@ Other commands:
 npm test                                   # shared unit tests + client tests that play the game headlessly
 npm run test:api                           # seeding, JSON generation, codes, publishing, editor API (needs PHP with SQLite)
 npm run test:api-v1                        # the public API for schools (/api/v1): roster, privacy, assignments, launch links, avatars, reports
-npm run test:generation                    # the AI mission generator, with a stand-in model and placeholder pictures
+npm run test:generation                    # the AI mission generator, with a stand-in model and placeholder pictures; then validates and plays the result
 npm run test:laravel                       # the same API through real Laravel (needs `composer install` in apps/api)
 npm run test:editor                        # the editor in a headless browser (needs PHP; once: npx playwright install chromium)
 npm run validate -- scenarios/starship.json    # check a scenario document
@@ -331,7 +331,7 @@ A **scenario** is a whole mission a group of students goes on together. It conta
 
 ## Generating missions with AI
 
-`php artisan qbl:generate "..."` makes a whole mission from a prompt: it aligns it to imported curriculum standards, writes the story, scenes, characters, dialogue, questions and events, draws every picture in the house art style (Gemini, OpenAI or Scenario, with every picture checked against approved style anchors), packages it as an import ZIP, and imports it as a private draft for a teacher to review.
+`php artisan qbl:generate "..."` makes a whole mission from a prompt: it aligns it to imported curriculum standards, writes the story, scenes, characters, dialogue, questions and events, draws every picture in the house art style (Gemini, OpenAI or Scenario, with every picture checked against approved style anchors), packages it as an import ZIP, and imports it as a private draft for a teacher to review. Missions use doors, holes and ladders as well as scene edges, place things at their real size where they belong, give students crew roles with different jobs and a shared crew log, throw in a twist, and end with a debrief where the guide checks what students worked out.
 
 ```sh
 docker compose exec app php artisan qbl:standards file standards.json --framework=NGSS     # once: standards to align to

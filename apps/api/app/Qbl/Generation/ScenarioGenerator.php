@@ -7,6 +7,7 @@ use App\Qbl\Generation\Build\MissionBuilder;
 use App\Qbl\Generation\Curriculum\StandardsAligner;
 use App\Qbl\Generation\Curriculum\StandardsStore;
 use App\Qbl\Generation\Design\BlueprintValidator;
+use App\Qbl\Generation\Design\Connections;
 use App\Qbl\Generation\Design\MissionDesigner;
 use App\Qbl\ScenarioArchive;
 use App\Qbl\ScenarioStore;
@@ -103,7 +104,7 @@ class ScenarioGenerator
                 $this->runs->update($id, ['blueprint' => $blueprint]);
             }
             file_put_contents("$dir/blueprint.json", json_encode($blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-            $this->say(sprintf('"%s": %d scenes, %d characters, %d items, %d interactions', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions'])));
+            $this->say(sprintf('"%s": %d scenes, %d characters, %d items, %d interactions, %d crew roles, %d twists', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions']), count($blueprint['roles'] ?? []), count($blueprint['twists'] ?? [])));
             if (($options['stop_after'] ?? null) === 'design') {
                 $this->status($id, 'designed');
 
@@ -125,7 +126,7 @@ class ScenarioGenerator
             // ------------------------------------------------------------ 4, 5. build and package
             $this->status($id, 'building');
             $built = (new MissionBuilder)->build($blueprint, $alignment, $assets, $options + ['generation_id' => $id]);
-            $package = ScenarioPackage::write($built, $dir, $alignment, $manifest);
+            $package = ScenarioPackage::write($built, $dir, $alignment, $manifest, $blueprint);
             $this->say("Packaged {$package['zip']}");
             if (($options['import'] ?? true) === false) {
                 $this->status($id, 'packaged');
@@ -161,16 +162,31 @@ class ScenarioGenerator
         return $scenarioId;
     }
 
-    /** What each scene's edges lead to, for the background prompts: scene => [edge => "to the Lab"]. */
+    /**
+     * What each background must leave room for: where its edges lead, where its doors, holes and ladders
+     * stand, and where things hang on its wall. scene => [exits => [edge => "towards the Lab"],
+     * passages => [[via, x, towards]], wall => [x...]].
+     */
     public static function layouts(array $b): array
     {
         $titles = array_column($b['scenes'], 'title', 'key');
+        $scenes = array_column($b['scenes'], null, 'key');
+        $items = array_column($b['items'] ?? [], null, 'key');
         $out = [];
-        foreach ($b['scenes'] as $scene) {
-            foreach ($scene['exits'] as $x) {
-                $out[$scene['key']]['exits'][$x['edge']] = 'towards '.($titles[$x['to']] ?? $x['to']);
-                $back = BlueprintValidator::OPPOSITE[$x['edge']];
-                $out[$x['to']]['exits'][$back] ??= 'towards '.$scene['title'];
+        foreach (Connections::ends($b) as $key => $ends) {
+            foreach ($ends as $end) {
+                $towards = 'towards '.($titles[$end['to']] ?? $end['to']);
+                if ($end['via'] === 'edge') {
+                    $out[$key]['exits'][$end['edge']] = $towards;
+                } else {
+                    $out[$key]['passages'][] = ['via' => $end['via'], 'x' => $end['x'], 'towards' => $towards];
+                }
+            }
+        }
+        foreach ($b['interactions'] as $it) {
+            $scene = $scenes[$it['scene']] ?? null;
+            if ($scene && ! empty($it['item']) && isset($items[$it['item']]) && AssetDirector::placementOf($it, $items[$it['item']], $scene) === 'wall') {
+                $out[$it['scene']]['wall'][] = (float) ($it['x'] ?? 0.5);
             }
         }
 

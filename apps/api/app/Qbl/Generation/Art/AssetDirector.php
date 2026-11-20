@@ -2,6 +2,8 @@
 
 namespace App\Qbl\Generation\Art;
 
+use App\Qbl\Generation\Design\Connections;
+use App\Qbl\Generation\Design\Sizes;
 use App\Qbl\Generation\GenerationError;
 use GdImage;
 
@@ -25,7 +27,22 @@ use GdImage;
  */
 class AssetDirector
 {
+    /** Older blueprints' item sizes. Items are now drawn to their real size: see Sizes. */
     public const SIZES = ['small' => 130, 'medium' => 230, 'large' => 400];
+
+    /** How tall passages that stand at the back are drawn, beside people PERSON_PX tall. */
+    public const PASSAGE_PX = ['door' => 360, 'gate' => 380, 'cave' => 420, 'portal' => 380, 'tunnel' => 360, 'ladder' => 540, 'stairs_up' => 440];
+
+    /** How wide openings in the floor are drawn. */
+    public const OPENING_PX = ['hole' => 320, 'hatch' => 250, 'stairs_down' => 320];
+
+    /** What small things stand on: a table indoors, a flat rock or stump elsewhere. */
+    public const SURFACES = [
+        'indoor' => 'a small sturdy work table with four legs and a plain empty top, waist-high to a child',
+        'outdoor' => 'a low flat-topped boulder or tree stump with a plain empty top, knee-high to a child',
+    ];
+
+    public const SURFACE_PX = ['indoor' => 190, 'outdoor' => 170];
 
     /** Animation rows of a character's sheet: name => [frames, milliseconds per pass, loops]. */
     public const ANIMATIONS = [
@@ -88,18 +105,39 @@ class AssetDirector
         $accents = $b['art_direction']['accent_colors'] ?? [];
         $setting = $b['art_direction']['setting'] ?? '';
         $assets = [];
+        $scenes = array_column($b['scenes'], null, 'key');
+        $items = array_column($b['items'], null, 'key');
 
         foreach ($b['characters'] as $c) {
             $assets += $this->character($c, $setting, $accents);
         }
+        // Items hung on a wall are drawn as wall-mounted things.
+        $mounted = [];
+        foreach ($b['interactions'] as $it) {
+            if (! empty($it['item']) && isset($items[$it['item']], $scenes[$it['scene']]) && self::placementOf($it, $items[$it['item']], $scenes[$it['scene']]) === 'wall') {
+                $mounted[$it['item']] = true;
+            }
+        }
         foreach ($b['items'] as $item) {
-            $assets["item:{$item['key']}"] = $this->item($item, $accents);
+            $assets["item:{$item['key']}"] = $this->item($item, $accents, isset($mounted[$item['key']]));
+        }
+        // The doors, holes and ladders that lead between scenes.
+        foreach (Connections::ends($b) as $scene => $ends) {
+            foreach ($ends as $end) {
+                if ($end['via'] !== 'edge') {
+                    $assets["passage:$scene:{$end['to']}"] = $this->passage($end, $accents);
+                }
+            }
+        }
+        // Tables and flat rocks for small things to stand on.
+        foreach (self::surfacesNeeded($b) as $kind) {
+            $assets["surface:$kind"] = $this->cutout("surface:$kind", 'item', self::SURFACES[$kind].($setting ? ", fitting this place: $setting" : ''), '1:1', $this->style->anchorsFor('item'), [], $accents, width: self::SURFACE_PX[$kind], label: "surface $kind", pull: true);
         }
         foreach ($b['scenes'] as $scene) {
             $assets["bg:{$scene['key']}"] = $this->background($scene, $layouts[$scene['key']] ?? [], $setting, $accents, $b['art_direction']['time_of_day'] ?? null);
         }
         // Interactions with no item of their own (a question, an inspection of the scenery) get the style's marker.
-        if (array_filter($b['interactions'], fn ($it) => $it['type'] !== 'talk' && empty($it['item']))) {
+        if (array_filter($b['interactions'], fn ($it) => $it['type'] !== 'talk' && empty($it['item']) && empty($it['at_report'])) || ! empty($b['roles'])) {
             $assets['marker'] = $this->cutout('marker', 'item', (string) ($this->style->bible()['marker'] ?? 'a small glowing beacon'), '1:1', $this->style->anchorsFor('item'), [], [], height: 120, label: 'marker', pull: true);
         }
         if (! empty($b['badge'])) {
@@ -107,6 +145,39 @@ class AssetDirector
         }
 
         return $assets;
+    }
+
+    /** Where an interaction's item goes; the same rule MissionBuilder uses. */
+    public static function placementOf(array $it, ?array $item, array $scene): string
+    {
+        if (! $item) {
+            return in_array($it['placement'] ?? null, ['ground', 'back'], true) ? $it['placement'] : 'ground';
+        }
+
+        return Sizes::placement($item, $it['placement'] ?? null, $scene);
+    }
+
+    /** Which surfaces small things need: "indoor" (a table), "outdoor" (a flat rock). */
+    public static function surfacesNeeded(array $b): array
+    {
+        $scenes = array_column($b['scenes'], null, 'key');
+        $items = array_column($b['items'], null, 'key');
+        $out = [];
+        foreach ($b['interactions'] as $it) {
+            if ($it['type'] === 'talk' || ! empty($it['at_report']) || empty($it['item']) || ! isset($items[$it['item']], $scenes[$it['scene']])) {
+                continue;
+            }
+            if (self::placementOf($it, $items[$it['item']], $scenes[$it['scene']]) === 'surface') {
+                $out[self::surfaceKind($scenes[$it['scene']])] = true;
+            }
+        }
+
+        return array_keys($out);
+    }
+
+    public static function surfaceKind(array $scene): string
+    {
+        return Sizes::sceneKind($scene) === 'indoor' ? 'indoor' : 'outdoor';
     }
 
     // ==================================================================== characters
@@ -127,8 +198,13 @@ class AssetDirector
         $sheetIm = ImageTools::load($sheetRef->bytes);
         $sheetStats = ImageTools::labStats($sheetIm);
 
-        // 2. Their portrait, drawn from the sheet and set on the house backdrop.
-        $portrait = $this->cutout("portrait:$key", 'portrait', $c['name'].' ('.$c['appearance'].')', '1:1', [$sheetRef, ...$this->style->anchorsFor('portrait')], [$sheetRef], $accents, height: null, label: $c['name'].' portrait', pull: true, portrait: true);
+        // 2. Their portrait, drawn from the sheet and set on the house backdrop. A character always has one:
+        //    if it cannot be drawn, it is their head and shoulders cut from the sheet.
+        try {
+            $portrait = $this->cutout("portrait:$key", 'portrait', $c['name'].' ('.$c['appearance'].')', '1:1', [$sheetRef, ...$this->style->anchorsFor('portrait')], [$sheetRef], $accents, height: null, label: $c['name'].' portrait', pull: true, portrait: true);
+        } catch (GenerationError $e) {
+            $portrait = $this->portraitFromSheet($key, $sheetIm, $e->getMessage());
+        }
 
         // 3. Their animations, a strip each, drawn from the sheet.
         $rows = [];
@@ -138,8 +214,14 @@ class AssetDirector
         foreach ($wanted as $name) {
             [$count, $duration, $loops] = self::ANIMATIONS[$name];
             $frames = $this->strip($key, "{$c['name']} ({$c['appearance']})", $name, $count, $sheetRef, $accents);
+            if ($frames === null && $name === 'walk') {
+                // Every character walks. A shorter cycle is easier to draw; failing that, the standing
+                // picture is made to walk (bob, lean and swing).
+                $frames = $this->strip($key, "{$c['name']} ({$c['appearance']})", $name, 4, $sheetRef, $accents, variant: 'short')
+                    ?? $this->puppetWalk($key, $sheetIm);
+            }
             if ($frames === null) {
-                continue; // the built-in moves cover anything not drawn
+                continue; // the built-in moves cover any gesture not drawn
             }
             if ($this->style->post('match_frames', true)) {
                 $frames = array_map(fn ($f) => ImageTools::matchColours($f, ImageTools::labStats($f), $sheetStats, 0.8), $frames);
@@ -180,10 +262,37 @@ class AssetDirector
         ];
     }
 
-    /** One animation strip, cut into its frames. Null if it could not be drawn well enough. */
-    private function strip(string $key, string $name, string $animation, int $count, Reference $sheet, array $accents): ?array
+    /** Walking frames made from the standing picture, recorded like a drawn strip. */
+    private function puppetWalk(string $key, GdImage $sheet): array
     {
-        $assetKey = "strip:$key:$animation";
+        $frames = ImageTools::puppetWalk($sheet, self::ANIMATIONS['walk'][0]);
+        $files = [];
+        foreach ($frames as $i => $frame) {
+            $files[] = $file = "{$this->workDir}/assets/".self::file("strip:$key:walk")."-$i.png";
+            file_put_contents($file, ImageTools::png($frame));
+        }
+        $this->record("strip:$key:walk", 'strip', null, [], ['accepted' => true, 'below_bar' => true, 'score' => null, 'frames' => $files, 'note' => 'No walk could be drawn; it is made from the standing picture. Draw it again before publishing if you can.']);
+        $this->say("Made a walk for $key from the standing picture");
+
+        return $frames;
+    }
+
+    /** A portrait cut from the character sheet, when none could be drawn. */
+    private function portraitFromSheet(string $key, GdImage $sheet, string $why): array
+    {
+        $im = $this->portrait(ImageTools::bust($sheet));
+        $path = "{$this->workDir}/assets/".self::file("portrait:$key").'.png';
+        file_put_contents($path, ImageTools::png($im));
+        $asset = ['path' => $path, 'width' => imagesx($im), 'height' => imagesy($im)];
+        $this->record("portrait:$key", 'portrait', null, [['problem' => $why]], ['accepted' => true, 'below_bar' => true, 'score' => null, 'asset' => $asset, 'note' => 'Cut from the character sheet: no portrait could be drawn.']);
+
+        return $asset;
+    }
+
+    /** One animation strip, cut into its frames. Null if it could not be drawn well enough. */
+    private function strip(string $key, string $name, string $animation, int $count, Reference $sheet, array $accents, string $variant = ''): ?array
+    {
+        $assetKey = "strip:$key:$animation".($variant !== '' ? "-$variant" : '');
         $cache = $this->cached($assetKey);
         $notes = [];
         $best = null;
@@ -247,26 +356,38 @@ class AssetDirector
 
     // ======================================================================= things
 
-    private function item(array $item, array $accents): array
+    private function item(array $item, array $accents, bool $mounted = false): array
     {
         $vehicle = $item['kind'] === 'vehicle';
-        $height = self::SIZES[$item['size']] ?? self::SIZES['medium'];
+        // Drawn to its real size beside the people in the scene: its longest side.
+        $longest = Sizes::pixels(Sizes::cm($item));
+        $subject = "{$item['name']}: {$item['appearance']}".($mounted ? '. Mounted flat on a wall, seen straight on, with its fixings showing' : '');
 
-        return $this->cutout("item:{$item['key']}", $vehicle ? 'vehicle' : 'item', "{$item['name']}: {$item['appearance']}", $vehicle ? '3:2' : '1:1', $this->style->anchorsFor($vehicle ? 'vehicle' : 'item'), [], $accents, height: $vehicle ? null : $height, width: $vehicle ? 340 : null, label: $item['name'], pull: true);
+        return $this->cutout("item:{$item['key']}", $vehicle ? 'vehicle' : 'item', $subject, $vehicle ? '3:2' : '1:1', $this->style->anchorsFor($vehicle ? 'vehicle' : 'item'), [], $accents, longest: $vehicle && empty($item['size_cm']) ? null : $longest, width: $vehicle && empty($item['size_cm']) ? 340 : null, label: $item['name'], pull: true);
+    }
+
+    /** A door, cave mouth or ladder that stands at the back of a scene, or a hole or hatch in its floor. */
+    private function passage(array $end, array $accents): array
+    {
+        $floor = Connections::inFloor($end['via']);
+        $kind = $floor ? 'opening' : 'passage';
+
+        return $this->cutout("passage:{$end['via']}:".md5($end['look']), $kind, $end['look'], $floor ? '16:9' : ($end['via'] === 'ladder' ? '9:16' : '3:4'), $this->style->anchorsFor($kind), [], $accents,
+            height: $floor ? null : (self::PASSAGE_PX[$end['via']] ?? 360), width: $floor ? (self::OPENING_PX[$end['via']] ?? 300) : null, label: $end['via'], pull: true, hints: ['via' => $end['via']]);
     }
 
     /**
      * A picture cut out of its background, trimmed, and scaled to a height (or width), judged and
      * retried. Returns the asset: path, width, height.
      */
-    private function cutout(string $key, string $kind, string $subject, string $aspect, array $refs, array $subjectRefs, array $accents, ?int $height = null, ?int $width = null, string $label = '', bool $pull = true, bool $portrait = false): array
+    private function cutout(string $key, string $kind, string $subject, string $aspect, array $refs, array $subjectRefs, array $accents, ?int $height = null, ?int $width = null, string $label = '', bool $pull = true, bool $portrait = false, ?int $longest = null, array $hints = []): array
     {
         if ($cache = $this->cached($key)) {
             if (! empty($cache['asset'])) {
                 return $cache['asset'];
             }
         }
-        $result = $this->attempts($key, $kind, $subject, $aspect, $refs, $subjectRefs, $accents, [], ['kind' => $kind, 'label' => $label], function (string $raw) use ($height, $width, $pull, $portrait) {
+        $result = $this->attempts($key, $kind, $subject, $aspect, $refs, $subjectRefs, $accents, [], ['kind' => $kind, 'label' => $label] + $hints, function (string $raw) use ($height, $width, $longest, $pull, $portrait) {
             $im = $this->cut(ImageTools::load($raw));
             $box = ImageTools::bbox($im) ?? throw new GenerationError('Nothing was left once the background was removed.');
             $touches = $box[0] <= 1 || $box[1] <= 1 || imagesx($im) - 1 <= $box[0] + $box[2] || imagesy($im) - 1 <= $box[1] + $box[3];
@@ -276,8 +397,8 @@ class AssetDirector
             }
             if ($portrait) {
                 $im = $this->portrait($im);
-            } elseif ($height || $width) {
-                $s = $height ? $height / imagesy($im) : $width / imagesx($im);
+            } elseif ($height || $width || $longest) {
+                $s = $longest ? $longest / max(imagesx($im), imagesy($im)) : ($height ? $height / imagesy($im) : $width / imagesx($im));
                 $im = ImageTools::resize($im, max(1, (int) round(imagesx($im) * $s)), max(1, (int) round(imagesy($im) * $s)));
             }
 
@@ -329,6 +450,28 @@ class AssetDirector
                 'top' => "In the centre of the back edge of the floor, an open doorway, gate or path leading away into the distance ($what)",
                 'bottom' => 'The floor continues towards the viewer at the bottom edge',
             };
+        }
+        $notes[] = match (Sizes::sceneKind($scene)) {
+            'indoor' => 'An indoor place, seen from inside: a back wall rises from where the floor ends, with the ceiling or roof beams at the top',
+            'underground' => 'An underground place: earthy or rocky walls and a low ceiling, lit by lamps, crystals or light from above',
+            'up_high' => 'A place high up: beyond its edge the land, trees or roofs far below and a wide sky',
+            'underwater' => 'An underwater place: the sea floor, light rippling down from the surface far above, bubbles',
+            default => 'An outdoor place',
+        };
+        // Doors, holes and ladders are drawn separately and stood in the scene; the background leaves room.
+        foreach ($layout['passages'] ?? [] as $p) {
+            $at = round($p['x'] * 100).'% of the way from the left';
+            $notes[] = Connections::inFloor($p['via'])
+                ? "$at, the floor is plain and open (an opening leading {$p['towards']} is added there later; do not paint it)"
+                : match ($p['via']) {
+                    'door' => "$at, a wall of a building stands at the back of the floor, plain where a door leading {$p['towards']} is added later (do not paint the door)",
+                    'cave', 'tunnel' => "$at, a rock face or bank stands at the back of the floor, plain where an opening leading {$p['towards']} is added later (do not paint it)",
+                    'ladder', 'stairs_up' => "$at, something tall rises at the back of the floor (a wall, a cliff or a big tree) with a ledge or opening high above, where a way up leading {$p['towards']} is added later (do not paint the ladder or stairs)",
+                    default => "$at, the back of the floor is plain where a way through leading {$p['towards']} is added later (do not paint it)",
+                };
+        }
+        foreach ($layout['wall'] ?? [] as $x) {
+            $notes[] = 'The back wall is plain and uncluttered '.round($x * 100).'% of the way from the left, a little above the floor (something is hung there later)';
         }
         if ($time) {
             $notes[] = "Time of day: $time";
