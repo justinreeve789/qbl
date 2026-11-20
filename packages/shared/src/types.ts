@@ -742,6 +742,12 @@ export interface Item {
   attach_layer?: 'front' | 'behind';
   /** [ext] Which way the item's artwork faces. It is mirrored to match the avatar. Default 'right'. */
   art_faces?: 'left' | 'right';
+  /**
+   * [ext] While worn or ridden, the avatar is not drawn below this line: a fraction of the item's
+   * picture height, from its top (0) to its bottom (1). A UFO or a car hides the rider's legs this
+   * way, so they seem to sit in it. Unset: the whole avatar is drawn.
+   */
+  hide_rider_below?: number;
   /** [ext] Vehicles only: walking speed multiplier while riding. Default 1.5. */
   speed_multiplier?: number;
   params?: Params;

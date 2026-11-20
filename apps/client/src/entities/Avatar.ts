@@ -24,6 +24,22 @@ const BUBBLE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
 };
 
 /**
+ * Draw only the part of a picture above the line `y` (scene coordinates), so whatever an avatar
+ * rides hides its legs. `Infinity` draws the whole picture. The crop is in the picture's own
+ * pixels and follows the frame as an animation plays; a lean of a few degrees is ignored.
+ */
+export function cutBelow(o: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image, y: number) {
+  const height = o.frame?.height ?? 0;
+  const scale = Math.abs(o.scaleY);
+  const shown = Number.isFinite(y) && height > 0 && scale > 0 ? (y - (o.y - o.originY * height * scale)) / scale : Infinity;
+  if (shown >= height) {
+    if (o.isCropped) o.setCrop();
+    return;
+  }
+  o.setCrop(0, 0, o.frame.width, Math.max(0, shown));
+}
+
+/**
  * One player's figure: the avatar character they chose, with their name, speech bubble and
  * whatever they are wearing or riding. `x`/`y` is the position of the feet.
  */
@@ -270,6 +286,8 @@ export class Avatar extends CharacterFigure {
     this.sprite.setPosition(this.x, this.y - lift).setDepth(this.y).setRotation(lean);
     this.layoutWorn(h, lift, delta);
     const dir = this.facing === 'left' ? -1 : 1;
+    // The highest line, in scene coordinates, below which something ridden or worn hides the avatar.
+    let cut = Infinity;
     for (const [id, figure] of this.attached) {
       const item = this.ctx.index.items.get(id)!;
       const img = figure.object;
@@ -280,7 +298,15 @@ export class Avatar extends CharacterFigure {
       img.setScale(size * bend.scaleX, size * bend.scaleY);
       img.setPosition(this.x + (item.attach_offset_x ?? 0) * dir * this.zoom * k, this.y + (item.attach_offset_y ?? 0) * this.zoom * k - bend.lift * img.displayHeight);
       img.setRotation(bend.lean).setDepth(this.y + (item.attach_layer === 'behind' ? -0.5 : 0.5));
+      const below = item.hide_rider_below;
+      if (typeof below === 'number' && Number.isFinite(below)) {
+        const top = img.y - img.originY * img.displayHeight;
+        cut = Math.min(cut, top + Math.min(1, Math.max(0, below)) * img.displayHeight);
+      }
     }
+    // Sitting in a UFO or a car: the legs, and whatever is worn down there, are not drawn.
+    cutBelow(this.sprite, cut);
+    for (const w of this.worn.values()) cutBelow(w.image, w.item.kind === 'pet' ? Infinity : cut);
     this.applyShade();
     const top = this.y - this.sprite.displayHeight;
     this.label.setPosition(this.x, top - 6);
