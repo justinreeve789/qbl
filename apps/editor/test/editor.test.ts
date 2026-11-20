@@ -127,7 +127,12 @@ test('add a hotspot with a label, an infobox, a button that changes a variable, 
 
   await inspector('.add-action').selectOption('infobox');
   await page.waitForSelector('details.action[open]');
-  await type('details.action [data-field=content] textarea', '<p>A frog! You have counted {{frogs_found}}.</p>');
+  // The content is edited as it looks: select what a new box says and type over it.
+  await inspector('details.action .rt-surface').click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type('A frog! You have counted {{frogs_found}}.');
+  await inspector('details.action .rt-surface').blur();
+  await saved();
   await page.click('text=+ Add button');
   await type('.cta input[aria-label="Button text"]', 'Count the frog');
   await inspector('.cta-head select').selectOption('variable');

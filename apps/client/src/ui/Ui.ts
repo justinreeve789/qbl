@@ -1,12 +1,12 @@
 import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type CharacterPicture, type ChatMode, type ObjectiveStatus } from '@qbl/shared';
-import { sanitizeHtml } from './sanitize';
 import { placeBubble, type BubbleAnchor } from './bubble';
 import { AccountMenu, type MenuStats } from './AccountMenu';
 import { emojiIcon, icon } from './icons';
 import { pictureNode } from './picture';
 import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
-import type { AccountActions, AccountView, ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
+import { infoboxView, type BoxView } from './infobox/view';
+import type { AccountActions, AccountView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -93,9 +93,13 @@ export class Ui implements UiPort {
    * Read an element's text aloud, if this text is to be read and the player has reading aloud
    * on. Each word is marked as it is spoken. `over` settles when the reading ends or is stopped.
    */
+  private narrated = new WeakMap<HTMLElement, ReturnType<typeof narratable>>();
+
   private read(node: HTMLElement, speak: SpeakOptions | undefined): { active: boolean; over: Promise<void>; stop(): void } {
     if (!speak || !this.narrator.enabled || (!speak.audioUrl && !this.narrator.supported)) return { active: false, over: Promise.resolve(), stop() {} };
-    const words = narratable(node);
+    // An infobox's page can be shown again (Back): its words are already marked out.
+    let words = this.narrated.get(node);
+    if (!words) this.narrated.set(node, (words = narratable(node)));
     node.classList.add('qbl-narrated');
     let done!: () => void;
     const over = new Promise<void>((r) => (done = r));
@@ -406,64 +410,91 @@ export class Ui implements UiPort {
 
   // ------------------------------------------------------------- infobox
 
-  /**
-   * A modal box with author-written content and buttons. `choice` resolves with the
-   * index of the button chosen, or null if the box was dismissed. A box that is not
-   * dismissible has no close button and ignores Escape and clicks outside it.
-   */
-  infobox(html: string, buttons: string[], o: { dismissible: boolean; speak?: SpeakOptions }): InfoboxHandle {
-    const backdrop = el('div', 'qbl-backdrop');
-    const box = el('div', 'qbl-infobox');
-    box.setAttribute('role', 'dialog');
-    box.setAttribute('aria-modal', 'true');
-    const body = el('div', 'qbl-infobox-body');
-    body.appendChild(sanitizeHtml(html.includes('<') ? html : html.replace(/\n/g, '<br>')));
-    const actions = el('div', 'qbl-infobox-actions');
-    if (buttons.length > 2) actions.classList.add('stacked');
-    const previous = document.activeElement as HTMLElement | null;
+  /** Infoboxes open now, the top one last. They share one backdrop. */
+  private stack: BoxView[] = [];
+  private shade: { node: HTMLElement; timer: number } | null = null;
 
-    let result: number | null = null;
-    let settle!: (index: number | null) => void;
-    const choice = new Promise<number | null>((r) => (settle = r));
+  /**
+   * The backdrop infoboxes sit on. When one box closes and another opens straight after (a
+   * button whose action is the next box), the backdrop stays and the boxes cross over, rather
+   * than the screen flashing between them.
+   */
+  private backdrop(): HTMLElement {
+    if (this.shade) {
+      window.clearTimeout(this.shade.timer);
+      this.shade.node.classList.remove('leaving');
+      return this.shade.node;
+    }
+    const node = el('div', 'qbl-backdrop');
+    node.addEventListener('pointerdown', (e) => {
+      if (e.target === node) this.stack.at(-1)?.dismiss();
+    });
+    this.root.appendChild(node);
+    this.shade = { node, timer: 0 };
+    return node;
+  }
+
+  private releaseBackdrop() {
+    const shade = this.shade;
+    if (!shade || this.stack.length) return;
+    window.clearTimeout(shade.timer);
+    shade.timer = window.setTimeout(() => {
+      shade.node.classList.add('leaving');
+      shade.timer = window.setTimeout(() => {
+        if (this.shade !== shade) return;
+        shade.node.remove();
+        this.shade = null;
+      }, 200);
+    }, 80);
+  }
+
+  private onBoxKey = (e: KeyboardEvent) => {
+    const top = this.stack.at(-1);
+    if (top?.key(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  /**
+   * A modal box with author-written content and buttons. `choice` resolves with the index of
+   * the button chosen, or null if the box was dismissed. A box that is not dismissible has no
+   * close button and ignores Escape and clicks outside it. Each page of a box is read aloud as
+   * it is shown.
+   */
+  infobox(html: string, buttons: InfoboxButton[], o: InfoboxOptions): InfoboxHandle {
+    const layer = this.backdrop();
+    const previous = document.activeElement as HTMLElement | null;
+    let reading = { stop() {} };
+    const view = infoboxView(html, buttons, {
+      dismissible: o.dismissible, hero: o.hero, size: o.size, accent: o.accent, word: o.word, learn: o.learn, chosen: o.chosen, layer,
+      onPage: (page) => {
+        reading.stop();
+        reading = this.read(page, o.speak);
+      },
+    });
+    const below = this.stack.at(-1);
+    if (below) below.node.inert = true;
+    if (!this.stack.length) document.addEventListener('keydown', this.onBoxKey, true);
+    this.stack.push(view);
     this.modals++;
-    const h = handle(() => {
+    layer.appendChild(view.node);
+    view.start();
+
+    const choice = view.result.then((index) => {
       this.modals--;
       reading.stop();
-      backdrop.remove();
-      document.removeEventListener('keydown', onKey, true);
-      previous?.focus?.();
-      settle(result);
+      this.stack = this.stack.filter((v) => v !== view);
+      const top = this.stack.at(-1);
+      if (top) top.node.inert = false;
+      else document.removeEventListener('keydown', this.onBoxKey, true);
+      void view.leave();
+      this.releaseBackdrop();
+      if (!top) previous?.focus?.({ preventScroll: true });
+      else (top.node.querySelector('button:not(:disabled)') as HTMLElement | null)?.focus();
+      return index;
     });
-    const reading = this.read(body, o.speak);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && o.dismissible) {
-        e.stopPropagation();
-        h.finish();
-      }
-    };
-    buttons.forEach((label, index) => {
-      const b = el('button', 'qbl-button primary', label);
-      b.addEventListener('click', () => {
-        result = index;
-        h.finish();
-      });
-      actions.appendChild(b);
-    });
-    if (o.dismissible) {
-      const close = el('button', 'qbl-button', buttons.length ? 'Not now' : 'Close');
-      close.addEventListener('click', h.finish);
-      actions.appendChild(close);
-      backdrop.addEventListener('pointerdown', (e) => {
-        if (e.target === backdrop) h.finish();
-      });
-    }
-    document.addEventListener('keydown', onKey, true);
-
-    box.append(body, actions);
-    backdrop.appendChild(box);
-    this.root.appendChild(backdrop);
-    (actions.firstElementChild as HTMLElement | null)?.focus();
-    return { choice, close: h.finish };
+    return { choice, close: view.close };
   }
 
   // ---------------------------------------------------------------- chat

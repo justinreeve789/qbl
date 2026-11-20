@@ -676,7 +676,10 @@ class ScenarioStore
         return $this->scenario($id);
     }
 
-    /** Point every reference in a JSON value at the row's new id. One whose row was not imported becomes null. */
+    /**
+     * Point every reference in a JSON value at the row's new id. One whose row was not imported
+     * becomes null. `{{media:ID}}` in text (an infobox's content) is pointed at the new media too.
+     */
     private static function follow(array $value, array $map, bool $layers = false): array
     {
         foreach ($value as $key => $inner) {
@@ -687,6 +690,13 @@ class ScenarioStore
             }
             if ($table !== null && (is_int($inner) || (is_string($inner) && ctype_digit($inner)))) {
                 $value[$key] = $map[$table][(int) $inner] ?? null;
+            } elseif (is_string($inner) && str_contains($inner, '{{')) {
+                // Pictures, videos and sounds placed in text: an infobox's {{media:ID}}.
+                $value[$key] = preg_replace_callback(
+                    '/\{\{\s*media:(\d+)\s*\}\}/',
+                    fn ($m) => isset($map['media'][(int) $m[1]]) ? '{{media:'.$map['media'][(int) $m[1]].'}}' : $m[0],
+                    $inner,
+                );
             } elseif (is_array($inner)) {
                 $value[$key] = self::follow($inner, $map, $layers && is_int($key));
             }

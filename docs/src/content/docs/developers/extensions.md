@@ -57,7 +57,7 @@ The player is told when an objective becomes complete.
 Text overlays, infobox content, infobox button labels, text labels and objective text may contain placeholders:
 
 * `{{variable_name}}` is replaced with the variable's current value. Reserved variables work too.
-* `{{media:ID}}` is replaced with the URL of a media asset, for use in infobox HTML: `<img src="{{media:40}}" alt="">`.
+* `{{media:ID}}` is replaced with the URL of a media asset, for use in infobox HTML: `<img src="{{media:40}}" alt="">`. Written on its own in an infobox's text, it shows the media itself. See [Rich infoboxes](#rich-infoboxes).
 
 Values are escaped when inserted into HTML. A placeholder that names nothing is left as written, so a typo shows up.
 
@@ -509,6 +509,8 @@ Players can also open the marketplace at any time from the stars shown in the co
 Addition | Applies to | Description
 -------- | ---------- | -----------
 dismissible | infobox | Default true. See below.
+media_id, size, accent | infobox | A picture or video (`media_id`) drawn across the top; `small`, `medium` (default) or `large`; a CSS colour for the edge and main buttons. See [Rich infoboxes](#rich-infoboxes).
+mark | an infobox's `call_to_actions` | `right`, `wrong` or `try_again`. See [Rich infoboxes](#rich-infoboxes).
 spawn_point | jump | Spawn point to arrive at in the target scene.
 target_event_id | run_event | The event to run. Use this rather than `event_id`, which the base action attributes already use for "the event this action belongs to". `event_id` is still read if `target_event_id` is absent.
 layer | image_fixed, spritemap | `above` (default) draws over avatars and foregrounds. `sorted` depth-sorts with avatars using `position_y`, so players can walk in front of it.
@@ -522,7 +524,31 @@ Clarifications of documented behaviour:
 * `call_to_actions` is a list of `{"text": "...", "action": {...}, "conditions": [...]}`. The action needs no `id`. A button with `conditions` is only offered while they hold, so one infobox can serve as a menu that changes.
 * An infobox has a close button unless `dismissible` is `false`. A box that cannot be dismissed must be answered with one of its buttons, which is how questions are asked.
 * An infobox action is not finished until the box is closed **and** the chosen button's action has run to its end. A sequence such as "ask a question, then open a menu" therefore waits for the feedback the answer triggers.
-* Infobox `content` is sanitised. Formatting, lists, tables, links and images are kept; scripts, styles, frames and event handlers are removed.
+* Infobox `content` is sanitised. Formatting, lists, tables, links, images, video, sound and the blocks below are kept; scripts, styles, classes, frames, forms and event handlers are removed.
+
+### Rich infoboxes
+
+An infobox's `content` is still one string of HTML, so a document written for the original spec plays unchanged and HTML can still be written by hand. Richer parts are ordinary HTML marked with `data-qbl`; the game makes them interactive, and anything else reading the document sees plain HTML. They are listed in `packages/shared/src/infobox.ts`.
+
+Markup | What players get
+------ | ----------------
+`<hr data-qbl="page">` | A new page. The box steps through its pages with Next and Back (and ← →), with dots showing where the player is; its buttons are offered on the last page. Each page is read aloud as it is shown.
+`<img src="{{media:ID}}">`, `<figure data-size="small\|medium">…<figcaption>` | A picture, tapped to see it large. `data-size` on the `figure` or the `img`; full width without it.
+`<video src="{{media:ID}}">`, `<audio src="…">` | Played with their controls. `autoplay` (a video then starts muted) and `loop` are kept.
+`<div data-qbl="gallery">` of `<figure>`s or `<img>`s | A slideshow: swipe, arrows, dots, ← →.
+`<details><summary>Prompt</summary>…</details>` | A card that opens smoothly. What it hides is not read aloud.
+`<div data-qbl="flip"><div>front</div><div>back</div></div>` | A card that turns over when tapped. The back is not read aloud.
+`<div data-qbl="callout" data-tone="tip\|fact\|warn\|think">` | A coloured note with an icon.
+`<input data-qbl="answer" data-var="name" placeholder="…">` | A box to type in. When a button is chosen, what was typed is saved in the variable (`set`; a number when it reads as one) before the button's action runs. The first button waits until every answer box has something in it. The answer is logged with the choice for the report: `“7” (Check)`.
+`<span data-qbl="word" data-word="ID">word</span>` | A glossary word. Tapped, a card says what it means and the entry is added to the player's glossary (logged as a `glossary` activity, like a `glossary` action).
+
+A `{{media:ID}}` written on its own in the text, not inside a tag, shows the media itself: a picture, a video or a sound.
+
+Each button in `call_to_actions` can have a `mark`. `right`: the button turns green with a tick and a burst of stars for about 650 ms before the box closes and the button's action runs. `wrong`: it turns red and shakes, then the same. `try_again`: it shakes and is crossed out and **the box stays open**; its action, if any, runs while it does, and the box waits for it. The choice is logged either way, so the report's first answer is still the first one chosen. A box with `dismissible: false` needs at least one button that is always offered and is not `try_again`.
+
+The box opens with a short spring and closes with a fade. When a button's action opens another infobox, the two share the backdrop and cross over. A box opened over another (a `try_again` button's infobox) leaves the one below inert until it closes. Everything moves less when the player's system asks for reduced motion.
+
+When a scenario is copied or imported, `{{media:ID}}` placeholders in any text are pointed at the copied media.
 * **Background music** is an audio action with `repeat` and `persist` in a scene's start events. Persistent audio is treated as the music track: only one plays at a time. When a scene starts a persistent audio action with the same media that is already playing, the music carries on without restarting; with different media, it replaces the old track. A cancel action naming the audio action's id stops it.
 
 ## The side panel

@@ -103,9 +103,12 @@ export interface ActionDef {
 export const ACTIONS: Record<ActionType, ActionDef> = {
   infobox: {
     label: 'Infobox',
-    about: 'A box of text, with optional buttons.',
+    about: 'A box of text, pictures, video and cards, with optional buttons.',
     fields: [
-      { key: 'content', label: 'Content (HTML)', kind: 'html', wide: true, hint: 'Use {{variable_name}} to show a variable and {{media:ID}} for an image.' },
+      { key: 'content', label: 'Content', kind: 'html', wide: true, hint: 'Write what the box says. ＋ Insert puts in pictures, slideshows, videos, sounds, callouts, cards to reveal or flip, answer boxes, glossary words, variables and new pages; pictures, videos and sounds can also be dropped or pasted in. 👀 Preview shows the box as players see it. </> shows the HTML.' },
+      { key: 'media_id', label: 'Picture or video at the top', kind: 'media', mediaType: 'visual', wide: true, placeholder: 'None', hint: 'Drawn across the top of the box, edge to edge.' },
+      { key: 'size', label: 'Size', kind: 'select', options: [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large: room for pictures and video']], placeholder: 'Medium', structural: true },
+      { key: 'accent', label: 'Colour', kind: 'color', placeholder: 'The game’s blue', hint: 'The box’s edge and its main buttons.', structural: true },
       { key: 'dismissible', label: 'Can be closed without choosing a button', kind: 'bool', default: true, wide: true },
       ...narration,
     ],

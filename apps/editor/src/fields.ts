@@ -4,6 +4,7 @@ import { characterOf } from './characters';
 import { actionLabel, eventLabel, EVENT_KINDS, mediaLabel, mediaUrl, params, sceneLabel } from './describe';
 import { h, help, toast } from './dom';
 import type { Store } from './store';
+import { richEditor } from './rich/editor';
 
 /**
  * Forms are described as lists of fields and drawn by `form()`. Adding an attribute to an
@@ -29,8 +30,8 @@ export interface Field {
   /** Shown in an empty field: what leaving it empty means. */
   placeholder?: string;
   options?: ReadonlyArray<readonly [value: string, label: string]>;
-  /** media: which type of file may be picked. */
-  mediaType?: 'image' | 'audio' | 'video';
+  /** media: which type of file may be picked. `visual`: a picture or a video. */
+  mediaType?: 'image' | 'audio' | 'video' | 'visual';
   /**
    * spawn: the sibling field that holds the scene whose spawn points are listed. `here`: the scene
    * being edited, or, where there is none (a character's routine), every scene's.
@@ -199,15 +200,31 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       });
       return wrap(input);
     }
-    case 'textarea':
-    case 'html': {
-      const input = h('textarea', { rows: f.kind === 'html' ? 6 : 3, class: f.kind === 'html' ? 'code' : null, placeholder: f.placeholder, spellcheck: 'true', onchange: () => set(input.value) });
+    case 'textarea': {
+      const input = h('textarea', { rows: 3, placeholder: f.placeholder, spellcheck: 'true', onchange: () => set(input.value) });
       input.value = String(value ?? '');
       return wrap(input);
     }
+    case 'html':
+      // Not a <label>: a click in the editor's text must not press its first button.
+      return h('div', { class: 'field wide rich-field', 'data-field': f.key }, h('span', { class: 'field-label' }, f.label, help(f.hint)), richEditor({ value: String(value ?? ''), set, ctx, values }));
     case 'color': {
-      const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder ?? '#ffffff', onchange: () => set(input.value.trim() || null) });
-      return wrap(input);
+      // A swatch to pick with, and the box for any CSS colour (a name, #rgb, rgb()).
+      const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder ?? '#ffffff', onchange: () => {
+        set(input.value.trim() || null);
+        swatch.value = hex(input.value);
+      } });
+      const hex = (v: unknown) => (/^#[0-9a-f]{6}$/i.test(String(v ?? '')) ? String(v) : /^#[0-9a-f]{3}$/i.test(String(v ?? '')) ? `#${[...String(v).slice(1)].map((c) => c + c).join('')}` : '#2f8fd6');
+      const swatch = h('input', { type: 'color', class: 'swatch', value: hex(value), 'aria-label': `${f.label}: pick a colour`, onchange: () => {
+        input.value = swatch.value;
+        set(swatch.value);
+      } });
+      const reset = h('button', { type: 'button', class: 'icon', title: 'Back to the default', 'aria-label': 'Back to the default', onclick: () => {
+        input.value = '';
+        swatch.value = hex(null);
+        set(null);
+      } }, '×');
+      return wrap(h('div', { class: 'color-pick' }, swatch, input, reset));
     }
     case 'select': {
       const current = value == null || value === '' ? (typeof f.default === 'string' ? f.default : '') : String(value);
@@ -273,24 +290,27 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     }
     case 'media': {
       const type = f.mediaType ?? 'image';
-      const rows = ctx.store.rows('media').filter((m) => m.type === type);
-      const file = h('input', { type: 'file', hidden: true, accept: `${type}/*` });
-      const node = idSelect(rows.map((m) => [m.id, mediaLabel(m)]), value, (v) => set(v), `No ${type}`, [[NEW, `Upload ${type === 'audio' ? 'an' : 'a'} ${type} file…`]], () => file.click());
+      // `visual`: a picture or a video.
+      const types = type === 'visual' ? ['image', 'video'] : [type];
+      const rows = ctx.store.rows('media').filter((m) => types.includes(String(m.type)));
+      const file = h('input', { type: 'file', hidden: true, accept: types.map((t) => `${t}/*`).join(',') });
+      const none = f.placeholder ?? (type === 'visual' ? 'None' : `No ${type}`);
+      const node = idSelect(rows.map((m) => [m.id, type === 'visual' ? `${m.type === 'video' ? '🎬' : '🖼️'} ${mediaLabel(m)}` : mediaLabel(m)]), value, (v) => set(v), none, [[NEW, type === 'visual' ? 'Upload a picture or a video…' : `Upload ${type === 'audio' ? 'an' : 'a'} ${type} file…`]], () => file.click());
       file.addEventListener('change', async () => {
         const picked = file.files?.[0];
         if (!picked) return;
         try {
           const row = await ctx.store.api.upload(ctx.store.scenarioId, picked);
-          if (row.type !== type) toast(`That file is ${row.type}, not ${type}. It was added to the media library.`, 'error');
+          if (!types.includes(String(row.type))) toast(`That file is ${row.type}, not ${types.join(' or ')}. It was added to the media library.`, 'error');
           ctx.store.bundle.media.push(row);
-          if (row.type === type) set(row.id);
+          if (types.includes(String(row.type))) set(row.id);
           ctx.store.emit(true);
         } catch (err) {
           toast(err instanceof Error ? err.message : 'Upload failed.', 'error');
         }
       });
       const chosen = ctx.store.byId('media', value as number | null);
-      const url = type === 'image' ? mediaUrl(ctx.store, chosen) : null;
+      const url = chosen?.type === 'image' ? mediaUrl(ctx.store, chosen) : null;
       return wrap(h('div', { class: 'media-pick' }, url ? h('img', { src: url, alt: '', class: 'thumb' }) : null, node, file));
     }
     default: {

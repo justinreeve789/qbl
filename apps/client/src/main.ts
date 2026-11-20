@@ -16,6 +16,7 @@ import { Ui } from './ui/Ui';
 // Twemoji Awesome: the one set every icon in the interface is drawn from (see ui/icons.ts).
 import '../../../packages/shared/assets/twemoji-awesome.css';
 import './ui/ui.css';
+import './ui/infobox/infobox.css';
 
 const app = document.getElementById('app')!;
 const gate = document.getElementById('gate')!;

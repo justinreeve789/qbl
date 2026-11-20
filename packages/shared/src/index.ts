@@ -15,5 +15,6 @@ export * from './protocol.js';
 export * from './world.js';
 export * from './text.js';
 export * from './speech.js';
+export * from './infobox.js';
 export * from './icons.js';
 export * from './site.js';

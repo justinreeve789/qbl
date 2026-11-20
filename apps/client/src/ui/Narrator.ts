@@ -199,11 +199,15 @@ function pickVoice(voices: SpeechSynthesisVoice[], wanted: string | undefined, l
  * Prepare an element's text for reading aloud: every word is wrapped in a span, so that the
  * word being spoken can be marked. Returns the text to speak (the words, single-spaced) and
  * a function that marks word `i`. Markup inside the element (bold, links, lists) is kept.
+ * Text inside an element marked `data-unread` is left out.
  */
 export function narratable(root: HTMLElement): { text: string; mark(index: number): void; clear(): void } {
   const spans: HTMLElement[] = [];
   const parts: string[] = [];
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  // Text marked `data-unread` is not read: what a card hides until it is turned over or opened.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.parentElement?.closest('[data-unread]') && root.contains(n.parentElement.closest('[data-unread]')) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
   const nodes: Text[] = [];
   for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n as Text);
   for (const node of nodes) {

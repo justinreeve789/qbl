@@ -1,5 +1,5 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, Badge, CharacterPicture, ChatMode, ObjectiveStatus, SiteLink } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
 
 export type { SpeakOptions };
@@ -7,6 +7,37 @@ export type { SpeakOptions };
 export interface OverlayHandle extends ActionHandle {
   /** Animate the overlay (used by translate actions). */
   transition(to: { alpha?: number; scaleX?: number; scaleY?: number }, durationMs: number): void;
+}
+
+/** An infobox's button, as shown. */
+export interface InfoboxButton {
+  label: string;
+  mark?: ButtonMark;
+}
+
+/** What a glossary word in an infobox says when it is tapped. */
+export interface InfoboxWord {
+  term: string;
+  definition: string;
+  image?: string | null;
+}
+
+export interface InfoboxOptions {
+  dismissible: boolean;
+  speak?: SpeakOptions;
+  /** A picture or a video across the top. */
+  hero?: { url: string; type: 'image' | 'video' } | null;
+  size?: InfoboxSize | null;
+  accent?: string | null;
+  /** A glossary word's entry, by its id; null when there is none. */
+  word?: (id: string) => InfoboxWord | null;
+  /** The player looked a word up. True when it is new to their glossary. */
+  learn?: (id: string) => boolean;
+  /**
+   * A button was chosen, with what was typed in the answer boxes (by variable name), before the
+   * box closes. For a `try_again` button the box stays open until this settles.
+   */
+  chosen?: (index: number, answers: Record<string, string>) => void | Promise<void>;
 }
 
 export interface InfoboxHandle {
@@ -30,8 +61,11 @@ export interface UiPort {
   textOverlay(text: string, o: { alignment?: Alignment; size?: number; color?: string; style?: string; duration?: number; speak?: SpeakOptions }): OverlayHandle;
   imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number }): OverlayHandle;
   videoOverlay(url: string, o: { alignment?: Alignment; volume?: number }): OverlayHandle;
-  /** `html` is trusted only as far as the sanitiser allows. */
-  infobox(html: string, buttons: string[], o: { dismissible: boolean; speak?: SpeakOptions }): InfoboxHandle;
+  /**
+   * `html` is trusted only as far as the sanitiser allows. `choice` settles with the button that
+   * closed the box (never a `try_again` one), or null.
+   */
+  infobox(html: string, buttons: InfoboxButton[], o: InfoboxOptions): InfoboxHandle;
   /**
    * A speech bubble that follows a speaker. `anchor` is asked every frame where the speaker is on
    * the page (null while they are off screen); the bubble places itself so it stays in view.

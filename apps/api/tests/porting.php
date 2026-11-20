@@ -71,6 +71,10 @@ function shape(array $document): array
         }
     }
     $walk = function ($value, ?string $own = null) use (&$walk, $tables, $name) {
+        if (is_string($value)) {
+            // Media placed in text, such as an infobox's pictures.
+            return preg_replace_callback('/\{\{media:(\d+)\}\}/', fn ($m) => '{{media:'.$name('m', (int) $m[1]).'}}', $value);
+        }
         if (! is_array($value)) {
             return $value;
         }
@@ -153,6 +157,14 @@ foreach (['assets', 'scenes', 'items', 'characters'] as $list) {
 $bundle = $store->bundle($copyId);
 same([$bundle['scenario']['user_id'], $bundle['scenario']['published_at'], count($bundle['shop_items'])], [1, null, count($store->bundle(1)['shop_items'])], 'it belongs to whoever made it, is a draft, and has the mission\'s own shop items');
 $store->deleteScenario($copyId);
+$ownMedia = array_column($copy['assets'], 'id');
+$placed = [];
+array_walk_recursive($copy['scenes'], function ($v) use (&$placed) {
+    if (is_string($v) && preg_match_all('/\{\{media:(\d+)\}\}/', $v, $m)) {
+        array_push($placed, ...array_map('intval', $m[1]));
+    }
+});
+same([$placed !== [], array_values(array_diff($placed, $ownMedia))], [true, []], 'pictures placed in an infobox\'s text are the copy\'s own media');
 same(count($store->bundle(1)['scenes']), 13, 'deleting the copy leaves the original whole');
 
 // ---- starting a new scenario from the starship hub
