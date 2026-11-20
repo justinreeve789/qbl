@@ -1,0 +1,166 @@
+---
+title: "The public API (v1)"
+description: "Roster classes, assign missions, sign people in and pull grades and learning reports from your own systems, without ever sending QBL a student's name."
+---
+
+import { Steps, Tabs, TabItem, Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Everything a teacher can do in QBL by hand, your school's systems can do by themselves: roster the classes, hand out missions, put an **Open in QBL** button in the LMS, and read back who finished what and what they understood.
+
+The API lives at **`/api/v1`**. It is the one that is supported for schools, districts and other organizations, and it follows a [versioning promise](/docs/api-v1/conventions/#versioning): nothing in v1 will be taken away from under you.
+
+<CardGrid>
+  <Card title="Roster without personal data" icon="seti:lock">
+    People are known by **your own opaque id**. Students play under a made-up pseudonym such as *Brave Otter 417*. QBL refuses names, emails and birth dates outright. See [Privacy](/docs/api-v1/privacy/).
+  </Card>
+  <Card title="Assign and group" icon="pencil">
+    Give a mission to a teacher's students with a due date and a note, and split them into [teams](/docs/api-v1/assignments/#teams) that each play their own copy of the game.
+  </Card>
+  <Card title="One-click sign-in" icon="rocket">
+    Ask for a [launch link](/docs/api-v1/launch-links/) and redirect the browser. No second password for a student to forget.
+  </Card>
+  <Card title="Grades and learning reports" icon="seti:graph">
+    A gradebook feed, evidence of understanding per learning objective, the questions students found hard, and an activity feed for your data warehouse. See [Reports](/docs/api-v1/reports/).
+  </Card>
+</CardGrid>
+
+## What you can build
+
+| You want to… | You use | Page |
+| --- | --- | --- |
+| Keep QBL's classes in step with your student information system | `POST /students/batch`, `POST /enrollments` | [People and classes](/docs/api-v1/people/) |
+| Assign a mission from your LMS and put the grade back in the gradebook | `POST /assignments`, `GET /assignments/{id}/grades` | [Assignments](/docs/api-v1/assignments/), [Recipes](/docs/api-v1/recipes/#put-qbl-grades-in-your-gradebook) |
+| Add an **Open in QBL** button to your portal | `POST /students/{id}/launch` | [Launch links](/docs/api-v1/launch-links/) |
+| Give students your school's own avatars | `POST /avatars` | [Avatars](/docs/api-v1/avatars/) |
+| Show a district dashboard of participation and standards coverage | `GET /reports/engagement`, `GET /reports/standards` | [Reports](/docs/api-v1/reports/) |
+| Load every student action into your warehouse | `GET /activity` | [Activity, exports and the audit log](/docs/api-v1/activity-and-privacy-requests/) |
+| Answer a parent's request to see or delete a child's data | `GET /students/{id}/export`, `DELETE /students/{id}` | [Activity, exports and the audit log](/docs/api-v1/activity-and-privacy-requests/#export-everything-kept-about-a-student) |
+
+## Your first ten minutes
+
+You need an API client (an id and a secret): [Authentication](/docs/api-v1/authentication/) shows where your district admin makes one. In the examples, `$QBL` is your server's address, for example `https://qbl.example`, and `jq` is just for picking the token out of the answer.
+
+<Steps>
+
+1. **Get a token.** Tokens last an hour.
+
+   ```sh
+   TOKEN=$(curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
+     -d grant_type=client_credentials \
+     "$QBL/api/v1/oauth/token" | jq -r .access_token)
+   ```
+
+2. **Check who you are.** The first call to make when something seems wrong.
+
+   ```sh
+   curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/"
+   ```
+
+   ```json
+   { "data": { "api": "QBL", "version": "v1", "organization_id": 1,
+     "scopes": ["roster:read", "roster:write", "assignments:read", "assignments:write",
+                "reports:read", "launch", "avatars:read", "avatars:write", "privacy",
+                "audit:read", "messages:read"],
+     "documentation": "https://qbl.example/docs/developers/api-v1/" } }
+   ```
+
+3. **Make a school and a teacher.** Your own ids go in `external_id`. QBL never needs the teacher's real name: `display_name` is whatever they want shown.
+
+   ```sh
+   curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     -d '{"name": "Riverside Middle", "external_id": "RMS"}' "$QBL/api/v1/schools"
+
+   curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     -d '{"external_id": "t-5512", "display_name": "Ms. R", "school_id": 2}' "$QBL/api/v1/teachers"
+   ```
+
+   ```json
+   { "data": { "id": 92149, "type": "teacher", "external_id": "t-5512", "display_name": "Ms. R",
+     "school_id": 2, "student_count": 0, "avatar_media_id": null, "status": "active",
+     "created_at": "2026-11-20T20:21:54Z", "updated_at": "2026-11-20T20:21:54Z" } }
+   ```
+
+4. **Roster some students and put them in the teacher's class.** `batch` creates people it has not seen and updates the ones it has, so you can send the whole class every night.
+
+   ```sh
+   curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     -d '{"students": [
+           {"external_id": "a91f0c7e", "school_id": 2, "grade_level": "7"},
+           {"external_id": "c0ffee12", "school_id": 2, "grade_level": "7"}]}' \
+     "$QBL/api/v1/students/batch"
+
+   curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     -d '{"teacher_external_id": "t-5512", "student_external_ids": ["a91f0c7e", "c0ffee12"]}' \
+     "$QBL/api/v1/enrollments"
+   ```
+
+   Each student now has a pseudonym QBL made up. Read it back with `GET /students/ext:a91f0c7e`: it is the *only* name QBL knows them by.
+
+5. **Assign a mission.** Find its id in the catalogue (`GET /scenarios`), then:
+
+   ```sh
+   curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{
+     "teacher_external_id": "t-5512", "scenario_id": 3,
+     "due_at": "2026-12-05T23:59:00-07:00",
+     "note": "Work with your team and take notes in your lab book.",
+     "student_external_ids": ["a91f0c7e", "c0ffee12"],
+     "teams": [{"name": "Comets", "student_external_ids": ["a91f0c7e", "c0ffee12"]}]
+   }' "$QBL/api/v1/assignments"
+   ```
+
+6. **Send a student in.** Ask for a one-time link and redirect their browser to the `url` in the answer. It opens the assignment, in their own team's game.
+
+   ```sh
+   curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     -d '{"assignment_id": 2}' "$QBL/api/v1/students/ext:a91f0c7e/launch"
+   ```
+
+7. **Read how it went.**
+
+   ```sh
+   curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/assignments/2/grades"
+   ```
+
+</Steps>
+
+<Aside type="tip" title="Try it in code">
+The same flow in [JavaScript and Python](/docs/api-v1/recipes/#a-small-client-in-javascript-and-python) is about thirty lines each.
+</Aside>
+
+## Reference at a glance
+
+<Tabs>
+  <TabItem label="People and classes">
+    | Method and path | Scope |
+    | --- | --- |
+    | `GET /organization`, `PATCH /organization` | `roster:read`, `roster:write` |
+    | `GET/POST /schools`, `GET/PATCH/DELETE /schools/{id}` | `roster:*` |
+    | `GET/POST /teachers`, `POST /teachers/batch`, `GET/PATCH/DELETE /teachers/{id}` | `roster:*` (delete: `privacy`) |
+    | `GET/POST /students`, `POST /students/batch`, `GET/PATCH/DELETE /students/{id}` | `roster:*` (delete: `privacy`) |
+    | `GET/POST/DELETE /enrollments` | `roster:*` |
+  </TabItem>
+  <TabItem label="Missions and assignments">
+    | Method and path | Scope |
+    | --- | --- |
+    | `GET /scenarios`, `GET /scenarios/{id}` | `assignments:read` |
+    | `GET/POST /assignments`, `GET/PATCH/DELETE /assignments/{id}` | `assignments:*` |
+    | `GET/POST /assignments/{id}/teams`, `PATCH/DELETE /teams/{id}` | `assignments:*` |
+    | `POST /students/{id}/launch`, `POST /teachers/{id}/launch` | `launch` |
+    | `GET/POST /avatars`, `PATCH/DELETE /avatars/{id}` | `avatars:*` |
+  </TabItem>
+  <TabItem label="Reports and data">
+    | Method and path | Scope |
+    | --- | --- |
+    | `GET /assignments/{id}/report`, `/grades`, `/activity` | `reports:read` |
+    | `GET /assignments/{id}/messages` | `messages:read` |
+    | `GET /students/{id}/report` | `reports:read` |
+    | `GET /reports/summary`, `/engagement`, `/learning`, `/standards` | `reports:read` |
+    | `GET /activity` | `reports:read` |
+    | `GET /students/{id}/export`, `DELETE /students/{id}`, `DELETE /teachers/{id}` | `privacy` |
+    | `GET /audit-log` | `audit:read` |
+  </TabItem>
+</Tabs>
+
+A machine-readable description is available as an [OpenAPI file](/docs/api/v1/openapi.yaml) for generating clients or importing into Postman.
+
+<LinkCard title="Next: Authentication" description="Get credentials, tokens, scopes and rate limits." href="/docs/api-v1/authentication/" />

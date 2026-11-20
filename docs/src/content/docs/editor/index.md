@@ -32,6 +32,10 @@ On the right is your account menu.
 
 ## Inside a scenario
 
+![The scene editor: the outline on the left, the scene on the canvas in the middle, the selected item's form on the right](../../../assets/screenshots/editor-scene-editor.webp)
+
+*The scene editor, where most building happens.*
+
 Open a scenario and a second bar of tabs appears. Each tab is one part of the mission:
 
 | Tab | What you do there | Page |

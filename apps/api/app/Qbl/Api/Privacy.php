@@ -10,7 +10,7 @@ namespace App\Qbl\Api;
  * student's name, email, birth date, address or phone number, so it cannot leak them, and the
  * organization keeps the only key from pseudonym to child. This is what lets a school use QBL
  * under FERPA's "school official" exception and COPPA's school-authorization route without QBL
- * holding records that identify a child (see docs: developers/api-v1, "Privacy").
+ * holding records that identify a child (see docs: api-v1/privacy).
  *
  * Fields that would carry such information are refused outright, so a client that sends them by
  * mistake finds out at once rather than having them silently kept.

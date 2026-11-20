@@ -1,0 +1,118 @@
+---
+title: "Infoboxes and questions"
+description: "Write the boxes students read, add pictures, video, flip cards and answer boxes, and build questions that give feedback."
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+An **infobox** is the box of text, pictures and buttons that opens over the game. It is the main way a mission *tells* students something, and, with buttons marked right and wrong, the main way it *asks* them something. It is one of the [actions](/docs/editor/events-and-actions/#the-action-types) you add to an event.
+
+![The infobox designer: a rich-text editor on the left, and on the right the box as players will see it, with Accept the mission and Not now buttons](../../../assets/screenshots/editor-infobox.webp)
+
+*The infobox designer. You write on the left; the right shows the box exactly as the game draws it.*
+
+## Add one
+
+<Steps>
+
+1. Select a hotspot or event in the [scene editor](/docs/editor/scene-editor/), open 🎬 **Actions** and press **+ Add action… → 📋 Infobox**.
+
+2. Open the card and write in the **Content** box. You see the text as it will look, not as HTML.
+
+3. Under **Buttons**, add one for each choice. Leave a button's action as *Just close the box* for a plain "OK", or give it an action: a jump, a variable change, another infobox, or **Run event**.
+
+4. Press **👀 Preview** to see the box large, with its pages, slideshows and buttons working.
+
+</Steps>
+
+An infobox also has a **Picture or video at the top**, a **Size** (small, medium or large), a **Colour** for its edge and main buttons, and a tick for **Can be closed without choosing a button**. A button's action can be any type, including another infobox with buttons of its own: the next box takes over without the screen flashing between them.
+
+## Writing the content
+
+Type, and use the toolbar for **bold**, *italic*, underline, a highlight, a heading, lists and links. **＋ Insert** puts in:
+
+| Insert | What players get |
+| ------ | ---------------- |
+| 🖼️ **Picture** | A picture from the media library, small, medium or full width, with a caption. Tapped, it opens large. |
+| 🎞️ **Slideshow** | Several pictures to swipe through, with arrows and dots. |
+| 🎬 **Video** | A video with its controls. It can start by itself (without sound) and repeat. |
+| 🔊 **Sound** | A sound or a recording with play controls. |
+| 💡 **Callout** | A coloured note: a tip, a fact, a warning, or something to think about. |
+| 👆 **Reveal card** | A question or prompt that opens to show what it hides. What it hides is not read aloud until it is opened. |
+| 🃏 **Flip card** | A card with a front and a back that turns over when tapped. |
+| ✏️ **Answer box** | A box to type an answer in. See [Answer boxes](#answer-boxes). |
+| 📖 **Glossary word** | Select a word in the text first. Players tap it to see what it means, and it goes into their glossary. |
+| 🔢 **Variable** | A variable's value, such as a score, shown as a blue chip in the editor. |
+| 📄 **New page** | What comes after is on the next page. Players step through with **Next** and **Back** (or ← and →), the dots showing where they are. The box's buttons are on the last page. |
+
+Pictures, videos and sounds can also be **dropped or pasted** straight into the text: they are uploaded to the media library and put where you dropped them. Several pictures dropped at once become a slideshow. Click a block to change it in a pop-up; select it and press <kbd>Delete</kbd> to take it out, or <kbd>Alt</kbd>+<kbd>↑</kbd> and <kbd>Alt</kbd>+<kbd>↓</kbd> to move it.
+
+**&lt;/&gt;** shows the HTML, for anyone who wants to write it by hand. It is cleaned exactly as the game cleans it.
+
+### Show the player's own words and scores
+
+Text in an infobox can show variables with `{{variable_name}}`. Insert a 🔢 **Variable** chip, or type it, to show a score, a count (*"You have collected 2 of 3 samples"*) or whatever an answer box saved.
+
+## Answer boxes
+
+An **answer box** saves what the player types in a variable when they press one of the box's buttons, *before* that button's action runs. A number is saved as a number.
+
+- The first button (the one <kbd>Enter</kbd> presses, such as *Check*) waits until something has been typed.
+- The other buttons (*I don't know*, *Hint*) take whatever is there.
+- The answer can then be shown with `{{name}}`, tested in a condition, and read in the class report, which lists what was typed beside the button pressed.
+
+**Example: a prediction.** Before a test, ask for a guess and keep it:
+
+1. Add a variable `prediction` (a player's own variable) on the [Variables tab](/docs/editor/library/#variables).
+2. In an infobox, write *"The test strip is about to go in the water. What do you think it will read, and why?"* and insert an **Answer box** that saves to `prediction`.
+3. Give it two buttons: **Test it** and **I'm not sure**.
+4. After the test, a second infobox can say: `You predicted {{prediction}}. The strip reads 3.`
+
+The student has committed to a guess before seeing the result, and you can read what it was.
+
+## Marking right and wrong answers
+
+A button's **Shows as** says what kind of answer it is:
+
+| Shows as | What the student sees | What happens next |
+| -------- | --------------------- | ----------------- |
+| **✓ Right answer** | The button turns green with a tick and a burst of stars | The box closes and its action runs |
+| **✗ Wrong answer** | It turns red and shakes | The box closes and its action runs |
+| **↻ Wrong: try again** | It shakes and is crossed out | The box **stays open** for another try. Its action, if it has one (a sound, adding one to a "tries" variable), runs while the box stays open |
+
+A box that cannot be closed must have at least one button that is always offered and is not *Try again*, so nobody gets stuck.
+
+Because the report records the **first answer** a student chose and how many tries it took, a marked question is also a check on what students thought *before* any feedback. See [Reading the reports](/docs/editor/reports/).
+
+![A wrong answer in the game: a box headed "Not quite" with a hint and a Close button](../../../assets/screenshots/game-question-wrong.webp)
+
+*A "Wrong" button shows its own box. This one explains and sends the student back to look.*
+
+### A quick question
+
+One box is enough:
+
+1. Untick **Can be closed without choosing a button**.
+2. Write the question and add one button per answer.
+3. Mark the right answer **✓ Right answer** and the others **↻ Wrong: try again**.
+4. Put the explanation on the right answer's button, as another infobox.
+
+![A question in the game: a box headed "Muddy water" with three answers](../../../assets/screenshots/game-question.webp)
+
+### A question with feedback for each answer
+
+This is the standard pattern for a question that teaches. It lets *each wrong answer* explain itself.
+
+1. A hotspot or indirect event holds an infobox with **Can be closed without choosing a button** *unticked*, and one button per answer.
+2. Each button's action is **Run event**, pointing at its own **indirect event**.
+3. The right-answer event sets a variable, gives the award and shows an explanation. Each wrong-answer event just explains and lets the player try again.
+
+The [walkthrough](/docs/editor/walkthrough/pond/#the-question) builds exactly this, and [Patterns](/docs/editor/patterns/) lists more. For advice on what to write in the wrong-answer boxes, see [Write wrong answers that teach](/docs/educators/design-for-learning/#write-wrong-answers-that-teach).
+
+<Aside type="note">
+Give stars or XP in an **event**, not on an infobox button: awards are only given for an event's own actions. If a choice should give an award, have it **Run event** to one that does.
+</Aside>
+
+## Read aloud
+
+An infobox has **Read aloud** and **Recording to play instead**. The browser's own voice reads the text and lights each word as it is spoken, and you can set it for the whole mission in [Settings](/docs/editor/settings-and-publishing/#settings) and override it per action. Players can switch it off for themselves.

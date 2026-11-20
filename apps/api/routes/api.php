@@ -69,7 +69,7 @@ Route::get('/sso/clever/callback', [SsoController::class, 'cleverCallback'])->mi
 Route::any('/editor/{path?}', EditorController::class)->where('path', '.*')->middleware('auth:sanctum');
 
 // The public API for schools, districts and businesses, versioned: /api/v1/… (and /api/v2/… beside it, when there is one).
-// It has its own access tokens (OAuth 2 client credentials), not Sanctum's. Contract: docs/src/content/docs/developers/api-v1.md
+// It has its own access tokens (OAuth 2 client credentials), not Sanctum's. Contract: docs/src/content/docs/api-v1/ (index.mdx and its sibling pages)
 Route::any('/v1/{path?}', ApiV1Controller::class)->where('path', '.*')->middleware('throttle:qbl-api-v1');
 
 Route::prefix('internal')->middleware(ServiceKey::class)->group(function () {

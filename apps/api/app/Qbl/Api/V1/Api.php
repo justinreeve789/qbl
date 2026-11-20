@@ -17,7 +17,7 @@ use PDO;
 /**
  * The public API, version 1: everything under /api/v1, for schools, districts and businesses.
  * Without a framework, like EditorApi and ClassApi: Laravel's controller only translates.
- * The reference is docs/src/content/docs/developers/api-v1.md; keep the two together.
+ * The reference is docs/src/content/docs/api-v1/ (index.mdx and its sibling pages); keep the two together.
  *
  * Version 1 is a promise: fields are only ever added to its answers, never renamed or removed,
  * and its rules only loosen. Anything else is version 2, at /api/v2, served beside this one.

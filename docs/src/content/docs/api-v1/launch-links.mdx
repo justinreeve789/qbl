@@ -1,0 +1,133 @@
+---
+title: "Launch links (sign people in)"
+description: "Put an \"Open in QBL\" button in your portal or LMS. Your server asks for a one-time link and redirects the browser to it, with no second password for anyone to forget."
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Accounts made through the API have **no password**, because there is nothing about a student to build one from. People get into QBL one of two ways: through your district's [single sign-on](/docs/editor/district-admin/), or through a **launch link**: a one-time address your server asks for at the moment someone clicks a button.
+
+A launch link needs the `launch` scope.
+
+## The flow
+
+<Steps>
+
+1. A student (or teacher) clicks **Open in QBL** in your portal or LMS. Your system already knows who they are.
+
+2. Your server calls `POST /students/{id}/launch` or `POST /teachers/{id}/launch`.
+
+3. QBL answers with a `url`. Your server **redirects the browser** to it.
+
+4. The student lands in QBL, signed in, in the right place.
+
+</Steps>
+
+```http
+POST /api/v1/students/ext:a91f0c7e/launch
+{ "assignment_id": 2 }
+```
+
+```json
+{
+  "data": {
+    "url": "https://qbl.example/api/v1/launch/ZgellKuLjRu46Hq2fBLM2OIDkRzW6T3ZLix2Ra5NQ7s",
+    "expires_at": "2026-11-20T20:26:54Z",
+    "return_path": "/cbiaxunrrjcmoxzn?group=t3"
+  }
+}
+```
+
+`return_path` is where the person ends up (here, the mission, in the game of the team that student is in). You do not need it to redirect; it is there so you can log or show it.
+
+## Where does a link go?
+
+| For | Send | Lands on |
+| --- | --- | --- |
+| A student | nothing, or `{"to": "missions"}` | Their missions page, with their assignments at the top |
+| A student | `{"assignment_id": 2}` | That mission, in **their own team's game** |
+| A teacher | `{"to": "missions"}` (default) | Their missions page |
+| A teacher | `{"to": "editor"}` | The editor dashboard |
+| A teacher | `{"to": "classes"}` | The Classes page: classes, assignments and reports |
+| A teacher | `{"assignment_id": 2}` | That mission, to look in on it |
+
+Anything else for `to` is refused with `422 invalid_request`.
+
+## Rules worth knowing
+
+- **A link works once, within five minutes.** Ask for a new one every time someone clicks the button; never email them or store them. A used or old link gives `410 launch_expired`.
+- **Link previews do not use it up.** Opening the address shows a small page that redeems the link with a `POST`, so a chat app or mail scanner that only fetches the page leaves the link intact for the person.
+- **Deactivated accounts** are refused with `409 inactive`. Set the account back to `active` first.
+- **The student's browser never needs your API credentials.** Only your server calls the API.
+
+## A "Open in QBL" button, server side
+
+<Tabs>
+  <TabItem label="JavaScript (Node)">
+    ```js
+    import http from 'node:http';
+
+    // getToken() is the cached client-credentials token from the Authentication page.
+    async function launchUrl(studentExternalId, assignmentId) {
+      const res = await fetch(`${QBL}/api/v1/students/ext:${encodeURIComponent(studentExternalId)}/launch`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignment_id: assignmentId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error.message);
+      return (await res.json()).data.url;
+    }
+
+    // Your portal's "Open in QBL" route. Work out who is signed in to YOUR system first.
+    http.createServer(async (req, res) => {
+      const student = await whoIsSignedIn(req); // your session logic; returns { externalId } or null
+      if (!student) { res.writeHead(401).end(); return; }
+      try {
+        res.writeHead(302, { Location: await launchUrl(student.externalId, 2) }).end();
+      } catch (e) {
+        res.writeHead(502, { 'Content-Type': 'text/plain' }).end(`QBL could not open: ${e.message}`);
+      }
+    }).listen(3000);
+    ```
+  </TabItem>
+  <TabItem label="Python (Flask)">
+    ```python
+    from flask import Flask, abort, redirect, session
+    import requests
+
+    app = Flask(__name__)
+
+    def launch_url(student_external_id: str, assignment_id: int) -> str:
+        r = requests.post(
+            f"{QBL}/api/v1/students/ext:{student_external_id}/launch",
+            headers={"Authorization": f"Bearer {get_token()}"},  # cached token
+            json={"assignment_id": assignment_id},
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()["data"]["url"]
+
+    @app.get("/open-in-qbl")
+    def open_in_qbl():
+        student = session.get("external_id")   # from YOUR sign-in
+        if not student:
+            abort(401)
+        return redirect(launch_url(student, 2), code=302)
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="tip" title="Use the assignment's own id">
+If you stored QBL's assignment `id` against your LMS assignment when you created it, a different student in the same class gets the same `assignment_id` and ends up in *their own team's* game. You never have to know which team they are in.
+</Aside>
+
+## For teachers
+
+A teacher link is the same call with `/teachers/{id}/launch`. It is a good way to put **Open QBL** next to a class in your LMS:
+
+```http
+POST /api/v1/teachers/ext:t-5512/launch
+{ "to": "classes" }
+```
+
+The teacher arrives on the Classes page, where **Look in** [joins any team's game](/docs/editor/classes/#look-in-on-a-teams-game) as a visible player, and where the assignment's report is one click away.

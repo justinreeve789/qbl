@@ -44,6 +44,6 @@ Accounts are made the first time someone signs in, unless you turn that off (the
 ## Custom uploads
 
 - **Roster file**: a CSV with the columns `role, external_id, school_id, school_name, grade_level, teacher_ids, status`. Only `role` and `external_id` are needed; `teacher_ids` lists a student's teachers separated by `;`. A file with columns such as names or emails is refused before anything is read. The panel has an example file.
-- **API clients**: for your SIS, LMS or data warehouse to use the [public API](/docs/developers/api-v1/). Choose what each may do (its scopes); the secret is shown once. Make a new secret, or revoke a client, at any time.
+- **API clients**: for your SIS, LMS or data warehouse to use the [public API](/docs/api-v1/). Choose what each may do (its scopes); the secret is shown once. Make a new secret, or revoke a client, at any time.
 
 **Check the connection** tests an integration's settings, and the **sync history** lists every sync and upload with what changed and any problems.

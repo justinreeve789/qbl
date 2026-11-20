@@ -5,6 +5,8 @@ description: The scenarios list, creating and copying scenarios, and managing a 
 
 ## The scenarios list
 
+![The scenarios list: a card for each mission with Edit, Play, Duplicate and Export buttons](../../../assets/screenshots/editor-scenarios.webp)
+
 The **Editor** page lists every scenario you may edit as a card. Each card shows its title, whether it is a **Draft** or **Published**, and its code, with these buttons:
 
 | Button | What it does |
@@ -32,6 +34,8 @@ Teachers also reach this dialog from the **New scenario** button on their missio
 :::
 
 ## The Scenes page
+
+![The Scenes page: a card for each scene with its picture, its size, and how many hotspots, events and spawn points it has](../../../assets/screenshots/editor-scene-cards.webp)
 
 The Scenes page shows one card per scene, with its background as a thumbnail, its subtitle, and labels for its size and how many hotspots, other events and spawn points it has. A scene in a group takes the group's colour along the top of its card.
 

@@ -17,7 +17,7 @@ use PDO;
  * log, the rewards ledger) through ActivityStore::report, the same report teachers see in the
  * editor, so the numbers agree everywhere. Students appear by QBL id, external_id and pseudonym.
  *
- * How the derived figures are worked out is in docs/src/content/docs/developers/api-v1.md,
+ * How the derived figures are worked out is in docs/src/content/docs/api-v1/reports.mdx,
  * "How the numbers are worked out"; change both together.
  */
 class Reports

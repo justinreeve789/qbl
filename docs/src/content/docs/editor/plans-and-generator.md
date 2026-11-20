@@ -28,9 +28,13 @@ A teacher's plan also sets how many students they can add in Classes.
 
 ## The AI mission generator
 
+![The Generate form: a description of the mission, with grade, subject and minutes](../../../assets/screenshots/generate-form.webp)
+
 **Generate** in the editor (Teacher Plus, school plans that include it, and administrators; anyone when billing is off): describe the mission (the topic, what students should learn, the setting), and optionally the grade, subject, number of players, minutes and any notes. The **Try** buttons fill in an example to start from. You can also get there from the Scenarios page: **✨ Generate with AI**, or **New scenario** → **Generate it with AI**, which starts the description with the title you typed.
 
 The generator aligns it to curriculum standards, designs the story, scenes, characters and questions, draws every picture in the house style, records the characters' voices, and builds it. That takes about ten minutes, on the server: you can carry on working.
+
+![A mission being made: the steps Standards, Story, Pictures, Build and Save, with a progress bar and what it is drawing now](../../../assets/screenshots/generate-progress.webp)
 
 - **On the Generate page** the mission's card shows its steps (Standards, Story, Pictures, Build, Voices, Save), a progress bar, what it is doing right now ("Painting the Greenhouse (scene 3 of 5) · picture 12 of 17") and roughly how long is left.
 - **Anywhere else in the editor** a ✨ chip at the top shows the step and percent (and the browser tab shows the percent). Click it to go back to the Generate page.

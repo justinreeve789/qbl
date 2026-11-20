@@ -7,6 +7,8 @@ The tabs after **Scenes** hold the things a scenario defines once and uses in ma
 
 ## Media
 
+![The Media tab: pictures filed under Backgrounds, NPCs, Items and other sub-tabs](../../../assets/screenshots/editor-media.webp)
+
 The images, sounds and videos the scenario uses. **Upload files** (pictures: PNG, JPEG, WebP, GIF; sound: MP3, WAV, OGG; video: MP4, WebM) or **Add by address** to point at a file already on the web.
 
 Media is filed under sub-tabs by what it is used for: **Backgrounds**, **NPCs**, **Items**, **Vehicles**, **Sounds and music**, **Video**, **Shop items** and **Other images**. A file follows how you use it; one uploaded while a sub-tab is open is filed there until its use says otherwise, and **Details → Filed under** overrides it.
@@ -26,6 +28,8 @@ Deleting media leaves anything that used it without a picture.
 
 ## Variables
 
+![The Variables tab: one line per variable with its starting value, whose it is, and where it is used](../../../assets/screenshots/editor-variables.webp)
+
 What the scenario remembers. The page is a table with one line per variable, edited where it stands. Each has a **Name**, a **Starting value** and:
 
 * **Whose it is**: *Each player has their own*, or *Shared: one value for everyone playing together*. The line's left edge is blue for a player's own variable and green for a shared one.
@@ -39,11 +43,15 @@ A few reserved names are always there, such as `{{QBLPlayerName}}`. See [Variabl
 
 ## Items
 
+![The Items tab](../../../assets/screenshots/editor-items.webp)
+
 Things players can pick up, wear or ride. Each card shows the item's picture and labels for what it is: **Item**, **Wearable** or **Vehicle** (each in its own colour), **Unique**, **In the scene**, **Blocking**, its scale, and how many conditions it has. Click the picture or **✏️ Edit item** to open it in a panel; **New item** opens the new one straight away.
 
 The panel has the item itself on the left: its name and picture, **Unique** (only one player can hold it), **Physical**, **Blocking** (avatars walk around it), **Wearable** and **Vehicle**. A vehicle is always a single object: it goes where it is driven and stays where it is left. On the right are its settings, in groups that appear only when they apply: **In the scene** (scale, where it stands, and the blocking radius for a blocking item), **Worn** or **Ridden** (offsets, in front of or behind the avatar, which way the artwork faces, and **Hide the avatar below**: how far down the item's picture the avatar stops being drawn, 0 at the top and 1 at the bottom, so a rider sits in a UFO or a car instead of their legs showing beneath it), **Vehicle** (speed multiplier), and **When it is there** (conditions). Place items in scenes from the scene editor.
 
 ## Characters
+
+![The Characters tab: a card for each character, showing how it stands and its close-up portrait](../../../assets/screenshots/editor-characters.webp)
 
 People and creatures players meet. Each card shows the character **Standing** and its **Portrait**, its name, and a label for each pose: a solid one for a pose that is drawn (✓), a dashed one for a pose another stands in for, and how many more animations it has. Click the character or **✏️ Edit character** to open it in a panel; **New character** opens the new one straight away.
 
@@ -93,6 +101,8 @@ A player's Walk action comes first: the routine waits for the character to get t
 
 ## Objectives
 
+![The Objectives tab: the checklist players see, with its conditions](../../../assets/screenshots/editor-objectives.webp)
+
 The checklist players see while they play, numbered in order. Each line shows the objective's text (a variable it shows, as in `Collect samples ({{samples}}/3)`, is highlighted), a **Bonus** label for optional ones, and its conditions as labels. A line warns *Never ticked off* when it has no condition to complete it. Click the text or **✏️ Edit** to open it in a panel with its text, the **Bonus** tick and two lists of conditions:
 
 * **Listed only when**: reveal a step later. Empty means always listed.
@@ -102,9 +112,13 @@ Use **↑** and **↓** on a line to order them. A mission is finished when ever
 
 ## Glossary
 
+![The Glossary tab: a card for each word, saying how many actions give it](../../../assets/screenshots/editor-glossary.webp)
+
 The words the mission teaches, each on a card with its picture (or its first letter), the word and its meaning. Click a word or **✏️ Edit** to open it in a panel with its **Word**, an optional **Picture** and **What it means**, beside a preview of how players read it. A word marked **In every player's glossary from the start** needs no action; any other word is given by an **Add a glossary word** action where the player meets it, and its card tells you how many actions give it, with a warning when none does, so you can spot a word nobody will ever get. Players read their words in the game's side panel, and a teacher's report counts them.
 
 ## Moves
+
+![The Moves tab](../../../assets/screenshots/editor-moves.webp)
 
 What players can do from buttons on their screen. Each card is drawn like the button players see, with its icon and text, the animation it plays, and who can use it. Click it or **✏️ Edit** to change the **Animation** (a built-in move or the name of one of the avatars' animations), the text **On the button**, the **Icon**, and the conditions under which it is offered.
 

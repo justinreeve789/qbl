@@ -1,0 +1,97 @@
+---
+title: "Privacy by design"
+description: "QBL never holds personally identifiable information about a student. Here is how the API enforces that, and what it leaves for you to do."
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Most education software asks for a roster with names and emails, then promises to look after it. QBL takes the other road: **it never receives a student's identity in the first place.** A privacy officer can read this page and know what your vendor holds, because the answer is short.
+
+This is enforced by the API, not left to good intentions.
+
+## What QBL knows about a student
+
+| QBL stores | QBL does **not** store |
+| --- | --- |
+| Your opaque `external_id` for them | Name, first name, last name |
+| A pseudonym QBL made up (*Brave Otter 417*) | Email address, phone number, home address |
+| Their grade level (`K`, `1` to `12`) | Birth date, gender, demographics |
+| Their school | Photos |
+| What they did in missions | Links to pictures hosted elsewhere |
+
+The pseudonym is the only name that appears to other players, to teachers in the editor and in reports. **You hold the only key** from a pseudonym back to a child, in your own system. If you want to know that *Brave Otter 417* is Maya, you look up `a91f0c7e` in your SIS.
+
+## What happens if someone tries
+
+Any request about a person that carries a field such as `name`, `first_name`, `last_name`, `email`, `dob`, `address`, `phone`, `gender` or `photo` is refused with `422 pii_not_accepted`. A mistake is found at once, in testing, rather than kept quietly:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"external_id": "a91f0c7e", "first_name": "Maya", "email": "maya@school.example"}' \
+  "$QBL/api/v1/students"
+```
+
+```json
+{
+  "error": {
+    "code": "pii_not_accepted",
+    "message": "QBL does not store personally identifiable information. Remove: first_name, email. Identify people by your own opaque external_id instead.",
+    "fields": {
+      "first_name": "Not accepted: personally identifiable.",
+      "email": "Not accepted: personally identifiable."
+    }
+  }
+}
+```
+
+## The rules, one by one
+
+- **People are known by your `external_id`**: 1 to 64 letters, digits and `._:-`, never an email address.
+- **A student cannot be given a display name.** QBL makes one up. `regenerate_display_name: true` on a `PATCH` gives them a fresh pseudonym, which is useful if one turns out to be unfortunate or to match a real classmate's nickname.
+- **Teachers** may have a `display_name` they choose ("Ms. R"), checked so it holds no email address or phone number.
+- **Free text you send** (assignment notes, team names, avatar names) is checked the same way.
+- **Accounts made through the API** have a placeholder address ending in `.invalid` that cannot receive mail and is never shown, and no password. They sign in only through [launch links](/docs/api-v1/launch-links/).
+- **Avatars are uploaded, never linked**, so no player's browser contacts a third-party server.
+- **Disclosures are recorded.** Every API request is logged with the students whose records it reached, so a school can show who saw what. See [the audit log](/docs/api-v1/activity-and-privacy-requests/#the-audit-log).
+- **Retention is yours to set.** `PATCH /organization` with `data_retention_days` (30 to 3650, or `null` to keep until deleted) and QBL deletes older activity and chat; the server runs the purge daily.
+- **Parents' requests are one call each.** [Export](/docs/api-v1/activity-and-privacy-requests/#export-everything-kept-about-a-student) returns everything kept about a student; [delete](/docs/api-v1/activity-and-privacy-requests/#delete-a-student-or-a-teacher) removes it for good.
+
+## Make your external ids opaque
+
+The best `external_id` is not your SIS id at all. If your SIS id for Maya is `4417`, anyone who sees QBL's data and your student list can match them. Use a **keyed hash** of it, with a secret key only you hold, so that even QBL's copy tells nobody anything:
+
+<Tabs>
+  <TabItem label="JavaScript">
+    ```js
+    import { createHmac } from 'node:crypto';
+
+    // PSEUDONYM_KEY is a long random secret stored with your other secrets.
+    // Do not change it later: the same student must always get the same id.
+    const externalId = (sisId) =>
+      createHmac('sha256', process.env.PSEUDONYM_KEY).update(String(sisId)).digest('hex').slice(0, 32);
+
+    externalId('4417'); // a 32-character hex string, the same every time
+    ```
+  </TabItem>
+  <TabItem label="Python">
+    ```python
+    import hashlib, hmac, os
+
+    def external_id(sis_id: str) -> str:
+        key = os.environ["PSEUDONYM_KEY"].encode()
+        return hmac.new(key, str(sis_id).encode(), hashlib.sha256).hexdigest()[:32]
+    ```
+  </TabItem>
+</Tabs>
+
+Keep a table of `external_id` to SIS id in your own system. That table is the key; QBL never sees it.
+
+<Aside type="note" title="What this does and does not do for compliance">
+Keeping identities out of QBL is what makes it straightforward for a school to use QBL under the "school official" arrangement in FERPA, and to authorize a service on behalf of parents under COPPA. Whether your use meets your own legal obligations is a decision for your district's counsel and privacy officer. QBL makes it easier; it does not replace them.
+</Aside>
+
+## What stays your responsibility
+
+- **Guarding the pseudonym key.** QBL cannot protect a table it never sees.
+- **Free text QBL cannot recognise.** It checks for emails and phone numbers, but not for a team called "Maya's gang".
+- **What students type in chat.** Chat is logged and readable with `messages:read` for safety review. A mission's author can turn chat off or limit it in the mission's [settings](/docs/editor/settings-and-publishing/).

@@ -9,7 +9,7 @@ The player, the editor and the game server depend on a small set of endpoints. T
 
 Anything that honours this contract can be swapped in.
 
-These endpoints are QBL's own and may change. Schools, districts and other organizations connecting their systems use the versioned [public API](/docs/developers/api-v1/) under `/api/v1` instead.
+These endpoints are QBL's own and may change. Schools, districts and other organizations connecting their systems use the versioned [public API](/docs/api-v1/) under `/api/v1` instead.
 
 ## Public endpoints (called by the browser)
 
@@ -137,7 +137,7 @@ An `Assignment` is `{ id, scenario, due_at, note, group, students: [{ id, name, 
 
 Endpoint | Returns
 -------- | -------
-`GET /api/teach/assignments/{id}/report` | `{ "assignment": ..., "report": { "summary", "objectives", "learning_objectives", "students" } }`: how each student did. See [Reports](/docs/editor/classes/#reports)
+`GET /api/teach/assignments/{id}/report` | `{ "assignment": ..., "report": { "summary", "objectives", "learning_objectives", "students" } }`: how each student did. See [Reading the reports](/docs/editor/reports/)
 `GET /api/teach/assignments/{id}/activity` | `{ "activity": [...] }`: the activity log of the assignment's instances, newest first
 `GET /api/teach/assignments/{id}/activity/{studentId}` | The same, for one student
 `GET /api/teach/assignments/{id}/messages` | `{ "messages": [...] }`: every message sent in the assignment's instances, newest first

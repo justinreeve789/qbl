@@ -28,9 +28,14 @@ The original pages describe the first version of the format. Everything the walk
 ## The platform
 
 * [Save data](/docs/developers/save-data/): what a player's save holds and how it is delivered with the scenario.
+* [Instances, teams and save data](/docs/developers/instances/): how a team's copy of a mission is kept, and which tables hold it.
 * [Generating missions with AI](/docs/developers/generation/): the `qbl:generate` command.
 * [Architecture](/docs/developers/architecture/): the containers and how they talk.
-* [HTTP API contract](/docs/developers/api/) and [Multiplayer protocol](/docs/developers/protocol/).
+* [HTTP API contract](/docs/developers/api/) (internal: used by the player, editor and game server) and [Multiplayer protocol](/docs/developers/protocol/).
+
+## Connecting a school's systems
+
+Rostering classes from a student information system, assigning missions from an LMS, signing students in and reading grades and learning reports are done through the supported, versioned **[public API (v1)](/docs/api-v1/)** under `/api/v1`. It takes no personal data about students. Start with its [quickstart](/docs/api-v1/#your-first-ten-minutes) and the [authentication](/docs/api-v1/authentication/) page. An [OpenAPI description](/docs/api/v1/openapi.yaml) is available.
 
 ## Validating a scenario
 

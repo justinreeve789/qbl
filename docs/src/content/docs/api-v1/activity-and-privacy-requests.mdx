@@ -1,0 +1,182 @@
+---
+title: "Activity, exports and the audit log"
+description: "Feed every student action to your data warehouse, answer a parent's request to see or delete a child's data in one call, and show who accessed what."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Three things for the people who run the data side of a school system: a **feed** of everything students do, **export and deletion** for privacy requests, and an **audit log** that shows exactly who saw what.
+
+## The activity feed
+
+```http
+GET /api/v1/activity?limit=3
+```
+
+Every line of activity of your students, **oldest first**, with `reports:read`:
+
+```json
+{
+  "data": [
+    {
+      "id": 368, "student_id": 92150, "external_id": "a91f0c7e",
+      "scenario_id": 3, "assignment_id": 2, "team_id": 3, "scene_id": 18,
+      "type": "join", "ref": "18", "label": null, "value": null,
+      "at": "2026-11-20T17:22:38Z"
+    },
+    {
+      "id": 369, "student_id": 92150, "external_id": "a91f0c7e",
+      "scenario_id": 3, "assignment_id": 2, "team_id": 3, "scene_id": 17,
+      "type": "scene", "ref": "17", "label": "control-room", "value": null,
+      "at": "2026-11-20T17:23:25Z"
+    },
+    {
+      "id": 370, "student_id": 92150, "external_id": "a91f0c7e",
+      "scenario_id": 3, "assignment_id": 2, "team_id": 3, "scene_id": 17,
+      "type": "hotspot", "ref": "900", "label": "hotspot", "value": null,
+      "at": "2026-11-20T17:24:16Z"
+    }
+  ],
+  "meta": { "next_cursor": "370" }
+}
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `limit` | Lines per page, up to 5,000. |
+| `cursor` | The `meta.next_cursor` from the last page. |
+| `since` | Only lines from this time on (an ISO 8601 time). |
+| `types` | A comma-separated list: `types=objective,glossary`. Types include `join`, `leave`, `scene`, `hotspot`, `choice`, `objective`, `glossary`, `narration` and `award`. New types may appear, so ignore ones you do not know. |
+
+Because the feed is **oldest first** and the cursor is stable, loading what is new is simple: keep the last `next_cursor` you saw, and next time ask from it.
+
+```js
+let cursor = loadSavedCursor();           // null the first time
+for (;;) {
+  const url = `${QBL}/api/v1/activity?limit=5000${cursor ? `&cursor=${cursor}` : ''}`;
+  const { data, meta } = await (await fetch(url, { headers: auth })).json();
+  if (data.length === 0) break;           // caught up
+  await warehouse.insert(data);           // write the page first…
+  cursor = meta.next_cursor;
+  saveCursor(cursor);                     // …then remember where you got to
+}
+```
+
+This is how to feed a data warehouse, or to study learning gains against your own assessment data. The lines carry your `external_id`, so they join straight onto your other tables.
+
+For one assignment, `GET /assignments/{id}/activity?student_id=&limit=` gives a quicker, newest-first view with pseudonyms, for a teacher-facing screen:
+
+```json
+{ "student_id": 92154, "external_id": "d00dfeed", "group": "t4", "type": "objective", "ref": "4", "label": "objective", "at": "2026-11-20T13:44:27+00:00", "display_name": "Noble Gecko 294" }
+```
+
+## Chat messages
+
+```http
+GET /api/v1/assignments/2/messages
+```
+
+Needs `messages:read`, which is separate from `reports:read` on purpose: chat is the part of QBL you may want only a few people to read. It returns every chat, emote and private message in the assignment's games, with sender and recipient, for safety review.
+
+```json
+{
+  "data": [
+    {
+      "from_id": 92150, "from_external_id": "a91f0c7e", "from_display_name": "Steady Rover 231",
+      "to_id": null, "to_external_id": null,
+      "kind": "chat", "group": "t3", "scene_id": 18,
+      "text": "found the first sample!", "at": "2026-11-20T19:21:54+00:00"
+    }
+  ]
+}
+```
+
+A mission's author can turn chat off or restrict it in the mission's [settings](/docs/editor/settings-and-publishing/).
+
+## Export everything kept about a student
+
+```http
+GET /api/v1/students/ext:a91f0c7e/export
+```
+
+Needs `privacy`. This is the answer to a parent's request to inspect their child's records. It returns the account, enrollments, assignments, saved games, every line of activity, messages sent, badges, the rewards ledger, items, **and the record of every disclosure** (every API request that reached this student's data):
+
+```json
+{
+  "data": {
+    "student": { "id": 92155, "type": "student", "external_id": "f00d1e55", "display_name": "Plucky Panda 295", "school_id": 2, "grade_level": "8", "teacher_ids": [92149], "status": "active" },
+    "exported_at": "2026-11-20T20:21:54Z",
+    "enrollments": [ { "teacher_id": 92149, "created_at": "2026-11-20 20:21:54" } ],
+    "assignments": [ { "assignment_id": 2, "team_id": null, "scenario_id": 3, "teacher_id": 92149, "due_at": "2026-12-06 06:59:00", "external_id": "canvas-assignment-9931" } ],
+    "saved_games": [],
+    "activity": [],
+    "messages_sent": [],
+    "badges": [],
+    "rewards_ledger": [],
+    "items": [],
+    "disclosures": [
+      { "id": 19, "client_id": "qbl_7f3c…", "method": "GET", "path": "/api/v1/assignments/2/grades", "status": 200, "student_ids": [92153, 92151, 92154, 92155, 92152, 92150], "at": "2026-11-20T20:21:54Z" }
+    ]
+  }
+}
+```
+
+It is deliberately complete and **contains no name**, because QBL has none. Your system supplies the name that goes with `external_id` when you hand the report to the parent.
+
+## Delete a student or a teacher
+
+```http
+DELETE /api/v1/students/ext:a91f0c7e
+```
+
+Needs `privacy`. The student and everything above is deleted **for good**. Messages other students sent *to* them stay, without naming them. The answer says how many records went from each table:
+
+```json
+{ "data": { "id": 92155, "deleted": { "teacher_student": 1, "assignment_student": 1, "users": 1 } } }
+```
+
+```http
+DELETE /api/v1/teachers/ext:t-temp?transfer_to=ext:t-5512
+```
+
+For a teacher, `transfer_to` (another teacher, by id or `ext:`) moves their classes and assignments to that teacher. Without it, the assignments go too. Missions they wrote stay, with no owner.
+
+<Aside type="caution">
+Deletion cannot be undone. If a student has merely **left**, set them [inactive](/docs/api-v1/people/#leaving-and-returning) instead: their data stays, nothing more is collected, and they can come back.
+</Aside>
+
+## The audit log
+
+```http
+GET /api/v1/audit-log?student_id=92150&limit=50
+```
+
+Needs `audit:read`. Every request made with your organization's API clients, newest first: which client, what it asked for, the result, and **which students' records it reached**.
+
+```json
+{
+  "data": [
+    {
+      "id": 30,
+      "client_id": "qbl_7f3c02fdb2545a463a5fe7a0",
+      "method": "DELETE",
+      "path": "/api/v1/students/92155",
+      "status": 200,
+      "student_ids": [92155],
+      "at": "2026-11-20T20:21:54Z"
+    },
+    {
+      "id": 28,
+      "client_id": "qbl_7f3c02fdb2545a463a5fe7a0",
+      "method": "GET",
+      "path": "/api/v1/activity?limit=3",
+      "status": 200,
+      "student_ids": [],
+      "at": "2026-11-20T20:21:54Z"
+    }
+  ],
+  "meta": { "next_cursor": "28" }
+}
+```
+
+Filter with `student_id` to answer "who has seen this child's records?". This is the *record of disclosures* that US schools need to be able to show, and the reason to give each integration **its own client**: the log names the system, not just the organization.

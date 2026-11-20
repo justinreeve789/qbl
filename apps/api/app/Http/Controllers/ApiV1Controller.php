@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Everything under /api/v1: the public API for schools, districts and businesses. The routes and
  * rules are in App\Qbl\Api\V1\Api, which has no framework calls; this only translates.
- * Reference: docs/src/content/docs/developers/api-v1.md.
+ * Reference: docs/src/content/docs/api-v1/ (index.mdx and its sibling pages).
  */
 class ApiV1Controller extends Controller
 {
