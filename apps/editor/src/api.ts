@@ -150,13 +150,14 @@ export class Api {
     }
   }
 
-  /** Whether the server offers Google sign-in. */
-  async providers(): Promise<{ google: boolean }> {
+  /** Whether the server offers Google sign-in, and lets people create their own account. */
+  async providers(): Promise<{ google: boolean; register: boolean }> {
     try {
       const res = await fetch('/api/auth/providers', { headers: { Accept: 'application/json' } });
-      return res.ok ? ((await res.json()) as { google: boolean }) : { google: false };
+      const p = res.ok ? ((await res.json()) as { google?: boolean; register?: boolean }) : {};
+      return { google: !!p.google, register: !!p.register };
     } catch {
-      return { google: false };
+      return { google: false, register: false };
     }
   }
 

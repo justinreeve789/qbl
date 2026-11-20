@@ -32,6 +32,20 @@ try {
 if (signedIn) {
   document.querySelectorAll<HTMLElement>('[data-login-label]').forEach((el) => (el.textContent = el.dataset.loginLabel ?? el.textContent));
   void staffDashboard();
+} else {
+  void offerCreateAccount();
+}
+
+/** "Create an account" links stay hidden unless the site lets visitors make their own account. */
+async function offerCreateAccount() {
+  try {
+    const base = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
+    const res = await fetch(`${base}/api/auth/providers`, { headers: { Accept: 'application/json' } });
+    if (!res.ok || !((await res.json()) as { register?: boolean }).register) return;
+    document.querySelectorAll<HTMLElement>('[data-create-account]').forEach((el) => (el.hidden = false));
+  } catch {
+    /* offline: no link */
+  }
 }
 
 /**

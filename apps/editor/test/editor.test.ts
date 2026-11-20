@@ -163,7 +163,8 @@ test('drag the hotspot on the canvas', async () => {
 
 test('add a start event with background music; edit and delete actions', async () => {
   await page.click('[title="Add: start events"]');
-  await page.waitForSelector('.event-panel');
+  // The hotspot's panel is still open from the last test: wait for the new event's, or the name goes to the hotspot.
+  await page.waitForFunction(() => document.querySelector('.event-panel h2')?.textContent?.startsWith('Start event'));
   await type('[data-field=shortname] input', 'arrive');
   await inspector('.add-action').selectOption('audio');
   await page.waitForSelector('details.action[open]');

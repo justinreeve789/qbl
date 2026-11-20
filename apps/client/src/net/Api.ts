@@ -79,12 +79,20 @@ export class Api {
     return data.user;
   }
 
+  /** Create a (student's) account with a password, and sign in with it. */
+  async register(account: { name: string; email: string; password: string; password_confirmation: string }): Promise<User> {
+    const data = await this.call<{ token: string; user: User }>('POST', '/auth/register', account);
+    this.remember(data.token);
+    return data.user;
+  }
+
   /** Which ways of signing in the server offers. An older server, or one that is down, offers none of the optional ones. */
-  async providers(): Promise<{ google: boolean }> {
+  async providers(): Promise<{ google: boolean; register: boolean }> {
     try {
-      return await this.call<{ google: boolean }>('GET', '/auth/providers');
+      const p = await this.call<{ google?: boolean; register?: boolean }>('GET', '/auth/providers');
+      return { google: !!p.google, register: !!p.register };
     } catch {
-      return { google: false };
+      return { google: false, register: false };
     }
   }
 

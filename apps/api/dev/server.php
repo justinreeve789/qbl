@@ -102,7 +102,26 @@ $issue = function (array $u): array {
 
 // Google sign-in needs the real backend and Google's servers; the stand-in does not offer it.
 if ($path === '/api/auth/providers') {
-    respond(200, ['google' => false, 'guest' => true]);
+    respond(200, ['google' => false, 'guest' => true, 'register' => true]);
+}
+// Creating an account: checked like the real API, then signed in like any other address here.
+if ($path === '/api/auth/register' && $method === 'POST') {
+    $email = strtolower(trim((string) ($body['email'] ?? '')));
+    $name = trim(strip_tags((string) ($body['name'] ?? '')));
+    $password = (string) ($body['password'] ?? '');
+    $problem = match (true) {
+        $name === '' => 'Enter your name.',
+        ! filter_var($email, FILTER_VALIDATE_EMAIL) => 'That does not look like an email address.',
+        strlen($password) < 8 => 'Use a password of at least 8 characters.',
+        $password !== (string) ($body['password_confirmation'] ?? '') => 'The two passwords are not the same.',
+        default => null,
+    };
+    if ($problem) {
+        respond(422, ['message' => $problem]);
+    }
+    $account = ['id' => crc32($email) % 100000 + 10, 'name' => mb_substr($name, 0, 60), 'email' => $email, 'role' => 'student'];
+    $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, 'student']);
+    respond(201, $issue($account));
 }
 if ($path === '/api/auth/login' && $method === 'POST') {
     $email = strtolower(trim((string) ($body['email'] ?? '')));

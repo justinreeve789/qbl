@@ -26,7 +26,14 @@ export function loginView(api: Api, done: (user: User) => void, refused?: User, 
   const submit = h('button', { type: 'submit', class: 'primary' }, 'Sign in');
   // Offered when the server has Google sign-in set up. It leaves the page and comes back signed in.
   const google = h('button', { type: 'button', class: 'google', hidden: true, onclick: () => window.location.assign(`/api/auth/google/redirect?return=${encodeURIComponent(window.location.pathname)}`) }, 'Sign in with Google');
-  void api.providers().then((p) => (google.hidden = !p.google));
+  // Accounts are made on the game's sign-in screen; they start as students' accounts.
+  const create = h('p', { class: 'muted', 'data-create-account': '', hidden: true },
+    'No account yet? ', h('a', { href: `${missionsUrl}#create-account` }, 'Create one'),
+    '. A new account is a student’s until an administrator makes it a teacher’s.');
+  void api.providers().then((p) => {
+    google.hidden = !p.google;
+    create.hidden = !p.register || !!refused;
+  });
   // A Google sign-in that did not work comes back with the reason after the #.
   const problem = /^#signin=([a-z]+)$/.exec(window.location.hash)?.[1];
   if (problem) {
@@ -49,6 +56,7 @@ export function loginView(api: Api, done: (user: User) => void, refused?: User, 
     error,
     submit,
     google,
+    create,
   );
   node.addEventListener('submit', async (e) => {
     e.preventDefault();

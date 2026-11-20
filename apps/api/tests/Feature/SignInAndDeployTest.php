@@ -13,7 +13,7 @@ use Laravel\Socialite\Two\User as GoogleUser;
 use Tests\TestCase;
 
 /**
- * Google sign-in, running behind a TLS-terminating firewall, seeding by hand, and the
+ * Google sign-in, creating an account with a password, running behind a TLS-terminating firewall, seeding by hand, and the
  * one-migration-per-table layout on a database made before it.
  */
 class SignInAndDeployTest extends TestCase
@@ -175,6 +175,84 @@ class SignInAndDeployTest extends TestCase
         $this->assertNull(User::where('email', 'new@school.org')->first());
         $this->artisan('qbl:user', ['email' => 'new@school.org', 'name' => 'New', '--role' => 'Teacher'])->expectsQuestion('Password', 'long-enough-password')->assertSuccessful();
         $this->assertSame('teacher', \Illuminate\Support\Facades\DB::table('users')->where('email', 'new@school.org')->value('role'));
+    }
+
+    public function test_anyone_may_create_a_students_account_with_a_password(): void
+    {
+        $this->getJson('/api/auth/providers')->assertOk()->assertJsonPath('register', true);
+
+        $made = $this->postJson('/api/auth/register', [
+            'name' => '  <b>Grace</b> Hopper ', 'email' => ' Grace@Example.ORG ', 'password' => 'cobol-1959', 'password_confirmation' => 'cobol-1959',
+        ])->assertCreated()
+            ->assertJsonPath('user.name', 'Grace Hopper')->assertJsonPath('user.role', 'student')->assertJsonPath('user.email', 'grace@example.org');
+
+        $user = User::where('email', 'grace@example.org')->firstOrFail();
+        $this->assertNotNull($user->self_registered_at);
+        $this->assertNull($user->email_verified_at);
+        $this->assertTrue($user->hasUnprovenAddress());
+        $this->newRequest()->withToken($made->json('token'))->getJson('/api/me')->assertOk()->assertJsonPath('user.id', $user->id);
+        // A student's account: no editor, no Classes.
+        $this->newRequest()->withToken($made->json('token'))->getJson('/api/editor/scenarios')->assertStatus(403);
+
+        // Signing in with it later, with the address in any case.
+        $this->newRequest()->postJson('/api/auth/login', ['email' => 'grace@example.org', 'password' => 'cobol-1959'])->assertOk();
+        $this->newRequest()->postJson('/api/auth/login', ['email' => 'GRACE@example.org', 'password' => 'cobol-1959'])->assertOk();
+        $this->newRequest()->postJson('/api/auth/login', ['email' => 'grace@example.org', 'password' => 'wrong-password'])->assertStatus(422);
+    }
+
+    public function test_creating_an_account_never_takes_over_or_chooses_anything_it_should_not(): void
+    {
+        // More attempts than the five a minute one address is allowed.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $ok = ['name' => 'Kid', 'password' => 'long-enough', 'password_confirmation' => 'long-enough'];
+        User::create(['name' => 'Ms Byron', 'email' => 'byron@school.example', 'password' => null, 'role' => 'teacher']);
+
+        // An address that already has an account (here one that only signs in with Google) is refused, in any case.
+        $this->postJson('/api/auth/register', ['email' => 'BYRON@school.example'] + $ok)->assertStatus(422)->assertJsonValidationErrors(['email']);
+        $this->assertNull(User::where('email', 'byron@school.example')->value('password'));
+        // A role asked for is ignored.
+        $this->postJson('/api/auth/register', ['email' => 'kid@school.example', 'role' => 'admin'] + $ok)->assertCreated()->assertJsonPath('user.role', 'student');
+        // Guests' made-up addresses, short or mismatched passwords, and empty names are refused.
+        $this->postJson('/api/auth/register', ['email' => 'guest-1@guest.invalid'] + $ok)->assertStatus(422)->assertJsonValidationErrors(['email']);
+        $this->postJson('/api/auth/register', ['email' => 'a@school.example', 'password' => 'short', 'password_confirmation' => 'short'] + $ok)->assertStatus(422)->assertJsonValidationErrors(['password']);
+        $this->postJson('/api/auth/register', ['email' => 'b@school.example', 'password_confirmation' => 'different!'] + $ok)->assertStatus(422)->assertJsonPath('message', 'The two passwords are not the same.');
+        $this->postJson('/api/auth/register', ['email' => 'c@school.example', 'name' => '<i></i>'] + $ok)->assertStatus(422)->assertJsonValidationErrors(['name']);
+        $this->assertSame(2, User::count());
+
+        // A site can turn it off.
+        config(['qbl.allow_registration' => false]);
+        $this->getJson('/api/auth/providers')->assertJsonPath('register', false);
+        $this->postJson('/api/auth/register', ['email' => 'd@school.example'] + $ok)->assertForbidden();
+    }
+
+    /**
+     * Nobody checks the address typed when an account is created, so someone could create one in
+     * another person's name. Google signing in with that address shows whose it is: the account
+     * becomes theirs, and the password and tokens of whoever created it stop working.
+     */
+    public function test_google_proves_whose_a_created_account_is(): void
+    {
+        $this->withGoogle();
+        $made = $this->postJson('/api/auth/register', ['name' => 'Not Byron', 'email' => 'byron@school.example', 'password' => 'squatting', 'password_confirmation' => 'squatting'])->assertCreated();
+        $squatter = $made->json('token');
+        $this->artisan('qbl:update-role', ['email' => 'byron@school.example', '--role' => 'teacher'])->expectsOutputToContain('nobody has checked')->assertSuccessful();
+
+        $this->finish($this->googleAccount('g-300', 'byron@school.example', 'A. Byron'), $this->begin())->assertOk();
+
+        $user = User::where('email', 'byron@school.example')->firstOrFail();
+        $this->assertSame(['g-300', null], [$user->google_id, $user->getRawOriginal('password')]);
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertFalse($user->hasUnprovenAddress());
+        $this->newRequest()->withToken($squatter)->getJson('/api/me')->assertUnauthorized();
+        $this->newRequest()->postJson('/api/auth/login', ['email' => 'byron@school.example', 'password' => 'squatting'])->assertStatus(422);
+        $this->assertSame(1, User::count());
+
+        // An account an administrator made is joined as before, and keeps its password.
+        $admin = User::create(['name' => 'Ms Lovelace', 'email' => 'ada@school.example', 'password' => 'secret-password', 'role' => 'teacher']);
+        $this->finish($this->googleAccount('g-301', 'ada@school.example'), $this->begin())->assertOk();
+        $this->assertSame('g-301', $admin->refresh()->google_id);
+        $this->newRequest()->postJson('/api/auth/login', ['email' => 'ada@school.example', 'password' => 'secret-password'])->assertOk();
+        $this->artisan('qbl:update-role', ['email' => 'ada@school.example', '--role' => 'admin'])->doesntExpectOutputToContain('nobody has checked')->assertSuccessful();
     }
 
     public function test_an_answer_that_does_not_match_a_sign_in_this_browser_started_is_refused(): void

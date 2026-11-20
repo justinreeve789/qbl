@@ -17,6 +17,12 @@ All responses are JSON. Authenticated requests send `Authorization: Bearer <toke
 
 Body `{ "email": "...", "password": "..." }`. Returns `{ "token": "...", "user": User }`, or 422 with `{ "message": "..." }`.
 
+### `POST /api/auth/register`
+
+Body `{ "name": "...", "email": "...", "password": "...", "password_confirmation": "..." }`. Creates a **student's** account and signs in with it: 201 with `{ "token": "...", "user": User }` (the user has its own `email`, as from `/auth/login`). 422 with `{ "message": "...", "errors": {...} }` when a field is missing or wrong, the password is under 8 characters or the two do not match, or **the address already has an account** (creating one never joins an existing account). 403 when the site has `QBL_ALLOW_REGISTRATION=false`. 429 after five tries in a minute from one network address.
+
+The address is stored in lower case and is not checked. If its owner later signs in with Google, the account becomes theirs and its password and tokens stop working (see [Signing in with Google](#signing-in-with-google)).
+
 ### `POST /api/auth/guest`
 
 Body `{ "name": "..." }`. Returns `{ "token": "...", "user": User }` with role `guest`. The Laravel API only offers this when `QBL_ALLOW_GUESTS=true`. A guest token is accepted by the game server only for scenarios with `require_login: false`.
@@ -27,7 +33,7 @@ Ends the token it is called with, so signing out works everywhere that token was
 
 ### `GET /api/auth/providers`
 
-`{ "google": true, "guest": true }`: which optional ways of signing in this installation offers. The sign-in screens show a Google button when `google` is true.
+`{ "google": true, "guest": true, "register": true }`: which optional ways of signing in this installation offers. The sign-in screens show a Google button when `google` is true, and "Create an account" when `register` is true.
 
 ### Signing in with Google
 
@@ -35,7 +41,7 @@ Google sign-in is on when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
 
 1. The sign-in screen sends the browser to `GET /api/auth/google/redirect?return=/editor/`. `return` is a path on this site to come back to; anything else is replaced with `/missions`.
 2. Google asks the person and sends the browser to `GET /api/auth/google/callback` (register this address with Google: `https://your-host/api/auth/google/callback`. It is built from `APP_URL`).
-3. The API finds the account by Google's id for it, or joins an existing account with the same verified address, or creates a new one. It issues a token and answers with a small page that stores the token where the game and the editor look for it (`localStorage["qbl.token"]`) and goes to `return`. The token is never put in an address.
+3. The API finds the account by Google's id for it, or joins an existing account with the same verified address, or creates a new one. Joining an account someone created with `POST /api/auth/register` (whose address nobody had checked) also removes its password and ends its tokens. It issues a token and answers with a small page that stores the token where the game and the editor look for it (`localStorage["qbl.token"]`) and goes to `return`. The token is never put in an address.
 
 If nobody is signed in, the browser is sent to `return` with the reason after the `#`: `#signin=cancelled`, `domain` (the address is not at an accepted domain), `unverified`, `expired` or `failed`.
 

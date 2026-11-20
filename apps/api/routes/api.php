@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Route;
 // Contract: docs/src/content/docs/developers/api.md
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
-Route::post('/auth/guest', [AuthController::class, 'guest'])->middleware('throttle:10,1');
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/auth/guest',[AuthController::class, 'guest'])->middleware('throttle:10,1');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 

@@ -32,7 +32,11 @@ class GoogleAuthController extends Controller
     /** Which ways of signing in the sign-in screens should offer. */
     public function providers(): JsonResponse
     {
-        return response()->json(['google' => self::enabled(), 'guest' => (bool) config('qbl.allow_guests')]);
+        return response()->json([
+            'google' => self::enabled(),
+            'guest' => (bool) config('qbl.allow_guests'),
+            'register' => (bool) config('qbl.allow_registration'),
+        ]);
     }
 
     public function redirect(Request $request): SymfonyRedirect
@@ -97,6 +101,14 @@ class GoogleAuthController extends Controller
         // that already exists (one made by an administrator, say) the first time.
         $user = User::where('google_id', $google->getId())->first()
             ?? User::where('email', $email)->where('role', '!=', 'guest')->first();
+        if ($user && $user->hasUnprovenAddress()) {
+            // Someone made this account on the sign-in screen by typing this address, and
+            // nobody had checked it was theirs. Google has now shown it is this person's, so the
+            // password chosen then, and every token issued with it, stop working: an account made
+            // in someone else's name cannot be kept by whoever made it.
+            $user->tokens()->delete();
+            $user->forceFill(['password' => null])->save();
+        }
         if ($user) {
             $user->forceFill(['google_id' => $google->getId(), 'email_verified_at' => $user->email_verified_at ?? now()])->save();
         } else {

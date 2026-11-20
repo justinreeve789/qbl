@@ -23,20 +23,31 @@ function show(html: HTMLElement | string) {
   else gate.replaceChildren(html);
 }
 
-function field(label: string, type: string, name: string, value = ''): HTMLLabelElement {
+function field(label: string, type: string, name: string, value = '', more: Partial<HTMLInputElement> = {}): HTMLLabelElement {
   const wrap = document.createElement('label');
   wrap.textContent = label;
   const input = document.createElement('input');
   Object.assign(input, { type, name, value, required: true, autocomplete: type === 'password' ? 'current-password' : 'off' });
   if (type === 'text') input.maxLength = 24;
+  Object.assign(input, more);
   wrap.appendChild(input);
   return wrap;
+}
+
+/** `/missions#create-account` (the marketing page's "Create an account") opens the sign-in form ready to make one. */
+function takeCreateAccount(): boolean {
+  if (window.location.hash !== '#create-account') return false;
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  return true;
 }
 
 /** Ask who is playing. Resolves once the API has issued a token. */
 function signIn(message?: string): Promise<User> {
   // A draft preview belongs to an editor account, so it always asks for a full sign-in.
   const mode0 = config.preview != null ? 'login' : config.authMode;
+  // Creating an account needs the Laravel API (login mode); a preview needs an existing editor account.
+  const mayRegister = config.authMode === 'login' && config.preview == null;
+  const askedToRegister = takeCreateAccount() && mayRegister;
   return new Promise((resolve) => {
     const form = document.createElement('form');
     form.className = 'qbl-card';
@@ -46,36 +57,62 @@ function signIn(message?: string): Promise<User> {
     error.className = 'qbl-error';
     error.textContent = message ?? '';
     // In login mode a "play as guest" link swaps the form; the API decides whether guests are allowed.
-    let mode: 'login' | 'guest' = mode0;
+    // "Create an account" swaps it for a name, email and password form, when the server allows that.
+    let mode: 'login' | 'register' | 'guest' = askedToRegister ? 'register' : mode0;
+    let offers = { google: false, register: askedToRegister };
     const fields = document.createElement('div');
     fields.className = 'qbl-fields';
+    const note = document.createElement('p');
+    note.className = 'qbl-note';
+    note.textContent = 'New accounts are for students. Teachers: once you have an account, ask your administrator to make it a teacher’s.';
     const button = document.createElement('button');
     button.className = 'qbl-button primary';
-    button.textContent = 'Continue';
     const swap = document.createElement('button');
     swap.type = 'button';
     swap.className = 'qbl-link';
-    const render = () => {
-      fields.replaceChildren(
-        ...(mode === 'login'
-          ? [field('Email', 'email', 'email'), field('Password', 'password', 'password')]
-          : [field('Your name', 'text', 'name', localStorage.getItem('qbl.name') ?? '')]),
-      );
-      swap.textContent = mode === 'login' ? 'Play as a guest instead' : 'Sign in with an account';
-      swap.hidden = config.authMode !== 'login' || config.preview != null;
-      (fields.querySelector('input') as HTMLInputElement).focus();
-    };
-    swap.addEventListener('click', () => {
-      mode = mode === 'login' ? 'guest' : 'login';
-      error.textContent = '';
-      render();
-    });
+    const create = document.createElement('button');
+    create.type = 'button';
+    create.className = 'qbl-link';
+    create.dataset.createAccount = '';
     // Offered when the server has Google sign-in set up. It leaves the page and comes back signed in.
     const google = document.createElement('button');
     google.type = 'button';
     google.className = 'qbl-button qbl-google';
-    google.textContent = 'Sign in with Google';
-    google.hidden = true;
+    const render = () => {
+      form.dataset.mode = mode;
+      fields.replaceChildren(
+        ...(mode === 'login'
+          ? [field('Email', 'email', 'email'), field('Password', 'password', 'password')]
+          : mode === 'register'
+            ? [
+                field('Your name', 'text', 'name', '', { maxLength: 60, autocomplete: 'name' }),
+                field('Email', 'email', 'email', '', { autocomplete: 'email' }),
+                field('Password (at least 8 characters)', 'password', 'password', '', { minLength: 8, autocomplete: 'new-password' }),
+                field('Type the password again', 'password', 'password_confirmation', '', { minLength: 8, autocomplete: 'new-password' }),
+              ]
+            : [field('Your name', 'text', 'name', localStorage.getItem('qbl.name') ?? '')]),
+      );
+      title.textContent = mode === 'register' ? 'Create an account' : 'Quest-Based Learning';
+      button.textContent = mode === 'register' ? 'Create account' : 'Continue';
+      note.hidden = mode !== 'register';
+      swap.textContent = mode === 'guest' ? 'Sign in with an account' : 'Play as a guest instead';
+      swap.hidden = config.authMode !== 'login' || config.preview != null || mode === 'register';
+      create.textContent = mode === 'register' ? 'I already have an account' : 'New here? Create an account';
+      create.hidden = !mayRegister || !offers.register || mode === 'guest';
+      google.textContent = mode === 'register' ? 'Sign up with Google' : 'Sign in with Google';
+      google.hidden = !offers.google;
+      (fields.querySelector('input') as HTMLInputElement).focus();
+    };
+    swap.addEventListener('click', () => {
+      mode = mode === 'guest' ? 'login' : 'guest';
+      error.textContent = '';
+      render();
+    });
+    create.addEventListener('click', () => {
+      mode = mode === 'register' ? 'login' : 'register';
+      error.textContent = '';
+      render();
+    });
     google.addEventListener('click', () => {
       // Google brings the browser back already signed in; this says the sign-in was just now.
       try {
@@ -85,8 +122,13 @@ function signIn(message?: string): Promise<User> {
       }
       window.location.assign(api.googleUrl(window.location.pathname + window.location.search));
     });
-    void api.providers().then((p) => (google.hidden = !p.google));
-    form.append(title, fields, error, button, google, swap);
+    void api.providers().then((p) => {
+      // Asked for by address, the form stays a sign-up form even if the server turned it off: it says why on submit.
+      offers = { google: p.google, register: p.register || askedToRegister };
+      create.hidden = !mayRegister || !offers.register || mode === 'guest';
+      google.hidden = !offers.google;
+    });
+    form.append(title, note, fields, error, button, google, create, swap);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = new FormData(form);
@@ -94,6 +136,16 @@ function signIn(message?: string): Promise<User> {
       try {
         if (mode === 'login') {
           resolve(await api.login(String(data.get('email')), String(data.get('password'))));
+        } else if (mode === 'register') {
+          if (data.get('password') !== data.get('password_confirmation')) throw new Error('The two passwords are not the same.');
+          resolve(
+            await api.register({
+              name: String(data.get('name')).trim(),
+              email: String(data.get('email')).trim(),
+              password: String(data.get('password')),
+              password_confirmation: String(data.get('password_confirmation')),
+            }),
+          );
         } else {
           const name = String(data.get('name')).trim();
           localStorage.setItem('qbl.name', name);

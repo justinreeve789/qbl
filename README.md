@@ -240,7 +240,23 @@ The game's and the editor's sign-in screens then show "Sign in with Google". Som
 | ------- | ------ |
 | `QBL_GOOGLE_DOMAINS` | Only addresses at these domains may sign in with Google (`school.org,students.school.org`). Empty: any Google account |
 
-Without it anyone with a Google account can register as a student. New accounts are always students; teachers are made with `qbl:user`, or from an existing account with `qbl:update-role <email> --role=teacher`. For a school, set `QBL_GOOGLE_DOMAINS`.
+Without it anyone with a Google account can register as a student. New accounts are always students; teachers are made with `qbl:user`, or from an existing account with `qbl:update-role <email> --role=teacher`. For a school, set `QBL_GOOGLE_DOMAINS` (and turn off creating accounts, below).
+
+### Creating an account without Google
+
+The game's sign-in screen (`/missions`) has "New here? Create an account": a name, an email address and a password (at least 8 characters, typed twice). The marketing page links to it (`/missions#create-account`), and so does the editor's sign-in screen. The new account is a **student's**, like a new Google account, and is signed in straight away; a teacher creates one and then has an administrator run `qbl:update-role <email> --role=teacher`.
+
+| Setting | Effect |
+| ------- | ------ |
+| `QBL_ALLOW_REGISTRATION` | `true` (default): anyone may create an account. `false`: only Google, or accounts made with `qbl:user` |
+
+Nobody checks that the address belongs to whoever typed it (there is no email sending yet), so:
+
+- An address that already has an account is refused, and creating an account never joins one.
+- `QBL_GOOGLE_DOMAINS` does not apply: a typed address proves nothing. A school that wants only its own Google accounts sets `QBL_ALLOW_REGISTRATION=false`.
+- If the owner of the address later signs in with Google, Google has proved it is theirs: the account becomes theirs, and the password chosen when it was created, and every sign-in made with it, stop working. Accounts made by an administrator keep their password as before.
+- `qbl:update-role` warns before making such an account a teacher or admin.
+- There is no "forgot my password" yet.
 
 How the pieces connect:
 

@@ -65,6 +65,10 @@ class UpdateRole extends Command
         $was = $user->role;
         $user->forceFill(['role' => $role])->save();
         $this->info("{$user->email} was a {$was} and is now a {$role}.");
+        // Anyone can create an account with any address on the sign-in screen.
+        if ($user->hasUnprovenAddress() && $role !== User::ROLE_STUDENT) {
+            $this->warn("This account was created on the sign-in screen, and nobody has checked that {$user->email} belongs to whoever created it. Make sure it is the person you mean (signing in once with Google would prove it).");
+        }
 
         return self::SUCCESS;
     }

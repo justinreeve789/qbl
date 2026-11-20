@@ -7,6 +7,10 @@ return [
     // Whether POST /api/auth/guest issues tokens for name-only guests.
     'allow_guests' => (bool) env('QBL_ALLOW_GUESTS', false),
 
+    // Whether people may create their own account (name, email, password) on the sign-in screen:
+    // POST /api/auth/register. Such accounts are students, like new Google accounts.
+    'allow_registration' => (bool) env('QBL_ALLOW_REGISTRATION', true),
+
     // Signing in with Google is on once GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set (config/services.php).
     'google' => [
         // Only addresses at these domains may sign in with Google. Empty: any Google account.
