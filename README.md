@@ -384,6 +384,7 @@ Characters can be given a voice of their own: their lines are recorded once by t
 ```sh
 docker compose exec app php artisan qbl:voice --list                 # about 50 voices, in 8 languages
 docker compose exec app php artisan qbl:voice {code} --assign        # give each character a voice and record every line
+docker compose exec app php artisan qbl:tts "Hello there!"           # say any text in a random voice, saved as tts-<voice>.mp3
 ```
 
 Generated missions are voiced as they are made. The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QBL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.

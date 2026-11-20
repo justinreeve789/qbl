@@ -71,6 +71,37 @@ final class VoiceCatalog
     }
 
     /**
+     * The voices that fit what is asked, in the catalog's order. Every filter is optional:
+     * `lang` matches a whole language ("en" is American and British, "en-GB" only British),
+     * `gender` and `age` match exactly, `traits` keeps voices with at least one of them, and
+     * `engine` keeps only voices with an entry of their own for that service (none borrowed).
+     *
+     * @param  array{lang?: ?string, gender?: ?string, age?: ?string, traits?: list<string>, engine?: ?string}  $want
+     * @return array<string, array>
+     */
+    public function matching(array $want): array
+    {
+        $lang = isset($want['lang']) && $want['lang'] !== '' ? strtolower(str_replace('_', '-', (string) $want['lang'])) : null;
+        $traits = array_map('strtolower', array_values(array_filter((array) ($want['traits'] ?? []), fn ($t) => $t !== '')));
+
+        return array_filter($this->voices, function (array $v) use ($want, $lang, $traits) {
+            if ($lang !== null && (str_contains($lang, '-') ? strtolower((string) $v['lang']) !== $lang : self::primary($v['lang']) !== $lang)) {
+                return false;
+            }
+            foreach (['gender', 'age'] as $field) {
+                if (isset($want[$field]) && $want[$field] !== '' && strtolower((string) $want[$field]) !== $v[$field]) {
+                    return false;
+                }
+            }
+            if ($traits && ! array_intersect($traits, array_map('strtolower', (array) $v['traits']))) {
+                return false;
+            }
+
+            return empty($want['engine']) || (isset($v['engines'][$want['engine']]) && is_array($v['engines'][$want['engine']]));
+        });
+    }
+
+    /**
      * What a voice is on a service: its own entry for it, or else that of the nearest voice that has
      * one (same language, then gender, then age). Null when no voice has one.
      *

@@ -31,6 +31,19 @@ docker compose exec app php artisan qbl:voice {code} --dry-run     # how many li
 docker compose exec app php artisan qbl:voice {code} --force       # record every line again
 ```
 
+**Any text, in a random voice:** `qbl:tts` says whatever you give it in a voice picked at random from the catalog and saves it as an MP3. It is for trying voices out and for one-off audio, such as a clip to upload as media; it does not touch any scenario.
+
+```sh
+docker compose exec app php artisan qbl:tts "Welcome aboard, {{QBLPlayerName}}!"   # a random English voice: tts-<voice>.mp3
+docker compose exec app php artisan qbl:tts "¿Listos?" --lang=es --gender=female    # a random Spanish woman
+docker compose exec app php artisan qbl:tts "Halt!" --trait=robot --trait=stern     # a voice that sounds like either
+docker compose exec app php artisan qbl:tts "Ready?" --count=5 --out=takes/         # five different voices, to compare
+docker compose exec app php artisan qbl:tts --file=intro.txt --voice=captain --timings  # one voice, with word timings in a .json
+docker compose cp app:/app/tts-captain.mp3 .                                        # copy a file out of the container
+```
+
+The pick is from voices of `--lang` (default `en`, American and British; `any` for every language) that have a voice of their own on the service in use, so two picks never borrow the same one. `--gender` (female, male, neutral), `--age` (child, young, adult, elder) and `--trait` narrow it, and `--seed` makes it repeatable. With no text it says the catalog's sample line in the voice's language. `{{QBLPlayerName}}` is said as the stand-in word ("explorer"); other placeholders are refused. Recordings are cached like a scenario's, so saying the same text in the same voice again does not call the service.
+
 **The mission generator** gives every character a voice from what the blueprint says of them (gender, age, how they sound, their personality and role), a different one each, and records their lines before packaging. `--no-voices` skips it. If the service is down the mission is still made, with a warning; record the lines later with `qbl:voice` or the editor.
 
 ### What is recorded
