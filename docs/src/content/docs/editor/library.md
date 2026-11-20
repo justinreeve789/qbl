@@ -65,7 +65,7 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 * **Repeats**: poses loop; other animations play once unless you say otherwise.
 * **Mirror**: draw it flipped, so art facing one way serves the other.
 
-**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it; one named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
+**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it: on a character, its list offers only the animations added here (not the standing, walking and close-up pictures). One named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
 
 **Voice**: pitch, pace and a preferred voice name, for when a line is read aloud by the browser.
 
@@ -77,7 +77,7 @@ Tick **Walks around on its own** to make the character part of the world rather 
 
 A character that walks around on its own can have a **Routine**: steps it repeats by itself, for everyone, whether or not anyone is watching. **+ Add step** offers:
 
-* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does.
+* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does. For a spot, **📍 Pick on the scene** opens a picture of the scene to click: the scene the character will most likely be in at that step (where it starts, or where an earlier step walked it), and another can be chosen at the top.
 * ⏳ **Wait**.
 * 💬 **Say something**: a speech bubble over the character.
 * 🤸 **Play an animation**.

@@ -2,6 +2,7 @@ import { pictureScale, scaleAt, type Media, type ScaleArea, type ShadowSpot } fr
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
+import type { SpotRequest } from '../../fields';
 import { sortedActions } from '../actions';
 import { standingOf } from '../../characters';
 import { sameSelection, type AreaList, type Bag, type LayerList, type Point, type SceneModel, type Selection } from './model';
@@ -46,10 +47,33 @@ export class SceneCanvas {
   private drag: Drag | null = null;
   private lastPress: { key: string; at: number } | null = null;
   private scale = 1;
+  /** A spot being chosen by clicking the scene, and where the pointer is meanwhile. */
+  private picking: { request: SpotRequest; hover: Point | null } | null = null;
+  private banner = h('div', { class: 'pick-banner', hidden: true });
+  /** Escape stops choosing a spot (and does not also close a pop-up the canvas is in). */
+  private onKey = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || !this.picking) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.cancelPick();
+  };
 
   constructor(private model: SceneModel, private host: Host) {
     this.stage.append(this.images, this.svg);
-    this.element = h('div', { class: 'canvas-scroll', tabindex: '0' }, this.stage);
+    this.element = h('div', { class: 'canvas-scroll', tabindex: '0' }, this.banner, this.stage);
+
+    // While a spot is being chosen, a press anywhere on the scene chooses it: nothing drawn there
+    // is selected or dragged, so placing a walk on top of a character or hotspot works.
+    this.svg.addEventListener('pointerdown', (e) => {
+      if (!this.picking || e.button !== 0) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      const { width: W, height: H } = this.size();
+      const at = this.point(e);
+      const { request } = this.picking;
+      this.endPick();
+      request.done({ x: Math.max(0, Math.min(W, at.x)), y: Math.max(0, Math.min(H, at.y)) });
+    }, { capture: true });
 
     this.svg.addEventListener('pointerdown', (e) => {
       // Reached only when nothing drawn handled the press: the empty scene.
@@ -58,6 +82,11 @@ export class SceneCanvas {
     this.svg.addEventListener('pointermove', (e) => {
       const at = this.point(e);
       this.host.pointer(at);
+      if (this.picking) {
+        this.picking.hover = at;
+        this.draw();
+        return;
+      }
       if (!this.drag) return;
       this.drag.moved = true;
       this.drag.move(at, this.drag.from);
@@ -80,8 +109,61 @@ export class SceneCanvas {
     };
     this.svg.addEventListener('pointerup', finish);
     this.svg.addEventListener('pointercancel', finish);
-    this.svg.addEventListener('pointerleave', () => this.host.pointer(null));
+    this.svg.addEventListener('pointerleave', () => {
+      this.host.pointer(null);
+      if (this.picking?.hover) {
+        this.picking.hover = null;
+        this.draw();
+      }
+    });
     new ResizeObserver(() => !this.drag && this.zoom === 0 && this.draw()).observe(this.element);
+  }
+
+  /**
+   * Choose a spot by clicking the scene: the next press on it picks the spot, instead of
+   * selecting or dragging. Escape stops. Returns a function that stops it too.
+   */
+  pick(request: SpotRequest): () => void {
+    this.cancelPick();
+    this.picking = { request, hover: null };
+    this.element.classList.add('picking');
+    this.banner.replaceChildren(
+      h('span', null, `📍 ${request.prompt}`),
+      h('button', { type: 'button', onclick: () => this.cancelPick() }, 'Cancel'),
+    );
+    this.banner.hidden = false;
+    document.addEventListener('keydown', this.onKey, { capture: true });
+    // Bring the spot it has now into view, so it is plain what is being changed.
+    if (request.at) this.reveal(request.at);
+    this.draw();
+    return () => {
+      if (this.picking?.request === request) this.cancelPick();
+    };
+  }
+
+  /** Stop choosing a spot without one. */
+  cancelPick() {
+    const request = this.picking?.request;
+    if (!request) return;
+    this.endPick();
+    request.cancelled?.();
+  }
+
+  private endPick() {
+    this.picking = null;
+    document.removeEventListener('keydown', this.onKey, { capture: true });
+    this.element.classList.remove('picking');
+    this.banner.hidden = true;
+    this.draw();
+  }
+
+  /** Scroll so this scene point is visible, if it is not. */
+  private reveal(at: Point) {
+    const el = this.element;
+    const x = at.x * this.scale;
+    const y = at.y * this.scale;
+    if (x < el.scrollLeft || x > el.scrollLeft + el.clientWidth) el.scrollLeft = x - el.clientWidth / 2;
+    if (y < el.scrollTop || y > el.scrollTop + el.clientHeight) el.scrollTop = y - el.clientHeight / 2;
   }
 
   /** Scene coordinates of the middle of what is visible, for placing new things. */
@@ -152,7 +234,8 @@ export class SceneCanvas {
     this.drawSpawns(selected, u, shapes);
     this.drawPlacements('items', selected, u, shapes);
     this.drawPlacements('characters', selected, u, shapes);
-    if (selected.kind === 'event') this.drawActionMarkers(selected.id, u, top);
+    if (selected.kind === 'event' && !this.picking) this.drawActionMarkers(selected.id, u, top);
+    if (this.picking) this.drawPicking(u, W, H, top);
 
     this.svg.replaceChildren(...shapes, ...top);
   }
@@ -502,14 +585,18 @@ export class SceneCanvas {
 
   // ------------------------------------------------------------ action markers
 
-  /** For the selected event: where its "image in scene" and spritemap actions will appear. */
+  /**
+   * For the selected event: where its "image in scene" and spritemap actions will appear, where its
+   * walks go and where its translates move things to. Each marker can be dragged.
+   */
   private drawActionMarkers(eventId: number, u: number, top: SVGElement[]) {
     const store = this.model.store;
-    for (const action of sortedActions({ store }, eventId)) {
-      if (action.type !== 'image_fixed' && action.type !== 'spritemap') continue;
+    const actions = sortedActions({ store }, eventId);
+    for (const action of actions) {
       const p = params(action);
-      const x = Number(p.position_x ?? 0);
-      const y = Number(p.position_y ?? 0);
+      const place = this.markerPlace(action, p);
+      if (!place) continue;
+      const { x, y } = place.at;
       const press = (e: PointerEvent) =>
         this.begin(e, null, {
           move: (to, from) => {
@@ -518,11 +605,13 @@ export class SceneCanvas {
           },
           end: () => void store.patch('actions', action.id, { params: p }),
         });
+      // Where it starts from, when that is known: a dashed line shows the way it goes.
+      if (place.from) top.push(s('path', { class: `action-route ${place.kind}`, d: `M ${place.from.x} ${place.from.y} L ${x} ${y}` }));
+      const group = s('g', { class: `action-marker ${place.kind}`, 'data-marker': action.id, onpointerdown: press });
       const media = store.byId('media', action.media_id as number | null);
-      const url = mediaUrl(store, media);
+      const url = action.type === 'image_fixed' ? mediaUrl(store, media) : null;
       const size = url ? this.natural(url) : null;
-      const group = s('g', { class: 'action-marker', onpointerdown: press });
-      if (url && size && action.type === 'image_fixed') {
+      if (url && size) {
         const w = size.x * Number(p.scale_x ?? 1) * Number(media?.scale_x ?? 1);
         const hgt = size.y * Number(p.scale_y ?? 1) * Number(media?.scale_y ?? 1);
         group.append(s('image', { href: url, x: x - w / 2, y: y - hgt / 2, width: w, height: hgt, preserveAspectRatio: 'none', opacity: 0.75 }));
@@ -530,9 +619,65 @@ export class SceneCanvas {
       group.append(
         s('path', { d: `M ${x - 10 * u} ${y} H ${x + 10 * u} M ${x} ${y - 10 * u} V ${y + 10 * u}` }),
         s('circle', { cx: x, cy: y, r: 7 * u }),
-        s('text', { class: 'shape-name', x, y: y - 14 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, `Action #${action.id}`),
+        s('text', { class: 'shape-name', x, y: y - 14 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, place.name),
+        s('title', null, 'Drag to move'),
       );
       top.push(group);
+    }
+  }
+
+  /** Where an action's marker goes, what it is called, and where the thing it moves starts. */
+  private markerPlace(action: Row, p: Bag): { kind: string; at: Point; from: Point | null; name: string } | null {
+    const store = this.model.store;
+    const num = (v: unknown) => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
+    switch (action.type) {
+      case 'image_fixed':
+      case 'spritemap':
+        return { kind: 'shown', at: { x: num(p.position_x) ?? 0, y: num(p.position_y) ?? 0 }, from: null, name: `Action #${action.id}` };
+      case 'walk': {
+        if ((p.to ?? 'point') !== 'point') return null;
+        const x = num(p.position_x);
+        const y = num(p.position_y);
+        if (x == null || y == null) return null;
+        if (p.target === 'player') return { kind: 'walk', at: { x, y }, from: null, name: '🚶 The player walks here' };
+        const character = store.byId('characters', p.character_id as number | null);
+        const placed = this.model.layout('characters').find((c) => c.character_id === p.character_id);
+        const from = placed ? { x: Number(placed.position_x ?? 0), y: Number(placed.position_y ?? 0) } : null;
+        return { kind: 'walk', at: { x, y }, from, name: `🚶 ${String(character?.name ?? 'A character')} walks here` };
+      }
+      case 'translate': {
+        // An empty X or Y keeps the target's own, so the marker uses that.
+        const target = store.byId('actions', p.target_id as number | null);
+        const tp = target ? params(target) : {};
+        const from = target && num(tp.position_x) != null && num(tp.position_y) != null ? { x: num(tp.position_x)!, y: num(tp.position_y)! } : null;
+        const x = num(p.position_x) ?? from?.x ?? null;
+        const y = num(p.position_y) ?? from?.y ?? null;
+        if (x == null || y == null || (num(p.position_x) == null && num(p.position_y) == null)) return null;
+        return { kind: 'translate', at: { x, y }, from, name: `↗ Action #${target?.id ?? '?'} moves here` };
+      }
+      default:
+        return null;
+    }
+  }
+
+  /** While a spot is being chosen: the spot as it is now, and crosshairs where the pointer is. */
+  private drawPicking(u: number, W: number, H: number, top: SVGElement[]) {
+    const { request, hover } = this.picking!;
+    if (request.at) {
+      const { x, y } = request.at;
+      top.push(s('g', { class: 'pick-current' },
+        s('circle', { cx: x, cy: y, r: 7 * u }),
+        s('text', { class: 'shape-name', x, y: y - 14 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, 'Now'),
+      ));
+    }
+    if (hover) {
+      const x = Math.max(0, Math.min(W, hover.x));
+      const y = Math.max(0, Math.min(H, hover.y));
+      top.push(s('g', { class: 'pick-hover' },
+        s('path', { d: `M 0 ${y} H ${W} M ${x} 0 V ${H}` }),
+        s('circle', { cx: x, cy: y, r: 7 * u }),
+        s('text', { class: 'shape-name', x: x + 12 * u, y: y - 12 * u, 'font-size': 12 * u }, `${x}, ${y}`),
+      ));
     }
   }
 }

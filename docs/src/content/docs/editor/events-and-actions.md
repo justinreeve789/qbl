@@ -51,6 +51,7 @@ Picture labels can be made **Solid**, so players walk around them. A solid label
 
 Under 🎬 Actions, **+ Add action…** lists every type with a one-line description. A new action arrives with sensible starting values so it is valid straight away.
 
+* Anything with an **X** and **Y** in the scene (**Walk** to a spot, **Translate**, **Image in scene**, **Spritemap**) has **📍 Pick on the scene** under them: press it, then click the scene to set both. While choosing, a click on a character or hotspot picks the spot under it instead of selecting it. These spots are drawn on the canvas while the event is selected, and can be dragged there.
 * Actions run **in the order listed**. **Drag the ⠿ grip** at the left of a card to move it; drop it on the upper or lower half of another card to put it before or after.
 * Click a card to open it. Its one-line summary tells you what it does when it is closed.
 * **Wait for this to finish before the next action** (on by default) makes the event pause until this action is done. Turn it off to let the next action start at once, for a sound that plays under a conversation.
@@ -119,7 +120,7 @@ An **award** is given **once per student** by default, however often the event r
 
 **Walk** moves someone on foot: around whatever is in the way, with their walking pictures, turning the way they go. Choose **Who walks** and **Walk to**; only the fields for that destination are shown.
 
-* **A spot in the scene**: its **X** and **Y**.
+* **A spot in the scene**: its **X** and **Y**. Press **📍 Pick on the scene** and click the scene where the walker should go, rather than typing the numbers; **Esc** or **Cancel** stops without changing them. While the event is selected, the spot is drawn on the canvas as a marker, with a dashed line from where the character stands, and the marker can be dragged.
 * **A spawn point in the scene**: one of the scene's spawn points.
 * **Another scene, through its doors**: the walker heads for a hotspot of this scene whose jump goes to that scene (an exit made on the scene map is one), goes through it and arrives at the spawn point the jump names. **Then walk on to** sends a character that walks around on its own on to a spawn point there.
 

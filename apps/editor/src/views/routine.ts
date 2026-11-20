@@ -3,9 +3,10 @@ import { characterRoams, normalizeRoutine, ROUTINE_STEP_TYPES, startPlacement, t
 import type { Row } from '../api';
 import { actionSummary, params, sceneLabel, walkDestination } from '../describe';
 import { fold, h, help } from '../dom';
-import { form, select, withValue, type Field, type FormContext, type Values } from '../fields';
+import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
 import { ACTION_LOOK, ACTIONS, tidyWalk, WALK_FIELDS } from '../schema';
 import { inlineConditions, type ConditionValue } from './conditions';
+import { pickSpotInPopup } from './scene/spotPicker';
 
 /** Which routine steps are open, by character and step. Kept outside the view so a redraw does not close them. */
 const open = new Set<string>();
@@ -96,15 +97,20 @@ export function gettingAround(ctx: FormContext, row: Row): HTMLElement {
   return fold(`character-routine-${id}`, title, roams, h('div', { class: 'routine', 'data-routine': id }, ...parts));
 }
 
-/** Where the character starts: its first placement. */
-function startsAt(ctx: FormContext, characterId: number): HTMLElement {
+/** The scene a roaming character starts in: that of its first placement, taking the scenes in order. */
+function startScene(ctx: FormContext, characterId: number): number | undefined {
   const scenes = ctx.store.rows('scenes')
     .slice()
     .sort((a, b) => Number(a.sequence) - Number(b.sequence) || a.id - b.id)
     .map((s) => ({ id: s.id, characters: (params(s, 'layout').characters as Array<{ character_id: number }> | undefined) ?? [] }));
-  const start = startPlacement({ scenes } as unknown as Pick<Scenario, 'scenes'>, characterId);
-  if (!start) return h('p', { class: 'issue warning' }, 'Place it in a scene (on the Scenes page) to give it somewhere to start.');
-  return h('p', { class: 'muted' }, `Starts in ${sceneLabel(ctx.store.byId('scenes', start.scene.id))}, where it is placed.`);
+  return startPlacement({ scenes } as unknown as Pick<Scenario, 'scenes'>, characterId)?.scene.id as number | undefined;
+}
+
+/** Where the character starts: its first placement. */
+function startsAt(ctx: FormContext, characterId: number): HTMLElement {
+  const start = startScene(ctx, characterId);
+  if (start == null) return h('p', { class: 'issue warning' }, 'Place it in a scene (on the Scenes page) to give it somewhere to start.');
+  return h('p', { class: 'muted' }, `Starts in ${sceneLabel(ctx.store.byId('scenes', start))}, where it is placed.`);
 }
 
 function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: () => RoutineStep[], write: (next: Routine, structural?: boolean) => void): HTMLElement {
@@ -125,14 +131,27 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     if (!type) return;
     const list = steps();
     open.add(`${id}:${list.length}`);
-    setSteps([...list, { type, ...STEP_DEFAULTS[type as RoutineStepType] } as RoutineStep]);
+    // A new animation step starts with one of the character's own animations.
+    const values = { type, ...STEP_DEFAULTS[type as RoutineStepType] };
+    setSteps([...list, (type === 'animate' ? tidyAnimate(values, { ...ctx, characterId: id }) : values) as RoutineStep]);
   }, '+ Add step…');
   add.classList.add('add-action');
+
+  // The scene each step most likely happens in: where it starts, then wherever a walk to another
+  // scene took it. A spot picked for a walk is shown on that scene first.
+  let scene = startScene(ctx, id);
+  const sceneAt = routine.steps.map((step) => {
+    const here = scene;
+    const v = step as unknown as Values;
+    if (step.type === 'walk' && v.to === 'scene' && typeof v.scene_id === 'number') scene = v.scene_id;
+    return here;
+  });
 
   const cards = routine.steps.map((step, index) => {
     const key = `${id}:${index}`;
     const type = step.type;
     const values = step as unknown as Values;
+    const stepCtx: FormContext = { ...ctx, characterId: id, spotScene: sceneAt[index], pickSpot: (request) => pickSpotInPopup(ctx.store, request) };
     const commit = (k: string, value: unknown, field: Field) => {
       let bag = withValue({ ...(steps()[index] as unknown as Values) }, k, value, field);
       if (type === 'walk' && k === 'to') bag = tidyWalk(bag);
@@ -142,7 +161,7 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     const body = h(
       'div',
       { class: 'card-body' },
-      form(STEP_FIELDS[type] ?? [], values, commit, ctx),
+      form(STEP_FIELDS[type] ?? [], values, commit, stepCtx),
       form([{ key: 'blocking', label: 'Wait for this to finish before the next step', kind: 'bool', default: true, wide: true }], values, commit, ctx),
       inlineConditions(
         ctx,

@@ -3,7 +3,7 @@ import type { ActionType } from '@qbl/shared';
 import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
 import { confirmDelete, h, help } from '../dom';
-import { form, select, withValue, type Field, type FormContext, type Values } from '../fields';
+import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
 import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, tidyWalk } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 
@@ -15,6 +15,8 @@ let dragging: number | null = null;
 
 /** Columns of the actions table; every other attribute of an action lives in `params`. */
 const COLUMNS = new Set(['media_id', 'blocking']);
+/** An animate action's fields that say what is animated: changing one can leave its animation behind. */
+const ANIMATE_SUBJECT = new Set(['target', 'character_id', 'item_id']);
 
 /** Yes/no attributes that are shown as a choice between two named states. */
 function choice(type: string, values: Record<string, unknown>): Record<string, string> {
@@ -81,6 +83,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
       else {
         let next = withValue(params(current()), key, value, field);
         if (type === 'walk' && key === 'to') next = tidyWalk(next);
+        if (type === 'animate' && ANIMATE_SUBJECT.has(key)) next = tidyAnimate(next, ctx);
         void store.patch('actions', id, { params: next }, field.structural === true);
       }
     };
@@ -197,6 +200,7 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
       if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
       let action = withValue(at(index).action ?? {}, key, value, field);
       if (type === 'walk' && key === 'to') action = tidyWalk(action);
+      if (type === 'animate' && ANIMATE_SUBJECT.has(key)) action = tidyAnimate(action, ctx);
       replace(index, { ...at(index), action: { ...action, type } }, key === 'media_id' || field.structural === true);
     };
 

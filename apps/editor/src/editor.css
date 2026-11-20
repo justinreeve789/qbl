@@ -250,6 +250,33 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .action-marker { cursor: move; }
 .action-marker path { stroke: #ffd24a; stroke-width: 2; fill: none; }
 .action-marker circle { fill: rgba(255, 210, 74, 0.35); stroke: #ffd24a; stroke-width: 2; }
+.action-marker.walk path { stroke: #5ee0c8; }
+.action-marker.walk circle { fill: rgba(94, 224, 200, 0.35); stroke: #5ee0c8; }
+.action-marker.translate path { stroke: #c9a2ff; }
+.action-marker.translate circle { fill: rgba(201, 162, 255, 0.35); stroke: #c9a2ff; }
+.action-route { fill: none; stroke: #ffd24a; stroke-width: 2; stroke-dasharray: 6 5; pointer-events: none; }
+.action-route.walk { stroke: #5ee0c8; }
+.action-route.translate { stroke: #c9a2ff; }
+
+/* Choosing a spot by clicking the scene ("Pick on the scene"). */
+.canvas-scroll.picking .stage-overlay, .canvas-scroll.picking .stage-overlay * { cursor: crosshair !important; }
+.canvas-scroll.picking .stage { box-shadow: 0 0 0 2px #5ee0c8; }
+/* Sticky and of no height, so showing it does not move the scene under the pointer. */
+.pick-banner { position: sticky; top: 0; left: 0; height: 0; z-index: 3; display: flex; justify-content: center; align-items: flex-start; gap: 8px; }
+.pick-banner[hidden] { display: none; }
+.pick-banner > * { position: relative; top: -4px; background: #0f3d36; color: #fff; border: 1px solid #5ee0c8; border-radius: 999px; padding: 5px 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); font-size: 13px; white-space: nowrap; }
+.pick-banner > button { cursor: pointer; }
+.pick-banner > button:hover { background: #17564c; }
+.pick-hover path { stroke: rgba(94, 224, 200, 0.7); stroke-width: 1; fill: none; stroke-dasharray: 4 4; pointer-events: none; }
+.pick-hover circle { fill: rgba(94, 224, 200, 0.35); stroke: #5ee0c8; stroke-width: 2; pointer-events: none; }
+.pick-hover text, .pick-current text { pointer-events: none; }
+.pick-current circle { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 3 3; pointer-events: none; }
+.spot-field { display: flex; }
+.spot-pick { gap: 6px; }
+.spot-pick.picking { background: #0f3d36; color: #fff; border-color: #5ee0c8; }
+.spot-popup { display: flex; flex-direction: column; gap: 8px; }
+.spot-popup .toolbar { display: flex; gap: 12px; align-items: center; }
+.spot-popup-canvas { height: min(68vh, 720px); display: flex; flex-direction: column; border-radius: 8px; overflow: hidden; }
 .legend { margin: 0; padding: 4px 10px; background: var(--surface); border-top: 1px solid var(--line); font-size: 12px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .key { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 8px; }
 .key.click { background: var(--click); }
