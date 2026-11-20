@@ -212,7 +212,7 @@ class ScenarioStore
         return $document;
     }
 
-    /** The published document for a 16-letter code (or a shortname), or null. */
+    /** The published document for a scenario code (or a shortname), or null. */
     public function findPublished(string $key): ?array
     {
         // A code always wins over a shortname that happens to be spelled the same.
@@ -232,7 +232,7 @@ class ScenarioStore
 
     // ================================================================= scenarios
 
-    /** Sixteen lowercase letters, not used by any other scenario. Players open /{code} to play. */
+    /** A new scenario's code: sixteen lowercase letters, not used by any other scenario. Players open /{code} to play. */
     public function generateCode(): string
     {
         do {
@@ -243,6 +243,79 @@ class ScenarioStore
         } while ($this->one('SELECT `id` FROM `scenarios` WHERE `code` = ?', [$code]));
 
         return $code;
+    }
+
+    /** The site's own first path segments; see RESERVED_CODES in packages/shared/src/site.ts, which must list the same. */
+    public const RESERVED_CODES = [
+        'about', 'admin', 'api', 'app', 'assets', 'auth', 'classes', 'docs', 'editor', 'game', 'help', 'home', 'index',
+        'login', 'logout', 'media', 'missions', 'new', 'play', 'profile', 'register', 'scenario-assets', 'scenarios',
+        'settings', 'shop', 'signin', 'signout', 'signup', 'static', 'teach', 'wardrobe',
+    ];
+
+    /**
+     * Why $code cannot be a scenario code, or null when it can: 4 to 32 lowercase letters, digits
+     * and single hyphens, starting with a letter, not one of the site's own addresses. Pass it
+     * lowercased. The same rules as codeProblem() in packages/shared/src/site.ts.
+     */
+    public static function codeProblem(string $code): ?string
+    {
+        $length = strlen($code);
+        if ($length < 4) {
+            return 'A code needs at least 4 characters.';
+        }
+        if ($length > 32) {
+            return 'A code can have at most 32 characters.';
+        }
+        if (! preg_match('/^[a-z0-9-]+$/', $code)) {
+            return 'Use only lowercase letters, digits and hyphens.';
+        }
+        if (! preg_match('/^[a-z]/', $code)) {
+            return 'A code starts with a letter.';
+        }
+        if (! preg_match('/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/', $code)) {
+            return 'A hyphen goes between letters or digits: not at the end, and not two in a row.';
+        }
+        if (in_array($code, self::RESERVED_CODES, true)) {
+            return "\u{201C}$code\u{201D} is one of the site\u{2019}s own addresses.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Give a scenario a new code. Players open it at /{new code} from now on, and the old code
+     * stops working (a shortname that was the old code becomes the new one, since shortnames open
+     * scenarios too). It applies at once, to the published version as well, so it is not a change
+     * that waits for publishing and does not count as one.
+     */
+    public function changeCode(int $id, string $code): array
+    {
+        $code = strtolower(trim($code));
+        if (($problem = self::codeProblem($code)) !== null) {
+            throw new StoreError(422, $problem);
+        }
+
+        return $this->transaction(function () use ($id, $code) {
+            $current = $this->one('SELECT `code`, `shortname` FROM `scenarios` WHERE `id` = ?', [$id]);
+            if (! $current) {
+                throw new StoreError(404, 'Scenario not found.');
+            }
+            if ($current['code'] === $code) {
+                return $this->scenario($id);
+            }
+            // A shortname opens a scenario too, so a code spelled like another's shortname is refused as well.
+            if ($this->one('SELECT `id` FROM `scenarios` WHERE (`code` = ? OR LOWER(`shortname`) = ?) AND `id` <> ?', [$code, $code, $id])) {
+                throw new StoreError(409, 'Another scenario already uses that code. Try a different one.');
+            }
+            $set = ['code' => $code];
+            if (strtolower((string) $current['shortname']) === $current['code']) {
+                $set['shortname'] = $code;
+            }
+            // Not update(): that would mark the scenario as having unpublished changes.
+            $this->run('UPDATE `scenarios` SET '.implode(', ', array_map(fn ($c) => "`$c` = ?", array_keys($set))).' WHERE `id` = ?', [...array_values($set), $id]);
+
+            return $this->scenario($id);
+        });
     }
 
     /** Create a scenario with one empty scene, so it can be opened and tested straight away. */
@@ -665,8 +738,8 @@ class ScenarioStore
                 $now = self::now();
                 $row = $this->encode('scenarios', $scenario);
                 $code = strtolower((string) ($scenario['code'] ?? ''));
-                if (! preg_match('/^[a-z]{16}$/', $code)) {
-                    throw new StoreError(422, 'Seed data needs a 16-letter code.');
+                if (($problem = self::codeProblem($code)) !== null) {
+                    throw new StoreError(422, "Seed data needs a scenario code: $problem");
                 }
                 if ($this->one('SELECT `id` FROM `scenarios` WHERE `code` = ? AND `id` <> ?', [$code, $id])) {
                     throw new StoreError(409, "Another scenario already has the code \"$code\".");

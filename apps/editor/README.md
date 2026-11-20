@@ -8,8 +8,8 @@ It is plain TypeScript and DOM, with no UI framework: a few hundred lines of hel
 
 ## What it does
 
-- **Scenarios**: list the ones you may edit, create one. A new scenario gets its permanent
-  16-letter code and a first scene.
+- **Scenarios**: list the ones you may edit, create one. A new scenario gets a code of 16
+  random letters (changeable on the Publish page) and a first scene.
 - **Scenes**: create, order, delete, choose the start scene. The page shows scenes as **Cards**
   or as a **Map** (a switch at the top; each browser remembers its choice). On the map every scene
   is a box and every jump an arrow, coloured by how players take it (walk in, click, an event or

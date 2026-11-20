@@ -362,7 +362,7 @@ export const SCENARIO_FIELDS: Field[] = [
   { key: 'start_scene_id', label: 'Start scene', kind: 'scene' },
   { key: 'max_players', label: 'Most players in one room', kind: 'number', min: 1, placeholder: 'No limit' },
   { key: 'default_language', label: 'Language', kind: 'text', placeholder: 'en-us' },
-  { key: 'shortname', label: 'Short name', kind: 'text', hint: 'A readable name for the scenario. Players use the 16-letter code.' },
+  { key: 'shortname', label: 'Short name', kind: 'text', hint: 'A readable name for the scenario. Players use its code, which you can change on the Publish page.' },
   { key: 'enable_save_session', label: 'Save each player’s progress between visits', kind: 'bool', default: true, wide: true },
   { key: 'require_login', label: 'Players must sign in (no guests)', kind: 'bool', default: true, wide: true },
   { key: 'allow_groups', label: 'Players can be split into groups, each in its own room', kind: 'bool', wide: true },

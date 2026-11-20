@@ -63,7 +63,7 @@ The quickest way in is to follow the [walkthrough](/docs/editor/walkthrough/set-
 
 ## A mental model
 
-* A **scenario** is a whole mission. It has a permanent 16-letter **code**, and players open it at `/{code}`.
+* A **scenario** is a whole mission. It has a **code**, and players open it at `/{code}`. The code is 16 random letters until you change it on the Publish tab.
 * A scenario has **scenes**: places with a background, somewhere to walk and things to find.
 * A scene has **events**: *start* events run on arrival, *end* events on leaving, *hotspot* events when a player clicks or walks into a place, *indirect* events only when something else runs them.
 * An event is a list of **actions** that run in order: say something, show a picture, ask a question, change a variable, award stars, jump to another scene.

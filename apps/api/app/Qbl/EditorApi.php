@@ -10,10 +10,11 @@ namespace App\Qbl;
  * what it returns. All routes live under /api/editor.
  *
  *   GET    scenarios                              scenarios the user may edit
- *   POST   scenarios                              create one (with a first scene and a new 16-letter code)
+ *   POST   scenarios                              create one (with a first scene and a new code of 16 random letters)
  *   GET    scenarios/{id}                         every row of the scenario, typed, for the editor
  *   PATCH  scenarios/{id}                         change scenario attributes
  *   DELETE scenarios/{id}
+ *   PUT    scenarios/{id}/code                    {code}: the address players open it at; the old one stops working
  *   POST   scenarios/{id}/rows/{table}            add a row: media, variables, items, characters, scenes, events, actions, conditions, labels
  *   PATCH  scenarios/{id}/rows/{table}/{rowId}
  *   DELETE scenarios/{id}/rows/{table}/{rowId}
@@ -100,6 +101,15 @@ class EditorApi
                 'DELETE' => $this->deleted(fn () => $this->store->deleteScenario($id)),
                 default => throw new StoreError(405, 'Method not allowed.'),
             };
+        }
+
+        if ($rest === ['code'] && $method === 'PUT') {
+            // The shared samples (the demo among them) are linked from outside the editor; only an admin may move them.
+            if ($scenario['user_id'] === null && ($user['role'] ?? '') !== 'admin') {
+                throw new StoreError(403, 'Only an admin can change the code of a shared sample.');
+            }
+
+            return [200, ['scenario' => $this->store->changeCode($id, (string) ($body['code'] ?? ''))]];
         }
 
         if ($rest === ['preview'] && $method === 'GET') {

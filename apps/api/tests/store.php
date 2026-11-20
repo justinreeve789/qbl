@@ -160,6 +160,38 @@ same($call('GET', "scenarios/$sid", [], $other)[0], 404, 'and cannot open someon
 same($call('PATCH', "scenarios/$sid", ['title' => 'Hacked'], $other)[0], 404, 'or change it');
 same($call('GET', "scenarios/$sid", [], $admin)[0], 200, 'an admin can');
 
+// Changing the code players open the scenario at. The old code stops working.
+[, $body] = $call('POST', 'scenarios', ['title' => 'Code test']);
+$cid = $body['scenario']['id'];
+$oldCode = $body['scenario']['code'];
+same($body['scenario']['shortname'], $oldCode, 'a new scenario\'s shortname starts as its code');
+$call('POST', "scenarios/$cid/publish");
+check($store->findPublished($oldCode) !== null, 'the published scenario opens at its first code');
+$codeBefore = $store->scenario($cid);
+[$status, $body] = $call('PUT', "scenarios/$cid/code", ['code' => '  Rain-Forest-1 ']);
+same([$status, $body['scenario']['code'] ?? null], [200, 'rain-forest-1'], 'a teacher can change the code; it is trimmed and lowercased');
+same($body['scenario']['shortname'], 'rain-forest-1', 'a shortname that was the old code follows it');
+same($body['scenario']['updated_at'], $codeBefore['updated_at'], 'changing the code is not an unpublished change');
+same($store->findPublished('rain-forest-1')['code'] ?? null, 'rain-forest-1', 'the published scenario opens at the new code at once, with the new code in it');
+same($store->findPublished($oldCode), null, 'and no longer at the old one');
+same($call('PUT', "scenarios/$cid/code", ['code' => 'rain-forest-1'])[0], 200, 'keeping the same code is fine');
+foreach (['abc' => 'too short', str_repeat('a', 33) => 'too long', '1forest' => 'starting with a digit', 'rain_forest' => 'with an underscore', 'rain--forest' => 'with two hyphens in a row', 'forest-' => 'ending with a hyphen', 'missions' => 'one of the site\'s addresses', 'docs' => 'the docs\' address'] as $bad => $why) {
+    [$status, $body] = $call('PUT', "scenarios/$cid/code", ['code' => $bad]);
+    same($status, 422, "a code is refused when $why");
+}
+check(is_string($body['error'] ?? $body['message'] ?? null), 'with a reason');
+same($call('PUT', "scenarios/$cid/code", ['code' => 'starshipexplorer'])[0], 409, 'another scenario\'s code is refused');
+same($call('PUT', "scenarios/$cid/code", ['code' => 'starship'])[0], 409, 'and so is another scenario\'s shortname, which opens it too');
+same($call('PUT', "scenarios/$cid/code", ['code' => 'stolen-code'], $other)[0], 404, 'another teacher cannot change it');
+same($call('PUT', 'scenarios/1/code', ['code' => 'my-starship'])[0], 403, 'a teacher cannot move a shared sample');
+same($store->scenario(1)['code'], 'starshipexplorer', 'which keeps its code');
+same($call('PATCH', "scenarios/$sid", ['shortname' => 'Rain-Forest-1'])[0], 422, 'another scenario cannot take the new code as its shortname');
+same($call('PATCH', "scenarios/$cid", ['shortname' => 'Rain-Forest-1'])[0], 200, 'its own shortname may match its code');
+$store->updateScenario($cid, ['shortname' => 'rainforest-rescue']);
+same($call('PUT', "scenarios/$cid/code", ['code' => 'rainforest-two'])[1]['scenario']['shortname'] ?? null, 'rainforest-rescue', 'a shortname chosen by hand is left alone');
+same($call('PUT', "scenarios/$cid/code", ['code' => 'rain-forest-1'])[0], 200, 'a code can be changed again');
+same($call('DELETE', "scenarios/$cid")[0], 204, 'the code test scenario is deleted again');
+
 // Media by URL, and a scrolling background layer on the scene.
 [$status, $body] = $call('POST', "scenarios/$sid/rows/media", ['type' => 'image', 'url' => 'https://example.org/forest.jpg', 'width' => 3000, 'height' => 1080]);
 same($status, 201, 'media can be added by URL');

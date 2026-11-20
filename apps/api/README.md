@@ -65,6 +65,7 @@ One migration per table, in the order the tables depend on each other, then one 
 | `2026_11_16_000000`, `000001` | The scenario `code`; hotspot reveal distances |
 | `2026_11_16_000002` to `000005` | Stars and XP on `users`; `progress_ledger`, `shop_items`, `user_items` |
 | `2026_11_16_000006`, `000007` | The event `audience`; Google sign-in on `users` |
+| `2026_11_20_000200_widen_scenario_code` | `scenarios.code` from `char(16)` to `varchar(32)`, for codes chosen in the editor |
 
 These tables used to be created by two large migrations. A database made then already has the tables, so
 every one of these files checks before it creates and does nothing where the table (or column) exists; the

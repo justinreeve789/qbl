@@ -152,6 +152,24 @@ export class Store {
     if (!row) await this.load();
   }
 
+  /**
+   * Give the scenario a new player code. It applies to players at once, published or not, so it
+   * is not an unpublished change. Returns null on success, or the reason it was refused, for the
+   * form to show (no toast).
+   */
+  async changeCode(code: string): Promise<string | null> {
+    await this.settled();
+    try {
+      const row = await this.api.changeCode(this.scenarioId, code);
+      // Only the code (and a shortname that followed it): the rest of the row is as it was.
+      Object.assign(this.bundle.scenario, { code: row.code, shortname: row.shortname });
+      this.emit();
+      return null;
+    } catch (err) {
+      return err instanceof ApiError ? err.message : 'Could not save. Check your connection.';
+    }
+  }
+
   /** Publish the scenario as it is now: this is what players get at /{code}. */
   async publish(): Promise<boolean> {
     const row = await this.send(() => this.api.publish(this.scenarioId));

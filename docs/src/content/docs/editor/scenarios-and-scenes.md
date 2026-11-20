@@ -5,7 +5,7 @@ description: The scenarios list, creating and copying scenarios, and managing a 
 
 ## The scenarios list
 
-The **Editor** page lists every scenario you may edit as a card. Each card shows its title, whether it is a **Draft** or **Published**, and its 16-letter code, with these buttons:
+The **Editor** page lists every scenario you may edit as a card. Each card shows its title, whether it is a **Draft** or **Published**, and its code, with these buttons:
 
 | Button | What it does |
 | ------ | ------------ |
@@ -25,7 +25,7 @@ Duplicating, exporting and importing are described in [Backups, copies and the s
 * **Start aboard the starship** (the default) begins as your own copy of the starship hub: eight rooms, a crew and a marketplace you can change freely. Choose this when your mission is launched from the ship.
 * **Start empty** gives one blank scene. Choose this for a self-contained mission, as the [walkthrough](/docs/editor/walkthrough/set-up/) does.
 
-Either way the scenario gets its permanent code and opens on its **Scenes** page.
+Either way the scenario gets a code of 16 random letters (you can change it on the **Publish** tab) and opens on its **Scenes** page.
 
 :::tip
 Teachers also reach this dialog from the **New scenario** button on their missions page, which opens the editor straight into it.

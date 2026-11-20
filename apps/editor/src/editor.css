@@ -1079,6 +1079,8 @@ h2.section-head { font-size: 15px; letter-spacing: 0.02em; margin-bottom: 12px; 
 .link-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px; margin-bottom: 8px; background: var(--field); border: 1px solid var(--edge); border-radius: 8px; }
 .link-box .code { font-size: 15px; background: #2b2f37; }
 .link-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.code-edit .code-input { display: flex; align-items: center; gap: 2px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.code-edit .code-input input { width: 22ch; font-family: inherit; font-size: 15px; }
 
 @media (max-width: 860px) {
   .two-panel, .word-panel { grid-template-columns: 1fr; }

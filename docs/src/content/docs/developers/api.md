@@ -87,7 +87,7 @@ Body `{ "token", "email", "password", "password_confirmation" }` (the token and 
 
 ### `GET /api/scenarios/{code}/play`
 
-`{code}` is the scenario's unique 16-letter code, the same one players have in their address bar (`/{code}`). A shortname is accepted too.
+`{code}` is the scenario's unique code, the same one players have in their address bar (`/{code}`). A shortname is accepted too.
 
 Returns `{ "scenario": Scenario }`: the published scenario document with the caller's save data in `scenario.session` (null if none). Returns 401 when the scenario has `require_login: true` (or is private) and there is no valid token, and 404 for an unknown or unpublished scenario.
 
