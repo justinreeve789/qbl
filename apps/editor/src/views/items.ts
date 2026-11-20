@@ -56,7 +56,7 @@ function itemCard(ctx: FormContext, row: Row): HTMLElement {
 /** The item's settings, in groups; a group shows only when it applies (the worn or ridden offsets for something worn or ridden). */
 const IN_SCENE = pick(ITEM_SETTINGS_FIELDS, ['scale', 'placement']).map((f) => (f.key === 'placement' ? { ...f, wide: true } : f));
 const BLOCKING = pick(ITEM_SETTINGS_FIELDS, ['blocking_radius']);
-const CARRIED = pick(ITEM_SETTINGS_FIELDS, ['attach_offset_x', 'attach_offset_y', 'attach_layer', 'art_faces'], { attach_offset_x: 'Offset X', attach_offset_y: 'Offset Y' });
+const CARRIED = pick(ITEM_SETTINGS_FIELDS, ['attach_offset_x', 'attach_offset_y', 'attach_layer', 'art_faces', 'hide_rider_below'], { attach_offset_x: 'Offset X', attach_offset_y: 'Offset Y' });
 const VEHICLE = pick(ITEM_SETTINGS_FIELDS, ['speed_multiplier'], { speed_multiplier: 'Speed multiplier' });
 /** Ticking these shows or hides a group of settings. */
 const SHAPING = new Set(['wearable', 'vehicle', 'blocking', 'media_id']);

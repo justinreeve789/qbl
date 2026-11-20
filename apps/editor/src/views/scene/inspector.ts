@@ -1,6 +1,6 @@
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help } from '../../dom';
-import { form, withValue, type Field, type FormContext } from '../../fields';
+import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
 import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
@@ -11,6 +11,8 @@ export interface InspectorHost {
   natural(url: string): Point | null;
   /** Leave the scene editor after the scene was deleted. */
   closed(): void;
+  /** Choose a spot by clicking the canvas. Returns a function that stops choosing. */
+  pickSpot(request: SpotRequest): () => void;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface InspectorHost {
  * text derived from values (action summaries) when a value changes without a rebuild.
  */
 export function inspector(model: SceneModel, selection: Selection, host: InspectorHost, refresh: Array<() => void>): HTMLElement {
-  const ctx: FormContext = { store: model.store, sceneId: model.sceneId };
+  const ctx: FormContext = { store: model.store, sceneId: model.sceneId, pickSpot: (request) => host.pickSpot(request) };
   switch (selection.kind) {
     case 'scene':
       return scenePanel(model, ctx, host);

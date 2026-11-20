@@ -413,6 +413,33 @@ Both paths play the same document. `npm run test:api` checks that JSON generated
 
 The demo's music and rocket sound are synthesised by `tools/make-demo-audio.py`.
 
+## The app: installing QuestLab on phones and computers
+
+The site is a progressive web app (PWA). Its files are in `apps/client/public` and Vite copies them into the build:
+
+- `manifest.webmanifest`: name, colours, icons; it opens at `/missions`.
+- `sw.js`: a small service worker. It keeps Vite's hashed bundles in a cache, and with no connection shows `offline.html`, which retries by itself. It does not touch the API, the game socket, media, the editor or the docs, and it is not registered under `vite` (development). Raise `VERSION` in it when `offline.html` or the icons change.
+- `icons/`: drawn by `node tools/make-app-icons.mjs` from the "QL" mark.
+- `.well-known/assetlinks.json`: written by the Android build (below).
+
+Chrome, Edge and Samsung Internet offer to install the site; the account menu then shows **Install the app** (`apps/client/src/pwa.ts`). On an iPhone or iPad: Share → Add to Home Screen.
+
+### The Android app
+
+`tools/android` builds an Android app (a Trusted Web Activity): a small shell that opens the live site full screen in the phone's Chrome. It shows whatever the server has, so deploying the site updates the app. Rebuild it only to change its name, icon, colours or address (`tools/android/app.json`; package `cc.questlab.app`, site `dev.questlab.cc`).
+
+```sh
+cd tools/android && npm install
+ANDROID_HOME=~/android-sdk QBL_ANDROID_KEYSTORE=~/questlab.keystore QBL_ANDROID_KEYSTORE_PASSWORD=… npm run build
+```
+
+It needs Java 17+ and an Android SDK with `sdkmanager "platforms;android-36" "build-tools;35.0.0"`. Out come `dist/questlab-<version>.apk` (to install directly) and `.aab` (for the Play Store), and `apps/client/public/.well-known/assetlinks.json`.
+
+- **The signing key** (`QBL_ANDROID_KEYSTORE`, made on the first build if missing) must be kept, with its password, outside the repository: every update of the app has to be signed with the same key. `*.keystore` is ignored by git.
+- **The site must serve `/.well-known/assetlinks.json`**, with the key's fingerprint, before the app opens without an address bar. It is committed, so deploying the client is enough. A different key, or a different site (`QBL_ANDROID_HOST`), means building again and committing the new file.
+- **Play Store**: Google re-signs uploaded apps with its own key. Add that key's SHA-256 (Play Console → Test and release → App integrity) to `extraFingerprints` in `app.json`, build, and deploy the new `assetlinks.json`. Raise `versionCode` for every upload.
+- Phones need Android 7.0 or newer and Chrome (or another browser that supports Trusted Web Activities). Without one, the app opens the site in a browser tab.
+
 ## Roadmap
 
 1. Editor: undo, copying events and scenes, drawing areas by clicking, a rich-text field for infobox content, sharing a scenario between authors.

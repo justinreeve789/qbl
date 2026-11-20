@@ -11,6 +11,7 @@ import { BootScene } from './scenes/BootScene';
 // The profile dialog, shared with the editor.
 import { openProfile } from '../../../packages/shared/browser/profile';
 import { PlayScene } from './scenes/PlayScene';
+import { setUpApp } from './pwa';
 import { Ui } from './ui/Ui';
 // Twemoji Awesome: the one set every icon in the interface is drawn from (see ui/icons.ts).
 import '../../../packages/shared/assets/twemoji-awesome.css';
@@ -497,6 +498,7 @@ async function start() {
   game.scene.add('boot', BootScene, true);
 }
 
+setUpApp();
 start().catch((err) => {
   console.error(err);
   show(err instanceof Error ? err.message : 'Something went wrong.');

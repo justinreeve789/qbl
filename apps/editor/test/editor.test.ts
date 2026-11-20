@@ -502,8 +502,7 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
   await inspector('.add-action').selectOption('animate');
   await page.waitForFunction((n) => document.querySelectorAll('details.action').length === n + 1, count);
   assert.match(await page.locator('details.action').last().locator('summary').innerText(), /The player: jump/);
-  await page.locator('details.action').last().locator('[data-field=animation] input').fill('dance');
-  await page.locator('details.action').last().locator('[data-field=animation] input').blur();
+  await page.locator('details.action').last().locator('[data-field=animation] select').selectOption('dance');
   await saved();
   assert.match(await page.locator('details.action').last().locator('summary').innerText(), /The player: dance/);
   // It must not hold up the infobox that follows a click on the lily pad.

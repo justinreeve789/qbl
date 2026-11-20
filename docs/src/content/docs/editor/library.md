@@ -41,7 +41,7 @@ A few reserved names are always there, such as `{{QBLPlayerName}}`. See [Variabl
 
 Things players can pick up, wear or ride. Each card shows the item's picture and labels for what it is: **Item**, **Wearable** or **Vehicle** (each in its own colour), **Unique**, **In the scene**, **Blocking**, its scale, and how many conditions it has. Click the picture or **✏️ Edit item** to open it in a panel; **New item** opens the new one straight away.
 
-The panel has the item itself on the left: its name and picture, **Unique** (only one player can hold it), **Physical**, **Blocking** (avatars walk around it), **Wearable** and **Vehicle**. A vehicle is always a single object: it goes where it is driven and stays where it is left. On the right are its settings, in groups that appear only when they apply: **In the scene** (scale, where it stands, and the blocking radius for a blocking item), **Worn** or **Ridden** (offsets, in front of or behind the avatar, which way the artwork faces), **Vehicle** (speed multiplier), and **When it is there** (conditions). Place items in scenes from the scene editor.
+The panel has the item itself on the left: its name and picture, **Unique** (only one player can hold it), **Physical**, **Blocking** (avatars walk around it), **Wearable** and **Vehicle**. A vehicle is always a single object: it goes where it is driven and stays where it is left. On the right are its settings, in groups that appear only when they apply: **In the scene** (scale, where it stands, and the blocking radius for a blocking item), **Worn** or **Ridden** (offsets, in front of or behind the avatar, which way the artwork faces, and **Hide the avatar below**: how far down the item's picture the avatar stops being drawn, 0 at the top and 1 at the bottom, so a rider sits in a UFO or a car instead of their legs showing beneath it), **Vehicle** (speed multiplier), and **When it is there** (conditions). Place items in scenes from the scene editor.
 
 ## Characters
 
@@ -65,7 +65,7 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 * **Repeats**: poses loop; other animations play once unless you say otherwise.
 * **Mirror**: draw it flipped, so art facing one way serves the other.
 
-**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it; one named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
+**+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it: on a character, its list offers only the animations added here (not the standing, walking and close-up pictures). One named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
 
 **Voice**: pitch, pace and a preferred voice name, for when a line is read aloud by the browser.
 
@@ -77,7 +77,7 @@ Tick **Walks around on its own** to make the character part of the world rather 
 
 A character that walks around on its own can have a **Routine**: steps it repeats by itself, for everyone, whether or not anyone is watching. **+ Add step** offers:
 
-* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does.
+* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does. For a spot, **📍 Pick on the scene** opens a picture of the scene to click: the scene the character will most likely be in at that step (where it starts, or where an earlier step walked it), and another can be chosen at the top.
 * ⏳ **Wait**.
 * 💬 **Say something**: a speech bubble over the character.
 * 🤸 **Play an animation**.

@@ -576,6 +576,7 @@ blocking_radius | decimal | 40 | Size of the obstacle for `blocking` items.
 attach_offset_x, attach_offset_y | decimal | 0 | Where the item sits relative to the avatar's feet while worn or ridden. X is mirrored when the avatar faces left.
 attach_layer | string | front | `front` or `behind` the avatar.
 art_faces | string | right | Which way the artwork faces. It is mirrored to match the avatar.
+hide_rider_below | decimal | | While worn or ridden, the avatar (and what it wears) is not drawn below this line: a fraction of the item's picture height, 0 at its top and 1 at its bottom. Lets a rider sit in a UFO or a car instead of their legs showing beneath it. Unset: the whole avatar is drawn.
 speed_multiplier | decimal | 1.5 | Vehicles: walking speed while riding.
 
 Items are positioned by the bottom centre of their image, like avatars.
