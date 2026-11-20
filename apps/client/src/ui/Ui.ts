@@ -6,7 +6,11 @@ import { pictureNode } from './picture';
 import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
 import { infoboxView, type BoxView } from './infobox/view';
-import type { AccountActions, AccountView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
+import { physicsPanel } from './physicsPanel';
+import type {
+  AccountActions, AccountView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PhysicsPanelActions, PhysicsPanelHandle, PhysicsPanelSpec,
+  PlayerRow, ProfileView, TeamRow, ShopView, UiPort,
+} from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -915,6 +919,10 @@ export class Ui implements UiPort {
     backdrop.addEventListener('click', (e) => e.target === backdrop && close());
     draw();
     return { done, cancel: close };
+  }
+
+  physicsPanel(spec: PhysicsPanelSpec, on: PhysicsPanelActions): PhysicsPanelHandle {
+    return physicsPanel(this.root, spec, on);
   }
 
   toast(message: string, ms = 3000) {

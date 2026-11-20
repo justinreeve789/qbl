@@ -8,7 +8,10 @@ import { PlayScene } from '../src/scenes/PlayScene';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { MovesFeature } from '../src/features/MovesFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
-import type { ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
+import type {
+  ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PhysicsPanelActions, PhysicsPanelHandle, PhysicsPanelSpec, PhysicsPanelView,
+  PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort,
+} from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
@@ -189,6 +192,12 @@ export class HeadlessUi implements UiPort {
   attachments() {}
   objectives(list: ObjectiveStatus[]) { this.checklist = list; }
   toast(message: string) { this.toasts.push(message); }
+  /** The physics panel, when a scene has an experiment: what it offers, what it shows, and its buttons. */
+  physics: { spec: PhysicsPanelSpec; on: PhysicsPanelActions; view: PhysicsPanelView | null; open: boolean } | null = null;
+  physicsPanel(spec: PhysicsPanelSpec, on: PhysicsPanelActions): PhysicsPanelHandle {
+    const panel = (this.physics = { spec, on, view: null as PhysicsPanelView | null, open: true });
+    return { update: (view) => (panel.view = view), close: () => (panel.open = false) };
+  }
   status(message: string | null) { this.statusText = message; }
 }
 

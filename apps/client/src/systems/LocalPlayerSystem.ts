@@ -8,6 +8,7 @@ import { Pathfinder, walkSignature } from '../core/Pathfinder';
 import { Avatar } from '../entities/Avatar';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { HotspotSystem } from './HotspotSystem';
+import { PhysicsSystem } from './PhysicsSystem';
 import { PropsSystem } from './PropsSystem';
 import { RemotePlayersSystem } from './RemotePlayersSystem';
 
@@ -200,7 +201,11 @@ export class LocalPlayerSystem implements SceneSystem {
   private onPointerDown(pointer: Phaser.Input.Pointer) {
     if (this.rt.ctx.ui.capturesInput || this.rt.leaving || this.rt.system(PropsSystem).hovering || this.rt.system(RemotePlayersSystem).hovering) return;
     const p = this.worldPoint(pointer);
+    // A physics experiment's bodies, tray and building area come first.
+    const physics = this.rt.system(PhysicsSystem);
+    if (physics.claims(p)) return;
     if (this.rt.system(HotspotSystem).click(p.x, p.y)) return;
+    if (physics.blocksWalking) return;
     // Otherwise walk there, Club Penguin style.
     this.walkTo(p);
   }

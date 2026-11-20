@@ -1,5 +1,5 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, Badge, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, SiteLink } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, PhysicsOp, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
 
 export type { SpeakOptions };
@@ -134,6 +134,8 @@ export interface UiPort {
   /** Offer the read-aloud switch: the scenario has text that is read aloud. */
   narration(available: boolean): void;
   toast(message: string, ms?: number): void;
+  /** The controls of a physics experiment: readings, play and reset, tools, the tray, building a bridge. */
+  physicsPanel(spec: PhysicsPanelSpec, on: PhysicsPanelActions): PhysicsPanelHandle;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null): void;
 }
@@ -221,3 +223,61 @@ export interface ShopView {
   stars: number;
   items: Array<{ id: number; name: string; description?: string; kind: string; slot?: string; price: number; image: string | null; mission: boolean; owned: boolean; equipped: boolean }>;
 }
+
+// ------------------------------------------------------------------ physics
+
+export type PhysicsTool = 'move' | 'press';
+
+/** What the physics panel offers, fixed for the scene. */
+export interface PhysicsPanelSpec {
+  readouts: Array<{ id: string; label: string }>;
+  play: boolean;
+  reset: boolean;
+  slow: boolean;
+  /** Offer Drop: there are bodies held in place. */
+  drop: boolean;
+  /** A gravity chooser, when the scene offers one. */
+  gravity: ReadonlyArray<readonly [name: string, g: number]> | null;
+  /** The press tool, beside moving things. */
+  press: boolean;
+  tray: Array<{ id: string; label: string; color: string }>;
+  /** Building a bridge: the beams offered, and the budget. */
+  build: { beams: Array<{ label: string; color: string; cost: string }>; budget: number | null } | null;
+  /** Everyone in the scene shares this experiment. */
+  shared: boolean;
+}
+
+/** How the experiment stands, redrawn as it changes. */
+export interface PhysicsPanelView {
+  /** By readout id, as shown ("1.24 m"). */
+  readings: Record<string, string>;
+  paused: boolean;
+  slow: boolean;
+  gravity: number;
+  building: boolean;
+  /** How many of each tray entry are left; null for no limit. */
+  tray: Record<string, number | null>;
+  tool: PhysicsTool;
+  /** A tray entry picked up, waiting to be put down in the scene. */
+  taking: string | null;
+  beam: number;
+  erasing: boolean;
+  cost: number | null;
+  /** Some bodies are still held, waiting for Drop. */
+  held: boolean;
+}
+
+export interface PhysicsPanelActions {
+  control(op: PhysicsOp, value?: number): void;
+  tool(tool: PhysicsTool): void;
+  take(entry: string): void;
+  beam(kind: number): void;
+  erase(on: boolean): void;
+  clear(): void;
+}
+
+export interface PhysicsPanelHandle {
+  update(view: PhysicsPanelView): void;
+  close(): void;
+}
+

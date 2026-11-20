@@ -1,3 +1,4 @@
+import { PHYSICS_OPS } from '@qbl/shared';
 import { infoboxRefs, resolveMediaUrl, type Media } from '@qbl/shared';
 import type { Row } from './api';
 import type { Store } from './store';
@@ -62,6 +63,14 @@ export function actionSummary(store: Store, type: string, values: Record<string,
     }
     case 'freeze':
       return values.frozen === false ? 'Let the player move again' : 'Stop the player from moving';
+    case 'physics': {
+      const op = String(values.op ?? 'play');
+      const label = PHYSICS_OPS.find(([key]) => key === op)?.[1] ?? op;
+      if (op === 'gravity') return `Physics: gravity ${values.value ?? '?'} m/s²`;
+      if (op === 'spawn') return `Physics: add “${String(values.entry_id ?? '?')}” from the tray`;
+      if (op === 'remove') return `Physics: remove “${String(values.body_id ?? '?')}”`;
+      return `Physics: ${label.toLowerCase()}`;
+    }
     case 'animate': {
       const who = values.target === 'item' ? String(store.byId('items', values.item_id as number | null)?.name ?? 'An item')
         : values.target === 'character' ? String(store.byId('characters', values.character_id as number | null)?.name ?? 'A character')

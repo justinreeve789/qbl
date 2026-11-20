@@ -1,8 +1,9 @@
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
-import { confirmDelete, h, help } from '../../dom';
+import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
 import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
+import { physicsBodyPanel, physicsBuildPanel, physicsJointPanel, physicsSettingsPanel, physicsWaterPanel } from './physicsPanels';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
 
 export interface InspectorHost {
@@ -46,6 +47,16 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
         SHADOW_SPOT_FIELDS, host);
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
+    case 'physics':
+      return physicsSettingsPanel(model, ctx, host);
+    case 'physics-body':
+      return physicsBodyPanel(model, ctx, selection.index, host);
+    case 'physics-water':
+      return physicsWaterPanel(model, ctx, selection.index, host);
+    case 'physics-joint':
+      return physicsJointPanel(model, ctx, selection.index, host);
+    case 'physics-build':
+      return physicsBuildPanel(model, ctx, host);
   }
 }
 
@@ -78,6 +89,7 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
           ' Everything in the scene is moved to match.',
         )
       : null,
+    physicsSection(model, host),
     layerList(model, 'background_media', 'Background layers', 'Drawn behind the avatars, first at the back.', host),
     layerList(model, 'foreground_media', 'Foreground layers', 'Drawn in front of the avatars.', host),
     h(
@@ -94,6 +106,34 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
       }, 'Delete scene'),
     ),
   );
+}
+
+/** Switch the scene's physics experiment on, or go to its settings. */
+function physicsSection(model: SceneModel, host: InspectorHost): HTMLElement {
+  const physics = model.physics();
+  const about = 'Real physics in this scene: balls that bounce, things that sink or float, pendulums, bridges that break under load. Usually with the avatars hidden, so players work the experiment with the pointer.';
+  if (!physics) {
+    return h('section', { 'data-section': 'physics' },
+      h('div', { class: 'sub-head' }, h('span', null, 'Physics experiment', help(about))),
+      h('button', {
+        type: 'button', 'data-physics-on': '',
+        onclick: async () => {
+          await model.setPhysics({ enabled: true, mode: 'individual' }, true);
+          // An experiment is worked with the pointer; an avatar walking about only gets in the way.
+          if (model.row.show_avatars !== false) {
+            await model.store.patch('scenes', model.sceneId, { show_avatars: false }, true);
+            toast('Physics is on, and avatars are hidden here. Show them again above if you want them.');
+          }
+          host.select({ kind: 'physics' });
+        },
+      }, '🧲 Make this a physics experiment'));
+  }
+  const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  return h('section', { 'data-section': 'physics' },
+    h('div', { class: 'sub-head' }, h('span', null, 'Physics experiment', help(about)), h('button', { type: 'button', class: 'link', onclick: () => host.select({ kind: 'physics' }) }, 'Settings')),
+    h('p', { class: 'muted' }, physics.enabled
+      ? `${physics.mode === 'shared' ? 'Shared by everyone in the scene' : 'Each player has their own'}: ${count(physics.bodies?.length ?? 0, 'body', 'bodies')}, ${count(physics.readouts?.length ?? 0, 'readout')}${physics.build ? ', a bridge to build' : ''}.`
+      : 'Switched off.'));
 }
 
 function layerList(model: SceneModel, which: LayerList, title: string, about: string, host: InspectorHost): HTMLElement {

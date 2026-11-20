@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./physics-sim": {
+      "types": "./dist/physics-sim.d.ts",
+      "default": "./dist/physics-sim.js"
     }
   },
   "scripts": {
@@ -18,7 +22,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "navmesh": "^2.3.1"
+    "navmesh": "^2.3.1",
+    "planck": "^1.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

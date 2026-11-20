@@ -548,3 +548,35 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
 /* Curricular missions without the plan for them, on the missions page. */
 .qbl-mission.locked .qbl-mission-art { filter: grayscale(0.7) brightness(0.7); }
 .qbl-tag.locked { background: rgba(250, 204, 21, 0.18); color: #fde68a; }
+
+/* ---------- physics experiments ---------- */
+.qbl-physics { position: absolute; inset: 0; pointer-events: none; z-index: 11; }
+.qbl-physics-readings { position: absolute; top: calc(var(--qbl-edge) + var(--safe-t)); left: calc(var(--qbl-edge) + var(--safe-l)); margin: 0; padding: 10px 14px; min-width: 190px; display: grid; gap: 4px; border-radius: 14px; background: rgba(12, 23, 78, 0.86); border: 2px solid rgba(255, 255, 255, 0.25); font-size: 0.95rem; pointer-events: auto; }
+.qbl-physics-readings[hidden] { display: none; }
+.qbl-physics-reading { display: flex; justify-content: space-between; gap: 16px; }
+.qbl-physics-reading dt { color: rgba(255, 255, 255, 0.78); }
+.qbl-physics-reading dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.qbl-physics-shared { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-size: 0.8rem; color: #bfe0ff; }
+.qbl-physics-bar { position: absolute; bottom: calc(16px + var(--safe-b)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 2 * var(--qbl-tab) - 420px); display: flex; flex-wrap: wrap-reverse; align-items: flex-end; justify-content: center; gap: 8px; pointer-events: none; }
+.qbl-physics-group { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(12, 23, 78, 0.86); border: 2px solid rgba(255, 255, 255, 0.25); pointer-events: auto; align-items: center; }
+.qbl-physics-group:empty, .qbl-physics-group[hidden] { display: none; }
+.qbl-physics-button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border: 2px solid transparent; border-radius: 10px; background: rgba(255, 255, 255, 0.12); color: inherit; font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.qbl-physics-button[hidden] { display: none; }
+.qbl-physics-button[aria-pressed='true'] { border-color: #ffd34d; background: rgba(255, 211, 77, 0.22); }
+.qbl-physics-button.primary { background: #2fa85a; }
+.qbl-physics-button:disabled { opacity: 0.45; cursor: default; }
+.qbl-physics-button:focus-visible, .qbl-physics-gravity:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.qbl-physics-swatch { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); }
+.qbl-physics-swatch.beam { width: 22px; height: 8px; border-radius: 3px; }
+.qbl-physics-count { opacity: 0.8; font-weight: 500; }
+.qbl-physics-cost { padding: 0 8px; font-variant-numeric: tabular-nums; }
+.qbl-physics-cost.over { color: #ffd34d; }
+.qbl-physics-label { gap: 6px; padding: 6px 10px; }
+.qbl-physics-gravity { padding: 8px; border-radius: 8px; border: 0; font: inherit; font-size: 0.9rem; pointer-events: auto; }
+.qbl-physics .qbl-physics-bar > * { pointer-events: auto; }
+@media (max-width: 900px), (orientation: portrait) {
+  .qbl-physics-readings { top: auto; bottom: calc(var(--qbl-dock) + 12px + var(--safe-b)); min-width: 0; font-size: 0.85rem; }
+  .qbl-physics-bar { top: calc(var(--qbl-edge) + var(--safe-t)); bottom: auto; flex-direction: row; max-width: calc(100vw - 2 * var(--qbl-tab) - 40px); left: calc(var(--qbl-edge) + var(--safe-l)); transform: none; justify-content: flex-start; align-items: flex-start; }
+  .qbl-physics-button span { display: none; }
+  .qbl-physics-button[data-tray] span, .qbl-physics-button[data-beam] span, .qbl-physics-button.primary span { display: inline; }
+}

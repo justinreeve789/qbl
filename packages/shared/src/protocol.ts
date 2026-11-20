@@ -4,6 +4,7 @@
  * through the synchronized room state instead; see apps/server/src/rooms/state.ts.
  */
 import type { Badge, Progress } from './types.js';
+import type { PhysicsInput } from './physics.js';
 import type { Id, Session, VarValue, VariableOperator, WalkAction } from './types.js';
 
 export const ROOM_NAME = 'scenario';
@@ -51,6 +52,7 @@ export const C2S = {
   Whisper: 'whisper',
   Track: 'track',
   Walk: 'walk',
+  Physics: 'physics',
 } as const;
 
 export const S2C = {
@@ -62,7 +64,16 @@ export const S2C = {
   Progress: 'progress',
   Show: 'show',
   Whisper: 'whisper',
+  /** A shared physics experiment: everything about it (on arriving, and when bodies or the design change). */
+  PhysicsState: 'physics:state',
+  /** A shared physics experiment: where everything is now, about 20 times a second. */
+  PhysicsTick: 'physics:tick',
+  /** A shared physics experiment noticed what one of its watches watches for. */
+  PhysicsWatch: 'physics:watch',
 } as const;
+
+/** What a player did to the shared experiment of the scene they are in. */
+export type PhysicsMessage = PhysicsInput & { scene_id: Id };
 
 export interface MoveMessage { x: number; y: number; facing: 'left' | 'right' }
 export interface SceneMessage { scene_id: Id; spawn_point?: string }

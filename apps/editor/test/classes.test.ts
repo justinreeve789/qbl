@@ -20,10 +20,11 @@ const signIn = async (email: string) => {
   const res = await fetch(`${site.url}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'x' }) });
   tokens[email] = ((await res.json()) as { token: string }).token;
 };
+/** The starship's missions as a student sees them. Other shipped scenarios (the Physics Lab) are public missions too, and are left out. */
 const missions = async (email: string): Promise<Mission[]> => {
   const res = await fetch(`${site.url}/api/missions`, { headers: { Authorization: `Bearer ${tokens[email]}` } });
   assert.equal(res.status, 200);
-  return ((await res.json()) as { missions: Mission[] }).missions;
+  return ((await res.json()) as { missions: Mission[] }).missions.filter((m) => m.title !== 'Physics Lab');
 };
 const saved = () => page.waitForFunction(() => !document.querySelector('.saving')?.textContent?.includes('Saving'));
 

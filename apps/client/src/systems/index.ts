@@ -4,6 +4,7 @@ import { DebugSystem } from './DebugSystem';
 import { HotspotSystem } from './HotspotSystem';
 import { LayerSystem } from './LayerSystem';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
+import { PhysicsSystem } from './PhysicsSystem';
 import { PreloadSystem } from './PreloadSystem';
 import { PropsSystem } from './PropsSystem';
 import { RemotePlayersSystem } from './RemotePlayersSystem';
@@ -22,6 +23,7 @@ export const sceneSystems: SceneSystemClass[] = [
   RemotePlayersSystem,
   LocalPlayerSystem,
   HotspotSystem,
+  PhysicsSystem,
   SpeechSystem,
   CameraSystem,
   PreloadSystem,

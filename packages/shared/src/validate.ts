@@ -1,3 +1,4 @@
+import { checkPhysics, checkPhysicsAction } from './physics-validate.js';
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
 import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
@@ -429,6 +430,9 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'conversation':
         checkConversation(a, path, scene);
         break;
+      case 'physics':
+        checkPhysicsAction(a, path, scene.physics, { err, warn });
+        break;
       case 'freeze':
         if (typeof a.frozen !== 'boolean') err(`${path}.frozen`, 'frozen must be true or false');
         break;
@@ -620,6 +624,13 @@ export function validateScenario(doc: unknown): ValidationResult {
         }
       });
     });
+    if (scene.physics != null) {
+      checkPhysics(scene.physics, sp, {
+        err, warn, variables, size: sceneSize(s, scene) ?? null,
+        needMedia: (id, path) => needMedia(id, path, 'image'),
+        inScene: (id) => eventScene.get(id) === scene.id,
+      });
+    }
     eachEvent(scene, si, (e, path) => {
       checkConditions(e.conditions, path);
       if (!Array.isArray(e.actions)) {

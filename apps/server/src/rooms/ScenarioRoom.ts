@@ -1,13 +1,14 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
   C2S, CloseCodes, isStaff, normalizeScenario, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
-  type ActivityEntry, type ChatBroadcast, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
+  type ActivityEntry, type ChatBroadcast, type PhysicsMessage, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
   type MessageEntry, type MoveMessage, type NoticeMessage, type ProgressMessage, type Scenario, type SceneMessage, type ShowBroadcast, type ShowMessage,
   type SnapMessage, type TrackMessage, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
 } from '@qbl/shared';
 import type { Backend, User } from '../backend/Backend.js';
 import { config } from '../config.js';
 import { ChatFilter } from './chat.js';
+import { SharedExperiments } from './physics.js';
 import { ItemState, NpcState, Player, RoomState } from './state.js';
 
 /** Set once at boot by index.ts. */
@@ -23,6 +24,8 @@ const LOG_INTERVAL_MS = 5000;
 const TRACK_PER_SECOND = 5;
 /** How often characters that roam take a step: as often as the room state is sent. */
 const TICK_MS = 50;
+/** How often shared physics experiments are stepped (they step in fixed sixtieths of a second inside). */
+const PHYSICS_STEP_MS = 1000 / 60;
 
 /** Who joined, and into which instance. Worked out in onAuth, handed to onJoin. */
 interface Seat extends User {
@@ -54,6 +57,8 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   private lastChat = new Map<string, number>();
   private tracked = new Map<string, { second: number; count: number }>();
   private activityLog: ActivityEntry[] = [];
+  /** Physics experiments the scenario's players share (scenes whose physics is `shared`). */
+  private experiments!: SharedExperiments;
   private messageLog: MessageEntry[] = [];
 
   override async onCreate(options: JoinOptions) {
@@ -69,6 +74,32 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     this.state.group = this.party;
     if (scenario.max_players && scenario.max_players > 0) this.maxClients = scenario.max_players;
 
+    // Shared physics: one experiment per team and scene, run here, drawn by everyone's browser.
+    this.experiments = new SharedExperiments(scenario, {
+      members: (team, sceneId) => {
+        const out: string[] = [];
+        this.state.players.forEach((p: Player, sid: string) => {
+          if (p.scene_id === sceneId && this.teamOf.get(sid) === team) out.push(sid);
+        });
+        return out;
+      },
+      whereIs: (sid) => {
+        const p = this.state.players.get(sid);
+        const team = this.teamOf.get(sid);
+        return p && team != null ? { team, sceneId: p.scene_id } : null;
+      },
+      send: (ids, type, message) => this.sendTo(ids, type, message),
+    });
+    if (this.experiments.any) {
+      let last = Date.now();
+      this.clock.setInterval(() => {
+        const now = Date.now();
+        this.experiments.tick((now - last) / 1000);
+        last = now;
+      }, PHYSICS_STEP_MS);
+    }
+    this.onMessage(C2S.Physics, (client: Client, msg: PhysicsMessage) => this.experiments.input(client.sessionId, msg));
+
     this.onMessage(C2S.Move, (client: Client, msg: MoveMessage) => {
       const result = this.world(client)?.move(client.sessionId, msg);
       if (result && !result.ok) this.snap(client);
@@ -78,6 +109,8 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       const world = this.world(client);
       if (!world) return;
       if (!world.changeScene(client.sessionId, msg)) return this.snap(client);
+      // Whatever they held in a shared experiment, they let go of on leaving it.
+      this.experiments.release(client.sessionId);
       const scene = world.index.scene(Number(msg.scene_id));
       this.log(client, { type: 'scene', ref: String(msg.scene_id), label: scene?.shortname });
     });
@@ -256,6 +289,7 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   }
 
   override async onLeave(client: Client) {
+    this.experiments?.release(client.sessionId);
     this.lastChat.delete(client.sessionId);
     this.tracked.delete(client.sessionId);
     const team = this.teamOf.get(client.sessionId);

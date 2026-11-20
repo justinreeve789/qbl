@@ -1,3 +1,4 @@
+import { PHYSICS_ACTION_FIELDS } from './physicsSchema';
 import type { ActionType } from '@qbl/shared';
 import type { Field } from './fields';
 
@@ -322,6 +323,11 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'duration', label: 'Over (ms)', kind: 'number', min: 0 },
     ],
   },
+  physics: {
+    label: 'Physics',
+    about: 'Drive the scene’s physics experiment: play, pause, reset, drop, add from the tray, change gravity.',
+    fields: PHYSICS_ACTION_FIELDS,
+  },
 };
 
 export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
@@ -334,7 +340,7 @@ export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: strin
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
   avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], walk: ['🚶', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'], glossary: ['📖', STATE],
-  variable: ['🔢', STATE],
+  variable: ['🔢', STATE], physics: ['🧲', STATE],
 };
 
 /** Attributes every action row has. */
@@ -369,6 +375,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return starterConversation();
     case 'freeze':
       return { frozen: true };
+    case 'physics':
+      return { op: 'play' };
     case 'animate':
       return { animation: 'jump' };
     case 'avatar':

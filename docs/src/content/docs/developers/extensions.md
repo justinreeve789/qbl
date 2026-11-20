@@ -839,6 +839,67 @@ Purchases go straight from the browser to the backend, which takes the stars and
 
 While testing a draft from the editor, awards and purchases are pretend: the preview starts with 500 stars and nothing is written to the account.
 
+## Physics experiments
+
+A scene's optional `physics` object makes it a physics experiment, simulated in metres, kilograms and seconds with planck.js (Box2D). Positions are scene pixels, y downwards, as everywhere else; `pixels_per_meter` converts. The simulation is `packages/shared/src/physics-sim.ts`, used by the browser for experiments each player runs alone and by the game server for shared ones. Types and arithmetic are in `packages/shared/src/physics.ts`; the editor guide is [Physics experiments](/docs/editor/physics/). The editor keeps it in the scene's `layout` column.
+
+Attribute | Type | Default | Description
+--------- | ---- | ------- | -----------
+enabled | bool | | The experiment runs only when `true`.
+mode | string | `individual` | `individual`: each player's browser runs it. `shared`: the game server runs one per team and scene, and sends it to everyone there (offline and in editor previews it runs in the browser).
+gravity | number | 9.81 | m/s², downwards.
+pixels_per_meter | number | 100 | Scene pixels to a metre.
+depth | number | 0.1 | Thickness of everything in metres: mass = density × area × depth.
+floor_y | number or null | scene height | A floor at this height. `null`: none.
+walls | bool | true | Walls up the scene's left and right edges.
+paused | bool | false | Start paused.
+controls | object | | `play`, `reset`, `slow` (default true), `drop` (default: when anything is `held`), `gravity` (a gravity chooser, default false).
+press | object | | `enabled` (a press tool), `rate` (N per second held, default 100), `max` (N, default 5000).
+bodies | array | | Bodies, below.
+water | array | | Water, below.
+joints | array | | Joints, below.
+build | object | | An area players build a bridge in, below.
+tray | array | | What players can take out: `{ id, label?, count?, body }`, `body` as a body without `id`, `x`, `y`.
+readouts | array | | Numbers shown on screen: `{ id, label?, measure, body_id?, water_id?, decimals?, variable?, hidden? }`.
+watches | array | | Things to notice: below.
+
+A **body** is `{ id, name?, shape, x, y, angle? }` with `shape` `circle` (`radius`), `box` (`width`, `height`), `polygon` (`points` relative to x, y; made convex) or `cup` (`width`, `height`, `wall`: open at the top). `material` is one of `rubber`, `plastic`, `wood`, `steel`, `glass`, `rock`, `clay`, `foam`, `ice`, `cork`, `lead`, `rope` (default `wood`); `density`, `bounciness` and `friction` override it, and `mass` (kg) sets the density from the size. `fixed` never moves; `held` waits until released (Drop, or a physics action) but players may still move it; `draggable: false` stops players picking it up; `damping` slows it by itself; `hidden` is solid but not drawn; `marks` draws a ruler; `color`, `media_id` and `label` are how it looks. Round bodies have a little rolling resistance unless `damping` is given.
+
+**Water** is `{ id, level, body_id? }`: with `body_id` it fills that cup's inside and follows it; otherwise it fills the box `x`, `y`, `width`, `height`. `level` is its starting depth in pixels; `density` defaults to 1000; `marks` draws a millilitre scale. Bodies in it are pushed up by the weight of the water they displace (computed from their outline under the surface) and slowed by it; the level rises by the displaced area over the width, and what rises over the rim spills and is lost.
+
+A **joint** is `{ id, type, body_a, body_b?, x, y }`: `pin` (a hinge at x, y; `min_angle`, `max_angle` in degrees), `weld`, `string` (a fixed distance from x, y on `body_a` to `x2`, `y2`), `spring` (as string, with `stiffness` in Hz and `damping`) or `rope` (at most that distance). Without `body_b` it is fixed to the world. `strength` (N): it breaks when the force through it, smoothed over a few steps, is greater.
+
+**build** is `{ x, y, width, height, grid?, anchors, beams, budget?, max_length?, preset? }`. `anchors` are footings fixed to the world. `beams` are the kinds offered: `{ material, label?, strength?, cost_per_meter?, deck?, max_length?, thickness? }`; `deck` beams carry loads, others only hold the structure up. A design is a list of `{ id, a, b, kind }` with both ends on the grid; each beam must start at a footing or a beam's end, be no longer than the longest allowed, and keep the design within budget (`beamProblem()`). While building nothing moves; testing makes each beam a body, pinned to the world at footings and to the first beam at every other node, with joints as strong as the weaker beam. `rope` beams are rope joints. `preset` is a design players start from.
+
+Measures for readouts: `height`, `bounce_height`, `max_height`, `speed`, `mass`, `angle`, `period`, `swings` (of `body_id`); `water_level`, `water_rise`, `displaced`, `spilled` (of `water_id`); `press_force`, `break_force`, `load`, `max_load`, `breaks`, `stress`, `cost`, `time`. With `variable`, the variable is set to the reading, rounded to `decimals`, at most four times a second.
+
+A **watch** is `{ id, when, …, event_id?, variable?, set?, repeat? }`. `when`: `break` (`joint_id`, a beam's id, or any), `enter` (`body_id` or any; `region` `{x, y, width, height}` or `water_id`), `reading` (`readout_id`, `operator`, `value`), `rest` (everything still for `hold` seconds), `balanced` (`body_id` within `value` degrees of level for `hold` seconds), `spill` (`water_id` or any). `rest` and `balanced` wait until a player has done something. When it happens, `variable` is set to `set`, or to the reading, or 1, and the indirect event `event_id` runs. A watch happens once per run; `repeat: false` keeps it from happening again after a reset.
+
+```json
+{
+  "physics": {
+    "enabled": true, "pixels_per_meter": 200,
+    "bodies": [{ "id": "ball", "shape": "circle", "x": 400, "y": 500, "radius": 30, "material": "rubber", "held": true }],
+    "readouts": [{ "id": "bounce", "measure": "bounce_height", "body_id": "ball", "variable": "bounce" }],
+    "watches": [{ "id": "high", "when": "reading", "readout_id": "bounce", "operator": ">=", "value": 1, "event_id": 51 }]
+  }
+}
+```
+
+### Physics
+
+A new action type, `physics`, drives the scene's experiment.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+op | string | `play`, `pause`, `reset`, `release` (held bodies: `body_id`, or all), `spawn` (tray entry `entry_id` at `position_x`, `position_y`), `remove` (`body_id`), `gravity` (`value` m/s²), `slow`, `normal`, `test`, `build`.
+
+```json
+{ "type": "physics", "op": "gravity", "value": 1.62 }
+```
+
+In a shared experiment the action is sent to the game server and changes the experiment for everyone in the scene. Messages: `physics` (client to server, a `PhysicsInput` with `scene_id`), `physics:state` (everything, on arriving and whenever bodies or the design change), `physics:tick` (poses, about 20 a second; clients draw 110 ms behind and interpolate) and `physics:watch`.
+
 ## Patterns
 
 These need no special support; they are combinations of the pieces above.

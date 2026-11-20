@@ -13,7 +13,10 @@ const api = process.env.QBL_API_ORIGIN ?? 'http://127.0.0.1:8000';
 export default defineConfig({
   base: '/editor/',
   resolve: {
-    alias: { '@qbl/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
+    alias: [
+      { find: /^@qbl\/shared\/physics-sim$/, replacement: fileURLToPath(new URL('../../packages/shared/src/physics-sim.ts', import.meta.url)) },
+      { find: /^@qbl\/shared$/, replacement: fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
+    ],
   },
   server: {
     host: true,

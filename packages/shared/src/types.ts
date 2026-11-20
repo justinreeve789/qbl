@@ -6,6 +6,7 @@
  * multiplayer runtime; they are all optional and documented in
  * docs/src/content/docs/developers/extensions.md.
  */
+import type { PhysicsOp, ScenePhysics } from './physics.js';
 import type { MediaSpeech } from './speech.js';
 
 import type { ButtonMark, InfoboxSize } from './infobox.js';
@@ -234,7 +235,8 @@ export type ActionType =
   | 'variable'
   | 'video'
   | 'wait'
-  | 'walk';
+  | 'walk'
+  | 'physics';
 
 export type Alignment =
   | 'top left' | 'top center' | 'top right'
@@ -604,7 +606,26 @@ export interface WalkAction extends ActionBase {
 
 export type WalkDestination = 'point' | 'spawn' | 'scene';
 
+/**
+ * [ext] Drive the scene's physics experiment: play, pause, reset, drop what is held, add
+ * something from the tray, change gravity, slow motion, test a bridge or go back to building.
+ */
+export interface PhysicsAction extends ActionBase {
+  type: 'physics';
+  op: PhysicsOp;
+  /** remove; release (one body; absent: all held bodies). */
+  body_id?: string;
+  /** spawn: the tray entry. */
+  entry_id?: string;
+  /** spawn: where it appears (default: the middle of the scene, a third of the way down). */
+  position_x?: number;
+  position_y?: number;
+  /** gravity: m/s². */
+  value?: number;
+}
+
 export type Action =
+  | PhysicsAction
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
@@ -1079,6 +1100,8 @@ export interface Scene {
   team_only?: boolean | null;
   items?: ItemPlacement[];
   characters?: CharacterPlacement[];
+  /** [ext] A physics experiment in the scene: see physics.ts. */
+  physics?: ScenePhysics | null;
 }
 
 // ------------------------------------------------------------- scenario

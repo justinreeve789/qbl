@@ -11,6 +11,7 @@ import type { PlaySceneData, SceneRuntime, SceneSystem, SceneSystemClass } from 
 import { sceneSystems } from '../systems';
 import { HotspotSystem } from '../systems/HotspotSystem';
 import { LocalPlayerSystem } from '../systems/LocalPlayerSystem';
+import { PhysicsSystem } from '../systems/PhysicsSystem';
 import { PropsSystem } from '../systems/PropsSystem';
 import { RemotePlayersSystem } from '../systems/RemotePlayersSystem';
 
@@ -99,6 +100,7 @@ export class PlayScene extends Phaser.Scene {
     };
     this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
+    this.host.physicsControl = (action) => this.runtime.system(PhysicsSystem).run(action);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);
     const def = this.def;
     const engine = this.engine;
