@@ -22,19 +22,46 @@ use App\Qbl\Generation\Spend;
  * ['cache' => true] (what stays the same across calls goes first: the style anchors for the judge, the
  * brief for the designer's corrections), so repeated calls read it from the cache at a twentieth of the
  * price. Every call's token usage is reported to the run's Spend.
+ *
+ * Thinking: current Claude models think before they answer (on Opus 5.5 it cannot be turned off), and
+ * the thinking counts toward max_tokens. So the $maxTokens a caller passes is room for the answer only,
+ * and $thinkingRoom more is added for the thinking (QBL_GEN_THINKING_TOKENS), up to the model's
+ * output limit. max_tokens is only a ceiling: unused room costs nothing. How hard the model thinks is
+ * its effort (QBL_GEN_LLM_EFFORT: low, medium, high, xhigh, max; empty = the model's own default).
  */
 class AnthropicModel implements LanguageModel
 {
+    /** The most any current model writes in one answer, thinking included. */
+    public const MAX_OUTPUT = 128000;
+
     public function __construct(
         private HttpClient $http,
         private string $apiKey,
         private string $model = 'claude-sonnet-5-5',
         private string $baseUrl = 'https://api.anthropic.com',
         private ?Spend $spend = null,
+        private int $thinkingRoom = 32000,
+        private string $effort = '',
+        private int $timeout = 1800,
     ) {
         if ($this->apiKey === '') {
             throw new GenerationError('ANTHROPIC_API_KEY is not set.');
         }
+        if ($this->effort !== '' && ! in_array($this->effort, ['low', 'medium', 'high', 'xhigh', 'max'], true)) {
+            throw new GenerationError("QBL_GEN_LLM_EFFORT must be low, medium, high, xhigh or max (or empty), not \"{$this->effort}\".");
+        }
+    }
+
+    /** max_tokens for an answer of up to $answer tokens: the answer plus room to think. */
+    public function limit(int $answer): int
+    {
+        return max(1, min(self::MAX_OUTPUT, $answer + max(0, $this->thinkingRoom)));
+    }
+
+    /** output_config for a request: the effort if one is set, and anything else given. */
+    private function outputConfig(array $extra = []): array
+    {
+        return ($this->effort !== '' ? ['effort' => $this->effort] : []) + $extra;
     }
 
     /** Schemas the API would not compile into a strict grammar (too large); they go by the tool route. */
@@ -44,11 +71,12 @@ class AnthropicModel implements LanguageModel
     {
         $parts = self::parts($content);
         $cachedSystem = [['type' => 'text', 'text' => $system, 'cache_control' => ['type' => 'ephemeral']]];
+        $maxTokens = $this->limit($maxTokens);
         if (! isset(self::$tooLarge[$name])) {
             [$status, $data] = $this->call($name, [
                 'model' => $this->model, 'max_tokens' => $maxTokens, 'system' => $cachedSystem,
                 'messages' => [['role' => 'user', 'content' => $parts]],
-                'output_config' => ['format' => ['type' => 'json_schema', 'schema' => self::supported($schema)]],
+                'output_config' => $this->outputConfig(['format' => ['type' => 'json_schema', 'schema' => self::supported($schema)]]),
             ]);
             $message = (string) ($data['error']['message'] ?? '');
             if ($status === 400 && preg_match('/grammar|too many|too large/i', $message)) {
@@ -81,7 +109,7 @@ class AnthropicModel implements LanguageModel
             'tools' => [['name' => $name, 'description' => 'Give the answer by calling this tool. Its input is the whole answer.', 'input_schema' => $schema]],
             'tool_choice' => ['type' => 'auto'],
             'messages' => [['role' => 'user', 'content' => $parts]],
-        ];
+        ] + ($this->effort !== '' ? ['output_config' => $this->outputConfig()] : []);
         for ($try = 1; $try <= 2; $try++) {
             [$status, $data] = $this->call($name, $request);
             if ($status < 200 || $status >= 300) {
@@ -128,7 +156,7 @@ class AnthropicModel implements LanguageModel
         $response = $this->http->send('POST', rtrim($this->baseUrl, '/').'/v1/messages', [
             'x-api-key' => $this->apiKey,
             'anthropic-version' => '2023-06-01',
-        ], $body, timeout: 900);
+        ], $body, timeout: $this->timeout);
         $data = $response->json();
         if ($this->spend && is_array($data['usage'] ?? null)) {
             $this->spend->llm($this->model, $purpose, $data['usage']);
@@ -141,7 +169,20 @@ class AnthropicModel implements LanguageModel
     {
         $stop = $data['stop_reason'] ?? '';
         if ($stop === 'max_tokens') {
-            throw new GenerationError("The language model ran out of room while writing $name; it needs more than $maxTokens tokens.");
+            $thought = false;
+            foreach ($data['content'] ?? [] as $block) {
+                $thought = $thought || in_array($block['type'] ?? '', ['thinking', 'redacted_thinking'], true);
+            }
+            $answered = false;
+            foreach ($data['content'] ?? [] as $block) {
+                $answered = $answered || in_array($block['type'] ?? '', ['text', 'tool_use'], true);
+            }
+            $hint = $maxTokens >= self::MAX_OUTPUT
+                ? 'That is the most the model can write; lower QBL_GEN_LLM_EFFORT or QBL_GEN_MAX_SCENES.'
+                : ($thought && ! $answered
+                    ? 'It spent it all thinking and never started the answer; raise QBL_GEN_THINKING_TOKENS or lower QBL_GEN_LLM_EFFORT.'
+                    : 'Raise QBL_GEN_THINKING_TOKENS (room for thinking on top of the answer) or lower QBL_GEN_LLM_EFFORT.');
+            throw new GenerationError("The language model ran out of room while writing $name; it needs more than $maxTokens tokens (thinking and answer together). $hint");
         }
         if ($stop === 'refusal') {
             throw new GenerationError("The language model declined to write $name.");

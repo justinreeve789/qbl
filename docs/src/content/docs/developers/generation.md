@@ -171,6 +171,8 @@ Driver | Model (default) | Notes
 
 The language model is Claude (`ANTHROPIC_API_KEY`): `QBL_GEN_LLM_MODEL` writes the mission, `QBL_GEN_ALIGN_MODEL` aligns it to standards, `QBL_GEN_JUDGE_MODEL` judges pictures.
 
+These models think before they answer (on Opus 5.5 thinking is always on), and the thinking counts toward each answer's token limit, however short the teacher's prompt is. So every call gets `QBL_GEN_THINKING_TOKENS` (default 32000) on top of the room for its answer, up to the model's 128000. The mission blueprint, for instance, gets 32000 for the answer plus that room. It is only a ceiling, so unused room is not paid for. `QBL_GEN_LLM_EFFORT` (low, medium, high, xhigh, max; empty means each model's default) sets how hard they think. If a run stops with "ran out of room", the message says whether the model was still thinking. Raise `QBL_GEN_THINKING_TOKENS` or lower the effort. `QBL_GEN_LLM_TIMEOUT` (default 1800 seconds) is how long to wait for one answer.
+
 **Every setting is in `.env`**: keys, models, API addresses, image sizes, the art style, judging, the budget, prices, which pictures are drawn, and limits. `.env.example` lists them all with their defaults; an empty value means the default. `docker-compose.yml` passes them to the `app` container, and `apps/api/config/qbl_generation.php` reads them.
 
 Gemini's image models are not on its free tier: the key's project needs billing turned on in Google AI Studio. Without it every request is refused with a quota of 0, and the generator says so.

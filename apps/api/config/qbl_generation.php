@@ -20,6 +20,15 @@ return [
         // Choosing standards from a list and writing objectives is a smaller job than the mission itself.
         'align_model' => $env('QBL_GEN_ALIGN_MODEL', 'claude-sonnet-5-5'),
         'base_url' => $env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
+        // The models think before they answer (Opus 5.5 always does), and thinking counts toward each
+        // answer's token limit. This much room is added to every answer's limit for it. Only a ceiling:
+        // what is not used is not paid for.
+        'thinking_tokens' => (int) $env('QBL_GEN_THINKING_TOKENS', 32000),
+        // How hard the models think: low, medium, high, xhigh or max. Empty = each model's default
+        // (medium on Opus 5.5, high on Sonnet 5.5). Lower is faster and cheaper.
+        'effort' => (string) $env('QBL_GEN_LLM_EFFORT', ''),
+        // Seconds to wait for one answer. Writing the mission can take many minutes.
+        'timeout' => (int) $env('QBL_GEN_LLM_TIMEOUT', 1800),
     ],
 
     // Draws the pictures. gemini | openai | scenario | placeholder.
