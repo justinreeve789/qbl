@@ -10,6 +10,12 @@ import {
 import { openAnimation, openCharacter } from './characters';
 import { revealAction, sortedActions } from './actions';
 import { openMedia } from './library';
+import { openItem } from './items';
+import { openShopItem } from './shop';
+import { openObjective } from './objectives';
+import { openWord } from './glossary';
+import { openMove } from './moves';
+import { showAllVariables } from './variables';
 import type { Selection } from './scene/model';
 import { selectOnOpen } from './scene/sceneEditor';
 import type { Tab } from './workspace';
@@ -233,7 +239,7 @@ function sceneGo(base: string, sceneId: number, place: IssuePlace): IssueWhere['
   };
 }
 
-/** Open a page of the scenario at the entry: a panel for media and characters, the card otherwise. */
+/** Open a page of the scenario at the entry: the entry's own panel where it has one, its line or card otherwise. */
 function entryGo(ctx: FormContext, base: string, tab: Tab, place: IssuePlace): IssueWhere['go'] {
   const entry = place.entry!;
   const { store } = ctx;
@@ -253,25 +259,44 @@ function entryGo(ctx: FormContext, base: string, tab: Tab, place: IssuePlace): I
       }
       break;
     case 'items':
-      if (id != null) reveal = { selector: `[data-thing="items-${CSS.escape(String(id))}"]`, field };
+      if (typeof id === 'number' && store.byId('items', id)) reveal = { open: () => openItem(ctx, id), selector: 'dialog[data-panel="item"]', field };
       break;
     case 'global_variables':
-      if (entry.name) reveal = { selector: `[data-variable="${CSS.escape(entry.name)}"]`, field };
+      if (entry.name) {
+        const name = entry.name;
+        // The page's filter could hide the line: show them all when going there.
+        reveal = { open: showAllVariables, selector: `[data-variable="${CSS.escape(name)}"]`, field };
+        return { hash, prepare: () => { showAllVariables(); pending = reveal; } };
+      }
       break;
-    case 'objectives':
-      if (entry.index != null) reveal = { selector: `[data-objective="${entry.index}"]`, field };
+    case 'objectives': {
+      // The document numbers objectives; the editor keeps them by id, in the same order.
+      const objective = entry.index != null ? ((store.settings.objectives as Array<{ id: string | number }> | undefined) ?? [])[entry.index] : undefined;
+      // An objective's own fields are its text and the bonus tick; anything else is in its
+      // conditions, which are lists, not fields: light up the section that holds them.
+      const inConditions = place.field != null && place.field !== 'text' && place.field !== 'optional';
+      if (objective) reveal = { open: () => openObjective(ctx, objective.id), selector: inConditions ? 'dialog[data-panel="objective"] [data-section="conditions"]' : 'dialog[data-panel="objective"] [data-section="objective"]', field: inConditions ? undefined : field };
       break;
-    case 'glossary':
-      if (id != null) reveal = { selector: `[data-word="${CSS.escape(String(id))}"]`, field };
+    }
+    case 'glossary': {
+      const word = ((store.settings.glossary as Array<{ id: string | number }> | undefined) ?? []).find((e) => id != null && String(e.id) === String(id));
+      if (word) reveal = { open: () => openWord(ctx, word.id), selector: 'dialog[data-panel="word"]', field };
       break;
+    }
     case 'scene_groups':
       reveal = { selector: id != null ? `[data-group="${CSS.escape(String(id))}"]` : '[data-card="scene-groups"]', field };
       break;
-    case 'moves':
-      if (entry.name) reveal = { selector: `[data-move="${CSS.escape(entry.name)}"]`, field };
+    case 'moves': {
+      // By its animation's name first: the document's list of moves may not be in the editor's order.
+      const moves = (store.settings.moves as Array<{ animation?: string }> | undefined) ?? [];
+      const named = entry.name ? moves.findIndex((m) => m.animation === entry.name) : -1;
+      const index = named >= 0 ? named : entry.index != null && entry.index < moves.length ? entry.index : -1;
+      if (index >= 0) reveal = { open: () => openMove(ctx, index), selector: 'dialog[data-panel="move"]', field };
+      else if (entry.name) reveal = { selector: `[data-move="${CSS.escape(entry.name)}"]`, field };
       break;
+    }
     case 'shop_items':
-      if (id != null) reveal = { selector: `[data-shop="${CSS.escape(String(id))}"]`, field };
+      if (typeof id === 'number' && store.byId('shop_items', id)) reveal = { open: () => openShopItem(ctx, id), selector: 'dialog[data-panel="shop"]', field };
       break;
     default:
   }

@@ -91,8 +91,8 @@ test('upload media and define a variable', async () => {
   await page.click('.tabs >> text=Variables');
   prompts.push('frogs_found');
   await page.click('text=New variable');
-  await page.waitForSelector('.row-card');
-  assert.equal(await page.inputValue('.row-card [data-field=variable_name] input'), 'frogs_found');
+  await page.waitForSelector('.var-row[data-variable]');
+  assert.equal(await page.inputValue('.var-row[data-variable] [data-field=variable_name] input'), 'frogs_found');
 });
 
 test('give the scene a wide background, which makes it a scrolling scene', async () => {
@@ -247,9 +247,10 @@ test('stars and a shop: an award in the start event, an item only this scenario 
 
   await page.click('.tabs >> text=Shop');
   assert.match(await page.innerText('.page'), /sells nothing of its own/);
+  // A new item opens in its own panel.
   await page.click('text=New item');
-  await page.waitForSelector('[data-shop]');
-  const card = (selector: string) => page.locator(`[data-shop] ${selector}`).first();
+  await page.waitForSelector('dialog[data-panel=shop]');
+  const card = (selector: string) => page.locator(`dialog[data-panel=shop] ${selector}`).first();
   const fill = async (selector: string, value: string) => {
     await card(selector).fill(value);
     await card(selector).blur();
@@ -261,9 +262,13 @@ test('stars and a shop: an award in the start event, an item only this scenario 
   await saved();
   assert.equal(await card('[data-field=slot] select').inputValue(), 'head', 'something to wear says where it is worn');
   await card('[data-field=kind] select').selectOption('ability');
-  await page.waitForSelector('[data-shop] [data-field=ability]');
-  assert.equal(await page.locator('[data-shop] [data-field=slot]').count(), 0, 'an ability is not worn anywhere');
+  await page.waitForSelector('dialog[data-panel=shop] [data-field=ability]');
+  assert.equal(await page.locator('dialog[data-panel=shop] [data-field=slot]').count(), 0, 'an ability is not worn anywhere');
   await fill('[data-field=ability] input', 'frog_whisperer');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
+  // The card behind says what it is and what it costs.
+  assert.match(await page.innerText('[data-shop]'), /Frog badge[\s\S]*⭐ 3[\s\S]*Ability/);
 
   const { shop_items: items } = await api<{ shop_items: Array<Record<string, unknown>> }>(`/editor/scenarios/${scenarioId}`);
   assert.equal(items.length, 1);
@@ -372,10 +377,14 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   // Variables say whose they are, and a shared one is marked wherever it is picked.
   await page.click('.tabs >> text=Variables');
   const frogs = page.locator('[data-variable=frogs_found]');
-  assert.match(await frogs.locator('.badge').innerText(), /Each player/);
+  assert.equal(await frogs.getAttribute('data-scope'), 'player');
   await frogs.locator('[data-field=scope] select').selectOption('room');
   await saved();
-  assert.match(await page.locator('[data-variable=frogs_found] .badge').innerText(), /Shared/);
+  assert.equal(await page.locator('[data-variable=frogs_found]').getAttribute('data-scope'), 'room');
+  // The filter shows only the shared ones; frogs_found is now one of them.
+  await page.click('.scope-filter[data-scope=room]');
+  assert.equal(await page.locator('.var-row[data-variable]:not([hidden])').count(), 1);
+  await page.click('.scope-filter[data-scope=all]');
 
   const bundle = await api<{ scenario: { settings: Record<string, unknown> }; events: Array<Record<string, unknown>>; characters: Array<Record<string, unknown>>; variables: Array<Record<string, unknown>> }>(`/editor/scenarios/${scenarioId}`);
   assert.equal(bundle.events.find((e) => e.shortname === 'arrive')!.audience, 'scene');
@@ -479,8 +488,11 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
   await page.waitForSelector('text=New move');
   assert.match(await page.innerText('.page'), /players walk, and that is all/);
   await page.click('text=New move');
+  await page.waitForSelector('dialog[data-panel=move]');
   await page.waitForSelector('[data-move=jump]');
   await saved();
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
 
   // And an animate action in the hotspot's event.
   await page.click('.tabs >> text=Scenes');
@@ -504,7 +516,7 @@ test('publish, then play the published JSON in the game', async () => {
   await page.click('text=Check and publish');
   await page.waitForSelector('[data-status="published"]');
   assert.equal(await page.innerText('.publish-state'), 'Published');
-  const code = await page.innerText('.code-line .code');
+  const code = await page.innerText('.link-box .code');
   assert.match(await page.innerText('.page'), new RegExp(`${site.url.replace(/\./g, '\\.')}/${code}`), 'the player link is /{code}');
 
   const res = await fetch(`${site.url}/api/scenarios/${code}/play`);

@@ -26,10 +26,12 @@ Deleting media leaves anything that used it without a picture.
 
 ## Variables
 
-What the scenario remembers. Each has a **Name**, a **Starting value** and:
+What the scenario remembers. The page is a table with one line per variable, edited where it stands. Each has a **Name**, a **Starting value** and:
 
-* **Whose it is**: *Each player has their own*, or *Shared: one value for everyone playing together*.
+* **Whose it is**: *Each player has their own*, or *Shared: one value for everyone playing together*. The line's left edge is blue for a player's own variable and green for a shared one.
 * **Kept between visits**: a player's own variable is kept with their save; a shared one is kept with the group's game.
+
+**Used** counts the places that use the variable: conditions, Variable actions, and text that shows it. *Not used* means nothing tests it, changes it or shows it, which is often a leftover or a misspelling somewhere. Above the table, **Find a variable…** narrows the list by name, and **All**, **Each player's own** and **Shared** show one kind.
 
 Conditions and actions refer to variables by name, so renaming one does **not** update the conditions and actions that already use it. Text can show a variable's value with `{{variable_name}}`.
 
@@ -37,7 +39,9 @@ A few reserved names are always there, such as `{{QBLPlayerName}}`. See [Variabl
 
 ## Items
 
-Things players can pick up, wear or ride: **Unique** (only one player can hold it), **Blocking** (avatars walk around it), **Wearable** and **Vehicle**. A vehicle is always a single object: it goes where it is driven and stays where it is left. Below those are the picture's scale, where it stands, the blocking radius, wear offsets and a vehicle's speed multiplier. Place items in scenes from the scene editor.
+Things players can pick up, wear or ride. Each card shows the item's picture and labels for what it is: **Item**, **Wearable** or **Vehicle** (each in its own colour), **Unique**, **In the scene**, **Blocking**, its scale, and how many conditions it has. Click the picture or **✏️ Edit item** to open it in a panel; **New item** opens the new one straight away.
+
+The panel has the item itself on the left: its name and picture, **Unique** (only one player can hold it), **Physical**, **Blocking** (avatars walk around it), **Wearable** and **Vehicle**. A vehicle is always a single object: it goes where it is driven and stays where it is left. On the right are its settings, in groups that appear only when they apply: **In the scene** (scale, where it stands, and the blocking radius for a blocking item), **Worn** or **Ridden** (offsets, in front of or behind the avatar, which way the artwork faces), **Vehicle** (speed multiplier), and **When it is there** (conditions). Place items in scenes from the scene editor.
 
 ## Characters
 
@@ -87,21 +91,21 @@ A player's Walk action comes first: the routine waits for the character to get t
 
 ## Objectives
 
-The checklist players see while they play. Each objective has its text (which may show a variable: `Collect samples ({{samples}}/3)`), a **Bonus** tick for optional ones, and two lists of conditions:
+The checklist players see while they play, numbered in order. Each line shows the objective's text (a variable it shows, as in `Collect samples ({{samples}}/3)`, is highlighted), a **Bonus** label for optional ones, and its conditions as labels. A line warns *Never ticked off* when it has no condition to complete it. Click the text or **✏️ Edit** to open it in a panel with its text, the **Bonus** tick and two lists of conditions:
 
 * **Listed only when**: reveal a step later. Empty means always listed.
 * **Ticked off when**: the objective is complete while these hold. Empty means it is never ticked.
 
-Use **↑ Earlier** and **↓ Later** to order them. A mission is finished when every non-bonus objective is complete, which is what the teacher's report shows.
+Use **↑** and **↓** on a line to order them. A mission is finished when every non-bonus objective is complete, which is what the teacher's report shows.
 
 ## Glossary
 
-The words the mission teaches. Each has a **Word**, an optional **Picture** and **What it means**. A word marked **In every player's glossary from the start** needs no action; any other word is given by an **Add a glossary word** action where the player meets it, and its card tells you how many actions give it, so you can spot a word nobody will ever get. Players read their words in the game's side panel, and a teacher's report counts them.
+The words the mission teaches, each on a card with its picture (or its first letter), the word and its meaning. Click a word or **✏️ Edit** to open it in a panel with its **Word**, an optional **Picture** and **What it means**, beside a preview of how players read it. A word marked **In every player's glossary from the start** needs no action; any other word is given by an **Add a glossary word** action where the player meets it, and its card tells you how many actions give it, with a warning when none does, so you can spot a word nobody will ever get. Players read their words in the game's side panel, and a teacher's report counts them.
 
 ## Moves
 
-What players can do from buttons on their screen: pick an **Animation** (a built-in move or the name of one of the avatars' animations), the text **On the button** and an **Icon**. Each move can have conditions.
+What players can do from buttons on their screen. Each card is drawn like the button players see, with its icon and text, the animation it plays, and who can use it. Click it or **✏️ Edit** to change the **Animation** (a built-in move or the name of one of the avatars' animations), the text **On the button**, the **Icon**, and the conditions under which it is offered.
 
 ## Shop
 
-What only this scenario sells in the marketplace: something to **wear**, a **pet**, **a way of standing**, a **move** or an **ability**, priced in stars. Take an item off sale with **On sale** instead of deleting it, so players who bought it keep it. An ability sets the variable `QBLAbility_<key>` while it is equipped, which conditions can use to offer extras. See [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace).
+What only this scenario sells in the marketplace: something to **wear**, a **pet**, **a way of standing**, a **move** or an **ability**, priced in stars. Each card shows the picture, the price and the kind; click it or **✏️ Edit** to open it in a panel, with what is for sale on the left and the settings for its kind (where it is worn and how big, the movement, the move or the ability key) on the right. Take an item off sale with **On sale** instead of deleting it, so players who bought it keep it. An ability sets the variable `QBLAbility_<key>` while it is equipped, which conditions can use to offer extras. See [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace).

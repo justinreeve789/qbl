@@ -5,7 +5,7 @@ description: Scenario settings, testing a draft, publishing, and getting a missi
 
 ## Settings
 
-The **Settings** tab holds what applies to the whole scenario.
+The **Settings** tab holds what applies to the whole scenario, in sections: **About the mission**, **Who plays, and how**, **Talking and reading**, **Music** and **Advanced**.
 
 | Setting | What it does |
 | ------- | ------------ |

@@ -123,7 +123,7 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     }
     case 'textarea':
     case 'html': {
-      const input = h('textarea', { rows: f.kind === 'html' ? 6 : 3, placeholder: f.placeholder, spellcheck: 'true', onchange: () => set(input.value) });
+      const input = h('textarea', { rows: f.kind === 'html' ? 6 : 3, class: f.kind === 'html' ? 'code' : null, placeholder: f.placeholder, spellcheck: 'true', onchange: () => set(input.value) });
       input.value = String(value ?? '');
       return wrap(input);
     }
