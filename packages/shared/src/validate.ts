@@ -103,7 +103,7 @@ export function validateScenario(doc: unknown): ValidationResult {
   const needMedia = (id: Id | null | undefined, path: string, type?: Media['type']) => {
     if (id == null) return;
     const m = media.get(id);
-    if (!m) err(path, `Media ${id} is not in assets`);
+    if (!m) err(path, `Media ${id} is not in the scenario's media (it may have been deleted)`);
     else if (type && m.type !== type) err(path, `Media ${id} is ${m.type}, expected ${type}`);
   };
 
@@ -192,7 +192,8 @@ export function validateScenario(doc: unknown): ValidationResult {
   });
   for (const [avatar, portrait] of Object.entries(s.avatar_portraits ?? {})) needMedia(portrait, `avatar_portraits.${avatar}`, 'image');
 
-  if (!scenes.has(s.start_scene_id)) err('start_scene_id', `Scene ${s.start_scene_id} does not exist`);
+  if (s.start_scene_id == null) err('start_scene_id', 'No start scene is chosen');
+  else if (!scenes.has(s.start_scene_id)) err('start_scene_id', `The start scene (${s.start_scene_id}) does not exist`);
 
   const abilities = new Set((s.shop_items ?? []).map((i) => i.ability).filter(Boolean) as string[]);
   const checkConditions = (conds: Condition[] | undefined, path: string) => {
@@ -309,7 +310,8 @@ export function validateScenario(doc: unknown): ValidationResult {
     }
     switch (a.type) {
       case 'jump':
-        if (!scenes.has(a.scene_id)) err(`${path}.scene_id`, `Scene ${a.scene_id} does not exist`);
+        if (a.scene_id == null) err(`${path}.scene_id`, 'No scene is chosen to go to');
+        else if (!scenes.has(a.scene_id)) err(`${path}.scene_id`, `Scene ${a.scene_id} does not exist (it may have been deleted)`);
         else if (a.spawn_point) {
           const target = s.scenes.find((x) => x.id === a.scene_id);
           if (!target?.spawn_points?.some((p) => p.name === a.spawn_point)) {
@@ -319,17 +321,19 @@ export function validateScenario(doc: unknown): ValidationResult {
         break;
       case 'run_event': {
         const target = a.target_event_id ?? (inCta ? a.event_id : a.event_id);
-        if (target == null) err(path, 'run_event needs target_event_id (or event_id)');
-        else if (!eventScene.has(target)) err(path, `Event ${target} does not exist`);
-        else if (eventScene.get(target) !== scene.id) err(path, `Event ${target} belongs to another scene`);
+        if (target == null) err(`${path}.target_event_id`, 'No event is chosen to run');
+        else if (!eventScene.has(target)) err(`${path}.target_event_id`, `Event ${target} does not exist (it may have been deleted)`);
+        else if (eventScene.get(target) !== scene.id) err(`${path}.target_event_id`, `Event ${target} belongs to another scene`);
         break;
       }
       case 'cancel':
-        if (!actionScene.has(a.action_id)) err(`${path}.action_id`, `Action ${a.action_id} does not exist`);
+        if (a.action_id == null) err(`${path}.action_id`, 'No action is chosen to stop');
+        else if (!actionScene.has(a.action_id)) err(`${path}.action_id`, `Action ${a.action_id} does not exist (it may have been deleted)`);
         else if (actionScene.get(a.action_id) !== scene.id) warn(`${path}.action_id`, `Action ${a.action_id} is in another scene; only persistent audio can be cancelled across scenes`);
         break;
       case 'translate':
-        if (!actionScene.has(a.target_id)) err(`${path}.target_id`, `Action ${a.target_id} does not exist`);
+        if (a.target_id == null) err(`${path}.target_id`, 'No action is chosen to move, resize or fade');
+        else if (!actionScene.has(a.target_id)) err(`${path}.target_id`, `Action ${a.target_id} does not exist (it may have been deleted)`);
         break;
       case 'variable':
         if (!VARIABLE_OPS.includes(a.operator)) err(`${path}.operator`, `Unknown operator "${a.operator}"`);
@@ -345,7 +349,8 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (a.badge_media_id != null) needMedia(a.badge_media_id, `${path}.badge_media_id`, 'image');
         break;
       case 'glossary':
-        if (!(s.glossary ?? []).some((e) => String(e.id) === String(a.entry_id))) err(`${path}.entry_id`, `The glossary has no entry "${String(a.entry_id)}"`);
+        if (a.entry_id == null || a.entry_id === '') err(`${path}.entry_id`, 'No glossary word is chosen');
+        else if (!(s.glossary ?? []).some((e) => String(e.id) === String(a.entry_id))) err(`${path}.entry_id`, `The glossary has no entry "${String(a.entry_id)}"`);
         break;
       case 'dialogue':
         if (typeof a.text !== 'string' || a.text === '') err(`${path}.text`, 'text is required');
@@ -507,16 +512,18 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (h.activate_by_trigger || !(h.actions ?? []).some((a) => normalizeActionType(a.type) === 'jump')) continue;
       for (const p of scene.spawn_points ?? []) {
         if (inHotspot(h, p.position_x, p.position_y)) {
-          err(`${sp}.spawn_points`, `Spawn point "${p.name}" is inside walk-in hotspot ${h.id}, which jumps to another scene`);
+          err(`${sp}.spawn_points[${(scene.spawn_points ?? []).indexOf(p)}]`, `Spawn point "${p.name}" is inside walk-in hotspot ${h.id}, which jumps to another scene`);
         }
       }
     }
     if ((scene.spawn_points ?? []).length === 0) warn(sp, 'No spawn points; players will appear at the centre of the scene');
     (scene.items ?? []).forEach((p, pi) => {
-      if (!items.has(p.item_id)) err(`${sp}.items[${pi}].item_id`, `Item ${p.item_id} does not exist`);
+      if (p.item_id == null) err(`${sp}.items[${pi}].item_id`, 'No item is chosen');
+      else if (!items.has(p.item_id)) err(`${sp}.items[${pi}].item_id`, `Item ${p.item_id} does not exist (it may have been deleted)`);
     });
     (scene.characters ?? []).forEach((p, pi) => {
-      if (!characters.has(p.character_id)) err(`${sp}.characters[${pi}].character_id`, `Character ${p.character_id} does not exist`);
+      if (p.character_id == null) err(`${sp}.characters[${pi}].character_id`, 'No character is chosen');
+      else if (!characters.has(p.character_id)) err(`${sp}.characters[${pi}].character_id`, `Character ${p.character_id} does not exist (it may have been deleted)`);
       if (p.event_id != null && eventScene.get(p.event_id) !== scene.id) err(`${sp}.characters[${pi}].event_id`, `Event ${p.event_id} is not in this scene`);
     });
     (scene.hotspots ?? []).forEach((h, hi) => {

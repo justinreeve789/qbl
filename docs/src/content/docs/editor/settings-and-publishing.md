@@ -41,9 +41,13 @@ Test on the draft before publishing, and again after publishing as a student in 
 Players get the **published** version. Until you publish again, they keep the last one, however much you have edited since. Press **🚀 Publish** (on every page) or use the **Publish** tab:
 
 1. **Check and publish** runs the same validator the game uses over what you have built.
-2. **Errors** stop publishing and are listed with where they are, for example a condition that uses a variable you have not defined, or an objective with no condition that ticks it off. Fix them and publish again.
+2. **Errors** stop publishing, for example a condition that uses a variable you have not defined, an objective with no condition that ticks it off, or a Translate action with no action chosen to animate. Fix them and publish again.
 3. **Warnings** do not stop publishing but are worth a look.
 4. On success, players get the new version at once.
+
+Each problem says where it is, from the outside in: for example *Scene “Pond” › Start event “Arrive” › Action 1 · Translate › Action to animate*. The last part, in blue, is the field to change. **Go there →** opens that place: the scene editor with the event selected, the action open and the field lit up, or the picture's or character's panel, or the page the problem is on. Below each problem, in small type, is its path in the scenario's JSON, for anyone reading the JSON itself.
+
+The Publish tab checks the scenario each time it opens, so after a fix, click **Publish** in the tabs to see what is left. If **🚀 Publish** finds errors, it takes you there.
 
 **Check only** lists errors and warnings without publishing, and **▶ Test the draft** plays the draft.
 

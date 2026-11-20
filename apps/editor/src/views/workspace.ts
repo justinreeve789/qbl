@@ -8,6 +8,7 @@ import { checkAndPublish, publishPage, scenesPage, settingsPage } from './pages'
 import { glossaryPage } from './glossary';
 import { icon } from '../icons';
 import { sceneEditor } from './scene/sceneEditor';
+import { flushReveal } from './issues';
 
 /** The pages of a scenario: its address, its name, and its icon (see icons.ts). */
 export const TABS = [
@@ -102,8 +103,10 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
     body.append(editor.element);
     disposeScene = editor.dispose;
     stop = store.onChange(drawHead);
+    flushReveal();
   } else {
     redraw(body, page());
+    flushReveal();
     // Pages made of forms are rebuilt only when rows come or go; the scenes page shows no forms.
     stop = store.onChange((structural) => {
       drawHead();

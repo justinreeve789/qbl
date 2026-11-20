@@ -287,7 +287,7 @@ test('validation catches broken references', () => {
   };
   const messages = validateScenario(bad).errors.map((e) => e.message).join('\n');
   for (const expected of [
-    'Scene 99 does not exist', 'reserved QBL prefix', 'Media 1 is audio, expected image',
+    'The start scene (99) does not exist', 'reserved QBL prefix', 'Media 1 is audio, expected image',
     'at least three points', 'is inside walk-in hotspot 1', '"missing" is not declared',
     'Scene 42 does not exist', 'Duplicate action id 1', 'need a media_id',
     'Unknown action type "bogus"', 'Action 500 does not exist', '"nope" is not declared',

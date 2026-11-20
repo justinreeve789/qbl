@@ -25,6 +25,11 @@ function choice(type: string, values: Record<string, unknown>): Record<string, s
 
 const typeOptions = ACTION_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${ACTIONS[t].label}`] as const);
 
+/** Have this action's card open the next time its event is drawn. */
+export function revealAction(id: number) {
+  open.add(id);
+}
+
 export function sortedActions(ctx: FormContext, eventId: number): Row[] {
   return ctx.store.where('actions', 'event_id', eventId).sort((a, b) => Number(a.sequence) - Number(b.sequence) || a.id - b.id);
 }
