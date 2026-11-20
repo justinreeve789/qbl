@@ -61,6 +61,22 @@ class PlaceholderImageGenerator implements ImageGenerator
                 $cx = (int) (($f + 0.5) * $cell);
                 $this->figure($im, $cx, (int) ($h * 0.9), (int) min($cell * 0.8, $h * 0.75), $f, $frames, $colour, $outline, $hints['animation'] ?? 'idle');
             }
+        } elseif ($kind === 'sheet') {
+            // Several things in a grid, one per cell, each in its own colours.
+            $cols = max(1, (int) ($hints['columns'] ?? 3));
+            $rows = max(1, (int) ($hints['rows'] ?? 1));
+            $count = (int) ($hints['count'] ?? $cols * $rows);
+            $cw = $w / $cols;
+            $ch = $h / $rows;
+            for ($i = 0; $i < $count; $i++) {
+                $cx = (int) (($i % $cols + 0.5) * $cw);
+                $cy = (int) ((intdiv($i, $cols) + 0.5) * $ch);
+                $r = (int) (min($cw, $ch) * 0.3);
+                $c = $this->colour($im, crc32((string) ($hints['labels'][$i] ?? $i)), 1);
+                imagefilledellipse($im, $cx, $cy, 2 * $r, 2 * $r, $c);
+                imageellipse($im, $cx, $cy, 2 * $r, 2 * $r, $outline);
+                imagefilledellipse($im, (int) ($cx - $r / 3), (int) ($cy - $r / 3), (int) ($r / 2), (int) ($r / 2), $colour(4));
+            }
         } elseif ($kind === 'passage') {
             $this->passage($im, $w, $h, $hints['via'] ?? 'door', $colour, $outline);
         } elseif ($kind === 'opening') {

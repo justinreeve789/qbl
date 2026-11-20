@@ -568,6 +568,42 @@ final class ImageTools
     }
 
     /**
+     * The cells of a picture drawn as a grid of separate things, read left to right, top to bottom:
+     * each cell's contents, trimmed, or null when the cell is empty or its thing runs out of it (into a
+     * neighbour or off the picture). $im has its background already removed.
+     *
+     * @return array<int, ?GdImage>
+     */
+    public static function gridCells(GdImage $im, int $columns, int $rows, int $count): array
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $cw = $w / max(1, $columns);
+        $ch = $h / max(1, $rows);
+        $out = [];
+        for ($i = 0; $i < $count; $i++) {
+            $x = (int) round(($i % $columns) * $cw);
+            $y = (int) round(intdiv($i, $columns) * $ch);
+            // Each cell ends where the next begins, and never past the picture.
+            $x1 = min($w, (int) round(($i % $columns + 1) * $cw));
+            $y1 = min($h, (int) round((intdiv($i, $columns) + 1) * $ch));
+            $cell = self::crop($im, $x, $y, $x1 - $x, $y1 - $y);
+            $box = self::bbox($cell);
+            // Empty, or a speck: nothing was drawn here.
+            if (! $box || 0.01 * imagesx($cell) * imagesy($cell) > $box[2] * $box[3]) {
+                $out[] = null;
+
+                continue;
+            }
+            // Touching the cell's edge: part of it is in the next cell.
+            $touches = $box[0] <= 1 || $box[1] <= 1 || imagesx($cell) - 1 <= $box[0] + $box[2] || imagesy($cell) - 1 <= $box[1] + $box[3];
+            $out[] = $touches ? null : self::trim($cell, 2);
+        }
+
+        return $out;
+    }
+
+    /**
      * Walking frames made from one standing picture, for when a walk could not be drawn: the body bobs
      * up and down twice a stride, leans a touch forward, and the lower part (legs, wheels, a tail) swings
      * back and forth like a pendulum. Not as good as a drawn walk, but a character never glides about

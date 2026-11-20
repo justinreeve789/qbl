@@ -69,6 +69,7 @@ return [
         'vehicle' => 'A single vehicle for a 2D game: {subject}. Side view facing right, whole and centred, wheels or base at the bottom, nothing else in the picture.',
         'passage' => 'A way through for a 2D game, cut out on its own so it can be stood against the back of a scene: {subject}. Seen from the front at eye level, upright, whole and centred, its bottom edge flat where it meets the floor, with only as much wall, rock or frame around it as it needs. Nothing else in the picture.',
         'opening' => 'An opening in the floor for a 2D game, cut out on its own so it can be laid on the ground of a scene: {subject}. Seen from the front and above at a low angle, so it is a wide flat oval or shape lying on the ground, with a little of the ground around its rim. Nothing else in the picture.',
+        'sheet' => 'A sheet of {count} separate objects for a 2D game, laid out in a grid of {columns} columns and {rows} rows, read left to right and top to bottom: {subject}. Each object whole, upright and centred in its own equal cell, with wide empty space around it; none touching, overlapping or crossing into another cell; every object drawn in the same style as the others. No numbers, labels, frames or grid lines. Nothing else in the picture.',
         'badge' => 'A round embroidered mission patch: {subject}. Seen straight on, centred, with a stitched border. No letters or numbers.',
     ],
 

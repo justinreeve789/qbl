@@ -103,7 +103,7 @@ final class ArtStyle
             'background' => ['environment', 'character'],
             'character' => ['character', 'props'],
             'strip', 'portrait' => ['props'],
-            'item', 'vehicle', 'badge', 'passage', 'opening' => ['props'],
+            'item', 'vehicle', 'badge', 'passage', 'opening', 'sheet' => ['props'],
             default => ['props'],
         };
         $out = [];
@@ -122,7 +122,7 @@ final class ArtStyle
     /** Whether a kind is cut out of its background. */
     public static function cutout(string $kind): bool
     {
-        return in_array($kind, ['character', 'strip', 'portrait', 'item', 'vehicle', 'badge', 'passage', 'opening'], true);
+        return in_array($kind, ['character', 'strip', 'portrait', 'item', 'vehicle', 'badge', 'passage', 'opening', 'sheet'], true);
     }
 
     /**
@@ -138,8 +138,9 @@ final class ArtStyle
     public function prompt(string $kind, string $subject, array $references = [], array $vars = [], array $notes = [], bool $nativeTransparency = false, array $accents = []): string
     {
         $b = $this->bible;
-        // A style written before passages were drawn words them as single objects.
+        // A style written before passages and sheets were drawn words them as single objects, or as below.
         $sentence = $b['kinds'][$kind] ?? (in_array($kind, ['passage', 'opening'], true) ? ($b['kinds']['item'] ?? null) : null)
+            ?? ($kind === 'sheet' ? 'A sheet of {count} separate objects, in a grid of {columns} columns and {rows} rows, read left to right and top to bottom: {subject}. Each object whole and centred in its own cell with wide empty space around it, none touching or overlapping. No numbers, labels or grid lines.' : null)
             ?? throw new GenerationError("The art style has no picture kind \"$kind\".");
         $replace = ['{subject}' => rtrim(trim($subject), '.')];
         foreach ($vars as $k => $v) {

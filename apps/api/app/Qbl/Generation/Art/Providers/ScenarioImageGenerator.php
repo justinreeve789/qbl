@@ -3,6 +3,7 @@
 namespace App\Qbl\Generation\Art\Providers;
 
 use App\Qbl\Generation\Art\ImageGenerator;
+use App\Qbl\Generation\Art\PricedImageGenerator;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\Http\HttpClient;
 
@@ -16,8 +17,13 @@ use App\Qbl\Generation\Http\HttpClient;
  *
  * Not yet run against the live API: check the request fields against docs.scenario.com before relying on it.
  */
-class ScenarioImageGenerator implements ImageGenerator
+class ScenarioImageGenerator implements ImageGenerator, PricedImageGenerator
 {
+    public function pricing(array $hints): array
+    {
+        return ['scenario', null];
+    }
+
     public function __construct(
         private HttpClient $http,
         private string $apiKey,

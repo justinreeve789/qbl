@@ -17,6 +17,8 @@ return [
         'model' => $env('QBL_GEN_LLM_MODEL', 'claude-opus-5-5'),
         // The style judge looks at many pictures; a faster model is enough for that.
         'judge_model' => $env('QBL_GEN_JUDGE_MODEL', 'claude-sonnet-5-5'),
+        // Choosing standards from a list and writing objectives is a smaller job than the mission itself.
+        'align_model' => $env('QBL_GEN_ALIGN_MODEL', 'claude-sonnet-5-5'),
         'base_url' => $env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
     ],
 
@@ -31,6 +33,11 @@ return [
             'model' => $env('QBL_GEN_GEMINI_MODEL', 'gemini-3-pro-image'),
             // 1K, 2K or 4K. Backgrounds are 2250 x 1200, so 2K is enough.
             'image_size' => $env('QBL_GEN_GEMINI_IMAGE_SIZE', '2K'),
+            // Small cut-outs (things, sheets of things, doors and holes, the badge) end up a few hundred
+            // pixels across: a cheaper model and size is enough, and each is still judged. Set the model
+            // to the main one to draw everything with it. Flash at 1K is half the price of Pro.
+            'props_model' => $env('QBL_GEN_GEMINI_PROPS_MODEL', 'gemini-3.1-flash-image'),
+            'props_size' => $env('QBL_GEN_GEMINI_PROPS_SIZE', '1K'),
             'base_url' => $env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
         ],
         'openai' => [
@@ -55,6 +62,25 @@ return [
     // Each run keeps its pictures, prompts and answers here, so an interrupted run can be resumed
     // (`qbl:generate --resume=ID`) without paying for anything twice.
     'work_dir' => $env('QBL_GEN_WORK_DIR', storage_path('app/generations')),
+
+    // What a run may spend on AI services, in US dollars (estimated from list prices). Past it, pictures
+    // are no longer redrawn for a better score and extras are skipped; at twice it the run stops (resume
+    // it with --budget=...). 0 for no budget. `qbl:generate --design-only` prints an estimate first.
+    'budget' => (float) $env('QBL_GEN_BUDGET_USD', 5),
+    // List prices, if they change or for another model: JSON like Spend::PRICES,
+    // e.g. {"gemini-3-pro-image@2K": 0.134, "claude-opus-5-5": {"input": 4, "output": 20, "cache_read": 0.2, "cache_write": 5}}.
+    'prices' => (array) (json_decode((string) $env('QBL_GEN_PRICES', '{}'), true) ?: []),
+
+    // Pictures that are optional or can be made without drawing.
+    'pictures' => [
+        // crop: a character's portrait is their head and shoulders from their (large) character sheet,
+        // free and always the same design. draw: a portrait drawn for it (one more picture each).
+        'portraits' => $env('QBL_GEN_PORTRAITS', 'crop'),
+        // Draw a breathing idle animation for each character; otherwise their standing picture is the idle.
+        'idle_frames' => filter_var($env('QBL_GEN_IDLE_FRAMES', false), FILTER_VALIDATE_BOOL),
+        // Draw a mission's small things several to a picture (a sheet cut apart) instead of one each.
+        'prop_sheets' => filter_var($env('QBL_GEN_PROP_SHEETS', true), FILTER_VALIDATE_BOOL),
+    ],
 
     // Every picture is checked against the style's anchors before it is kept.
     'judge' => [

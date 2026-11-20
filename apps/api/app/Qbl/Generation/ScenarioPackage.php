@@ -23,7 +23,7 @@ final class ScenarioPackage
      * @param  array  $built  MissionBuilder::build()
      * @return array{zip: string, json: string, document: array}
      */
-    public static function write(array $built, string $dir, array $alignment, array $manifest, array $blueprint = []): array
+    public static function write(array $built, string $dir, array $alignment, array $manifest, array $blueprint = [], ?string $spent = null): array
     {
         if (! class_exists(ZipArchive::class)) {
             throw new GenerationError('PHP needs its zip extension to package a scenario.');
@@ -68,6 +68,10 @@ final class ScenarioPackage
             ...array_map(fn ($lo) => "  {$lo['id']}: {$lo['text']}", $alignment['learning_objectives']),
         ];
         $lines = [...$lines, ...self::forTheTeacher($blueprint)];
+        if ($spent) {
+            $lines[] = '';
+            $lines[] = $spent;
+        }
         if ($below) {
             $lines[] = '';
             $lines[] = 'Pictures kept below the style bar (look at these before publishing):';
@@ -112,7 +116,7 @@ final class ScenarioPackage
             $out[] = '';
             $out[] = 'Twists (surprises; worth not spoiling):';
             foreach ($b['twists'] as $t) {
-                $out[] = "  After \"".($labels[$t['after']] ?? $t['after'])."\": {$t['title']}".(! empty($t['blocks']['to']) ? ' (blocks the way to '.($titles[$t['blocks']['to']] ?? $t['blocks']['to']).' until set right)' : '');
+                $out[] = '  After "'.($labels[$t['after']] ?? $t['after'])."\": {$t['title']}".(! empty($t['blocks']['to']) ? ' (blocks the way to '.($titles[$t['blocks']['to']] ?? $t['blocks']['to']).' until set right)' : '');
             }
         }
         $questions = array_filter($b['interactions'] ?? [], fn ($it) => $it['type'] === 'question');

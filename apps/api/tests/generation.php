@@ -14,13 +14,15 @@
  */
 
 use App\Qbl\Generation\Art\ArtStyle;
+use App\Qbl\Generation\Art\AssetDirector;
+use App\Qbl\Generation\Art\ImageGenerator;
 use App\Qbl\Generation\Art\ImageTools;
+use App\Qbl\Generation\Art\PricedImageGenerator;
 use App\Qbl\Generation\Art\Providers\GeminiImageGenerator;
 use App\Qbl\Generation\Art\Providers\OpenAiImageGenerator;
 use App\Qbl\Generation\Art\Providers\PlaceholderImageGenerator;
 use App\Qbl\Generation\Art\Reference;
-use App\Qbl\Generation\Art\AssetDirector;
-use App\Qbl\Generation\Art\ImageGenerator;
+use App\Qbl\Generation\Art\StyleJudge;
 use App\Qbl\Generation\Build\MissionBuilder;
 use App\Qbl\Generation\Curriculum\StandardsImporter;
 use App\Qbl\Generation\Curriculum\StandardsStore;
@@ -34,6 +36,9 @@ use App\Qbl\Generation\GenerationRuns;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Http\HttpResponse;
 use App\Qbl\Generation\Llm\AnthropicModel;
+use App\Qbl\Generation\Llm\LanguageModel;
+use App\Qbl\Generation\ScenarioGenerator;
+use App\Qbl\Generation\Spend;
 use App\Qbl\ScenarioStore;
 
 // A warning or notice is a failure here (Laravel turns them into exceptions).
@@ -243,6 +248,12 @@ check(! isset($format['schema']['properties']['n']['minimum']) && str_contains($
 same([$format['schema']['properties']['list']['minItems'] ?? null, isset($format['schema']['properties']['list']['maxItems']), isset($format['schema']['properties']['list']['items']['pattern'])], [1, false, false], 'item counts above 1 and patterns are taken out');
 same($http->sent[0]['body']['messages'][0]['content'][1]['source']['type'] ?? null, 'base64', 'pictures go to Claude as base64');
 same($http->sent[0]['headers']['x-api-key'], 'key', 'with the key in x-api-key');
+same($http->sent[0]['body']['system'][0]['cache_control'] ?? null, ['type' => 'ephemeral'], 'the instructions are marked for the prompt cache');
+same(array_column(AnthropicModel::parts(['a', ['cache' => true], 'b']), 'cache_control'), [['type' => 'ephemeral']], 'a cache mark goes on the part before it');
+$meter = new Spend(0, ['claude-test' => ['input' => 4, 'output' => 20, 'cache_read' => 0.2, 'cache_write' => 5]]);
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{}']], 'stop_reason' => 'end_turn', 'usage' => ['input_tokens' => 1000, 'output_tokens' => 10000, 'cache_read_input_tokens' => 20000, 'cache_creation_input_tokens' => 0]]))]);
+(new AnthropicModel($http, 'key', 'claude-test', 'https://api.anthropic.com', $meter))->structured('sys', ['x'], 'answer', ['type' => 'object']);
+same($meter->total(), 0.208, 'every call\'s tokens are priced: input, output and cache reads');
 $http = new Recorded([
     new HttpResponse(400, json_encode(['type' => 'error', 'error' => ['type' => 'invalid_request_error', 'message' => 'The compiled grammar is too large, which would cause performance issues.']])),
     new HttpResponse(200, json_encode(['content' => [['type' => 'tool_use', 'name' => 'big_answer', 'input' => ['big' => true]]], 'stop_reason' => 'tool_use'])),
@@ -269,6 +280,13 @@ same((new GeminiImageGenerator($http, 'gkey', 'gemini-test'))->generate('draw', 
 same($http->sent[0]['body']['generationConfig']['imageConfig']['aspectRatio'], '21:9', 'Gemini is asked for the aspect ratio in imageConfig');
 same(array_keys($http->sent[0]['body']['contents'][0]['parts'][1]), ['inline_data'], 'references go to Gemini inline');
 check(str_ends_with($http->sent[0]['url'], '/models/gemini-test:generateContent'), 'Gemini is called at generateContent');
+$http = new Recorded([new HttpResponse(200, json_encode(['candidates' => [['content' => ['parts' => [['inlineData' => ['data' => base64_encode($png)]]]]]]])), new HttpResponse(200, json_encode(['candidates' => [['content' => ['parts' => [['inlineData' => ['data' => base64_encode($png)]]]]]]]))]);
+$gemini = new GeminiImageGenerator($http, 'gkey', 'gemini-3-pro-image', 'https://g', '2K', 'gemini-3.1-flash-image', '1K');
+$gemini->generate('draw', [], '1:1', false, ['kind' => 'sheet']);
+$gemini->generate('draw', [], '16:9', false, ['kind' => 'background']);
+same([str_contains($http->sent[0]['url'], 'gemini-3.1-flash-image'), $http->sent[0]['body']['generationConfig']['imageConfig']['imageSize'], str_contains($http->sent[1]['url'], 'gemini-3-pro-image'), $http->sent[1]['body']['generationConfig']['imageConfig']['imageSize']], [true, '1K', true, '2K'], 'small cut-outs go to the cheaper model at 1K, backgrounds to the main one at 2K');
+same($gemini->pricing(['kind' => 'item', 'anchor' => true])[0], 'gemini-3-pro-image', 'anchors are always drawn with the main model');
+same([round((new Spend)->pictureCost('gemini-3.1-flash-image', '1K'), 3), round((new Spend)->pictureCost('gemini-3-pro-image-preview', '2K'), 3), (new Spend)->pictureCost('placeholder', null)], [0.067, 0.134, 0.0], 'pictures are priced by model and size');
 
 $http = new Recorded([new HttpResponse(200, json_encode(['data' => [['b64_json' => base64_encode($png)]]]))]);
 same((new OpenAiImageGenerator($http, 'okey', 'gpt-image-1.5'))->generate('draw', [$ref], '3:4', true), $png, 'OpenAI\'s picture is read from b64_json');
@@ -336,7 +354,10 @@ $generator = $factory->generator(['images' => 'placeholder'], function ($m) use 
 });
 $result = $generator->generate('A mission about why an orchard has flowers but no fruit, for grade 3', ['grade' => '3', 'subject' => 'Science', 'frameworks' => ['TEST-SCI'], 'min_players' => 2, 'max_players' => 6], null);
 same($result['status'], 'done', 'the run finishes');
-same($model->blueprints, 2, 'the blueprint with a mistake was sent back once and corrected');
+same([$model->blueprints, $model->corrections], [1, 1], 'the blueprint with a mistake was corrected once, by changes rather than a rewrite');
+$correction = array_values(array_filter($model->calls, fn ($c) => $c['name'] === 'blueprint_changes'))[0];
+check(str_contains(json_encode($correction['content']), 'two correct') || str_contains(json_encode($correction['content']), 'exactly one choice'), 'the correction is told what is wrong');
+same($correction['content'][1], ['cache' => true], 'with the brief marked for the prompt cache');
 $alignmentCall = $model->calls[0];
 check(in_array('TEST-3-LS1-1', $alignmentCall['schema']['properties']['standards']['items']['properties']['code']['enum'], true) && ! in_array('TEST-5-PS1-1', $alignmentCall['schema']['properties']['standards']['items']['properties']['code']['enum'], true), 'only standards of the grade are offered, as an enum');
 $run = (new GenerationRuns($pdo))->get($result['run']);
@@ -542,6 +563,118 @@ check($resumed['scenario_id'] !== $scenarioId, 'resuming imports again (a fresh 
 
 $design = $generator->generate('Another mission', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design']);
 same($design['status'], 'designed', '--design-only stops after the blueprint');
+check(($design['estimate']['pictures'] ?? 0) > 5 && isset($design['estimate']['usd']), 'and says how many pictures drawing it will take, and roughly what they cost');
+
+// ------------------------------------------------------------------ keeping costs down
+[$changed, $problems] = MissionDesigner::applyChanges($blueprint, [
+    ['op' => 'set', 'path' => 'interactions.q_pollen.question.choices.0.correct', 'value' => 'true'],
+    ['op' => 'set', 'path' => 'scenes.orchard.exits.1.x', 'value' => '0.3'],
+    ['op' => 'remove', 'path' => 'steps.0', 'value' => ''],
+    ['op' => 'append', 'path' => 'steps', 'value' => '{"key": "extra", "text": "More", "done_when": ["look_flower"]}'],
+    ['op' => 'set', 'path' => 'title', 'value' => 'A plain title'],
+    ['op' => 'set', 'path' => 'interactions.nowhere.label', 'value' => '"x"'],
+]);
+$byKey = array_column($changed['interactions'], null, 'key');
+same([$byKey['q_pollen']['question']['choices'][0]['correct'], $changed['scenes'][1]['exits'][1]['x'], $changed['steps'][0]['key'], end($changed['steps'])['key'], $changed['title']], [true, 0.3, 'samples', 'extra', 'A plain title'], 'a correction\'s changes are applied by key, by position, and to lists');
+same(count($problems), 1, 'and a change to something that is not there is reported');
+
+$badModel = new FakeModel($blueprint);
+$badModel->badChanges = true;
+$designed = (new MissionDesigner($badModel, ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 14]))->design('x', ['learning_objectives' => [['id' => 'LO1', 'text' => 'a', 'standards' => []], ['id' => 'LO2', 'text' => 'b', 'standards' => []]], 'standards' => [], 'vocabulary' => [], 'misconceptions' => []], []);
+same([$badModel->corrections, $badModel->blueprints, BlueprintValidator::errors($designed, ['LO1', 'LO2'])], [3, 2, []], 'when changes do not fix it, the blueprint is rewritten once as a last resort');
+
+/** The placeholder, priced like Gemini: Pro for most pictures, Flash for small cut-outs. Counts what it draws. */
+final class PricedPlaceholder implements ImageGenerator, PricedImageGenerator
+{
+    public array $drawn = [];
+
+    public function __construct(private PlaceholderImageGenerator $inner) {}
+
+    public function generate(string $prompt, array $references, string $aspect, bool $transparent, array $hints = []): string
+    {
+        $this->drawn[] = $hints['kind'] ?? '?';
+
+        return $this->inner->generate($prompt, $references, $aspect, $transparent, $hints);
+    }
+
+    public function pricing(array $hints): array
+    {
+        return in_array($hints['kind'] ?? '', GeminiImageGenerator::PROPS_KINDS, true) ? ['gemini-3.1-flash-image', '1K'] : ['gemini-3-pro-image', '2K'];
+    }
+
+    public function transparency(): bool
+    {
+        return false;
+    }
+
+    public function describe(): string
+    {
+        return 'priced-placeholder';
+    }
+}
+/** A judge that never likes anything: every picture would be drawn again and again. */
+final class GrumpyJudge implements LanguageModel
+{
+    public function structured(string $system, array $content, string $name, array $schema, int $maxTokens = 16000): array
+    {
+        return ['scores' => array_fill_keys(StyleJudge::CRITERIA, 4), 'problems' => ['meh'], 'fix' => 'better'];
+    }
+}
+$cheap = MissionDesigner::tidy($blueprint);
+$layouts = ScenarioGenerator::layouts($cheap);
+$images = new PricedPlaceholder($placeholder);
+$meter = new Spend(0);
+$director = new AssetDirector($images, $style, null, "$work/cost-a", 1, null, $meter);
+$estimate = $director->estimate($cheap);
+$director->drawMission($cheap, $layouts);
+$kinds = array_count_values($images->drawn);
+same(count($images->drawn), $estimate['pictures'], 'the estimate counts the pictures a mission needs: '.json_encode($estimate['by_kind']));
+same([$kinds['sheet'] ?? 0, $kinds['item'] ?? 0], [2, 0], 'its eleven small things are drawn on two sheets, not one picture each');
+same([$kinds['portrait'] ?? 0, $kinds['strip'] ?? 0], [0, 4], 'portraits are cut from the sheets; strips only for walks and the gestures the mission plays');
+same(AssetDirector::gesturesUsed($cheap, array_column($cheap['characters'], null, 'key')['bot']), [], 'Pip\'s pointing is never played, so it is not drawn');
+check(abs($meter->total() - $estimate['usd']) < 0.03, 'what it spent matches the estimate: $'.$meter->total().' / $'.$estimate['usd']);
+check($meter->total() < 2.5, 'a five-scene mission with two characters is drawn for under $2.50 (was about $4.30 before any redraws): $'.$meter->total());
+$portrait = array_values(array_filter($director->manifest(), fn ($m) => $m['key'] === 'portrait:keeper'))[0];
+same([$portrait['note'], $portrait['below_bar']], ['Cut from the character sheet.', false], 'a cut portrait is not flagged');
+
+$drawEach = new PricedPlaceholder($placeholder);
+(new AssetDirector($drawEach, $style, null, "$work/cost-b", 1, null, new Spend(0), ['portraits' => 'draw', 'idle_frames' => true, 'prop_sheets' => false]))->drawMission($cheap, $layouts);
+$kindsEach = array_count_values($drawEach->drawn);
+same([$kindsEach['portrait'] ?? 0, $kindsEach['strip'] ?? 0, $kindsEach['sheet'] ?? 0, $kindsEach['item'] ?? 0], [2, 6, 0, 11], 'each saving can be turned off: drawn portraits, idle animations, one picture per thing');
+
+$noBudget = new PricedPlaceholder($placeholder);
+(new AssetDirector($noBudget, $style, new StyleJudge(new GrumpyJudge), "$work/cost-c", 3, null, new Spend(0)))->drawMission($cheap, $layouts);
+$budgeted = new PricedPlaceholder($placeholder);
+$tight = new Spend(2.0);
+$budgetDirector = new AssetDirector($budgeted, $style, new StyleJudge(new GrumpyJudge), "$work/cost-d", 3, null, $tight);
+$budgetDirector->drawMission($cheap, $layouts);
+check(count($budgeted->drawn) < count($noBudget->drawn) * 0.6, 'with a budget, a picture the judge dislikes stops being redrawn once it is spent: '.count($budgeted->drawn).' pictures instead of '.count($noBudget->drawn));
+check($tight->total() < 2 * $tight->budget() && $tight->total() >= $tight->budget(), 'the run finishes past its budget but short of twice it: $'.$tight->total());
+check((bool) array_filter($budgetDirector->manifest(), fn ($m) => ! empty($m['below_bar'])), 'what was not redrawn is flagged to be looked at');
+check((function () {
+    $s = new Spend(0.5);
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    $s->picture('gemini-3-pro-image', '2K', 'background');
+    try {
+        $s->checkLimit('drawing');
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), '--budget');
+    }
+
+    return false;
+})(), 'at twice its budget a run stops, saying how to resume it with a bigger one');
+$resumedSpend = new Spend(0);
+$resumedSpend->attach("$work/cost-d-spend.json");
+$resumedSpend->picture('gemini-3-pro-image', '2K', 'background');
+$again = new Spend(0);
+$again->attach("$work/cost-d-spend.json");
+same($again->total(), 0.134, 'a resumed run carries on counting from what it had spent');
 
 if (getenv('KEEP')) {
     fwrite(STDOUT, "Work folder kept: $work\n");

@@ -3,6 +3,7 @@
 namespace App\Qbl\Generation\Art\Providers;
 
 use App\Qbl\Generation\Art\ImageGenerator;
+use App\Qbl\Generation\Art\PricedImageGenerator;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\Http\HttpClient;
 
@@ -11,8 +12,14 @@ use App\Qbl\Generation\Http\HttpClient;
  * pictures with a prompt, which is what the style anchors and character sheets rely on. They cannot
  * draw transparent backgrounds, so cut-outs are drawn on the style's chroma colour.
  */
-class GeminiImageGenerator implements ImageGenerator
+class GeminiImageGenerator implements ImageGenerator, PricedImageGenerator
 {
+    /**
+     * Small cut-outs (things, doors, the badge, sheets of things) can go to a cheaper model at a smaller
+     * size: they end up a few hundred pixels across, and the judge still checks every one.
+     */
+    public const PROPS_KINDS = ['item', 'vehicle', 'sheet', 'passage', 'opening', 'badge'];
+
     private const ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
 
     public function __construct(
@@ -21,6 +28,9 @@ class GeminiImageGenerator implements ImageGenerator
         private string $model = 'gemini-3-pro-image',
         private string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta',
         private string $size = '2K',
+        /** For PROPS_KINDS; empty for the main model and size. */
+        private string $propsModel = '',
+        private string $propsSize = '',
     ) {
         if ($this->apiKey === '') {
             throw new GenerationError('GEMINI_API_KEY is not set.');
@@ -33,11 +43,12 @@ class GeminiImageGenerator implements ImageGenerator
         foreach (array_slice($references, 0, 14) as $ref) {
             $parts[] = ['inline_data' => ['mime_type' => $ref->mime, 'data' => base64_encode($ref->bytes)]];
         }
-        $response = $this->http->send('POST', rtrim($this->baseUrl, '/')."/models/{$this->model}:generateContent", ['x-goog-api-key' => $this->apiKey], [
+        [$model, $size] = $this->pricing($hints);
+        $response = $this->http->send('POST', rtrim($this->baseUrl, '/')."/models/$model:generateContent", ['x-goog-api-key' => $this->apiKey], [
             'contents' => [['role' => 'user', 'parts' => $parts]],
             'generationConfig' => [
                 'responseModalities' => ['IMAGE'],
-                'imageConfig' => ['aspectRatio' => in_array($aspect, self::ASPECTS, true) ? $aspect : '16:9', 'imageSize' => $this->size],
+                'imageConfig' => ['aspectRatio' => in_array($aspect, self::ASPECTS, true) ? $aspect : '16:9', 'imageSize' => $size],
             ],
         ], timeout: 300);
         $data = $response->json();
@@ -56,6 +67,16 @@ class GeminiImageGenerator implements ImageGenerator
         }
         $reason = $data['candidates'][0]['finishReason'] ?? ($data['promptFeedback']['blockReason'] ?? 'no image in the answer');
         throw new GenerationError("Gemini drew nothing ($reason).");
+    }
+
+    /** The model and size a picture of this kind is drawn with. $hints['size'] asks for a size. */
+    public function pricing(array $hints): array
+    {
+        $props = in_array($hints['kind'] ?? '', self::PROPS_KINDS, true) && empty($hints['anchor']);
+        $model = $props && $this->propsModel !== '' ? $this->propsModel : $this->model;
+        $size = $hints['size'] ?? ($props && $this->propsSize !== '' ? $this->propsSize : $this->size);
+
+        return [$model, $size];
     }
 
     public function transparency(): bool

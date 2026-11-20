@@ -8,10 +8,31 @@ use App\Qbl\Generation\Llm\LanguageModel;
 /**
  * Writes the mission blueprint from the teacher's prompt and the curriculum alignment, and has the
  * model correct it until BlueprintValidator finds nothing wrong.
+ *
+ * Corrections are cheap: the model answers with only the changes (set this field, remove that one, add
+ * an item to a list), not the whole blueprint again, which would cost as much as writing it in the
+ * first place. Only if that fails does it write the whole blueprint once more. The instructions and the
+ * brief come from the prompt cache on every call after the first.
  */
 class MissionDesigner
 {
     public function __construct(private LanguageModel $llm, private array $limits, private int $repairs = 3) {}
+
+    /** The answer to a correction: a list of changes. */
+    public const CHANGES_SCHEMA = [
+        'type' => 'object',
+        'required' => ['changes'],
+        'properties' => [
+            'changes' => ['type' => 'array', 'minItems' => 1, 'items' => [
+                'type' => 'object', 'required' => ['op', 'path', 'value'],
+                'properties' => [
+                    'op' => ['type' => 'string', 'enum' => ['set', 'remove', 'append'], 'description' => 'set: put value at path (replacing what is there, or adding a field). remove: delete what is at path (value ""). append: add value to the end of the list at path.'],
+                    'path' => ['type' => 'string', 'description' => 'Dot-separated. A list of things with keys is addressed by key, other lists by position from 0: "interactions.q_pollen.question.choices.0.correct", "scenes.orchard.exits.1.x", "steps", "twists.storm.blocks".'],
+                    'value' => ['type' => 'string', 'description' => 'The new value as JSON: true, 0.4, "text", {"key": ...}, [...]; "" for remove.'],
+                ],
+            ]],
+        ],
+    ];
 
     /**
      * @param  array  $alignment  StandardsAligner::align()
@@ -24,8 +45,9 @@ class MissionDesigner
         $objectiveIds = array_column($alignment['learning_objectives'], 'id');
         $brief = $this->brief($prompt, $alignment, $options);
 
-        $blueprint = $this->llm->structured($this->system(), [$brief], 'mission_blueprint', $schema, 32000);
-        $blueprint = self::tidy($blueprint);
+        $blueprint = self::tidy($this->llm->structured($this->system(), [$brief], 'mission_blueprint', $schema, 32000));
+        $rewritten = false;
+        $limit = $this->repairs;
         for ($round = 1; ; $round++) {
             try {
                 $errors = BlueprintValidator::errors($blueprint, $objectiveIds);
@@ -36,16 +58,127 @@ class MissionDesigner
             if (! $errors) {
                 return $blueprint;
             }
-            if ($round > $this->repairs) {
-                throw new GenerationError("The mission blueprint still has problems after {$this->repairs} corrections:\n- ".implode("\n- ", $errors));
+            if ($round > $limit) {
+                if ($rewritten) {
+                    throw new GenerationError("The mission blueprint still has problems after {$this->repairs} corrections and a rewrite:\n- ".implode("\n- ", $errors));
+                }
+                // Changes did not get there: one whole rewrite, as a last resort.
+                $log && $log('Rewriting the blueprint ('.count($errors).' problem'.(count($errors) === 1 ? '' : 's').' left): '.$errors[0]);
+                $blueprint = self::tidy($this->llm->structured($this->system(), [
+                    $brief, ['cache' => true],
+                    "Here is the blueprint you wrote:\n".json_encode($blueprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                    "It cannot be built because of these problems. Give the whole corrected blueprint, changing only what is needed:\n- ".implode("\n- ", $errors),
+                ], 'mission_blueprint', $schema, 32000));
+                $rewritten = true;
+                $limit = $round; // checked once more, then no more corrections
+
+                continue;
             }
             $log && $log('Correcting the blueprint ('.count($errors).' problem'.(count($errors) === 1 ? '' : 's').'): '.$errors[0]);
-            $blueprint = self::tidy($this->llm->structured($this->system(), [
-                $brief,
+            $answer = $this->llm->structured($this->system(), [
+                $brief, ['cache' => true],
                 "Here is the blueprint you wrote:\n".json_encode($blueprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                "It cannot be built because of these problems. Give the whole corrected blueprint, changing only what is needed:\n- ".implode("\n- ", $errors),
-            ], 'mission_blueprint', $schema, 32000));
+                "It cannot be built because of these problems:\n- ".implode("\n- ", $errors)."\n\nAnswer with only the changes that fix them (not the whole blueprint), changing as little as possible. Keep everything else as it is.",
+            ], 'blueprint_changes', self::CHANGES_SCHEMA, 6000);
+            [$changed, $problems] = self::applyChanges($blueprint, (array) ($answer['changes'] ?? []));
+            if ($problems) {
+                $log && $log('Some changes could not be made: '.$problems[0]);
+            }
+            $blueprint = self::tidy($changed);
         }
+    }
+
+    /**
+     * Applies a correction's changes to a blueprint. Lists of things with keys are addressed by key,
+     * other lists by position.
+     *
+     * @return array{0: array, 1: string[]} the changed blueprint, and the changes that could not be made
+     */
+    public static function applyChanges(array $b, array $changes): array
+    {
+        $problems = [];
+        foreach ($changes as $c) {
+            $op = $c['op'] ?? '';
+            $path = array_values(array_filter(explode('.', (string) ($c['path'] ?? '')), fn ($p) => $p !== ''));
+            $value = null;
+            if ($op !== 'remove') {
+                $raw = (string) ($c['value'] ?? '');
+                $value = json_decode($raw, true);
+                if ($value === null && trim($raw) !== 'null') {
+                    // Plain text the model did not quote.
+                    $value = $raw;
+                }
+            }
+            if (! $path || ! in_array($op, ['set', 'remove', 'append'], true)) {
+                $problems[] = 'A change had no path or an unknown op.';
+
+                continue;
+            }
+            $last = array_pop($path);
+            $parent = &$b;
+            $ok = true;
+            foreach ($path as $part) {
+                $index = self::index($parent, $part);
+                if ($index === null || ! is_array($parent[$index] ?? null)) {
+                    $ok = false;
+                    break;
+                }
+                $parent = &$parent[$index];
+            }
+            if (! $ok || ! is_array($parent)) {
+                $problems[] = "No such place: {$c['path']}.";
+                unset($parent);
+
+                continue;
+            }
+            $index = self::index($parent, $last);
+            if ($op === 'set') {
+                $parent[$index ?? $last] = $value;
+            } elseif ($op === 'remove') {
+                if ($index === null) {
+                    $problems[] = "Nothing to remove at {$c['path']}.";
+                } else {
+                    $list = array_is_list($parent);
+                    unset($parent[$index]);
+                    if ($list) {
+                        $parent = array_values($parent);
+                    }
+                }
+            } else {
+                if ($index === null) {
+                    $parent[$last] = [];
+                    $index = $last;
+                }
+                if (! is_array($parent[$index]) || ! array_is_list($parent[$index])) {
+                    $problems[] = "Not a list: {$c['path']}.";
+                } else {
+                    $parent[$index][] = $value;
+                }
+            }
+            unset($parent);
+        }
+
+        return [$b, $problems];
+    }
+
+    /** Where a path part is in an array: a field, a position in a list, or the thing in a list with that key. */
+    private static function index(array $a, string $part): int|string|null
+    {
+        if (array_key_exists($part, $a)) {
+            return $part;
+        }
+        if (array_is_list($a)) {
+            if (ctype_digit($part) && array_key_exists((int) $part, $a)) {
+                return (int) $part;
+            }
+            foreach ($a as $i => $row) {
+                if (is_array($row) && ($row['key'] ?? $row['id'] ?? null) === $part) {
+                    return $i;
+                }
+            }
+        }
+
+        return null;
     }
 
     private function system(): string
