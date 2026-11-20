@@ -189,6 +189,13 @@ $borrow = new VoiceCatalog(['voices' => [
 same($borrow->specFor('c', 'kokoro'), ['key' => 'c', 'spec' => ['voice' => 'bm_george'], 'borrowed' => false], 'a voice has what it is on each service');
 same($borrow->specFor('c', 'acme'), ['key' => 'b', 'spec' => ['voice' => 'Bruce'], 'borrowed' => true], 'and on a service it says nothing for, borrows the nearest voice that has it');
 same($borrow->specFor('c', 'nobody'), null, 'no voice on a service none of them has');
+same(array_keys($borrow->matching([])), ['a', 'b', 'c'], 'with nothing asked, every voice fits');
+same(array_keys($borrow->matching(['lang' => 'en'])), ['a', 'b', 'c'], '"en" is every kind of English');
+same(array_keys($borrow->matching(['lang' => 'en_gb'])), ['c'], '"en-GB" only British');
+same(array_keys($borrow->matching(['gender' => 'Male', 'age' => 'adult'])), ['b'], 'voices are picked by gender and age');
+same(array_keys($borrow->matching(['engine' => 'acme'])), ['a', 'b'], 'and only those with a voice of their own on the service, when asked');
+same(array_keys($catalog->matching(['traits' => ['robot', 'NO-SUCH']])) !== [], true, 'and by how they sound (any of the traits)');
+same(array_keys($catalog->matching(['lang' => 'xx'])), [], 'no voice fits a language the catalog has none of');
 same(VoiceCatalog::label($catalog->get('heart')), 'Heart: woman, American', 'a voice is labelled by who it sounds like');
 
 // ------------------------------------------------------------------ choosing voices
