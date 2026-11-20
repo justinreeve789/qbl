@@ -86,6 +86,9 @@ and add a no-op or recording version to `HeadlessUi` in `test/harness.ts`.
 - Systems read the room state every frame instead of subscribing to changes, so they behave the same
   online and offline.
 - Screen-space things (text, overlays, infoboxes, the checklist) are HTML. World-space things are Phaser objects.
+- An infobox is drawn by `ui/infobox/` (`view.ts` the box, its pages and buttons; `content.ts` slideshows,
+  cards, callouts, answer boxes, glossary words and zoom). It uses the DOM only, so the editor imports it
+  for its preview: keep Phaser and game state out of it.
 - Nothing mission-specific goes in the client. If a mission needs something new, it is a new field in the
   JSON plus a system, presenter or feature that reads it.
 

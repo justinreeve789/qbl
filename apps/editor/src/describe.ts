@@ -1,4 +1,4 @@
-import { resolveMediaUrl, type Media } from '@qbl/shared';
+import { infoboxRefs, resolveMediaUrl, type Media } from '@qbl/shared';
 import type { Row } from './api';
 import type { Store } from './store';
 
@@ -78,8 +78,11 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       return `Show ${media()} in the scene`;
     case 'image_overlay':
       return `Show ${media()} over the screen`;
-    case 'infobox':
-      return `Infobox: ${clip(text(values.content)) || '(empty)'}`;
+    case 'infobox': {
+      const refs = infoboxRefs(String(values.content ?? ''));
+      const extra = [refs.pages > 1 ? `${refs.pages} pages` : '', refs.media.length ? `${refs.media.length} ${refs.media.length === 1 ? 'picture' : 'pictures'}` : ''].filter(Boolean).join(', ');
+      return `Infobox: ${clip(text(values.content)) || (refs.media.length ? '' : '(empty)')}${extra ? ` (${extra})` : ''}`;
+    }
     case 'jump':
       return `Jump to ${sceneLabel(store.byId('scenes', values.scene_id as number | null))}`;
     case 'repeat':

@@ -64,7 +64,7 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 
 | Action | What it does |
 | ------ | ------------ |
-| 📋 **Infobox** | A box of text (HTML), with optional buttons. [Details below](#infobox-and-questions) |
+| 📋 **Infobox** | A box of text, pictures, video, sounds and cards, with optional buttons. It can have several pages. [Details below](#infobox-and-questions) |
 | 💬 **Dialogue** | A speech bubble over the speaker, or a *story box* with a portrait. The speaker is the player or a **Character** |
 | 🔀 **Conversation** | A dialogue tree: lines said by the player and characters, where the player picks what to say next. [Details below](#conversations) |
 | 🔤 **Text overlay** | Text over the screen: where, how long, size, colour and style |
@@ -131,9 +131,45 @@ What happens depends on the character. One set to **walk around on its own** (Ch
 
 ### Infobox and questions
 
-An infobox has **Content (HTML)**, a tick for **Can be closed without choosing a button**, and **Buttons**. Each button has its text, an optional action it performs, and optional conditions. Leave a button's action as *Just close the box* for a plain "OK". A button's action can be any type, including another infobox with buttons of its own.
+An infobox has its **Content**, a **Picture or video at the top**, a **Size** (small, medium or large), a **Colour** for its edge and main buttons, a tick for **Can be closed without choosing a button**, and **Buttons**. Each button has its text, an optional action it performs, optional conditions, and how it **Shows as** (see [Right and wrong answers](#right-and-wrong-answers)). Leave a button's action as *Just close the box* for a plain "OK". A button's action can be any type, including another infobox with buttons of its own; the next box then takes over from the first without the screen flashing between them.
 
-A **question** is a standard pattern built from these pieces:
+#### Writing the content
+
+The content is edited as it looks in the game, not as HTML. Type, and use the toolbar for **bold**, *italic*, underline, a highlight, a heading, lists and links. **＋ Insert** puts in:
+
+| Insert | What players get |
+| ------ | ---------------- |
+| 🖼️ **Picture** | A picture from the media library, small, medium or full width, with a caption. Tapped, it opens large. |
+| 🎞️ **Slideshow** | Several pictures to swipe through, with arrows and dots. |
+| 🎬 **Video** | A video with its controls. It can start by itself (without sound) and repeat. |
+| 🔊 **Sound** | A sound or a recording with play controls. |
+| 💡 **Callout** | A coloured note: a tip, a fact, a warning, or something to think about. |
+| 👆 **Reveal card** | A question or prompt that opens to show what it hides. What it hides is not read aloud until it is opened. |
+| 🃏 **Flip card** | A card with a front and a back that turns over when tapped. |
+| ✏️ **Answer box** | A box to type an answer in. See below. |
+| 📖 **Glossary word** | Select a word in the text first. Players tap it to see what it means, and it goes into their glossary. |
+| 🔢 **Variable** | A variable's value, such as a score, shown as a blue chip in the editor. |
+| 📄 **New page** | What comes after is on the next page. Players step through with **Next** and **Back** (or ← and →), the dots showing where they are; the box's buttons are on the last page. |
+
+Pictures, videos and sounds can also be **dropped or pasted** straight into the text: they are uploaded to the media library and put where they were dropped. Several pictures dropped at once become a slideshow. Click a block to change it in a pop-up; select it and press **Delete** to take it out, or **Alt+↑** and **Alt+↓** to move it.
+
+**👀 Preview** opens the box large, with the box itself beside it as players will see it, drawn by the game. The preview follows every change and its pages, slideshows, cards and buttons all work. **</>** shows the HTML, for anyone who wants to write it by hand; it is cleaned exactly as the game cleans it.
+
+#### Answer boxes
+
+An **answer box** saves what the player types in a variable when they press one of the box's buttons, before the button's action runs. A number is saved as a number. The first button (the one **Enter** presses, such as *Check*) waits until something has been typed; the others (*I don't know*, *Hint*) take what is there. The answer can then be shown with `{{name}}`, tested in a condition, and read in the class report, which lists what was typed beside the button pressed.
+
+#### Right and wrong answers
+
+A button's **Shows as** says what kind of answer it is:
+
+* **✓ Right answer**: the button turns green with a tick and a burst of stars before the box closes and its action runs.
+* **✗ Wrong answer**: it turns red and shakes, then the box closes and its action runs.
+* **↻ Wrong: try again**: it shakes and is crossed out, and the box stays open for another try. Its action, if it has one (a sound, adding one to a "tries" variable), runs while the box stays open.
+
+A box that cannot be closed must have at least one button that is always offered and is not *Try again*.
+
+A **quick question** needs nothing more than one box: untick **Can be closed without choosing a button**, mark the right answer **✓ Right answer** and the others **↻ Wrong: try again**, and put the explanation on the right answer's button (another infobox). A **question with feedback for each answer** is a standard pattern built from these pieces:
 
 1. A hotspot or indirect event holds an infobox with **Can be closed without choosing a button** *unticked*, and one button per answer.
 2. Each button's action is **Run event**, pointing at its own indirect event.

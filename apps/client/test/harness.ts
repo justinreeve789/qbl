@@ -8,14 +8,17 @@ import { PlayScene } from '../src/scenes/PlayScene';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { MovesFeature } from '../src/features/MovesFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
-import type { ChatLine, GlossaryRow, InfoboxHandle, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
+import type { ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
   html: string;
   buttons: string[];
+  marks: Array<string | null>;
   dismissible: boolean;
-  choose(index: number): void;
+  options: InfoboxOptions;
+  /** Choose a button, with what is typed in the box's answer boxes (by variable name). */
+  choose(index: number, answers?: Record<string, string>): Promise<unknown>;
   dismiss(): void;
 }
 
@@ -118,13 +121,19 @@ export class HeadlessUi implements UiPort {
   imageOverlay(url: string, o: { duration?: number }) { return this.overlay(this.images, url, o.duration); }
   videoOverlay(url: string) { return this.overlay(this.images, url, 1); }
 
-  infobox(html: string, buttons: string[], o: { dismissible: boolean; speak?: SpeakOptions }): InfoboxHandle {
+  infobox(html: string, buttons: InfoboxButton[], o: InfoboxOptions): InfoboxHandle {
     this.say(html, o.speak);
     let resolve!: (i: number | null) => void;
     const choice = new Promise<number | null>((r) => (resolve = r));
     const box: OpenInfobox = {
-      html, buttons, dismissible: o.dismissible,
-      choose: (i) => close(i),
+      html, buttons: buttons.map((b) => b.label), marks: buttons.map((b) => b.mark ?? null), dismissible: o.dismissible, options: o,
+      choose: (i, answers = {}) => {
+        const chosen = o.chosen?.(i, answers);
+        // "Try again" leaves the box open.
+        if (buttons[i]?.mark === 'try_again') return Promise.resolve(chosen);
+        close(i);
+        return Promise.resolve(chosen);
+      },
       dismiss: () => {
         if (!o.dismissible) throw new Error('This infobox cannot be dismissed');
         close(null);
@@ -273,12 +282,12 @@ export class Game {
   }
 
   /** Choose a button on the open infobox by its label (or the start of it). */
-  async choose(label: string) {
+  async choose(label: string, answers?: Record<string, string>) {
     const box = this.box;
     if (!box) throw new Error(`No infobox is open (wanted "${label}")`);
     const i = box.buttons.findIndex((b) => b.startsWith(label));
     if (i < 0) throw new Error(`No button "${label}" among ${JSON.stringify(box.buttons)}`);
-    box.choose(i);
+    void box.choose(i, answers);
     await settle();
     await this.wait(48);
   }

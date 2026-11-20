@@ -69,12 +69,7 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 [class$='-right'] { grid-column: 3; justify-self: end; }
 .align-top-center, .align-center-center, .align-bottom-center { grid-column: 1 / -1; }
 
-/* infobox */
-.qbl-backdrop { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.45); }
-.qbl-infobox { width: min(92vw, 560px); max-height: 80vh; display: grid; grid-template-rows: 1fr auto; border-radius: 14px; background: var(--qbl-panel); border: 3px solid #fff; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
-.qbl-infobox-body { padding: 22px 24px 8px; overflow: auto; line-height: 1.5; }
-.qbl-infobox-body img { max-width: 100%; }
-.qbl-infobox-body a { color: #bfe0ff; }
+/* infobox: the box itself is in infobox/infobox.css. These are for other boxes with buttons (a profile). */
 .qbl-infobox-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; padding: 14px 24px 20px; }
 
 .qbl-objectives li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; line-height: 1.3; }
@@ -97,12 +92,6 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
-/* author content inside infoboxes */
-.qbl-infobox-body h3 { margin: 0 0 10px; }
-.qbl-infobox-body table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 0.92rem; }
-.qbl-infobox-body th, .qbl-infobox-body td { padding: 6px 8px; border: 1px solid rgba(255, 255, 255, 0.35); text-align: left; vertical-align: top; }
-.qbl-infobox-body th { background: rgba(255, 255, 255, 0.12); }
-.qbl-infobox-body img { border-radius: 8px; display: block; margin: 0 auto; height: auto; }
 
 /* Speech bubbles for dialogue actions. Placed by ui/bubble.ts so they stay on screen. */
 .qbl-bubble {

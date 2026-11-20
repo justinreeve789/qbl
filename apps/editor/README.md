@@ -32,6 +32,11 @@ It is plain TypeScript and DOM, with no UI framework: a few hundred lines of hel
   their own actions and conditions, and so do the added ones: avatar, freeze, dialogue, award
   (stars and XP) and shop (open the marketplace). A conversation (dialogue tree) is drawn as a
   map in its action card and edited line by line in a pop-up panel (`views/conversation.ts`).
+- **Infobox content** is edited as it looks (`rich/`): formatted text with pictures, slideshows,
+  video, sound, callouts, reveal and flip cards, answer boxes, glossary words, variables and
+  pages put in with ＋ Insert or by dropping files, each block changed in a pop-up. Preview opens
+  it beside a live preview drawn by the game's own infobox code (`apps/client/src/ui/infobox/`),
+  and </> shows the HTML, which is what is saved.
 - **Library**: media (upload or by address, in sub-tabs by what it is used for), variables,
   items, characters, objectives.
 - **Moves**: what players can do from buttons on their screen (jump, crouch, dance), each with
@@ -65,6 +70,13 @@ Every change is saved as it is made. There is no save button.
         library.ts       media, variables, items, characters, objectives
         eventPanel.ts    one event: kind, hotspot geometry, conditions, labels
         actions.ts       the actions of an event, and infobox buttons
+      rich/
+        editor.ts        an infobox's content, edited as it looks; the designer with its preview
+        model.ts         content HTML <-> editable text and blocks
+        blocks.ts        the kinds of block and their pop-ups
+        pickers.ts       choosing media (or uploading it), variables and glossary words
+        preview.ts       the box as players see it, drawn by the game's code
+        game.ts          the game's infobox code and sanitiser, shared with the editor
         conditions.ts    "variable operator value" lists
         scene/
           sceneEditor.ts the three panes and the "add to scene" menu

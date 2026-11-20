@@ -7,6 +7,7 @@ import { CHARACTER_POSES, isPose, normalizeNpc } from './characters.js';
 import { characterRoams, doorsOf, normalizeRoutine, routeBetween, startPlacement } from './walking.js';
 import { ScenarioIndex } from './scenario.js';
 import { placeholderVariables } from './text.js';
+import { BUTTON_MARKS, INFOBOX_SIZES, infoboxRefs } from './infobox.js';
 import { LINE_ID, reachableLines } from './conversation.js';
 import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
 
@@ -493,18 +494,34 @@ export function validateScenario(doc: unknown): ValidationResult {
         else if (a.text.length > 256) warn(`${path}.text`, 'text is longer than 256 characters');
         checkText(a.text, `${path}.text`);
         break;
-      case 'infobox':
+      case 'infobox': {
         if (typeof a.content !== 'string') err(`${path}.content`, 'content is required');
         checkText(a.content, `${path}.content`);
-        if (a.dismissible === false && (a.call_to_actions ?? []).filter((c) => !c.conditions?.length).length === 0) {
-          err(path, 'An infobox that cannot be dismissed needs at least one button that is always offered');
+        const refs = infoboxRefs(a.content);
+        for (const id of refs.media) if (!media.has(id)) warn(`${path}.content`, `The content shows media ${id}, which is not in the scenario's media (it may have been deleted)`);
+        for (const name of refs.answers) {
+          if (!variables.has(name)) err(`${path}.content`, `An answer box saves to the variable "${name}", which is not defined`);
+        }
+        for (const word of refs.words) {
+          if (!glossaryIds.has(word)) warn(`${path}.content`, `The content has a glossary word (${word}) that is not in the glossary`);
+        }
+        if (a.media_id != null) {
+          needMedia(a.media_id, `${path}.media_id`);
+          const top = media.get(a.media_id);
+          if (top && top.type !== 'image' && top.type !== 'video') err(`${path}.media_id`, `The picture at the top is ${top.type}; it must be an image or a video`);
+        }
+        if (a.size != null && !(INFOBOX_SIZES as readonly string[]).includes(a.size)) warn(`${path}.size`, 'size is small, medium or large');
+        if (a.dismissible === false && (a.call_to_actions ?? []).filter((c) => !c.conditions?.length && c.mark !== 'try_again').length === 0) {
+          err(path, 'An infobox that cannot be dismissed needs at least one button that is always offered and is not "Try again"');
         }
         (a.call_to_actions ?? []).forEach((cta, ci) => {
           if (!cta.text) err(`${path}.call_to_actions[${ci}].text`, 'Button text is required');
+          if (cta.mark != null && !(BUTTON_MARKS as readonly string[]).includes(cta.mark)) err(`${path}.call_to_actions[${ci}].mark`, 'mark is right, wrong or try_again');
           checkConditions(cta.conditions, `${path}.call_to_actions[${ci}]`);
           if (cta.action) checkAction(cta.action as Action, `${path}.call_to_actions[${ci}].action`, scene, true);
         });
         break;
+      }
       case 'image_fixed':
         if (typeof a.position_x !== 'number' || typeof a.position_y !== 'number') err(path, 'position_x and position_y are required');
         break;

@@ -8,6 +8,8 @@
  */
 import type { MediaSpeech } from './speech.js';
 
+import type { ButtonMark, InfoboxSize } from './infobox.js';
+
 export type Id = number;
 export type VarValue = string | number;
 export type Params = Record<string, unknown>;
@@ -303,6 +305,12 @@ export interface CallToAction {
   action?: Omit<Action, 'id'> & { id?: Id };
   /** [ext] The button is only offered while these hold. */
   conditions?: Condition[];
+  /**
+   * [ext] Whether this is a right or a wrong answer. Chosen, it shows so (a tick, a shake) before
+   * its action runs. `try_again` is a wrong answer that leaves the box open to choose again; its
+   * action, if it has one, runs while the box stays open.
+   */
+  mark?: ButtonMark;
 }
 /**
  * [ext] Reading text aloud. `narrate` overrides the scenario's `narration` setting for one action.
@@ -317,7 +325,7 @@ export interface Narrated {
 
 export interface InfoboxAction extends ActionBase, Narrated {
   type: 'infobox';
-  /** HTML. May contain {{variable}} and {{media:ID}} placeholders. */
+  /** HTML. May contain {{variable}} and {{media:ID}} placeholders, and the `data-qbl` blocks of infobox.ts. */
   content: string;
   call_to_actions?: CallToAction[] | null;
   /**
@@ -325,6 +333,13 @@ export interface InfoboxAction extends ActionBase, Narrated {
    * dismissed: the player must pick one of the buttons. Used for questions.
    */
   dismissible?: boolean;
+  /**
+   * [ext] How wide the box is. Default `medium`. An infobox's `media_id` (an image or a video) is
+   * drawn across the top of the box.
+   */
+  size?: InfoboxSize;
+  /** [ext] A CSS colour for the box's edge and its main buttons. */
+  accent?: string;
 }
 export interface JumpAction extends ActionBase {
   type: 'jump';
