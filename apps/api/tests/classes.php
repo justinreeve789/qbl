@@ -6,7 +6,7 @@
  *
  *   php apps/api/tests/classes.php
  */
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -144,10 +144,38 @@ $pdo->exec("INSERT INTO avatars (id, name, image_url, portrait_url, settings, ac
     (2, 'Sprocket', '/a/sprocket.png', NULL, '{\"scale\":1.35,\"sheet\":{\"columns\":6,\"rows\":3},\"animations\":[{\"name\":\"walk\",\"frames\":[6,7]}]}', 1, 1),
     (3, 'Retired', '/a/old.png', NULL, NULL, 0, 3)");
 $out = Avatars::inject($pdo, $document);
-same([$out['avatar_media_ids'], $out['avatar_portraits']], [[900002, 900001], ['900001' => 950001]], 'the platform avatars replace the scenario\'s, in order, without retired ones');
+same(array_column($out['avatars'], 'id'), [900002, 900001], 'the platform avatars replace the scenario\'s, in order, without retired ones');
+same(isset($out['avatar_media_ids']) || isset($out['avatar_portraits']), false, 'the older lists go: avatars are characters now');
 $byId = array_column($out['assets'], null, 'id');
-same([$byId[900001]['url'], $byId[900001]['scale_x'], $byId[950001]['url'], $byId[900002]['sheet'], $byId[900002]['animations'][0]['name'], isset($byId[5])], ['/a/nova.png', 0.85, '/p/nova.png', ['columns' => 6, 'rows' => 3], 'walk', true], 'each arrives as an image with its portrait, size, sheet and animations; the scenario\'s own media stays');
+same([$byId[900001]['url'], $byId[950001]['url'], $byId[900002]['sheet'], isset($byId[5])], ['/a/nova.png', '/p/nova.png', ['columns' => 6, 'rows' => 3], true], 'each picture arrives as an image, with the close-up; the scenario\'s own media stays');
+$nova = $out['avatars'][1];
+same([$nova['name'], $nova['scale'], $nova['platform'], $nova['animations']], ['Nova', 0.85, true, ['stand_right' => ['media_id' => 900001], 'portrait' => ['media_id' => 950001]]], 'an avatar of the older shape is one picture facing right, and its close-up');
+same($out['avatars'][0]['animations'], ['stand_right' => ['media_id' => 900002, 'frames' => [0]], 'walk_right' => ['media_id' => 900002, 'frames' => [6, 7]]], "a sheet's own walk becomes the walking pose");
 same(Avatars::inject($pdo, $out), $out, 'adding them twice changes nothing');
+
+// ---- avatars drawn from the platform's own pictures, shared between avatars
+$sheet = ['url' => '/a/crew.png', 'width' => 600, 'height' => 200, 'sheet' => ['columns' => 6, 'rows' => 2]];
+same(Avatars::seed($pdo, [
+    ['id' => 4, 'name' => 'Pilot', 'image_url' => '/a/crew.png', 'settings' => ['scale' => 1.1], 'animations' => [
+        'stand_right' => $sheet + ['frames' => [0]], 'walk_right' => $sheet + ['frames' => [1, 2, 3], 'duration' => 450], 'stand_left' => $sheet + ['frames' => [0], 'flip' => true],
+        'portrait' => ['url' => '/a/pilot-face.png'], 'salute' => $sheet + ['frames' => [4, 5], 'repeat' => false],
+    ]],
+    ['id' => 5, 'name' => 'Medic', 'image_url' => '/a/crew.png', 'animations' => ['stand_right' => $sheet + ['frames' => [6]], 'walk_right' => $sheet + ['frames' => [7, 8, 9]]]],
+    ['id' => 1, 'name' => 'Nova again', 'image_url' => '/x.png'],
+]), 2, 'seeding adds new avatars and leaves existing ones alone');
+same((int) $pdo->query('SELECT COUNT(*) FROM platform_media')->fetchColumn(), 2, 'one platform picture per address, however many avatars use it');
+$out = Avatars::inject($pdo, $document);
+$pilot = array_values(array_filter($out['avatars'], fn ($a) => $a['name'] === 'Pilot'))[0];
+$medic = array_values(array_filter($out['avatars'], fn ($a) => $a['name'] === 'Medic'))[0];
+$crew = $pilot['animations']['stand_right']['media_id'];
+same([$pilot['id'], $crew >= Avatars::MEDIA_BASE, $medic['animations']['walk_right']['media_id'] === $crew], [900004, true, true], 'both are cut from the same sheet, served in the platform range');
+same([$pilot['animations']['walk_right'], $pilot['animations']['stand_left'], $pilot['animations']['salute']], [['media_id' => $crew, 'frames' => [1, 2, 3], 'duration' => 450], ['media_id' => $crew, 'frames' => [0], 'flip' => true], ['media_id' => $crew, 'frames' => [4, 5], 'repeat' => false]], 'animations keep their frames, timing, mirroring and looping');
+$assets = array_column($out['assets'], null, 'id');
+same([$assets[$crew]['sheet'], $assets[$crew]['width'], count(array_filter($out['assets'], fn ($m) => $m['id'] === $crew))], [['columns' => 6, 'rows' => 2], 600, 1], 'the shared sheet is in the document once, with its grid');
+$listed = array_column(array_map(fn ($a) => Avatars::present($a), Avatars::all($pdo)), null, 'name');
+same([$listed['Medic']['picture'], $listed['Pilot']['portrait']['url'], $listed['Nova']['picture']], [['url' => '/a/crew.png', 'sheet' => ['columns' => 6, 'rows' => 2], 'frame' => 6], '/a/pilot-face.png', ['url' => '/a/nova.png']], 'the chooser gets each avatar standing, one frame of a sheet, and its close-up');
+same(Avatars::inject($pdo, $out), $out, 'and again, adding them twice changes nothing');
+$pdo->exec('UPDATE avatars SET active = 0 WHERE id IN (4, 5)');
 
 // ---- over HTTP
 $api = new ClassApi($pdo);

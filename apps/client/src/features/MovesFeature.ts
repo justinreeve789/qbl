@@ -1,4 +1,4 @@
-import { BUILT_IN_MOVES, testConditions } from '@qbl/shared';
+import { BUILT_IN_MOVES, characterAnimationRepeats, isPose, testConditions } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import type { GameFeature } from '../core/GameFeature';
 
@@ -52,8 +52,8 @@ export class MovesFeature implements GameFeature {
 
 /** Whether a move keeps going until stopped, on this player's avatar. */
 function isLooping(ctx: GameContext, animation: string): boolean {
-  const media = ctx.index.media.get(ctx.connection.me?.avatar ?? -1);
-  const drawn = media?.sheet ? media.animations?.find((a) => a.name === animation) : undefined;
-  if (drawn) return drawn.repeat ?? BUILT_IN_MOVES[animation]?.repeat === true;
+  const avatar = ctx.index.avatars.get(ctx.connection.me?.avatar ?? -1);
+  const drawn = isPose(animation) ? undefined : avatar?.animations?.[animation];
+  if (drawn) return characterAnimationRepeats(animation, drawn);
   return BUILT_IN_MOVES[animation]?.repeat === true;
 }

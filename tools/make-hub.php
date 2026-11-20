@@ -11,7 +11,7 @@
  *
  * Run it again after changing the demo's ship scenes, or edit the lists below.
  */
-foreach (['StoreError', 'ScenarioStore', 'Avatars', 'ScenarioDecompiler', 'ScenarioArchive'] as $class) {
+foreach (['StoreError', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'ScenarioStore', 'Avatars', 'ScenarioDecompiler', 'ScenarioArchive'] as $class) {
     require __DIR__."/../apps/api/app/Qbl/$class.php";
 }
 $data = __DIR__.'/../apps/api/database/seeders/data';

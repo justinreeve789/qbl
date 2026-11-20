@@ -1,11 +1,9 @@
-import { DEFAULT_RANKS, type SiteLink } from '@qbl/shared';
+import { DEFAULT_RANKS, type CharacterPicture, type SiteLink } from '@qbl/shared';
 import { icon } from './icons';
+import { pictureNode } from './picture';
 
-/** A player's picture: an image, or a sprite sheet whose first frame is shown. */
-export interface AvatarPicture {
-  url: string | null;
-  sheet?: { columns: number; rows: number } | null;
-}
+/** A player's picture: their avatar standing, as an image or one frame of a sprite sheet. */
+export type AvatarPicture = CharacterPicture;
 
 /** Stars, XP and rank, as the menu's heading shows them. */
 export interface MenuStats {
@@ -48,10 +46,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
-/**
- * A round picture of the player: the top of their avatar, so the face shows. A sprite sheet's
- * first frame is cut out once the sheet has loaded and its frame size is known.
- */
+/** A round picture of the player: the top of their avatar, so the face shows. */
 export function avatarFace(avatar: AvatarPicture | null | undefined, size: number): HTMLElement {
   const face = el('span', 'qbl-face');
   face.style.setProperty('--size', `${size}px`);
@@ -60,26 +55,7 @@ export function avatarFace(avatar: AvatarPicture | null | undefined, size: numbe
     face.classList.add('empty');
     return face;
   }
-  const url = avatar.url;
-  const sheet = avatar.sheet;
-  if (sheet && (sheet.columns > 1 || sheet.rows > 1)) {
-    const frame = el('span', 'qbl-face-frame');
-    frame.style.backgroundImage = `url("${url}")`;
-    frame.style.backgroundSize = `${sheet.columns * 100}% ${sheet.rows * 100}%`;
-    const probe = new Image();
-    probe.onload = () => {
-      const w = probe.naturalWidth / sheet.columns;
-      const h = probe.naturalHeight / sheet.rows;
-      if (w > 0 && h > 0) frame.style.aspectRatio = `${w} / ${h}`;
-    };
-    probe.src = url;
-    face.append(frame);
-  } else {
-    const img = el('img', 'qbl-face-frame');
-    img.src = url;
-    img.alt = '';
-    face.append(img);
-  }
+  face.append(pictureNode(avatar, 'qbl-face-frame'));
   return face;
 }
 

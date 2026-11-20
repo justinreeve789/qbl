@@ -20,8 +20,9 @@ asset_base_url | string | | Prefix for media `url` values that are neither absol
 visibility | string | public | `public`: on every player's missions page. `private`: only for students a teacher assigned it to.
 chat_mode | string | emotes | `off`: no chat. `emotes`: a fixed set of emoji only. `free`: typed text, filtered by the game server.
 move_speed | decimal | 420 | Avatar walking speed in scene pixels per second.
-avatar_media_ids | array | | Image media ids players may choose as their avatar. The first is the default. With the Laravel API these are the platform's avatars, the same in every scenario, added when the document is served (media ids from 900000); a scenario does not set them. See [Classes, missions and teams](/docs/editor/classes/).
-avatar_portraits | object | | A close-up portrait for an avatar: `{"<avatar media id>": <portrait media id>}`. Shown when a player with that avatar speaks in a story box. An avatar without one is shown by its ordinary picture.
+avatars | array | | The avatars players choose from: characters (see [Characters](#characters)) with an `id` and a `name`. The first is the default. With the Laravel API these are the platform's avatars, the same in every scenario, added when the document is served with the pictures they use (avatar ids from 900000, platform pictures from 800000); a scenario does not set them. See [Classes, missions and teams](/docs/editor/classes/).
+avatar_media_ids | array | | *Before `avatars`.* Image media ids players may choose as their avatar; each is read as an avatar whose id is the picture's id, standing facing right. Read only when `avatars` is absent.
+avatar_portraits | object | | *Before `avatars`.* A close-up for such an avatar: `{"<avatar media id>": <portrait media id>}`.
 objectives | array | | The mission checklist shown to the player. See below.
 music_media_id | int | | Background music for the scenario: it plays in every scene that does not have music of its own.
 music_volume | decimal | 0.5 | Volume of that music, 0 to 1.
@@ -279,7 +280,7 @@ duration | int | | Milliseconds on screen. Absent: a bubble stays long enough to
 
 The bubble follows the speaker and keeps itself on screen. It sits above them when there is room, below when they are near the top of the screen, and to the right or left when there is room neither above nor below; sideways it slides along to stay inside the screen while its tail keeps pointing at the speaker. A sequence of dialogue actions is a conversation; put a `freeze` before it to hold the player still.
 
-**The story box** (`style: "portrait"`) is for the characters and moments that carry the story. It is a panel across the bottom of the screen with the speaker's close-up portrait standing on its edge, their name, and the words appearing a few at a time. The player clicks, or presses Enter or Space, to continue: once to show the whole line, again to go on. The portrait is the character's `portrait_media_id` (or their ordinary picture), or for the player the portrait of their avatar (`avatar_portraits`).
+**The story box** (`style: "portrait"`) is for the characters and moments that carry the story. It is a panel across the bottom of the screen with the speaker's close-up portrait standing on its edge, their name, and the words appearing a few at a time. The player clicks, or presses Enter or Space, to continue: once to show the whole line, again to go on. The portrait is the speaker's `portrait` animation (or the character standing, if it has none): a character's, or for the player their avatar's.
 
 ```json
 { "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QBLPlayerName}}! I am Captain Vega." }
@@ -338,7 +339,7 @@ A new action type, `animate`, plays an animation on something in the scene. See 
 
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
-animation | string | | The animation's name: one defined on the target's sprite sheet, or a built-in move (`jump`, `spin`, `crouch`, `wave`, `dance`). Empty: stop what is playing and return to standing and walking.
+animation | string | | The animation's name: one of the character's or avatar's animations (not a pose), one defined on an item's sprite sheet, or a built-in move (`jump`, `spin`, `crouch`, `wave`, `dance`). Empty: stop what is playing and return to standing and walking.
 target | string | player | `player`: the avatar of the player whose event this is. `item`: an item or vehicle, on the floor of this scene or being worn or ridden. `character`: a character placed in this scene. `action`: a picture that an `image_fixed` action is showing.
 item_id, character_id, target_id | int | | Which item, character or action, for those targets.
 
@@ -504,11 +505,56 @@ A vehicle is always `unique`, whatever the document says: there is one of it in 
 
 ## Characters
 
+Everyone who walks around a scene is a **character**: the avatars players choose from, and the characters (NPCs) a scenario places. Both are drawn from their **animations**, by name, and nothing else; they differ in where they live. A scenario's characters are in `characters` and placed by `scenes[].characters`. Avatars belong to the platform, the same in every scenario: the server adds them to the document as `avatars` (above), and a player's choice of avatar (`avatar_media_id` on their account, `avatar` in the room) is an avatar's `id`.
+
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
-media_id | int | | Image for the character.
-portrait_media_id | int | | A close-up of the character's face, shown in the story box when they speak (`dialogue` with `style: "portrait"`). Without one, `media_id` is used.
-scale | decimal | 1.0 | Display scale.
+id, name | int, string | | As in the base docs.
+animations | object | | The character's animations, by name. See below.
+scale | decimal | 1.0 | Display scale of its pictures.
+voice_pitch, voice_rate, voice_name | | | How its lines are read aloud. See [Reading text aloud](#reading-text-aloud).
+conditions | array | | Scenario characters only: the character is there only while these hold.
+media_id, portrait_media_id | int | | *Before animations.* One picture and a close-up. Read only when `animations` is empty (see below).
+
+### Animations of a character
+
+Each animation is a picture of the scenario (for an avatar, of the platform) and how to play it:
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+media_id | int | | The picture: a still image, an **animated PNG**, or a **sprite sheet** (an image with `sheet`, see [Sprite sheets](#sprite-sheets-and-named-animations)). The picture is ordinary media, so one sheet can serve several characters, each taking the frames it needs.
+frames | array | every frame | For a sheet or an animated PNG: the frame numbers to show, in order. Frames may repeat.
+duration | int | | Milliseconds one pass takes. Default: an animated PNG's own speed (in proportion, for some of its frames), else 100 per frame.
+repeat | bool | | Whether it loops. Default: the poses loop, and the built-in moves that loop (`dance`); anything else plays once.
+flip | bool | false | Draw it mirrored, so art drawn facing one way serves the other.
+
+Five names are **poses**, which the game shows by itself:
+
+Name | Shown
+---- | -----
+`stand_right`, `stand_left` | While the character stands, facing that way.
+`walk_right`, `walk_left` | While it walks that way.
+`portrait` | Beside what it says in a story box (`dialogue` with `style: "portrait"`), and as its face on the player's own pages.
+
+A pose that is missing is filled in from another, so a single picture makes a whole character. Walking uses `walk_<way>`, else the other walk mirrored, else standing. Standing uses `stand_<way>`, else the other stand mirrored, else the portrait. The portrait is `portrait`, else the character standing facing right. Art is taken to face the way its name says: give a character only `stand_right` and it is mirrored to face left.
+
+Any **other name** (`wave`, `dig`, `talk`...) is played when an [`animate` action](#animate) or, for an avatar, a player's [move](#moves-what-players-can-do-themselves) asks for it. A name that is also a [built-in move](#built-in-moves) (`jump`, `dance`...) replaces that move with these frames. Names are lowercase letters, digits and underscores, starting with a letter.
+
+```json
+{ "id": 1, "name": "Captain Vega", "scale": 0.85,
+  "animations": {
+    "stand_right": { "media_id": 109, "frames": [0, 1], "duration": 900 },
+    "walk_right": { "media_id": 109, "frames": [6, 7, 8, 9, 10, 11], "duration": 600 },
+    "portrait": { "media_id": 110 },
+    "wave": { "media_id": 140 }
+  } }
+```
+
+Here she stands and walks from one sheet (mirrored when facing left), her close-up is a still picture, and she waves with an animated PNG played whole at its own speed.
+
+**Older documents.** A character with no `animations` is read from `media_id` and `portrait_media_id`: the picture is `stand_right` (on a sprite sheet, the sheet's own `idle` is `stand_right`, its `walk`, `walk_right` and `walk_left` are the walks, and its other animations are the character's), and the close-up is `portrait`. An `avatar_media_ids` list is read the same way, each picture an avatar with the picture's id. Nothing has to be rewritten; the editor saves a character as animations the first time it is changed.
+
+**Platform avatars** (Laravel API) are rows of `avatars`. An avatar's `settings.animations` names pictures that are rows of `platform_media` (the platform's own pictures, which several avatars can share); an older row with `image_url` (and a sheet in `settings`) and `portrait_url` is read as one picture and a close-up. `database/seeders/data/avatars.php` gives pictures by address and seeding makes one `platform_media` row per address.
 
 A placement's `event_id` names an indirect event in the same scene that runs when the character is clicked, typically an infobox with what they say.
 
@@ -516,7 +562,7 @@ A placement's `event_id` names an indirect event in the same scene that runs whe
 
 ### Sprite sheets and named animations
 
-Any image can be a **sprite sheet**: a grid of equal frames. The media says how the grid is cut and names the animations made of its frames. Whatever is drawn with that media (an avatar, an item, a vehicle, a character, an `image_fixed` picture) can then play them.
+Any image can be a **sprite sheet**: a grid of equal frames. The media says how the grid is cut, and can name animations made of its frames. Characters and avatars take the frames they need in their own animations (see [Characters](#characters)); the animations named on the media are for whatever else is drawn with it (an item, a vehicle, an `image_fixed` picture).
 
 Parameter | Type | Description
 --------- | ---- | -----------
@@ -534,9 +580,9 @@ animations | array | `{ "name", "frames", "duration", "repeat" }`. `frames` are 
   ] }
 ```
 
-An **animated PNG** is not played as such. The editor reads its frames when it is uploaded and lays them out as a sprite sheet with one animation at the file's own speed, so the game has one way of animating. The existing `spritemap` action and spritemap labels, which describe their grid themselves, work as before.
+An **animated PNG** is kept as it is. When one is uploaded the server notes it on the media as `apng: { "frames": 4, "duration": 500, "plays": 0 }` (its frame count, the milliseconds one pass takes, and how many times the file says to play, 0 being forever). The game cuts it into its frames as it loads, the way a sheet is cut: a character's animation can play all of them at the file's own speed or pick some, and an item or picture drawn with it plays the whole file over and over. Until the frames are ready, the first frame shows. The existing `spritemap` action and spritemap labels, which describe their grid themselves, work as before.
 
-### Names that mean something
+### Names that mean something (items, vehicles, pictures)
 
 Name | When it plays
 ---- | -------------
@@ -545,11 +591,11 @@ Name | When it plays
 `walk_left`, `walk_right` | Used instead of `walk` for that direction, unmirrored. If only one is given, it is mirrored for the other.
 anything else | When an `animate` action or a player's move asks for it. Plays once unless `repeat` is true (`dance` loops by default).
 
-A figure with no sheet, or a sheet without `idle` or `walk`, simply stands and is mirrored to face the way it goes, as before.
+A figure with no sheet, or a sheet without `idle` or `walk`, simply stands and is mirrored to face the way it goes, as before. Characters and avatars use their poses instead (see [Characters](#characters)).
 
 ### Built-in moves
 
-Five moves need no frames: `jump` (a hop), `spin` (a turn on the spot), `crouch` (a duck), `wave` (a sway from side to side) and `dance` (a looping bounce and sway). The picture itself is moved, so they work on any figure. **Frames win**: when a figure's sheet has an animation of the same name, that is played instead. So `jump` always does something, and looks best where a jump was drawn.
+Five moves need no frames: `jump` (a hop), `spin` (a turn on the spot), `crouch` (a duck), `wave` (a sway from side to side) and `dance` (a looping bounce and sway). The picture itself is moved, so they work on any figure. **Frames win**: when a character has an animation of the same name (or an item's sheet does), that is played instead. So `jump` always does something, and looks best where a jump was drawn.
 
 ### Moves: what players can do themselves
 
@@ -570,7 +616,7 @@ conditions | array | The button is there only while these hold. Absent: always.
 
 This is the "animation inventory": a move a scenario teaches is a player's own variable set by an event, and the button appears when the condition holds. Moves of that kind belong to the scenario. Moves **bought in the marketplace** (shop items of kind `move`) belong to the account: once bought and switched on, their buttons are there in every scenario. A pressed move plays until it ends, or for a looping one until the player walks or presses it again.
 
-Avatars differ, so a move is not tied to one avatar's art: a player whose avatar has `dance` frames dances with them, and any other avatar does the built-in dance. A move that is neither on the avatar's sheet nor built in does nothing for that avatar.
+Avatars differ, so a move is not tied to one avatar's art: a player whose avatar has a `dance` animation dances with it, and any other avatar does the built-in dance. A move that is neither one of the avatar's animations nor built in does nothing for that avatar.
 
 ### How animations reach other players
 

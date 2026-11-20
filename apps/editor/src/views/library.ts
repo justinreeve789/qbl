@@ -3,12 +3,14 @@ import { mediaLabel, mediaUrl, params } from '../describe';
 import { confirmDelete, fold, h, toast, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
 import {
-  CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS, MOVE_FIELDS, SHOP_ABILITY, SHOP_ANIMATION, SHOP_MOVE, SHOP_ITEM_FIELDS, SHOP_SLOT, SHOP_WEARABLE_FIELDS, ITEM_FIELDS, ITEM_SETTINGS_FIELDS, MEDIA_FIELDS, OBJECTIVE_FIELDS, VARIABLE_FIELDS,
+  MOVE_FIELDS, SHOP_ABILITY, SHOP_ANIMATION, SHOP_MOVE, SHOP_ITEM_FIELDS, SHOP_SLOT, SHOP_WEARABLE_FIELDS, ITEM_FIELDS, ITEM_SETTINGS_FIELDS, MEDIA_FIELDS, OBJECTIVE_FIELDS, VARIABLE_FIELDS,
 } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 import { sheetEditor } from './sheet';
-import { apngToSheet } from '../apng';
+import { characterMediaIds } from '../characters';
 import { emojiIcon } from '../icons';
+
+export { charactersPage } from './characters';
 
 /** The scenario-wide lists: media, variables, items, characters and objectives. */
 
@@ -44,7 +46,7 @@ function mediaCategory(ctx: FormContext, media: Row): Exclude<MediaTab, 'all'> {
   const id = media.id;
   const layers = store.rows('scenes').flatMap((s) => [...((s.background_media as Array<Record<string, unknown>> | null) ?? []), ...((s.foreground_media as Array<Record<string, unknown>> | null) ?? [])]);
   if (layers.some((l) => (l.media_id ?? l.id) === id)) return 'background';
-  if (store.rows('characters').some((c) => c.media_id === id || params(c, 'settings').portrait_media_id === id)) return 'character';
+  if (store.rows('characters').some((c) => characterMediaIds(store, c).includes(id))) return 'character';
   const item = store.rows('items').find((i) => i.media_id === id);
   if (item) return item.vehicle ? 'vehicle' : 'item';
   if (store.rows('shop_items').some((i) => i.media_id === id)) return 'shop';
@@ -57,14 +59,11 @@ export function mediaPage(ctx: FormContext): HTMLElement {
   file.addEventListener('change', async () => {
     for (const picked of [...(file.files ?? [])]) {
       try {
-        // An animated PNG is laid out as a sprite sheet, which is what the game plays.
-        const animated = picked.type === 'image/png' || /\.a?png$/i.test(picked.name) ? await apngToSheet(await picked.arrayBuffer()).catch(() => null) : null;
-        const row = await store.api.upload(store.scenarioId, animated ? new File([animated.blob], picked.name.replace(/\.a?png$/i, '') + '-sheet.png', { type: 'image/png' }) : picked);
+        const row = await store.api.upload(store.scenarioId, picked);
         store.bundle.media.push(row);
-        if (animated) {
-          await store.patch('media', row.id, { params: { ...params(row), sheet: { columns: animated.columns, rows: animated.rows, ...(animated.count < animated.columns * animated.rows ? { count: animated.count } : {}) }, animations: [{ name: 'idle', frames: Array.from({ length: animated.count }, (_, i) => i), duration: animated.duration }] } });
-          toast(`${picked.name} is an animated PNG. Its ${animated.count} frames were laid out as a sprite sheet with one animation, “idle”, which you can rename or split.`);
-        }
+        // The server notes an animated PNG as one; the game plays it, and characters can use its frames.
+        const apng = params(row).apng as { frames: number; duration: number } | undefined;
+        if (apng) toast(`${picked.name} is an animated PNG with ${apng.frames} frames. It plays by itself, and a character can use all of its frames or some of them.`);
         // File it under the tab it was uploaded from, until how it is used says otherwise.
         if (mediaTab !== 'all' && mediaTab !== 'audio' && mediaTab !== 'video' && row.type === 'image') void store.patch('media', row.id, { params: { ...params(row), category: mediaTab } });
       } catch (err) {
@@ -107,7 +106,9 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       { class: 'card', 'data-media': id },
       h('div', { class: 'card-title' }, h('strong', null, mediaLabel(media)), h('span', { class: 'muted' }, `#${id} · ${media.type}`)),
       preview,
-      media.type === 'image' ? fold('media-sheet', `🎞️ Sprite sheet and animations${params(media).sheet ? ` (${((params(media).animations as unknown[] | undefined) ?? []).length})` : ''}`, false, sheetEditor(ctx, media)) : null,
+      media.type === 'image' && params(media).apng
+        ? h('p', { class: 'muted media-apng' }, `🎞️ Animated PNG: ${(params(media).apng as { frames: number }).frames} frames, ${(params(media).apng as { duration: number }).duration} ms. It plays by itself; on the Characters page an animation can take some of its frames.`)
+        : media.type === 'image' ? fold('media-sheet', `🎞️ Sprite sheet and animations${params(media).sheet ? ` (${((params(media).animations as unknown[] | undefined) ?? []).length})` : ''}`, false, sheetEditor(ctx, media)) : null,
       // The rest is needed less often, so it starts folded away.
       fold('media-details', 'Details', false,
         form(MEDIA_FIELDS, media, (key, value, field) => void store.patch('media', id, { [key]: value }, key === 'url' || field.structural === true), ctx),
@@ -155,9 +156,9 @@ export function variablesPage(ctx: FormContext): HTMLElement {
 
 // ------------------------------------------------------- items and characters
 
-function thingsPage(ctx: FormContext, table: 'items' | 'characters', title: string, about: string, fields: Field[], settings: Field[], owner: 'item_id' | 'character_id'): HTMLElement {
+function thingsPage(ctx: FormContext, table: 'items', title: string, about: string, fields: Field[], settings: Field[], owner: 'item_id'): HTMLElement {
   const { store } = ctx;
-  const noun = table === 'items' ? 'item' : 'character';
+  const noun = 'item';
   const cards = store.rows(table).map((thing) => {
     const id = thing.id;
     const url = mediaUrl(store, store.byId('media', thing.media_id as number | null));
@@ -165,21 +166,8 @@ function thingsPage(ctx: FormContext, table: 'items' | 'characters', title: stri
       'div',
       { class: 'card', 'data-thing': `${table}-${id}` },
       h('div', { class: 'card-title' }, h('strong', null, String(thing.name)), h('span', { class: 'muted' }, `#${id}`)),
-      table === 'characters'
-        ? h('div', { class: 'portrait-pick' }, url ? h('img', { class: 'preview small', src: url, alt: '' }) : h('div', { class: 'preview small none' }, 'No image'), h('figure', { class: 'portrait-figure' }, portraitImage(store, (params(thing, 'settings').portrait_media_id ?? thing.media_id) as number | null), h('figcaption', null, 'Portrait')))
-        : url ? h('img', { class: 'preview small', src: url, alt: '' }) : null,
-      form(fields, thing, async (key, value) => {
-        await store.patch(table, id, { [key]: value }, key === 'media_id');
-        // A character given a picture gets a close-up cut from the top third of it, unless one was chosen already.
-        if (table !== 'characters' || key !== 'media_id' || value == null || params(store.byId(table, id)!, 'settings').portrait_media_id != null) return;
-        const picture = store.byId('media', value as number);
-        const portrait = picture && (await cropPortrait(store, picture, 'character'));
-        if (portrait && store.byId(table, id) && params(store.byId(table, id)!, 'settings').portrait_media_id == null) {
-          await store.patch(table, id, { settings: { ...params(store.byId(table, id)!, 'settings'), portrait_media_id: portrait.id } });
-          if (document.querySelector(`[data-thing="${table}-${id}"]`)) store.emit();
-          toast('A close-up portrait was made from the top of the picture. You can choose another.');
-        }
-      }, ctx),
+      url ? h('img', { class: 'preview small', src: url, alt: '' }) : null,
+      form(fields, thing, (key, value) => void store.patch(table, id, { [key]: value }, key === 'media_id'), ctx),
       form(settings, params(thing, 'settings'), (key, value, field) => void store.patch(table, id, { settings: withValue(params(store.byId(table, id)!, 'settings'), key, value, field) }, field.structural === true), ctx),
       rowConditions(ctx, owner, id, 'Present only when', 'Always present.'),
       h('div', { class: 'row-actions' }, removeButton(ctx, table, thing, `the ${noun} “${thing.name}”`)),
@@ -195,9 +183,6 @@ function thingsPage(ctx: FormContext, table: 'items' | 'characters', title: stri
 
 export const itemsPage = (ctx: FormContext) =>
   thingsPage(ctx, 'items', 'Items', 'Things players can pick up, wear or ride. Define them here, then place them in scenes.', ITEM_FIELDS, ITEM_SETTINGS_FIELDS, 'item_id');
-
-export const charactersPage = (ctx: FormContext) =>
-  thingsPage(ctx, 'characters', 'Characters', 'People and creatures players meet. Define them here, then place them in scenes, where clicking one can run an event.', CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS, 'character_id');
 
 // ---------------------------------------------------------------- objectives
 
@@ -313,45 +298,4 @@ export function movesPage(ctx: FormContext): HTMLElement {
     [h('button', { type: 'button', class: 'primary', onclick: () => write([...read(), { animation: ['jump', 'crouch', 'dance', 'wave', 'spin'].find((n) => !read().some((m) => m.animation === n)) ?? 'jump' }], true) }, 'New move')],
     cards.length ? h('div', { class: 'grid' }, ...cards) : none('No moves: players walk, and that is all.'),
   );
-}
-
-// ----------------------------------------------------------------- portraits
-
-/** The close-up as it will look in a story box. */
-function portraitImage(store: FormContext['store'], mediaId: number | null | undefined): HTMLElement {
-  const url = mediaUrl(store, store.byId('media', mediaId ?? null));
-  return url ? h('img', { class: 'portrait', src: url, alt: 'Close-up portrait' }) : h('div', { class: 'portrait none' }, '?');
-}
-
-/**
- * Make a close-up from a picture: its top third, where the face usually is, saved as a new image
- * in the scenario's media. For a sprite sheet it is the top third of the first frame. Returns
- * null when the picture cannot be read (one on another site that does not allow it), in which
- * case the picture itself stands in as the portrait.
- */
-async function cropPortrait(store: FormContext['store'], media: Row, category: 'character'): Promise<Row | null> {
-  const url = mediaUrl(store, media);
-  if (!url || media.type !== 'image') return null;
-  try {
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.src = url;
-    await image.decode();
-    const width = Math.min(image.naturalWidth, Number(params(media).frame_width) || image.naturalWidth);
-    const frame = Math.min(image.naturalHeight, Number(params(media).frame_height) || image.naturalHeight);
-    const height = Math.max(1, Math.round(frame / 3));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    canvas.getContext('2d')!.drawImage(image, 0, 0, width, height, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (!blob) return null;
-    const name = `${mediaLabel(media).replace(/\.[a-z0-9]+$/i, '')}-portrait.png`;
-    const row = await store.api.upload(store.scenarioId, new File([blob], name, { type: 'image/png' }));
-    store.bundle.media.push(row);
-    await store.patch('media', row.id, { params: { ...params(row), category } });
-    return row;
-  } catch {
-    return null;
-  }
 }

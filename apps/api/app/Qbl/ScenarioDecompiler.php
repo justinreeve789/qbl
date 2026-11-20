@@ -44,13 +44,13 @@ class ScenarioDecompiler
         $rows = array_fill_keys(ScenarioStore::CONTENT, []);
 
         // The platform's avatars are added to every document as it is served; they are not the scenario's.
-        $own = fn ($id) => (int) $id < Avatars::BASE;
+        $own = fn ($id) => (int) $id < Avatars::FLOOR;
         foreach ($d['assets'] ?? [] as $m) {
             if (! is_array($m) || ! $own($m['id'] ?? 0)) {
                 continue;
             }
             $params = (array) ($m['params'] ?? []);
-            foreach (['sheet', 'animations'] as $key) {
+            foreach (['sheet', 'animations', 'apng'] as $key) {
                 if (isset($m[$key])) {
                     $params[$key] = $m[$key];
                 }
@@ -119,7 +119,7 @@ class ScenarioDecompiler
 
         $settings = array_diff_key($d, array_flip(self::NOT_SETTINGS));
         // Avatars are the platform's. Lists a document carries are dropped, whether they came from there or from an older scenario.
-        unset($settings['avatar_media_ids'], $settings['avatar_portraits']);
+        unset($settings['avatar_media_ids'], $settings['avatar_portraits'], $settings['avatars']);
         $rows['scenario'] = [
             'id' => (int) ($d['id'] ?? 0), 'code' => $d['code'] ?? null, 'shortname' => $d['shortname'] ?? null, 'title' => $d['title'] ?? 'Imported scenario',
             'subtitle' => $d['subtitle'] ?? null, 'description' => $d['description'] ?? null, 'start_scene_id' => $d['start_scene_id'] ?? $rows['scenes'][0]['id'],

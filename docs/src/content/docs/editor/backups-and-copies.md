@@ -47,7 +47,7 @@ Any ZIP with a `scenario.json` (at the top, or inside one folder) is accepted, s
 
 - Ids only have to be consistent within the file: every row gets a new id on import and references follow (`media_id`, `scene_id`, `target_event_id`, `target_id`, `item_id`, `character_id`, a label's `media`, and so on). Parts without an id are given one.
 - A media entry's file is looked for in the ZIP by the file name its `filepath` ends in, then by its `url`, then by its `filename`, under `assets/` or beside `scenario.json`. A file found becomes an uploaded file of the new scenario; an entry with no file in the ZIP keeps its `url`.
-- `jump_targets` and `session` are ignored (the first is generated; the second is a player's). `avatar_media_ids` and `avatar_portraits` are dropped: avatars are the platform's.
+- `jump_targets` and `session` are ignored (the first is generated; the second is a player's). `avatars`, `avatar_media_ids` and `avatar_portraits` are dropped: avatars are the platform's.
 - Only pictures (PNG, JPEG, WebP, GIF), sound (MP3, WAV, OGG) and video (MP4, WebM) are accepted, judged by content, each up to 25 MB. A ZIP holding a file of another kind where a media file is expected is refused whole.
 
 The imported scenario is a draft. Open it and press Publish: the checks there say if anything in the file does not add up.

@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
-import { homePath, isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { characterPicture, homePath, isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
@@ -191,11 +192,13 @@ function rememberAvatar(user: User, id: Id) {
  * before (kept on the account) is used everywhere; the player is only asked the first time.
  */
 function chooseAvatar(scenario: Scenario, user: User): Promise<Id | undefined> {
-  const ids = scenario.avatar_media_ids ?? [];
+  const avatars = scenario.avatars ?? [];
+  const ids = avatars.map((a) => a.id);
   if (ids.length <= 1) return Promise.resolve(ids[0]);
   if (user.avatar_media_id != null && ids.includes(user.avatar_media_id)) return Promise.resolve(user.avatar_media_id);
   const remembered = Number(localStorage.getItem(AVATAR_KEY));
   if (ids.includes(remembered)) return Promise.resolve(remembered);
+  const media = new Map((scenario.assets ?? []).map((m) => [m.id, m]));
   return new Promise((resolve) => {
     const card = document.createElement('div');
     card.className = 'qbl-card';
@@ -203,29 +206,18 @@ function chooseAvatar(scenario: Scenario, user: User): Promise<Id | undefined> {
     title.textContent = 'Choose your character';
     const grid = document.createElement('div');
     grid.className = 'qbl-avatars';
-    for (const id of ids) {
-      const media = (scenario.assets ?? []).find((m) => m.id === id);
-      const url = media ? resolveMediaUrl(scenario, media) : null;
-      if (!url) continue;
+    for (const avatar of avatars) {
+      const picture = characterPicture(avatar, 'stand', (id) => media.get(id), (m) => resolveMediaUrl(scenario, m));
+      if (!picture?.url) continue;
       const b = document.createElement('button');
       b.type = 'button';
-      b.setAttribute('aria-label', media?.filename ?? `Character ${ids.indexOf(id) + 1}`);
-      if (media?.sheet) {
-        // A sprite sheet: show its first frame, not the whole sheet.
-        const frame = document.createElement('span');
-        frame.className = 'qbl-avatar-frame';
-        frame.style.backgroundImage = `url("${url}")`;
-        frame.style.backgroundSize = `${media.sheet.columns * 100}% ${media.sheet.rows * 100}%`;
-        b.appendChild(frame);
-      } else {
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = '';
-        b.appendChild(img);
-      }
+      b.setAttribute('aria-label', avatar.name);
+      b.title = avatar.name;
+      // Standing: a picture, or one frame of a sprite sheet, not the whole sheet.
+      b.appendChild(pictureNode(picture, picture.sheet ? 'qbl-avatar-frame' : ''));
       b.addEventListener('click', () => {
-        rememberAvatar(user, id);
-        resolve(id);
+        rememberAvatar(user, avatar.id);
+        resolve(avatar.id);
       });
       grid.appendChild(b);
     }

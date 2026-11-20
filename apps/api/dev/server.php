@@ -15,7 +15,7 @@ if (PHP_SAPI !== 'cli-server') {
     http_response_code(500);
     exit("This is a development server. Run it with php -S.\n");
 }
-foreach (['StoreError', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
+foreach (['StoreError', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -72,10 +72,7 @@ foreach (require __DIR__.'/../database/seeders/data/shop.php' as $sequence => $i
 }
 
 // The platform's avatars, added once, as AvatarSeeder does.
-foreach (require __DIR__.'/../database/seeders/data/avatars.php' as $sequence => $avatar) {
-    $pdo->prepare('INSERT OR IGNORE INTO `avatars` (`id`, `name`, `image_url`, `portrait_url`, `settings`, `active`, `sequence`) VALUES (?, ?, ?, ?, ?, 1, ?)')
-        ->execute([$avatar['id'], $avatar['name'], $avatar['image_url'], $avatar['portrait_url'] ?? null, json_encode($avatar['settings'] ?? []), $sequence + 1]);
-}
+App\Qbl\Avatars::seed($pdo, require __DIR__.'/../database/seeders/data/avatars.php');
 
 function respond(int $status, ?array $body): never
 {

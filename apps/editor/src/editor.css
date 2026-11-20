@@ -340,6 +340,43 @@ details.action.drop-after { box-shadow: 0 4px 0 0 var(--warn); }
 .sheet-animation.editing { border-color: #ffd24a; background: rgba(255, 210, 74, 0.1); }
 .sheet-frames { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ---- characters: their animations, by name */
+.grid.characters { grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); }
+.character-stage { display: flex; gap: 14px; align-items: flex-end; margin-bottom: 8px; }
+.character-stage figure { margin: 0; display: grid; justify-items: center; gap: 2px; }
+.character-stage figcaption { font-size: 11px; color: var(--muted); }
+.anim-preview { display: grid; place-items: end center; width: 44px; height: 56px; flex: none; background: var(--field) repeating-conic-gradient(#23262c 0% 25%, #1a1c21 0% 50%) 0 0 / 12px 12px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.anim-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.anim-preview .anim-frame { display: block; width: 100%; max-height: 100%; background-repeat: no-repeat; }
+.anim-preview.none { place-items: center; color: var(--muted); font-size: 12px; }
+.anim-preview.large { width: 120px; height: 160px; }
+.anim-preview.portrait { width: 84px; height: 100px; border: 2px solid #e6c36a; border-radius: 10px; place-items: start center; }
+.anim-preview.portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.anim-table { display: grid; gap: 4px; margin-bottom: 8px; }
+.anim-row { display: grid; grid-template-columns: 44px 150px minmax(120px, 1fr) auto auto; grid-template-areas: 'p n pic pick del' 'p t t t mir'; gap: 4px 6px; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius); }
+.anim-row + .anim-row { border-top-color: var(--line); }
+.anim-row > .anim-preview { grid-area: p; align-self: start; }
+.anim-row > .anim-name { grid-area: n; }
+.anim-row > .anim-picture { grid-area: pic; min-width: 0; }
+.anim-row > .anim-timing, .anim-row > .anim-still, .anim-row > .anim-uses { grid-area: t; }
+.anim-row > .anim-mirror { grid-area: mir; }
+.anim-row > .anim-pick { grid-area: pick; }
+.anim-row > .anim-delete { grid-area: del; }
+.anim-row.empty { opacity: 0.85; grid-template-areas: 'p n pic pic pic' 'p t t t t'; }
+.anim-row.empty .anim-uses { font-size: 12px; }
+.anim-row.picking { border-color: #ffd24a; background: rgba(255, 210, 74, 0.1); }
+.anim-name { display: grid; justify-items: start; text-align: left; font-size: 13px; line-height: 1.2; }
+.anim-name code { font-size: 11px; color: var(--muted); }
+.anim-timing { display: grid; grid-template-columns: minmax(70px, 1fr) 90px 128px; gap: 4px; }
+.anim-timing input, .anim-timing select { min-width: 0; }
+.anim-mirror { font-size: 12px; white-space: nowrap; }
+.anim-still { font-size: 12px; }
+.anim-add { display: flex; gap: 6px; align-items: center; }
+.anim-add input { max-width: 200px; }
+.frame-grid { margin: 4px 0 6px; }
+.frame-grid .sheet-picture { max-width: 520px; }
+.media-apng { font-size: 12px; }
+
 /* A media card whose sprite sheet is open takes the whole row, so the sheet and its animations have room. */
 .grid > .card:has(details[data-fold='media-sheet'][open]) { grid-column: 1 / -1; }
 .card:has(details[data-fold='media-sheet'][open]) > .preview { max-height: 120px; }

@@ -52,7 +52,10 @@ export class FakeObject extends Emitter {
   /** 0xffffff: drawn as it is. Anything darker: shaded. */
   tint = 0xffffff;
 
-  constructor(readonly kind: string, readonly key: string = '', x = 0, y = 0) {
+  /** The frame shown, for a texture with frames. */
+  frame: string | number | undefined = undefined;
+
+  constructor(readonly kind: string, public key: string = '', x = 0, y = 0) {
     super();
     this.x = x;
     this.y = y;
@@ -78,6 +81,7 @@ export class FakeObject extends Emitter {
   }
   play(key?: unknown) { this.anims.isPlaying = true; this.playing = typeof key === 'string' ? key : ''; return this; }
   stop() { this.anims.isPlaying = false; this.playing = ''; return this; }
+  setTexture(key: string, frame?: string | number) { this.key = key; this.frame = frame; return this; }
   setRotation(r: number) { this.rotation = r; return this; }
   setTint(t: number) { this.tint = t; return this; }
   clearTint() { this.tint = 0xffffff; return this; }

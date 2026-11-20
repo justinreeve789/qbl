@@ -3,6 +3,7 @@ import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
 import { sortedActions } from '../actions';
+import { standingOf } from '../../characters';
 import { sameSelection, type AreaList, type Bag, type LayerList, type Point, type SceneModel, type Selection } from './model';
 
 interface Host {
@@ -450,8 +451,13 @@ export class SceneCanvas {
       const thing = store.byId(which, (which === 'items' ? placement.item_id : placement.character_id) as number | null);
       const x = Number(placement.position_x ?? 0);
       const y = Number(placement.position_y ?? 0);
-      const url = mediaUrl(store, store.byId('media', thing?.media_id as number | null));
-      const size = url ? this.natural(url) : null;
+      // A character is drawn standing the way it faces, from its animations; an item by its picture.
+      const facing = placement.facing === 'left' ? 'left' : 'right';
+      const standing = which === 'characters' ? standingOf(store, thing, facing) : null;
+      const url = which === 'characters' ? standing?.url ?? null : mediaUrl(store, store.byId('media', thing?.media_id as number | null));
+      const whole = url ? this.natural(url) : null;
+      const grid = standing?.sheet;
+      const size = whole && grid ? { x: whole.x / grid.columns, y: whole.y / grid.rows } : whole;
       // Drawn at the size the game will draw it: its own scale, times the scale area it stands in.
       const depth = scaleAt({ scale_areas: this.model.layout<ScaleArea>('scale_areas') }, x, y);
       const scale = Number(params(thing ?? ({} as Row), 'settings').scale ?? 1) * depth;
@@ -463,11 +469,14 @@ export class SceneCanvas {
         // Items and characters stand on their position: it is the middle of their bottom edge.
         const w = size.x * scale;
         const hgt = size.y * scale;
-        const flip = placement.facing === 'left' ? `translate(${2 * x} 0) scale(-1 1)` : null;
-        group.append(
-          s('image', { href: url, x: x - w / 2, y: y - hgt, width: w, height: hgt, preserveAspectRatio: 'none', transform: flip }),
-          s('rect', { class: 'outline', x: x - w / 2, y: y - hgt, width: w, height: hgt }),
-        );
+        const mirrored = which === 'characters' ? standing!.flip : placement.facing === 'left';
+        const flip = mirrored ? `translate(${2 * x} 0) scale(-1 1)` : null;
+        // One frame of a sheet: the sheet seen through a window the size of a frame.
+        const picture = grid && whole && standing?.frame != null
+          ? s('g', { transform: flip }, s('svg', { x: x - w / 2, y: y - hgt, width: w, height: hgt, viewBox: `${(standing.frame % grid.columns) * size.x} ${Math.floor(standing.frame / grid.columns) * size.y} ${size.x} ${size.y}`, preserveAspectRatio: 'none' },
+              s('image', { href: url, x: 0, y: 0, width: whole.x, height: whole.y, preserveAspectRatio: 'none' })))
+          : s('image', { href: url, x: x - w / 2, y: y - hgt, width: w, height: hgt, preserveAspectRatio: 'none', transform: flip });
+        group.append(picture, s('rect', { class: 'outline', x: x - w / 2, y: y - hgt, width: w, height: hgt }));
       } else {
         group.append(s('rect', { class: 'outline missing', x: x - 20 * u, y: y - 40 * u, width: 40 * u, height: 40 * u }));
       }

@@ -1,7 +1,8 @@
-import { isStaff, siteLinks, type User } from '@qbl/shared';
+import { isStaff, siteLinks, type CharacterPicture, type User } from '@qbl/shared';
 import { buildTeacherDesk, TEACH_PATHS, teacherMissionsHeading, type TeacherDesk } from './teach';
 import { AccountMenu } from './ui/AccountMenu';
 import { icon } from './ui/icons';
+import { pictureNode } from './ui/picture';
 
 /** A scenario the player can play, as `GET /api/missions` lists it. */
 export interface Mission {
@@ -22,12 +23,22 @@ export interface Mission {
   started_at?: string | null;
 }
 
-/** One of the platform's avatars, as `GET /api/avatars` lists it. */
+/**
+ * One of the platform's avatars, as `GET /api/avatars` lists it. `media_id` is the avatar's id
+ * (the name is from when an avatar was a single picture); `picture` is how it looks standing.
+ */
 export interface AvatarChoice {
   media_id: number;
   name: string;
-  image_url: string;
+  picture?: CharacterPicture | null;
+  /** Before `picture`: the avatar's image, and its grid when it is a sprite sheet. */
+  image_url?: string;
   sheet?: { columns: number; rows: number } | null;
+}
+
+/** How an avatar looks standing. */
+export function avatarPicture(avatar: AvatarChoice): CharacterPicture {
+  return avatar.picture ?? { url: avatar.image_url ?? null, sheet: avatar.sheet ?? null };
 }
 
 /** What a mission's card says, worked out apart from the page so it can be tested. */
@@ -80,24 +91,15 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
   return node;
 }
 
-/** A button showing an avatar: the picture, or the first frame of a sprite sheet. */
+/** A button showing an avatar standing: the picture, or one frame of a sprite sheet. */
 export function avatarButton(avatar: AvatarChoice, chosen: boolean): HTMLButtonElement {
   const b = el('button');
   b.type = 'button';
   b.setAttribute('aria-label', avatar.name);
   b.setAttribute('aria-pressed', String(chosen));
   b.title = avatar.name;
-  if (avatar.sheet) {
-    const frame = el('span', 'qbl-avatar-frame');
-    frame.style.backgroundImage = `url("${avatar.image_url}")`;
-    frame.style.backgroundSize = `${avatar.sheet.columns * 100}% ${avatar.sheet.rows * 100}%`;
-    b.appendChild(frame);
-  } else {
-    const img = el('img');
-    img.src = avatar.image_url;
-    img.alt = '';
-    b.appendChild(img);
-  }
+  const picture = avatarPicture(avatar);
+  b.appendChild(pictureNode(picture, picture.sheet ? 'qbl-avatar-frame' : ''));
   return b;
 }
 
@@ -161,7 +163,7 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   }
   const avatarOf = (id: number | null) => {
     const mine = avatars.find((a) => a.media_id === id) ?? avatars[0];
-    return mine ? { url: mine.image_url, sheet: mine.sheet ?? null } : null;
+    return mine ? avatarPicture(mine) : null;
   };
   const menu = new AccountMenu({
     name: user.name,

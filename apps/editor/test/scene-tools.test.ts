@@ -99,9 +99,12 @@ test('items and characters: define them, with conditions', async () => {
   await page.click('text=New character');
   await page.waitForSelector('.grid .card');
   await type('.card [data-field=name] input', 'Ferry keeper');
-  await page.locator('.card [data-field=media_id] select').selectOption({ label: 'guide.png' });
+  await page.locator('.card [data-animation=stand_right] select').selectOption({ label: 'guide.png' });
   // The character gets a close-up of its own, cut from the top third of its picture and shown beside it.
-  await page.waitForFunction(() => /^\/media\//.test(document.querySelector('.card img.portrait')?.getAttribute('src') ?? '') && document.querySelector('.card img.portrait')?.getAttribute('src') !== document.querySelector('.card img.preview')?.getAttribute('src'));
+  await page.waitForFunction(() => {
+    const portrait = document.querySelector('.card .anim-preview.portrait img')?.getAttribute('src') ?? '';
+    return /^\/media\//.test(portrait) && portrait !== document.querySelector('.card .anim-preview.large img')?.getAttribute('src');
+  });
   await saved();
 
   const doc = await draft();
@@ -109,7 +112,9 @@ test('items and characters: define them, with conditions', async () => {
   assert.deepEqual([boat.name, boat.vehicle, boat.speed_multiplier, boat.conditions?.length], ['rowing boat', true, 1.4, 1]);
   assert.equal(boat.conditions![0]!.variable, 'has_ticket');
   assert.equal(doc.characters![0]!.name, 'Ferry keeper');
-  assert.ok(doc.avatar_media_ids!.length > 0 && doc.avatar_media_ids!.every((id) => id >= 900000), 'the avatars in a preview are the platform\'s, not pictures of this scenario');
+  assert.ok(doc.avatars!.length > 0 && doc.avatars!.every((a) => a.id >= 900000 && a.platform), 'the avatars in a preview are the platform\'s, not characters of this scenario');
+  const keeper = doc.characters![0]!;
+  assert.deepEqual([keeper.animations?.stand_right?.media_id === doc.assets!.find((m) => m.filename === 'guide.png')!.id, !!keeper.animations?.portrait, keeper.media_id], [true, true, undefined], 'it is drawn from its animations');
 });
 
 test('layers: a repeated, drifting sky behind and a foreground in front', async () => {
@@ -309,7 +314,7 @@ test('delete a scene, a media file, and then the whole scenario', async () => {
   await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 5);
   const doc = await draft();
   // Not counting the platform's avatars, which every scenario is served with.
-  assert.equal(doc.assets!.filter((m) => m.id < 900000).length, 5);
+  assert.equal(doc.assets!.filter((m) => m.id < 800000).length, 5);
   assert.equal(doc.items![0]!.media_id, undefined, 'the item is kept, without its picture');
 
   await page.click('.tabs >> text=Settings');

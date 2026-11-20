@@ -12,7 +12,7 @@ scenario | Scenario shortname.
 group | The instance to play in: `public`, an assignment's (`a12`) or a team's (`t7`). Defaults to `public`.
 party | The room to join. Rooms are matched on `scenario` and `party`: the teams of one assignment share a room (the assignment's key), so they can meet in scenes that are not limited to a team. Defaults to the group. The backend says which party an instance belongs to (`instance.party` in the play document) and the server refuses any other.
 token | API bearer token. Required.
-avatar_media_id | Chosen avatar; must be in the scenario's `avatar_media_ids`. If absent, the avatar saved on the account is used.
+avatar_media_id | Chosen avatar: the `id` of one of the document's `avatars`. If absent, the avatar saved on the account is used.
 
 If the same account joins twice, the earlier connection is closed with code 4103.
 

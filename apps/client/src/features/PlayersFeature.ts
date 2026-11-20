@@ -1,4 +1,4 @@
-import { parseIds, rankFor, resolveMediaUrl, type PlayerProfile, type PlayerRec } from '@qbl/shared';
+import { characterPicture, parseIds, rankFor, resolveMediaUrl, type PlayerProfile, type PlayerRec } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import type { GameFeature } from '../core/GameFeature';
 import type { PlayerRow, ProfileView } from '../ui/UiPort';
@@ -42,7 +42,7 @@ export function playerRows(ctx: GameContext): PlayerRow[] {
  * there is a backend to ask and the player has an account.
  */
 export function profileView(ctx: GameContext, rec: PlayerRec, profile: PlayerProfile | null, loading: boolean): ProfileView {
-  const media = ctx.index.media.get(profile?.avatar_media_id ?? rec.avatar) ?? ctx.index.media.get(rec.avatar);
+  const avatar = ctx.index.avatars.get(profile?.avatar_media_id ?? rec.avatar) ?? ctx.index.avatars.get(rec.avatar);
   const worn: ProfileView['worn'] = [];
   // What they have on now, as the room shows it; failing that, what their account says they wear.
   for (const id of rec.look ? parseIds(rec.look) : (profile?.look ?? [])) {
@@ -64,7 +64,7 @@ export function profileView(ctx: GameContext, rec: PlayerRec, profile: PlayerPro
     xp: profile?.xp,
     nextRankXp: profile ? (profile.next_rank_xp ?? rankFor(profile.xp).next_rank_xp) : undefined,
     badges: profile?.badges ?? [],
-    avatar: { url: media ? resolveMediaUrl(ctx.scenario, media) : null, sheet: media?.sheet ? { columns: media.sheet.columns, rows: media.sheet.rows } : undefined },
+    avatar: characterPicture(avatar, 'stand', (id) => ctx.index.media.get(id), (m) => resolveMediaUrl(ctx.scenario, m)) ?? { url: null },
     worn,
   };
 }

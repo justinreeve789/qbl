@@ -1,7 +1,7 @@
 import type * as Phaser from 'phaser';
 import {
-  animationRepeats, collectGlobalMediaIds, collectSceneMediaIds, findAnimation, resolveMediaUrl,
-  type Id, type Media, type Scene, type Spritemap, type ShopItem } from '@qbl/shared';
+  animationDuration, animationFrames, animationRepeats, apngFrameImages, characterAnimationRepeats, collectGlobalMediaIds, collectSceneMediaIds, findAnimation, readApng, resolveMediaUrl,
+  type CharacterAnimation, type Id, type Media, type Scene, type Spritemap, type ShopItem } from '@qbl/shared';
 import type { GameContext } from './GameContext';
 
 export const mediaKey = (id: Id) => `media-${id}`;
@@ -24,9 +24,116 @@ export function queueMedia(scene: Phaser.Scene, ctx: GameContext, ids: Id[]): nu
     if (!url) continue;
     if (media.type === 'image') scene.load.image(mediaKey(id), url);
     else if (media.type === 'audio') scene.load.audio(mediaKey(id), url);
+    // An animated PNG shows its first frame at once, and plays once its frames are cut out.
+    if (media.type === 'image' && media.apng) void prepareApng(scene, media, url);
     queued++;
   }
   return queued;
+}
+
+// ------------------------------------------------------------ animated PNGs
+
+export const apngKey = (id: Id) => `media-${id}-apng`;
+/** Each animated PNG's frame delays, once its frames are cut out. */
+const apngDelays = new Map<Id, number[]>();
+const apngPending = new Set<Id>();
+
+/**
+ * Cut an animated PNG into its frames, side by side on a canvas that becomes a texture of its
+ * own (`apngKey`), each frame drawn over the last as the file says. The browser's image decoder
+ * gives a page only the first frame, so the file is read here. Done once per game; a file that
+ * cannot be read stays a still picture.
+ */
+async function prepareApng(scene: Phaser.Scene, media: Media, url: string): Promise<void> {
+  const key = apngKey(media.id);
+  if (apngPending.has(media.id) || scene.textures.exists(key)) return;
+  apngPending.add(media.id);
+  try {
+    const response = await fetch(url);
+    const file = readApng(await response.arrayBuffer());
+    if (!file) return;
+    const { width, height } = file;
+    const stage = document.createElement('canvas');
+    stage.width = width;
+    stage.height = height;
+    const strip = document.createElement('canvas');
+    strip.width = width * file.frames.length;
+    strip.height = height;
+    const draw = stage.getContext('2d')!;
+    const out = strip.getContext('2d')!;
+    const images = apngFrameImages(file);
+    for (const [i, frame] of file.frames.entries()) {
+      const picture = await createImageBitmap(new Blob([images[i]! as BlobPart], { type: 'image/png' }));
+      const before = frame.dispose === 2 ? draw.getImageData(0, 0, width, height) : null;
+      if (frame.blend === 0) draw.clearRect(frame.x, frame.y, frame.width, frame.height);
+      draw.drawImage(picture, frame.x, frame.y);
+      picture.close();
+      out.drawImage(stage, i * width, 0);
+      // What the next frame is drawn over: this one, nothing where this one was, or what was there before it.
+      if (frame.dispose === 1) draw.clearRect(frame.x, frame.y, frame.width, frame.height);
+      else if (before) draw.putImageData(before, 0, 0);
+    }
+    if (scene.textures.exists(key)) return;
+    const texture = scene.textures.addCanvas(key, strip);
+    if (!texture) return;
+    for (let i = 0; i < file.frames.length; i++) texture.add(i, 0, i * width, 0, width, height);
+    apngDelays.set(media.id, file.frames.map((f) => f.delay));
+    // Figures waiting for it change to the animated version.
+    scene.game.events.emit(`${key}-ready`);
+  } catch {
+    /* a still picture, then */
+  } finally {
+    apngPending.delete(media.id);
+  }
+}
+
+/** Run `then` once an animated PNG's frames are ready, unless they already are (returns true). */
+export function whenApngReady(scene: Phaser.Scene, media: Media, then: () => void): boolean {
+  if (!media.apng || scene.textures.exists(apngKey(media.id))) return true;
+  scene.game.events.once(`${apngKey(media.id)}-ready`, then);
+  return false;
+}
+
+// ------------------------------------------------------- character animations
+
+/**
+ * How one of a character's animations is drawn: the texture (and frame) of a still picture, or
+ * a Phaser animation over a sheet's or an animated PNG's frames. An animated PNG whose frames are
+ * not cut out yet is drawn as its first frame.
+ */
+export function characterAnimation(scene: Phaser.Scene, media: Media, name: string, animation: CharacterAnimation): { texture: string; frame?: number; anim?: string } {
+  const base = mediaKey(media.id);
+  const frames = animationFrames(animation, media);
+  if (!frames) return { texture: base };
+  const repeat = characterAnimationRepeats(name, animation);
+  if (media.sheet) {
+    const sheet = mediaSheet(scene, media);
+    if (!sheet) return { texture: base };
+    if (frames.length === 1) return { texture: sheet, frame: frames[0] };
+    const key = ensureAnimation(scene, sheet, {
+      spritemap_tiles_horizontal: media.sheet.columns, spritemap_tiles_vertical: media.sheet.rows, spritemap_tiles_num: media.sheet.count,
+      spritemap_tile_sequence: frames, spritemap_duration: animationDuration(animation, media), spritemap_repeat: repeat,
+    });
+    return { texture: sheet, anim: key };
+  }
+  // An animated PNG: its own delays, stretched to the animation's duration when it sets one.
+  const strip = apngKey(media.id);
+  const delays = apngDelays.get(media.id);
+  if (!delays || !scene.textures.exists(strip)) return { texture: base };
+  if (frames.length === 1) return { texture: strip, frame: frames[0] };
+  const own = frames.map((f) => delays[f] ?? 100);
+  const total = own.reduce((a, b) => a + b, 0);
+  const wanted = animation.duration && animation.duration > 0 ? animation.duration : total;
+  const key = `${strip}-${frames.join('.')}-${wanted}-${repeat ? 'loop' : 'once'}`;
+  if (!scene.anims.exists(key)) {
+    scene.anims.create({
+      key,
+      frames: frames.map((frame, i) => ({ key: strip, frame, duration: Math.max(10, Math.round((own[i]! * wanted) / Math.max(1, total))) })),
+      frameRate: 10,
+      repeat: repeat ? -1 : 0,
+    });
+  }
+  return { texture: strip, anim: key };
 }
 
 /** Queue what a scene needs to be shown, plus media that travels with players. */

@@ -2,6 +2,7 @@
 
 namespace App\Qbl\Generation\Build;
 
+use App\Qbl\Characters\NpcCharacter;
 use App\Qbl\Generation\GenerationError;
 
 /**
@@ -131,7 +132,9 @@ class MissionBuilder
             $mediaId = $this->media("character-{$c['key']}", $sheet, 10);
             $portrait = isset($assets["portrait:{$c['key']}"]) ? $this->media("portrait-{$c['key']}", $assets["portrait:{$c['key']}"], 30) : null;
             $id = $this->id('characters');
-            $this->rows['characters'][] = ['id' => $id, 'name' => $c['name'], 'media_id' => $mediaId, 'settings' => array_filter(['scale' => 0.8, 'portrait_media_id' => $portrait])];
+            // Drawn from the sheet: its idle and walk are the poses, its gestures the character's own animations.
+            $animations = NpcCharacter::animationsFromPicture(['id' => $mediaId] + (array) ($sheet['params'] ?? []), $portrait);
+            $this->rows['characters'][] = ['id' => $id, 'name' => $c['name'], 'media_id' => $mediaId, 'settings' => array_filter(['scale' => 0.8, 'animations' => $animations])];
             $this->characterIds[$c['key']] = [$id, $c, $sheet];
             if (! empty($c['guide'])) {
                 $guide = $c['key'];
