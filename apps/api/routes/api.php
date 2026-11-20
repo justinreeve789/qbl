@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApiV1Controller;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\EditorController;
@@ -38,6 +39,10 @@ Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key
 
 // The editor. One controller hands every request to App\Qbl\EditorApi, which lists the routes.
 Route::any('/editor/{path?}', EditorController::class)->where('path', '.*')->middleware('auth:sanctum');
+
+// The public API for schools, districts and businesses, versioned: /api/v1/… (and /api/v2/… beside it, when there is one).
+// It has its own access tokens (OAuth 2 client credentials), not Sanctum's. Contract: docs/src/content/docs/developers/api-v1.md
+Route::any('/v1/{path?}', ApiV1Controller::class)->where('path', '.*')->middleware('throttle:qbl-api-v1');
 
 Route::prefix('internal')->middleware(ServiceKey::class)->group(function () {
     Route::post('/auth/verify', [InternalController::class, 'verify']);

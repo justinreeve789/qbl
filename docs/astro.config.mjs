@@ -5,7 +5,7 @@ import starlightLinksValidator from 'starlight-links-validator';
 
 const developers = [
   'scenario', 'scene', 'event', 'action', 'media', 'character', 'item', 'variable', 'condition', 'spritemap', 'label',
-  'extensions', 'save-data', 'generation', 'architecture', 'api', 'protocol',
+  'extensions', 'save-data', 'generation', 'architecture', 'api', 'api-v1', 'protocol',
 ];
 
 export default defineConfig({
@@ -69,6 +69,7 @@ export default defineConfig({
             { label: 'Generating missions with AI', slug: 'developers/generation' },
             { label: 'Architecture', slug: 'developers/architecture' },
             { label: 'HTTP API contract', slug: 'developers/api' },
+            { label: 'Public API (v1) for schools', slug: 'developers/api-v1' },
             { label: 'Multiplayer protocol', slug: 'developers/protocol' },
           ],
         },
