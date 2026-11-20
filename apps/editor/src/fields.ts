@@ -38,8 +38,8 @@ export interface Field {
   sceneKey?: string;
   /** event: only list events of these kinds. */
   eventKinds?: string[];
-  /** bool: the value when the attribute is absent. */
-  default?: boolean;
+  /** bool, select: the value when the attribute is absent. */
+  default?: boolean | string;
   min?: number;
   max?: number;
   step?: number;
@@ -54,6 +54,26 @@ export interface Field {
   wide?: boolean;
   /** Shown only when this says so, given the form's values: a field that only means something for some choices. */
   when?: (values: Values) => boolean;
+  /**
+   * number: the X of a spot in the scene, whose Y is the field named `y`. Where the form can pick
+   * spots (`FormContext.pickSpot`), a button after the two lets the spot be chosen by clicking the
+   * scene. `prompt` says what the click chooses ("Click where the walker should go").
+   */
+  spot?: { y: string; prompt: string };
+}
+
+/** A spot to be chosen by clicking a scene. */
+export interface SpotRequest {
+  /** What the click chooses, shown while choosing. */
+  prompt: string;
+  /** The spot as it is now, if it has one, drawn so it can be seen while choosing. */
+  at: { x: number; y: number } | null;
+  /** The scene to show, where the form is not about one scene (a character's routine). */
+  sceneId?: number;
+  /** Called with the spot clicked, in scene pixels. */
+  done(at: { x: number; y: number }): void;
+  /** Called when choosing stops without a spot: Escape, Cancel, another choice begun, or the returned function called. */
+  cancelled?(): void;
 }
 
 export interface Slider {
@@ -71,6 +91,10 @@ export interface FormContext {
   store: Store;
   /** The scene being edited, for pickers that list things in it. */
   sceneId?: number;
+  /** Lets a spot be chosen by clicking the scene: the scene editor's canvas, or a pop-up of a scene. Without it there is no button. */
+  pickSpot?: (request: SpotRequest) => () => void;
+  /** Where there is no `sceneId`: the scene a spot is most likely in, shown first when picking one. */
+  spotScene?: number;
   /** The character whose form this is (a routine step), for pickers that list its things. */
   characterId?: number;
 }
@@ -78,7 +102,65 @@ export interface FormContext {
 const NEW = '__new__';
 
 export function form(fields: readonly Field[], values: Values, commit: Commit, ctx: FormContext): HTMLElement {
-  return h('div', { class: 'form' }, ...fields.filter((f) => !f.when || f.when(values)).map((f) => control(f, values, commit, ctx)));
+  const shown = fields.filter((f) => !f.when || f.when(values));
+  const nodes = new Map<Field, HTMLElement>(shown.map((f) => [f, control(f, values, commit, ctx)]));
+  const children: HTMLElement[] = [];
+  for (const f of shown) {
+    children.push(nodes.get(f)!);
+    // The button for a spot goes after its Y, so it sits under the pair.
+    const x = ctx.pickSpot ? shown.find((other) => other.spot?.y === f.key) : undefined;
+    if (x) children.push(spotButton(x, f, nodes.get(x)!, nodes.get(f)!, values, commit, ctx));
+  }
+  return h('div', { class: 'form' }, ...children);
+}
+
+/**
+ * “Pick on the scene”: choose the spot an X and a Y field name by clicking the scene, rather than
+ * typing the numbers. Both boxes show the spot clicked and both values are saved.
+ */
+function spotButton(xField: Field, yField: Field, xNode: HTMLElement, yNode: HTMLElement, values: Values, commit: Commit, ctx: FormContext): HTMLElement {
+  const boxes = () => [xNode.querySelector<HTMLInputElement>('input[type=number]'), yNode.querySelector<HTMLInputElement>('input[type=number]')] as const;
+  const read = (box: HTMLInputElement | null, key: string): number | null => {
+    const raw = box ? box.value.trim() : String(values[key] ?? '');
+    return raw === '' || Number.isNaN(Number(raw)) ? null : Number(raw);
+  };
+  const idle = '📍 Pick on the scene';
+  let cancel: (() => void) | null = null;
+  const stop = () => {
+    cancel = null;
+    button.textContent = idle;
+    button.classList.remove('picking');
+    button.setAttribute('aria-pressed', 'false');
+  };
+  const button = h('button', {
+    type: 'button', class: 'spot-pick', 'aria-pressed': 'false', title: 'Choose the spot by clicking the scene instead of typing X and Y',
+    onclick: () => {
+      if (cancel) return cancel();
+      const [bx, by] = boxes();
+      const x = read(bx, xField.key);
+      const y = read(by, yField.key);
+      button.textContent = 'Click the scene… (Esc to stop)';
+      button.classList.add('picking');
+      button.setAttribute('aria-pressed', 'true');
+      cancel = ctx.pickSpot!({
+        prompt: xField.spot!.prompt,
+        at: x != null && y != null ? { x, y } : null,
+        sceneId: ctx.sceneId ?? ctx.spotScene,
+        done: (at) => {
+          stop();
+          const [bx2, by2] = boxes();
+          if (bx2) bx2.value = String(at.x);
+          if (by2) by2.value = String(at.y);
+          // Sliders, if either has one, follow their box.
+          for (const box of [bx2, by2]) box?.dispatchEvent(new Event('change'));
+          if (!bx2) commit(xField.key, at.x, xField);
+          if (!by2) commit(yField.key, at.y, yField);
+        },
+        cancelled: stop,
+      });
+    },
+  }, idle);
+  return h('div', { class: 'field wide spot-field', 'data-field': `${xField.key}-pick` }, button);
 }
 
 function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HTMLElement {
@@ -127,8 +209,10 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder ?? '#ffffff', onchange: () => set(input.value.trim() || null) });
       return wrap(input);
     }
-    case 'select':
-      return wrap(select(f.options ?? [], value == null ? '' : String(value), (v) => set(v === '' ? null : v), f.placeholder));
+    case 'select': {
+      const current = value == null || value === '' ? (typeof f.default === 'string' ? f.default : '') : String(value);
+      return wrap(select(f.options ?? [], current, (v) => set(v === '' ? null : v), f.placeholder));
+    }
     case 'tristate': {
       const [yes, no] = [f.options?.[0]?.[1] ?? 'Yes', f.options?.[1]?.[1] ?? 'No'];
       const current = value == null || value === '' ? '' : String(value === true || value === 'true' || value === 1);

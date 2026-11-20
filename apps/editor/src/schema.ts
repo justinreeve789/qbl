@@ -13,6 +13,11 @@ const position: Field[] = [
   { key: 'position_x', label: 'X', kind: 'number', hint: 'Scene pixels from the left. You can also drag the marker on the canvas.' },
   { key: 'position_y', label: 'Y', kind: 'number', hint: 'Scene pixels from the top.' },
 ];
+/** Where an action shows something: as `position`, and the spot can be picked by clicking the scene. */
+const shownAt: Field[] = [
+  { ...position[0]!, spot: { y: 'position_y', prompt: 'Click where it should appear.' } },
+  position[1]!,
+];
 const scale: Field[] = [
   { key: 'scale_x', label: 'Scale X', kind: 'number', placeholder: '1', step: 0.05, slider: { min: 0.1, max: 3 } },
   { key: 'scale_y', label: 'Scale Y', kind: 'number', placeholder: '1', step: 0.05, slider: { min: 0.1, max: 3 } },
@@ -51,11 +56,14 @@ const spritemap: Field[] = [
 const to = (v: Record<string, unknown>) => (v.to as string | undefined) ?? 'point';
 export const WALK_FIELDS: Field[] = [
   {
-    key: 'to', label: 'Walk to', kind: 'select', wide: true, structural: true, placeholder: 'A spot in the scene',
-    options: [['spawn', 'A spawn point in the scene'], ['scene', 'Another scene, through its doors']],
+    key: 'to', label: 'Walk to', kind: 'select', wide: true, structural: true, default: 'point',
+    options: [['point', 'A spot in the scene'], ['spawn', 'A spawn point in the scene'], ['scene', 'Another scene, through its doors']],
     hint: 'To another scene, the walker heads for a hotspot whose jump goes there (a door), goes through it and arrives at the spawn point that jump names, as a player would. A character that walks around on its own can go through several rooms to get there; anyone else only through a door of this scene.',
   },
-  { key: 'position_x', label: 'X', kind: 'number', hint: 'Scene pixels from the left. The walker goes around whatever is in the way, and stops at the nearest spot it can stand on.', when: (v) => to(v) === 'point' },
+  {
+    key: 'position_x', label: 'X', kind: 'number', when: (v) => to(v) === 'point', spot: { y: 'position_y', prompt: 'Click where the walker should go.' },
+    hint: 'Scene pixels from the left. The walker goes around whatever is in the way, and stops at the nearest spot it can stand on. “Pick on the scene” chooses the spot with a click; in the scene editor you can also drag its marker.',
+  },
   { key: 'position_y', label: 'Y', kind: 'number', hint: 'Scene pixels from the top.', when: (v) => to(v) === 'point' },
   { key: 'spawn_point', label: 'Spawn point', kind: 'spawn', sceneKey: 'here', placeholder: 'Choose a spawn point', when: (v) => to(v) === 'spawn' },
   { key: 'scene_id', label: 'Scene', kind: 'scene', structural: true, when: (v) => to(v) === 'scene' },
@@ -158,12 +166,12 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
   image_fixed: {
     label: 'Image in scene',
     about: 'An image placed in the scene.',
-    fields: [{ key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true }, ...position, ...scale, duration('Leave empty to keep it until it is cancelled.'), layer],
+    fields: [{ key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true }, ...shownAt, ...scale, duration('Leave empty to keep it until it is cancelled.'), layer],
   },
   spritemap: {
     label: 'Spritemap',
     about: 'An animated sprite sheet placed in the scene.',
-    fields: [{ key: 'media_id', label: 'Sprite sheet', kind: 'media', mediaType: 'image', wide: true }, ...position, ...scale, ...spritemap, layer],
+    fields: [{ key: 'media_id', label: 'Sprite sheet', kind: 'media', mediaType: 'image', wide: true }, ...shownAt, ...scale, ...spritemap, layer],
   },
   video: {
     label: 'Video',
@@ -290,7 +298,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     about: 'Move, resize or fade something another action is showing.',
     fields: [
       { key: 'target_id', label: 'Action to animate', kind: 'action', wide: true },
-      { key: 'position_x', label: 'To X', kind: 'number' },
+      { key: 'position_x', label: 'To X', kind: 'number', spot: { y: 'position_y', prompt: 'Click where it should move to.' }, hint: 'Scene pixels from the left. Empty: it keeps its X. “Pick on the scene” chooses both with a click.' },
       { key: 'position_y', label: 'To Y', kind: 'number' },
       ...scale,
       { key: 'alpha', label: 'Opacity (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, slider: { min: 0, max: 1 } },

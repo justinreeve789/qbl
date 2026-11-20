@@ -77,7 +77,7 @@ Tick **Walks around on its own** to make the character part of the world rather 
 
 A character that walks around on its own can have a **Routine**: steps it repeats by itself, for everyone, whether or not anyone is watching. **+ Add step** offers:
 
-* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does.
+* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does. For a spot, **📍 Pick on the scene** opens a picture of the scene to click: the scene the character will most likely be in at that step (where it starts, or where an earlier step walked it), and another can be chosen at the top.
 * ⏳ **Wait**.
 * 💬 **Say something**: a speech bubble over the character.
 * 🤸 **Play an animation**.
