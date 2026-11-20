@@ -318,7 +318,7 @@ test('a student, or a teacher in a game without teams, has no team to choose', a
 test("a character's or avatar's picture is drawn at its media's Scale X / Y, times the character's own size", async () => {
   const stretched = (assets: Scenario['assets']) => assets!.map((m) => (m.id === 4 ? { ...m, scale_x: 0.5, scale_y: 2 } : m.id === 9 ? { ...m, scale_x: 1.5, scale_y: 1.5 } : m));
   const plain = await play();
-  const npcOf = (g: Game) => (g.scene.system(PropsSystem) as any).characters.get(1).sprite;
+  const npcOf = (g: Game) => (g.scene.system(PropsSystem) as any).characters.get(1).figure.sprite;
   const before = { npc: { x: npcOf(plain).scaleX, y: npcOf(plain).scaleY }, avatar: (local(plain).avatar as any).sprite.scaleY };
   const g = await play({ assets: stretched(mission().assets), characters: [{ id: 1, name: 'Captain Vega', media_id: 4, scale: 0.8 }] });
   const npc = npcOf(g);
