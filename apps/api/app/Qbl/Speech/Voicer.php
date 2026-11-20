@@ -82,10 +82,12 @@ final class Voicer
     }
 
     /**
-     * The lines of dialogue that characters with a voice say, from a scenario's rows (decoded, as
-     * ScenarioStore::bundle() and MissionBuilder give them).
+     * The lines characters say, from a scenario's rows (decoded, as ScenarioStore::bundle() and
+     * MissionBuilder give them): every `dialogue` action said by a character, and every character's
+     * line of a `conversation` (`line` is then its place in the action's `lines`). `voice` is the
+     * character's, or null when it has none.
      *
-     * @return list<array{index: int, action_id: int, character_id: int, voice: ?string, text: string, media_id: ?int, narrate: ?bool}>
+     * @return list<array{index: int, action_id: int, line: ?int, character_id: int, voice: ?string, text: string, media_id: ?int, narrate: ?bool}>
      */
     public static function lines(array $rows): array
     {
@@ -94,20 +96,50 @@ final class Voicer
             $settings = is_array($c['settings'] ?? null) ? $c['settings'] : (json_decode((string) ($c['settings'] ?? ''), true) ?: []);
             $voices[(int) $c['id']] = isset($settings['tts_voice']) && $settings['tts_voice'] !== '' ? (string) $settings['tts_voice'] : null;
         }
+        $said = fn (array $p) => ($p['speaker'] ?? '') === 'character' && isset($p['character_id']) && array_key_exists((int) $p['character_id'], $voices);
+        $entry = fn (int $i, array $a, ?int $k, array $p, array $action) => [
+            'index' => $i, 'action_id' => (int) $a['id'], 'line' => $k, 'character_id' => (int) $p['character_id'], 'voice' => $voices[(int) $p['character_id']],
+            'text' => (string) ($p['text'] ?? ''), 'media_id' => isset($p['narration_media_id']) ? (int) $p['narration_media_id'] : null,
+            'narrate' => isset($action['narrate']) ? (bool) $action['narrate'] : null,
+        ];
         $out = [];
         foreach ($rows['actions'] ?? [] as $i => $a) {
             $p = is_array($a['params'] ?? null) ? $a['params'] : (json_decode((string) ($a['params'] ?? ''), true) ?: []);
-            if (($a['type'] ?? '') !== 'dialogue' || ($p['speaker'] ?? '') !== 'character' || ! isset($p['character_id']) || ! array_key_exists((int) $p['character_id'], $voices)) {
-                continue;
+            if (($a['type'] ?? '') === 'dialogue' && $said($p)) {
+                $out[] = $entry($i, $a, null, $p, $p);
+            } elseif (($a['type'] ?? '') === 'conversation') {
+                foreach (array_values((array) ($p['lines'] ?? [])) as $k => $line) {
+                    if (is_array($line) && $said($line)) {
+                        $out[] = $entry($i, $a, $k, $line, $p);
+                    }
+                }
             }
-            $out[] = [
-                'index' => $i, 'action_id' => (int) $a['id'], 'character_id' => (int) $p['character_id'], 'voice' => $voices[(int) $p['character_id']],
-                'text' => (string) ($p['text'] ?? ''), 'media_id' => isset($p['narration_media_id']) ? (int) $p['narration_media_id'] : null,
-                'narrate' => isset($p['narrate']) ? (bool) $p['narrate'] : null,
-            ];
         }
 
         return $out;
+    }
+
+    /**
+     * An action's params with a line set to play a recording (and the action to be read aloud), or,
+     * with $mediaId null, to play none. $line: the line of a conversation, or null for a dialogue.
+     */
+    public static function withRecording(array $params, ?int $line, ?int $mediaId): array
+    {
+        if ($line === null) {
+            $target = &$params;
+        } else {
+            $params['lines'] = array_values((array) ($params['lines'] ?? []));
+            $target = &$params['lines'][$line];
+        }
+        if ($mediaId === null) {
+            unset($target['narration_media_id']);
+        } else {
+            $target['narration_media_id'] = $mediaId;
+            $params['narrate'] = true;
+        }
+        unset($target);
+
+        return $params;
     }
 
     /**
@@ -161,8 +193,7 @@ final class Voicer
                     $log(sprintf('  voiced %d of %d: %s', $n + 1, count($lines), mb_strimwidth($r['script'], 0, 70, '…')));
                 }
             }
-            $rows['actions'][$line['index']]['params']['narration_media_id'] = $mediaId;
-            $rows['actions'][$line['index']]['params']['narrate'] = true;
+            $rows['actions'][$line['index']]['params'] = self::withRecording((array) $rows['actions'][$line['index']]['params'], $line['line'], $mediaId);
         }
         unset($rows);
 

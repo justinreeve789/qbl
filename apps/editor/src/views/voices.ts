@@ -6,9 +6,10 @@ import type { FormContext } from '../fields';
 /**
  * Characters' voices. A character can be given a voice from the server's list (its `tts_voice`);
  * "Record voices" then has the server's text-to-speech service record every line that character
- * says, with the time of each word, so the game plays the recording and lights each word as it is
- * said. Lines are recorded on the server, a few per request, and kept with the scenario: players
- * never wait on the service. A line with no recording is read by the browser's voice, as before.
+ * says (its dialogue, and its lines in conversations), with the time of each word, so the game
+ * plays the recording and lights each word as it is said. Lines are recorded on the server, a few
+ * per request, and kept with the scenario: players never wait on the service. A line with no
+ * recording is read by the browser's voice, as before.
  */
 
 const ABOUT = 'Pick a voice and press “Record voices”: every line this character says is recorded once on the server, and players hear it with each word lit as it is spoken. Lines that show a variable other than the player’s name can’t be recorded ahead of time; the browser’s voice reads those. Change a line or the voice and record again: only what changed is recorded.';
@@ -123,14 +124,14 @@ async function recordVoices(ctx: FormContext, attrs: { character_id?: number; fo
   button.disabled = true;
   let recorded = 0;
   let removed = 0;
-  const skipped = new Set<number>();
+  const skipped = new Set<string>();
   try {
     await store.settled();
     for (let round = 0; round < 200; round++) {
       const r = await store.api.recordVoices(store.scenarioId, { ...attrs, limit: 4 });
       recorded += r.recorded;
       removed += r.removed;
-      for (const s of r.skipped) skipped.add(s.action_id);
+      for (const s of r.skipped) skipped.add(`${s.action_id}:${s.line ?? ''}`);
       const total = recorded + r.remaining;
       button.textContent = total ? `🎙️ Recording… ${recorded} of ${total}` : label;
       if (r.remaining === 0 || r.recorded === 0) {
@@ -170,11 +171,14 @@ async function play(ctx: FormContext, key: string, button: HTMLButtonElement) {
   }
 }
 
-/** How many of a character's lines play a recording. */
+/** How many of a character's lines (its dialogue, and its lines in conversations) play a recording. */
 function linesNote(ctx: FormContext, characterId: number): string {
-  const lines = ctx.store.rows('actions').filter((a) => a.type === 'dialogue' && params(a).speaker === 'character' && Number(params(a).character_id) === characterId);
+  type Said = { speaker?: unknown; character_id?: unknown; narration_media_id?: unknown };
+  const by = (l: Said) => l.speaker === 'character' && Number(l.character_id) === characterId;
+  const lines: Said[] = ctx.store.rows('actions').flatMap((a) =>
+    a.type === 'dialogue' ? [params(a) as Said].filter(by) : a.type === 'conversation' ? ((params(a).lines as Said[] | undefined) ?? []).filter(by) : []);
   if (!lines.length) return 'It says no lines yet.';
-  const voiced = lines.filter((a) => params(a).narration_media_id != null).length;
+  const voiced = lines.filter((l) => l.narration_media_id != null).length;
   return `${voiced} of its ${lines.length} line${lines.length === 1 ? '' : 's'} play a recording.`;
 }
 

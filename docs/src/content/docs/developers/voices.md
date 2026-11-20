@@ -35,7 +35,7 @@ docker compose exec app php artisan qbl:voice {code} --force       # record ever
 
 ### What is recorded
 
-- Every `dialogue` action said by a character (`speaker: character`) whose character has a voice (`tts_voice`), unless the action has `narrate: false`.
+- Every `dialogue` action said by a character (`speaker: character`) whose character has a voice (`tts_voice`), and every line such a character says in a `conversation`, unless the action has `narrate: false`. The player's own lines and choices are read by the browser. A voiced conversation gets `narrate: true` and each voiced line its own `narration_media_id`.
 - The player's name, `{{QBLPlayerName}}`, is said as a stand-in word ("explorer"; "explorador" in Spanish, and so on). In play the game shows the player's name and lights it while the stand-in is said.
 - A line with any other `{{placeholder}}` cannot be recorded ahead of play, since its words are only known then. The browser reads it.
 - Recording again only records lines whose text or voice changed. The old recording is deleted. A line whose character loses its voice loses its recording.

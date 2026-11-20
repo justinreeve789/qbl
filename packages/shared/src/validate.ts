@@ -296,6 +296,13 @@ export function validateScenario(doc: unknown): ValidationResult {
     }
   };
 
+  /** A line recorded in a character's voice and changed since: the recording says the old words. */
+  const checkRecording = (mediaId: Id | undefined, text: unknown, path: string) => {
+    const said = mediaId != null ? media.get(mediaId)?.speech : undefined;
+    if (said?.engine && said.line != null && typeof text === 'string' && said.line !== text) {
+      warn(path, 'The line was changed after it was recorded, so the recording says something else. Record the voices again (Characters, “Record voices”)');
+    }
+  };
   /** `inCta`: the action is on an infobox button (`true`) or a conversation's choice (`'choice'`), not in an event. */
   /** A conversation: its lines, who says them, where its choices lead, and what they do. */
   const checkConversation = (a: ConversationAction, path: string, scene: Scene) => {
@@ -329,6 +336,7 @@ export function validateScenario(doc: unknown): ValidationResult {
         }
       }
       if (line.narration_media_id != null) needMedia(line.narration_media_id, `${lp}.narration_media_id`, 'audio');
+      checkRecording(line.narration_media_id, line.text, `${lp}.narration_media_id`);
       checkConditions(line.conditions, lp);
       lead(line.next, `${lp}.next`);
       (line.choices ?? []).forEach((c, ci) => {
@@ -409,13 +417,7 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (typeof a.text !== 'string' || a.text === '') err(`${path}.text`, 'text is required');
         else checkText(a.text, `${path}.text`);
         if (a.style != null && a.style !== 'bubble' && a.style !== 'portrait') err(`${path}.style`, 'style is "bubble" or "portrait"');
-        {
-          // A line recorded in a character's voice, changed since: the recording says the old words.
-          const said = a.narration_media_id != null ? media.get(a.narration_media_id)?.speech : undefined;
-          if (said?.engine && said.line != null && typeof a.text === 'string' && said.line !== a.text) {
-            warn(`${path}.narration_media_id`, 'The line was changed after it was recorded, so the recording says something else. Record the voices again (Characters, “Record voices”)');
-          }
-        }
+        checkRecording(a.narration_media_id, a.text, `${path}.narration_media_id`);
         // A bubble needs someone to hang over; a portrait box can carry a voice from anywhere (a call from the ship).
         if (a.speaker === 'character' && a.style === 'portrait') {
           if (!characters.has(a.character_id as Id)) err(`${path}.character_id`, 'The speaking character does not exist');

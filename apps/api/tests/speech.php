@@ -305,6 +305,46 @@ $store->updateRow($sid, 'actions', $a1['id'], ['params' => ['text' => 'Something
 throws(fn () => $scenarioVoicer->record($sid), SpeechError::class, 'cannot be reached', 'a service that is down is reported, not hidden');
 $engine->down = false;
 
+// ------------------------------------------------------------------ a conversation's lines
+$talk = $store->createScenario(['title' => 'Talk'], null);
+$tid = (int) $talk['id'];
+$tscene = (int) $store->bundle($tid)['scenes'][0]['id'];
+$vega = $store->createRow($tid, 'characters', ['name' => 'Vega', 'settings' => ['tts_voice' => 'captain']]);
+$pip = $store->createRow($tid, 'characters', ['name' => 'Pip']);
+$tevent = $store->createRow($tid, 'events', ['scene_id' => $tscene, 'kind' => 'hotspot', 'shortname' => 'talk']);
+$conversation = $store->createRow($tid, 'actions', ['event_id' => $tevent['id'], 'type' => 'conversation', 'params' => ['style' => 'portrait', 'lines' => [
+    ['id' => 'a', 'speaker' => 'character', 'character_id' => $vega['id'], 'text' => 'Ready, {{QBLPlayerName}}?', 'choices' => [['text' => 'Yes!', 'next' => 'b'], ['text' => 'Not yet', 'next' => 'c']]],
+    ['id' => 'b', 'speaker' => 'player', 'text' => 'Let us go.', 'next' => 'd'],
+    ['id' => 'c', 'speaker' => 'character', 'character_id' => $pip['id'], 'text' => 'Beep. Take your time.'],
+    ['id' => 'd', 'speaker' => 'character', 'character_id' => $vega['id'], 'text' => 'Then follow me.'],
+]]]);
+$engine = new FakeEngine;
+$talker = new ScenarioVoicer($store, new Voicer($engine, $catalog, null));
+$r = $talker->record($tid);
+$after = array_column($store->bundle($tid)['actions'], null, 'id')[$conversation['id']]['params'];
+same([$r['lines'], $r['recorded']], [2, 2], 'a conversation\'s lines said by a character with a voice are recorded, each');
+same([isset($after['lines'][0]['narration_media_id']), isset($after['lines'][1]['narration_media_id']), isset($after['lines'][2]['narration_media_id']), isset($after['lines'][3]['narration_media_id']), $after['narrate']], [true, false, false, true, true], 'the player\'s line and a character without a voice are left to the browser; the conversation is read aloud');
+same([$after['lines'][0]['choices'][1]['next'], $after['lines'][2]['text'], $after['style']], ['c', 'Beep. Take your time.', 'portrait'], 'and nothing else about it changes');
+$doc = ScenarioCompiler::compile($store->rows($tid));
+$first = array_values(array_filter($doc['assets'], fn ($m) => $m['id'] === $after['lines'][0]['narration_media_id']))[0];
+same([$first['speech']['text'], $first['speech']['line']], ['Ready, explorer?', 'Ready, {{QBLPlayerName}}?'], 'the game gets each line\'s timings');
+$after['lines'][3]['text'] = 'Then follow me, quickly.';
+$store->updateRow($tid, 'actions', $conversation['id'], ['params' => $after]);
+$store->updateRow($tid, 'characters', $pip['id'], ['settings' => ['tts_voice' => 'sprite']]);
+$r = $talker->record($tid);
+$again = array_column($store->bundle($tid)['actions'], null, 'id')[$conversation['id']]['params'];
+same([$r['recorded'], $r['kept'], $again['lines'][0]['narration_media_id'], $again['lines'][3]['narration_media_id'] !== $after['lines'][3]['narration_media_id'], isset($again['lines'][2]['narration_media_id'])], [2, 1, $after['lines'][0]['narration_media_id'], true, true], 'a changed line and a newly voiced one are recorded; the rest are kept');
+check(! in_array($after['lines'][3]['narration_media_id'], array_column($store->bundle($tid)['media'], 'id'), true), 'the old recording of the changed line is deleted');
+$store->updateRow($tid, 'characters', $vega['id'], ['settings' => []]);
+$r = $talker->record($tid);
+$gone = array_column($store->bundle($tid)['actions'], null, 'id')[$conversation['id']]['params'];
+same([$r['removed'], isset($gone['lines'][0]['narration_media_id']), isset($gone['lines'][3]['narration_media_id']), isset($gone['lines'][2]['narration_media_id'])], [2, false, false, true], 'a character that loses its voice loses its lines\' recordings, and only theirs');
+$builtTalk = ['rows' => ['scenario' => ['id' => 1], 'media' => [], 'characters' => [['id' => 1, 'name' => 'Vega', 'settings' => ['tts_voice' => 'captain']]], 'actions' => [
+    ['id' => 1, 'type' => 'conversation', 'params' => ['lines' => [['id' => 'a', 'speaker' => 'character', 'character_id' => 1, 'text' => 'Hi.'], ['id' => 'b', 'text' => 'Hello.']]]],
+]], 'files' => []];
+$voicedTalk = (new Voicer(new FakeEngine, $catalog))->voiceBuilt($builtTalk, sys_get_temp_dir().'/qbl-speech-talk-'.bin2hex(random_bytes(3)), 'en');
+same([$voicedTalk['recorded'], $voicedTalk['built']['rows']['actions'][0]['params']['lines'][0]['narration_media_id'] ?? null, isset($voicedTalk['built']['rows']['actions'][0]['params']['lines'][1]['narration_media_id'])], [1, 1, false], 'a conversation in a scenario being built is voiced the same way');
+
 // ------------------------------------------------------------------ the editor's routes
 $factory = new SpeechFactory(['voices' => $catalogPath, 'cache_dir' => null], null, $engine);
 $api = new EditorApi($store, $factory);

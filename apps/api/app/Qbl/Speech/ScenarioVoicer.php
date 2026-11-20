@@ -23,7 +23,7 @@ final class ScenarioVoicer
      *                                                                                                         force: record every line again; limit: at most this many recordings in this call
      *                                                                                                         (call again for the rest); seconds: start no new recording after this long;
      *                                                                                                         dry: only count; character_id: only this character's lines
-     * @return array{lines: int, recorded: int, kept: int, removed: int, remaining: int, skipped: list<array{action_id: int, why: string}>}
+     * @return array{lines: int, recorded: int, kept: int, removed: int, remaining: int, skipped: list<array{action_id: int, line: ?int, why: string}>}
      */
     public function record(int $scenarioId, array $options = [], ?callable $log = null): array
     {
@@ -34,10 +34,16 @@ final class ScenarioVoicer
         foreach ($rows['media'] as $m) {
             $media[(int) $m['id']] = $m;
         }
+        // Who plays each recording: "action" for a dialogue, "action:line" for a conversation's line.
         $users = [];
         foreach ($rows['actions'] as $a) {
             if (isset($a['params']['narration_media_id'])) {
-                $users[(int) $a['params']['narration_media_id']][] = (int) $a['id'];
+                $users[(int) $a['params']['narration_media_id']][] = (string) $a['id'];
+            }
+            foreach (array_values((array) ($a['params']['lines'] ?? [])) as $k => $l) {
+                if (is_array($l) && isset($l['narration_media_id'])) {
+                    $users[(int) $l['narration_media_id']][] = "{$a['id']}:$k";
+                }
             }
         }
         $actions = array_column($rows['actions'], null, 'id');
@@ -47,23 +53,25 @@ final class ScenarioVoicer
         $out = ['lines' => 0, 'recorded' => 0, 'kept' => 0, 'removed' => 0, 'remaining' => 0, 'skipped' => []];
 
         foreach (Voicer::lines($rows) as $line) {
+            $where = $line['action_id'].($line['line'] !== null ? ":{$line['line']}" : '');
             if (isset($options['character_id']) && $line['character_id'] !== (int) $options['character_id']) {
                 continue;
             }
             $current = $line['media_id'] !== null ? ($media[$line['media_id']] ?? null) : null;
             $ours = $current !== null && is_array($current['params']['speech'] ?? null) && isset($current['params']['speech']['engine']);
             if ($current !== null && ! $ours) {
-                $out['skipped'][] = ['action_id' => $line['action_id'], 'why' => 'It plays a recording someone uploaded.'];
+                $out['skipped'][] = ['action_id' => $line['action_id'], 'line' => $line['line'], 'why' => 'It plays a recording someone uploaded.'];
 
                 continue;
             }
             $script = $line['voice'] !== null && $line['narrate'] !== false ? $this->voicer->script($line['text'], $lang) : null;
             if ($script === null) {
                 if ($line['voice'] !== null && $line['narrate'] !== false) {
-                    $out['skipped'][] = ['action_id' => $line['action_id'], 'why' => 'It has a {{placeholder}} whose words are only known in play: the browser reads it.'];
+                    $out['skipped'][] = ['action_id' => $line['action_id'], 'line' => $line['line'], 'why' => 'It has a {{placeholder}} whose words are only known in play: the browser reads it.'];
                 }
                 if ($ours && ! $dry) {
-                    $this->unlink($scenarioId, $actions[$line['action_id']], $current, $users);
+                    $actions[$line['action_id']] = $this->store->updateRow($scenarioId, 'actions', $line['action_id'], ['params' => Voicer::withRecording((array) $actions[$line['action_id']]['params'], $line['line'], null)]);
+                    $this->forget($scenarioId, $current, $where, $users);
                     $out['removed']++;
                 }
 
@@ -83,7 +91,7 @@ final class ScenarioVoicer
             }
             $made = $this->voicer->record($line['text'], $line['voice'], $lang);
             if ($made === null) {
-                $out['skipped'][] = ['action_id' => $line['action_id'], 'why' => "No voice works with $engine."];
+                $out['skipped'][] = ['action_id' => $line['action_id'], 'line' => $line['line'], 'why' => "No voice works with $engine."];
 
                 continue;
             }
@@ -97,13 +105,11 @@ final class ScenarioVoicer
             }
             $row = $this->store->updateRow($scenarioId, 'media', (int) $row['id'], ['params' => $made['params'] + (array) ($row['params'] ?? [])]);
             $media[(int) $row['id']] = $row;
-            $action = $actions[$line['action_id']];
-            $params = ['narration_media_id' => (int) $row['id'], 'narrate' => true] + (array) $action['params'];
-            $params['narration_media_id'] = (int) $row['id'];
+            $params = Voicer::withRecording((array) $actions[$line['action_id']]['params'], $line['line'], (int) $row['id']);
             $actions[$line['action_id']] = $this->store->updateRow($scenarioId, 'actions', $line['action_id'], ['params' => $params]);
-            $users[(int) $row['id']] = [$line['action_id']];
+            $users[(int) $row['id']] = [$where];
             if ($ours) {
-                $this->forget($scenarioId, $current, $line['action_id'], $users);
+                $this->forget($scenarioId, $current, $where, $users);
             }
             $out['recorded']++;
             if ($log) {
@@ -143,19 +149,11 @@ final class ScenarioVoicer
         return $picked;
     }
 
-    /** A line stops playing its recording, and the recording goes when nothing else plays it. */
-    private function unlink(int $scenarioId, array $action, array $media, array &$users): void
-    {
-        $params = (array) $action['params'];
-        unset($params['narration_media_id']);
-        $this->store->updateRow($scenarioId, 'actions', (int) $action['id'], ['params' => $params]);
-        $this->forget($scenarioId, $media, (int) $action['id'], $users);
-    }
-
-    private function forget(int $scenarioId, array $media, int $actionId, array &$users): void
+    /** A line no longer plays a recording: the recording goes when nothing else plays it. */
+    private function forget(int $scenarioId, array $media, string $where, array &$users): void
     {
         $id = (int) $media['id'];
-        $users[$id] = array_values(array_diff($users[$id] ?? [], [$actionId]));
+        $users[$id] = array_values(array_diff($users[$id] ?? [], [$where]));
         if (! $users[$id]) {
             $this->store->deleteRow($scenarioId, 'media', $id);
         }

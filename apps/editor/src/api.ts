@@ -63,7 +63,8 @@ export interface VoiceRecording {
   kept: number;
   removed: number;
   remaining: number;
-  skipped: Array<{ action_id: number; why: string }>;
+  /** `line`: the line of a conversation, by its place in the action's lines. */
+  skipped: Array<{ action_id: number; line?: number | null; why: string }>;
 }
 
 export interface Student {
