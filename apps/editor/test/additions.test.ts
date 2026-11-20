@@ -157,8 +157,15 @@ test('the report on an assignment: students, summary and the message log', async
 
   await page.click('[data-assignment] [data-action=report]');
   await page.waitForSelector('[data-card=report] .report-table');
-  assert.match(await page.innerText('[data-card=report] h2'), /Report: Starship Explorer/);
+  assert.match(await page.innerText('[data-card=report] .report-eyebrow'), /Mission report/i);
+  assert.match(await page.innerText('[data-card=report] h2'), /Starship Explorer/);
   assert.match(await page.innerText('.report-summary'), /0\/1\s*students have started/);
+  assert.match(await page.innerText('.report-legend'), /Not started\s*1/);
+  // The filters narrow the table to one kind of student.
+  await page.click('.report-filter[data-status=finished]');
+  await page.waitForSelector('.report-students .empty');
+  await page.click('.report-filter[data-status=all]');
+  await page.waitForSelector('.report-table tr[data-student]');
   const row = page.locator('.report-table tr[data-student]');
   assert.equal(await row.count(), 1);
   assert.match(await row.innerText(), /Not started/);
