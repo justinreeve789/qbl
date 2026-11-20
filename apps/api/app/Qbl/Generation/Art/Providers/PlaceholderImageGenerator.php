@@ -61,6 +61,16 @@ class PlaceholderImageGenerator implements ImageGenerator
                 $cx = (int) (($f + 0.5) * $cell);
                 $this->figure($im, $cx, (int) ($h * 0.9), (int) min($cell * 0.8, $h * 0.75), $f, $frames, $colour, $outline, $hints['animation'] ?? 'idle');
             }
+        } elseif ($kind === 'passage') {
+            $this->passage($im, $w, $h, $hints['via'] ?? 'door', $colour, $outline);
+        } elseif ($kind === 'opening') {
+            // A dark hole lying on the floor, with a rim of ground around it.
+            imagefilledellipse($im, (int) ($w / 2), (int) ($h / 2), (int) ($w * 0.86), (int) ($h * 0.5), $colour(6));
+            imagefilledellipse($im, (int) ($w / 2), (int) ($h / 2) + 6, (int) ($w * 0.7), (int) ($h * 0.36), imagecolorallocate($im, 30, 22, 40));
+            imageellipse($im, (int) ($w / 2), (int) ($h / 2), (int) ($w * 0.86), (int) ($h * 0.5), $outline);
+            if (($hints['via'] ?? '') === 'hatch') {
+                imagefilledrectangle($im, (int) ($w * 0.45), (int) ($h * 0.3), (int) ($w * 0.55), (int) ($h * 0.6), $colour(6));
+            }
         } elseif ($kind === 'portrait') {
             imagefilledellipse($im, (int) ($w / 2), (int) ($h * 1.05), (int) ($w * 0.8), (int) ($h * 0.7), $colour(2));
             imagefilledellipse($im, (int) ($w / 2), (int) ($h * 0.45), (int) ($w * 0.55), (int) ($h * 0.6), $colour(0));
@@ -84,6 +94,44 @@ class PlaceholderImageGenerator implements ImageGenerator
         }
 
         return $this->png($im);
+    }
+
+    /** A door, gate, cave mouth, portal, tunnel, ladder or stairs, standing on its bottom edge. */
+    private function passage(\GdImage $im, int $w, int $h, string $via, \Closure $colour, int $outline): void
+    {
+        $dark = imagecolorallocate($im, 30, 22, 40);
+        $x0 = (int) ($w * 0.2);
+        $x1 = (int) ($w * 0.8);
+        $top = (int) ($h * 0.08);
+        $bottom = (int) ($h * 0.96);
+        if ($via === 'ladder') {
+            foreach ([0.35, 0.65] as $rx) {
+                imagefilledrectangle($im, (int) ($w * $rx) - 10, $top, (int) ($w * $rx) + 10, $bottom, $colour(6));
+            }
+            for ($y = $top + 40; $y < $bottom; $y += 70) {
+                imagefilledrectangle($im, (int) ($w * 0.35), $y, (int) ($w * 0.65), $y + 14, $colour(6));
+            }
+
+            return;
+        }
+        if ($via === 'stairs_up') {
+            for ($i = 0; $i < 6; $i++) {
+                $y = $bottom - ($i + 1) * (int) (($bottom - $top) / 6);
+                imagefilledrectangle($im, $x0 + $i * 20, $y, $x1, $y + (int) (($bottom - $top) / 6), $colour($i % 2 ? 6 : 7));
+                imagerectangle($im, $x0 + $i * 20, $y, $x1, $y + (int) (($bottom - $top) / 6), $outline);
+            }
+
+            return;
+        }
+        // A frame or rock face, and a dark arched opening in it.
+        imagefilledrectangle($im, $x0 - 30, $top, $x1 + 30, $bottom, $colour($via === 'cave' ? 6 : 1));
+        imagerectangle($im, $x0 - 30, $top, $x1 + 30, $bottom, $outline);
+        $inner = $via === 'portal' ? $colour(4) : $dark;
+        imagefilledrectangle($im, $x0, $top + (int) (($x1 - $x0) / 2), $x1, $bottom, $inner);
+        imagefilledellipse($im, (int) ($w / 2), $top + (int) (($x1 - $x0) / 2), $x1 - $x0, $x1 - $x0, $inner);
+        if ($via === 'door') {
+            imagefilledellipse($im, $x1 - 30, (int) (($top + $bottom) / 2) + 40, 22, 22, $colour(3));
+        }
     }
 
     /** A rounded little figure; walking frames swing the legs, gestures raise an arm. */

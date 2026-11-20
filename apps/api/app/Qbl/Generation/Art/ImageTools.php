@@ -567,6 +567,52 @@ final class ImageTools
         return $out;
     }
 
+    /**
+     * Walking frames made from one standing picture, for when a walk could not be drawn: the body bobs
+     * up and down twice a stride, leans a touch forward, and the lower part (legs, wheels, a tail) swings
+     * back and forth like a pendulum. Not as good as a drawn walk, but a character never glides about
+     * frozen in one pose.
+     *
+     * @return GdImage[]
+     */
+    public static function puppetWalk(GdImage $figure, int $frames = 6): array
+    {
+        $figure = self::trim($figure);
+        $w = imagesx($figure);
+        $h = imagesy($figure);
+        $swing = max(2, (int) round($w * 0.07));
+        $lift = max(1, (int) round($h * 0.025));
+        $hips = (int) round($h * 0.62);
+        $out = [];
+        for ($f = 0; $f < $frames; $f++) {
+            $phase = 2 * M_PI * $f / $frames;
+            $bob = (int) round(abs(sin($phase)) * $lift);
+            $frame = self::blank($w + 2 * $swing, $h + $lift);
+            for ($y = 0; $y < $h; $y++) {
+                // Above the hips: leaning forward a little, more at the top. Below: the swing, most at the feet.
+                $dx = $y < $hips
+                    ? (int) round($swing * 0.25 * (1 - $y / max(1, $hips)))
+                    : (int) round(sin($phase) * $swing * ($y - $hips) / max(1, $h - $hips));
+                imagecopy($frame, $figure, $swing + $dx, $lift - $bob + $y, 0, $y, $w, 1);
+            }
+            $out[] = $frame;
+        }
+
+        return $out;
+    }
+
+    /** The head and shoulders of a standing figure: the top part of it, as wide as it is tall. */
+    public static function bust(GdImage $figure, float $share = 0.42): GdImage
+    {
+        $figure = self::trim($figure);
+        $w = imagesx($figure);
+        $h = max(1, (int) round(imagesy($figure) * $share));
+        $side = min($w, (int) round($h * 1.1));
+        $x = (int) round(max(0, self::centroidX(self::crop($figure, 0, 0, $w, $h)) - $side / 2));
+
+        return self::trim(self::crop($figure, min($x, max(0, $w - $side)), 0, $side, $h));
+    }
+
     /** @param GdImage[][] $rows */
     public static function sheet(array $rows, int $cellW, int $cellH, int $columns): GdImage
     {

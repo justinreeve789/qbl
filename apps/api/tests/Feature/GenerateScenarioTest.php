@@ -57,7 +57,7 @@ class GenerateScenarioTest extends TestCase
         $this->assertNotNull($scenario);
         $this->assertSame($teacher->id, (int) $scenario->user_id);
         $this->assertNull($scenario->published_at);
-        $this->assertSame(3, \DB::table('scenes')->where('scenario_id', $scenario->id)->count());
+        $this->assertSame(5, \DB::table('scenes')->where('scenario_id', $scenario->id)->count());
         $this->assertSame('TEST-3-LS1-1', \DB::table('scenario_standards')->join('curriculum_standards', 'curriculum_standards.id', '=', 'scenario_standards.curriculum_standard_id')->where('scenario_id', $scenario->id)->value('code'));
         $run = \DB::table('scenario_generations')->first();
         $this->assertSame('done', $run->status);

@@ -14,7 +14,7 @@
  */
 return [
     'name' => 'QBL Adventure',
-    'version' => 1,
+    'version' => 2,
 
     'summary' => 'Hand-painted cartoon art in the spirit of classic 1990s point-and-click adventure games: vibrant, intricate, whimsical and a little wonky, with lots of open floor to walk on.',
 
@@ -61,6 +61,8 @@ return [
         'strip' => 'An animation sprite strip for a 2D adventure game: {subject}. Exactly {frames} frames of the SAME character as the reference character sheet, side by side in one horizontal row, evenly spaced with clear empty space between frames, every frame the same size and scale, feet on the same baseline, facing right. Identical design, colours, outfit and proportions in every frame. No ground line, floor, shadow or anything else under or between the frames.',
         'item' => 'A single object for a 2D adventure game: {subject}. Shown whole and centred, from a three-quarter view slightly above, with nothing else in the picture.',
         'vehicle' => 'A single vehicle for a 2D adventure game: {subject}. Side view facing right, whole and centred, wheels or base at the bottom, nothing else in the picture.',
+        'passage' => 'A way through for a 2D adventure game, cut out on its own so it can be stood against the back of a scene: {subject}. Seen from the front at eye level, upright, whole and centred, its bottom edge flat where it meets the floor, with only as much wall, rock or frame around it as it needs. Nothing else in the picture.',
+        'opening' => 'An opening in the floor for a 2D adventure game, cut out on its own so it can be laid on the ground of a scene: {subject}. Seen from the front and above at a low angle, so it is a wide flat oval or shape lying on the ground, with a little of the ground around its rim. Nothing else in the picture.',
         'badge' => 'A round embroidered mission patch: {subject}. Seen straight on, centred, with a stitched border. No letters or numbers.',
     ],
 

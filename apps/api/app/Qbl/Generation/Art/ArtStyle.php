@@ -103,7 +103,7 @@ final class ArtStyle
             'background' => ['environment', 'character'],
             'character' => ['character', 'props'],
             'strip', 'portrait' => ['props'],
-            'item', 'vehicle', 'badge' => ['props'],
+            'item', 'vehicle', 'badge', 'passage', 'opening' => ['props'],
             default => ['props'],
         };
         $out = [];
@@ -122,13 +122,13 @@ final class ArtStyle
     /** Whether a kind is cut out of its background. */
     public static function cutout(string $kind): bool
     {
-        return in_array($kind, ['character', 'strip', 'portrait', 'item', 'vehicle', 'badge'], true);
+        return in_array($kind, ['character', 'strip', 'portrait', 'item', 'vehicle', 'badge', 'passage', 'opening'], true);
     }
 
     /**
      * The prompt for a picture.
      *
-     * @param  string  $kind  background | character | portrait | strip | item | vehicle | badge
+     * @param  string  $kind  background | character | portrait | strip | item | vehicle | badge | passage | opening
      * @param  string  $subject  What to draw, in plain words, without any style words.
      * @param  Reference[]  $references  Sent with the request, in this order.
      * @param  array  $vars  Values for placeholders in the kind's sentence ({frames}).
@@ -138,7 +138,9 @@ final class ArtStyle
     public function prompt(string $kind, string $subject, array $references = [], array $vars = [], array $notes = [], bool $nativeTransparency = false, array $accents = []): string
     {
         $b = $this->bible;
-        $sentence = $b['kinds'][$kind] ?? throw new GenerationError("The art style has no picture kind \"$kind\".");
+        // A style written before passages were drawn words them as single objects.
+        $sentence = $b['kinds'][$kind] ?? (in_array($kind, ['passage', 'opening'], true) ? ($b['kinds']['item'] ?? null) : null)
+            ?? throw new GenerationError("The art style has no picture kind \"$kind\".");
         $replace = ['{subject}' => rtrim(trim($subject), '.')];
         foreach ($vars as $k => $v) {
             $replace['{'.$k.'}'] = (string) $v;
