@@ -530,7 +530,7 @@ export const CHARACTER_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text', wide: true },
 ];
 export const CHARACTER_SETTINGS_FIELDS: Field[] = [
-  { key: 'scale', label: 'Size', kind: 'number', min: 0.01, step: 0.05, placeholder: '1', slider: { min: 0.1, max: 3 }, hint: 'How big its pictures are drawn: 1 is as large as they are.' },
+  { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1', slider: { min: 0.1, max: 3 } },
   { key: 'voice_pitch', label: 'Voice: pitch (0 to 2)', kind: 'number', min: 0, max: 2, step: 0.1, placeholder: '1', slider: { min: 0, max: 2 }, hint: 'How the character sounds when its lines are read aloud. Lower is deeper.' },
   { key: 'voice_rate', label: 'Voice: pace (0.5 to 2)', kind: 'number', min: 0.5, max: 2, step: 0.1, placeholder: '1', slider: { min: 0.5, max: 2 } },
   { key: 'voice_name', label: 'Voice: prefer one called', kind: 'text', placeholder: 'Any', hint: 'Part of the name of a voice on the player’s device, such as “female”, “Daniel” or “Google UK”. Devices differ: where no voice matches, the default one reads.' },
