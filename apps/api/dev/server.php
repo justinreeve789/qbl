@@ -25,6 +25,13 @@ spl_autoload_register(function (string $class) {
     }
 });
 
+// Everything else (plans and credits, the generator's API, the district panel) is loaded when used.
+spl_autoload_register(function (string $class) {
+    if (str_starts_with($class, 'App\\') && is_file($file = __DIR__.'/../app/'.str_replace('\\', '/', substr($class, 4)).'.php')) {
+        require $file;
+    }
+});
+
 use App\Qbl\EditorApi;
 use App\Qbl\ScenarioStore;
 
@@ -56,8 +63,18 @@ if (str_starts_with($path, '/scenario-assets/')) {
 
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");
 $store = new ScenarioStore($pdo, "$dataDir/media", '/media');
-foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema()) as $sql) {
+foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema(), App\Qbl\Api\Clients::sqliteSchema(), App\Qbl\Billing\Credits::sqliteSchema(),
+    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
+}
+foreach (['organizations' => ['integrations_enabled_at', 'license'], 'users' => ['self_registered_at', 'email_verified_at']] as $table => $columns) {
+    foreach ($columns as $column) {
+        try {
+            $pdo->exec("ALTER TABLE `$table` ADD COLUMN `$column`");
+        } catch (PDOException) {
+            // There already.
+        }
+    }
 }
 // First run (no scenarios yet): add the shipped scenarios (the demo mission) from their ZIPs, as
 // the Laravel seeder does, and publish them. After that they are left alone.
@@ -264,6 +281,52 @@ if ($path === '/api/me/progress' || $path === '/api/shop' || preg_match('#^/api/
         respond($e->status, ['message' => $e->getMessage()]);
     }
 }
+// Laravel's env(), for reading config files here.
+if (! function_exists('env')) {
+    function env(string $key, mixed $default = null): mixed
+    {
+        $value = getenv($key);
+
+        return $value === false ? $default : match (strtolower($value)) {
+            'true' => true, 'false' => false, 'null', '' => null, default => $value,
+        };
+    }
+}
+// Plans and billing: off here (everything open), as on a site without QBL_BILLING_ENABLED.
+// QBL_DEV_BILLING=1: on, to look at the plans pages (nothing can be bought: there is no Stripe here).
+$plans = new App\Qbl\Billing\Plans(['enabled' => (bool) getenv('QBL_DEV_BILLING')] + require __DIR__.'/../config/qbl_billing.php');
+$entitlements = new App\Qbl\Billing\Entitlements($pdo, $plans);
+$credits = new App\Qbl\Billing\Credits($pdo, $entitlements);
+if (preg_match('#^/api/billing(?:/(checkout|change|portal|promotion|credits))?$#', $path, $m)) {
+    respond(...(new App\Qbl\Billing\BillingApi($entitlements, $credits, new App\Qbl\Billing\Subscriptions($pdo, $plans, null, 'http://localhost')))->handle($method, $m[1] ?? '', $body, $user));
+}
+// The generator needs the real backend (keys, the queue worker): here it says so. With
+// QBL_DEV_GENERATOR=1 it pretends instead: a run goes through every stage in about 70 seconds (worked
+// out from the time on each request, so no worker is needed) and ends as an empty draft. For trying
+// the editor's generator page and its progress bar, nothing more. A number of seconds above 1
+// (QBL_DEV_GENERATOR=15) makes the pretend run take that long instead.
+if (preg_match('#^/api/editor/generations(?:/([0-9a-z/]+))?$#', $path, $m)) {
+    App\Qbl\Generation\GenerationRuns::sqliteUpgrade($pdo);
+    $pretend = (bool) getenv('QBL_DEV_GENERATOR');
+    if ($pretend) {
+        devPretendGenerations($pdo, $store, $credits);
+    }
+    respond(...(new App\Qbl\Generation\GenerationApi($pdo, $entitlements, $credits, fn () => null,
+        $pretend ? null : fn () => throw new RuntimeException('the development server does not make missions; use Docker (or QBL_DEV_GENERATOR=1 to pretend).')))
+        ->handle($method, isset($m[1]) ? explode('/', $m[1]) : [], $body, $user));
+}
+// The district admin panel, with its integrations' secrets merely encoded (NOT FOR DEPLOYMENT).
+if (str_starts_with($path, '/api/district/')) {
+    $http = new App\Qbl\Generation\Http\CurlHttpClient(0);
+    $district = null;
+    $district = new App\Qbl\District\DistrictApi($pdo, new App\Qbl\District\Integrations($pdo, 'base64_encode', 'base64_decode'), new App\Qbl\District\RosterSync($pdo),
+        new App\Qbl\District\CleverClient($http, '', ''), new App\Qbl\District\GoogleClassroomClient($http), 'http://localhost:5173',
+        function (int $run) use (&$district) {
+            $district->performSync($run);
+        });
+    $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
+    respond(...$district->handle($method, substr($path, strlen('/api/district')), $body, $user, $files));
+}
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
     // Voices: Kokoro on this machine (docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0), or QBL_TTS_DRIVER=none.
@@ -273,7 +336,7 @@ if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
         'voices' => __DIR__.'/../resources/speech/voices.json',
         'cache_dir' => "$dataDir/speech",
     ]);
-    [$status, $answer] = (new EditorApi($store, $speech))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files);
+    [$status, $answer] = (new EditorApi($store, speech: $speech))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files);
     if (isset($answer['download'])) {
         header('Content-Type: '.$answer['download']['type']);
         header('Content-Disposition: '.(empty($answer['download']['inline']) ? 'attachment' : 'inline').'; filename="'.$answer['download']['name'].'"');
@@ -284,3 +347,58 @@ if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     respond($status, $answer);
 }
 respond(404, ['message' => 'Not found.']);
+
+/** QBL_DEV_GENERATOR=1: move pretend runs along by the clock (see the generations route above). */
+function devPretendGenerations(PDO $pdo, ScenarioStore $store, App\Qbl\Billing\Credits $credits): void
+{
+    $plan = ['queued' => 3, 'aligning' => 5, 'designing' => 14, 'drawing' => 40, 'building' => 3, 'importing' => 2];
+    $wanted = (float) getenv('QBL_DEV_GENERATOR');
+    if ($wanted > 1) {
+        $plan = array_map(fn ($s) => $s * $wanted / array_sum($plan), $plan);
+    }
+    $pictures = 17;
+    $runs = new App\Qbl\Generation\GenerationRuns($pdo);
+    $busy = $pdo->query("SELECT id FROM scenario_generations WHERE status IN ('".implode("', '", App\Qbl\Generation\GenerationApi::BUSY)."')")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($busy as $id) {
+        $run = $runs->get((int) $id);
+        if ($run['cancelled_at']) {
+            App\Qbl\Generation\GenerationApi::cancelled($pdo, $credits, (int) $id);
+
+            continue;
+        }
+        $start = strtotime($run['created_at'].' UTC');
+        $t = microtime(true) - $start;
+        $at = $start;
+        $finished = true;
+        foreach ($plan as $stage => $seconds) {
+            if ($t < $seconds) {
+                $finished = false;
+                break;
+            }
+            $t -= $seconds;
+            $at += $seconds;
+        }
+        $iso = fn (int $u) => gmdate('Y-m-d\TH:i:s\Z', $u);
+        if ($finished) {
+            $title = 'Pretend mission: '.mb_strimwidth($run['prompt'], 0, 40, '…');
+            $scenario = $store->createScenario(['title' => $title], $run['user_id'] !== null ? (int) $run['user_id'] : null);
+            $runs->update((int) $id, ['status' => 'done', 'scenario_id' => $scenario['id'], 'blueprint' => ['title' => $title],
+                'progress' => ['stage' => 'importing', 'percent' => 100, 'detail' => 'Ready', 'started_at' => $iso((int) ($start + $plan['queued'])), 'stage_started_at' => $iso((int) $at)] + (array) $run['progress']]);
+
+            continue;
+        }
+        $fraction = $t / $plan[$stage];
+        $done = $stage === 'drawing' ? (int) floor($fraction * $pictures) : null;
+        $detail = match ($stage) {
+            'drawing' => $done < 4 ? sprintf('Drawing Professor Fern (character 1 of 2)') : ($done < 7 ? 'Drawing the props: a watering can, a seed tray and the marker' : sprintf('Painting the Greenhouse (scene %d of 5)', min(5, $done - 6))),
+            'designing' => $fraction < 0.7 ? 'Writing the story, scenes and questions' : 'Fixing 2 problems in the design (round 1)',
+            default => App\Qbl\Generation\GenerationProgress::STAGES[$stage][2],
+        };
+        $runs->update((int) $id, ['status' => $stage, 'blueprint' => $stage === 'drawing' || $stage === 'building' || $stage === 'importing' ? ['title' => 'The Greenhouse Mystery'] : null, 'progress' => [
+            'stage' => $stage, 'stages' => App\Qbl\Generation\GenerationProgress::stagesFor(false),
+            'percent' => App\Qbl\Generation\GenerationProgress::percent($stage, $stage === 'drawing' ? $done / $pictures : $fraction),
+            'detail' => $detail, 'done' => $done, 'total' => $stage === 'drawing' ? $pictures : null,
+            'started_at' => $stage === 'queued' ? null : $iso((int) ($start + $plan['queued'])), 'stage_started_at' => $iso((int) $at), 'updated_at' => $iso(time()),
+        ]]);
+    }
+}

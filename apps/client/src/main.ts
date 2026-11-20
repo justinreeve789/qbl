@@ -6,6 +6,7 @@ import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
 import { buildHome } from './home';
 import { Api, ApiError, takeSignInProblem } from './net/Api';
+import { AFTER_SIGN_IN_KEY, showPlans } from './plans';
 import { OfflineConnection, OnlineConnection, type GameConnection } from './net/Connection';
 import { BootScene } from './scenes/BootScene';
 // The profile dialog, shared with the editor.
@@ -252,6 +253,17 @@ function takeSigningIn(): boolean {
   }
 }
 
+/** Where to go once signed in, left by a page that sent someone to sign in (see plans.ts). Read once. */
+function takeAfterSignIn(): string | null {
+  try {
+    const path = sessionStorage.getItem(AFTER_SIGN_IN_KEY);
+    sessionStorage.removeItem(AFTER_SIGN_IN_KEY);
+    return path && /^\/(?!\/)/.test(path) ? path : null;
+  } catch {
+    return null;
+  }
+}
+
 const AVATAR_KEY = 'qbl.avatar';
 
 /** Keep the player's choice of avatar: on their account, and in this browser for guests. */
@@ -341,6 +353,8 @@ async function showHome(user: User): Promise<boolean> {
       });
     },
     desk: isStaff(user.role) ? api.teacherDesk() : undefined,
+    // A school-run account has a placeholder address, so no address and no password of its own.
+    managed: user.role !== 'guest' && !user.email && user.has_password === false,
   }));
   return true;
 }
@@ -376,6 +390,12 @@ async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
     show('Loading…');
     try {
       if (config.preview != null) return { scenario: await loadDraft(config.preview), user };
+      // A page that sent someone to sign in (the plans page) gets them back once they have.
+      const after = fresh ? takeAfterSignIn() : null;
+      if (after) {
+        window.location.replace(after);
+        return new Promise(() => undefined);
+      }
       // Signing in with no scenario asked for takes each user to their own dashboard: the editor
       // for teachers and admins. Arriving already signed in (the Missions link) shows the missions page.
       if (config.home && fresh && isStaff(user.role)) {
@@ -500,7 +520,7 @@ async function start() {
 }
 
 setUpApp();
-start().catch((err) => {
+(config.plans ? showPlans(api) : start()).catch((err) => {
   console.error(err);
   show(err instanceof Error ? err.message : 'Something went wrong.');
 });

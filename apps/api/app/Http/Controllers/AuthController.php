@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Notifications\ResetPasswordLink;
 use App\Qbl\Api\Privacy;
+use App\Qbl\District\DistrictApi;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -292,10 +293,14 @@ class AuthController extends Controller
         }
 
         // Accounts a school rosters through /api/v1 have made-up addresses that are never shown.
+        // The organizations this person runs (district admin panel), for the editor's menu. QBL's
+        // administrators see the panel anyway, for every organization.
+        $runs = $user->role === User::ROLE_ADMIN ? [] : app(DistrictApi::class)->adminOf($user->id, (string) $user->role);
+
         return $user->toQbl() + ($user->hasRealEmail() ? ['email' => $user->email] : []) + [
             'has_password' => $user->hasPassword(),
             'uses_google' => $user->google_id !== null,
             'name_locked' => $user->nameIsLocked(),
-        ];
+        ] + ($runs ? ['admin_of' => $runs] : []);
     }
 }

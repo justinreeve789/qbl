@@ -38,14 +38,18 @@ class MissionDesigner
      * @param  array  $alignment  StandardsAligner::align()
      * @param  array{grade?: ?string, subject?: ?string, scenes?: ?int, min_players?: int, max_players?: int, minutes?: ?int, notes?: ?string}  $options
      * @param  callable|null  $log  fn(string $message)
+     * @param  callable|null  $progress  fn(float $fraction, string $detail): how far the design has got, for the progress bar
      */
-    public function design(string $prompt, array $alignment, array $options, ?callable $log = null): array
+    public function design(string $prompt, array $alignment, array $options, ?callable $log = null, ?callable $progress = null): array
     {
+        $progress && $progress(0.05, 'Writing the story, scenes and questions');
         $schema = BlueprintSchema::schema($this->limits);
         $objectiveIds = array_column($alignment['learning_objectives'], 'id');
         $brief = $this->brief($prompt, $alignment, $options);
 
         $blueprint = self::tidy($this->llm->structured($this->system(), [$brief], 'mission_blueprint', $schema, 32000));
+        // The first draft is most of the work; each correction gets it closer (how many is not known ahead).
+        $progress && $progress(0.7, 'Checking the mission can be played from start to finish');
         $rewritten = false;
         $limit = $this->repairs;
         for ($round = 1; ; $round++) {
@@ -56,8 +60,11 @@ class MissionDesigner
                 $errors = ['The blueprint does not follow the schema: '.$e->getMessage().'. Give every field the type the schema says.'];
             }
             if (! $errors) {
+                $progress && $progress(1, 'The mission is designed');
+
                 return $blueprint;
             }
+            $progress && $progress(0.7 + 0.3 * (1 - 0.5 ** $round), 'Fixing '.count($errors).' problem'.(count($errors) === 1 ? '' : 's').' in the design (round '.$round.')');
             if ($round > $limit) {
                 if ($rewritten) {
                     throw new GenerationError("The mission blueprint still has problems after {$this->repairs} corrections and a rewrite:\n- ".implode("\n- ", $errors));

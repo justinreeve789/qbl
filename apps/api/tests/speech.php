@@ -347,7 +347,7 @@ same([$voicedTalk['recorded'], $voicedTalk['built']['rows']['actions'][0]['param
 
 // ------------------------------------------------------------------ the editor's routes
 $factory = new SpeechFactory(['voices' => $catalogPath, 'cache_dir' => null], null, $engine);
-$api = new EditorApi($store, $factory);
+$api = new EditorApi($store, speech: $factory);
 $teacher = ['id' => 1, 'name' => 'T', 'role' => 'admin'];
 [$status, $body] = $api->handle('GET', "scenarios/$sid/voices", [], $teacher);
 same([$status, $body['engine'], $body['lines']['to_record'] ?? null], [200, 'kokoro', 1], 'the editor gets the voices and how many lines are left to record');
@@ -359,9 +359,9 @@ same([$status, $body['download']['type'], $body['download']['inline'], str_start
 @unlink($body['download']['path']);
 [$status] = $api->handle('GET', "scenarios/$sid/voices/nobody/sample", [], $teacher);
 same($status, 404, 'an unknown voice is not found');
-[$status, $body] = (new EditorApi($store, new SpeechFactory(['driver' => 'none', 'voices' => $catalogPath])))->handle('POST', "scenarios/$sid/voices/record", [], $teacher);
+[$status, $body] = (new EditorApi($store, speech: new SpeechFactory(['driver' => 'none', 'voices' => $catalogPath])))->handle('POST', "scenarios/$sid/voices/record", [], $teacher);
 same([$status, str_contains($body['message'], 'switched off')], [503, true], 'with recording switched off the editor is told so');
-[$status, $body] = (new EditorApi($store, new SpeechFactory(['driver' => 'none', 'voices' => $catalogPath])))->handle('GET', "scenarios/$sid/voices", [], $teacher);
+[$status, $body] = (new EditorApi($store, speech: new SpeechFactory(['driver' => 'none', 'voices' => $catalogPath])))->handle('GET', "scenarios/$sid/voices", [], $teacher);
 same([$status, $body['engine'], count($body['voices']) > 10], [200, null, true], 'but can still list the voices');
 [$status] = (new EditorApi($store))->handle('GET', "scenarios/$sid/voices", [], $teacher);
 same($status, 503, 'a server without voices set up says so');

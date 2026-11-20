@@ -44,4 +44,18 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', '/api/auth/google/callback'),
     ],
 
+    // Clever: QBL's Clever application (Instant Login and Secure Sync), which districts add in their
+    // Clever dashboard. Register https://your-host/api/sso/clever/callback as its redirect URI.
+    'clever' => [
+        'client_id' => env('CLEVER_CLIENT_ID'),
+        'client_secret' => env('CLEVER_CLIENT_SECRET'),
+        'api_base' => env('CLEVER_API_BASE', 'https://api.clever.com'),
+        'auth_base' => env('CLEVER_AUTH_BASE', 'https://clever.com'),
+    ],
+
+    // Google Classroom rosters (each district gives its own service account in the admin panel).
+    'google_classroom' => [
+        'api_base' => env('GOOGLE_CLASSROOM_API_BASE', 'https://classroom.googleapis.com'),
+    ],
+
 ];

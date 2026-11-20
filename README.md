@@ -317,6 +317,41 @@ docker compose exec app php artisan qbl:api-client list        # also: rotate <c
 
 and, so organizations' retention periods are honoured, runs `docker compose exec -T app php artisan qbl:privacy-purge` daily from the host's cron.
 
+## Plans and billing
+
+Off by default (`QBL_BILLING_ENABLED=false`: everyone may do everything). On, there are three plans, sold with Stripe, each paid one with a 7-day free trial and coupon codes:
+
+- **Free**: the free missions.
+- **Teacher**, $30 a month: every **curricular** mission (a scenario whose tier an administrator set to curricular, in Settings), to play and assign, for up to 40 students.
+- **Teacher Plus**, $50 a month: also the **AI mission generator** in the editor (**Generate**), paid in **credits**: 100 a month, a mission costs 10, unused credits carry over up to 100.
+- **Schools and districts**: a quote (the Plans page's form, emailed to `QBL_SALES_EMAIL`), then a **license** on the organization that covers its teachers.
+
+People buy on **`/plans`**; teachers see their plan and credits in the editor (**Plan**). Every number is in `.env` (see `.env.example`).
+
+```sh
+# .env: STRIPE_SECRET=sk_…, then:
+docker compose exec app php artisan qbl:billing setup          # makes the prices; prints STRIPE_PRICE_TEACHER / _PLUS for .env
+# Stripe: a webhook to https://your-host/api/billing/webhook (events listed by setup) -> STRIPE_WEBHOOK_SECRET; the customer portal on
+# .env: QBL_BILLING_ENABLED=true, then docker compose up -d
+docker compose exec app php artisan qbl:billing coupon WELCOME20 --percent=20 --duration=repeating --months=3
+docker compose exec app php artisan qbl:billing status teacher@school.org       # also: sync, credits --add=50
+docker compose exec app php artisan qbl:org license "Riverside Unified" --generator --credits=100 --expires=2027-06-30
+```
+
+The generator from the editor and the district panel's roster syncs run on a **queue worker** inside the `app` container (`QBL_QUEUE_WORKER=true`; log lines `worker:`). While a mission is being made the editor shows its progress on the Generate page and in a ✨ chip at the top of every page, and the teacher can cancel it (credits back). After upgrading, run `php artisan migrate` (adds `scenario_generations.progress` and `cancelled_at`). See [docs/src/content/docs/developers/billing.md](docs/src/content/docs/developers/billing.md).
+
+## The district admin panel
+
+For a school's or district's technical staff, in the editor under **District**: the organization's people, admins and privacy settings, and (once QBL turns them on for that organization) its **integrations**: SAML single sign-on, Clever (Instant Login and roster sync), Google (Workspace sign-in for its domains and Google Classroom rosters), roster files, and API clients for `/api/v1`. Secrets are encrypted with the app key and never shown again.
+
+```sh
+docker compose exec app php artisan qbl:org create "Riverside Unified" --kind=district
+docker compose exec app php artisan qbl:org enable "Riverside Unified"                 # only when the customer asks for it
+docker compose exec app php artisan qbl:org admin "Riverside Unified" it-lead@riverside.org
+```
+
+Clever needs QBL's own Clever application: `CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET`, with the redirect URI `https://your-host/api/sso/clever/callback`. SAML and Google need nothing on the server: each district sets them up in its panel. Guide: [docs/src/content/docs/editor/district-admin.md](docs/src/content/docs/editor/district-admin.md).
+
 ## How a mission is put together
 
 A **scenario** is a whole mission a group of students goes on together. It contains **scenes**. Each scene has a background, and **events** made of **actions** that run in order: start events when the scene loads, end events just before leaving, hotspots, and indirect events run by other actions. Each scenario is represented by a JSON file that loads when the player launches. See `docs/` for the documentation: the editor guide, and the complete specification under Developers (`docs/src/content/docs/developers`).

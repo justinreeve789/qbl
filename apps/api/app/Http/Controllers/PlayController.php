@@ -32,6 +32,12 @@ class PlayController extends Controller
         if (! $user && $private) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
+        // A curricular mission needs a plan that includes it: the player's own, or in an assigned game their teacher's.
+        if ($classes->needsPlan($scenario->id, $user?->id, $group) && $user?->role !== 'admin') {
+            return $user && $user->role !== 'guest'
+                ? response()->json(['message' => 'This is one of the curricular missions, which come with a Teacher plan.', 'needs_plan' => true], 403)
+                : response()->json(['message' => 'Unauthenticated.'], 401);
+        }
         if ($user && ! $classes->mayJoin($user->id, $user->role, $scenario->id, $group)) {
             return response()->json(['message' => $private && $group === 'public' ? 'This mission is for classes it has been assigned to.' : 'You are not in that team.'], 403);
         }

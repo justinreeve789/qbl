@@ -2,18 +2,22 @@
 
 use App\Http\Controllers\ApiV1Controller;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\ClassController;
+use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\EditorController;
+use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\InternalController;
 use App\Http\Controllers\PlayController;
 use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\SsoController;
 use App\Http\Middleware\ServiceKey;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/auth/guest',[AuthController::class, 'guest'])->middleware('throttle:10,1');
+Route::post('/auth/guest', [AuthController::class, 'guest'])->middleware('throttle:10,1');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 // The profile page: the name over the player's character, and the password.
 Route::patch('/me', [AuthController::class, 'update'])->middleware(['auth:sanctum', 'throttle:20,1']);
@@ -41,6 +45,25 @@ Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|m
 
 // Auth is optional here: scenarios with require_login=false can be played without a token.
 Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');
+
+// Plans, Stripe billing and AI generator credits (App\Qbl\Billing\BillingApi lists the routes). The plans
+// on sale can be read signed out; the rest needs a token. Stripe's webhook is checked by its signature.
+Route::post('/billing/webhook', [BillingController::class, 'webhook']);
+Route::post('/billing/quote', [BillingController::class, 'quote'])->middleware('throttle:5,1');
+Route::any('/billing/{path?}', BillingController::class)->where('path', 'checkout|change|portal|promotion|credits')->middleware('throttle:30,1');
+
+// The AI mission generator from the editor, paid in credits; the work runs on the queue worker.
+// The editor asks how a generation is going every few seconds, from any page: a looser limit than most.
+Route::any('/editor/generations/{path?}', GenerationController::class)->where('path', '[0-9a-z/]*')->middleware(['auth:sanctum', 'throttle:90,1']);
+
+// The district admin panel (App\Qbl\District\DistrictApi lists the routes), and signing in through a
+// district's own system: SAML, Clever (Google Workspace domains go through GoogleAuthController).
+Route::any('/district/{path?}', DistrictController::class)->where('path', '.*')->middleware(['auth:sanctum', 'throttle:120,1']);
+Route::get('/sso/{org}/saml/metadata', [SsoController::class, 'samlMetadata'])->whereNumber('org');
+Route::get('/sso/{org}/saml/login', [SsoController::class, 'samlLogin'])->whereNumber('org')->middleware('throttle:30,1');
+Route::post('/sso/{org}/saml/acs', [SsoController::class, 'samlAcs'])->whereNumber('org')->middleware('throttle:30,1');
+Route::get('/sso/clever/login', [SsoController::class, 'cleverLogin'])->middleware('throttle:30,1');
+Route::get('/sso/clever/callback', [SsoController::class, 'cleverCallback'])->middleware('throttle:30,1');
 
 // The editor. One controller hands every request to App\Qbl\EditorApi, which lists the routes.
 Route::any('/editor/{path?}', EditorController::class)->where('path', '.*')->middleware('auth:sanctum');

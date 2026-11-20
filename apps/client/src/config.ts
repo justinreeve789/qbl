@@ -39,4 +39,6 @@ export const config = {
   /** Play alone without the game server. Used for content previews. */
   offline: params.has('offline') || params.has('preview'),
   debug: params.has('debug'),
+  /** /plans: the plans, the free trial and checkout, and the quote form for schools. Not the game. */
+  plans: /^\/plans\/?$/.test(window.location.pathname),
 };

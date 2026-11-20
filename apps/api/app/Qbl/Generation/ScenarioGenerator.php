@@ -24,6 +24,9 @@ use App\Qbl\Speech\Voicer;
  *   5. package  scenario.json and assets/ as an import ZIP (ScenarioPackage)
  *   6. import   through ScenarioArchive, as a private draft; record its standards; optionally publish
  *
+ * How far it has got is kept on the run as it goes (GenerationProgress), for the editor's progress
+ * bar; a teacher can stop it from there, between two pictures (GenerationCancelled).
+ *
  * Each stage's result is saved on the run (scenario_generations) and in its work folder, so a run
  * that stops is resumed from where it stopped. What it spends on AI services is counted in the work
  * folder (spend.json, see Spend), estimated before drawing, and reported at the end.
@@ -35,6 +38,9 @@ class ScenarioGenerator
 
     /** The id of the run most recently started or resumed, so a caller can say how to resume it after a failure. */
     public ?int $lastRun = null;
+
+    /** The run being made's progress, for the editor's progress bar (null between runs). */
+    private ?GenerationProgress $progress = null;
 
     public function __construct(
         private GenerationRuns $runs,
@@ -85,6 +91,7 @@ class ScenarioGenerator
             throw new GenerationError("Cannot create $dir.");
         }
         $this->say("Generation $id (work folder $dir)");
+        $this->progress = $progress = new GenerationProgress($this->runs, $id, GenerationProgress::stagesFor((bool) $this->voices), $this->spend ? fn () => $this->spend->total() : null);
         $warnings = [];
         // What this run spends is counted into its work folder, carrying on from where a resumed run was.
         $this->spend?->attach("$dir/spend.json");
@@ -97,6 +104,8 @@ class ScenarioGenerator
                 $this->say('Aligning to curriculum standards');
                 $alignment = $this->aligner->align($prompt, $options);
                 $this->runs->update($id, ['alignment' => $alignment]);
+                $n = count($alignment['standards'] ?? []);
+                $progress->fraction(1, "Aligned to $n standard".($n === 1 ? '' : 's'));
             }
             $warnings = array_merge($warnings, $alignment['warnings'] ?? []);
             foreach ($alignment['standards'] as $s) {
@@ -108,7 +117,7 @@ class ScenarioGenerator
             if (! $blueprint || BlueprintValidator::errors($blueprint, array_column($alignment['learning_objectives'], 'id'))) {
                 $this->status($id, 'designing');
                 $this->say('Designing the mission');
-                $blueprint = $this->designer->design($prompt, $alignment, $options, $this->log);
+                $blueprint = $this->designer->design($prompt, $alignment, $options, $this->log, fn (float $f, string $detail) => $progress->fraction($f, $detail));
                 $this->runs->update($id, ['blueprint' => $blueprint]);
             }
             file_put_contents("$dir/blueprint.json", json_encode($blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
@@ -127,6 +136,7 @@ class ScenarioGenerator
 
             // ------------------------------------------------------------ 3. draw
             $this->status($id, 'drawing');
+            $director->onProgress(fn (int $done, int $total, string $detail) => $progress->count($done, $total, $detail));
             $assets = $director->drawMission($blueprint, self::layouts($blueprint));
             $manifest = $director->manifest();
             $this->runs->update($id, ['manifest' => $manifest]);
@@ -143,7 +153,7 @@ class ScenarioGenerator
             if ($this->voices && $voices) {
                 $this->status($id, 'voicing');
                 $this->say('Recording the characters\' lines ('.$this->voices['voicer']->engine()->name().')');
-                $voiced = $this->voices['voicer']->voiceBuilt($built, "$dir/voices", $blueprint['language'] ?? 'en', $this->log);
+                $voiced = $this->voices['voicer']->voiceBuilt($built, "$dir/voices", $blueprint['language'] ?? 'en', $this->log, fn (int $done, int $total, string $line) => $progress->count($done, $total, 'Recording line '.($done + 1)." of $total: $line"));
                 $built = $voiced['built'];
                 $warnings = array_merge($warnings, $voiced['warnings']);
                 $this->say("  {$voiced['recorded']} lines recorded".($voiced['skipped'] ? ", {$voiced['skipped']} left to the browser (they have {{placeholders}})" : ''));
@@ -161,7 +171,9 @@ class ScenarioGenerator
             }
 
             // ------------------------------------------------------------ 6. import
+            $this->status($id, 'importing');
             $scenarioId = $this->import($package['zip'], $userId, $alignment, $built['evidence'], (bool) ($options['publish'] ?? false));
+            $progress->fraction(1, 'Ready');
             $this->runs->update($id, ['scenario_id' => $scenarioId, 'status' => 'done']);
 
             return ['run' => $id, 'status' => 'done', 'scenario_id' => $scenarioId, 'zip' => $package['zip'], 'warnings' => $warnings, 'spend' => $this->spend?->summary()];
@@ -169,8 +181,10 @@ class ScenarioGenerator
             if ($this->spend) {
                 $this->say('Spent so far: '.$this->spend->describe().'.');
             }
-            $this->runs->update($id, ['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 4000)]);
+            $this->runs->update($id, ['status' => $e instanceof GenerationCancelled ? 'cancelled' : 'failed', 'error' => mb_substr($e->getMessage(), 0, 4000)]);
             throw $e;
+        } finally {
+            $this->progress = null;
         }
     }
 
@@ -242,9 +256,14 @@ class ScenarioGenerator
         return $out;
     }
 
+    /** The run's status; a stage of the bar also starts the stage's part of it (and checks for a cancel). */
     private function status(int $id, string $status): void
     {
-        $this->runs->update($id, ['status' => $status]);
+        if ($this->progress && isset(GenerationProgress::STAGES[$status])) {
+            $this->progress->stage($status);
+        } else {
+            $this->runs->update($id, ['status' => $status]);
+        }
     }
 
     private function say(string $message): void

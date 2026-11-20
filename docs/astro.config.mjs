@@ -52,7 +52,11 @@ export default defineConfig({
         },
         {
           label: 'Teaching',
-          items: [{ label: 'Classes, missions and teams', slug: 'editor/classes' }],
+          items: [
+            { label: 'Classes, missions and teams', slug: 'editor/classes' },
+            { label: 'Plans, credits and the AI generator', slug: 'editor/plans-and-generator' },
+            { label: 'The district admin panel', slug: 'editor/district-admin' },
+          ],
         },
         {
           label: 'Developers',
@@ -71,6 +75,7 @@ export default defineConfig({
             { label: 'Architecture', slug: 'developers/architecture' },
             { label: 'HTTP API contract', slug: 'developers/api' },
             { label: 'Public API (v1) for schools', slug: 'developers/api-v1' },
+            { label: 'Billing, credits and district sign-in', slug: 'developers/billing' },
             { label: 'Multiplayer protocol', slug: 'developers/protocol' },
           ],
         },

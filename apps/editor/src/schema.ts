@@ -421,6 +421,11 @@ export const SCENARIO_SETTINGS_FIELDS: Field[] = [
     options: [['public', 'Everyone: it is on every player’s missions page'], ['private', 'Only students it is assigned to']],
     hint: 'A private mission is run by a teacher: it appears only for the students it was assigned to on the Classes page, and only its owner can assign it. This applies as soon as it is changed, without publishing.',
   },
+  {
+    key: 'tier', label: 'Free or curricular', kind: 'select', placeholder: 'Free: anyone can play it', wide: true,
+    options: [['free', 'Free: anyone can play it'], ['curricular', 'Curricular: it comes with a teacher plan']],
+    hint: 'Curricular missions are what the teacher plans sell: teachers with a plan (and their students, through assignments) can play them. Only administrators set this.',
+  },
   { key: 'chat_mode', label: 'Chat', kind: 'select', placeholder: 'Emotes only', options: [['off', 'Off'], ['emotes', 'Emotes only'], ['free', 'Typed messages (filtered)']] },
   {
     key: 'private_messages', label: 'Players can send each other private messages', kind: 'bool', wide: true,

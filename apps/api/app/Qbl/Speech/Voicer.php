@@ -150,7 +150,8 @@ final class Voicer
      *
      * @return array{built: array, recorded: int, skipped: int, warnings: list<string>}
      */
-    public function voiceBuilt(array $built, string $dir, ?string $lang = 'en', ?callable $log = null): array
+    /** @param  callable|null  $tick  fn(int $done, int $total, string $line): after each line, for the progress bar */
+    public function voiceBuilt(array $built, string $dir, ?string $lang = 'en', ?callable $log = null, ?callable $tick = null): array
     {
         $rows = &$built['rows'];
         $lines = array_values(array_filter(self::lines($rows), fn ($l) => $l['voice'] !== null && $l['narrate'] !== false && $l['media_id'] === null));
@@ -163,6 +164,7 @@ final class Voicer
         $recorded = $skipped = 0;
         $warnings = [];
         foreach ($lines as $n => $line) {
+            $tick && $tick($n, count($lines), mb_strimwidth((string) $line['text'], 0, 60, '…'));
             $script = $this->script($line['text'], $lang);
             $same = $script === null ? null : $line['voice'].'|'.$script;
             if ($same !== null && isset($made[$same])) {

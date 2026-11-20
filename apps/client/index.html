@@ -41,6 +41,7 @@
                 <a href="#missions" class="hover:text-pink-400 transition-colors">Curriculum Quests</a>
                 <a href="#assessment" class="hover:text-pink-400 transition-colors">Assessment & Analytics</a>
                 <a href="#features" class="hover:text-pink-400 transition-colors">School Features</a>
+                <a href="#pricing" class="hover:text-pink-400 transition-colors">Pricing</a>
             </nav>
             <div class="flex items-center space-x-3">
                 <a href="/missions" class="px-5 py-2.5 rounded-2xl border border-cyan-400/60 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-200 hover:text-white font-heading font-semibold text-sm transition-all flex items-center space-x-2">
@@ -342,13 +343,57 @@
             <div class="bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl">
                 <div class="w-14 h-14 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl">🔑</div>
                 <h3 class="font-heading text-xl font-bold text-white">Seamless Rostering & SSO</h3>
-                <p class="text-slate-300 text-sm leading-relaxed">Integrate effortlessly with Google Classroom, Clever, ClassLink, and LTI-compatible learning management systems.</p>
+                <p class="text-slate-300 text-sm leading-relaxed">Sign in with Google Workspace, Clever, or SAML (ClassLink, Entra ID, Okta). Sync rosters from Clever, Google Classroom, your SIS through our API, or a roster file.</p>
             </div>
             <div class="bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl">
                 <div class="w-14 h-14 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl">💬</div>
                 <h3 class="font-heading text-xl font-bold text-white">Safe Emoji Chat & Controls</h3>
                 <p class="text-slate-300 text-sm leading-relaxed">Chat defaults to a curated emoji set to keep peer interaction joyful, with optional teacher-moderated text and instant room mute.</p>
             </div>
+        </div>
+    </section>
+
+    <!-- Pricing. The figures match apps/api/config/qbl_billing.php (and the Stripe prices); /plans is where they are bought. -->
+    <section id="pricing" class="py-24 bg-indigo-950/40 border-y border-indigo-900/40">
+        <div class="max-w-7xl mx-auto px-6 space-y-12">
+        <div class="text-center max-w-2xl mx-auto space-y-4">
+            <h2 class="font-heading text-3xl md:text-4xl font-bold">Simple Pricing</h2>
+            <p class="text-slate-300 text-base">Every paid plan starts with a 7-day free trial. Cancel any time. Have a coupon? Enter it at checkout.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div class="relative flex flex-col bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl" data-plan-card="Free">
+                
+                <h3 class="font-heading text-xl font-bold text-white">Free</h3>
+                <p><span class="font-heading text-4xl font-bold text-white">$0</span><span class="text-slate-400 text-sm"></span></p>
+                <p class="text-slate-300 text-sm">For anyone who wants to play.</p>
+                <ul class="flex-1 space-y-2 text-slate-300 text-sm"><li>✓ Every free mission</li><li>✓ Your own character, stars and badges</li><li>✓ Join a class with a teacher’s plan</li></ul>
+                <a href="/missions#create-account" class="mt-2 px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-heading font-semibold text-sm text-center transition-all">Start playing</a>
+            </div>
+            <div class="relative flex flex-col bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl" data-plan-card="Teacher">
+                
+                <h3 class="font-heading text-xl font-bold text-white">Teacher</h3>
+                <p><span class="font-heading text-4xl font-bold text-white">$30</span><span class="text-slate-400 text-sm"> / month</span></p>
+                <p class="text-slate-300 text-sm">Every curricular mission, for your class.</p>
+                <ul class="flex-1 space-y-2 text-slate-300 text-sm"><li>✓ All curricular missions, to play and assign</li><li>✓ Up to 40 students</li><li>✓ Teams, assignments and reports</li></ul>
+                <a href="/plans?plan=teacher" class="mt-2 px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-heading font-semibold text-sm text-center transition-all">Start free trial</a>
+            </div>
+            <div class="relative flex flex-col bg-slate-900/80 border border-pink-500 shadow-pink-600/30 rounded-3xl p-8 space-y-4 shadow-xl" data-plan-card="Teacher Plus">
+                <span class="absolute -top-3 right-6 px-3 py-1 rounded-full bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold">Most popular</span>
+                <h3 class="font-heading text-xl font-bold text-white">Teacher Plus</h3>
+                <p><span class="font-heading text-4xl font-bold text-white">$50</span><span class="text-slate-400 text-sm"> / month</span></p>
+                <p class="text-slate-300 text-sm">Everything in Teacher, plus the AI mission builder.</p>
+                <ul class="flex-1 space-y-2 text-slate-300 text-sm"><li>✓ Everything in Teacher</li><li>✓ AI mission generator with monthly credits</li><li>✓ Unused credits roll over</li></ul>
+                <a href="/plans?plan=teacher_plus" class="mt-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-heading font-semibold text-sm text-center transition-all">Start free trial</a>
+            </div>
+            <div class="relative flex flex-col bg-slate-900/80 border border-indigo-900/60 rounded-3xl p-8 space-y-4 shadow-xl" data-plan-card="Schools & Districts">
+                
+                <h3 class="font-heading text-xl font-bold text-white">Schools & Districts</h3>
+                <p><span class="font-heading text-4xl font-bold text-white">Custom</span><span class="text-slate-400 text-sm"></span></p>
+                <p class="text-slate-300 text-sm">For every teacher in a school or district.</p>
+                <ul class="flex-1 space-y-2 text-slate-300 text-sm"><li>✓ Everything in Teacher Plus</li><li>✓ SSO: SAML, Clever, Google</li><li>✓ Roster sync and API access</li><li>✓ Data privacy agreement</li></ul>
+                <a href="/plans#quote" class="mt-2 px-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-heading font-semibold text-sm text-center transition-all">Get a quote</a>
+            </div>
+        </div>
         </div>
     </section>
     </main>
