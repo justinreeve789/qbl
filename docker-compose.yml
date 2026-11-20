@@ -167,7 +167,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-#  tts:
+  tts:
     # Text-to-speech for what characters say: Kokoro, an open-weight model (Apache 2.0, voices
     # included), served by Kokoro-FastAPI. The app records each line once (the editor's "Record
     # voices", php artisan qbl:voice, the generator) and keeps it with the scenario, with the time of
@@ -176,17 +176,17 @@ services:
     # The CPU image is about 5 GB on disk and uses about 1 GB of memory; a line takes a second or two.
     # With an NVIDIA GPU: QBL_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0 (and give the
     # container the GPU). Not wanted at all: QBL_TTS_DRIVER=none, and docker compose stop tts.
-#    image: ${QBL_TTS_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0}
-#    environment:
+    image: ${QBL_TTS_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0}
+    environment:
       # Its test page (/web) is not needed: nothing outside the network reaches it anyway.
-#      ENABLE_WEB_PLAYER: "false"
-#    healthcheck:
-#      test: ["CMD", "curl", "-fsS", "http://localhost:8880/health"]
-#      interval: 15s
-#      timeout: 5s
-#      retries: 10
-#      start_period: 60s
-#    restart: unless-stopped
+      ENABLE_WEB_PLAYER: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8880/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
 
   db:
     # MariaDB 11.4, plus a start script that keeps the qbl account's password equal to DB_PASSWORD
