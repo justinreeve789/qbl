@@ -124,6 +124,7 @@ export const TWEMOJI: Record<string, string> = {
   "🧑‍🎓": 'student',
   "🎙": 'studio-microphone',
   "👕": 't-shirt',
+  "🧑‍🏫": 'teacher',
   "🤔": 'thinking-face',
   "🕒": 'three-oclock',
   "👎": 'thumbs-down',

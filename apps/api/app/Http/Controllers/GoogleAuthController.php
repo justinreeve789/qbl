@@ -41,6 +41,8 @@ class GoogleAuthController extends Controller
             'google' => self::enabled(),
             'guest' => (bool) config('qbl.allow_guests'),
             'register' => (bool) config('qbl.allow_registration'),
+            // Whether someone creating an account may choose to be a teacher (with a password or with Google).
+            'teacher' => (bool) config('qbl.allow_teacher_registration'),
         ]);
     }
 
@@ -49,7 +51,9 @@ class GoogleAuthController extends Controller
         abort_unless(self::enabled(), 404, 'Google sign-in is not set up.');
 
         $state = Str::random(40);
-        $payload = Crypt::encryptString(json_encode(['state' => $state, 'return' => self::localPath($request->query('return'))]));
+        // "Sign up with Google" as a teacher: used only if this makes a new account (see callback).
+        $role = $request->query('role') === User::ROLE_TEACHER ? User::ROLE_TEACHER : null;
+        $payload = Crypt::encryptString(json_encode(['state' => $state, 'return' => self::localPath($request->query('return')), 'role' => $role]));
         $domains = config('qbl.google.domains');
 
         $response = Socialite::driver('google')
@@ -108,7 +112,7 @@ class GoogleAuthController extends Controller
             } catch (StoreError $e) {
                 return $back($e->status === 403 && str_contains($e->getMessage(), 'turned') ? 'inactive' : 'noaccount');
             }
-            $page = SignInPage::handoff($user, $return === '/missions' ? SignInPage::localPath(null, $user->role) : $return, 'google');
+            $page = SignInPage::handoff($user, $return, 'google');
 
             return $page->withCookie($forget);
         }
@@ -133,13 +137,16 @@ class GoogleAuthController extends Controller
         if ($user) {
             $user->forceFill(['google_id' => $google->getId(), 'email_verified_at' => $user->email_verified_at ?? now()])->save();
         } else {
+            // A new account is a student's, or a teacher's when the person chose that on the sign-up
+            // form and the site allows it. What someone may do (the editor, Classes, reports) goes by
+            // their role alone; an account that already exists keeps its own, and only an
+            // administrator changes it afterwards: qbl:update-role.
+            $teacher = ($saved['role'] ?? null) === User::ROLE_TEACHER && config('qbl.allow_teacher_registration');
             $user = User::create([
                 'name' => Str::limit(trim(strip_tags((string) ($google->getName() ?: Str::before($email, '@')))), 60, ''),
                 'email' => $email,
                 'password' => null,
-                // Every new account is a student. What someone may do (the editor, Classes, reports)
-                // goes by their role alone, and only an administrator changes it: qbl:update-role.
-                'role' => User::ROLE_STUDENT,
+                'role' => $teacher ? User::ROLE_TEACHER : User::ROLE_STUDENT,
             ]);
             $user->forceFill(['google_id' => $google->getId(), 'email_verified_at' => now()])->save();
         }

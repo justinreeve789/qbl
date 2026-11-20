@@ -59,8 +59,10 @@ services:
       QBL_SERVICE_KEY: ${QBL_SERVICE_KEY:-qbl-local-only-service-key}
       # The seeded demo mission does not require a login, so guests can try it.
       QBL_ALLOW_GUESTS: ${QBL_ALLOW_GUESTS:-true}
-      # People may create their own (student) account with an email and password.
+      # People may create their own account with an email and password.
       QBL_ALLOW_REGISTRATION: ${QBL_ALLOW_REGISTRATION:-true}
+      # Someone creating an account may choose to be a teacher (false: new accounts are students).
+      QBL_ALLOW_TEACHER_SIGNUP: ${QBL_ALLOW_TEACHER_SIGNUP:-true}
       # Used by "php artisan qbl:seed": when set, it also creates demo accounts with this password,
       # including a teacher who can use the editor.
       QBL_SEED_PASSWORD: ${QBL_SEED_PASSWORD:-}

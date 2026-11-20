@@ -101,7 +101,7 @@ class SsoController extends Controller
             return SignInPage::problem('sso');
         }
 
-        return SignInPage::handoff($user, SignInPage::localPath($relay !== '' ? $relay : null, $user->role), 'saml');
+        return SignInPage::handoff($user, SignInPage::localPath($relay !== '' ? $relay : null), 'saml');
     }
 
     /** The OneLogin settings for one organization: QBL as the service provider, the district's IdP. */
@@ -208,7 +208,7 @@ class SsoController extends Controller
             return SignInPage::problem('sso')->withCookie($forget);
         }
 
-        return SignInPage::handoff($user, SignInPage::localPath($saved['return'] ?? null, $user->role), 'clever')->withCookie($forget);
+        return SignInPage::handoff($user, SignInPage::localPath($saved['return'] ?? null), 'clever')->withCookie($forget);
     }
 
     private function cleverRedirect(): string

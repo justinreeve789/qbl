@@ -45,9 +45,9 @@ class SignInAndDeployTest extends TestCase
     }
 
     /** Start a sign-in as a browser would, and return what it needs for the way back: the state and the cookie. */
-    private function begin(string $return = '/editor/'): array
+    private function begin(string $return = '/editor/', ?string $role = null): array
     {
-        $response = $this->newRequest()->get('/api/auth/google/redirect?return='.urlencode($return))->assertRedirect();
+        $response = $this->newRequest()->get('/api/auth/google/redirect?return='.urlencode($return).($role ? '&role='.urlencode($role) : ''))->assertRedirect();
         parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
         $cookie = collect($response->headers->getCookies())->firstWhere(fn ($c) => $c->getName() === 'qbl_google');
 
@@ -223,6 +223,50 @@ class SignInAndDeployTest extends TestCase
         config(['qbl.allow_registration' => false]);
         $this->getJson('/api/auth/providers')->assertJsonPath('register', false);
         $this->postJson('/api/auth/register', ['email' => 'd@school.example'] + $ok)->assertForbidden();
+    }
+
+    public function test_someone_creating_an_account_may_say_they_are_a_teacher(): void
+    {
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $ok = ['password' => 'long-enough', 'password_confirmation' => 'long-enough'];
+        $this->getJson('/api/auth/providers')->assertOk()->assertJsonPath('teacher', true);
+
+        $made = $this->postJson('/api/auth/register', ['name' => 'Ms Frizzle', 'email' => 'frizzle@school.example', 'role' => 'teacher'] + $ok)
+            ->assertCreated()->assertJsonPath('user.role', 'teacher');
+        // A teacher's account from the start: the editor and Classes work with the same token.
+        $this->newRequest()->withToken($made->json('token'))->getJson('/api/editor/scenarios')->assertOk();
+        $this->newRequest()->withToken($made->json('token'))->getJson('/api/teach/students')->assertOk();
+        // Saying "student", or nothing (an older form), is a student's account.
+        $this->newRequest()->postJson('/api/auth/register', ['name' => 'Arnold', 'email' => 'arnold@school.example', 'role' => 'student'] + $ok)->assertCreated()->assertJsonPath('user.role', 'student');
+        $this->newRequest()->postJson('/api/auth/register', ['name' => 'Wanda', 'email' => 'wanda@school.example'] + $ok)->assertCreated()->assertJsonPath('user.role', 'student');
+
+        // A site that makes its teachers itself turns the choice off: asking for it is refused, not quietly ignored.
+        config(['qbl.allow_teacher_registration' => false]);
+        $this->newRequest()->getJson('/api/auth/providers')->assertJsonPath('teacher', false);
+        $this->newRequest()->postJson('/api/auth/register', ['name' => 'Mr Ratliff', 'email' => 'ratliff@school.example', 'role' => 'teacher'] + $ok)
+            ->assertStatus(422)->assertJsonValidationErrors(['role']);
+        $this->assertFalse(User::where('email', 'ratliff@school.example')->exists());
+        $this->newRequest()->postJson('/api/auth/register', ['name' => 'Ralphie', 'email' => 'ralphie@school.example', 'role' => 'student'] + $ok)->assertCreated()->assertJsonPath('user.role', 'student');
+    }
+
+    public function test_signing_up_with_google_as_a_teacher_makes_a_teachers_account_and_nothing_else(): void
+    {
+        $this->withGoogle();
+        // A new account: a teacher's.
+        $this->finish($this->googleAccount('g-300', 'liz@school.example'), $this->begin('/missions', 'teacher'))->assertOk()->assertSee('location.replace("/missions")', false);
+        $this->assertSame('teacher', User::where('google_id', 'g-300')->value('role'));
+
+        // An account that already exists keeps its role, whatever the sign-up form said.
+        User::create(['name' => 'Keesha', 'email' => 'keesha@school.example', 'password' => 'secret-password', 'role' => 'student']);
+        $this->finish($this->googleAccount('g-301', 'keesha@school.example'), $this->begin('/missions', 'teacher'))->assertOk();
+        $this->assertSame('student', User::where('email', 'keesha@school.example')->value('role'));
+
+        // Only "teacher" means anything; and a site that turned the choice off makes a student.
+        $this->finish($this->googleAccount('g-302', 'tim@school.example'), $this->begin('/missions', 'admin'))->assertOk();
+        $this->assertSame('student', User::where('google_id', 'g-302')->value('role'));
+        config(['qbl.allow_teacher_registration' => false]);
+        $this->finish($this->googleAccount('g-303', 'phoebe@school.example'), $this->begin('/missions', 'teacher'))->assertOk();
+        $this->assertSame('student', User::where('google_id', 'g-303')->value('role'));
     }
 
     /**

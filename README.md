@@ -36,7 +36,7 @@ The site's addresses:
 | Address | What it is |
 | ------- | ---------- |
 | `/` | The marketing page (`apps/client/index.html`, Tailwind compiled at build time). Its "Log in" button goes to `/missions` |
-| `/missions` | The game: the sign-in screen if needed, then the missions page. **A teacher or admin who signs in here lands in the editor (`/editor/`), their dashboard**; the Missions link brings them back to this page. Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
+| `/missions` | The game: the sign-in screen if needed, then the missions page. Everyone who signs in lands here, **teachers and admins too**; the Editor and Classes are in the page's menu (the marketing page's button, for someone already signed in, still goes to a teacher's editor). Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
 | `/{code}` | One scenario, by its code (16 random letters, or one chosen on the Publish page) |
 | `/play?…` | The game with the parameters below (editor previews use `/play?preview=…`) |
 | `/editor/`, `/docs/` | The editor and the documentation |
@@ -241,22 +241,25 @@ The game's and the editor's sign-in screens then show "Sign in with Google". Som
 | ------- | ------ |
 | `QBL_GOOGLE_DOMAINS` | Only addresses at these domains may sign in with Google (`school.org,students.school.org`). Empty: any Google account |
 
-Without it anyone with a Google account can register as a student. New accounts are always students; teachers are made with `qbl:user`, or from an existing account with `qbl:update-role <email> --role=teacher`. For a school, set `QBL_GOOGLE_DOMAINS` (and turn off creating accounts, below).
+Without it anyone with a Google account can create an account. New accounts are students, unless the person chose **Teacher** on the sign-up form and `QBL_ALLOW_TEACHER_SIGNUP` is on (below); an account that already exists keeps its role. Teachers are also made with `qbl:user`, or from an existing account with `qbl:update-role <email> --role=teacher`. For a school, set `QBL_GOOGLE_DOMAINS` (and turn off creating accounts and choosing to be a teacher, below).
 
 ### Creating an account without Google
 
-The game's sign-in screen (`/missions`) has "New here? Create an account": a name, an email address and a password (at least 8 characters, typed twice). The marketing page links to it (`/missions#create-account`), and so does the editor's sign-in screen. The new account is a **student's**, like a new Google account, and is signed in straight away; a teacher creates one and then has an administrator run `qbl:update-role <email> --role=teacher`.
+The game's sign-in screen (`/missions`) has "New here? Create an account": first **I'm a… Student / Teacher** (two cards; neither is chosen until the person picks one), then a name, an email address and a password (at least 8 characters, typed twice). The marketing page links to it (`/missions#create-account`), and so does the editor's sign-in screen. The account is signed in straight away and lands on the missions page, a teacher's showing their teaching page with the Editor and Classes in the menu. "Sign up with Google" on the same form uses the choice too, for a new Google account only.
 
 | Setting | Effect |
 | ------- | ------ |
 | `QBL_ALLOW_REGISTRATION` | `true` (default): anyone may create an account. `false`: only Google, or accounts made with `qbl:user` |
+| `QBL_ALLOW_TEACHER_SIGNUP` | `true` (default): someone creating an account (with a password or with Google) may choose to be a teacher. `false`: the form has no choice, every new account is a student's, and teachers are made with `qbl:update-role` |
+
+A self-made teacher's account can add any student who has signed in, by their address, on the Classes page (when billing is on, only as many as their plan allows). A school or district that wants to choose its teachers itself sets `QBL_ALLOW_TEACHER_SIGNUP=false`.
 
 Nobody checks that the address belongs to whoever typed it (there is no email sending yet), so:
 
 - An address that already has an account is refused, and creating an account never joins one.
 - `QBL_GOOGLE_DOMAINS` does not apply: a typed address proves nothing. A school that wants only its own Google accounts sets `QBL_ALLOW_REGISTRATION=false`.
 - If the owner of the address later signs in with Google, Google has proved it is theirs: the account becomes theirs, and the password chosen when it was created, and every sign-in made with it, stop working. Accounts made by an administrator keep their password as before.
-- `qbl:update-role` warns before making such an account a teacher or admin.
+- `qbl:update-role` warns before making such an account a teacher or admin. (Choosing Teacher on the form does not: a typed address with a teacher's account is the same unchecked address.)
 - Choosing a new password with an emailed link (below) proves the address too.
 
 ### Profile, passwords and email

@@ -8,8 +8,15 @@ return [
     'allow_guests' => (bool) env('QBL_ALLOW_GUESTS', false),
 
     // Whether people may create their own account (name, email, password) on the sign-in screen:
-    // POST /api/auth/register. Such accounts are students, like new Google accounts.
+    // POST /api/auth/register. Such accounts are students, like new Google accounts, unless the
+    // person says they are a teacher (below).
     'allow_registration' => (bool) env('QBL_ALLOW_REGISTRATION', true),
+
+    // Whether someone creating an account (with a password, or with Google) may say they are a
+    // teacher, and get a teacher's account: the editor, Classes and reports. Off, every new account
+    // is a student's and teachers are made with qbl:update-role. A school that limits sign-in to its
+    // own Google domain usually turns this off, so that only staff it chooses are teachers.
+    'allow_teacher_registration' => (bool) env('QBL_ALLOW_TEACHER_SIGNUP', true),
 
     // What the site calls itself in the emails it sends (choosing a new password).
     'site_name' => env('QBL_SITE_NAME', 'QuestLab'),

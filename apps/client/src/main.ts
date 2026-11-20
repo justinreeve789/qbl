@@ -1,11 +1,11 @@
 import * as Phaser from 'phaser';
-import { characterPicture, homePath, isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { characterPicture, isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
 import { buildHome } from './home';
-import { Api, ApiError, takeSignInProblem } from './net/Api';
+import { Api, ApiError, takeSignInProblem, type SignUpRole } from './net/Api';
 import { AFTER_SIGN_IN_KEY, showPlans } from './plans';
 import { OfflineConnection, OnlineConnection, type GameConnection } from './net/Connection';
 import { BootScene } from './scenes/BootScene';
@@ -14,6 +14,7 @@ import { openProfile } from '../../../packages/shared/browser/profile';
 import { PlayScene } from './scenes/PlayScene';
 import { setUpApp } from './pwa';
 import { Ui } from './ui/Ui';
+import { rolePicker } from './ui/rolePicker';
 // Twemoji Awesome: the one set every icon in the interface is drawn from (see ui/icons.ts).
 import '../../../packages/shared/assets/twemoji-awesome.css';
 import './ui/ui.css';
@@ -92,12 +93,19 @@ function signIn(message?: string, link: FormLink | null = null): Promise<User> {
     let mode: SignInMode = askedToRegister ? 'register' : reset ? 'reset' : mayRegister && link?.kind === 'forgot' ? 'forgot' : mode0;
     // The address typed last, carried from one form to the next.
     let email = reset?.email ?? '';
-    let offers = { google: false, register: askedToRegister };
+    let offers = { google: false, register: askedToRegister, teacher: false };
+    // "I'm a student / a teacher", on the sign-up form when the server lets people choose.
+    let role: SignUpRole | null = null;
+    const picker = rolePicker((chosen) => {
+      role = chosen;
+      error.textContent = '';
+      decorate();
+    });
+    const choosing = () => mode === 'register' && offers.teacher;
     const fields = document.createElement('div');
     fields.className = 'qbl-fields';
     const note = document.createElement('p');
     note.className = 'qbl-note';
-    note.textContent = 'New accounts are for students. Teachers: once you have an account, ask your administrator to make it a teacher’s.';
     const button = document.createElement('button');
     button.className = 'qbl-button primary';
     const swap = document.createElement('button');
@@ -132,6 +140,7 @@ function signIn(message?: string, link: FormLink | null = null): Promise<User> {
               ]
           : mode === 'register'
             ? [
+                ...(choosing() ? [picker.node] : []),
                 field('Your name', 'text', 'name', '', { maxLength: 60, autocomplete: 'name' }),
                 field('Email', 'email', 'email', '', { autocomplete: 'email' }),
                 field('Password (at least 8 characters)', 'password', 'password', '', { minLength: 8, autocomplete: 'new-password' }),
@@ -141,22 +150,43 @@ function signIn(message?: string, link: FormLink | null = null): Promise<User> {
       );
       const passwordForm = mode === 'forgot' || mode === 'reset';
       title.textContent = mode === 'register' ? 'Create an account' : mode === 'forgot' ? 'Forgot your password?' : mode === 'reset' ? 'Choose a new password' : 'Quest-Based Learning';
-      button.textContent = mode === 'register' ? 'Create account' : mode === 'forgot' ? 'Email me a link' : mode === 'reset' ? 'Save password and sign in' : 'Continue';
-      note.textContent = mode === 'forgot'
-        ? 'Type the email address you sign in with. We will email you a link for choosing a new password. If you sign in with Google, use Google’s “Forgot password” instead.'
-        : mode === 'reset'
-          ? `For ${email}. Choose a password of at least 8 characters.`
-          : 'New accounts are for students. Teachers: once you have an account, ask your administrator to make it a teacher’s.';
-      note.hidden = mode !== 'register' && !passwordForm;
+      decorate();
       swap.textContent = mode === 'guest' ? 'Sign in with an account' : 'Play as a guest instead';
       swap.hidden = config.authMode !== 'login' || config.preview != null || mode === 'register' || passwordForm;
       create.textContent = mode === 'register' ? 'I already have an account' : 'New here? Create an account';
       create.hidden = !mayRegister || !offers.register || mode === 'guest' || passwordForm;
       forgot.textContent = mode === 'login' ? 'Forgot your password?' : mode === 'reset' ? 'Ask for a new link' : 'Back to sign in';
       forgot.hidden = !mayRegister || (mode !== 'login' && !passwordForm);
-      google.textContent = mode === 'register' ? 'Sign up with Google' : 'Sign in with Google';
       google.hidden = !offers.google || passwordForm;
-      (fields.querySelector('label:not([hidden]) input') as HTMLInputElement).focus();
+      (fields.querySelector('label:not([hidden]) input:not([type="radio"])') as HTMLInputElement).focus();
+    };
+    // What follows from the role chosen (and the form's mode): the words on the button and under the title.
+    function decorate() {
+      const picking = choosing();
+      form.dataset.role = picking && role ? role : '';
+      button.textContent = mode === 'register'
+        ? picking && role ? `Create ${role === 'teacher' ? 'teacher' : 'student'} account` : 'Create account'
+        : mode === 'forgot' ? 'Email me a link' : mode === 'reset' ? 'Save password and sign in' : 'Continue';
+      google.textContent = mode === 'register' ? 'Sign up with Google' : 'Sign in with Google';
+      note.textContent = mode === 'forgot'
+        ? 'Type the email address you sign in with. We will email you a link for choosing a new password. If you sign in with Google, use Google’s “Forgot password” instead.'
+        : mode === 'reset'
+          ? `For ${email}. Choose a password of at least 8 characters.`
+          : 'New accounts are for students. Teachers: once you have an account, ask your administrator to make it a teacher’s.';
+      // Choosing a role, the line about it goes under the cards instead.
+      note.hidden = (mode !== 'register' || picking) && mode !== 'forgot' && mode !== 'reset';
+      picker.say(role === 'teacher'
+        ? 'You’ll start on the Missions page. The Editor, for building missions, and Classes, for your students, are in its menu.'
+        : role === 'student'
+          ? 'Your teacher can add you to their class with the email address you use here.'
+          : '');
+    }
+    /** On the sign-up form, nothing is sent before a role is chosen. */
+    const roleMissing = () => {
+      if (!choosing() || role) return false;
+      error.textContent = 'Choose Student or Teacher first.';
+      picker.nudge();
+      return true;
     };
     // Moving to another form: keep the address typed, and drop the last message.
     const typedEmail = () => {
@@ -181,17 +211,21 @@ function signIn(message?: string, link: FormLink | null = null): Promise<User> {
       render();
     });
     google.addEventListener('click', () => {
+      if (roleMissing()) return;
       // Google brings the browser back already signed in; this says the sign-in was just now.
       try {
         sessionStorage.setItem(SIGNING_IN_KEY, '1');
       } catch {
         /* ignore */
       }
-      window.location.assign(api.googleUrl(window.location.pathname + window.location.search));
+      window.location.assign(api.googleUrl(window.location.pathname + window.location.search, mode === 'register' && choosing() ? role ?? undefined : undefined));
     });
     void api.providers().then((p) => {
       // Asked for by address, the form stays a sign-up form even if the server turned it off: it says why on submit.
-      offers = { google: p.google, register: p.register || askedToRegister };
+      offers = { google: p.google, register: p.register || askedToRegister, teacher: p.teacher };
+      // Already on the sign-up form: the question goes on top, keeping whatever was typed below it.
+      if (choosing() && !picker.node.isConnected) fields.prepend(picker.node);
+      decorate();
       create.hidden = !mayRegister || !offers.register || mode === 'guest' || mode === 'forgot' || mode === 'reset';
       google.hidden = !offers.google || mode === 'forgot' || mode === 'reset';
     });
@@ -215,6 +249,10 @@ function signIn(message?: string, link: FormLink | null = null): Promise<User> {
           if (password !== data.get('password_confirmation')) throw new Error('The two passwords are not the same.');
           resolve(await api.resetPassword({ token: reset!.token, email, password, password_confirmation: password }));
         } else if (mode === 'register') {
+          if (roleMissing()) {
+            button.disabled = false;
+            return;
+          }
           if (data.get('password') !== data.get('password_confirmation')) throw new Error('The two passwords are not the same.');
           resolve(
             await api.register({
@@ -222,6 +260,7 @@ function signIn(message?: string, link: FormLink | null = null): Promise<User> {
               email: String(data.get('email')).trim(),
               password: String(data.get('password')),
               password_confirmation: String(data.get('password_confirmation')),
+              ...(choosing() && role ? { role } : {}),
             }),
           );
         } else {
@@ -396,13 +435,8 @@ async function loadScenario(): Promise<{ scenario: Scenario; user: User }> {
         window.location.replace(after);
         return new Promise(() => undefined);
       }
-      // Signing in with no scenario asked for takes each user to their own dashboard: the editor
-      // for teachers and admins. Arriving already signed in (the Missions link) shows the missions page.
-      if (config.home && fresh && isStaff(user.role)) {
-        window.location.replace(homePath(user.role));
-        return new Promise(() => undefined);
-      }
-      // With no scenario asked for, the player chooses one from their missions; that page takes over from here.
+      // With no scenario asked for, everyone (teachers too) lands on their missions page and chooses
+      // one there; that page takes over from here. Teachers reach the editor and Classes from its menu.
       if (config.home && (await showHome(user))) return new Promise(() => undefined);
       return { scenario: normalizeScenario(await api.play(config.scenario, config.group, config.party)), user };
     } catch (err) {

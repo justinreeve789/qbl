@@ -3,7 +3,7 @@ title: The editor at a glance
 description: What the QuestLab editor is, who can use it, and where everything is.
 ---
 
-The editor is where teachers and content creators build **scenarios**: whole missions made of scenes that students walk around, with the hotspots, characters, conversations, questions and rewards that happen in them. It is served at `/editor/` and, for teachers and admins, it is also the dashboard you land on after signing in.
+The editor is where teachers and content creators build **scenarios**: whole missions made of scenes that students walk around, with the hotspots, characters, conversations, questions and rewards that happen in them. It is served at `/editor/`. After signing in, teachers and admins land on the missions page; the **Editor** link in its menu brings you here.
 
 Everything is **saved as you make it**. There is no save button: the word *Saving…* flickers beside the header while a change travels to the server, then *Saved*. Players do not see your changes until you press **Publish**.
 
@@ -15,7 +15,7 @@ Sign in on the missions page with the account you were given. If your account is
 The game and the editor share one sign-in per browser. If the editor says you are signed in as a guest or a student, you probably played the demo, or tried a student account, in the same browser. Sign in again on the editor page, or use another browser or a private window when you want to see what a student sees.
 :::
 
-Roles are set by whoever runs the server, with `php artisan qbl:update-role <email> --role=teacher` (the repository README says how to run it).
+Choose **Teacher** when you create your account (the first question on the sign-up form) and the account is a teacher's from the start, unless your site has turned that off. Otherwise roles are set by whoever runs the server, with `php artisan qbl:update-role <email> --role=teacher` (the repository README says how to run it).
 
 ## The header
 
@@ -24,7 +24,7 @@ The bar across the top has the places a teacher uses:
 | Link | Where it goes |
 | ---- | ------------- |
 | **Missions** | The students' missions page, in the game |
-| **Editor** | Your scenarios (this is the dashboard) |
+| **Editor** | Your scenarios |
 | **Classes** | Your students, assignments, teams and reports |
 | **Docs** | These pages |
 

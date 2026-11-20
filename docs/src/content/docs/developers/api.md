@@ -21,7 +21,7 @@ Body `{ "email": "...", "password": "..." }`. Returns `{ "token": "...", "user":
 
 ### `POST /api/auth/register`
 
-Body `{ "name": "...", "email": "...", "password": "...", "password_confirmation": "..." }`. Creates a **student's** account and signs in with it: 201 with `{ "token": "...", "user": User }` (the user has its own `email`, as from `/auth/login`). 422 with `{ "message": "...", "errors": {...} }` when a field is missing or wrong, the password is under 8 characters or the two do not match, or **the address already has an account** (creating one never joins an existing account). 403 when the site has `QuestLab_ALLOW_REGISTRATION=false`. 429 after five tries in a minute from one network address.
+Body `{ "name": "...", "email": "...", "password": "...", "password_confirmation": "...", "role": "teacher" }`. Creates an account and signs in with it: a **teacher's** when `role` is `"teacher"`, a **student's** otherwise (`role` left out, `"student"`, or anything else). Asking for a teacher's account on a site with `QBL_ALLOW_TEACHER_SIGNUP=false` is a 422 on `role`. 201 with `{ "token": "...", "user": User }` (the user has its own `email`, as from `/auth/login`). 422 with `{ "message": "...", "errors": {...} }` when a field is missing or wrong, the password is under 8 characters or the two do not match, or **the address already has an account** (creating one never joins an existing account). 403 when the site has `QuestLab_ALLOW_REGISTRATION=false`. 429 after five tries in a minute from one network address.
 
 The address is stored in lower case and is not checked. If its owner later signs in with Google, the account becomes theirs and its password and tokens stop working (see [Signing in with Google](#signing-in-with-google)).
 
@@ -35,7 +35,7 @@ Ends the token it is called with, so signing out works everywhere that token was
 
 ### `GET /api/auth/providers`
 
-`{ "google": true, "guest": true, "register": true }`: which optional ways of signing in this installation offers. The sign-in screens show a Google button when `google` is true, and "Create an account" when `register` is true.
+`{ "google": true, "guest": true, "register": true, "teacher": true }`: which optional ways of signing in this installation offers. The sign-in screens show a Google button when `google` is true, "Create an account" when `register` is true, and the Student / Teacher choice on it when `teacher` is true. `GET /api/auth/google/redirect?return=…&role=teacher` makes a new Google account a teacher's on such a site (an existing account keeps its role).
 
 ### Signing in with Google
 
@@ -47,7 +47,7 @@ Google sign-in is on when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
 
 If nobody is signed in, the browser is sent to `return` with the reason after the `#`: `#signin=cancelled`, `domain` (the address is not at an accepted domain), `unverified`, `expired` or `failed`.
 
-New accounts are students. `QuestLab_GOOGLE_DOMAINS` limits who may sign in to those domains. The role alone decides access: teachers and admins may use `/api/editor/*` and `/api/teach/*` (Classes and reports); an administrator changes a role with `php artisan qbl:update-role <email> --role=teacher`. An account that has only ever signed in with Google has no password.
+New accounts are students unless the person chose Teacher (above). `QuestLab_GOOGLE_DOMAINS` limits who may sign in to those domains. The role alone decides access: teachers and admins may use `/api/editor/*` and `/api/teach/*` (Classes and reports); an administrator changes a role with `php artisan qbl:update-role <email> --role=teacher`. An account that has only ever signed in with Google has no password.
 
 ### `GET /api/me`
 
