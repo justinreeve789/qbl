@@ -203,7 +203,7 @@ class ProgressStore
     public static function sqliteSchema(): array
     {
         return [
-            'CREATE TABLE IF NOT EXISTS `users` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name`, `email`, `role`, `avatar_media_id` INTEGER, `stars` INTEGER NOT NULL DEFAULT 0, `xp` INTEGER NOT NULL DEFAULT 0)',
+            'CREATE TABLE IF NOT EXISTS `users` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name`, `email`, `role`, `avatar_media_id` INTEGER, `stars` INTEGER NOT NULL DEFAULT 0, `xp` INTEGER NOT NULL DEFAULT 0, `password`, `google_id`, `organization_id` INTEGER, `school_id` INTEGER, `external_id`, `grade_level`, `deactivated_at`, `created_at`, `updated_at`)',
             'CREATE TABLE IF NOT EXISTS `progress_ledger` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `user_id` INTEGER, `scenario_id` INTEGER, `grant_key`, `stars` INTEGER, `xp` INTEGER, `note`, `created_at`, UNIQUE (`user_id`, `grant_key`))',
             'CREATE TABLE IF NOT EXISTS `user_items` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `user_id` INTEGER, `shop_item_id` INTEGER, `equipped` INTEGER NOT NULL DEFAULT 0, `created_at`, UNIQUE (`user_id`, `shop_item_id`))',
         ];

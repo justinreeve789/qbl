@@ -36,6 +36,29 @@ class Avatars
     }
 
     /**
+     * The avatars a player chooses from: the platform's, and their organization's own (imported
+     * through /api/v1). Every active avatar is still put in every document, so players from two
+     * organizations who meet in a public game can see each other.
+     */
+    public static function forUser(PDO $pdo, int $userId): array
+    {
+        try {
+            $st = $pdo->prepare('SELECT organization_id FROM users WHERE id = ?');
+            $st->execute([$userId]);
+            $org = $st->fetchColumn();
+            $rows = $pdo->query('SELECT id, organization_id FROM avatars WHERE active = 1')->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException) {
+            return self::all($pdo); // a development database from before organizations
+        }
+        $ids = [];
+        foreach ($rows as $r) {
+            $ids[(int) $r['id']] = $r['organization_id'] === null || ($org && (int) $r['organization_id'] === (int) $org);
+        }
+
+        return array_values(array_filter(self::all($pdo), fn ($a) => $ids[$a['id']] ?? false));
+    }
+
+    /**
      * Give a scenario document the platform's avatars in place of any it lists itself.
      * With no platform avatars set up, the document is left as it is.
      */
@@ -72,6 +95,6 @@ class Avatars
 
     public static function sqliteSchema(): array
     {
-        return ['CREATE TABLE IF NOT EXISTS `avatars` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name`, `image_url`, `portrait_url`, `settings`, `active` INTEGER NOT NULL DEFAULT 1, `sequence` INTEGER NOT NULL DEFAULT 0, `created_at`, `updated_at`)'];
+        return ['CREATE TABLE IF NOT EXISTS `avatars` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name`, `image_url`, `portrait_url`, `settings`, `active` INTEGER NOT NULL DEFAULT 1, `sequence` INTEGER NOT NULL DEFAULT 0, `organization_id` INTEGER, `external_id`, `created_at`, `updated_at`)'];
     }
 }

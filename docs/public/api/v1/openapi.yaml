@@ -1,0 +1,664 @@
+openapi: 3.1.0
+info:
+  title: QBL public API
+  version: "1"
+  summary: Roster, assign, sign in and report, for schools, districts and businesses.
+  description: |
+    The versioned API organizations use to connect their own systems to QBL. The full
+    reference, including the privacy rules and how every figure is worked out, is at
+    /docs/developers/api-v1/.
+
+    Within version 1 fields are only ever added, never renamed or removed: ignore fields you
+    do not know. Teachers and students in a path may be given as a QBL id or as `ext:` and
+    your own external_id.
+servers:
+  - url: /api/v1
+security:
+  - clientCredentials: []
+tags:
+  - name: Auth
+  - name: Organization
+  - name: People
+  - name: Enrollments
+  - name: Assignments
+  - name: Launch
+  - name: Avatars
+  - name: Reports
+  - name: Privacy
+paths:
+  /oauth/token:
+    post:
+      tags: [Auth]
+      summary: Get an access token (OAuth 2 client credentials)
+      security: [{ basicClient: [] }, {}]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '200':
+          description: A token, good for an hour
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, expires_in, scope]
+                properties:
+                  access_token: { type: string, example: qbla_3f9c… }
+                  token_type: { const: Bearer }
+                  expires_in: { type: integer, example: 3600 }
+                  scope: { type: string, example: roster:read reports:read }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /:
+    get:
+      tags: [Auth]
+      summary: Which version this is, and the token's scopes
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /organization:
+    get:
+      tags: [Organization]
+      summary: Your organization
+      responses:
+        '200': { $ref: '#/components/responses/Organization' }
+    patch:
+      tags: [Organization]
+      summary: Rename it or set its data retention (roster:write)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 120 }
+                external_id: { $ref: '#/components/schemas/ExternalId' }
+                data_retention_days: { type: [integer, 'null'], minimum: 30, maximum: 3650 }
+      responses:
+        '200': { $ref: '#/components/responses/Organization' }
+        '422': { $ref: '#/components/responses/Error' }
+  /schools:
+    get:
+      tags: [Organization]
+      summary: The schools under your organization (roster:read)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Organization' } } } } } } }
+    post:
+      tags: [Organization]
+      summary: Add a school (roster:write)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string }, external_id: { $ref: '#/components/schemas/ExternalId' } } } } }
+      responses:
+        '201': { $ref: '#/components/responses/Organization' }
+        '409': { $ref: '#/components/responses/Error' }
+  /schools/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get: { tags: [Organization], summary: A school, responses: { '200': { $ref: '#/components/responses/Organization' }, '404': { $ref: '#/components/responses/Error' } } }
+    patch:
+      tags: [Organization]
+      summary: Rename a school or change its external_id
+      requestBody: { content: { application/json: { schema: { type: object, properties: { name: { type: string }, external_id: { $ref: '#/components/schemas/ExternalId' } } } } } }
+      responses: { '200': { $ref: '#/components/responses/Organization' } }
+    delete: { tags: [Organization], summary: Remove a school; its people stay in the organization, responses: { '204': { description: Removed } } }
+  /students:
+    get:
+      tags: [People]
+      summary: Your students, a page at a time (roster:read)
+      parameters:
+        - { $ref: '#/components/parameters/SchoolId' }
+        - { $ref: '#/components/parameters/Status' }
+        - { name: external_id, in: query, schema: { type: string } }
+        - { name: teacher_id, in: query, schema: { type: string }, description: A teacher's id or ext:external_id }
+        - { name: updated_since, in: query, schema: { type: string, format: date-time } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200': { $ref: '#/components/responses/People' }
+    post:
+      tags: [People]
+      summary: Add a student (roster:write)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/StudentInput' } } } }
+      responses:
+        '201': { $ref: '#/components/responses/Person' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+  /students/batch:
+    post:
+      tags: [People]
+      summary: Create or update up to 1,000 students by external_id (roster:write)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [students], properties: { students: { type: array, maxItems: 1000, items: { $ref: '#/components/schemas/StudentInput' } } } } } }
+      responses:
+        '200': { $ref: '#/components/responses/Batch' }
+  /students/{id}:
+    parameters: [{ $ref: '#/components/parameters/PersonRef' }]
+    get: { tags: [People], summary: A student, responses: { '200': { $ref: '#/components/responses/Person' }, '404': { $ref: '#/components/responses/Error' } } }
+    patch:
+      tags: [People]
+      summary: Change a student (roster:write). Lists of teachers replace the current ones.
+      requestBody: { content: { application/json: { schema: { allOf: [{ $ref: '#/components/schemas/StudentInput' }], properties: { regenerate_display_name: { type: boolean } } } } } }
+      responses: { '200': { $ref: '#/components/responses/Person' } }
+    delete:
+      tags: [Privacy]
+      summary: Delete a student and all their data, for good (privacy)
+      responses: { '200': { $ref: '#/components/responses/Deleted' } }
+  /students/{id}/export:
+    parameters: [{ $ref: '#/components/parameters/PersonRef' }]
+    get:
+      tags: [Privacy]
+      summary: Everything kept about a student (privacy)
+      responses: { '200': { description: The records, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } } }
+  /students/{id}/report:
+    parameters:
+      - { $ref: '#/components/parameters/PersonRef' }
+      - { $ref: '#/components/parameters/From' }
+      - { $ref: '#/components/parameters/To' }
+      - { $ref: '#/components/parameters/Timezone' }
+    get:
+      tags: [Reports]
+      summary: One student across assignments, with standards and engagement (reports:read)
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } } }
+  /students/{id}/launch:
+    parameters: [{ $ref: '#/components/parameters/PersonRef' }]
+    post:
+      tags: [Launch]
+      summary: A one-time sign-in link for a student (launch)
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/LaunchInput' } } } }
+      responses:
+        '201': { $ref: '#/components/responses/Launch' }
+        '409': { $ref: '#/components/responses/Error' }
+  /teachers:
+    get:
+      tags: [People]
+      summary: Your teachers (roster:read)
+      parameters: [{ $ref: '#/components/parameters/SchoolId' }, { $ref: '#/components/parameters/Status' }, { name: external_id, in: query, schema: { type: string } }, { name: updated_since, in: query, schema: { type: string, format: date-time } }, { $ref: '#/components/parameters/Limit' }, { $ref: '#/components/parameters/Cursor' }]
+      responses: { '200': { $ref: '#/components/responses/People' } }
+    post:
+      tags: [People]
+      summary: Add a teacher (roster:write)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TeacherInput' } } } }
+      responses: { '201': { $ref: '#/components/responses/Person' }, '409': { $ref: '#/components/responses/Error' } }
+  /teachers/batch:
+    post:
+      tags: [People]
+      summary: Create or update up to 1,000 teachers by external_id (roster:write)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [teachers], properties: { teachers: { type: array, maxItems: 1000, items: { $ref: '#/components/schemas/TeacherInput' } } } } } } }
+      responses: { '200': { $ref: '#/components/responses/Batch' } }
+  /teachers/{id}:
+    parameters: [{ $ref: '#/components/parameters/PersonRef' }]
+    get: { tags: [People], summary: A teacher, responses: { '200': { $ref: '#/components/responses/Person' } } }
+    patch:
+      tags: [People]
+      summary: Change a teacher (roster:write)
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/TeacherInput' } } } }
+      responses: { '200': { $ref: '#/components/responses/Person' } }
+    delete:
+      tags: [Privacy]
+      summary: Delete a teacher (privacy), optionally handing their classes to another
+      parameters: [{ name: transfer_to, in: query, schema: { type: string }, description: Another teacher's id or ext:external_id }]
+      responses: { '200': { $ref: '#/components/responses/Deleted' } }
+  /teachers/{id}/launch:
+    parameters: [{ $ref: '#/components/parameters/PersonRef' }]
+    post:
+      tags: [Launch]
+      summary: A one-time sign-in link for a teacher (launch)
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/LaunchInput' } } } }
+      responses: { '201': { $ref: '#/components/responses/Launch' } }
+  /launch/{code}:
+    parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [Launch]
+      summary: The page a launch link opens (for browsers)
+      security: [{}]
+      responses: { '200': { description: An HTML page that redeems the link, content: { text/html: {} } } }
+    post:
+      tags: [Launch]
+      summary: Redeem a launch link (the page does this)
+      security: [{}]
+      responses:
+        '200': { description: A player sign-in token and where to go, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        '410': { $ref: '#/components/responses/Error' }
+  /enrollments:
+    get:
+      tags: [Enrollments]
+      summary: Teacher–student links (roster:read)
+      parameters: [{ name: teacher_id, in: query, schema: { type: string } }, { name: student_id, in: query, schema: { type: string } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Enrollment' } } } } } } } }
+    post:
+      tags: [Enrollments]
+      summary: Put students in a teacher's class (roster:write)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teacher_id: { type: string }
+                teacher_external_id: { type: string }
+                student_ids: { type: array, items: { type: [integer, string] } }
+                student_external_ids: { type: array, items: { type: string } }
+      responses: { '200': { description: "The teacher's enrollments; meta.added lists who is new" } }
+    delete:
+      tags: [Enrollments]
+      summary: Take a student out of a teacher's class and their assignments (roster:write)
+      parameters: [{ name: teacher_id, in: query, required: true, schema: { type: string } }, { name: student_id, in: query, required: true, schema: { type: string } }]
+      responses: { '204': { description: Removed } }
+  /scenarios:
+    get:
+      tags: [Assignments]
+      summary: The missions your teachers can assign (assignments:read)
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Scenario' } } } } } } } }
+  /scenarios/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get: { tags: [Assignments], summary: 'One mission, with its learning objectives, objectives and glossary', responses: { '200': { description: OK } } }
+  /assignments:
+    get:
+      tags: [Assignments]
+      summary: Your teachers' assignments (assignments:read)
+      parameters: [{ name: teacher_id, in: query, schema: { type: string } }, { name: student_id, in: query, schema: { type: string } }, { name: scenario_id, in: query, schema: { type: integer } }, { name: external_id, in: query, schema: { type: string } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Assignment' } } } } } } } }
+    post:
+      tags: [Assignments]
+      summary: Give a mission to students (assignments:write)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AssignmentInput' } } } }
+      responses: { '201': { $ref: '#/components/responses/Assignment' }, '409': { $ref: '#/components/responses/Error' }, '422': { $ref: '#/components/responses/Error' } }
+  /assignments/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get: { tags: [Assignments], summary: An assignment, responses: { '200': { $ref: '#/components/responses/Assignment' } } }
+    patch:
+      tags: [Assignments]
+      summary: Change due date, note, students or teams (assignments:write)
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/AssignmentInput' } } } }
+      responses: { '200': { $ref: '#/components/responses/Assignment' } }
+    delete: { tags: [Assignments], summary: Remove an assignment, responses: { '204': { description: Removed } } }
+  /assignments/{id}/teams:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get: { tags: [Assignments], summary: "An assignment's teams", responses: { '200': { description: OK } } }
+    post:
+      tags: [Assignments]
+      summary: Add a team (assignments:write)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TeamInput' } } } }
+      responses: { '201': { description: The team, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Team' } } } } } } }
+  /teams/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    patch:
+      tags: [Assignments]
+      summary: Rename a team or change its members
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/TeamInput' } } } }
+      responses: { '200': { description: The team } }
+    delete: { tags: [Assignments], summary: Remove a team, responses: { '204': { description: Removed } } }
+  /assignments/{id}/report:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get: { tags: [Reports], summary: The full report on an assignment (reports:read), responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } } } }
+  /assignments/{id}/grades:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - { name: format, in: query, schema: { enum: [json, csv] } }
+    get:
+      tags: [Reports]
+      summary: One gradebook row per student (reports:read)
+      responses:
+        '200':
+          description: Grades
+          content:
+            application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Grade' } } } } }
+            text/csv: { schema: { type: string } }
+  /assignments/{id}/activity:
+    parameters: [{ $ref: '#/components/parameters/Id' }, { name: student_id, in: query, schema: { type: string } }, { name: limit, in: query, schema: { type: integer, maximum: 5000, default: 500 } }]
+    get: { tags: [Reports], summary: 'What students did in an assignment, newest first', responses: { '200': { description: OK } } }
+  /assignments/{id}/messages:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get: { tags: [Reports], summary: "Every message sent in an assignment's games (messages:read)", responses: { '200': { description: OK } } }
+  /reports/summary:
+    get:
+      tags: [Reports]
+      summary: Headline numbers (reports:read)
+      parameters: [{ $ref: '#/components/parameters/SchoolId' }, { $ref: '#/components/parameters/TeacherId' }, { $ref: '#/components/parameters/GradeLevel' }]
+      responses: { '200': { description: OK } }
+  /reports/engagement:
+    get:
+      tags: [Reports]
+      summary: Participation, sessions and active minutes over a period (reports:read)
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+        - { $ref: '#/components/parameters/Timezone' }
+        - { name: interval, in: query, schema: { enum: [day, week], default: day } }
+        - { name: group_by, in: query, schema: { enum: [school, grade_level, teacher] } }
+        - { name: include, in: query, schema: { enum: [students] } }
+        - { name: format, in: query, schema: { enum: [json, csv] }, description: csv gives one row per student }
+        - { $ref: '#/components/parameters/SchoolId' }
+        - { $ref: '#/components/parameters/TeacherId' }
+        - { $ref: '#/components/parameters/GradeLevel' }
+      responses: { '200': { description: OK } }
+  /reports/learning:
+    get:
+      tags: [Reports]
+      summary: Per mission and per standard, what students learned (reports:read)
+      parameters: [{ $ref: '#/components/parameters/From' }, { $ref: '#/components/parameters/To' }, { name: scenario_id, in: query, schema: { type: integer } }, { $ref: '#/components/parameters/SchoolId' }, { $ref: '#/components/parameters/TeacherId' }, { $ref: '#/components/parameters/GradeLevel' }]
+      responses: { '200': { description: OK } }
+  /reports/standards:
+    get:
+      tags: [Reports]
+      summary: Per curriculum standard, who was taught it and how they did (reports:read)
+      parameters: [{ $ref: '#/components/parameters/From' }, { $ref: '#/components/parameters/To' }, { $ref: '#/components/parameters/SchoolId' }, { $ref: '#/components/parameters/TeacherId' }, { $ref: '#/components/parameters/GradeLevel' }]
+      responses: { '200': { description: OK } }
+  /activity:
+    get:
+      tags: [Reports]
+      summary: Everything your students did, oldest first, for a data warehouse (reports:read)
+      parameters:
+        - { $ref: '#/components/parameters/Cursor' }
+        - { name: limit, in: query, schema: { type: integer, maximum: 5000, default: 1000 } }
+        - { name: since, in: query, schema: { type: string, format: date-time } }
+        - { name: types, in: query, schema: { type: string }, description: 'Comma-separated, e.g. choice,objective' }
+      responses:
+        '200':
+          description: A page of activity
+          content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/ActivityLine' } }, meta: { $ref: '#/components/schemas/PageMeta' } } } } }
+  /avatars:
+    get:
+      tags: [Avatars]
+      summary: The platform's avatars and your own (avatars:read)
+      parameters: [{ name: include, in: query, schema: { enum: [inactive] } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Avatar' } } } } } } } }
+    post:
+      tags: [Avatars]
+      summary: Import an avatar (avatars:write)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, image]
+              properties:
+                name: { type: string }
+                image: { type: string, format: binary }
+                portrait: { type: string, format: binary }
+                scale: { type: number }
+                sheet: { type: string, description: 'JSON: {"columns", "rows"}' }
+                animations: { type: string, description: 'JSON: [{name, frames, duration?, repeat?}]' }
+                external_id: { type: string }
+          application/json:
+            schema: { $ref: '#/components/schemas/AvatarInput' }
+      responses: { '201': { description: The avatar }, '422': { $ref: '#/components/responses/Error' } }
+  /avatars/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    get: { tags: [Avatars], summary: An avatar, responses: { '200': { description: OK } } }
+    patch:
+      tags: [Avatars]
+      summary: Change an avatar (avatars:write)
+      requestBody: { content: { application/json: { schema: { allOf: [{ $ref: '#/components/schemas/AvatarInput' }], properties: { active: { type: boolean } } } } } }
+      responses: { '200': { description: The avatar } }
+    delete: { tags: [Avatars], summary: Retire an avatar, responses: { '204': { description: Retired } } }
+  /audit-log:
+    get:
+      tags: [Privacy]
+      summary: Every request made with your clients (audit:read)
+      parameters: [{ name: student_id, in: query, schema: { type: integer } }, { $ref: '#/components/parameters/Limit' }, { $ref: '#/components/parameters/Cursor' }]
+      responses: { '200': { description: OK } }
+components:
+  securitySchemes:
+    clientCredentials:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /api/v1/oauth/token
+          scopes:
+            roster:read: Read schools, teachers, students and enrollments
+            roster:write: Change them
+            assignments:read: Read the catalogue, assignments and teams
+            assignments:write: Change assignments and teams
+            avatars:read: Read avatars
+            avatars:write: Import and change the organization's avatars
+            reports:read: Reports and the activity feed
+            messages:read: Chat messages in assigned missions
+            launch: One-time sign-in links
+            privacy: Export and delete people
+            audit:read: The audit log
+    basicClient:
+      type: http
+      scheme: basic
+      description: client_id and client_secret, for POST /oauth/token only
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer } }
+    PersonRef: { name: id, in: path, required: true, schema: { type: string, example: 'ext:a91f0c7e' }, description: 'A QBL id, or ext: and your external_id' }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+    Cursor: { name: cursor, in: query, schema: { type: string }, description: meta.next_cursor of the previous page }
+    SchoolId: { name: school_id, in: query, schema: { type: integer } }
+    TeacherId: { name: teacher_id, in: query, schema: { type: string } }
+    GradeLevel: { name: grade_level, in: query, schema: { $ref: '#/components/schemas/GradeLevel' } }
+    Status: { name: status, in: query, schema: { enum: [active, inactive] } }
+    From: { name: from, in: query, schema: { type: string, format: date }, description: Default 30 days before to }
+    To: { name: to, in: query, schema: { type: string, format: date } }
+    Timezone: { name: timezone, in: query, schema: { type: string, default: UTC, example: America/Denver } }
+  responses:
+    Error: { description: A problem, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    Organization: { description: The organization, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Organization' } } } } } }
+    Person: { description: The person, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Person' } } } } } }
+    People: { description: A page of people, content: { application/json: { schema: { type: object, properties: { data: { type: array, items: { $ref: '#/components/schemas/Person' } }, meta: { $ref: '#/components/schemas/PageMeta' } } } } } }
+    Assignment: { description: The assignment, content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/Assignment' } } } } } }
+    Launch:
+      description: The link
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+                  return_path: { type: string }
+    Batch:
+      description: What happened to each entry
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    index: { type: integer }
+                    external_id: { type: string }
+                    result: { enum: [created, updated, error] }
+                    id: { type: integer }
+                    error: { $ref: '#/components/schemas/ErrorBody' }
+              meta: { type: object, properties: { created: { type: integer }, updated: { type: integer }, errors: { type: integer } } }
+    Deleted: { description: How many records went from each table, content: { application/json: { schema: { type: object, properties: { data: { type: object, properties: { id: { type: integer }, deleted: { type: object, additionalProperties: { type: integer } } } } } } } } }
+  schemas:
+    Envelope: { type: object, properties: { data: {}, meta: { type: object } } }
+    PageMeta: { type: object, properties: { next_cursor: { type: [string, 'null'] } } }
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, examples: [pii_not_accepted, invalid_request, not_found, conflict, insufficient_scope, invalid_token] }
+        message: { type: string }
+        fields: { type: object, additionalProperties: { type: string } }
+    Error: { type: object, properties: { error: { $ref: '#/components/schemas/ErrorBody' } } }
+    TokenRequest:
+      type: object
+      properties:
+        grant_type: { const: client_credentials }
+        client_id: { type: string }
+        client_secret: { type: string }
+        scope: { type: string, description: Space-separated subset of the client's scopes }
+    ExternalId: { type: string, pattern: '^[A-Za-z0-9._:\-]{1,64}$', description: Your opaque id. Never an email address; a keyed hash of your SIS id is best. }
+    GradeLevel: { enum: [PK, TK, K, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', UG, PS, AD] }
+    Organization:
+      type: object
+      properties:
+        id: { type: integer }
+        parent_id: { type: [integer, 'null'] }
+        name: { type: string }
+        kind: { enum: [district, school, business, other] }
+        external_id: { type: [string, 'null'] }
+        settings: { type: object, properties: { data_retention_days: { type: [integer, 'null'] } } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Person:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { enum: [student, teacher] }
+        external_id: { type: string }
+        display_name: { type: string, description: For students always a pseudonym QBL made up }
+        school_id: { type: [integer, 'null'] }
+        grade_level: { type: [string, 'null'] }
+        teacher_ids: { type: array, items: { type: integer } }
+        student_count: { type: integer }
+        avatar_media_id: { type: [integer, 'null'] }
+        status: { enum: [active, inactive] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    StudentInput:
+      type: object
+      description: Fields such as name, first_name, email, dob, address, phone, gender or photo are refused (pii_not_accepted).
+      properties:
+        external_id: { $ref: '#/components/schemas/ExternalId' }
+        school_id: { type: [integer, 'null'] }
+        grade_level: { $ref: '#/components/schemas/GradeLevel' }
+        status: { enum: [active, inactive] }
+        teacher_ids: { type: array, items: { type: [integer, string] } }
+        teacher_external_ids: { type: array, items: { type: string } }
+    TeacherInput:
+      type: object
+      properties:
+        external_id: { $ref: '#/components/schemas/ExternalId' }
+        display_name: { type: string, maxLength: 40, description: Chosen by the teacher; no email addresses or phone numbers }
+        school_id: { type: [integer, 'null'] }
+        status: { enum: [active, inactive] }
+        student_ids: { type: array, items: { type: [integer, string] } }
+        student_external_ids: { type: array, items: { type: string } }
+    Enrollment: { type: object, properties: { teacher_id: { type: integer }, student_id: { type: integer }, created_at: { type: string, format: date-time } } }
+    Scenario:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        title: { type: string }
+        subtitle: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        visibility: { enum: [public, private] }
+        owner_teacher_id: { type: [integer, 'null'] }
+        max_players: { type: [integer, 'null'] }
+        play_url: { type: string }
+        standards: { type: array, items: { type: object, properties: { code: { type: string }, framework: { type: string }, description: { type: string }, alignment: { type: string } } } }
+        objectives: { type: integer }
+        glossary_terms: { type: integer }
+        published_at: { type: string, format: date-time }
+    Team: { type: object, properties: { id: { type: integer }, name: { type: string }, student_ids: { type: array, items: { type: integer } } } }
+    TeamInput:
+      type: object
+      properties:
+        id: { type: integer, description: Keep an existing team (and its game) when rewriting teams }
+        name: { type: string, maxLength: 64 }
+        student_ids: { type: array, items: { type: [integer, string] } }
+        student_external_ids: { type: array, items: { type: string } }
+    Assignment:
+      type: object
+      properties:
+        id: { type: integer }
+        external_id: { type: [string, 'null'] }
+        teacher_id: { type: integer }
+        scenario_id: { type: integer }
+        scenario_title: { type: string }
+        due_at: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'] }
+        student_ids: { type: array, items: { type: integer } }
+        teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+        play_url: { type: string }
+        created_at: { type: string, format: date-time }
+    AssignmentInput:
+      type: object
+      properties:
+        teacher_id: { type: [integer, string] }
+        teacher_external_id: { type: string }
+        scenario_id: { type: integer }
+        external_id: { $ref: '#/components/schemas/ExternalId' }
+        due_at: { type: [string, 'null'], format: date-time }
+        note: { type: [string, 'null'], maxLength: 255 }
+        student_ids: { type: array, items: { type: [integer, string] } }
+        student_external_ids: { type: array, items: { type: string } }
+        teams: { type: array, items: { $ref: '#/components/schemas/TeamInput' } }
+    LaunchInput:
+      type: object
+      properties:
+        to: { enum: [missions, editor, classes], description: editor and classes are for teachers }
+        assignment_id: { type: integer, description: Open this assignment's mission (in the student's own team) }
+    Grade:
+      type: object
+      properties:
+        student_id: { type: integer }
+        external_id: { type: string }
+        display_name: { type: string }
+        team: { type: [string, 'null'] }
+        status: { enum: [not_started, in_progress, completed] }
+        score: { type: [number, 'null'], minimum: 0, maximum: 100 }
+        score_parts: { type: object, properties: { objectives: { type: number }, accuracy: { type: number }, vocabulary: { type: number } } }
+        objectives_done: { type: integer }
+        objectives_total: { type: integer }
+        questions_answered: { type: integer }
+        answered_first_try: { type: integer }
+        words_learned: { type: integer }
+        words_total: { type: integer }
+        time_spent: { type: integer, description: Seconds }
+        started_at: { type: [string, 'null'], format: date-time }
+        completed_at: { type: [string, 'null'], format: date-time }
+        late: { type: boolean }
+        missing: { type: boolean }
+    ActivityLine:
+      type: object
+      properties:
+        id: { type: integer }
+        student_id: { type: integer }
+        external_id: { type: string }
+        scenario_id: { type: integer }
+        assignment_id: { type: [integer, 'null'] }
+        team_id: { type: [integer, 'null'] }
+        scene_id: { type: [integer, 'null'] }
+        type: { type: string, examples: [join, leave, scene, hotspot, choice, objective, glossary, narration, award] }
+        ref: { type: [string, 'null'] }
+        label: { type: [string, 'null'] }
+        value: { type: [number, 'null'] }
+        at: { type: string, format: date-time }
+    Avatar:
+      type: object
+      properties:
+        id: { type: integer }
+        media_id: { type: integer }
+        name: { type: string }
+        external_id: { type: [string, 'null'] }
+        owner: { enum: [platform, organization] }
+        image_url: { type: string }
+        portrait_url: { type: [string, 'null'] }
+        scale: { type: number }
+        width: { type: [integer, 'null'] }
+        height: { type: [integer, 'null'] }
+        sheet: { type: [object, 'null'], properties: { columns: { type: integer }, rows: { type: integer } } }
+        animations: { type: array, items: { type: object, properties: { name: { type: string }, frames: { type: array, items: { type: integer } }, duration: { type: integer }, repeat: { type: boolean } } } }
+        active: { type: boolean }
+        sequence: { type: integer }
+    AvatarInput:
+      type: object
+      properties:
+        name: { type: string, maxLength: 64 }
+        external_id: { $ref: '#/components/schemas/ExternalId' }
+        image_base64: { type: string, description: 'Base64, or a data URL. PNG, WebP, GIF or JPEG, up to 5 MB' }
+        portrait_base64: { type: [string, 'null'] }
+        scale: { type: number, minimum: 0.1, maximum: 4 }
+        sheet: { type: object, properties: { columns: { type: integer, minimum: 1, maximum: 32 }, rows: { type: integer, minimum: 1, maximum: 32 } } }
+        animations: { type: array, items: { type: object, required: [name, frames], properties: { name: { type: string }, frames: { type: array, items: { type: integer } }, duration: { type: integer }, repeat: { type: boolean } } } }
+        sequence: { type: integer }

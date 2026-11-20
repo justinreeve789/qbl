@@ -9,6 +9,8 @@ The player, the editor and the game server depend on a small set of endpoints. T
 
 Anything that honours this contract can be swapped in.
 
+These endpoints are QBL's own and may change. Schools, districts and other organizations connecting their systems use the versioned [public API](/docs/developers/api-v1/) under `/api/v1` instead.
+
 ## Public endpoints (called by the browser)
 
 All responses are JSON. Authenticated requests send `Authorization: Bearer <token>`.
