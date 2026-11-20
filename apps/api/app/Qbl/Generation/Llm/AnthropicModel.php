@@ -4,6 +4,7 @@ namespace App\Qbl\Generation\Llm;
 
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\Http\HttpClient;
+use App\Qbl\Generation\Spend;
 
 /**
  * Claude, through the Messages API, with structured outputs: the answer's schema goes in
@@ -16,6 +17,11 @@ use App\Qbl\Generation\Http\HttpClient;
  * strips what is not accepted (lengths, numeric bounds, item counts, patterns), writes it into the
  * field's description instead so the model still sees it, and sets additionalProperties to false.
  * The callers check the answers themselves (BlueprintValidator and the rest).
+ *
+ * Costs: the system prompt is marked for prompt caching, and so is any part of the user turn followed by
+ * ['cache' => true] (what stays the same across calls goes first: the style anchors for the judge, the
+ * brief for the designer's corrections), so repeated calls read it from the cache at a twentieth of the
+ * price. Every call's token usage is reported to the run's Spend.
  */
 class AnthropicModel implements LanguageModel
 {
@@ -24,6 +30,7 @@ class AnthropicModel implements LanguageModel
         private string $apiKey,
         private string $model = 'claude-sonnet-5-5',
         private string $baseUrl = 'https://api.anthropic.com',
+        private ?Spend $spend = null,
     ) {
         if ($this->apiKey === '') {
             throw new GenerationError('ANTHROPIC_API_KEY is not set.');
@@ -35,17 +42,11 @@ class AnthropicModel implements LanguageModel
 
     public function structured(string $system, array $content, string $name, array $schema, int $maxTokens = 16000): array
     {
-        $parts = [];
-        foreach ($content as $item) {
-            if (is_string($item)) {
-                $parts[] = ['type' => 'text', 'text' => $item];
-            } elseif (isset($item['image'])) {
-                $parts[] = ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $item['mime'] ?? 'image/png', 'data' => base64_encode($item['image'])]];
-            }
-        }
+        $parts = self::parts($content);
+        $cachedSystem = [['type' => 'text', 'text' => $system, 'cache_control' => ['type' => 'ephemeral']]];
         if (! isset(self::$tooLarge[$name])) {
-            [$status, $data] = $this->call([
-                'model' => $this->model, 'max_tokens' => $maxTokens, 'system' => $system,
+            [$status, $data] = $this->call($name, [
+                'model' => $this->model, 'max_tokens' => $maxTokens, 'system' => $cachedSystem,
                 'messages' => [['role' => 'user', 'content' => $parts]],
                 'output_config' => ['format' => ['type' => 'json_schema', 'schema' => self::supported($schema)]],
             ]);
@@ -76,13 +77,13 @@ class AnthropicModel implements LanguageModel
         // model is told to call. Not enforced token by token, so callers validate (they all do).
         $request = [
             'model' => $this->model, 'max_tokens' => $maxTokens,
-            'system' => $system."\n\nGive your whole answer by calling the $name tool once, with input that follows its schema exactly. Do not answer in text.",
+            'system' => [['type' => 'text', 'text' => $system."\n\nGive your whole answer by calling the $name tool once, with input that follows its schema exactly. Do not answer in text.", 'cache_control' => ['type' => 'ephemeral']]],
             'tools' => [['name' => $name, 'description' => 'Give the answer by calling this tool. Its input is the whole answer.', 'input_schema' => $schema]],
             'tool_choice' => ['type' => 'auto'],
             'messages' => [['role' => 'user', 'content' => $parts]],
         ];
         for ($try = 1; $try <= 2; $try++) {
-            [$status, $data] = $this->call($request);
+            [$status, $data] = $this->call($name, $request);
             if ($status < 200 || $status >= 300) {
                 throw new GenerationError('The language model refused: '.($data['error']['message'] ?? json_encode($data)));
             }
@@ -99,15 +100,41 @@ class AnthropicModel implements LanguageModel
         throw new GenerationError("The language model did not answer with $name.");
     }
 
+    /**
+     * The user turn as content blocks. ['cache' => true] after a part marks everything up to it for
+     * prompt caching (at most three marks; the system prompt has the fourth).
+     */
+    public static function parts(array $content): array
+    {
+        $parts = [];
+        $marks = 0;
+        foreach ($content as $item) {
+            if (is_string($item)) {
+                $parts[] = ['type' => 'text', 'text' => $item];
+            } elseif (isset($item['image'])) {
+                $parts[] = ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $item['mime'] ?? 'image/png', 'data' => base64_encode($item['image'])]];
+            } elseif (! empty($item['cache']) && $parts && $marks < 3) {
+                $parts[array_key_last($parts)]['cache_control'] = ['type' => 'ephemeral'];
+                $marks++;
+            }
+        }
+
+        return $parts;
+    }
+
     /** @return array{int, array} */
-    private function call(array $body): array
+    private function call(string $purpose, array $body): array
     {
         $response = $this->http->send('POST', rtrim($this->baseUrl, '/').'/v1/messages', [
             'x-api-key' => $this->apiKey,
             'anthropic-version' => '2023-06-01',
         ], $body, timeout: 900);
+        $data = $response->json();
+        if ($this->spend && is_array($data['usage'] ?? null)) {
+            $this->spend->llm($this->model, $purpose, $data['usage']);
+        }
 
-        return [$response->status, $response->json()];
+        return [$response->status, $data];
     }
 
     private function checkStop(array $data, string $name, int $maxTokens): void

@@ -5,6 +5,7 @@ namespace App\Qbl\Generation\Art;
 use App\Qbl\Generation\Design\Connections;
 use App\Qbl\Generation\Design\Sizes;
 use App\Qbl\Generation\GenerationError;
+use App\Qbl\Generation\Spend;
 use GdImage;
 
 /**
@@ -24,6 +25,12 @@ use GdImage;
  *
  * Every accepted picture and its record are kept in the work folder, so a run that stops can be resumed
  * without drawing anything twice.
+ *
+ * What it costs, and how that is kept down: every picture drawn is priced into the run's Spend. Small
+ * things are drawn several to a picture (a sheet cut apart) on the cheaper props model; a character gets
+ * only the animations the mission plays (walk, and wave or cheer where they are used), their standing
+ * picture as idle, and their portrait cut from their sheet (each configurable); and once the run has
+ * spent its budget, nothing is redrawn for a better score.
  */
 class AssetDirector
 {
@@ -63,6 +70,14 @@ class AssetDirector
         'think' => 'thinking: one hand on the chin, eyes looking up, head tilted',
     ];
 
+    /** Things to a sheet: a grid of up to 3 × 2. */
+    public const SHEET_MAX = 6;
+
+    /** For estimates: pictures are drawn about this many times on average before one is kept, and judging one costs about this much. */
+    public const EXPECTED_ATTEMPTS = 1.4;
+
+    public const JUDGE_ESTIMATE_USD = 0.012;
+
     public const CELL_W = 240;
 
     public const CELL_H = 320;
@@ -84,8 +99,12 @@ class AssetDirector
         private string $workDir,
         private int $maxAttempts = 3,
         ?callable $log = null,
+        private ?Spend $spend = null,
+        /** QBL_GEN_PORTRAITS, QBL_GEN_IDLE_FRAMES, QBL_GEN_PROP_SHEETS: see config/qbl_generation.php. */
+        private array $pictures = [],
     ) {
         $this->log = $log;
+        $this->pictures += ['portraits' => 'crop', 'idle_frames' => false, 'prop_sheets' => true];
         if (! is_dir("$workDir/assets") && ! mkdir("$workDir/assets", 0775, true) && ! is_dir("$workDir/assets")) {
             throw new GenerationError("Cannot create $workDir/assets.");
         }
@@ -105,21 +124,23 @@ class AssetDirector
         $accents = $b['art_direction']['accent_colors'] ?? [];
         $setting = $b['art_direction']['setting'] ?? '';
         $assets = [];
-        $scenes = array_column($b['scenes'], null, 'key');
-        $items = array_column($b['items'], null, 'key');
 
         foreach ($b['characters'] as $c) {
-            $assets += $this->character($c, $setting, $accents);
+            $assets += $this->character($c, $setting, $accents, self::gesturesUsed($b, $c));
         }
-        // Items hung on a wall are drawn as wall-mounted things.
-        $mounted = [];
-        foreach ($b['interactions'] as $it) {
-            if (! empty($it['item']) && isset($items[$it['item']], $scenes[$it['scene']]) && self::placementOf($it, $items[$it['item']], $scenes[$it['scene']]) === 'wall') {
-                $mounted[$it['item']] = true;
+        // Small things, several to a picture where it can: items, the tables and rocks they stand on, the marker.
+        $things = self::things($b, (string) ($this->style->bible()['marker'] ?? 'a small glowing beacon'));
+        if ($this->pictures['prop_sheets'] && count($things) > 1) {
+            $todo = array_filter($things, fn ($t) => ! ($this->cached($t['key'])['asset'] ?? null));
+            foreach (array_chunk($todo, self::SHEET_MAX, true) as $n => $chunk) {
+                if (count($chunk) > 1) {
+                    $this->thingsSheet(array_values($chunk), $accents, $n + 1);
+                }
             }
         }
-        foreach ($b['items'] as $item) {
-            $assets["item:{$item['key']}"] = $this->item($item, $accents, isset($mounted[$item['key']]));
+        foreach ($things as $t) {
+            // Already drawn on a sheet (or by an earlier run), or drawn on its own.
+            $assets[$t['asset']] = $this->cutout($t['key'], $t['kind'], $t['subject'], $t['kind'] === 'vehicle' ? '3:2' : '1:1', $this->style->anchorsFor($t['kind']), [], $t['accents'] ? $accents : [], height: $t['fit']['height'] ?? null, width: $t['fit']['width'] ?? null, label: $t['label'], pull: true, longest: $t['fit']['longest'] ?? null);
         }
         // The doors, holes and ladders that lead between scenes.
         foreach (Connections::ends($b) as $scene => $ends) {
@@ -129,22 +150,117 @@ class AssetDirector
                 }
             }
         }
-        // Tables and flat rocks for small things to stand on.
-        foreach (self::surfacesNeeded($b) as $kind) {
-            $assets["surface:$kind"] = $this->cutout("surface:$kind", 'item', self::SURFACES[$kind].($setting ? ", fitting this place: $setting" : ''), '1:1', $this->style->anchorsFor('item'), [], $accents, width: self::SURFACE_PX[$kind], label: "surface $kind", pull: true);
-        }
         foreach ($b['scenes'] as $scene) {
             $assets["bg:{$scene['key']}"] = $this->background($scene, $layouts[$scene['key']] ?? [], $setting, $accents, $b['art_direction']['time_of_day'] ?? null);
-        }
-        // Interactions with no item of their own (a question, an inspection of the scenery) get the style's marker.
-        if (array_filter($b['interactions'], fn ($it) => $it['type'] !== 'talk' && empty($it['item']) && empty($it['at_report'])) || ! empty($b['roles'])) {
-            $assets['marker'] = $this->cutout('marker', 'item', (string) ($this->style->bible()['marker'] ?? 'a small glowing beacon'), '1:1', $this->style->anchorsFor('item'), [], [], height: 120, label: 'marker', pull: true);
         }
         if (! empty($b['badge'])) {
             $assets['badge'] = $this->cutout('badge', 'badge', "{$b['badge']['name']}: {$b['badge']['appearance']}", '1:1', [], [], $accents, height: 110, label: $b['badge']['name']);
         }
 
         return $assets;
+    }
+
+    /**
+     * The small things a mission needs drawn: each item (vehicles too), each table or rock small things
+     * stand on, and the marker for interactions without an item. key (as recorded), asset (as
+     * MissionBuilder expects), kind, subject, label, fit (the size to scale to), accents.
+     *
+     * @return array<string, array>
+     */
+    public static function things(array $b, string $marker): array
+    {
+        $scenes = array_column($b['scenes'], null, 'key');
+        $items = array_column($b['items'], null, 'key');
+        $setting = $b['art_direction']['setting'] ?? '';
+        // Items hung on a wall are drawn as wall-mounted things.
+        $mounted = [];
+        foreach ($b['interactions'] as $it) {
+            if (! empty($it['item']) && isset($items[$it['item']], $scenes[$it['scene']]) && self::placementOf($it, $items[$it['item']], $scenes[$it['scene']]) === 'wall') {
+                $mounted[$it['item']] = true;
+            }
+        }
+        $out = [];
+        foreach ($b['items'] as $item) {
+            $vehicle = $item['kind'] === 'vehicle';
+            $out["item:{$item['key']}"] = [
+                'key' => "item:{$item['key']}", 'asset' => "item:{$item['key']}", 'kind' => $vehicle ? 'vehicle' : 'item',
+                'subject' => "{$item['name']}: {$item['appearance']}".(isset($mounted[$item['key']]) ? '. Mounted flat on a wall, seen straight on, with its fixings showing' : ''),
+                'label' => $item['name'], 'accents' => true,
+                // Drawn to its real size beside the people in the scene: its longest side.
+                'fit' => $vehicle && empty($item['size_cm']) ? ['width' => 340] : ['longest' => Sizes::pixels(Sizes::cm($item))],
+            ];
+        }
+        foreach (self::surfacesNeeded($b) as $kind) {
+            $out["surface:$kind"] = ['key' => "surface:$kind", 'asset' => "surface:$kind", 'kind' => 'item', 'subject' => self::SURFACES[$kind].($setting ? ", fitting this place: $setting" : ''), 'label' => "surface $kind", 'accents' => true, 'fit' => ['width' => self::SURFACE_PX[$kind]]];
+        }
+        // Interactions with no item of their own (a question, an inspection of the scenery), and the crew station, get the style's marker.
+        if (array_filter($b['interactions'], fn ($it) => $it['type'] !== 'talk' && empty($it['item']) && empty($it['at_report'])) || ! empty($b['roles'])) {
+            $out['marker'] = ['key' => 'marker', 'asset' => 'marker', 'kind' => 'item', 'subject' => $marker, 'label' => 'marker', 'accents' => false, 'fit' => ['height' => 120]];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The gestures a character needs drawn: only those the mission plays. A character waves when a
+     * conversation with them starts (if it was asked for), the guide cheers at the end; any other
+     * gesture would never be seen.
+     */
+    public static function gesturesUsed(array $b, array $c): array
+    {
+        $asked = array_values(array_intersect($c['gestures'] ?? [], ['wave', 'cheer', 'point', 'think']));
+        $talks = (bool) array_filter($b['interactions'], fn ($it) => $it['type'] === 'talk' && ($it['character'] ?? null) === $c['key']);
+
+        return array_values(array_filter($asked, fn ($g) => ($g === 'wave' && $talks) || ($g === 'cheer' && ! empty($c['guide']))));
+    }
+
+    /**
+     * What drawing this blueprint should cost: the pictures it needs, priced by the image model, with
+     * the redraws and judging a run usually needs. For `--design-only`, before anything is drawn.
+     *
+     * @return array{pictures: int, usd: float, by_kind: array<string, int>}
+     */
+    public function estimate(array $b): array
+    {
+        $by = [];
+        $add = function (string $kind, int $n = 1) use (&$by) {
+            $by[$kind] = ($by[$kind] ?? 0) + $n;
+        };
+        foreach ($b['characters'] as $c) {
+            $add('character');
+            $add('strip', 1 + count(self::gesturesUsed($b, $c)) + ($this->pictures['idle_frames'] ? 1 : 0));
+            if ($this->pictures['portraits'] === 'draw') {
+                $add('portrait');
+            }
+        }
+        $things = self::things($b, 'marker');
+        if ($this->pictures['prop_sheets'] && count($things) > 1) {
+            $add('sheet', (int) ceil(count($things) / self::SHEET_MAX));
+        } else {
+            $add('item', count($things));
+        }
+        foreach (Connections::ends($b) as $ends) {
+            foreach ($ends as $end) {
+                if ($end['via'] !== 'edge') {
+                    $add(Connections::inFloor($end['via']) ? 'opening' : 'passage');
+                }
+            }
+        }
+        $add('background', count($b['scenes']));
+        if (! empty($b['badge'])) {
+            $add('badge');
+        }
+        $usd = 0.0;
+        $spend = $this->spend ?? new Spend;
+        foreach ($by as $kind => $n) {
+            [$model, $size] = $this->images instanceof PricedImageGenerator ? $this->images->pricing(['kind' => $kind]) : ['placeholder', null];
+            // With the references a picture of its kind is sent: the anchors, and a character's sheet for its strips.
+            $refs = count($this->style->anchorsFor($kind)) + ($kind === 'strip' || $kind === 'portrait' ? 1 : 0) + ($kind === 'background' || $kind === 'character' ? 1 : 0);
+            $each = $spend->pictureWithReferences($model, $size, $refs) + ($this->judge ? self::JUDGE_ESTIMATE_USD : 0);
+            $usd += $n * $each * min($this->maxAttempts, self::EXPECTED_ATTEMPTS);
+        }
+
+        return ['pictures' => array_sum($by), 'usd' => round($usd, 2), 'by_kind' => $by];
     }
 
     /** Where an interaction's item goes; the same rule MissionBuilder uses. */
@@ -182,7 +298,7 @@ class AssetDirector
 
     // ==================================================================== characters
 
-    private function character(array $c, string $setting, array $accents): array
+    private function character(array $c, string $setting, array $accents, ?array $gestures = null): array
     {
         $key = $c['key'];
         $subject = "{$c['name']}, {$c['appearance']}";
@@ -192,26 +308,40 @@ class AssetDirector
         if ($this->castLook) {
             $refs[] = $this->castLook;
         }
-        $sheet = $this->cutout("design:$key", 'character', $subject, '3:4', $refs, [], $accents, height: 640, label: $c['name'], pull: true);
+        // Kept large: their portrait is cut from it.
+        $sheet = $this->cutout("design:$key", 'character', $subject, '3:4', $refs, [], $accents, height: 1100, label: $c['name'], pull: true);
         $sheetRef = new Reference((string) file_get_contents($sheet['path']), "the character sheet of {$c['name']}: draw exactly this character, same design, outfit, colours and proportions");
         $this->castLook ??= new Reference($sheetRef->bytes, 'another character from the same game: match its style, not its design');
         $sheetIm = ImageTools::load($sheetRef->bytes);
         $sheetStats = ImageTools::labStats($sheetIm);
 
-        // 2. Their portrait, drawn from the sheet and set on the house backdrop. A character always has one:
-        //    if it cannot be drawn, it is their head and shoulders cut from the sheet.
-        try {
-            $portrait = $this->cutout("portrait:$key", 'portrait', $c['name'].' ('.$c['appearance'].')', '1:1', [$sheetRef, ...$this->style->anchorsFor('portrait')], [$sheetRef], $accents, height: null, label: $c['name'].' portrait', pull: true, portrait: true);
-        } catch (GenerationError $e) {
-            $portrait = $this->portraitFromSheet($key, $sheetIm, $e->getMessage());
+        // 2. Their portrait, set on the house backdrop: their head and shoulders from the sheet (free, and
+        //    exactly their design), or drawn from the sheet (QBL_GEN_PORTRAITS=draw). A character always has
+        //    one: a portrait that cannot be drawn is cut from the sheet too.
+        if ($this->pictures['portraits'] === 'draw') {
+            try {
+                $portrait = $this->cutout("portrait:$key", 'portrait', $c['name'].' ('.$c['appearance'].')', '1:1', [$sheetRef, ...$this->style->anchorsFor('portrait')], [$sheetRef], $accents, height: null, label: $c['name'].' portrait', pull: true, portrait: true);
+            } catch (GenerationError $e) {
+                $portrait = $this->portraitFromSheet($key, $sheetIm, $e->getMessage());
+            }
+        } else {
+            $portrait = ($this->cached("portrait:$key")['asset'] ?? null) ?: $this->portraitFromSheet($key, $sheetIm, null);
         }
 
         // 3. Their animations, a strip each, drawn from the sheet.
         $rows = [];
         $animations = [];
         $columns = 1;
-        $wanted = array_unique(['idle', 'walk', ...array_values(array_intersect($c['gestures'] ?? [], array_keys(self::ANIMATIONS)))]);
+        // Walk always; idle only if asked for (otherwise the standing picture is the idle); the gestures the
+        // mission plays, unless the budget is spent.
+        $gestures ??= array_values(array_intersect($c['gestures'] ?? [], array_keys(self::ANIMATIONS)));
+        $wanted = array_unique([...($this->pictures['idle_frames'] ? ['idle'] : []), 'walk', ...$gestures]);
         foreach ($wanted as $name) {
+            if (! in_array($name, ['idle', 'walk'], true) && $this->spend?->over() && ! $this->cached("strip:$key:$name")) {
+                $this->say("Skipped $key's $name: the budget is spent (the built-in move is used)");
+
+                continue;
+            }
             [$count, $duration, $loops] = self::ANIMATIONS[$name];
             $frames = $this->strip($key, "{$c['name']} ({$c['appearance']})", $name, $count, $sheetRef, $accents);
             if ($frames === null && $name === 'walk') {
@@ -277,16 +407,125 @@ class AssetDirector
         return $frames;
     }
 
-    /** A portrait cut from the character sheet, when none could be drawn. */
-    private function portraitFromSheet(string $key, GdImage $sheet, string $why): array
+    /** A portrait cut from the character sheet: by choice (null $why), or because none could be drawn. */
+    private function portraitFromSheet(string $key, GdImage $sheet, ?string $why): array
     {
         $im = $this->portrait(ImageTools::bust($sheet));
         $path = "{$this->workDir}/assets/".self::file("portrait:$key").'.png';
         file_put_contents($path, ImageTools::png($im));
         $asset = ['path' => $path, 'width' => imagesx($im), 'height' => imagesy($im)];
-        $this->record("portrait:$key", 'portrait', null, [['problem' => $why]], ['accepted' => true, 'below_bar' => true, 'score' => null, 'asset' => $asset, 'note' => 'Cut from the character sheet: no portrait could be drawn.']);
+        $this->record("portrait:$key", 'portrait', null, $why ? [['problem' => $why]] : [], ['accepted' => true, 'below_bar' => $why !== null, 'score' => null, 'asset' => $asset, 'note' => $why ? 'Cut from the character sheet: no portrait could be drawn.' : 'Cut from the character sheet.']);
 
         return $asset;
+    }
+
+    /**
+     * Several small things drawn as one picture, a grid cut apart into one asset each (recorded under
+     * each thing's key, so they are picked up like pictures drawn alone). The sheet is judged once. A
+     * thing whose cell came out empty or spilled into its neighbour is left for drawing on its own.
+     */
+    private function thingsSheet(array $things, array $accents, int $n): void
+    {
+        $count = count($things);
+        $cols = min(3, $count);
+        $rows = (int) ceil($count / $cols);
+        $aspect = $rows > 1 ? '3:2' : ($cols === 3 ? '21:9' : '16:9');
+        $sheetKey = "sheet:$n:".substr(md5(implode('|', array_column($things, 'key'))), 0, 8);
+        $list = implode('; ', array_map(fn ($i, $t) => ($i + 1).'. '.rtrim($t['subject'], '.'), array_keys($things), $things));
+        $refs = $this->style->anchorsFor('sheet');
+        // Big things need the bigger picture to stay sharp in their cell.
+        $big = max(array_map(fn ($t) => (int) max($t['fit']), $things)) > 380;
+        $hints = ['kind' => 'sheet', 'count' => $count, 'columns' => $cols, 'rows' => $rows, 'labels' => array_column($things, 'label')] + ($big ? ['size' => '2K'] : []);
+        $notes = [];
+        $attempts = [];
+        $best = null;
+        for ($attempt = 1; $attempt <= $this->maxAttempts; $attempt++) {
+            if ($attempt > 1 && ! $this->mayRedraw()) {
+                break;
+            }
+            $prompt = $this->style->prompt('sheet', $list, $refs, ['count' => $count, 'columns' => $cols, 'rows' => $rows], $notes, $this->images->transparency(), $accents);
+            $this->say("Drawing $count things on one sheet ($sheetKey), attempt $attempt");
+            try {
+                $raw = $this->draw($prompt, $refs, $aspect, $this->images->transparency(), $hints);
+            } catch (GenerationError $e) {
+                $attempts[] = ['attempt' => $attempt, 'problem' => $e->getMessage()];
+                if ($this->images instanceof Providers\OfflineImageGenerator) {
+                    break;
+                }
+
+                continue;
+            }
+            $im = $this->cut(ImageTools::load($raw));
+            $cells = ImageTools::gridCells($im, $cols, $rows, $count);
+            $filled = count(array_filter($cells));
+            $verdict = $this->judge?->judge('item', ImageTools::png($im), $this->style->anchorsFor('item'), [], "a sheet of $count separate objects: $list", ["$count separate objects in a grid of $cols columns and $rows rows, each whole inside its own cell"]);
+            $attempts[] = ['attempt' => $attempt, 'cells' => $filled] + ($verdict ? ['score' => $verdict['score'], 'problems' => $verdict['problems']] : []);
+            $score = $verdict['score'] ?? 10;
+            if (! $best || [$filled, $score] > [$best['filled'], $best['score']]) {
+                $best = ['filled' => $filled, 'score' => $score, 'cells' => $cells, 'pass' => ! $verdict || $verdict['pass'], 'prompt' => $prompt];
+            }
+            if ($filled === $count && $best['pass'] && $best['cells'] === $cells) {
+                break;
+            }
+            $notes = array_values(array_filter([$verdict['fix'] ?? null, $filled < $count ? "Draw exactly $count separate objects, one centred in each cell of a $cols by $rows grid, each small enough to have empty space all around it" : null]));
+        }
+        $this->record($sheetKey, 'sheet', $best['prompt'] ?? null, $attempts, ['accepted' => (bool) $best, 'score' => $best['score'] ?? null, 'things' => array_column($things, 'key')]);
+        if (! $best) {
+            return;
+        }
+        foreach ($things as $i => $t) {
+            $im = $best['cells'][$i] ?? null;
+            if (! $im) {
+                continue; // drawn on its own
+            }
+            if (($strength = (float) $this->style->post('palette_pull', 0)) > 0) {
+                $im = ImageTools::pullToPalette($im, $this->style->palette(), $strength);
+            }
+            $im = self::fitTo($im, $t['fit']);
+            $path = "{$this->workDir}/assets/".self::file($t['key']).'.png';
+            file_put_contents($path, ImageTools::png($im));
+            $this->record($t['key'], $t['kind'], $best['prompt'], [], ['accepted' => true, 'score' => $best['score'], 'below_bar' => ! $best['pass'], 'sheet' => $sheetKey, 'asset' => ['path' => $path, 'width' => imagesx($im), 'height' => imagesy($im)]]);
+        }
+    }
+
+    /** Scaled to ['height' => n], ['width' => n] or ['longest' => n]. */
+    private static function fitTo(GdImage $im, array $fit): GdImage
+    {
+        $s = isset($fit['longest']) ? $fit['longest'] / max(imagesx($im), imagesy($im)) : (isset($fit['height']) ? $fit['height'] / imagesy($im) : (isset($fit['width']) ? $fit['width'] / imagesx($im) : 1));
+
+        return ImageTools::resize($im, max(1, (int) round(imagesx($im) * $s)), max(1, (int) round(imagesy($im) * $s)));
+    }
+
+    /**
+     * Draws one picture and prices it into the run's Spend. Stops the run at twice its budget.
+     *
+     * @param  Reference[]  $refs
+     */
+    private function draw(string $prompt, array $refs, string $aspect, bool $transparent, array $hints): string
+    {
+        $this->spend?->checkLimit('drawing '.($hints['label'] ?? $hints['kind'] ?? 'a picture'));
+        try {
+            return $this->images->generate($prompt, $refs, $aspect, $transparent, $hints);
+        } finally {
+            // Paid for whether or not it comes back usable. A generator that does not say its price is
+            // counted at Spend::UNKNOWN_PICTURE, except the placeholder, which is free.
+            if ($this->spend) {
+                [$model, $size] = $this->images instanceof PricedImageGenerator ? $this->images->pricing($hints) : [$this->images->describe(), null];
+                $this->spend->picture($model, $size, (string) ($hints['kind'] ?? 'picture'), count($refs));
+            }
+        }
+    }
+
+    /** Whether another attempt at a picture may be paid for: not once the budget is spent. */
+    private function mayRedraw(): bool
+    {
+        if ($this->spend?->over()) {
+            $this->say('The budget is spent: keeping the best picture so far instead of drawing it again.');
+
+            return false;
+        }
+
+        return true;
     }
 
     /** One animation strip, cut into its frames. Null if it could not be drawn well enough. */
@@ -302,11 +541,14 @@ class AssetDirector
         }
         $aspect = $count >= 5 ? '21:9' : '16:9';
         for ($attempt = count($attempts) + 1; $attempt <= $this->maxAttempts; $attempt++) {
+            if ($attempt > 1 && ! $this->mayRedraw()) {
+                break;
+            }
             $refs = [$sheet, ...$this->style->anchorsFor('strip')];
             $prompt = $this->style->prompt('strip', "$name ".self::MOTION[$animation], $refs, ['frames' => $count], $notes, $this->images->transparency(), $accents);
             $this->say("Drawing $name: $animation ($count frames), attempt $attempt");
             try {
-                $raw = $this->images->generate($prompt, $refs, $aspect, $this->images->transparency(), ['kind' => 'strip', 'frames' => $count, 'animation' => $animation, 'label' => $name]);
+                $raw = $this->draw($prompt, $refs, $aspect, $this->images->transparency(), ['kind' => 'strip', 'frames' => $count, 'animation' => $animation, 'label' => $name]);
             } catch (GenerationError $e) {
                 // One animation that cannot be drawn is not worth the run: the built-in move stands in.
                 $attempts[] = ['attempt' => $attempt, 'problem' => $e->getMessage()];
@@ -508,10 +750,13 @@ class AssetDirector
         $best = null;
         $extra = [];
         for ($attempt = 1; $attempt <= $this->maxAttempts; $attempt++) {
+            if ($attempt > 1 && $best && ! $this->mayRedraw()) {
+                break;
+            }
             $prompt = $this->style->prompt($kind, $subject, $refs, [], [...$notes, ...$extra], $this->images->transparency() && ArtStyle::cutout($kind), $accents);
             $this->say("Drawing $key, attempt $attempt");
             try {
-                $raw = $this->images->generate($prompt, $refs, $aspect, $this->images->transparency() && ArtStyle::cutout($kind), $hints);
+                $raw = $this->draw($prompt, $refs, $aspect, $this->images->transparency() && ArtStyle::cutout($kind), $hints);
                 [$im, $problem] = $finish($raw);
             } catch (GenerationError $e) {
                 $attempts[] = ['attempt' => $attempt, 'problem' => $e->getMessage()];
@@ -539,7 +784,7 @@ class AssetDirector
         $asset = ['path' => $path, 'width' => $best['width'], 'height' => $best['height']];
         $this->record($key, $kind, $best['prompt'], $attempts, ['accepted' => true, 'score' => $best['score'], 'below_bar' => ! $best['pass'], 'asset' => $asset]);
         if (! $best['pass']) {
-            $this->say("Kept the best of {$this->maxAttempts} attempts at $key, but it is below the style bar (score {$best['score']}); look at it before publishing.");
+            $this->say("Kept the best attempt at $key, but it is below the style bar (score {$best['score']}); look at it before publishing.");
         }
 
         return $asset;
@@ -628,7 +873,8 @@ class AssetDirector
                 $notes = $kind === 'background' ? [sprintf('The walkable floor starts %d%% of the way down the picture and is open and empty', round(($spec['ground_line'] ?? 0.7) * 100)), 'No characters or people'] : [];
                 $prompt = $this->style->prompt($kind, $spec['subject'], $refs, [], $notes, $this->images->transparency() && ArtStyle::cutout($kind));
                 $this->say("Drawing anchor candidate $role $v");
-                $raw = $this->images->generate($prompt, $refs, $kind === 'background' ? '16:9' : ($kind === 'item' ? '16:9' : ($kind === 'portrait' ? '1:1' : '3:4')), $this->images->transparency() && ArtStyle::cutout($kind), ['kind' => $kind, 'label' => "$role $v", 'ground_line' => $spec['ground_line'] ?? 0.7]);
+                // Anchors define the style: always the main image model, never the cheaper props one.
+                $raw = $this->draw($prompt, $refs, $kind === 'background' ? '16:9' : ($kind === 'item' ? '16:9' : ($kind === 'portrait' ? '1:1' : '3:4')), $this->images->transparency() && ArtStyle::cutout($kind), ['kind' => $kind, 'label' => "$role $v", 'ground_line' => $spec['ground_line'] ?? 0.7, 'anchor' => true]);
                 $im = ImageTools::load($raw);
                 if (ArtStyle::cutout($kind)) {
                     $im = ImageTools::trim($this->cut($im), 8);

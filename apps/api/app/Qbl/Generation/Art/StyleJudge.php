@@ -28,6 +28,10 @@ class StyleJudge
             $content[] = 'Style anchor '.($i + 1).' (the approved house style):';
             $content[] = ['image' => self::small($a->bytes), 'mime' => 'image/png'];
         }
+        // The anchors are the same for every picture of a kind: read from the prompt cache after the first.
+        if ($anchors) {
+            $content[] = ['cache' => true];
+        }
         foreach ($subject as $s) {
             $content[] = 'The approved design of this character (the new picture must show exactly this character):';
             $content[] = ['image' => self::small($s->bytes), 'mime' => 'image/png'];
