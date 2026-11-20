@@ -1,0 +1,80 @@
+---
+title: "How QBL works"
+description: "The handful of ideas behind every mission: scenarios, scenes, events, actions, conditions and variables, and how teachers, classes and reports fit around them."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+QBL has two halves. One is the **mission**: a place students walk around, built from a few simple ideas. The other is the **classroom**: how you give missions to students and see what happened. Learn the ideas below and everything else in these docs falls into place.
+
+## The mission
+
+```text
+Scenario (the whole mission)
+ ├─ Scenes (the places)
+ │   ├─ Hotspots, start events, end events, indirect events
+ │   │   └─ Actions (say, show, ask, move, set, award…)
+ │   ├─ Characters and items placed in the scene
+ │   └─ Walkable areas, exits and spawn points
+ └─ Library: media, variables, characters, items, objectives, glossary, moves, shop
+```
+
+| Idea | What it is | Example |
+| --- | --- | --- |
+| **Scenario** | A whole mission. Players open it at an address like `/cloudy-pond`. | *The Cloudy Pond* |
+| **Scene** | A place with a background, somewhere to walk and things to find. Scenes are joined by exits. | The schoolyard; the pond |
+| **Hotspot** | A spot players click, or walk into, that makes something happen. | The pipe at the pond; the exit on the right edge |
+| **Event** | Something that happens: when a player arrives, leaves, clicks a hotspot, or when another event asks for it. | `okafor-talk`: the conversation with Ms. Okafor |
+| **Action** | One step in an event: say something, show a picture, ask a question, jump to another scene, set a variable, award stars. Actions run in order. | An infobox with a question |
+| **Variable** | Something the mission remembers. | `mission_started`, `samples` |
+| **Condition** | A test on a variable that decides whether an event or action happens. | The gate opens only when `mission_started = 1` |
+| **Objective** | A line on the checklist students see, ticked off by a condition. | *Collect a plant sample from each of three sites* |
+| **Glossary** | The words the mission teaches, given where students need them. | *Sediment*, *runoff* |
+| **Character** | A person or creature players meet. Click to start a conversation. | Ms. Okafor |
+| **Item** | A thing players can pick up, wear or ride. | A moon rover |
+
+The five that do the work are **scenes, events, actions, conditions and variables**. A hotspot is an event; a conversation is an action; a locked gate is an action with a condition on a variable that something earlier set.
+
+<Aside type="tip" title="The whole system in one sentence">
+A student clicks something, an event runs a list of actions, and the actions may change a variable, which changes what the next click does.
+</Aside>
+
+[The editor at a glance](/docs/editor/) shows where each of these lives in the editor.
+
+## The classroom
+
+| Idea | What it is |
+| --- | --- |
+| **Teacher** | Builds and assigns missions, and sees reports. Lands in the editor after signing in. |
+| **Student** | Plays missions. Lands on the missions page, where assigned missions come first. |
+| **Class** | The students a teacher teaches. A student can be in several teachers' classes. |
+| **Public mission** | Published for everyone: on every student's missions page. |
+| **Private mission** | Visible only to the students it is assigned to. |
+| **Assignment** | A mission given to some of a teacher's students, with an optional due date and note. |
+| **Team** | A group within an assignment. Each team plays **its own copy of the world**. |
+| **Instance** | One copy of a mission's world: the public one, an assignment's, or a team's. Saves belong to the instance. |
+| **Look in** | A teacher joins a team's game as a visible player. |
+| **Report** | What the students did: progress, objectives, each question's **first answer** and number of tries. |
+
+Read more in [Classes, missions and teams](/docs/editor/classes/) and [Reading the reports](/docs/editor/reports/).
+
+## Building, testing and publishing
+
+- Everything is **saved as you make it**. There is no save button.
+- **▶ Test** plays your *draft* alone, and nothing is saved.
+- **Publish** gives players the new version. Until you publish again, they keep the last one.
+- The **publish check** finds errors (a condition that names a variable that does not exist, an objective that nothing ticks off) and takes you to each with **Go there →**.
+
+## Rewards
+
+Students earn **stars** (spent in the marketplace) and **XP** (which adds up to a rank), and can earn **badges** for specific accomplishments. They belong to the student's account and carry across missions. They are there to mark real accomplishment; the report is what tells *you* what students understood.
+
+## Where to go next
+
+| If you want to… | Read |
+| --- | --- |
+| Run a lesson tomorrow | [Your first class in 20 minutes](/docs/start/quickstart/) |
+| Teach well with it | [For educators](/docs/educators/) |
+| Build a mission | [The editor at a glance](/docs/editor/) and the [walkthrough](/docs/editor/walkthrough/set-up/) |
+| Connect your school's systems | [The public API](/docs/api-v1/) |
+| Understand the data | [Developers](/docs/developers/) |

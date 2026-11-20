@@ -1,0 +1,146 @@
+---
+title: "Missions, assignments and teams"
+description: "Browse the mission catalogue, give a mission to a teacher's students with a due date and a note, and split them into teams that each play their own game."
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+A **mission** is a published scenario. An **assignment** is a teacher giving a mission to some of their students, with a due date and a note. An assignment can be split into **teams**, and each team plays its own copy of the game.
+
+The reading endpoints need `assignments:read`; creating, changing and removing need `assignments:write`.
+
+## The catalogue
+
+```http
+GET /api/v1/scenarios
+```
+
+The catalogue lists every published public mission, plus private missions written by your own teachers. A private mission can be assigned only by the teacher who wrote it.
+
+```json
+{
+  "id": 3,
+  "code": "cbiaxunrrjcmoxzn",
+  "title": "The Wilting Stream",
+  "subtitle": "Explore the planet, find out what is harming its plants, and prove it in the lab",
+  "description": "Plants along a stream are dying. Collect samples, test them in the lab, and find the cause using evidence.",
+  "visibility": "public",
+  "owner_teacher_id": null,
+  "max_players": 30,
+  "play_url": "https://qbl.example/cbiaxunrrjcmoxzn",
+  "standards": [],
+  "objectives": 7,
+  "glossary_terms": 5,
+  "published_at": "2026-11-20T20:15:06Z"
+}
+```
+
+`GET /scenarios/{id}` adds what a teacher wants to know before assigning it:
+
+```json
+{
+  "learning_objectives": [
+    { "id": "lo-evidence", "text": "Use evidence from tests to identify the source of a contaminant", "standards": ["MS-LS2-4"] },
+    { "id": "lo-ph", "text": "Explain how an acid and a base change the pH of a solution", "standards": ["MS-PS1-2"] }
+  ],
+  "objective_list": [
+    { "id": "accept", "text": "Visit the starship control room and accept the Wilting Stream mission", "optional": false },
+    { "id": "collect", "text": "Collect a plant sample from each of the three sites west of the landing site", "optional": false }
+  ],
+  "glossary": [
+    { "term": "Contamination", "definition": "Something harmful that has got into water, soil or air where it does not belong." },
+    { "term": "Sample", "definition": "A small part of something, collected so that it can be tested." }
+  ]
+}
+```
+
+(plus every field of the list entry above, and the full lists.) This is enough to show a teacher, inside your LMS, *what the mission is, what students do, and which standards it addresses* before they pick it.
+
+## Make an assignment
+
+```http
+POST /api/v1/assignments
+```
+
+<Tabs>
+  <TabItem label="Request">
+    ```json
+    {
+      "teacher_external_id": "t-5512",
+      "scenario_id": 3,
+      "external_id": "canvas-assignment-9931",
+      "due_at": "2026-12-05T23:59:00-07:00",
+      "note": "Work with your team; finish by Friday.",
+      "student_external_ids": ["a91f0c7e", "c0ffee12", "badd00d5", "5e11ab1e", "d00dfeed", "f00d1e55"],
+      "teams": [
+        { "name": "Comets",  "student_external_ids": ["a91f0c7e", "c0ffee12", "badd00d5"] },
+        { "name": "Rockets", "student_external_ids": ["5e11ab1e", "d00dfeed"] }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="Answer (201)">
+    ```json
+    {
+      "data": {
+        "id": 2,
+        "external_id": "canvas-assignment-9931",
+        "teacher_id": 92149,
+        "scenario_id": 3,
+        "scenario_title": "The Wilting Stream",
+        "due_at": "2026-12-06T06:59:00Z",
+        "note": "Work with your team; finish by Friday.",
+        "student_ids": [92150, 92151, 92152, 92153, 92154, 92155],
+        "teams": [
+          { "id": 3, "name": "Comets",  "student_ids": [92150, 92151, 92152] },
+          { "id": 4, "name": "Rockets", "student_ids": [92153, 92154] }
+        ],
+        "play_url": "https://qbl.example/cbiaxunrrjcmoxzn?group=a2",
+        "created_at": "2026-11-20T20:21:54Z"
+      }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+A few things worth knowing:
+
+- **`external_id` is your id for the assignment**, for instance your LMS's assignment or gradebook-column id. It is unique in your organization, and `GET /assignments?external_id=canvas-assignment-9931` finds it again. Use it so you never have to store QBL's id.
+- **`note` is the teacher's instruction**, shown to students on their missions page. Use it: a good note is the difference between wandering and purpose. ([Teaching with QBL](/docs/educators/facilitation/) has ideas.)
+- **Students named only in a team** are added to the assignment too, and anyone assigned is enrolled with the teacher if they were not already.
+- **Students in no team** (the sixth student above) play together in one shared game. The `play_url` ends in `?group=a2`: that is the game for students in no team.
+
+## Teams
+
+Each team plays its **own copy** of the mission. That is not only a convenience. It means a team's discoveries, choices and shared progress belong to the team, and a teacher can [look in](/docs/editor/classes/#look-in-on-a-teams-game) on one team at a time to coach it.
+
+| Endpoint | Scope | Notes |
+| --- | --- | --- |
+| `GET /assignments` | `assignments:read` | Filters: `teacher_id`, `student_id`, `scenario_id`, `external_id`. |
+| `POST /assignments` | `assignments:write` | As above. |
+| `GET /assignments/{id}` | `assignments:read` | `id`, `external_id`, `teacher_id`, `scenario_id`, `scenario_title`, `due_at`, `note`, `student_ids`, `teams`, `play_url`, `created_at`. |
+| `PATCH /assignments/{id}` | `assignments:write` | `due_at`, `note`, `external_id`, `student_ids`, `teams`. |
+| `DELETE /assignments/{id}` | `assignments:write` | |
+| `GET /assignments/{id}/teams` | `assignments:read` | |
+| `POST /assignments/{id}/teams` | `assignments:write` | `{ "name": "Comets", "student_ids": […] }`. The students leave any other team. |
+| `PATCH /teams/{id}`, `DELETE /teams/{id}` | `assignments:write` | A removed team's students play with those in no team. |
+
+<Aside type="caution" title="Reshuffling teams without losing their games">
+When you `PATCH` an assignment's `teams`, **give each existing team its `id`**. A team sent with its `id` keeps its game, and so its progress, when you rename it or move students in and out. A team **left out** of the list is removed, and a team sent without an `id` is a new team with a fresh game.
+</Aside>
+
+## Example: re-form the teams halfway through
+
+Suppose Comets finished early and you want to move two of them to Rockets to help:
+
+```http
+PATCH /api/v1/assignments/2
+{
+  "teams": [
+    { "id": 3, "name": "Comets",  "student_external_ids": ["a91f0c7e"] },
+    { "id": 4, "name": "Rockets", "student_external_ids": ["5e11ab1e", "d00dfeed", "c0ffee12", "badd00d5"] }
+  ]
+}
+```
+
+Both teams keep their games and progress; the two students who moved now see Rockets' game.

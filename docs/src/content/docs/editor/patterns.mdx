@@ -1,0 +1,110 @@
+---
+title: "Patterns that work"
+description: "Eight ready-made ways to build common things in a mission: collecting, gates, questions with feedback, menus, experiments, team tasks, pre and post checks, and rewards."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+You do not need special features to make a mission feel rich. Almost everything is a **combination of a few pieces**: a hotspot, a variable, a condition, an infobox. These eight patterns cover most of what teachers build. Each says what it is for, which pieces it uses, and how to put it together.
+
+A reminder of the vocabulary: an **event** is a list of **actions**; a **condition** compares a **variable** with a value; see [Events and actions](/docs/editor/events-and-actions/).
+
+## 1. Collect things
+
+**For:** samples, clues, ingredients, evidence. Students walk up and pick something up.
+
+**You need:** a variable per thing (`sample_a`, starting at 0), a counter (`samples`), a hotspot per thing, an objective.
+
+1. Define `sample_a` and `samples` on the [Variables tab](/docs/editor/library/#variables), both starting at 0.
+2. Add a **click hotspot** where the thing is. Add a **label** to it (a picture of the thing).
+3. Give the hotspot a **condition**: `sample_a = 0`.
+4. Its actions: 🔢 **Variable** set `sample_a` to 1; 🔢 **Variable** add 1 to `samples`; and an 📋 **Infobox** telling the student what they noticed.
+5. Add an [objective](/docs/editor/library/#objectives): `Collect samples ({{samples}}/3)`, **Ticked off when** `samples >= 3`.
+
+The picture disappears once collected, because the hotspot's condition no longer holds. Use the **observation** box to ask what they see: *"What do you notice about the leaves?"*
+
+## 2. A gate
+
+**For:** keeping students from skipping ahead. A way out that opens when something has been done.
+
+**You need:** a variable, an exit, a hint.
+
+1. Choose **Exit along the … edge** from **+ Add to scene…**. It makes a walk-in hotspot with a **Jump** action.
+2. Under the jump's **Only when**, add a condition: `quest_started = 1`.
+3. Add a 🔤 **Text overlay** *above* the jump (drag the ⠿ grip) with **Only when** `quest_started = 0`: *"Talk to the captain first."*
+
+The [walkthrough](/docs/editor/walkthrough/schoolyard/#a-gate-that-needs-a-conversation) builds this one. Use gates where skipping would break the logic, and always tell the student what will open the way.
+
+## 3. A question with feedback for each answer
+
+**For:** a multiple-choice question where each wrong answer teaches something.
+
+**You need:** one infobox, one indirect event per answer.
+
+1. A hotspot or indirect event holds an 📋 **Infobox** with **Can be closed without choosing a button** *unticked*, and one button per answer.
+2. Each button's action is ▶️ **Run event**, pointing at its own indirect event.
+3. The **right-answer event** sets a variable, gives an ⭐ **award** and shows an explanation. Each **wrong-answer event** shows an explanation and lets the player try again.
+
+The [walkthrough](/docs/editor/walkthrough/pond/#the-question) builds it. The report records the **first answer** and the **number of tries**, whichever answer was chosen. See [Infoboxes and questions](/docs/editor/infoboxes/).
+
+## 4. A menu that stays open
+
+**For:** a lab bench, a notice board, a character with several things to ask about. The student picks, reads, and picks again.
+
+**You need:** a variable, an infobox, a ▶️ **Repeat** action.
+
+1. An event holds a non-dismissible 📋 **Infobox** with a button for each thing, plus a **Step away** button.
+2. Each button changes a variable or runs an event; **Step away** sets `menu_open` to 0.
+3. After the infobox, add 🔁 **Repeat** with the condition `menu_open = 1`, so the event starts again from its first action until the student steps away.
+
+<Aside type="caution">
+Do not have an event run itself with **Run event**: an event that is already running is not started again. Use **Repeat**.
+</Aside>
+
+## 5. A hands-on experiment
+
+**For:** change something and watch what happens. Add acid until the water is neutral. Move a slider until the circuit lights.
+
+**You need:** a variable that holds the thing being changed, buttons that change it, content that shows it, and a condition that detects the goal.
+
+1. Define `beaker_ph` starting at 4.
+2. Use the menu pattern (#4). Two buttons: **Add base** (`beaker_ph` + 1) and **Add acid** (`beaker_ph` - 1).
+3. Write the content so that it shows the value: `pH {{beaker_ph}}`.
+4. Add an action with the condition `beaker_ph = 7` that sets `neutral` to 1 and shows a celebration.
+
+Ask students for a **prediction** before they press anything.
+
+## 6. A team task
+
+**For:** several students must each do their part, and everyone sees the progress.
+
+**You need:** a **shared** variable and a per-player flag.
+
+1. Define `team_helped` as **Shared: one value for everyone playing together**, and `i_helped` as each player's own.
+2. The hotspot has the condition `i_helped = 0`. Its actions set `i_helped` to 1 and add 1 to `team_helped`.
+3. An objective, **Ticked off when** `team_helped >= 3`, finishes for the whole team when three students have each done their part.
+
+Put students in [teams](/docs/editor/classes/#teams) and each team gets its own counter. Missions made by the generator use this pattern, and give each team member a **role** with a job only they can do.
+
+## 7. Ask before and after
+
+**For:** measuring what a mission changed in students' thinking.
+
+1. At the start, ask the key question in an infobox with an **answer box** or a question: *"Why do plants need light?"*
+2. At the end, ask the same question again in a second infobox.
+3. In the [report](/docs/editor/reports/), each question shows the student's **first answer**. Compare the two.
+
+It is the simplest honest measure of change that the report offers. See [Maximizing learning](/docs/educators/maximize-learning/#8-revisit-and-measure-improvement-honestly).
+
+## 8. A reward that means something
+
+**For:** recognising real accomplishment without making stars the point.
+
+- Give ⭐ **Award stars or XP** in an event, when a student has *done* something: finished a test, answered right first time, helped a teammate.
+- Add a **badge** with a short, specific note (*"Traced muddy water back to where it started"*). The badge is shown on the player's profile.
+- An award is given **once per student** by default, however often the event runs.
+- Do not put awards on infobox buttons: awards are only given for an event's own actions, so have the button **Run event**.
+
+<Aside type="tip">
+**Combine them.** The Cloudy Pond walkthrough mission uses patterns 2 (a gate), 3 (a question with feedback) and 8 (an award). A bigger mission is these eight, repeated.
+</Aside>

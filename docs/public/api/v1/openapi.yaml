@@ -6,7 +6,7 @@ info:
   description: |
     The versioned API organizations use to connect their own systems to QBL. The full
     reference, including the privacy rules and how every figure is worked out, is at
-    /docs/developers/api-v1/.
+    /docs/api-v1/.
 
     Within version 1 fields are only ever added, never renamed or removed: ignore fields you
     do not know. Teachers and students in a path may be given as a QBL id or as `ext:` and

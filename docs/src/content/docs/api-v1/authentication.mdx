@@ -1,0 +1,137 @@
+---
+title: "Authentication"
+description: "Get API credentials from the district admin panel, trade them for a one-hour token, and give each system only the scopes it needs."
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+The API uses **OAuth 2 client credentials** ([RFC 6749 §4.4](https://www.rfc-editor.org/rfc/rfc6749#section-4.4)): your system has a client id and secret, trades them for a short-lived access token, and sends the token with every request. There are no user logins here: the API acts for your *organization*, not for a person.
+
+## Get an API client
+
+An **API client** is an id and a secret that belongs to one organization (a district, a school on its own, or a business) and can reach that organization and its schools, nothing else. Clients are made in the editor by the organization's admins.
+
+<Steps>
+
+1. **Make sure your organization has advanced features on.** API clients, single sign-on and roster syncing are turned on per organization by the QBL administrator, so that they are off until someone asks. Until then, the **District** page says so. If you run QBL yourself, the command is `php artisan qbl:org enable "Your District"`. It also creates the organization (`qbl:org create`) and makes an admin (`qbl:org admin "Your District" it@yourdistrict.org`).
+
+2. **Open the district admin panel.** In the editor, go to **District** (`/editor/#/district`). You see it if you are an admin of the organization. [More on the panel](/docs/editor/district-admin/).
+
+3. **Under *API clients*, make a client.** Give it a name that says what it is for ("SIS nightly sync", "Canvas grade passback") and tick **only the scopes it needs**.
+
+4. **Copy the secret now.** It is shown once and only a hash is kept. If it is lost, make a new secret: the old one and every token made with it stop working at once.
+
+</Steps>
+
+You can have as many clients as you like. One per system is the usual shape, because then the [audit log](/docs/api-v1/activity-and-privacy-requests/#the-audit-log) shows which system touched which student, and you can revoke one without disturbing the others.
+
+<Aside type="caution">
+The client secret is a password for your whole roster. Keep it in your secrets manager or the environment of the server that makes the calls, never in a web page, a mobile app or a repository.
+</Aside>
+
+## Get a token
+
+```http
+POST /api/v1/oauth/token
+Authorization: Basic base64(client_id:client_secret)
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&scope=roster:read reports:read
+```
+
+The id and secret may instead go in the body as `client_id` and `client_secret`. `scope` is optional. Leave it out and the token carries all of the client's scopes. Name some and it carries only those, never more than the client has.
+
+<Tabs>
+  <TabItem label="curl">
+    ```sh
+    curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
+      -d grant_type=client_credentials \
+      -d scope="roster:read reports:read" \
+      "$QBL/api/v1/oauth/token"
+    ```
+  </TabItem>
+  <TabItem label="JavaScript">
+    ```js
+    const res = await fetch(`${QBL}/api/v1/oauth/token`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ grant_type: 'client_credentials', scope: 'roster:read reports:read' }),
+    });
+    const { access_token, expires_in } = await res.json();
+    ```
+  </TabItem>
+  <TabItem label="Python">
+    ```python
+    import requests
+
+    r = requests.post(
+        f"{QBL}/api/v1/oauth/token",
+        auth=(CLIENT_ID, CLIENT_SECRET),
+        data={"grant_type": "client_credentials", "scope": "roster:read reports:read"},
+    )
+    r.raise_for_status()
+    token = r.json()["access_token"]
+    ```
+  </TabItem>
+</Tabs>
+
+```json
+{
+  "access_token": "qbla_3447f327b9941fb50b9e68ee0599da5bfbc9ca184414fcc9",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "roster:read reports:read"
+}
+```
+
+Send the token on every other request:
+
+```http
+Authorization: Bearer qbla_3447f327b9941fb50b9e68ee0599da5bfbc9ca184414fcc9
+```
+
+Tokens last **an hour** (`expires_in` is in seconds). Keep yours and reuse it. When a call comes back `401 invalid_token`, ask for a new one and retry once; there is no refresh token to manage. These tokens work only under `/api/v1`, and a student's or teacher's sign-in does not work there.
+
+## Scopes
+
+A scope is a permission. Give each client the smallest set that does its job: a reporting warehouse needs `reports:read` and has no business near `privacy`.
+
+| Scope | Allows |
+| --- | --- |
+| `roster:read` | Read schools, teachers, students and enrollments. |
+| `roster:write` | Create, change and deactivate schools, teachers, students and enrollments. |
+| `assignments:read` | Read the mission catalogue, assignments and teams. |
+| `assignments:write` | Create, change and remove assignments and teams. |
+| `avatars:read` | Read the avatars players can choose. |
+| `avatars:write` | Import, change and retire the organization's own avatars. |
+| `reports:read` | Progress, grades, engagement and learning reports, and the activity feed. |
+| `messages:read` | The chat messages students sent in assigned missions, for safety review. |
+| `launch` | One-time sign-in links for teachers and students. |
+| `privacy` | Export everything kept about a student; delete a teacher or student and all their data. |
+| `audit:read` | The record of requests made with the organization's clients. |
+
+A good starting split:
+
+| System | Scopes |
+| --- | --- |
+| Nightly roster sync from the SIS | `roster:read`, `roster:write` |
+| LMS integration (assign, sign in, grades back) | `assignments:read`, `assignments:write`, `launch`, `reports:read` |
+| Data warehouse | `reports:read` |
+| The district's privacy officer | `privacy`, `audit:read` |
+| Student safety review | `messages:read` |
+
+## Limits
+
+- **600 requests a minute** for each access token (a server can change this with `QBL_API_RATE_LIMIT`).
+- **20 requests a minute** from each address to `oauth/token`, so cache your token.
+- Over a limit you get `429` with a `Retry-After` header: wait that many seconds.
+- Batch endpoints take up to **1,000 people** in one request, which is far cheaper than 1,000 requests.
+
+## Rotating and revoking
+
+In the district panel, **Make a new secret** gives a client a new secret straight away: the old secret and every token made with it stop working. Do it on a schedule, or any time a secret may have leaked. **Revoke** switches a client off for good, and its tokens stop working too. Both take effect immediately, and the panel shows when each client was last used, which helps you spot one that nobody needs any more.
+
+If you are an organization admin you never need server access for any of this.

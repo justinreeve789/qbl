@@ -5,6 +5,8 @@ description: Scenario settings, testing a draft, publishing, and getting a missi
 
 ## Settings
 
+![The Settings tab, in sections: About the mission, Who plays and how, Talking and reading, Music and Advanced](../../../assets/screenshots/editor-settings.webp)
+
 The **Settings** tab holds what applies to the whole scenario, in sections: **About the mission**, **Who plays, and how**, **Talking and reading**, **Music** and **Advanced**.
 
 | Setting | What it does |
@@ -37,6 +39,8 @@ At the bottom of the page are **Export as a ZIP**, **Duplicate**, and **Delete t
 Test on the draft before publishing, and again after publishing as a student in another browser. Testing never touches what players have.
 
 ## Publishing
+
+![The Publish tab with one error found: it says where the problem is and has a Go there button](../../../assets/screenshots/editor-publish-check.webp)
 
 Players get the **published** version. Until you publish again, they keep the last one, however much you have edited since. Press **🚀 Publish** (on every page) or use the **Publish** tab:
 

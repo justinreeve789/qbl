@@ -3,7 +3,23 @@ title: Events and actions
 description: How a hotspot or event is built from conditions and actions, with every action type explained.
 ---
 
-Everything that *happens* in a mission is an **event**, and every event is an ordered list of **actions**. You edit an event by selecting it in the scene editor's outline (under **Start events**, **Hotspots**, **Indirect events** or **End events**); its form opens in the inspector, in folding sections that stay folded from event to event.
+Everything that *happens* in a mission is an **event**, and every event is an ordered list of **actions**. A hotspot the student clicks is an event; so is the welcome message when they arrive, and so is a conversation.
+
+![The scene editor with a hotspot selected: its settings, the conditions, and the list of actions it runs](../../../assets/screenshots/editor-hotspot-actions.webp)
+
+*A hotspot that opens an infobox. The inspector on the right is the event: its settings, its conditions and its list of actions.*
+
+## An example in one minute
+
+A rock blocks the path. Students must pick up the key to unlock the gate.
+
+| Event | Kind | Conditions | Actions |
+| ----- | ---- | ---------- | ------- |
+| `take-key` | Hotspot (click) | `has_key = 0` | 📋 **Infobox** "You found a key!" then 🔢 **Variable** `has_key` set to 1 |
+| `gate` | Hotspot (walk into) | `has_key = 1` | 🚪 **Jump** to the next scene |
+| `gate-locked` | Hotspot (walk into) | `has_key = 0` | 🔤 **Text overlay** "The gate is locked." |
+
+Three events, two conditions, one variable. Every mission, however big, is made of this.
 
 ## The four kinds of event
 
@@ -64,9 +80,9 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 
 | Action | What it does |
 | ------ | ------------ |
-| 📋 **Infobox** | A box of text, pictures, video, sounds and cards, with optional buttons. It can have several pages. [Details below](#infobox-and-questions) |
+| 📋 **Infobox** | A box of text, pictures, video, sounds and cards, with optional buttons. It can have several pages. [More](/docs/editor/infoboxes/) |
 | 💬 **Dialogue** | A speech bubble over the speaker, or a *story box* with a portrait. The speaker is the player or a **Character** |
-| 🔀 **Conversation** | A dialogue tree: lines said by the player and characters, where the player picks what to say next. [Details below](#conversations) |
+| 🔀 **Conversation** | A dialogue tree: lines said by the player and characters, where the player picks what to say next. [More](/docs/editor/conversations/) |
 | 🔤 **Text overlay** | Text over the screen: where, how long, size, colour and style |
 
 **Show something**
@@ -129,81 +145,12 @@ An **award** is given **once per student** by default, however often the event r
 
 What happens depends on the character. One set to **walk around on its own** (Characters page, *Getting around*) walks for everyone, can cross several rooms, and stays where it went. Any other character walks on this player's screen in this scene, and is back in its place next time; one that walks out through a door is gone until the scene is entered again. The player walks even while frozen, so **Freeze**, then **Walk** the player, makes a short cutscene; walked to another scene, they go through the door as if they had walked into it.
 
-### Infobox and questions
+### Infoboxes, questions and conversations
 
-An infobox has its **Content**, a **Picture or video at the top**, a **Size** (small, medium or large), a **Colour** for its edge and main buttons, a tick for **Can be closed without choosing a button**, and **Buttons**. Each button has its text, an optional action it performs, optional conditions, and how it **Shows as** (see [Right and wrong answers](#right-and-wrong-answers)). Leave a button's action as *Just close the box* for a plain "OK". A button's action can be any type, including another infobox with buttons of its own; the next box then takes over from the first without the screen flashing between them.
+These have their own pages, because they are where most of a mission's teaching happens:
 
-#### Writing the content
-
-The content is edited as it looks in the game, not as HTML. Type, and use the toolbar for **bold**, *italic*, underline, a highlight, a heading, lists and links. **＋ Insert** puts in:
-
-| Insert | What players get |
-| ------ | ---------------- |
-| 🖼️ **Picture** | A picture from the media library, small, medium or full width, with a caption. Tapped, it opens large. |
-| 🎞️ **Slideshow** | Several pictures to swipe through, with arrows and dots. |
-| 🎬 **Video** | A video with its controls. It can start by itself (without sound) and repeat. |
-| 🔊 **Sound** | A sound or a recording with play controls. |
-| 💡 **Callout** | A coloured note: a tip, a fact, a warning, or something to think about. |
-| 👆 **Reveal card** | A question or prompt that opens to show what it hides. What it hides is not read aloud until it is opened. |
-| 🃏 **Flip card** | A card with a front and a back that turns over when tapped. |
-| ✏️ **Answer box** | A box to type an answer in. See below. |
-| 📖 **Glossary word** | Select a word in the text first. Players tap it to see what it means, and it goes into their glossary. |
-| 🔢 **Variable** | A variable's value, such as a score, shown as a blue chip in the editor. |
-| 📄 **New page** | What comes after is on the next page. Players step through with **Next** and **Back** (or ← and →), the dots showing where they are; the box's buttons are on the last page. |
-
-Pictures, videos and sounds can also be **dropped or pasted** straight into the text: they are uploaded to the media library and put where they were dropped. Several pictures dropped at once become a slideshow. Click a block to change it in a pop-up; select it and press **Delete** to take it out, or **Alt+↑** and **Alt+↓** to move it.
-
-**👀 Preview** opens the box large, with the box itself beside it as players will see it, drawn by the game. The preview follows every change and its pages, slideshows, cards and buttons all work. **</>** shows the HTML, for anyone who wants to write it by hand; it is cleaned exactly as the game cleans it.
-
-#### Answer boxes
-
-An **answer box** saves what the player types in a variable when they press one of the box's buttons, before the button's action runs. A number is saved as a number. The first button (the one **Enter** presses, such as *Check*) waits until something has been typed; the others (*I don't know*, *Hint*) take what is there. The answer can then be shown with `{{name}}`, tested in a condition, and read in the class report, which lists what was typed beside the button pressed.
-
-#### Right and wrong answers
-
-A button's **Shows as** says what kind of answer it is:
-
-* **✓ Right answer**: the button turns green with a tick and a burst of stars before the box closes and its action runs.
-* **✗ Wrong answer**: it turns red and shakes, then the box closes and its action runs.
-* **↻ Wrong: try again**: it shakes and is crossed out, and the box stays open for another try. Its action, if it has one (a sound, adding one to a "tries" variable), runs while the box stays open.
-
-A box that cannot be closed must have at least one button that is always offered and is not *Try again*.
-
-A **quick question** needs nothing more than one box: untick **Can be closed without choosing a button**, mark the right answer **✓ Right answer** and the others **↻ Wrong: try again**, and put the explanation on the right answer's button (another infobox). A **question with feedback for each answer** is a standard pattern built from these pieces:
-
-1. A hotspot or indirect event holds an infobox with **Can be closed without choosing a button** *unticked*, and one button per answer.
-2. Each button's action is **Run event**, pointing at its own indirect event.
-3. The right-answer event sets a variable, gives the award and shows an explanation. A wrong-answer event just explains and lets the player try again.
-
-The [walkthrough](/docs/editor/walkthrough/pond/#the-question) builds exactly this. Because the report records the first answer a student chose, a question works as a check on what they thought *before* any feedback. More patterns (a menu that stays open, a hands-on experiment, collecting things) are under [Patterns](/docs/developers/extensions/#patterns).
-
-### Conversations
-
-A **Conversation** is a talk the player takes part in: a character says something, the player picks a reply from a few **choices**, and each choice leads to what is said next. It is one action, however many lines it has. (A **Dialogue** says a single line; use it for remarks and short announcements.)
-
-A new conversation starts as a small tree you can change: the character placed in the scene greets the player, who can ask *Who are you?* (the answer comes back round to the greeting) or say *Goodbye!*.
-
-**In the action's card** the conversation is drawn as a **map**, followed from the start: each line with who says it, and under a line with choices, each choice and where it leads. 🔁 *Back to* marks a choice that returns to a line shown above it; 🚩 marks the end. Lines nothing leads to are listed as *Never said*. Click any line, or **Edit the conversation**, to open it.
-
-**The conversation panel** lists every line on the left (▶ marks the start; *Starts with* changes it) and edits one line on the right:
-
-* **Who says it** (the player or a character), **What they say**, and a **Recording of this line** if you have one. **Said only when** makes a line conditional: when its conditions do not hold, the conversation skips it and goes on to its *Then go on to* line. That is how to greet a returning player differently.
-* **Reached from** shows the lines and choices that lead here; click one to go there. **← Back** returns to the line you were on.
-* **Then the player says…** holds the choices. Each has the player's words, **Leads to** (another line, **➕ A new line…**, or *Ends the conversation*; **Go →** opens that line), **A right answer** for the report, **Also do** (actions done when it is picked, such as setting a variable or running an event), and **Offered only when** conditions. Use ↑ ↓ to order them.
-* A line with no choices has **Then go on to**: the next line, or the end.
-* **Line id** is the line's name in the scenario file (`l1`, `l2`…); renaming it keeps every choice that pointed at it. **Delete line** turns choices that led to it into endings.
-
-Picking **➕ A new line…** creates the reply, said by whoever said the line it answers, and opens it, so you can write a branch from top to bottom and use **← Back** to return to the question.
-
-In the game the line appears as the action's **Shown as** says: in a story box with the speaker's portrait and the choices listed under it (the default), or in a speech bubble with the choices in a box at the bottom of the screen. Players click a choice or press its number, and cannot walk away while choosing. The action waits until the conversation is over.
-
-:::tip
-Every line with choices counts as a **question** in the report: it shows each student's first answer and how many tries they took. Tick **A right answer** on the right choices and the report also says whether the first answer was right. A wrong answer that leads to a hint and back to the question is the pattern for "try again".
-:::
-
-:::note
-To give stars or XP for a choice, put the award in an indirect event and have the choice **Run event** it: awards are only given for an event's own actions. A **Jump** in a choice ends the conversation.
-:::
+* **[Infoboxes and questions](/docs/editor/infoboxes/)**: writing the content, pictures, slideshows, flip cards, answer boxes, and marking answers **right**, **wrong** or **try again**.
+* **[Conversations](/docs/editor/conversations/)**: a talk where the player chooses what to say, drawn as a map and edited line by line.
 
 ### Reading aloud
 

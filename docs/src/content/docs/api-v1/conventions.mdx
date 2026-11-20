@@ -1,0 +1,143 @@
+---
+title: "Conventions, errors and versioning"
+description: "How ids, times, pages, CSV and errors work across the whole API, and what the version 1 promise covers."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The same few rules hold everywhere, so you only learn them once.
+
+## Requests and answers
+
+- JSON in and out (`Content-Type: application/json`), UTF-8. Avatar uploads may be `multipart/form-data`.
+- One thing comes back as `{ "data": { … } }`. A list comes back as `{ "data": [ … ], "meta": { … } }`.
+- Every answer carries the header `QBL-API-Version: 1`.
+- Send only the fields you mean to change in a `PATCH`. A field you leave out is left alone.
+
+## Ids: yours or QBL's
+
+QBL gives everything an integer **id**. You will usually have your own id for a person already, so wherever a teacher or student is named in a path, or in a field that ends in `_id`, you may write `ext:` followed by *your* `external_id` instead:
+
+```http
+GET  /api/v1/students/ext:a91f0c7e
+POST /api/v1/teachers/ext:t-5512/launch
+GET  /api/v1/enrollments?student_id=ext:a91f0c7e
+```
+
+Fields that end in `_external_ids` take lists of your ids (`student_external_ids: ["a91f0c7e", "c0ffee12"]`), and `teacher_external_id` names one.
+
+<Aside type="caution" title="One exception: filtering the student list by teacher">
+`GET /students?teacher_id=` wants the **QBL id** of the teacher. `ext:` is not understood there and the list comes back empty. Look the teacher up first with `GET /teachers?external_id=t-5512` and use the `id` in the answer. Everywhere else, `ext:` works.
+</Aside>
+
+## Times
+
+Times in answers are ISO 8601 in UTC (`2026-11-20T15:04:05Z`). Times you send may carry any offset: `2026-12-05T23:59:00-07:00` is stored as the equivalent UTC time. Reports that group by day take a `timezone` (an IANA name such as `America/Denver`) so that a day starts when your students' day starts.
+
+## Pages
+
+Lists of people and the activity feed take `limit` and `cursor`. `meta.next_cursor` is the cursor for the next page, or `null` on the last one.
+
+```sh
+curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/students?limit=100"
+# { "data": [ … ], "meta": { "next_cursor": "92150" } }
+
+curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/students?limit=100&cursor=92150"
+```
+
+Treat a cursor as opaque: keep it and send it back unchanged.
+
+## CSV
+
+Grades and the per-student engagement report also come as CSV with `?format=csv`. Nested values are flattened to `parent.child` columns, so `score_parts.objectives` is a column, and lists are joined with `;`. Values a spreadsheet might read as a formula (starting with `=`, `+`, `-` or `@`) are prefixed with `'` so they open as text.
+
+```csv
+student_id,external_id,display_name,team,status,score,score_parts.objectives,score_parts.accuracy,score_parts.vocabulary,objectives_done,objectives_total,questions_answered,answered_first_try,words_learned,words_total,time_spent,started_at,completed_at,late,missing
+92153,5e11ab1e,"Happy Gecko 452",Rockets,completed,82,100,40,80,6,6,5,2,4,5,2300,2026-11-20T14:22:41+00:00,2026-11-20T14:46:51Z,false,false
+92151,c0ffee12,"Keen Orca 359",Comets,in_progress,64.5,66.7,50,80,4,6,2,1,4,5,1700,2026-11-20T16:23:08+00:00,,false,false
+```
+
+## Errors
+
+A failed request has an HTTP status and a body in one shape. **Switch on `code`**, never on `message`, which may be reworded to be clearer.
+
+```json
+{
+  "error": {
+    "code": "pii_not_accepted",
+    "message": "QBL does not store personally identifiable information. Remove: first_name, email. Identify people by your own opaque external_id instead.",
+    "fields": {
+      "first_name": "Not accepted: personally identifiable.",
+      "email": "Not accepted: personally identifiable."
+    }
+  }
+}
+```
+
+`fields` appears when the problem is in particular fields of your request.
+
+| Status | `code` | What it means |
+| --- | --- | --- |
+| 400 | `unsupported_grant_type`, `invalid_scope` | A token request QBL cannot grant. |
+| 401 | `unauthenticated`, `invalid_token`, `invalid_client` | No token, a bad or expired one, or wrong client credentials. |
+| 403 | `insufficient_scope`, `forbidden` | The token lacks the scope named in the message. |
+| 404 | `not_found` | It does not exist, or it belongs to another organization. QBL never says which. |
+| 409 | `conflict`, `inactive`, `limit_reached` | An `external_id` is already used; a launch link was asked for a deactivated account; a limit such as the number of avatars is reached. |
+| 410 | `launch_expired` | A launch link was already used or is more than five minutes old. |
+| 422 | `invalid_request`, `pii_not_accepted` | A field is wrong (see `fields`), or it would identify someone. |
+| 429 | | Too many requests. Wait `Retry-After` seconds. |
+
+Real examples from the API:
+
+<details>
+<summary>401, no token</summary>
+
+```json
+{ "error": { "code": "unauthenticated", "message": "Send an access token: Authorization: Bearer <token>, from POST /api/v1/oauth/token." } }
+```
+</details>
+
+<details>
+<summary>403, the token's scopes are too narrow</summary>
+
+```json
+{ "error": { "code": "insufficient_scope", "message": "This needs the roster:write scope." } }
+```
+</details>
+
+<details>
+<summary>404, not found</summary>
+
+```json
+{ "error": { "code": "not_found", "message": "The student was not found." } }
+```
+</details>
+
+<details>
+<summary>409, that external_id is taken</summary>
+
+```json
+{
+  "error": {
+    "code": "conflict",
+    "message": "There is already someone with external_id a91f0c7e (id 92150).",
+    "fields": { "external_id": "Already used." }
+  }
+}
+```
+
+Use `POST /students/batch`, which creates or updates by `external_id`, when you do not know whether a person exists.
+</details>
+
+## Versioning
+
+The version is in the path: `/api/v1/…`. Within version 1, QBL will only ever:
+
+- **add** endpoints, optional request fields, response fields, error codes, scopes, and values of open-ended fields (an activity `type`, say), and
+- **loosen** rules (a longer limit, a field that becomes optional).
+
+So write your client to **ignore fields it does not know**. Anything that would break a client that does so (renaming or removing a field, changing a type or a meaning, tightening a rule) becomes a new version, `/api/v2`, served **beside** v1. A version is supported for at least 12 months after its successor is released, and during that time its answers carry `Deprecation` and `Sunset` headers ([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745), [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)).
+
+<Aside>
+The player, the editor and the game server use other, unversioned endpoints described in the [HTTP API contract](/docs/developers/api/). Those belong to QBL itself and may change at any time. Build integrations on `/api/v1`.
+</Aside>

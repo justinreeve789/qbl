@@ -1,31 +1,85 @@
 ---
 title: QBL Docs
-description: Build missions for students to walk around, and understand how QBL works.
+description: Build missions that students walk around, teach with them in the room, and connect them to your school's systems.
 template: splash
 hero:
-  tagline: Build missions that students walk around, with conversations, questions and rewards, and learn how it all works underneath.
+  tagline: Students don't watch the lesson. They walk into it, and you walk in with them. Build missions, run them with your class, and read exactly what your students understood.
+  image:
+    file: ../../assets/screenshots/game-control-room.webp
+    alt: A QBL mission scene, a starship control room, with a student avatar, a character to talk to and a checklist of objectives
   actions:
-    - text: Build your first mission
-      link: /docs/editor/walkthrough/set-up/
+    - text: Your first class in 20 minutes
+      link: /docs/start/quickstart/
       icon: right-arrow
-    - text: The editor at a glance
-      link: /docs/editor/
+    - text: Why teach with QBL
+      link: /docs/educators/
+      variant: secondary
+    - text: Build a mission
+      link: /docs/editor/walkthrough/set-up/
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Choose your path
 
 <CardGrid>
-  <Card title="Build a mission" icon="pencil">
-    How the editor works: scenarios and scenes, drawing a scene, hotspots, events and actions, and publishing. Start with [the editor at a glance](/docs/editor/).
+  <Card title="I teach" icon="open-book">
+    Run a mission with your class, stay in the room, and use the evidence afterwards.
+
+    * [Your first class in 20 minutes](/docs/start/quickstart/)
+    * [You are in the room: facilitating](/docs/educators/facilitation/)
+    * [A class period, step by step](/docs/educators/lesson-plan/)
+    * [Maximizing learning](/docs/educators/maximize-learning/)
+    * [Mission ideas](/docs/educators/ideas/)
   </Card>
-  <Card title="Walkthrough: The Cloudy Pond" icon="rocket">
-    Build a two-scene mission from an empty scenario to a published, assigned one, with a conversation, a gate and a question. [Start the walkthrough](/docs/editor/walkthrough/set-up/).
+  <Card title="I build missions" icon="pencil">
+    Make a mission in the editor, from your own idea or a generated first draft.
+
+    * [The editor at a glance](/docs/editor/)
+    * [Walkthrough: The Cloudy Pond](/docs/editor/walkthrough/set-up/)
+    * [Infoboxes and questions](/docs/editor/infoboxes/)
+    * [Conversations](/docs/editor/conversations/)
+    * [Patterns that work](/docs/editor/patterns/)
   </Card>
-  <Card title="Teaching" icon="open-book">
-    Add students, assign missions, put them in teams, look in on a team's game and read the report. See [Classes, missions and teams](/docs/editor/classes/).
+  <Card title="I run QBL for a school" icon="setting">
+    Roster classes, sign students in and read grades from your own systems, without sending a name.
+
+    * [The public API (v1)](/docs/api-v1/)
+    * [Authentication](/docs/api-v1/authentication/)
+    * [Privacy by design](/docs/api-v1/privacy/)
+    * [The district admin panel](/docs/editor/district-admin/)
+    * [Recipes](/docs/api-v1/recipes/)
   </Card>
-  <Card title="Developers" icon="seti:json">
-    The scenario JSON, the runtime extensions, save data, and the architecture, HTTP and multiplayer contracts. See [the developer overview](/docs/developers/).
+  <Card title="I develop QBL" icon="seti:json">
+    The scenario JSON, runtime extensions, save data, and the architecture, HTTP and multiplayer contracts.
+
+    * [Developer overview](/docs/developers/)
+    * [Architecture](/docs/developers/architecture/)
+    * [Scenario JSON](/docs/developers/scenario/)
+    * [Multiplayer protocol](/docs/developers/protocol/)
+  </Card>
+</CardGrid>
+
+## What QBL is
+
+A **mission** is a place students explore as an avatar: a pond turned brown, a starship laboratory, a market on another planet. They collect evidence, question characters, make predictions and answer questions that give feedback. You assign it with a due date and a note, group students into teams, and **look in** on any team's game as it happens.
+
+The report doesn't just say who finished. It shows each question's **first answer**, before any feedback, so you can teach from what your students actually thought.
+
+![The mission report: progress, objectives, and how many questions were answered in one try](../../assets/screenshots/report-overview.webp)
+
+<CardGrid>
+  <Card title="A teacher in every step" icon="approve-check">
+    Brief the class, circulate, look in on teams, debrief from the evidence. [Facilitating a mission](/docs/educators/facilitation/).
+  </Card>
+  <Card title="Build, copy or generate" icon="rocket">
+    A full [editor](/docs/editor/), public missions you can copy, and an [AI generator](/docs/editor/plans-and-generator/#the-ai-mission-generator) that drafts a standards-aligned mission in about ten minutes.
+  </Card>
+  <Card title="Private by design" icon="seti:lock">
+    Schools roster QBL without sending names: people are known by your own opaque id and play under a pseudonym. [How](/docs/api-v1/privacy/).
+  </Card>
+  <Card title="Connects to your systems" icon="seti:graph">
+    A versioned [API](/docs/api-v1/) for rostering, assigning, sign-in links, grades, standards coverage and an activity feed.
   </Card>
 </CardGrid>

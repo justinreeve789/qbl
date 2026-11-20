@@ -1,0 +1,50 @@
+---
+title: Instances, teams and save data
+description: How a team's copy of a mission is kept, what is saved per player, how avatars work and which tables hold it.
+---
+
+This page is for developers and administrators. For how teachers use teams, see [Classes, missions and teams](/docs/editor/classes/).
+
+## Instances and save data
+
+Every copy of a scenario's world is an **instance**, named by a group key. The address a player opens carries it: `/{code}?group=t7`.
+
+Group key | Instance
+--------- | --------
+`public` (or none) | The one open to everyone
+`a{assignment id}` | An assignment without teams, or its students who are in no team
+`t{team id}` | One team
+
+Save data belongs to the instance, not to the scenario:
+
+- What is **shared** (variables with scope `room`, where unique items were left) is kept once per instance, in `scenario_instances`.
+- What is **the player's own** (their variables, inventory, position, objectives) is kept once per player *per instance*, in `scenario_sessions`. A student's team game and the same student's casual game in the public instance are two saves.
+- Stars, XP, rank, the avatar and what was bought in the marketplace belong to the **account** and are the same everywhere.
+
+The game server refuses a player who asks for an instance they do not belong to. A teacher may join any instance of their own assignments, and an admin any instance.
+
+All the instances of one assignment, its teams' and its own, are in one **room** on the game server (named by the assignment, `a12`), which is what lets teams meet in scenes that are open to everyone. Each instance still has its own World, shared variables, items and saves; nothing of one team's state reaches another. The public instance and any other open group are rooms of their own.
+
+## Avatars
+
+Avatars belong to the platform, not to a scenario: there is one set, and a player keeps the character they chose in every mission. The choice is stored on the account (`users.avatar_media_id`); guests keep theirs in the browser. A player changes character from the missions page, by clicking their character's picture.
+
+Each avatar is a character, drawn from its animations like a scenario's characters (see [Characters](/docs/developers/extensions/#characters)), but global. The set is the `avatars` table (name, size, and animations whose pictures are rows of `platform_media`, the platform's own pictures, which avatars can share; an older row is one picture and a close-up), filled by `php artisan qbl:seed` from `database/seeders/data/avatars.php`. There is no screen for editing it yet. When a scenario is served, the set is added to the document as `avatars` (ids from 900000) with the pictures they use among its media (ids from 800000; an older row's picture and close-up from 900000 and 950000). The editor therefore no longer offers "players can choose this as their avatar". With an empty `avatars` table a scenario's own `avatar_media_ids` are used, which is what the standalone file backend does.
+
+:::note
+Organizations can also import avatars of their own, through the [public API](/docs/api-v1/avatars/). Those appear beside the platform's in the *Choose your character* screen.
+:::
+
+## Tables
+
+Table | Holds
+----- | -----
+`teacher_student` | Which students a teacher teaches (many to many)
+`assignments` | A scenario given by a teacher, with `due_at` and `note`
+`teams` | The teams of an assignment
+`assignment_student` | The students of an assignment and the team each is in, if any
+`avatars` | The platform's avatars
+`scenario_sessions.group_key` | Which instance a save belongs to (`public` for saves made before instances had their own)
+`activity_log` | What players did, one line at a time, for reports
+`chat_messages` | Every message sent, in a scene or privately, for auditing
+`user_badges` | Badges players earned

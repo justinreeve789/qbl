@@ -1,0 +1,331 @@
+---
+title: "Reports, grades and learning evidence"
+description: "Pull assignment reports, a gradebook feed, student reports and district-wide engagement and standards reports, and understand exactly how each number is worked out."
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+QBL does not only record that a student *finished*. It records **what they answered, how many tries it took, and what evidence they produced** for each thing the mission set out to teach. The reports below give you that at four levels: one assignment, one student, a mission across classes, and your whole organization.
+
+All of them need `reports:read` (chat messages need `messages:read`). Students appear by `student_id`, `external_id` and pseudonym. The organization-wide reports take the filters `school_id`, `teacher_id` and `grade_level`.
+
+| You want to know | Use |
+| --- | --- |
+| How is this class doing on this assignment? | [`GET /assignments/{id}/report`](#one-assignment) |
+| What goes in the gradebook? | [`GET /assignments/{id}/grades`](#grades-for-a-gradebook) |
+| How is this student doing overall? | [`GET /students/{id}/report`](#one-student) |
+| Which questions do students find hard, and what do they wrongly answer? | [`GET /reports/learning`](#learning-across-missions) |
+| Which standards have we actually taught? | [`GET /reports/standards`](#standards-coverage) |
+| Who is using QBL, how often, for how long? | [`GET /reports/engagement`](#engagement) |
+| A one-glance picture for the district | [`GET /reports/summary`](#summary) |
+
+## One assignment
+
+```http
+GET /api/v1/assignments/2/report
+```
+
+The full picture, as the teacher sees it in the editor's [report](/docs/editor/reports/).
+
+```json
+{
+  "data": {
+    "assignment_id": 2,
+    "scenario_id": 3,
+    "due_at": "2026-12-06T06:59:00Z",
+    "summary": {
+      "students": 6, "started": 5, "finished": 2,
+      "average_time_spent": 1880, "average_objectives_done": 5, "objectives_total": 6,
+      "questions_answered": 17, "answered_in_one_try": 8,
+      "average_words_learned": 4, "words_total": 5,
+      "average_score": 70.6, "completion_rate": 0.333
+    },
+    "objectives": [
+      { "id": "accept",  "text": "Visit the starship control room and accept the Wilting Stream mission", "optional": false, "completed_by": 5 },
+      { "id": "collect", "text": "Collect a plant sample from each of the three sites west of the landing site", "optional": false, "completed_by": 5 }
+    ],
+    "learning_objectives": [
+      { "id": "lo-evidence", "text": "Use evidence from tests to identify the source of a contaminant", "standards": ["MS-LS2-4"] }
+    ],
+    "students": [ … ]
+  }
+}
+```
+
+Each entry in `students` holds everything about one student's run:
+
+```json
+{
+  "student_id": 92153,
+  "external_id": "5e11ab1e",
+  "display_name": "Happy Gecko 452",
+  "group": "t4",
+  "team": "Rockets",
+  "started": true,
+  "time_spent": 2300,
+  "visits": 1,
+  "first_seen": "2026-11-20T14:22:41+00:00",
+  "last_seen": "2026-11-20T14:47:58+00:00",
+  "scene": "laboratory",
+  "scenes_visited": ["planet-landing", "control-room", "planet-surface", "wilting-marsh", "laboratory"],
+  "objectives_done": 6,
+  "objectives_total": 6,
+  "finished": true,
+  "objectives": [ { "id": "accept", "complete": true, "listed": true }, … ],
+  "hotspots_used": 4,
+  "answers": 8,
+  "questions": [
+    {
+      "action_id": "134069",
+      "attempts": 1,
+      "first_answer": "It gives us something to compare the sick plants with",
+      "last_answer": "It gives us something to compare the sick plants with",
+      "prompt": "…"
+    }
+  ],
+  "words_learned": 4,
+  "words_total": 5,
+  "stars_earned": 15,
+  "xp_earned": 80,
+  "badges": [],
+  "messages": 0,
+  "learning": [
+    {
+      "id": "lo-evidence",
+      "evidence": [
+        {
+          "interaction": "source-report",
+          "type": "question",
+          "values": { "first_answer": "Something in their surroundings is damaging them", "tries": 1 }
+        }
+      ]
+    }
+  ],
+  "grade": { "status": "completed", "score": 82, "…": "as in the next section" }
+}
+```
+
+The parts that matter most to a teacher:
+
+- **`questions[]`**: for every question the student met, how many `attempts` and the `first_answer` and `last_answer`. Where the mission's author [marked the right answers](/docs/editor/infoboxes/#marking-right-and-wrong-answers), you also get `first_answer_correct` and `last_answer_correct`.
+- **`learning[]`**: the **evidence** each learning objective recorded for this student. This is the field to read if you care about understanding, not completion.
+- **`time_spent`** is in seconds; **`scenes_visited`** and **`scene`** show where they went and where they stopped.
+
+## Grades for a gradebook
+
+```http
+GET /api/v1/assignments/2/grades
+GET /api/v1/assignments/2/grades?format=csv
+```
+
+One row per student, shaped for a gradebook:
+
+```json
+{
+  "student_id": 92153,
+  "external_id": "5e11ab1e",
+  "display_name": "Happy Gecko 452",
+  "team": "Rockets",
+  "status": "completed",
+  "score": 82,
+  "score_parts": { "objectives": 100, "accuracy": 40, "vocabulary": 80 },
+  "objectives_done": 6,
+  "objectives_total": 6,
+  "questions_answered": 5,
+  "answered_first_try": 2,
+  "words_learned": 4,
+  "words_total": 5,
+  "time_spent": 2300,
+  "started_at": "2026-11-20T14:22:41+00:00",
+  "completed_at": "2026-11-20T14:46:51Z",
+  "late": false,
+  "missing": false
+}
+```
+
+`status` is `not_started`, `in_progress` or `completed`. `score` is 0 to 100, and `null` until the student has started. Use `external_id` to match the row to your gradebook. [How the score is worked out](#how-the-numbers-are-worked-out) is below, and **you can ignore it entirely** and compute your own grade from `score_parts` or the report.
+
+<Aside type="tip">
+A score is a convenient summary, not the point. The questions a student got stuck on and the evidence they produced say far more about what they understood than 82 does. [Using the reports to teach](/docs/educators/maximize-learning/#3-use-the-evidence-not-just-the-score) shows how teachers use them.
+</Aside>
+
+## One student
+
+```http
+GET /api/v1/students/ext:a91f0c7e/report?from=2026-09-01&to=2026-12-20&timezone=America/Denver
+```
+
+Every assignment with its grade, time, words and evidence, plus totals, engagement and standards:
+
+```json
+{
+  "data": {
+    "student_id": 92150,
+    "external_id": "a91f0c7e",
+    "display_name": "Steady Rover 231",
+    "grade_level": "8",
+    "school_id": 2,
+    "totals": {
+      "assignments": 1, "completed": 1, "missing": 0, "late": 0, "average_score": 87,
+      "time_spent": 2300, "words_learned": 4, "stars": 0, "xp": 0, "rank": "Cadet", "badges": 0
+    },
+    "engagement": { "active_minutes": 23, "sessions": 1, "actions": 20, "messages": 1, "…": "…" },
+    "standards": [
+      { "code": "MS-LS2-4", "framework": null, "description": null, "alignment": "primary", "assignments": 1, "completed": 1, "average_score": 87 }
+    ],
+    "assignments": [ { "assignment_id": 2, "title": "The Wilting Stream", "team": "Comets", "grade": { … }, "learning": [ … ] } ]
+  }
+}
+```
+
+`standards` lists each curriculum standard the student's missions address, with how many of those they completed and their average score on them: a student's *standards profile* for a parent-teacher conference or an intervention plan.
+
+## Learning across missions
+
+```http
+GET /api/v1/reports/learning?from=2026-09-01&to=2026-12-20
+```
+
+Per mission (for assignments made between `from` and `to`, or for one `scenario_id`): how many students started and finished, the average score and time, each objective's completion rate, and **each question's first-answer distribution**. That last one is the report a department head should look at:
+
+```json
+{
+  "action_id": "134069",
+  "prompt": "…",
+  "students": 5,
+  "average_attempts": 1.2,
+  "first_try_rate": 0.8,
+  "first_answer_correct_rate": null,
+  "first_answers": [
+    { "answer": "It gives us something to compare the sick plants with", "students": 4 },
+    { "answer": "Healthy plants are easier to carry", "students": 1 }
+  ]
+}
+```
+
+When many students choose the same *wrong* first answer, you have found a common misconception, and a teacher can address it in the next lesson. (`first_answer_correct_rate` is filled in when the author marked which answers are right.)
+
+Each learning objective also reports its evidence rate and the values students recorded:
+
+```json
+{
+  "id": "lo-evidence",
+  "text": "Use evidence from tests to identify the source of a contaminant",
+  "standards": ["MS-LS2-4"],
+  "students_with_evidence": 6,
+  "values": {
+    "source-report.first_answer": { "Something in their surroundings is damaging them": 3, "unanswered": 3 },
+    "source-report.tries": { "1": 3 }
+  },
+  "evidence_rate": 1
+}
+```
+
+## Standards coverage
+
+```http
+GET /api/v1/reports/standards
+```
+
+Which standards your missions address, which missions address them, how many students were taught each, and how they did. It is the `standards` part of the learning report on its own.
+
+```json
+{
+  "code": "MS-LS2-4",
+  "framework": null,
+  "description": null,
+  "alignment": "primary",
+  "scenarios": [3],
+  "students": 6,
+  "completion_rate": 0.333,
+  "average_score": 70.6
+}
+```
+
+`framework` and `description` are filled in when the mission's author gave them. Where the author entered only a code, they are `null`.
+
+## Engagement
+
+```http
+GET /api/v1/reports/engagement?from=2026-10-22&to=2026-11-21&timezone=America/Denver&interval=day&group_by=school
+```
+
+Who took part, how often and how long. It defaults to the last 30 days.
+
+| Parameter | Meaning |
+| --- | --- |
+| `from`, `to` | The period. Default: the last 30 days. |
+| `timezone` | IANA name, for where days begin. Default UTC. |
+| `interval` | `day` or `week`, for the `series`. |
+| `group_by` | `school`, `grade_level` or `teacher`, adds `groups`. |
+| `include=students` | A row per student too (or `format=csv` for just those rows as CSV). |
+
+```json
+{
+  "data": {
+    "period": { "from": "2026-10-22T00:00:00-06:00", "to": "2026-11-21T00:00:00-07:00", "timezone": "America/Denver", "interval": "day" },
+    "totals": {
+      "students": 7, "active_students": 5, "participation_rate": 0.714,
+      "sessions": 5, "active_minutes": 99, "actions": 81, "messages": 1,
+      "average_minutes_per_active_student": 19.8,
+      "average_sessions_per_active_student": 1,
+      "average_active_days_per_active_student": 1
+    },
+    "series": [ { "start": "2026-11-20", "active_students": 5, "sessions": 5, "active_minutes": 99, "actions": 81 } ],
+    "groups": [
+      {
+        "school_id": 2, "students": 6, "active_students": 5, "participation_rate": 0.833,
+        "sessions": 5, "active_minutes": 99, "actions": 81, "messages": 1,
+        "average_minutes_per_active_student": 19.8
+      }
+    ]
+  }
+}
+```
+
+`series` is one entry per day or week: the trend to chart. (The listing above shows only the busy day; the real answer has an entry for every day in the period.) `groups` appears with `group_by`, one entry per school, grade level or teacher. With `include=students` and `format=csv` you get one row per student:
+
+```csv
+student_id,external_id,display_name,school_id,grade_level,active_days,sessions,active_minutes,actions,messages,last_active_at
+92150,a91f0c7e,"Steady Rover 231",2,8,1,1,23,20,1,2026-11-20T17:46:04Z
+92151,c0ffee12,"Keen Orca 359",2,7,1,1,19,14,0,2026-11-20T16:42:07Z
+```
+
+## Summary
+
+```http
+GET /api/v1/reports/summary
+```
+
+```json
+{
+  "data": {
+    "schools": 1, "teachers": 1, "students": 7,
+    "assignments": 1, "assignments_open": 1, "student_assignments": 6,
+    "completion_rate": 0.333, "missing": 0, "average_score": 70.6,
+    "active_students_7_days": 5, "active_students_30_days": 5,
+    "participation_rate_30_days": 0.714, "active_minutes_30_days": 99
+  }
+}
+```
+
+The numbers for the top of a district dashboard.
+
+## What students did, in order
+
+Two more endpoints give raw activity: `GET /assignments/{id}/activity` (what students did in one assignment, newest first) and the organization-wide [activity feed](/docs/api-v1/activity-and-privacy-requests/#the-activity-feed) for your data warehouse. The chat transcript of an assignment is `GET /assignments/{id}/messages`, with `messages:read`.
+
+## How the numbers are worked out
+
+None of this is hidden. Everything below is how QBL computes the figures, so you can reproduce them or choose to ignore them.
+
+- **Time spent** is the game's own clock for the student's save in that game (seconds actually in the mission, not minutes the tab was open).
+- **Sessions and active minutes** (engagement) come from the activity log. A gap of more than **15 minutes** between two things a student did starts a new session; a session lasts from its first to its last line, and at least one minute.
+- **Active student**: did anything in the period. **Participation rate**: active students ÷ students with active status in the population.
+- **Actions**: hotspots used, answers chosen, objectives completed, words learned and awards earned.
+- **First try**: a question answered once. Missions usually ask again until the answer is right, so one attempt usually means right first time. Where the author marks answers (`"correct": true` or `false` on an infobox's `call_to_actions`), the report also gives `first_answer_correct`, and the score uses it.
+- **Score** (0 to 100) = **60% objectives** (required objectives done ÷ required objectives) + **25% accuracy** (first answers right, or the first-try rate where answers are not marked) + **15% vocabulary** (glossary words learned ÷ words). A part the mission does not have is left out and the others share its weight. No score until the student has started.
+
+  Worked through for the student above: 100% of objectives × 0.60 = 60, 40% accuracy × 0.25 = 10, 80% vocabulary × 0.15 = 12. Total 82.
+- **Completed**: every required objective done. **Late**: completed after `due_at` (judged at the time the last objective was completed). **Missing**: past `due_at` and not completed.
+- **Learning objectives' evidence** is whatever the mission's author recorded in variables for each learning objective, with each student's values. Reports count how many students produced each value.

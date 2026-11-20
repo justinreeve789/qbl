@@ -1,0 +1,221 @@
+---
+title: "People and classes"
+description: "Create schools, teachers and students, keep them in step with your student information system in one batch call a night, and put students in teachers' classes."
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+This is the part your student information system (SIS) talks to. Your roster becomes QBL's roster, and **enrollments** decide whose students a teacher can assign missions to and read reports about.
+
+Every endpoint here needs `roster:read` (to read) or `roster:write` (to change); deletion needs `privacy`. See [Authentication](/docs/api-v1/authentication/#scopes).
+
+## The organization and its schools
+
+```http
+GET /api/v1/organization
+```
+
+```json
+{
+  "data": {
+    "id": 1,
+    "parent_id": null,
+    "name": "Riverside School District",
+    "kind": "district",
+    "external_id": null,
+    "settings": [],
+    "created_at": "2026-11-20T20:21:17Z",
+    "updated_at": "2026-11-20T20:21:17Z"
+  }
+}
+```
+
+`kind` is `district`, `school`, `business` or `other`. `PATCH /organization` changes `name`, `external_id` or `data_retention_days`.
+
+A district has **schools** one level below it:
+
+```http
+POST /api/v1/schools
+{ "name": "Riverside Middle", "external_id": "RMS" }
+```
+
+```json
+{
+  "data": {
+    "id": 2,
+    "parent_id": 1,
+    "name": "Riverside Middle",
+    "kind": "school",
+    "external_id": "RMS",
+    "settings": [],
+    "created_at": "2026-11-20T20:21:54Z",
+    "updated_at": "2026-11-20T20:21:54Z"
+  }
+}
+```
+
+`GET /schools`, `GET/PATCH/DELETE /schools/{id}` do what they say. Deleting a school leaves its people in the organization, in no school.
+
+## Teachers and students
+
+A **person** looks like this. Students have `grade_level` and `teacher_ids`; teachers have `student_count`.
+
+<Tabs>
+  <TabItem label="A student">
+    ```json
+    {
+      "id": 92150,
+      "type": "student",
+      "external_id": "a91f0c7e",
+      "display_name": "Steady Rover 231",
+      "school_id": 2,
+      "grade_level": "7",
+      "teacher_ids": [],
+      "avatar_media_id": null,
+      "status": "active",
+      "created_at": "2026-11-20T20:21:54Z",
+      "updated_at": "2026-11-20T20:21:54Z"
+    }
+    ```
+  </TabItem>
+  <TabItem label="A teacher">
+    ```json
+    {
+      "id": 92149,
+      "type": "teacher",
+      "external_id": "t-5512",
+      "display_name": "Ms. R",
+      "school_id": 2,
+      "student_count": 0,
+      "avatar_media_id": null,
+      "status": "active",
+      "created_at": "2026-11-20T20:21:54Z",
+      "updated_at": "2026-11-20T20:21:54Z"
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+| Endpoint | Scope | Notes |
+| --- | --- | --- |
+| `GET /students`, `GET /teachers` | `roster:read` | Filters: `school_id`, `status` (`active` or `inactive`), `external_id`, `updated_since`, and for students `teacher_id` (the QBL id; see [conventions](/docs/api-v1/conventions/#ids-yours-or-qbls)). Paged. |
+| `POST /students`, `POST /teachers` | `roster:write` | `external_id` (required), `school_id`, `grade_level` (students), `display_name` (teachers), `status`, and `teacher_ids` or `teacher_external_ids` (students) or `student_ids` or `student_external_ids` (teachers). `409` if the `external_id` is taken. |
+| `POST /students/batch`, `POST /teachers/batch` | `roster:write` | Up to 1,000 at once, **created or updated by `external_id`**. |
+| `GET /students/{id}`, `GET /teachers/{id}` | `roster:read` | The id may be `ext:` and yours. |
+| `PATCH /students/{id}`, `PATCH /teachers/{id}` | `roster:write` | Any field above, plus `regenerate_display_name`. Lists of teachers or students **replace** the current ones. |
+| `DELETE /students/{id}`, `DELETE /teachers/{id}` | `privacy` | Deletes the person and everything about them. See [deletion](/docs/api-v1/activity-and-privacy-requests/#delete-a-student-or-a-teacher). |
+
+### The nightly sync: batch
+
+You rarely need single-person calls. A nightly sync is **one batch for teachers, one for students**, then a `PATCH` to deactivate people who left. A batch creates the people it has not seen and updates the ones it has, and each entry gets its own result, so one bad row does not stop the other nine hundred and ninety-nine.
+
+```http
+POST /api/v1/students/batch
+{
+  "students": [
+    { "external_id": "a91f0c7e", "school_id": 2, "grade_level": "7" },
+    { "external_id": "c0ffee12", "school_id": 2, "grade_level": "7" },
+    { "external_id": "badd00d5", "school_id": 2, "grade_level": "7" }
+  ]
+}
+```
+
+```json
+{
+  "data": [
+    { "index": 0, "external_id": "a91f0c7e", "result": "created", "id": 92150 },
+    { "index": 1, "external_id": "c0ffee12", "result": "created", "id": 92151 },
+    { "index": 2, "external_id": "badd00d5", "result": "created", "id": 92152 }
+  ],
+  "meta": { "created": 3, "updated": 0, "errors": 0 }
+}
+```
+
+Send it again tomorrow with a changed grade level and a new student: the first is `updated`, the second `created`.
+
+```json
+{
+  "data": [
+    { "index": 0, "external_id": "a91f0c7e", "result": "updated", "id": 92150 },
+    { "index": 1, "external_id": "0ddba11", "result": "created", "id": 92156 }
+  ],
+  "meta": { "created": 1, "updated": 1, "errors": 0 }
+}
+```
+
+A row that is refused comes back with `result: "error"` and the same `error` object a single call would have given. Here, the second row carried an email and the third had a space in its id:
+
+```json
+{
+  "data": [
+    { "index": 0, "external_id": "ok-1", "result": "created", "id": 92157 },
+    {
+      "index": 1, "external_id": "bad-1", "result": "error",
+      "error": {
+        "code": "pii_not_accepted",
+        "message": "QBL does not store personally identifiable information. Remove: email. Identify people by your own opaque external_id instead.",
+        "fields": { "email": "Not accepted: personally identifiable." }
+      }
+    },
+    {
+      "index": 2, "external_id": "has space", "result": "error",
+      "error": {
+        "code": "invalid_request",
+        "message": "external_id must be 1 to 64 letters, digits, dots, colons, underscores or hyphens.",
+        "fields": { "external_id": "external_id must be 1 to 64 letters, digits, dots, colons, underscores or hyphens." }
+      }
+    }
+  ],
+  "meta": { "created": 1, "updated": 0, "errors": 2 }
+}
+```
+
+The HTTP status is still `200`, so **check `meta.errors` after every batch**.
+
+### Leaving and returning
+
+Set `status: "inactive"` when someone leaves. They are signed out everywhere and cannot be sent a launch link, but **their data stays**, so a student who comes back in January picks up where they stopped. Set `active` again to bring them back. Delete only when you must (see [privacy requests](/docs/api-v1/activity-and-privacy-requests/#delete-a-student-or-a-teacher)).
+
+```http
+PATCH /api/v1/students/ext:a91f0c7e
+{ "status": "inactive" }
+```
+
+<Aside type="tip">
+A **new pseudonym** is a one-line fix: `PATCH /students/{id}` with `{"regenerate_display_name": true}`. It changes the name players see from now on.
+</Aside>
+
+## Enrollments
+
+An **enrollment** puts a student in a teacher's class. The teacher can then assign them missions and see their reports, both in the editor's [Classes page](/docs/editor/classes/) and through the API.
+
+```http
+POST /api/v1/enrollments
+{
+  "teacher_external_id": "t-5512",
+  "student_external_ids": ["a91f0c7e", "c0ffee12", "badd00d5"]
+}
+```
+
+```json
+{
+  "data": [
+    { "teacher_id": 92149, "student_id": 92150, "created_at": "2026-11-20T20:21:54Z" },
+    { "teacher_id": 92149, "student_id": 92151, "created_at": "2026-11-20T20:21:54Z" },
+    { "teacher_id": 92149, "student_id": 92152, "created_at": "2026-11-20T20:21:54Z" }
+  ],
+  "meta": { "added": [92150, 92151, 92152] }
+}
+```
+
+Enrolling someone who is already enrolled is fine; `meta.added` lists only those who are new.
+
+| Endpoint | Scope | Notes |
+| --- | --- | --- |
+| `GET /enrollments?teacher_id=&student_id=` | `roster:read` | Either filter may be `ext:`. Returns `[{teacher_id, student_id, created_at}]`. |
+| `POST /enrollments` | `roster:write` | `teacher_id` or `teacher_external_id`, and `student_ids` or `student_external_ids`. |
+| `DELETE /enrollments?teacher_id=&student_id=` | `roster:write` | Also takes the student out of that teacher's assignments. |
+
+<Aside type="note">
+Enrollments belong to the roster. Assigning a mission to a student who is not yet in the teacher's class enrolls them automatically, so a plain "assign this to these students" call just works.
+</Aside>

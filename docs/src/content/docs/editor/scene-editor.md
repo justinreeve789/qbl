@@ -5,6 +5,8 @@ description: Draw a scene, set where players can walk, and place hotspots, chara
 
 Open a scene from the Scenes page and you get the scene editor: three panes side by side.
 
+![The scene editor with its three panes: the outline, the canvas and the inspector](../../../assets/screenshots/editor-scene-editor.webp)
+
 | Pane | What it is |
 | ---- | ---------- |
 | **Left: the outline** | Everything in the scene as folding lists, A to Z. The easy way to find and select something that is hard to click. Each list heading has a **+** to add one |
@@ -84,6 +86,8 @@ A **shadow spot** is a patch of shade on the floor: figures walking through it d
 Open the hotspot's action to choose the **Scene** to go to and the spawn point to **Arrive at**. Because an exit is an ordinary hotspot, it can have conditions (a locked gate) and other actions before the jump (a sound, a line of text). The [walkthrough](/docs/editor/walkthrough/schoolyard/#a-gate-that-needs-a-conversation) builds a gate that way.
 
 ## Hotspots
+
+![A hotspot selected in the scene editor: its form on the right shows where it fires, its position and its radius](../../../assets/screenshots/editor-hotspot.webp)
 
 A hotspot has a position and a **Radius**. Drag its dashed ring on the canvas to change the radius.
 

@@ -1,0 +1,91 @@
+---
+title: "Avatars"
+description: "Give your school its own avatars: a mascot, a team color, a class pet. Import them by upload, with sprite sheets and animations."
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Players choose an avatar from the platform's set and from their **organization's own**. A district can add its mascot; a school can add one per house or team. Players see each other's avatars in public missions.
+
+Reading needs `avatars:read`; importing, changing and retiring need `avatars:write`.
+
+## List the avatars
+
+```http
+GET /api/v1/avatars
+```
+
+Each entry looks like the one imported below. Add `?include=inactive` to see retired ones too. A player's `avatar_media_id` (on a student or teacher) is a `media_id` from this list.
+
+## Import an avatar
+
+```http
+POST /api/v1/avatars
+```
+
+Send the picture as `multipart/form-data` (`image`, and optionally `portrait`), or in JSON as `image_base64` and `portrait_base64` (base64, or a `data:` URL). PNG, WebP, GIF or JPEG, up to 5 MB and 4096 pixels a side; at most 200 active per organization.
+
+<Tabs>
+  <TabItem label="curl">
+    ```sh
+    curl -s -H "Authorization: Bearer $TOKEN" \
+      -F name="Riverside Otter" -F scale=0.9 \
+      -F image=@otter-sheet.png -F portrait=@otter-face.png \
+      -F 'sheet={"columns":6,"rows":2}' \
+      -F 'animations=[{"name":"idle","frames":[0,1]},{"name":"walk","frames":[6,7,8,9,10,11]}]' \
+      "$QBL/api/v1/avatars"
+    ```
+  </TabItem>
+  <TabItem label="Answer (201)">
+    ```json
+    {
+      "data": {
+        "id": 11,
+        "media_id": 900011,
+        "name": "Riverside Otter",
+        "external_id": null,
+        "owner": "organization",
+        "image_url": "/media/avatars/o1/131fdcd334b58905c0335bac.png",
+        "portrait_url": "/media/avatars/o1/f53cb69ea801607f319bb94c.png",
+        "scale": 0.9,
+        "width": 384,
+        "height": 256,
+        "sheet": { "columns": 6, "rows": 2 },
+        "animations": [
+          { "name": "idle", "frames": [0, 1] },
+          { "name": "walk", "frames": [6, 7, 8, 9, 10, 11] }
+        ],
+        "active": true,
+        "sequence": 0
+      }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+| Field | Notes |
+| --- | --- |
+| `name` | Required, up to 64 characters. |
+| `external_id` | Optional: your id for it. |
+| `image` | The avatar: a single picture, or a **sprite sheet** of frames. |
+| `portrait` | An optional close-up, shown beside what the avatar says in conversations. |
+| `scale` | 0.1 to 4: how large it is drawn (default 1). The platform's own are about 0.85. |
+| `sheet` | For a sprite sheet: `{"columns", "rows"}` (1 to 32 each). Frames are numbered left to right, top to bottom, from 0. |
+| `animations` | With a sheet: `[{name, frames, duration?, repeat?}]`, as described in [named animations](/docs/developers/extensions/#sprite-sheets-and-named-animations). `idle` and `walk` (or `walk_left` and `walk_right`) play by themselves. |
+| `sequence` | Where it sits in the list. |
+
+In the example the sheet is 384 × 256 pixels with six columns and two rows, so each frame is 64 × 128: frames 0 and 1 are the standing pair, 6 to 11 the walking cycle.
+
+In a multipart request, send `sheet` and `animations` as JSON strings.
+
+<Aside type="caution" title="Uploaded, never linked">
+Links to pictures elsewhere (`image_url` in the request) are refused. Avatars are copied into QBL, so no student's browser ever contacts a third-party server to draw a classmate. See [Privacy](/docs/api-v1/privacy/).
+</Aside>
+
+## Change or retire one
+
+`PATCH /avatars/{id}` changes any of the fields above, a new picture included, or `active`. `DELETE /avatars/{id}` **retires** it rather than erasing it: games in progress can still draw it, and whoever was wearing it is asked to choose again. Platform avatars cannot be changed.
+
+## Give someone an avatar
+
+Avatars are chosen by the players themselves in the game's *Choose your character* screen: the organization's own appear beside the platform's. The API's job is to make the choices; the choosing stays with the student.

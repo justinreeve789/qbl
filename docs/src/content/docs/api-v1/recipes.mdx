@@ -1,0 +1,291 @@
+---
+title: "Recipes"
+description: "Copy-paste, tested code for the jobs people actually do with the API: a small client, a nightly roster sync, grades back into a gradebook, and a district dashboard feed."
+---
+
+import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
+
+Short, complete programs for the common jobs. All of them have been run against the real API.
+
+## A small client in JavaScript and Python
+
+Every recipe below uses this client. It gets a token, **reuses it** until a minute before it expires, retries once on an expired token, waits when told to slow down (`429`), turns errors into exceptions that carry the `code`, and walks pages for you.
+
+<Tabs>
+  <TabItem label="JavaScript (qbl.mjs)">
+    Node 18 or newer, no dependencies. Set `QBL`, `CLIENT_ID` and `CLIENT_SECRET` in the environment.
+
+    ```js
+// qbl.mjs: a tiny client for the QBL public API (Node 18+, no dependencies)
+const QBL = process.env.QBL;                          // e.g. https://qbl.example
+const { CLIENT_ID, CLIENT_SECRET } = process.env;
+
+let token = null, expiresAt = 0;
+
+async function getToken() {
+  if (token && Date.now() < expiresAt - 60_000) return token;   // reuse until a minute before it expires
+  const res = await fetch(`${QBL}/api/v1/oauth/token`, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ grant_type: 'client_credentials' }),
+  });
+  if (!res.ok) throw new Error(`token: ${res.status} ${await res.text()}`);
+  const body = await res.json();
+  token = body.access_token;
+  expiresAt = Date.now() + body.expires_in * 1000;
+  return token;
+}
+
+export async function api(method, path, body) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(`${QBL}/api/v1${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (res.status === 401) { token = null; continue; }                    // expired: get a new one and retry
+    if (res.status === 429) {                                              // slow down
+      await new Promise((r) => setTimeout(r, 1000 * Number(res.headers.get('Retry-After') ?? 1)));
+      continue;
+    }
+    const text = await res.text();
+    const json = text ? JSON.parse(text) : null;
+    if (!res.ok) throw Object.assign(new Error(json?.error?.message ?? res.statusText), { status: res.status, code: json?.error?.code, fields: json?.error?.fields });
+    return json;
+  }
+  throw new Error(`${method} ${path}: gave up after 3 attempts`);
+}
+
+// Walk every page of a list.
+export async function* pages(path) {
+  let cursor = null;
+  do {
+    const sep = path.includes('?') ? '&' : '?';
+    const { data, meta } = await api('GET', `${path}${sep}limit=100${cursor ? `&cursor=${cursor}` : ''}`);
+    yield* data;
+    cursor = meta?.next_cursor ?? null;
+  } while (cursor);
+}
+    ```
+  </TabItem>
+  <TabItem label="Python (qbl.py)">
+    Python 3.9 or newer and `requests`. Set the same three environment variables.
+
+    ```python
+"""qbl.py: a tiny client for the QBL public API (Python 3.9+, needs `requests`)."""
+import os, time
+import requests
+
+QBL = os.environ["QBL"]                      # e.g. https://qbl.example
+CLIENT = (os.environ["CLIENT_ID"], os.environ["CLIENT_SECRET"])
+
+_token, _expires = None, 0.0
+
+
+def _get_token() -> str:
+    global _token, _expires
+    if _token and time.time() < _expires - 60:          # reuse until a minute before it expires
+        return _token
+    r = requests.post(f"{QBL}/api/v1/oauth/token", auth=CLIENT,
+                      data={"grant_type": "client_credentials"}, timeout=10)
+    r.raise_for_status()
+    body = r.json()
+    _token, _expires = body["access_token"], time.time() + body["expires_in"]
+    return _token
+
+
+class QblError(Exception):
+    def __init__(self, status, code, message, fields=None):
+        super().__init__(f"{status} {code}: {message}")
+        self.status, self.code, self.fields = status, code, fields
+
+
+def api(method: str, path: str, body=None):
+    global _token
+    for _ in range(3):
+        r = requests.request(method, f"{QBL}/api/v1{path}", json=body, timeout=30,
+                             headers={"Authorization": f"Bearer {_get_token()}"})
+        if r.status_code == 401:                         # expired: get a new one and retry
+            _token = None
+            continue
+        if r.status_code == 429:                         # slow down
+            time.sleep(float(r.headers.get("Retry-After", 1)))
+            continue
+        data = r.json() if r.content else None
+        if not r.ok:
+            e = (data or {}).get("error", {})
+            raise QblError(r.status_code, e.get("code"), e.get("message", r.reason), e.get("fields"))
+        return data
+    raise RuntimeError(f"{method} {path}: gave up after 3 attempts")
+
+
+def pages(path: str):
+    """Walk every page of a list."""
+    cursor = None
+    while True:
+        sep = "&" if "?" in path else "?"
+        page = api("GET", f"{path}{sep}limit=100" + (f"&cursor={cursor}" if cursor else ""))
+        yield from page["data"]
+        cursor = (page.get("meta") or {}).get("next_cursor")
+        if not cursor:
+            return
+    ```
+  </TabItem>
+</Tabs>
+
+Using it:
+
+<Tabs>
+  <TabItem label="JavaScript">
+    ```js
+    import { api, pages } from './qbl.mjs';
+
+    const me = await api('GET', '/');                       // who am I?
+    for await (const s of pages('/students')) console.log(s.external_id, s.display_name);
+
+    try {
+      await api('POST', '/students', { external_id: 'zz', email: 'a@b.c' });
+    } catch (e) {
+      console.log(e.status, e.code, e.fields);              // 422 pii_not_accepted { email: 'Not accepted: personally identifiable.' }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Python">
+    ```python
+    from qbl import api, pages, QblError
+
+    print(api("GET", "/")["data"]["organization_id"])
+    for s in pages("/students"):
+        print(s["external_id"], s["display_name"])
+
+    try:
+        api("POST", "/students", {"external_id": "zz", "email": "a@b.c"})
+    except QblError as e:
+        print(e.status, e.code, e.fields)   # 422 pii_not_accepted {'email': 'Not accepted: personally identifiable.'}
+    ```
+  </TabItem>
+</Tabs>
+
+## Sync your roster every night
+
+The job: make QBL's teachers, students and classes match your student information system, without sending a single name.
+
+<Steps>
+
+1. Turn each SIS id into an opaque `external_id` with a [keyed hash](/docs/api-v1/privacy/#make-your-external-ids-opaque).
+2. Send teachers, then students (with `teacher_external_ids`), in batches of up to 1,000. A batch creates and updates, so it is safe to run every night.
+3. Deactivate (never delete) anyone QBL has that the SIS no longer lists.
+
+</Steps>
+
+```python
+"""Nightly roster sync: your SIS -> QBL. Names and emails stay in your SIS; only opaque ids go out."""
+import hashlib, hmac, os
+from qbl import api, pages
+
+KEY = os.environ["PSEUDONYM_KEY"].encode()      # the only key from QBL's ids back to children
+
+
+def ext(sis_id: str) -> str:
+    return hmac.new(KEY, str(sis_id).encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def chunks(items, n=1000):
+    for i in range(0, len(items), n):
+        yield items[i:i + n]
+
+
+def sync(sis_teachers, sis_students):
+    """sis_teachers: [{"id", "short_name", "school"}]   sis_students: [{"id", "grade", "school", "teacher_ids"}]"""
+    schools = {s["external_id"]: s["id"] for s in pages("/schools")}
+
+    teachers = [{"external_id": ext(t["id"]), "display_name": t["short_name"],
+                 "school_id": schools[t["school"]]} for t in sis_teachers]
+    students = [{"external_id": ext(s["id"]), "grade_level": str(s["grade"]),
+                 "school_id": schools[s["school"]],
+                 "teacher_external_ids": [ext(t) for t in s["teacher_ids"]]} for s in sis_students]
+
+    for kind, rows in (("teachers", teachers), ("students", students)):    # teachers first
+        for chunk in chunks(rows):
+            result = api("POST", f"/{kind}/batch", {kind: chunk})
+            if result["meta"]["errors"]:
+                for row in result["data"]:
+                    if row["result"] == "error":
+                        print("refused", kind, row["external_id"], row["error"]["code"])
+
+    # Anyone QBL has that the SIS no longer lists has left: deactivate, never delete.
+    wanted = {s["external_id"] for s in students}
+    for person in pages("/students?status=active"):
+        if person["external_id"] not in wanted:
+            api("PATCH", f"/students/ext:{person['external_id']}", {"status": "inactive"})
+```
+
+A few details worth copying:
+
+- **Teachers first**, so a student's `teacher_external_ids` already exist.
+- **Check each batch's `meta.errors`** (the script prints refused rows) so a bad row cannot hide.
+- **Deactivate, do not delete.** A student who returns in January keeps their progress.
+- Run it from a scheduler (cron, a CI job) with the secrets in the environment, and keep one client with only `roster:read` and `roster:write` for it.
+
+## Put QBL grades in your gradebook
+
+The job: after students play, read each student's score for an assignment and write it where your LMS keeps grades.
+
+```js
+import { api } from './client.mjs';
+
+// Your LMS gave the assignment its own id when you created it in QBL (external_id).
+export async function gradesFor(lmsAssignmentId) {
+  const { data: found } = await api('GET', `/assignments?external_id=${encodeURIComponent(lmsAssignmentId)}`);
+  if (found.length === 0) throw new Error(`No QBL assignment for ${lmsAssignmentId}`);
+  const { data: rows } = await api('GET', `/assignments/${found[0].id}/grades`);
+
+  return rows
+    .filter((r) => r.score !== null)                        // not started: leave the gradebook cell empty
+    .map((r) => ({
+      studentExternalId: r.external_id,                      // match to your own student
+      score: r.score,                                        // 0 to 100
+      status: r.status,                                      // not_started | in_progress | completed
+      late: r.late,
+      comment: `${r.objectives_done} of ${r.objectives_total} objectives, ${r.answered_first_try} of ${r.questions_answered} questions answered in one try`,
+    }));
+}
+
+const grades = await gradesFor('canvas-assignment-9931');
+for (const g of grades) await yourGradebook.setScore(g);   // your system's call goes here
+```
+
+Things to decide with your teachers:
+
+- **Which score counts.** The score blends objectives, accuracy and vocabulary ([how](/docs/api-v1/reports/#how-the-numbers-are-worked-out)). Many teachers prefer a simpler rule, such as *completed means full marks*, and use the report for feedback. `status`, `objectives_done` and `score_parts` let you build either.
+- **Do not grade "not started" as zero.** The script skips rows whose `score` is `null`, so the cell stays empty until a student has started.
+- **Late and missing** come as flags, so your LMS's late policy can apply.
+
+<Aside type="tip">
+Pair this with the [teacher's view](/docs/editor/reports/). The gradebook gets a number; the teacher reads the questions students got stuck on and teaches to them.
+</Aside>
+
+## Feed a district dashboard
+
+Three calls cover most dashboards, all with `reports:read`:
+
+```sh
+# The headline numbers
+curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/reports/summary"
+
+# Participation over time, by school, for a trend line (days start in your timezone)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$QBL/api/v1/reports/engagement?interval=week&group_by=school&timezone=America/Denver"
+
+# Standards actually taught, and how students did on them
+curl -s -H "Authorization: Bearer $TOKEN" "$QBL/api/v1/reports/standards"
+```
+
+For anything deeper, load the [activity feed](/docs/api-v1/activity-and-privacy-requests/#the-activity-feed) into your warehouse and ask your own questions.
+
+## An "Open in QBL" button
+
+See [Launch links](/docs/api-v1/launch-links/#a-open-in-qbl-button-server-side) for a complete server-side handler in JavaScript and Python.

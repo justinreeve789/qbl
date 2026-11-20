@@ -306,7 +306,7 @@ npm run build
 
 ## The public API for schools and districts
 
-Schools, districts and businesses connect their own systems (SIS, LMS, portal, data warehouse) through a versioned API under **`/api/v1`**: rostering teachers and students, enrollments, assignments and teams, importing their own avatars, one-time sign-in links, and reports on grades, engagement and learning, plus an activity feed and a per-student export and deletion. It takes no personally identifiable information: people are known by the organization's own opaque id and play under a pseudonym. Reference: [docs/src/content/docs/developers/api-v1.md](docs/src/content/docs/developers/api-v1.md) (served at `/docs/developers/api-v1/`); OpenAPI description at `/docs/api/v1/openapi.yaml`.
+Schools, districts and businesses connect their own systems (SIS, LMS, portal, data warehouse) through a versioned API under **`/api/v1`**: rostering teachers and students, enrollments, assignments and teams, importing their own avatars, one-time sign-in links, and reports on grades, engagement and learning, plus an activity feed and a per-student export and deletion. It takes no personally identifiable information: people are known by the organization's own opaque id and play under a pseudonym. Reference: [docs/src/content/docs/api-v1/](docs/src/content/docs/api-v1/index.mdx) (served at `/docs/api-v1/`); OpenAPI description at `/docs/api/v1/openapi.yaml`.
 
 An administrator makes each organization's client:
 
