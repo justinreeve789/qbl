@@ -65,8 +65,8 @@ Open an informational box.
 
 Parameter | Type   | Default         | Description                                                    
 --------- |--------|-----------------|----------------------------------------------------------------
-content | string | | The text to show in the box (HTML allowed).
-call_to_actions | json   | null | A list of buttons, each containing (1) a string, and (2) an action that is performed when clicked or tapped.
+content | string | | The text to show in the box (HTML allowed). [ext] Can hold pages, slideshows, video, sound, cards, callouts, answer boxes and glossary words: see [Rich infoboxes](/docs/developers/extensions/#rich-infoboxes).
+call_to_actions | json   | null | A list of buttons, each containing (1) a string, and (2) an action that is performed when clicked or tapped. [ext] A button can have a `mark`: `right`, `wrong` or `try_again`.
 
 ## Jump
 Load another scene, ending all actions in the current scene (except persistent audio).

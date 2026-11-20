@@ -26,6 +26,8 @@ export interface PanelOptions {
   size?: 'medium' | 'wide';
   /** After the panel is drawn the first time: to scroll a part of it into view, say. */
   opened?: (dialog: HTMLDialogElement) => void;
+  /** Nothing the page shows changes in it (a picker): the page is not redrawn when it closes. */
+  quiet?: boolean;
 }
 
 export interface Panel {
@@ -85,7 +87,7 @@ export function openPanel(o: PanelOptions): Panel {
     dialog.remove();
     // Values changed in the panel (a name typed, a number) are not structural, so the page behind
     // has not redrawn for them yet: bring it up to date now that it can be seen again.
-    o.store.emit();
+    if (!o.quiet) o.store.emit();
   }
   dialog.addEventListener('close', finish);
   window.addEventListener('hashchange', close);

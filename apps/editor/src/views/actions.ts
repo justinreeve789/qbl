@@ -201,7 +201,11 @@ interface Cta {
   text?: string;
   action?: Values & { type?: string };
   conditions?: ConditionValue[];
+  mark?: 'right' | 'wrong' | 'try_again';
 }
+
+/** How a button can show the answer it gives. */
+const MARKS = [['right', '✓ Right answer'], ['wrong', '✗ Wrong answer'], ['try_again', '↻ Wrong: try again']] as const;
 
 /**
  * The buttons of an infobox ("call to actions"). Each has a label, optionally an action to perform
@@ -239,6 +243,9 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
         }, 'Just close the box'),
         h('button', { type: 'button', class: 'icon', title: 'Remove button', onclick: () => write(read().filter((_, i) => i !== index), true) }, '×'),
       ),
+      h('label', { class: 'field cta-mark', 'data-field': 'mark' },
+        h('span', { class: 'field-label' }, 'Shows as', help('A right answer turns green with a tick and a burst of stars, a wrong one red with a shake, before the box closes and the action runs. “Try again” shakes, crosses the button out and leaves the box open to choose again; its action, if any (a sound, a variable), runs while the box stays open.')),
+        select(MARKS, cta.mark ?? '', (mark) => replace(index, withValue({ ...at(index) }, 'mark', mark || null) as Cta, true), 'Just a button')),
       def ? form(def.fields, { ...cta.action, ...choice(type, cta.action ?? {}) }, commit, ctx) : null,
       type === 'infobox'
         ? buttonsEditor(

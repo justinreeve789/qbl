@@ -34,7 +34,7 @@ const narration: Field[] = [
     key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'As the scenario’s setting says', options: [['true', 'Yes: read this aloud'], ['false', 'No: never read this aloud']],
     hint: 'The browser’s voice reads the text and each word lights up as it is spoken. Players can switch reading aloud off for themselves. A character’s voice (pitch, pace) is set on the Characters page.',
   },
-  { key: 'narration_media_id', label: 'Recording to play instead', kind: 'media', mediaType: 'audio', placeholder: 'The browser’s voice', hint: 'A recording of this text. The words are then lit at an even pace over its length.' },
+  { key: 'narration_media_id', label: 'Recording to play instead', kind: 'media', mediaType: 'audio', placeholder: 'The browser’s voice', hint: 'A recording of this text. Recordings made with a character’s voice (Characters, “Record voices”) light each word as it is said; others light the words at an even pace over their length.' },
 ];
 
 const spritemap: Field[] = [
@@ -103,9 +103,12 @@ export interface ActionDef {
 export const ACTIONS: Record<ActionType, ActionDef> = {
   infobox: {
     label: 'Infobox',
-    about: 'A box of text, with optional buttons.',
+    about: 'A box of text, pictures, video and cards, with optional buttons.',
     fields: [
-      { key: 'content', label: 'Content (HTML)', kind: 'html', wide: true, hint: 'Use {{variable_name}} to show a variable and {{media:ID}} for an image.' },
+      { key: 'content', label: 'Content', kind: 'html', wide: true, hint: 'Write what the box says. ＋ Insert puts in pictures, slideshows, videos, sounds, callouts, cards to reveal or flip, answer boxes, glossary words, variables and new pages; pictures, videos and sounds can also be dropped or pasted in. 👀 Preview shows the box as players see it. </> shows the HTML.' },
+      { key: 'media_id', label: 'Picture or video at the top', kind: 'media', mediaType: 'visual', wide: true, placeholder: 'None', hint: 'Drawn across the top of the box, edge to edge.' },
+      { key: 'size', label: 'Size', kind: 'select', options: [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large: room for pictures and video']], placeholder: 'Medium', structural: true },
+      { key: 'accent', label: 'Colour', kind: 'color', placeholder: 'The game’s blue', hint: 'The box’s edge and its main buttons.', structural: true },
       { key: 'dismissible', label: 'Can be closed without choosing a button', kind: 'bool', default: true, wide: true },
       ...narration,
     ],
@@ -636,9 +639,9 @@ export const CHARACTER_FIELDS: Field[] = [
 ];
 export const CHARACTER_SETTINGS_FIELDS: Field[] = [
   { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1', slider: { min: 0.1, max: 3 } },
-  { key: 'voice_pitch', label: 'Voice: pitch (0 to 2)', kind: 'number', min: 0, max: 2, step: 0.1, placeholder: '1', slider: { min: 0, max: 2 }, hint: 'How the character sounds when its lines are read aloud. Lower is deeper.' },
-  { key: 'voice_rate', label: 'Voice: pace (0.5 to 2)', kind: 'number', min: 0.5, max: 2, step: 0.1, placeholder: '1', slider: { min: 0.5, max: 2 } },
-  { key: 'voice_name', label: 'Voice: prefer one called', kind: 'text', placeholder: 'Any', hint: 'Part of the name of a voice on the player’s device, such as “female”, “Daniel” or “Google UK”. Devices differ: where no voice matches, the default one reads.' },
+  { key: 'voice_pitch', label: 'Browser voice: pitch (0 to 2)', kind: 'number', min: 0, max: 2, step: 0.1, placeholder: '1', slider: { min: 0, max: 2 }, hint: 'How the character sounds when the browser reads a line that has no recording. Lower is deeper.' },
+  { key: 'voice_rate', label: 'Browser voice: pace (0.5 to 2)', kind: 'number', min: 0.5, max: 2, step: 0.1, placeholder: '1', slider: { min: 0.5, max: 2 } },
+  { key: 'voice_name', label: 'Browser voice: prefer one called', kind: 'text', placeholder: 'Any', hint: 'For lines with no recording: part of the name of a voice on the player’s device, such as “female”, “Daniel” or “Google UK”. Devices differ: where no voice matches, the default one reads.' },
 ];
 
 /** Something players can do from a button on their screen while its conditions hold. */

@@ -24,6 +24,7 @@ use App\Qbl\Generation\Http\CurlHttpClient;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\ProgressStore;
 use App\Qbl\ScenarioStore;
+use App\Qbl\Speech\SpeechFactory;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -74,7 +75,9 @@ class AppServiceProvider extends ServiceProvider
             (string) config('app.url'), fn (int $runId) => SyncRoster::dispatch($runId),
         ));
         // The AI scenario generator (qbl:generate). Plain PHP too; built from config/qbl_generation.php.
-        $this->app->singleton(GenerationFactory::class, fn ($app) => new GenerationFactory(config('qbl_generation'), $app->make(ScenarioStore::class)));
+        // Recorded voices for what characters say (qbl:voice, the editor, the generator): config/qbl_speech.php.
+        $this->app->singleton(SpeechFactory::class, fn () => new SpeechFactory(config('qbl_speech')));
+        $this->app->singleton(GenerationFactory::class, fn ($app) => new GenerationFactory(config('qbl_generation'), $app->make(ScenarioStore::class), speech: $app->make(SpeechFactory::class)));
     }
 
     public function boot(): void

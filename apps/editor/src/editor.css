@@ -1224,3 +1224,17 @@ button.talk-go { flex: none; background: color-mix(in srgb, var(--tone-talk) 30%
   .talk-panel { grid-template-columns: 1fr; }
   .talk-nav { position: static; max-height: 40vh; }
 }
+
+/* Characters' recorded voices (views/voices.ts). */
+.voice-section { display: grid; gap: 6px; margin: 4px 0 8px; }
+.voice-section h4 { margin: 0; display: flex; align-items: center; gap: 6px; }
+.voice-section .voice-about { margin: 0; min-height: 1.2em; }
+.voice-section .voice-note { margin: 0; font-size: 0.9em; }
+.voice-tools { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ---- colours: a swatch beside the box; an infobox button's mark */
+.color-pick { display: flex; align-items: center; gap: 6px; }
+.color-pick input[type='color'].swatch { flex: none; width: 36px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--field); cursor: pointer; }
+.cta-mark { flex-direction: row; align-items: center; gap: 8px; margin: 6px 0 4px; }
+.cta-mark select { width: auto; }
+.rich-field { gap: 4px; }

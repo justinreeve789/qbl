@@ -90,7 +90,7 @@ That is development: plain HTTP on http://localhost:8080, no certificate, no `.e
 | http://localhost:8080/editor | The editor |
 | http://localhost:8080/docs | The documentation |
 
-Seven containers:
+Eight containers:
 
 | Container | What runs in it |
 | --------- | --------------- |
@@ -100,6 +100,7 @@ Seven containers:
 | `colyseus` | The multiplayer game server |
 | `editor` | The scenario editor: a static web application served by its own small Apache. The image holds no code: `app` builds the editor from `apps/editor` (mounted) into a volume this container serves |
 | `docs` | The documentation in `docs/`, built with Astro Starlight into a static site |
+| `tts` | Text-to-speech: [Kokoro](https://github.com/remsky/Kokoro-FastAPI), an open-weight model on the server's own CPU (about 5 GB of image, 1 GB of memory). Records what characters say, with the time of every word, when asked by the editor, `qbl:voice` or the generator. Only reachable inside the Compose network |
 | `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files, `scenarios/assets` (mounted, as `/scenario-assets`) and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
 
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
@@ -294,7 +295,7 @@ Other commands:
 npm test                                   # shared unit tests + client tests that play the game headlessly
 npm run test:api                           # seeding, JSON generation, codes, publishing, editor API (needs PHP with SQLite)
 npm run test:api-v1                        # the public API for schools (/api/v1): roster, privacy, assignments, launch links, avatars, reports
-npm run test:generation                    # the AI mission generator, with a stand-in model and placeholder pictures
+npm run test:generation                    # the AI mission generator, with a stand-in model and placeholder pictures; then validates and plays the result
 npm run test:laravel                       # the same API through real Laravel (needs `composer install` in apps/api)
 npm run test:editor                        # the editor in a headless browser (needs PHP; once: npx playwright install chromium)
 npm run validate -- scenarios/starship.json    # check a scenario document
@@ -366,7 +367,7 @@ A **scenario** is a whole mission a group of students goes on together. It conta
 
 ## Generating missions with AI
 
-`php artisan qbl:generate "..."` makes a whole mission from a prompt: it aligns it to imported curriculum standards, writes the story, scenes, characters, dialogue, questions and events, draws every picture in the house art style (Gemini, OpenAI or Scenario, with every picture checked against approved style anchors), packages it as an import ZIP, and imports it as a private draft for a teacher to review.
+`php artisan qbl:generate "..."` makes a whole mission from a prompt: it aligns it to imported curriculum standards, writes the story, scenes, characters, dialogue, questions and events, draws every picture in the house art style (Gemini, OpenAI or Scenario, with every picture checked against approved style anchors), packages it as an import ZIP, and imports it as a private draft for a teacher to review. Missions use doors, holes and ladders as well as scene edges, place things at their real size where they belong, give students crew roles with different jobs and a shared crew log, throw in a twist, and end with a debrief where the guide checks what students worked out.
 
 ```sh
 docker compose exec app php artisan qbl:standards file standards.json --framework=NGSS     # once: standards to align to
@@ -375,6 +376,17 @@ docker compose exec app php artisan qbl:generate "Why does the orchard have flow
 ```
 
 Set `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` (or `OPENAI_API_KEY`) in `.env`; every other setting (models, API addresses, art style, limits) is there too, listed in `.env.example`. `--images=placeholder` tries the whole pipeline with no image service. See `docs/src/content/docs/developers/generation.md`.
+
+## Characters' voices
+
+Characters can be given a voice of their own: their lines are recorded once by the `tts` container (Kokoro, free, no watermark) and played in the game with each word lit as it is spoken. Lines without a recording are read by the browser's voice, as before. In the editor, open a character, choose a voice under **🔊 Voice** and press **🎙️ Record its lines** (or **🎙️ Record voices** on the Characters page). From the command line:
+
+```sh
+docker compose exec app php artisan qbl:voice --list                 # about 50 voices, in 8 languages
+docker compose exec app php artisan qbl:voice {code} --assign        # give each character a voice and record every line
+```
+
+Generated missions are voiced as they are made. The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QBL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
 
 ## The demo mission
 

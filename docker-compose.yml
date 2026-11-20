@@ -1,4 +1,4 @@
-# Seven containers:
+# Eight containers:
 #   edge      Caddy: ends HTTPS (Let's Encrypt or your own certificate) on staging and production
 #             only (the "https" profile); everything behind it speaks plain HTTP
 #   apache    web server and reverse proxy for the rest; http://localhost:8080 in development
@@ -8,6 +8,7 @@
 #   colyseus  multiplayer game server
 #   editor    the scenario editor (a static web application)
 #   docs      the documentation (a static site built with Astro Starlight)
+#   tts       text-to-speech (Kokoro): records what characters say, with the time of every word
 #
 #   docker compose up --build        ->  http://localhost:8080           the marketing page (development: plain HTTP, no certificate)
 #                                        http://localhost:8080/missions  the game: sign in, then the missions page
@@ -17,6 +18,9 @@
 #
 #   docker compose exec app php artisan qbl:seed     seeds the marketplace and the demo mission.
 #                                                    Nothing is seeded automatically.
+#   docker compose exec app php artisan qbl:voice {code} --assign
+#                                                    gives a scenario's characters voices and records
+#                                                    their lines (or "Record voices" in the editor).
 #
 # Staging and production (HTTPS): in .env set COMPOSE_PROFILES=https and
 # QBL_PUBLIC_URL=https://dev.questlab.cc. That starts the edge on ports 80 and 443, which fetches a
@@ -83,11 +87,14 @@ services:
       ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
       QBL_GEN_LLM_MODEL: ${QBL_GEN_LLM_MODEL:-}
       QBL_GEN_JUDGE_MODEL: ${QBL_GEN_JUDGE_MODEL:-}
+      QBL_GEN_ALIGN_MODEL: ${QBL_GEN_ALIGN_MODEL:-}
       QBL_GEN_IMAGE_DRIVER: ${QBL_GEN_IMAGE_DRIVER:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
       QBL_GEN_GEMINI_MODEL: ${QBL_GEN_GEMINI_MODEL:-}
       QBL_GEN_GEMINI_IMAGE_SIZE: ${QBL_GEN_GEMINI_IMAGE_SIZE:-}
+      QBL_GEN_GEMINI_PROPS_MODEL: ${QBL_GEN_GEMINI_PROPS_MODEL:-}
+      QBL_GEN_GEMINI_PROPS_SIZE: ${QBL_GEN_GEMINI_PROPS_SIZE:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       QBL_GEN_OPENAI_MODEL: ${QBL_GEN_OPENAI_MODEL:-}
@@ -100,6 +107,11 @@ services:
       QBL_GEN_JUDGE: ${QBL_GEN_JUDGE:-}
       QBL_GEN_JUDGE_MIN_SCORE: ${QBL_GEN_JUDGE_MIN_SCORE:-}
       QBL_GEN_MAX_ATTEMPTS: ${QBL_GEN_MAX_ATTEMPTS:-}
+      QBL_GEN_BUDGET_USD: ${QBL_GEN_BUDGET_USD:-}
+      QBL_GEN_PRICES: ${QBL_GEN_PRICES:-}
+      QBL_GEN_PORTRAITS: ${QBL_GEN_PORTRAITS:-}
+      QBL_GEN_IDLE_FRAMES: ${QBL_GEN_IDLE_FRAMES:-}
+      QBL_GEN_PROP_SHEETS: ${QBL_GEN_PROP_SHEETS:-}
       QBL_GEN_MAX_SCENES: ${QBL_GEN_MAX_SCENES:-}
       QBL_GEN_MAX_CHARACTERS: ${QBL_GEN_MAX_CHARACTERS:-}
       QBL_GEN_MAX_ITEMS: ${QBL_GEN_MAX_ITEMS:-}
@@ -138,6 +150,17 @@ services:
       # Clever (district admin panel): QBL's Clever application. See "District admin panel" in the README.
       CLEVER_CLIENT_ID: ${CLEVER_CLIENT_ID:-}
       CLEVER_CLIENT_SECRET: ${CLEVER_CLIENT_SECRET:-}
+      # Characters' recorded voices (config/qbl_speech.php): kokoro (the tts container below), openai
+      # (any OpenAI-style /v1/audio/speech service; no word timings), or none (the browser reads).
+      QBL_TTS_DRIVER: ${QBL_TTS_DRIVER:-kokoro}
+      QBL_TTS_URL: ${QBL_TTS_URL:-http://tts:8880}
+      QBL_TTS_API_KEY: ${QBL_TTS_API_KEY:-}
+      QBL_TTS_TIMEOUT: ${QBL_TTS_TIMEOUT:-}
+      QBL_TTS_OPENAI_URL: ${QBL_TTS_OPENAI_URL:-}
+      QBL_TTS_OPENAI_KEY: ${QBL_TTS_OPENAI_KEY:-}
+      QBL_TTS_OPENAI_MODEL: ${QBL_TTS_OPENAI_MODEL:-}
+      # Lines already recorded, so recording again only asks for what changed.
+      QBL_TTS_CACHE_DIR: /data/speech
       # The client (the marketing page and the game) is built by Vite when app starts. true: it is
       # also rebuilt whenever apps/client or packages/shared changes. false: built once per start
       # (docker compose restart app after a change), which saves memory on a server.
@@ -171,6 +194,27 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  tts:
+    # Text-to-speech for what characters say: Kokoro, an open-weight model (Apache 2.0, voices
+    # included), served by Kokoro-FastAPI. The app records each line once (the editor's "Record
+    # voices", php artisan qbl:voice, the generator) and keeps it with the scenario, with the time of
+    # every word; players never talk to this. Only reachable inside the Compose network.
+    #
+    # The CPU image is about 5 GB on disk and uses about 1 GB of memory; a line takes a second or two.
+    # With an NVIDIA GPU: QBL_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0 (and give the
+    # container the GPU). Not wanted at all: QBL_TTS_DRIVER=none, and docker compose stop tts.
+    image: ${QBL_TTS_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0}
+    environment:
+      # Its test page (/web) is not needed: nothing outside the network reaches it anyway.
+      ENABLE_WEB_PLAYER: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8880/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     restart: unless-stopped
 
   db:

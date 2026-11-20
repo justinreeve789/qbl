@@ -6,6 +6,9 @@
  * multiplayer runtime; they are all optional and documented in
  * docs/src/content/docs/developers/extensions.md.
  */
+import type { MediaSpeech } from './speech.js';
+
+import type { ButtonMark, InfoboxSize } from './infobox.js';
 
 export type Id = number;
 export type VarValue = string | number;
@@ -44,6 +47,11 @@ export interface Media {
    * plays like a sprite sheet whose animation is the whole file.
    */
   apng?: MediaApng;
+  /**
+   * [ext] A recording of speech: what it says and when each word is said, so the words can be lit
+   * as they are spoken. Made by `qbl:voice` and the mission generator.
+   */
+  speech?: MediaSpeech;
   /** [ext] Pixel size of the file, when known. */
   width?: number;
   height?: number;
@@ -297,11 +305,18 @@ export interface CallToAction {
   action?: Omit<Action, 'id'> & { id?: Id };
   /** [ext] The button is only offered while these hold. */
   conditions?: Condition[];
+  /**
+   * [ext] Whether this is a right or a wrong answer. Chosen, it shows so (a tick, a shake) before
+   * its action runs. `try_again` is a wrong answer that leaves the box open to choose again; its
+   * action, if it has one, runs while the box stays open.
+   */
+  mark?: ButtonMark;
 }
 /**
  * [ext] Reading text aloud. `narrate` overrides the scenario's `narration` setting for one action.
  * `narration_media_id` is a recording to play instead of the browser's voice; the words are then
- * highlighted at an even pace over the recording's length.
+ * highlighted as the recording says them when the recording has word timings (`speech` on the
+ * media), and otherwise at an even pace over its length.
  */
 export interface Narrated {
   narrate?: boolean;
@@ -310,7 +325,7 @@ export interface Narrated {
 
 export interface InfoboxAction extends ActionBase, Narrated {
   type: 'infobox';
-  /** HTML. May contain {{variable}} and {{media:ID}} placeholders. */
+  /** HTML. May contain {{variable}} and {{media:ID}} placeholders, and the `data-qbl` blocks of infobox.ts. */
   content: string;
   call_to_actions?: CallToAction[] | null;
   /**
@@ -318,6 +333,13 @@ export interface InfoboxAction extends ActionBase, Narrated {
    * dismissed: the player must pick one of the buttons. Used for questions.
    */
   dismissible?: boolean;
+  /**
+   * [ext] How wide the box is. Default `medium`. An infobox's `media_id` (an image or a video) is
+   * drawn across the top of the box.
+   */
+  size?: InfoboxSize;
+  /** [ext] A CSS colour for the box's edge and its main buttons. */
+  accent?: string;
 }
 export interface JumpAction extends ActionBase {
   type: 'jump';
@@ -852,11 +874,19 @@ export interface Character {
   scale?: number;
   /** By name: the poses, and any others. */
   animations?: Record<string, CharacterAnimation>;
-  /** [ext] How the character sounds when its lines are read aloud: 0 to 2, 1 is the voice's own. */
+  /** [ext] How the browser's voice sounds reading the character's lines that have no recording: 0 to 2, 1 is the voice's own. */
   voice_pitch?: number;
   voice_rate?: number;
   /** [ext] Part of the name of a browser voice to prefer for this character, e.g. "female" or "Daniel". */
   voice_name?: string;
+  /**
+   * [ext] The voice the character's lines are recorded in: a key of the server's voice catalog
+   * (apps/api/resources/speech/voices.json), e.g. "heart" or "robot", not any one service's own voice
+   * name, so it survives a change of text-to-speech service. The editor's "Record voices" and
+   * `php artisan qbl:voice` record the lines; a line without a recording is read by the browser's voice
+   * (`voice_pitch`, `voice_rate`, `voice_name`).
+   */
+  tts_voice?: string;
   params?: Params;
 }
 

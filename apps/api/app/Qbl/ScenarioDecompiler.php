@@ -50,7 +50,7 @@ class ScenarioDecompiler
                 continue;
             }
             $params = (array) ($m['params'] ?? []);
-            foreach (['sheet', 'animations', 'apng'] as $key) {
+            foreach (['sheet', 'animations', 'apng', 'speech'] as $key) {
                 if (isset($m[$key])) {
                     $params[$key] = $m[$key];
                 }

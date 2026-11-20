@@ -23,7 +23,7 @@ final class ScenarioPackage
      * @param  array  $built  MissionBuilder::build()
      * @return array{zip: string, json: string, document: array}
      */
-    public static function write(array $built, string $dir, array $alignment, array $manifest): array
+    public static function write(array $built, string $dir, array $alignment, array $manifest, array $blueprint = [], ?string $spent = null): array
     {
         if (! class_exists(ZipArchive::class)) {
             throw new GenerationError('PHP needs its zip extension to package a scenario.');
@@ -67,6 +67,11 @@ final class ScenarioPackage
             'Learning objectives:',
             ...array_map(fn ($lo) => "  {$lo['id']}: {$lo['text']}", $alignment['learning_objectives']),
         ];
+        $lines = [...$lines, ...self::forTheTeacher($blueprint)];
+        if ($spent) {
+            $lines[] = '';
+            $lines[] = $spent;
+        }
         if ($below) {
             $lines[] = '';
             $lines[] = 'Pictures kept below the style bar (look at these before publishing):';
@@ -78,5 +83,52 @@ final class ScenarioPackage
         $zip->close();
 
         return ['zip' => $zipPath, 'json' => "$dir/scenario.json", 'document' => $document];
+    }
+
+    /** What a teacher should know before running it: the crew roles, the twists, how students are assessed. */
+    private static function forTheTeacher(array $b): array
+    {
+        if (! $b) {
+            return [];
+        }
+        $out = [];
+        $labels = array_column($b['interactions'] ?? [], 'label', 'key');
+        $titles = array_column($b['scenes'] ?? [], 'title', 'key');
+        if (! empty($b['roles'])) {
+            $out[] = '';
+            $out[] = 'Crew roles (each student picks one at the crew station, and can change):';
+            foreach ($b['roles'] as $r) {
+                $jobs = [];
+                foreach ($b['interactions'] as $it) {
+                    if (($it['role'] ?? null) === $r['key']) {
+                        $jobs[] = $it['label'];
+                    }
+                    foreach ($it['team']['roles'] ?? [] as $part) {
+                        if ($part['role'] === $r['key']) {
+                            $jobs[] = "{$it['label']} ({$part['part']})";
+                        }
+                    }
+                }
+                $out[] = "  {$r['name']}: {$r['description']} Jobs: ".implode('; ', $jobs).'.';
+            }
+        }
+        if (! empty($b['twists'])) {
+            $out[] = '';
+            $out[] = 'Twists (surprises; worth not spoiling):';
+            foreach ($b['twists'] as $t) {
+                $out[] = '  After "'.($labels[$t['after']] ?? $t['after'])."\": {$t['title']}".(! empty($t['blocks']['to']) ? ' (blocks the way to '.($titles[$t['blocks']['to']] ?? $t['blocks']['to']).' until set right)' : '');
+            }
+        }
+        $questions = array_filter($b['interactions'] ?? [], fn ($it) => $it['type'] === 'question');
+        if ($questions) {
+            $out[] = '';
+            $out[] = 'Questions (first answers, tries and the debrief are in the teacher report):';
+            foreach ($questions as $q) {
+                $kind = ! empty($q['at_report']) ? 'debrief' : ((($q['question']['purpose'] ?? 'check') === 'predict') ? 'prediction, not scored' : 'scored');
+                $out[] = "  [$kind] {$q['question']['prompt']}";
+            }
+        }
+
+        return $out;
     }
 }

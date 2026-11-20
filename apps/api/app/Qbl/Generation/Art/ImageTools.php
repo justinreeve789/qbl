@@ -567,6 +567,88 @@ final class ImageTools
         return $out;
     }
 
+    /**
+     * The cells of a picture drawn as a grid of separate things, read left to right, top to bottom:
+     * each cell's contents, trimmed, or null when the cell is empty or its thing runs out of it (into a
+     * neighbour or off the picture). $im has its background already removed.
+     *
+     * @return array<int, ?GdImage>
+     */
+    public static function gridCells(GdImage $im, int $columns, int $rows, int $count): array
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $cw = $w / max(1, $columns);
+        $ch = $h / max(1, $rows);
+        $out = [];
+        for ($i = 0; $i < $count; $i++) {
+            $x = (int) round(($i % $columns) * $cw);
+            $y = (int) round(intdiv($i, $columns) * $ch);
+            // Each cell ends where the next begins, and never past the picture.
+            $x1 = min($w, (int) round(($i % $columns + 1) * $cw));
+            $y1 = min($h, (int) round((intdiv($i, $columns) + 1) * $ch));
+            $cell = self::crop($im, $x, $y, $x1 - $x, $y1 - $y);
+            $box = self::bbox($cell);
+            // Empty, or a speck: nothing was drawn here.
+            if (! $box || 0.01 * imagesx($cell) * imagesy($cell) > $box[2] * $box[3]) {
+                $out[] = null;
+
+                continue;
+            }
+            // Touching the cell's edge: part of it is in the next cell.
+            $touches = $box[0] <= 1 || $box[1] <= 1 || imagesx($cell) - 1 <= $box[0] + $box[2] || imagesy($cell) - 1 <= $box[1] + $box[3];
+            $out[] = $touches ? null : self::trim($cell, 2);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Walking frames made from one standing picture, for when a walk could not be drawn: the body bobs
+     * up and down twice a stride, leans a touch forward, and the lower part (legs, wheels, a tail) swings
+     * back and forth like a pendulum. Not as good as a drawn walk, but a character never glides about
+     * frozen in one pose.
+     *
+     * @return GdImage[]
+     */
+    public static function puppetWalk(GdImage $figure, int $frames = 6): array
+    {
+        $figure = self::trim($figure);
+        $w = imagesx($figure);
+        $h = imagesy($figure);
+        $swing = max(2, (int) round($w * 0.07));
+        $lift = max(1, (int) round($h * 0.025));
+        $hips = (int) round($h * 0.62);
+        $out = [];
+        for ($f = 0; $f < $frames; $f++) {
+            $phase = 2 * M_PI * $f / $frames;
+            $bob = (int) round(abs(sin($phase)) * $lift);
+            $frame = self::blank($w + 2 * $swing, $h + $lift);
+            for ($y = 0; $y < $h; $y++) {
+                // Above the hips: leaning forward a little, more at the top. Below: the swing, most at the feet.
+                $dx = $y < $hips
+                    ? (int) round($swing * 0.25 * (1 - $y / max(1, $hips)))
+                    : (int) round(sin($phase) * $swing * ($y - $hips) / max(1, $h - $hips));
+                imagecopy($frame, $figure, $swing + $dx, $lift - $bob + $y, 0, $y, $w, 1);
+            }
+            $out[] = $frame;
+        }
+
+        return $out;
+    }
+
+    /** The head and shoulders of a standing figure: the top part of it, as wide as it is tall. */
+    public static function bust(GdImage $figure, float $share = 0.42): GdImage
+    {
+        $figure = self::trim($figure);
+        $w = imagesx($figure);
+        $h = max(1, (int) round(imagesy($figure) * $share));
+        $side = min($w, (int) round($h * 1.1));
+        $x = (int) round(max(0, self::centroidX(self::crop($figure, 0, 0, $w, $h)) - $side / 2));
+
+        return self::trim(self::crop($figure, min($x, max(0, $w - $side)), 0, $side, $h));
+    }
+
     /** @param GdImage[][] $rows */
     public static function sheet(array $rows, int $cellW, int $cellH, int $columns): GdImage
     {

@@ -172,7 +172,9 @@ class ScenarioCompiler
                 'sheet' => is_array($params['sheet'] ?? null) ? $params['sheet'] : null,
                 'animations' => is_array($params['sheet'] ?? null) && ! empty($params['animations']) ? array_values($params['animations']) : null,
                 'apng' => is_array($params['apng'] ?? null) ? $params['apng'] : null,
-                'params' => array_diff_key($params, ['sheet' => 1, 'animations' => 1, 'apng' => 1]) ?: null,
+                // A recording's words and when each is said (text-to-speech), for lighting them as they are spoken.
+                'speech' => is_array($params['speech'] ?? null) ? $params['speech'] : null,
+                'params' => array_diff_key($params, ['sheet' => 1, 'animations' => 1, 'apng' => 1, 'speech' => 1]) ?: null,
             ]);
         }
 
