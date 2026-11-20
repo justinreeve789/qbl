@@ -256,7 +256,30 @@ Nobody checks that the address belongs to whoever typed it (there is no email se
 - `QBL_GOOGLE_DOMAINS` does not apply: a typed address proves nothing. A school that wants only its own Google accounts sets `QBL_ALLOW_REGISTRATION=false`.
 - If the owner of the address later signs in with Google, Google has proved it is theirs: the account becomes theirs, and the password chosen when it was created, and every sign-in made with it, stop working. Accounts made by an administrator keep their password as before.
 - `qbl:update-role` warns before making such an account a teacher or admin.
-- There is no "forgot my password" yet.
+- Choosing a new password with an emailed link (below) proves the address too.
+
+### Profile, passwords and email
+
+Signed in, anyone but a guest opens their **profile** from the missions page (the menu under their face: "Profile: name and password") or from the editor (their name in the header). There they change the name over their character, and their password (given the current one; every other sign-in of the account then ends). A student whose account their school made through `/api/v1` keeps the pseudonym the school's system gave them. Accounts that sign in with Google have no password here.
+
+**Forgot your password?** is on the game's sign-in screen (`/missions#forgot-password`; the editor's sign-in links to it) and in the profile. It emails a link to `/missions#reset-password=…`, which asks for a new password and signs in. Links work once, for 60 minutes. Only accounts with a password get one.
+
+#### Email
+
+The link is sent through Laravel's mailer, set in `.env`:
+
+| Setting | Effect |
+| ------- | ------ |
+| `MAIL_MAILER` | `log` (default): nothing is sent; the message, with its link, is written to the app container's log (`docker compose logs app | grep -i reset`). `smtp`: send through the server below |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Your provider's SMTP server (port 587 usually) |
+| `MAIL_SCHEME` | Empty for port 587 (STARTTLS) or 25; `smtps` for port 465 |
+| `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` | Who the email is from. Default: `no-reply@` the site's host name, and "QuestLab". Use an address your provider lets you send from |
+
+After changing them, `docker compose up -d app`. When mail is not set up, or a student's email does not arrive, an administrator makes a link and passes it on (it lets whoever opens it set that account's password):
+
+```sh
+docker compose exec app php artisan qbl:reset-link student@school.org
+```
 
 How the pieces connect:
 

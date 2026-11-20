@@ -115,6 +115,28 @@ export class Api {
     }
   }
 
+  /** Change the name over the player's character (the profile page). */
+  async rename(name: string): Promise<User> {
+    return (await this.call<{ user: User }>('PATCH', '/me', { name })).user;
+  }
+
+  /** Change the password, given the current one. The account's other sign-ins end; this one stays. */
+  async changePassword(change: { current_password: string; password: string; password_confirmation: string }): Promise<{ signed_out_elsewhere?: number }> {
+    return this.call('PUT', '/me/password', change);
+  }
+
+  /** "Forgot your password?": email a link for choosing a new one. Resolves to what to tell the person. */
+  async forgotPassword(email: string): Promise<string> {
+    return (await this.call<{ message?: string }>('POST', '/auth/forgot-password', { email })).message ?? 'Check your email for a link.';
+  }
+
+  /** Choose a new password with the emailed link's token, and sign in with it. */
+  async resetPassword(reset: { token: string; email: string; password: string; password_confirmation: string }): Promise<User> {
+    const data = await this.call<{ token: string; user: User }>('POST', '/auth/reset-password', reset);
+    this.remember(data.token);
+    return data.user;
+  }
+
   /** Forget who is signed in. The server is told too, so the token stops working everywhere. */
   signOut() {
     if (this.token) void this.call('POST', '/auth/logout').catch(() => undefined);

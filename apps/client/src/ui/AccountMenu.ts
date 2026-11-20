@@ -125,6 +125,13 @@ export class AccountMenu {
     if (this.isOpen) this.draw();
   }
 
+  /** A new name: the player changed it on their profile. */
+  setName(name: string) {
+    this.options = { ...this.options, name };
+    this.label();
+    if (this.isOpen) this.draw();
+  }
+
   /** What can be done from the menu without leaving the page. */
   setActions(actions: MenuAction[]) {
     this.actions = actions;

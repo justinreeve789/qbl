@@ -1,0 +1,79 @@
+/*
+ * The profile dialog (packages/shared/browser/profile.ts), the same over the missions page and
+ * the editor. Everything is under .qbl-profile-dialog so neither page's styles reach in.
+ */
+dialog.qbl-profile-dialog {
+  --pf-accent: #2f6fed;
+  --pf-line: rgba(255, 255, 255, 0.2);
+  --pf-field: rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+  width: min(94vw, 480px);
+  max-height: min(92vh, 760px);
+  max-height: min(92dvh, 760px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  background: #121836;
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.4;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+dialog.qbl-profile-dialog::backdrop { background: rgba(5, 8, 20, 0.65); }
+dialog.qbl-profile-dialog * { box-sizing: border-box; }
+.qbl-profile-dialog .qbl-pf-top {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 18px 12px;
+  background: #121836;
+  border-bottom: 1px solid var(--pf-line);
+}
+.qbl-profile-dialog h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.25rem; }
+.qbl-profile-dialog h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 1rem; }
+.qbl-profile-dialog .qbl-pf-icon { font-style: normal; font-size: 1.15em; }
+.qbl-profile-dialog .qbl-pf-close {
+  flex: none; width: 36px; height: 36px; padding: 0;
+  border: 1px solid var(--pf-line); border-radius: 50%;
+  background: transparent; color: inherit; font: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer;
+}
+.qbl-profile-dialog .qbl-pf-close:hover, .qbl-profile-dialog .qbl-pf-close:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
+.qbl-profile-dialog .qbl-pf-body { display: grid; gap: 4px; padding: 6px 18px 18px; }
+.qbl-profile-dialog .qbl-pf-section { padding: 14px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.qbl-profile-dialog .qbl-pf-section:last-child { border-bottom: 0; }
+.qbl-profile-dialog .qbl-pf-form { display: grid; gap: 12px; margin-top: 8px; }
+.qbl-profile-dialog .qbl-pf-field { display: grid; gap: 5px; }
+.qbl-profile-dialog .qbl-pf-label { font-size: 0.85rem; font-weight: 600; opacity: 0.85; }
+.qbl-profile-dialog .qbl-pf-hint { margin: 0; font-size: 0.85rem; opacity: 0.72; }
+.qbl-profile-dialog .qbl-pf-value { margin: 4px 0 6px; font-size: 1.1rem; font-weight: 700; }
+.qbl-profile-dialog .qbl-pf-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 2px 0 6px; overflow-wrap: anywhere; }
+.qbl-profile-dialog input:not([hidden]) {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px;
+  background: var(--pf-field); color: inherit; font: inherit;
+}
+.qbl-profile-dialog input:focus-visible { outline: 2px solid var(--pf-accent); outline-offset: 1px; border-color: transparent; }
+.qbl-profile-dialog .qbl-pf-actions { display: flex; justify-content: flex-end; }
+.qbl-profile-dialog .qbl-pf-button {
+  padding: 9px 18px; border: 0; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+}
+.qbl-profile-dialog .qbl-pf-button.primary { background: var(--pf-accent); }
+.qbl-profile-dialog .qbl-pf-button:hover:not(:disabled) { filter: brightness(1.12); }
+.qbl-profile-dialog .qbl-pf-button:focus-visible, .qbl-profile-dialog .qbl-pf-link:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.qbl-profile-dialog .qbl-pf-button:disabled { opacity: 0.5; cursor: default; }
+.qbl-profile-dialog .qbl-pf-link {
+  padding: 0; border: 0; background: none; color: #bfe0ff;
+  font: inherit; font-size: 0.88rem; text-decoration: underline; cursor: pointer; text-align: left;
+}
+.qbl-profile-dialog .qbl-pf-link:disabled { opacity: 0.6; cursor: default; text-decoration: none; }
+.qbl-profile-dialog .qbl-pf-forgot { display: grid; gap: 6px; margin-top: 12px; }
+.qbl-profile-dialog .qbl-pf-status { margin: 0; font-size: 0.9rem; }
+.qbl-profile-dialog .qbl-pf-status[hidden] { display: none; }
+.qbl-profile-dialog .qbl-pf-status[data-tone='ok'] { color: #8ff0b4; }
+.qbl-profile-dialog .qbl-pf-status[data-tone='error'] { color: #ffb4b4; }
+@media (max-width: 520px) {
+  dialog.qbl-profile-dialog { width: 100vw; max-width: none; max-height: 100dvh; height: 100dvh; border-radius: 0; border: 0; }
+}

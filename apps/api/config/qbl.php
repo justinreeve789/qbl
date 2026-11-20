@@ -11,6 +11,9 @@ return [
     // POST /api/auth/register. Such accounts are students, like new Google accounts.
     'allow_registration' => (bool) env('QBL_ALLOW_REGISTRATION', true),
 
+    // What the site calls itself in the emails it sends (choosing a new password).
+    'site_name' => env('QBL_SITE_NAME', 'QuestLab'),
+
     // Signing in with Google is on once GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set (config/services.php).
     'google' => [
         // Only addresses at these domains may sign in with Google. Empty: any Google account.

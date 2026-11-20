@@ -13,7 +13,8 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    // Shown in the emails the site sends (their header and footer).
+    'name' => env('APP_NAME') ?: env('QBL_SITE_NAME', 'QuestLab'),
 
     /*
     |--------------------------------------------------------------------------

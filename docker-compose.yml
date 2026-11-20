@@ -35,6 +35,9 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
+      # What the site calls itself in the emails it sends.
+      APP_NAME: ${QBL_SITE_NAME:-QuestLab}
+      QBL_SITE_NAME: ${QBL_SITE_NAME:-QuestLab}
       APP_KEY: ${APP_KEY:-}
       # The address people type. With HTTPS (at the edge) this is the https one.
       APP_URL: ${QBL_PUBLIC_URL:-http://localhost:${QBL_APACHE_PORT:-8080}}
@@ -57,6 +60,17 @@ services:
       # Used by "php artisan qbl:seed": when set, it also creates demo accounts with this password,
       # including a teacher who can use the editor.
       QBL_SEED_PASSWORD: ${QBL_SEED_PASSWORD:-}
+      # Email, for "Forgot your password?" links. log (the default): nothing is sent, and the link
+      # is written to this container's log. See "Email" in the README.
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+      MAIL_PORT: ${MAIL_PORT:-2525}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SCHEME: ${MAIL_SCHEME:-}
+      # Unset: no-reply@ the site's host name.
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-QuestLab}
       # Sign in with Google: on when both are set. See "Google sign-in" in the README.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

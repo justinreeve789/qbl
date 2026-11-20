@@ -26,6 +26,8 @@ export function loginView(api: Api, done: (user: User) => void, refused?: User, 
   const submit = h('button', { type: 'submit', class: 'primary' }, 'Sign in');
   // Offered when the server has Google sign-in set up. It leaves the page and comes back signed in.
   const google = h('button', { type: 'button', class: 'google', hidden: true, onclick: () => window.location.assign(`/api/auth/google/redirect?return=${encodeURIComponent(window.location.pathname)}`) }, 'Sign in with Google');
+  // Choosing a new password happens on the game's sign-in screen, where the emailed link opens too.
+  const forgot = h('p', { class: 'muted' }, h('a', { href: `${missionsUrl}#forgot-password`, 'data-forgot-password': '' }, 'Forgot your password?'));
   // Accounts are made on the game's sign-in screen; they start as students' accounts.
   const create = h('p', { class: 'muted', 'data-create-account': '', hidden: true },
     'No account yet? ', h('a', { href: `${missionsUrl}#create-account` }, 'Create one'),
@@ -56,6 +58,7 @@ export function loginView(api: Api, done: (user: User) => void, refused?: User, 
     error,
     submit,
     google,
+    forgot,
     create,
   );
   node.addEventListener('submit', async (e) => {

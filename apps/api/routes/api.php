@@ -15,6 +15,12 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/auth/guest',[AuthController::class, 'guest'])->middleware('throttle:10,1');
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
+// The profile page: the name over the player's character, and the password.
+Route::patch('/me', [AuthController::class, 'update'])->middleware(['auth:sanctum', 'throttle:20,1']);
+Route::put('/me/password', [AuthController::class, 'changePassword'])->middleware(['auth:sanctum', 'throttle:6,1']);
+// "Forgot your password?": a link by email, then a new password with it.
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1');
 Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 // Signing in with Google. The browser is sent to the first and comes back to the second.

@@ -111,8 +111,9 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+        // Unset: no-reply at the site's own name (APP_URL), e.g. no-reply@dev.questlab.cc.
+        'address' => env('MAIL_FROM_ADDRESS') ?: 'no-reply@'.(parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: 'localhost'),
+        'name' => env('MAIL_FROM_NAME') ?: env('QBL_SITE_NAME', 'QuestLab'),
     ],
 
 ];
