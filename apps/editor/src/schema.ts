@@ -14,8 +14,8 @@ const position: Field[] = [
   { key: 'position_y', label: 'Y', kind: 'number', hint: 'Scene pixels from the top.' },
 ];
 const scale: Field[] = [
-  { key: 'scale_x', label: 'Scale X', kind: 'number', placeholder: '1', step: 0.05 },
-  { key: 'scale_y', label: 'Scale Y', kind: 'number', placeholder: '1', step: 0.05 },
+  { key: 'scale_x', label: 'Scale X', kind: 'number', placeholder: '1', step: 0.05, slider: { min: 0.1, max: 3 } },
+  { key: 'scale_y', label: 'Scale Y', kind: 'number', placeholder: '1', step: 0.05, slider: { min: 0.1, max: 3 } },
 ];
 const duration = (hint: string): Field => ({ key: 'duration', label: 'Duration (ms)', kind: 'number', min: 0, placeholder: 'Until cancelled', hint });
 const layer: Field = {
@@ -87,7 +87,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     about: 'Play a sound, or background music.',
     fields: [
       { key: 'media_id', label: 'Sound', kind: 'media', mediaType: 'audio', wide: true },
-      { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1' },
+      { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1', slider: { min: 0, max: 1 } },
       { key: 'repeat', label: 'Loop', kind: 'bool' },
       { key: 'persist', label: 'Background music: keep playing across scenes', kind: 'bool', wide: true, hint: 'One music track plays at a time. Starting the same track again in the next scene does not restart it.' },
     ],
@@ -99,7 +99,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'text', label: 'Text', kind: 'textarea', wide: true, hint: 'Use {{variable_name}} to show a variable.' },
       { key: 'alignment', label: 'Where', kind: 'select', options: ALIGNMENTS, placeholder: 'center center' },
       duration('Leave empty to keep it until the scene changes or it is cancelled.'),
-      { key: 'text_font_size', label: 'Font size (px)', kind: 'number', min: 6 },
+      { key: 'text_font_size', label: 'Font size (px)', kind: 'number', min: 6, slider: { min: 8, max: 72 } },
       { key: 'text_font_color', label: 'Color', kind: 'color' },
       { key: 'text_font_style', label: 'Style', kind: 'text', placeholder: 'bold, italic…' },
       ...narration,
@@ -131,7 +131,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     fields: [
       { key: 'media_id', label: 'Video', kind: 'media', mediaType: 'video', wide: true },
       { key: 'alignment', label: 'Where', kind: 'select', options: ALIGNMENTS, placeholder: 'center center' },
-      { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1' },
+      { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1', slider: { min: 0, max: 1 } },
       ...scale,
     ],
   },
@@ -237,7 +237,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'position_x', label: 'To X', kind: 'number' },
       { key: 'position_y', label: 'To Y', kind: 'number' },
       ...scale,
-      { key: 'alpha', label: 'Opacity (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05 },
+      { key: 'alpha', label: 'Opacity (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, slider: { min: 0, max: 1 } },
       { key: 'duration', label: 'Over (ms)', kind: 'number', min: 0 },
     ],
   },
@@ -316,7 +316,7 @@ export const SCENARIO_FIELDS: Field[] = [
 /** Kept in the scenario's `settings` column. */
 export const SCENARIO_SETTINGS_FIELDS: Field[] = [
   { key: 'music_media_id', label: 'Background music', kind: 'media', mediaType: 'audio', hint: 'Plays in every scene that does not have its own. Events can change it with an Audio action marked as background music.' },
-  { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '0.5' },
+  { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '0.5', slider: { min: 0, max: 1 } },
   {
     key: 'visibility', label: 'Who can play it', kind: 'select', placeholder: 'Everyone: it is on every player’s missions page', wide: true,
     options: [['public', 'Everyone: it is on every player’s missions page'], ['private', 'Only students it is assigned to']],
@@ -331,7 +331,7 @@ export const SCENARIO_SETTINGS_FIELDS: Field[] = [
     key: 'narration', label: 'Read text aloud', kind: 'select', placeholder: 'Only where an action says so', options: [['on', 'Everything: dialogue, infoboxes and text overlays'], ['off', 'Only where an action says so']], wide: true,
     hint: 'The browser’s own voice reads the text and highlights each word as it is spoken. It needs no recordings. Any action can say otherwise for itself, and players can switch it off.',
   },
-  { key: 'move_speed', label: 'Walking speed (px per second)', kind: 'number', min: 50, placeholder: '420' },
+  { key: 'move_speed', label: 'Walking speed (px per second)', kind: 'number', min: 50, placeholder: '420', slider: { min: 50, max: 1000, step: 10 } },
   { key: 'asset_base_url', label: 'Base address for media', kind: 'text', wide: true, hint: 'Media whose address is not absolute is loaded from here. Uploaded files do not need it.' },
 ];
 
@@ -343,7 +343,7 @@ export const SCENE_FIELDS: Field[] = [
   { key: 'description', label: 'Description', kind: 'textarea', wide: true },
   { key: 'width', label: 'Width (px)', kind: 'number', min: 1, placeholder: 'Background width', hint: 'A scene wider or taller than the screen scrolls as the avatar walks.' },
   { key: 'height', label: 'Height (px)', kind: 'number', min: 1, placeholder: 'Background height' },
-  { key: 'zoom', label: 'Zoom', kind: 'number', min: 0.1, step: 0.05, placeholder: '1' },
+  { key: 'zoom', label: 'Zoom', kind: 'number', min: 0.1, step: 0.05, placeholder: '1', slider: { min: 0.25, max: 3 } },
   { key: 'group_id', label: 'Group', kind: 'group', placeholder: 'None', hint: 'Scenes that belong together: the rooms of the starship, the places on a planet. Groups are made on the Scenes page.' },
   { key: 'show_avatars', label: 'Show avatars', kind: 'bool', default: true },
   { key: 'is_intro_scene', label: 'Intro scene', kind: 'bool' },
@@ -352,7 +352,7 @@ export const SCENE_FIELDS: Field[] = [
 /** Kept in the scene's `params` column. */
 export const SCENE_MUSIC_FIELDS: Field[] = [
   { key: 'music_media_id', label: 'Background music for this scene', kind: 'media', mediaType: 'audio', hint: 'Leave empty to use the scenario’s music (Settings).' },
-  { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'The scenario’s' },
+  { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'The scenario’s', slider: { min: 0, max: 1 } },
   {
     key: 'team_only', label: 'Who players see here', kind: 'tristate', wide: true, placeholder: 'As the scene’s group says (everyone, if it has none)',
     options: [['true', 'Only their own team'], ['false', 'Everyone playing, whatever their team']],
@@ -365,9 +365,9 @@ export const SHADOW_SPOT_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text', wide: true },
   { key: 'x', label: 'Centre X', kind: 'number' },
   { key: 'y', label: 'Centre Y', kind: 'number' },
-  { key: 'radius', label: 'Radius (px)', kind: 'number', min: 1, hint: 'How far the shade reaches across.' },
-  { key: 'radius_y', label: 'Radius up and down (px)', kind: 'number', min: 1, placeholder: 'The same', hint: 'Smaller than the radius for a shadow lying on the floor, seen at an angle.' },
-  { key: 'strength', label: 'Darkness at the centre (%)', kind: 'number', min: 0, max: 100, placeholder: '60', wide: true, hint: 'A figure at the centre is darkened by this much; towards the edge the shade fades to nothing. Put spots where the picture already shows shade: under a tree, behind a pillar, in a doorway.' },
+  { key: 'radius', label: 'Radius (px)', kind: 'number', min: 1, hint: 'How far the shade reaches across.', slider: { min: 1, max: 'scene' } },
+  { key: 'radius_y', label: 'Radius up and down (px)', kind: 'number', min: 1, placeholder: 'The same', slider: { min: 1, max: 'scene' }, hint: 'Smaller than the radius for a shadow lying on the floor, seen at an angle.' },
+  { key: 'strength', label: 'Darkness at the centre (%)', kind: 'number', min: 0, max: 100, placeholder: '60', slider: { min: 0, max: 100 }, wide: true, hint: 'A figure at the centre is darkened by this much; towards the edge the shade fades to nothing. Put spots where the picture already shows shade: under a tree, behind a pillar, in a doorway.' },
 ];
 
 /** A background or foreground layer (docs/src/content/docs/developers/extensions.md). */
@@ -378,9 +378,9 @@ export const LAYER_FIELDS: Field[] = [
   { key: 'display_width', label: 'Shown width (px)', kind: 'number', min: 1, placeholder: 'Scene width', hint: 'Empty: the image is stretched to the size of the scene.' },
   { key: 'display_height', label: 'Shown height (px)', kind: 'number', min: 1, placeholder: 'Scene height' },
   { key: 'tile', label: 'Repeat the image at its own size instead of stretching it', kind: 'bool', wide: true },
-  { key: 'scroll_speed_x', label: 'Drift right (px per second)', kind: 'number', placeholder: '0', hint: 'For repeated images: clouds, water, stars. Negative drifts left.' },
-  { key: 'scroll_speed_y', label: 'Drift down (px per second)', kind: 'number', placeholder: '0' },
-  { key: 'parallax', label: 'Parallax', kind: 'number', min: 0, step: 0.05, placeholder: '1', hint: '1 moves with the scene. Less than 1 moves slower, as if far away. 0 stays put on the screen.', wide: true },
+  { key: 'scroll_speed_x', label: 'Drift right (px per second)', kind: 'number', placeholder: '0', slider: { min: -200, max: 200 }, hint: 'For repeated images: clouds, water, stars. Negative drifts left.' },
+  { key: 'scroll_speed_y', label: 'Drift down (px per second)', kind: 'number', placeholder: '0', slider: { min: -200, max: 200 } },
+  { key: 'parallax', label: 'Parallax', kind: 'number', min: 0, step: 0.05, placeholder: '1', slider: { min: 0, max: 2 }, hint: '1 moves with the scene. Less than 1 moves slower, as if far away; 0 stays put on the screen. More than 1 moves faster, for a foreground close to the viewer.', wide: true },
 ];
 
 export const SPAWN_FIELDS: Field[] = [
@@ -392,9 +392,9 @@ export const SPAWN_FIELDS: Field[] = [
 /** A box in which things are drawn smaller or larger depending on how far up it they stand. */
 export const SCALE_AREA_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text', wide: true },
-  { key: 'scale_top', label: 'Size at the top edge (%)', kind: 'number', min: 1, hint: '100 is normal size. 50 draws things half size, as if far away.' },
-  { key: 'scale_bottom', label: 'Size at the bottom edge (%)', kind: 'number', min: 1, hint: 'In between, the size changes evenly from one to the other.' },
-  { key: 'speed_effect', label: 'Walking speed follows size (%)', kind: 'number', min: 0, max: 100, placeholder: '100', wide: true, hint: '100: one to one, so a half-size figure walks at half speed. 0: speed is not affected. Around 50 to 70 lets distant figures cover ground a little faster without looking like they are racing.' },
+  { key: 'scale_top', label: 'Size at the top edge (%)', kind: 'number', min: 1, slider: { min: 10, max: 200 }, hint: '100 is normal size. 50 draws things half size, as if far away.' },
+  { key: 'scale_bottom', label: 'Size at the bottom edge (%)', kind: 'number', min: 1, slider: { min: 10, max: 200 }, hint: 'In between, the size changes evenly from one to the other.' },
+  { key: 'speed_effect', label: 'Walking speed follows size (%)', kind: 'number', min: 0, max: 100, placeholder: '100', slider: { min: 0, max: 100 }, wide: true, hint: '100: one to one, so a half-size figure walks at half speed. 0: speed is not affected. Around 50 to 70 lets distant figures cover ground a little faster without looking like they are racing.' },
   { key: 'x', label: 'Left', kind: 'number' },
   { key: 'y', label: 'Top', kind: 'number' },
   { key: 'width', label: 'Width', kind: 'number', min: 1 },
@@ -430,10 +430,10 @@ export const HOTSPOT_FIELDS: Field[] = [
   },
   { key: 'position_x', label: 'X', kind: 'number', placeholder: 'Whole width', hint: 'Empty: the hotspot spans the whole width, for a top or bottom edge.' },
   { key: 'position_y', label: 'Y', kind: 'number', placeholder: 'Whole height', hint: 'Empty: the hotspot spans the whole height, for a left or right edge.' },
-  { key: 'radius', label: 'Radius (px)', kind: 'number', min: -1, hint: '-1 covers the whole scene.' },
+  { key: 'radius', label: 'Radius (px)', kind: 'number', min: -1, slider: { min: 1, max: 'scene' }, hint: '-1 covers the whole scene.' },
   { key: 'once', label: 'Walk-in only: fire once per visit to the scene', kind: 'bool', wide: true },
-  { key: 'reveal_radius', label: 'Appears within (px)', kind: 'number', min: 1, placeholder: 'Always there', hint: 'The hotspot is invisible and cannot be clicked until the player’s avatar is this close. Drawn as the outer dashed ring.' },
-  { key: 'reveal_full_radius', label: 'Fully visible within (px)', kind: 'number', min: 0, placeholder: 'Half of that', hint: 'Between the two distances its labels fade in and out. The inner dashed ring.' },
+  { key: 'reveal_radius', label: 'Appears within (px)', kind: 'number', min: 1, placeholder: 'Always there', slider: { min: 1, max: 'scene' }, hint: 'The hotspot is invisible and cannot be clicked until the player’s avatar is this close. Drawn as the outer dashed ring.' },
+  { key: 'reveal_full_radius', label: 'Fully visible within (px)', kind: 'number', min: 0, placeholder: 'Half of that', slider: { min: 0, max: 'scene' }, hint: 'Between the two distances its labels fade in and out. The inner dashed ring.' },
 ];
 
 export const LABEL_FIELDS: Field[] = [
@@ -453,7 +453,7 @@ export const LABEL_FIELDS: Field[] = [
 /** For pictures that are objects: whether players have to walk around them. Kept in the label's params. */
 export const LABEL_SOLID: Field[] = [
   { key: 'solid', label: 'Solid: players walk around it', kind: 'bool', structural: true, hint: 'Players cannot walk through it and are led around it. It stops being in the way when its hotspot’s conditions no longer hold (a rock that has been cleared). How it is drawn is still “Where it stands”.' },
-  { key: 'solid_radius', label: 'Size of the obstacle (px)', kind: 'number', min: 1, placeholder: 'A third of its width', hint: 'The radius of the circle at its base that cannot be walked on.' },
+  { key: 'solid_radius', label: 'Size of the obstacle (px)', kind: 'number', min: 1, placeholder: 'A third of its width', slider: { min: 1, max: 300 }, hint: 'The radius of the circle at its base that cannot be walked on.' },
 ];
 export const LABEL_TEXT: Field = { key: 'text', label: 'Text', kind: 'text', wide: true };
 export const LABEL_MEDIA: Field = { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true };
@@ -493,17 +493,17 @@ export const ITEM_FIELDS: Field[] = [
 
 /** Kept in the item's `settings` column. */
 export const ITEM_SETTINGS_FIELDS: Field[] = [
-  { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1' },
+  { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1', slider: { min: 0.1, max: 3 } },
   {
     key: 'placement', label: 'Where it stands', kind: 'select', placeholder: 'An object: players walk behind and in front of it',
     options: [['object', 'An object: players walk behind and in front of it'], ['background', 'On the floor: players always walk over it']],
   },
-  { key: 'blocking_radius', label: 'Blocking radius (px)', kind: 'number', min: 1, placeholder: 'A third of its width' },
+  { key: 'blocking_radius', label: 'Blocking radius (px)', kind: 'number', min: 1, placeholder: 'A third of its width', slider: { min: 1, max: 300 } },
   { key: 'attach_offset_x', label: 'Worn or ridden: offset X', kind: 'number', placeholder: '0' },
   { key: 'attach_offset_y', label: 'Offset Y', kind: 'number', placeholder: '0' },
   { key: 'attach_layer', label: 'Drawn', kind: 'select', placeholder: 'In front of the avatar', options: [['front', 'In front of the avatar'], ['behind', 'Behind the avatar']] },
   { key: 'art_faces', label: 'The artwork faces', kind: 'select', placeholder: 'Right', options: [['left', 'Left'], ['right', 'Right']] },
-  { key: 'speed_multiplier', label: 'Vehicle speed multiplier', kind: 'number', min: 0.1, step: 0.1, placeholder: '1.5' },
+  { key: 'speed_multiplier', label: 'Vehicle speed multiplier', kind: 'number', min: 0.1, step: 0.1, placeholder: '1.5', slider: { min: 0.1, max: 4 } },
 ];
 
 /** Something this scenario sells in the marketplace, besides the platform's items. */
@@ -517,9 +517,9 @@ export const SHOP_ITEM_FIELDS: Field[] = [
 ];
 /** Kept in the shop item's `settings` column; which apply depends on the kind. */
 export const SHOP_WEARABLE_FIELDS: Field[] = [
-  { key: 'scale', label: 'Size (of the avatar’s height)', kind: 'number', min: 0.02, step: 0.02, placeholder: '0.3', hint: '0.3 makes it 30% as tall as the avatar, whatever size the avatar is.' },
-  { key: 'offset_x', label: 'Nudge forward', kind: 'number', step: 0.02, placeholder: '0' },
-  { key: 'offset_y', label: 'Nudge down', kind: 'number', step: 0.02, placeholder: '0' },
+  { key: 'scale', label: 'Size (of the avatar’s height)', kind: 'number', min: 0.02, step: 0.02, placeholder: '0.3', slider: { min: 0.02, max: 1.5 }, hint: '0.3 makes it 30% as tall as the avatar, whatever size the avatar is.' },
+  { key: 'offset_x', label: 'Nudge forward', kind: 'number', step: 0.02, placeholder: '0', slider: { min: -1, max: 1 } },
+  { key: 'offset_y', label: 'Nudge down', kind: 'number', step: 0.02, placeholder: '0', slider: { min: -1, max: 1 } },
 ];
 export const SHOP_SLOT: Field = { key: 'slot', label: 'Worn on', kind: 'select', options: [['head', 'Head'], ['body', 'Body'], ['back', 'Back'], ['hand', 'Hand']], hint: 'One item per place can be worn at a time.' };
 export const SHOP_ANIMATION: Field = { key: 'animation', label: 'Movement', kind: 'select', options: [['bounce', 'Bounce'], ['float', 'Float'], ['sway', 'Sway'], ['pulse', 'Pulse']] };
@@ -531,9 +531,9 @@ export const CHARACTER_FIELDS: Field[] = [
   { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image' },
 ];
 export const CHARACTER_SETTINGS_FIELDS: Field[] = [
-  { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1' },
-  { key: 'voice_pitch', label: 'Voice: pitch (0 to 2)', kind: 'number', min: 0, max: 2, step: 0.1, placeholder: '1', hint: 'How the character sounds when its lines are read aloud. Lower is deeper.' },
-  { key: 'voice_rate', label: 'Voice: pace (0.5 to 2)', kind: 'number', min: 0.5, max: 2, step: 0.1, placeholder: '1' },
+  { key: 'scale', label: 'Image scale', kind: 'number', min: 0.01, step: 0.05, placeholder: '1', slider: { min: 0.1, max: 3 } },
+  { key: 'voice_pitch', label: 'Voice: pitch (0 to 2)', kind: 'number', min: 0, max: 2, step: 0.1, placeholder: '1', slider: { min: 0, max: 2 }, hint: 'How the character sounds when its lines are read aloud. Lower is deeper.' },
+  { key: 'voice_rate', label: 'Voice: pace (0.5 to 2)', kind: 'number', min: 0.5, max: 2, step: 0.1, placeholder: '1', slider: { min: 0.5, max: 2 } },
   { key: 'voice_name', label: 'Voice: prefer one called', kind: 'text', placeholder: 'Any', hint: 'Part of the name of a voice on the player’s device, such as “female”, “Daniel” or “Google UK”. Devices differ: where no voice matches, the default one reads.' },
   { key: 'portrait_media_id', label: 'Close-up portrait', kind: 'media', mediaType: 'image', structural: true, hint: 'Shown beside what the character says in a story box. Without one, the character’s ordinary image is used.' },
 ];

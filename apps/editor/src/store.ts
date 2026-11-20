@@ -46,9 +46,37 @@ export class Store {
     return this.bundle[table].filter((r) => r[column] === value);
   }
 
+  /**
+   * The last change queued, while it is still waiting to be sent, if it is a patch. A patch of the
+   * same row made right after it is folded into it rather than queued, so dragging a slider sends
+   * one request at a time with the latest value, not one per step.
+   */
+  private waiting: { key: string; attrs: Record<string, unknown>; result: Promise<Row | undefined> } | null = null;
+  /** When each row's last patch was sent, and the least time between two patches of one row (ms). */
+  private sentAt = new Map<string, number>();
+  private static readonly PATCH_GAP = 150;
+  /** True while `live()` runs. */
+  private dragging = false;
+
+  /**
+   * Make changes in passing, as a slider is dragged: the screen gets each at once, but patches
+   * made in `change` wait a moment after the row's last one, so the steps of a drag are sent
+   * together. Other changes are sent without waiting.
+   */
+  live<T>(change: () => T): T {
+    this.dragging = true;
+    try {
+      return change();
+    } finally {
+      this.dragging = false;
+    }
+  }
+
   /** Send one change after the ones before it. A failure is shown to the user and returned as undefined. */
   private send<T>(change: () => Promise<T>): Promise<T | undefined> {
     this.unpublished = true;
+    // Anything queued after a waiting patch keeps later patches from being folded into it.
+    this.waiting = null;
     const result = this.queue.then(change).catch((err: unknown) => {
       toast(err instanceof ApiError ? err.message : 'Could not save. Check your connection.', 'error');
       return undefined;
@@ -80,9 +108,31 @@ export class Store {
     const local = this.byId(table, id);
     if (local) Object.assign(local, attrs);
     this.emit(structural);
-    const row = await this.send(() => this.api.updateRow(this.scenarioId, table, id, attrs));
+    const row = await this.coalesced(`${table}:${id}`, attrs, (merged) => this.api.updateRow(this.scenarioId, table, id, merged));
     if (!row) await this.load();
     return row;
+  }
+
+  /** Queue a patch, or fold it into the same row's patch if that is the last one queued and has not been sent yet. */
+  private coalesced(key: string, attrs: object, change: (attrs: object) => Promise<Row>): Promise<Row | undefined> {
+    if (this.waiting?.key === key) {
+      Object.assign(this.waiting.attrs, attrs);
+      return this.waiting.result;
+    }
+    const entry = { key, attrs: { ...attrs } as Record<string, unknown>, result: undefined as unknown as Promise<Row | undefined> };
+    const gentle = this.dragging;
+    entry.result = this.send(async () => {
+      // A step of a drag soon after the row's last patch: wait a moment, so the next steps are
+      // folded into this request rather than each sent on its own.
+      const since = Date.now() - (this.sentAt.get(key) ?? 0);
+      if (gentle && since < Store.PATCH_GAP) await this.api.pause(Store.PATCH_GAP - since);
+      // Once it is on its way, nothing more can be added to it.
+      if (this.waiting === entry) this.waiting = null;
+      this.sentAt.set(key, Date.now());
+      return change(entry.attrs);
+    });
+    this.waiting = entry;
+    return entry.result;
   }
 
   /** Delete a row. The API also removes what depended on it, so everything is loaded again afterwards. */
@@ -98,7 +148,7 @@ export class Store {
   async patchScenario(attrs: object, structural = false): Promise<void> {
     Object.assign(this.bundle.scenario, attrs);
     this.emit(structural);
-    const row = await this.send(() => this.api.patchScenario(this.scenarioId, attrs));
+    const row = await this.coalesced('scenario', attrs, (merged) => this.api.patchScenario(this.scenarioId, merged));
     if (!row) await this.load();
   }
 

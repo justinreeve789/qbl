@@ -39,10 +39,23 @@ export interface Field {
   min?: number;
   max?: number;
   step?: number;
+  /**
+   * number: also draw a slider beside the box, over this range. The box still takes any value
+   * within `min` and `max`; one past the slider's end moves the end out to it.
+   */
+  slider?: Slider;
   /** Changing this changes which other fields are shown, so the form is redrawn. */
   structural?: boolean;
-  /** Take the full width of the form rather than half. */
+  /** Take the full width of the form rather than half. Fields with a slider do unless this is false. */
   wide?: boolean;
+}
+
+export interface Slider {
+  min: number;
+  /** `scene`: the longer side of the scene being edited, for distances across it. */
+  max: number | 'scene';
+  /** The slider's step. Default: the field's step, else hundredths over a short range and whole numbers over a long one. */
+  step?: number;
 }
 
 export type Values = Record<string, unknown>;
@@ -63,8 +76,9 @@ export function form(fields: readonly Field[], values: Values, commit: Commit, c
 function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HTMLElement {
   const value = values[f.key];
   const set = (v: unknown) => commit(f.key, v, f);
+  const wide = f.wide ?? (f.kind === 'number' && f.slider != null);
   const wrap = (input: Node, extra?: Node | null) =>
-    h('label', { class: `field${f.wide ? ' wide' : ''}`, 'data-field': f.key }, h('span', { class: 'field-label' }, f.label, help(f.hint)), input, extra);
+    h('label', { class: `field${wide ? ' wide' : ''}`, 'data-field': f.key }, h('span', { class: 'field-label' }, f.label, help(f.hint)), input, extra);
 
   switch (f.kind) {
     case 'bool': {
@@ -72,6 +86,7 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       return h('label', { class: `field check${f.wide ? ' wide' : ''}`, 'data-field': f.key }, input, h('span', null, f.label), help(f.hint));
     }
     case 'number': {
+      if (f.slider) return wrap(slider(f, f.slider, value, set, ctx));
       const input = h('input', {
         type: 'number', value: value ?? '', placeholder: f.placeholder, min: f.min, max: f.max, step: f.step ?? 'any',
         onchange: () => set(input.value.trim() === '' || Number.isNaN(Number(input.value)) ? null : Number(input.value)),
@@ -193,6 +208,65 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       return wrap(input);
     }
   }
+}
+
+/**
+ * A slider and a number box showing the same value. Dragging saves as it goes (the store folds
+ * the steps into one request at a time), so the canvas follows the slider. An empty value is
+ * shown at the default the placeholder names, dimmed, and stays empty until something is chosen.
+ */
+function slider(f: Field, range: Slider, value: unknown, set: (v: unknown) => void, ctx: FormContext): HTMLElement {
+  const end = range.max === 'scene' ? sceneSide(ctx) : range.max;
+  const step = range.step ?? f.step ?? (end - range.min <= 5 ? 0.01 : 1);
+  const fallback = f.placeholder != null && f.placeholder.trim() !== '' && Number.isFinite(Number(f.placeholder)) ? Number(f.placeholder) : null;
+  const decimals = (String(step).split('.')[1] ?? '').length;
+  const tidy = (n: number) => Number(n.toFixed(decimals));
+
+  const bar = h('input', { type: 'range', min: range.min, max: end, step, class: 'slider-bar' });
+  const box = h('input', { type: 'number', placeholder: f.placeholder, min: f.min, max: f.max, step: f.step ?? 'any', 'aria-label': f.label });
+  // Wide enough for what the placeholder says leaving it empty means.
+  box.style.width = `${Math.min(24, Math.max(7, (f.placeholder ?? '').length + 4))}ch`;
+  let last: number | null = typeof value === 'number' ? value : null;
+  let frame = 0;
+
+  const show = (n: number | null) => {
+    if (n != null && n > Number(bar.max)) bar.max = String(n);
+    if (n != null && n < Number(bar.min)) bar.min = String(n);
+    bar.value = String(n ?? fallback ?? range.min);
+    bar.classList.toggle('unset', n == null);
+    box.value = n == null ? '' : String(n);
+  };
+  const save = (n: number | null) => {
+    cancelAnimationFrame(frame);
+    if (n === last) return;
+    last = n;
+    set(n);
+  };
+
+  bar.addEventListener('input', () => {
+    const n = tidy(Number(bar.value));
+    box.value = String(n);
+    bar.classList.remove('unset');
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => ctx.store.live(() => save(n)));
+  });
+  bar.addEventListener('change', () => save(tidy(Number(bar.value))));
+  box.addEventListener('change', () => {
+    const raw = box.value.trim();
+    const n = raw === '' || Number.isNaN(Number(raw)) ? null : Number(raw);
+    show(n);
+    save(n);
+  });
+
+  show(last);
+  return h('div', { class: 'slider' }, bar, box);
+}
+
+/** The longer side of the scene being edited, for sliders over distances in it. */
+function sceneSide(ctx: FormContext): number {
+  const scene = ctx.store.byId('scenes', ctx.sceneId);
+  const side = Math.max(Number(scene?.width) || 0, Number(scene?.height) || 0);
+  return side > 0 ? Math.round(side) : 1000;
 }
 
 /** Text typed for a variable value: numbers become numbers. */
