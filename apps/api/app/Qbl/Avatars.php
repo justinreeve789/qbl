@@ -163,6 +163,44 @@ class Avatars
         return $added;
     }
 
+    /** The first cast, by row id, each with the picture it was seeded with (retired 2026-11-21). */
+    public const FIRST_CAST = [
+        1 => '/scenario-assets/platform/avatars/avatar-1.png', 2 => '/scenario-assets/platform/avatars/avatar-2.png',
+        3 => '/scenario-assets/platform/avatars/avatar-3.png', 4 => '/scenario-assets/platform/avatars/avatar-4.png',
+        5 => '/scenario-assets/platform/avatars/avatar-5.png', 6 => '/scenario-assets/platform/avatars/avatar-6.png',
+        7 => '/scenario-assets/platform/avatars/avatar-7.png', 8 => '/scenario-assets/platform/avatars/avatar-8.png',
+        9 => '/scenario-assets/platform/avatars/avatar-9.png', 10 => '/scenario-assets/platform/avatars/sprocket-sheet.png',
+    ];
+
+    /**
+     * Put a seed list's avatars in place of the first cast (Nova … Halley and Sprocket), on a
+     * database that has it: those rows are withdrawn (kept, inactive), players who had chosen one
+     * have no choice again (they are given the first avatar and may choose), and the list is
+     * seeded and made active. Organizations' own avatars are not touched. A database without the
+     * first cast is left alone. Returns how many of the first cast were withdrawn.
+     */
+    public static function replaceFirstCast(PDO $pdo, array $entries): int
+    {
+        $old = [];
+        foreach ($pdo->query('SELECT id, image_url, organization_id FROM avatars WHERE id <= 10')->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            if ($r['organization_id'] === null && (self::FIRST_CAST[(int) $r['id']] ?? null) === $r['image_url']) {
+                $old[] = (int) $r['id'];
+            }
+        }
+        if (! $old) {
+            return 0;
+        }
+        $in = implode(',', $old);
+        $now = gmdate('Y-m-d H:i:s');
+        $pdo->exec("UPDATE avatars SET active = 0, updated_at = '$now' WHERE id IN ($in)");
+        $pdo->exec('UPDATE users SET avatar_media_id = NULL WHERE avatar_media_id IN ('.implode(',', array_map(fn ($id) => self::BASE + $id, $old)).')');
+        self::seed($pdo, $entries);
+        $new = implode(',', array_map(fn ($e) => (int) $e['id'], $entries));
+        $pdo->exec("UPDATE avatars SET active = 1 WHERE organization_id IS NULL AND id IN ($new)");
+
+        return count($old);
+    }
+
     /** The platform_media row for a picture's address, made the first time it is used. */
     private static function mediaFor(PDO $pdo, array $picture, string $now): int
     {

@@ -64,7 +64,7 @@ if (str_starts_with($path, '/scenario-assets/')) {
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");
 $store = new ScenarioStore($pdo, "$dataDir/media", '/media');
 foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema(), App\Qbl\Api\Clients::sqliteSchema(), App\Qbl\Billing\Credits::sqliteSchema(),
-    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema(), App\Qbl\Generation\GenerationEvents::sqliteSchema()) as $sql) {
+    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema(), App\Qbl\Generation\GenerationEvents::sqliteSchema(), App\Qbl\Library\AssetLibrary::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
 }
 foreach (['organizations' => ['integrations_enabled_at', 'license'], 'users' => ['self_registered_at', 'email_verified_at']] as $table => $columns) {
@@ -98,7 +98,9 @@ foreach (require __DIR__.'/../database/seeders/data/shop.php' as $sequence => $i
 $library = new App\Qbl\Library\AssetLibrary($pdo, "$dataDir/media", '/media', dirname(__DIR__, 3).'/scenarios/assets/library');
 $library->importPack();
 
-// The platform's avatars, added once, as AvatarSeeder does.
+// The platform's avatars, added once, as AvatarSeeder does; a dev database with the first cast gets
+// the new one in its place, as the migration 2026_11_21_000200_replace_platform_avatars does.
+App\Qbl\Avatars::replaceFirstCast($pdo, require __DIR__.'/../database/seeders/data/avatars.php');
 App\Qbl\Avatars::seed($pdo, require __DIR__.'/../database/seeders/data/avatars.php');
 
 // The role a dev sign-in gets: one starting "admin" is an admin, "content" a content admin, "student" a
