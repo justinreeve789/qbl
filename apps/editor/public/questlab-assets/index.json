@@ -1,0 +1,1187 @@
+{
+ "version": 1,
+ "groups": [
+  "Squirrels",
+  "Birds",
+  "Dogs",
+  "Cats",
+  "Reptiles",
+  "Farm and field",
+  "Fish"
+ ],
+ "characters": [
+  {
+   "id": "red-squirrel",
+   "name": "Red Squirrel",
+   "group": "Squirrels",
+   "about": "A quick little squirrel that bounds along with its tail up.",
+   "style": "pixel",
+   "tags": [
+    "forest",
+    "park"
+   ],
+   "sheet": {
+    "file": "characters/red-squirrel/sheet.png",
+    "columns": 5,
+    "rows": 1,
+    "count": 5,
+    "frame_width": 124,
+    "frame_height": 76
+   },
+   "portrait": "characters/red-squirrel/portrait.png",
+   "preview": "characters/red-squirrel/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "duration": 450
+    },
+    "stand_right": {
+     "frames": [
+      0
+     ],
+     "duration": 1000
+    },
+    "hop": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "duration": 350
+    }
+   },
+   "credit": {
+    "title": "Pixel Squirrel",
+    "author": "alizard",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/pixel-squirrel"
+   }
+  },
+  {
+   "id": "woodland-squirrel",
+   "name": "Woodland Squirrel",
+   "group": "Squirrels",
+   "about": "A bushy-tailed squirrel that twitches its nose, scampers, jumps and ducks.",
+   "style": "pixel",
+   "tags": [
+    "forest",
+    "park"
+   ],
+   "sheet": {
+    "file": "characters/woodland-squirrel/sheet.png",
+    "columns": 8,
+    "rows": 3,
+    "count": 20,
+    "frame_width": 114,
+    "frame_height": 86
+   },
+   "portrait": "characters/woodland-squirrel/portrait.png",
+   "preview": "characters/woodland-squirrel/preview.png",
+   "animations": {
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "duration": 880
+    },
+    "walk_right": {
+     "frames": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+     ],
+     "duration": 540
+    },
+    "jump": {
+     "frames": [
+      14,
+      15,
+      16,
+      17
+     ],
+     "duration": 560
+    },
+    "crouch": {
+     "frames": [
+      18,
+      19
+     ],
+     "duration": 600
+    }
+   },
+   "credit": {
+    "title": "SunnyLand Woods",
+    "author": "Luis Zuno (ansimuz)",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/sunnyland-woods"
+   }
+  },
+  {
+   "id": "bluebird",
+   "name": "Bluebird",
+   "group": "Birds",
+   "about": "A songbird that hops about, pecks at the ground and takes to the air.",
+   "style": "pixel",
+   "tags": [
+    "garden",
+    "forest"
+   ],
+   "sheet": {
+    "file": "characters/bluebird/sheet.png",
+    "columns": 8,
+    "rows": 8,
+    "count": 58,
+    "frame_width": 94,
+    "frame_height": 64
+   },
+   "portrait": "characters/bluebird/portrait.png",
+   "preview": "characters/bluebird/preview.png",
+   "animations": {
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "duration": 1120
+    },
+    "walk_right": {
+     "frames": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+     ],
+     "duration": 540
+    },
+    "peck": {
+     "frames": [
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+     ],
+     "duration": 720
+    },
+    "fly": {
+     "frames": [
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+     ],
+     "duration": 720,
+     "repeat": true
+    },
+    "take_off": {
+     "frames": [
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41
+     ],
+     "duration": 770
+    },
+    "land": {
+     "frames": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48
+     ],
+     "duration": 560
+    },
+    "jump": {
+     "frames": [
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57
+     ],
+     "duration": 630
+    }
+   },
+   "credit": {
+    "title": "Bird",
+    "author": "rmazanek",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/bird-2"
+   }
+  },
+  {
+   "id": "hen",
+   "name": "Hen",
+   "group": "Birds",
+   "about": "A farmyard hen that struts about and pecks for seeds.",
+   "style": "pixel",
+   "tags": [
+    "farm"
+   ],
+   "sheet": {
+    "file": "characters/hen/sheet.png",
+    "columns": 8,
+    "rows": 1,
+    "count": 8,
+    "frame_width": 66,
+    "frame_height": 60
+   },
+   "portrait": "characters/hen/portrait.png",
+   "preview": "characters/hen/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "duration": 640
+    },
+    "stand_right": {
+     "frames": [
+      0
+     ],
+     "duration": 1000
+    },
+    "peck": {
+     "frames": [
+      4,
+      5,
+      6,
+      7
+     ],
+     "duration": 640
+    }
+   },
+   "credit": {
+    "title": "Chicken Sprites",
+    "author": "Shepardskin",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/chicken-sprites"
+   }
+  },
+  {
+   "id": "hawk",
+   "name": "Hawk",
+   "group": "Birds",
+   "about": "A bird of prey that is always on the wing.",
+   "style": "pixel",
+   "tags": [
+    "sky",
+    "mountains"
+   ],
+   "sheet": {
+    "file": "characters/hawk/sheet.png",
+    "columns": 5,
+    "rows": 1,
+    "count": 5,
+    "frame_width": 72,
+    "frame_height": 87
+   },
+   "portrait": "characters/hawk/portrait.png",
+   "preview": "characters/hawk/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "duration": 500
+    },
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "duration": 800
+    },
+    "fly": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "duration": 500,
+     "repeat": true
+    }
+   },
+   "credit": {
+    "title": "Animated Birds (32x32)",
+    "author": "MoikMellah",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/animated-birds-32x32"
+   }
+  },
+  {
+   "id": "husky",
+   "name": "Husky",
+   "group": "Dogs",
+   "about": "A friendly husky that wags its tail, barks, runs and sits.",
+   "style": "pixel",
+   "tags": [
+    "town",
+    "home"
+   ],
+   "sheet": {
+    "file": "characters/husky/sheet.png",
+    "columns": 8,
+    "rows": 4,
+    "count": 26,
+    "frame_width": 147,
+    "frame_height": 108
+   },
+   "portrait": "characters/husky/portrait.png",
+   "preview": "characters/husky/preview.png",
+   "animations": {
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "duration": 640
+    },
+    "walk_right": {
+     "frames": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "duration": 660
+    },
+    "run": {
+     "frames": [
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "duration": 400,
+     "repeat": true
+    },
+    "bark": {
+     "frames": [
+      15,
+      16,
+      17,
+      18
+     ],
+     "duration": 440
+    },
+    "sit": {
+     "frames": [
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25
+     ],
+     "duration": 980,
+     "repeat": true
+    }
+   },
+   "credit": {
+    "title": "Dog",
+    "author": "rmazanek",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/dog-3",
+    "note": "Built on the German Shepherd by Shepardskin and the husky by Hellkipz (both CC0)."
+   }
+  },
+  {
+   "id": "puppy",
+   "name": "Puppy",
+   "group": "Dogs",
+   "about": "A cheerful cartoon puppy that trots, runs and jumps for joy.",
+   "style": "cartoon",
+   "tags": [
+    "town",
+    "home"
+   ],
+   "sheet": {
+    "file": "characters/puppy/sheet.png",
+    "columns": 8,
+    "rows": 6,
+    "count": 46,
+    "frame_width": 138,
+    "frame_height": 150
+   },
+   "portrait": "characters/puppy/portrait.png",
+   "preview": "characters/puppy/preview.png",
+   "animations": {
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "duration": 900
+    },
+    "walk_right": {
+     "frames": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "duration": 700
+    },
+    "run": {
+     "frames": [
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+     ],
+     "duration": 480,
+     "repeat": true
+    },
+    "jump": {
+     "frames": [
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35
+     ],
+     "duration": 560
+    },
+    "slide": {
+     "frames": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45
+     ],
+     "duration": 600
+    }
+   },
+   "credit": {
+    "title": "Cat & Dog - Free Sprites",
+    "author": "pzUH",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/cat-dog-free-sprites"
+   }
+  },
+  {
+   "id": "tabby-kitten",
+   "name": "Tabby Kitten",
+   "group": "Cats",
+   "about": "A big-eyed cartoon kitten that pads about, runs and jumps.",
+   "style": "cartoon",
+   "tags": [
+    "town",
+    "home"
+   ],
+   "sheet": {
+    "file": "characters/tabby-kitten/sheet.png",
+    "columns": 8,
+    "rows": 6,
+    "count": 46,
+    "frame_width": 134,
+    "frame_height": 140
+   },
+   "portrait": "characters/tabby-kitten/portrait.png",
+   "preview": "characters/tabby-kitten/preview.png",
+   "animations": {
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "duration": 900
+    },
+    "walk_right": {
+     "frames": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "duration": 700
+    },
+    "run": {
+     "frames": [
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+     ],
+     "duration": 480,
+     "repeat": true
+    },
+    "jump": {
+     "frames": [
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35
+     ],
+     "duration": 560
+    },
+    "slide": {
+     "frames": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45
+     ],
+     "duration": 600
+    }
+   },
+   "credit": {
+    "title": "Cat & Dog - Free Sprites",
+    "author": "pzUH",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/cat-dog-free-sprites"
+   }
+  },
+  {
+   "id": "black-cat",
+   "name": "Black Cat",
+   "group": "Cats",
+   "about": "A sleek black cat that prowls and dashes.",
+   "style": "pixel",
+   "tags": [
+    "town",
+    "home"
+   ],
+   "sheet": {
+    "file": "characters/black-cat/sheet.png",
+    "columns": 8,
+    "rows": 2,
+    "count": 12,
+    "frame_width": 120,
+    "frame_height": 102
+   },
+   "portrait": "characters/black-cat/portrait.png",
+   "preview": "characters/black-cat/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "duration": 720
+    },
+    "stand_right": {
+     "frames": [
+      0
+     ],
+     "duration": 1000
+    },
+    "run": {
+     "frames": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "duration": 420,
+     "repeat": true
+    }
+   },
+   "credit": {
+    "title": "Cat sprites",
+    "author": "Shepardskin",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/cat-sprites"
+   }
+  },
+  {
+   "id": "komodo-dragon",
+   "name": "Komodo Dragon",
+   "group": "Reptiles",
+   "about": "A big lizard that waddles along, swinging its tail.",
+   "style": "pixel",
+   "tags": [
+    "desert",
+    "island"
+   ],
+   "sheet": {
+    "file": "characters/komodo-dragon/sheet.png",
+    "columns": 4,
+    "rows": 1,
+    "count": 4,
+    "frame_width": 155,
+    "frame_height": 70
+   },
+   "portrait": "characters/komodo-dragon/portrait.png",
+   "preview": "characters/komodo-dragon/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "duration": 640
+    },
+    "stand_right": {
+     "frames": [
+      0
+     ],
+     "duration": 1000
+    }
+   },
+   "credit": {
+    "title": "Komodo",
+    "author": "teasloth",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/komodo"
+   }
+  },
+  {
+   "id": "snake",
+   "name": "Snake",
+   "group": "Reptiles",
+   "about": "A coiled snake that sways and slithers.",
+   "style": "pixel",
+   "tags": [
+    "desert",
+    "jungle"
+   ],
+   "sheet": {
+    "file": "characters/snake/sheet.png",
+    "columns": 7,
+    "rows": 1,
+    "count": 7,
+    "frame_width": 128,
+    "frame_height": 92
+   },
+   "portrait": "characters/snake/portrait.png",
+   "preview": "characters/snake/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "duration": 770
+    },
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      1
+     ],
+     "duration": 1040
+    }
+   },
+   "credit": {
+    "title": "snake 2d remix (with dead animation)",
+    "author": "Hiross, from “Snake 2d” by Zelta",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/snake-2d-remix-with-dead-animation"
+   }
+  },
+  {
+   "id": "turtle",
+   "name": "Turtle",
+   "group": "Reptiles",
+   "about": "A slow and steady turtle that can hide in its shell.",
+   "style": "pixel",
+   "tags": [
+    "pond",
+    "beach"
+   ],
+   "sheet": {
+    "file": "characters/turtle/sheet.png",
+    "columns": 8,
+    "rows": 2,
+    "count": 11,
+    "frame_width": 136,
+    "frame_height": 64
+   },
+   "portrait": "characters/turtle/portrait.png",
+   "preview": "characters/turtle/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "duration": 900
+    },
+    "stand_right": {
+     "frames": [
+      0
+     ],
+     "duration": 1000
+    },
+    "hide": {
+     "frames": [
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "duration": 600
+    }
+   },
+   "credit": {
+    "title": "pixel turtle",
+    "author": "alizard",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/pixel-turtle"
+   }
+  },
+  {
+   "id": "mountain-goat",
+   "name": "Mountain Goat",
+   "group": "Farm and field",
+   "about": "A curly-horned goat that wanders, grazes and leaps.",
+   "style": "pixel",
+   "tags": [
+    "farm",
+    "mountains"
+   ],
+   "sheet": {
+    "file": "characters/mountain-goat/sheet.png",
+    "columns": 8,
+    "rows": 4,
+    "count": 25,
+    "frame_width": 122,
+    "frame_height": 122
+   },
+   "portrait": "characters/mountain-goat/portrait.png",
+   "preview": "characters/mountain-goat/preview.png",
+   "animations": {
+    "stand_right": {
+     "frames": [
+      0
+     ],
+     "duration": 1000
+    },
+    "walk_right": {
+     "frames": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "duration": 680
+    },
+    "graze": {
+     "frames": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+     ],
+     "duration": 2560
+    },
+    "leap": {
+     "frames": [
+      21,
+      22,
+      23,
+      24
+     ],
+     "duration": 600
+    }
+   },
+   "credit": {
+    "title": "Mountain Goat Sprites",
+    "author": "Sevarihk",
+    "license": "CC-BY 4.0",
+    "url": "https://opengameart.org/content/mountain-goat-sprites"
+   }
+  },
+  {
+   "id": "horse",
+   "name": "Horse",
+   "group": "Farm and field",
+   "about": "A chestnut horse that walks, gallops, grazes and swishes its tail.",
+   "style": "pixel",
+   "tags": [
+    "farm"
+   ],
+   "sheet": {
+    "file": "characters/horse/sheet.png",
+    "columns": 8,
+    "rows": 5,
+    "count": 39,
+    "frame_width": 360,
+    "frame_height": 198
+   },
+   "portrait": "characters/horse/portrait.png",
+   "preview": "characters/horse/preview.png",
+   "animations": {
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "duration": 1820
+    },
+    "walk_right": {
+     "frames": [
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+     ],
+     "duration": 960
+    },
+    "run": {
+     "frames": [
+      21,
+      22,
+      23,
+      24,
+      25,
+      26
+     ],
+     "duration": 480,
+     "repeat": true
+    },
+    "eat": {
+     "frames": [
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38
+     ],
+     "duration": 1800
+    }
+   },
+   "credit": {
+    "title": "Animated Horse",
+    "author": "ScratchIO",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/animated-horse"
+   }
+  },
+  {
+   "id": "goldfish",
+   "name": "Goldfish",
+   "group": "Fish",
+   "about": "A grumpy cartoon goldfish that swims, munches, blinks and sulks.",
+   "style": "cartoon",
+   "tags": [
+    "sea",
+    "pond"
+   ],
+   "sheet": {
+    "file": "characters/goldfish/sheet.png",
+    "columns": 8,
+    "rows": 6,
+    "count": 46,
+    "frame_width": 185,
+    "frame_height": 120
+   },
+   "portrait": "characters/goldfish/portrait.png",
+   "preview": "characters/goldfish/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "duration": 720
+    },
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "duration": 1320
+    },
+    "eat": {
+     "frames": [
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+     ],
+     "duration": 840
+    },
+    "blink": {
+     "frames": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35
+     ],
+     "duration": 600
+    },
+    "sad": {
+     "frames": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45
+     ],
+     "duration": 900
+    }
+   },
+   "credit": {
+    "title": "Cartoon Goldfish",
+    "author": "overcrafted",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/cartoon-goldfish"
+   }
+  },
+  {
+   "id": "yellow-tang",
+   "name": "Yellow Fish",
+   "group": "Fish",
+   "about": "A spiky yellow reef fish that flutters through the water.",
+   "style": "pixel",
+   "tags": [
+    "sea",
+    "reef"
+   ],
+   "sheet": {
+    "file": "characters/yellow-tang/sheet.png",
+    "columns": 4,
+    "rows": 1,
+    "count": 4,
+    "frame_width": 99,
+    "frame_height": 81
+   },
+   "portrait": "characters/yellow-tang/portrait.png",
+   "preview": "characters/yellow-tang/preview.png",
+   "animations": {
+    "walk_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "duration": 440
+    },
+    "stand_right": {
+     "frames": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "duration": 800
+    }
+   },
+   "credit": {
+    "title": "Swimming Fish",
+    "author": "Mepavi @ You’re Perfect Studio",
+    "license": "CC0",
+    "url": "https://opengameart.org/content/swimming-fish"
+   }
+  }
+ ]
+}

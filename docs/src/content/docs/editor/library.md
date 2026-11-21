@@ -79,6 +79,14 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 
 **Browser voice**: pitch, pace and a preferred voice name, for the lines that have no recording, which the browser reads aloud.
 
+### QuestLab Assets: ready-made characters
+
+**🐾 Add QuestLab Assets** (at the top of the Characters page, and on it while it is empty) opens a library of ready-made animals: two squirrels, three birds (bluebird, hen, hawk), two dogs, two cats, a komodo dragon, a snake, a turtle, a mountain goat, a horse and two fish. Each card shows the animal moving in a little scene, its close-up, what it can do (*stands*, *walks*, and moves such as `peck`, `bark`, `sit`, `graze` or `hide`) and who drew it. Filter by kind or search (`bird`, `farm`, `jump`...).
+
+**+ Add to scenario** copies the animal's sprite sheet and close-up into the scenario's media (filed under Characters) and makes a character from them, with its poses and moves already set up; the toast's **Open it** opens it. It is then a character like any other: rename it, give it a voice, change its frames, place it in scenes, and play its moves with a *Play an animation* action. Adding the same animal again shares the pictures already copied and names the new one *Red Squirrel 2*, and so on.
+
+The art is free to use: public domain (CC0), or CC BY for the mountain goat, which must be credited. The credit is kept on the media it adds (shown in its Details) and listed in the library's **All credits**. Pixel-art animals are scaled up in whole steps so they stay crisp. To add animals to the library, see `tools/make-questlab-assets.py`.
+
 Place characters in scenes, where a click can run an indirect event. Players' avatars are characters too, but they are the platform's, the same in every scenario: a scenario does not define them.
 
 ### Getting around
