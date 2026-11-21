@@ -63,7 +63,7 @@ async function staffDashboard() {
     const res = await fetch(`${base}/api/me`, { headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('qbl.token')}` } });
     if (!res.ok) return;
     const role = ((await res.json()) as { user?: { role?: string } }).user?.role;
-    if (role !== 'teacher' && role !== 'admin') return;
+    if (role !== 'teacher' && role !== 'content_admin' && role !== 'admin') return; // isStaff in @qbl/shared
     document.querySelectorAll<HTMLAnchorElement>('a[href="/missions"]').forEach((a) => {
       a.href = '/editor/#/';
       const label = a.querySelector<HTMLElement>('[data-login-label]');

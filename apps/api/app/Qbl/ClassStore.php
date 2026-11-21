@@ -182,7 +182,7 @@ class ClassStore
         }
         // Public curricular missions: playable with a plan that includes them; shown locked to
         // teachers without one (so they know what a plan gives), and not shown to anyone else.
-        $staff = in_array($this->one('SELECT role FROM users WHERE id = ?', [$userId])['role'] ?? '', ['teacher', 'admin'], true);
+        $staff = Roles::isStaff($this->one('SELECT role FROM users WHERE id = ?', [$userId])['role'] ?? null);
         foreach ($scenarios as $scenario) {
             if (self::visibility($scenario) !== 'public') {
                 continue;
@@ -211,8 +211,9 @@ class ClassStore
         if ($role === 'admin') {
             return true;
         }
-        // Before the author's own pass: a copy of a curricular mission is curricular too.
-        if ($this->needsPlan($scenarioId, $userId, $group)) {
+        // Before the author's own pass: a copy of a curricular mission is curricular too. Content
+        // admins look after the curricular missions, so they need no plan for them.
+        if ($this->needsPlan($scenarioId, $userId, $group) && ! Roles::editsAllScenarios($role)) {
             return false;
         }
         if ((int) $scenario['user_id'] === $userId) {

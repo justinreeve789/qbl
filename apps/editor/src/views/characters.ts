@@ -10,6 +10,7 @@ import { form, withValue, type FormContext } from '../fields';
 import { openPanel } from '../panel';
 import { CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
+import { keepInLibraryButton, openQuestLab } from './questlab';
 import { gettingAround } from './routine';
 import { recordAllButton, voiceSection } from './voices';
 
@@ -48,9 +49,16 @@ export function charactersPage(ctx: FormContext): HTMLElement {
     { class: 'page' },
     h('div', { class: 'page-head' },
       h('div', null, h('h1', null, 'Characters', h('span', { class: 'count' }, String(cards.length)), help('People and creatures players meet. Define them here, then place them in scenes, where clicking one can run an event. A character is drawn from its animations: give it a picture standing facing right and it can already stand, walk and turn (mirrored); add walking frames, the other side, a close-up and moves as you have them. Click a character to edit it.'))),
-      h('div', { class: 'row-actions' }, cards.length ? recordAllButton(ctx) : null, h('button', { type: 'button', class: 'primary', onclick: () => void add() }, 'New character'))),
-    cards.length ? h('div', { class: 'grid characters' }, ...cards) : h('p', { class: 'empty' }, 'No characters yet.'),
+      h('div', { class: 'row-actions' }, cards.length ? recordAllButton(ctx) : null, questLabButton(ctx), h('button', { type: 'button', class: 'primary', onclick: () => void add() }, 'New character'))),
+    cards.length
+      ? h('div', { class: 'grid characters' }, ...cards)
+      : h('div', { class: 'empty' }, h('p', null, 'No characters yet. Make your own, or start from a ready-made one.'), questLabButton(ctx)),
   );
+}
+
+/** Opens the QuestLab asset library: ready-made animals to add to the scenario. */
+function questLabButton(ctx: FormContext): HTMLElement {
+  return h('button', { type: 'button', class: 'questlab-open', 'data-open': 'questlab', title: 'Ready-made characters, with their pictures and animations', onclick: () => openQuestLab(ctx, { kinds: ['character'], open: (row) => openCharacter(ctx, row.id) }) }, '🐾 Add QuestLab Assets');
 }
 
 function characterCard(ctx: FormContext, row: Row): HTMLElement {
@@ -131,7 +139,7 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
     form(CHARACTER_SETTINGS_FIELDS, params(row, 'settings'), (key, value, field) => void store.patch('characters', id, { settings: withValue(params(store.byId('characters', id)!, 'settings'), key, value, field) }, field.structural === true), ctx),
     rowConditions(ctx, 'character_id', id, 'Present only when', 'Always present.'),
     gettingAround(ctx, row),
-    h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the character “${row.name}”`) && void store.remove('characters', id) }, 'Delete character')));
+    h('div', { class: 'row-actions' }, keepInLibraryButton(ctx, 'characters', row), h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the character “${row.name}”`) && void store.remove('characters', id) }, 'Delete character')));
 
   const others = Object.keys(animations).filter((n) => !isPose(n));
   const group = (title: string, tone: Tone, names: string[], ...extra: Array<HTMLElement | null>) =>

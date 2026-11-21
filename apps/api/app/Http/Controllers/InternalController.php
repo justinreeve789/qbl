@@ -8,6 +8,8 @@ use App\Models\ScenarioSession;
 use App\Models\User;
 use App\Qbl\ActivityStore;
 use App\Qbl\ClassStore;
+use App\Qbl\Library\AssetLibrary;
+use App\Qbl\ScenarioStore;
 use App\Qbl\ProgressStore;
 use App\Qbl\StoreError;
 use Illuminate\Http\JsonResponse;
@@ -125,5 +127,33 @@ class InternalController extends Controller
     private static function group(Request $request): string
     {
         return substr((string) $request->query('group', 'public'), 0, 64) ?: 'public';
+    }
+
+    /** The library's assets: ?kind=vehicle (or character,vehicle), ?category=, ?q=, ?tag=. */
+    public function library(Request $request, AssetLibrary $library): JsonResponse
+    {
+        $filter = ['kind' => $request->filled('kind') ? explode(',', (string) $request->query('kind')) : null] + $request->only('category', 'q', 'tag');
+
+        return response()->json(['assets' => $library->all($filter), 'categories' => $library->categories($filter)]);
+    }
+
+    /** One asset, by id or slug. */
+    public function libraryAsset(string $asset, AssetLibrary $library): JsonResponse
+    {
+        try {
+            return response()->json(['asset' => $library->get($asset)]);
+        } catch (StoreError $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
+    }
+
+    /** Add an asset to a scenario ({name?}): its files become the scenario's media and its character or item is made. */
+    public function addLibraryAsset(Request $request, Scenario $scenario, string $asset, AssetLibrary $library, ScenarioStore $store): JsonResponse
+    {
+        try {
+            return response()->json($library->addToScenario($store, $scenario->id, $asset, $request->only('name')), 201);
+        } catch (StoreError $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
     }
 }

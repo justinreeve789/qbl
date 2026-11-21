@@ -1,4 +1,4 @@
-import { isStaff, siteLinks, type CharacterPicture, type User } from '@qbl/shared';
+import { isStaff, roleLabel, siteLinks, type CharacterPicture, type User } from '@qbl/shared';
 import { buildTeacherDesk, TEACH_PATHS, teacherMissionsHeading, type TeacherDesk } from './teach';
 import { AccountMenu, type MenuAction } from './ui/AccountMenu';
 import { icon } from './ui/icons';
@@ -184,7 +184,7 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   };
   const menu = new AccountMenu({
     name: user.name,
-    subtitle: user.role === 'guest' ? 'Playing as a guest' : user.role === 'admin' ? 'Administrator' : user.role === 'teacher' ? 'Teacher' : undefined,
+    subtitle: user.role === 'guest' ? 'Playing as a guest' : isStaff(user.role) ? roleLabel(user.role) : undefined,
     avatar: avatarOf(avatarId),
     links,
     current: 'missions',

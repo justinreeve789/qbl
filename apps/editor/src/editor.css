@@ -1340,3 +1340,98 @@ button.danger-outline:hover:not(:disabled) { border-color: var(--danger); }
   .gen-chip-text { min-width: 0; }
   .gen-chip-label { font-size: 11px; }
 }
+
+/* The QuestLab asset library (Characters → Add QuestLab Assets): ready-made characters as cards with
+   their picture moving in a little scene, a close-up, what they can do, and who drew them. */
+button.questlab-open { border-color: var(--tone-character); background: color-mix(in srgb, var(--tone-character) 22%, var(--button)); font-weight: 600; }
+button.questlab-open:hover:not(:disabled) { background: color-mix(in srgb, var(--tone-character) 36%, var(--button)); }
+.empty > .questlab-open { margin-top: 6px; }
+.questlab-intro { max-width: 70ch; color: var(--muted); }
+.questlab-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 14px; }
+.questlab-groups { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.questlab-groups .chip-button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px; border: 1px solid var(--edge);
+  background: #3a3e47; color: #f3f5f9; font-size: 13px; font-weight: 600;
+}
+.questlab-groups .chip-button .count { font-size: 11px; opacity: 0.75; }
+.questlab-groups .chip-button.on { background: color-mix(in srgb, var(--tone-character) 32%, transparent); border-color: var(--tone-character); }
+.questlab-search { width: 240px; max-width: 100%; }
+.questlab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; align-items: stretch; }
+.questlab-card {
+  display: flex; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--edge);
+  border-top: 4px solid var(--tone-character); border-radius: 12px; transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.questlab-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.questlab-card[hidden] { display: none; }
+.questlab-photo {
+  position: relative; display: grid; place-items: end center; height: 178px; padding-bottom: 6px;
+  /* A meadow: sky, far hills, grass. */
+  background:
+    radial-gradient(ellipse 70% 28% at 25% 100%, #5fae5a 0 60%, transparent 61%),
+    radial-gradient(ellipse 80% 30% at 85% 100%, #6dbb63 0 60%, transparent 61%),
+    linear-gradient(#9fd3ff 0%, #d6efff 62%, #8fcf7a 62%, #6db45e 100%);
+}
+.questlab-card[data-group='Birds'] .questlab-photo { background: radial-gradient(circle at 80% 22%, #fff7c4 0 9%, transparent 10%), linear-gradient(#7ec0ff, #cfeaff 70%, #a9dba0 70%, #86c27a); }
+.questlab-card[data-group='Fish'] .questlab-photo {
+  place-items: center;
+  background: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.35) 0 3%, transparent 4%), radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.25) 0 2%, transparent 3%),
+    linear-gradient(#59c3e8, #2a86c4 60%, #1c5f9c 88%, #d9c48f 88%, #c4ab70);
+}
+.questlab-card[data-group='Reptiles'] .questlab-photo { background: linear-gradient(#ffd99a, #ffeccc 60%, #e2c27e 60%, #cfa964); }
+.questlab-walk { max-width: 92%; max-height: 160px; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.25)); }
+.questlab-portrait {
+  position: absolute; right: 8px; top: 8px; width: 64px; height: 64px; object-fit: contain; border-radius: 50%;
+  background: #fff8e6; border: 3px solid var(--tone-portrait); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.questlab-card.style-pixel .questlab-walk, .questlab-card.style-pixel .questlab-portrait { image-rendering: pixelated; }
+.questlab-used {
+  position: absolute; left: 8px; top: 8px; padding: 1px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  background: rgba(20, 60, 30, 0.82); color: #c9ffd9; border: 1px solid var(--ok);
+}
+.questlab-text { display: flex; flex-direction: column; gap: 4px; flex: 1; padding: 10px 12px 12px; }
+.questlab-name { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 16px; }
+.questlab-about { margin: 0; color: var(--muted); font-size: 13px; }
+.questlab-credit { margin: auto 0 4px; font-size: 12px; color: #c4cad5; }
+.questlab-add { align-self: stretch; margin-top: 2px; }
+.questlab-credits { margin-top: 14px; }
+.media-credit { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+/* Vehicles in the library: each kind in a scene of its own. */
+.questlab-card[data-group='Cars'] .questlab-photo {
+  background: linear-gradient(#9ccff7, #dff1ff 58%, #8a8f99 58%, #6f747d 84%, #f2f2f2 84%, #f2f2f2 86%, #6f747d 86%);
+}
+.questlab-card[data-group='Bikes'] .questlab-photo { background: linear-gradient(#a7d8ff, #e6f5ff 60%, #c9b48a 60%, #b39b6c 100%); }
+.questlab-card[data-group='Horses'] .questlab-photo,
+.questlab-card[data-group='Horse-drawn'] .questlab-photo { background: linear-gradient(#ffd9a8, #fff0d6 58%, #c8a86a 58%, #a98a4e 100%); }
+.questlab-card.kind-vehicle .questlab-walk { max-width: 96%; }
+
+/* The library's admin screen (#/library): every asset, withdrawn ones too, and the content admins. */
+.library-admin .page-head p { max-width: 60ch; margin: 4px 0 0; }
+.library-tile.withdrawn .tile-thumb img { opacity: 0.45; filter: grayscale(0.6); }
+.library-badge { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(20, 22, 30, 0.85); border: 1px solid var(--warn); color: var(--warn); font-size: 11px; font-weight: 700; }
+.library-panel .panel-column { min-width: 0; }
+.library-save { margin-top: 12px; }
+.library-files { display: grid; gap: 10px; }
+.library-file { display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: start; padding: 8px; border: 1px solid var(--edge); border-radius: 8px; }
+.library-file audio, .library-file video { width: 112px; }
+.library-file-thumb { display: grid; place-items: center; width: 112px; height: 84px; border-radius: 6px; background: var(--checker); overflow: hidden; }
+.library-file-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+.library-file-text { display: grid; gap: 6px; min-width: 0; }
+.library-grid-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.library-grid-fields input { width: 64px; }
+.library-anims textarea, .library-json { width: 100%; font-family: var(--mono, ui-monospace, monospace); font-size: 12px; }
+.library-upload { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.library-upload input:not([type='file']) { width: 150px; }
+.library-anim-rows { display: grid; gap: 4px; margin: 6px 0; }
+.library-anim-head, .library-anim-row { display: grid; grid-template-columns: 1.3fr 1fr 1.2fr 70px 80px 28px; gap: 6px; align-items: center; }
+.library-anim-row input, .library-anim-row select { min-width: 0; width: 100%; }
+.library-json-fold { margin-top: 10px; }
+.library-admins { margin-top: 28px; }
+.library-admins h2 { margin-top: 0; }
+.library-people { display: grid; gap: 6px; margin-bottom: 10px; }
+.library-person { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--edge); border-radius: 8px; }
+.library-admins .row-actions input[type='email'] { width: 260px; max-width: 100%; }
+.questlab-manage { margin-left: 4px; white-space: nowrap; }
+.library-admin .questlab-tools select { width: auto; flex: 0 0 auto; }
+.library-admin .questlab-tools .questlab-search { width: 260px; flex: 0 0 auto; }
+.library-tile .tile-thumb img { image-rendering: pixelated; }
+.library-upload input[list] { width: 110px; }

@@ -5,6 +5,7 @@ import { form, withValue, type Field, type FormContext } from '../fields';
 import { openPanel } from '../panel';
 import { ITEM_FIELDS, ITEM_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
+import { keepInLibraryButton, openQuestLab } from './questlab';
 import { chip, emptyState, listPage, pick, removeRow, section, thumbButton, tileActions, tileTitle } from './kit';
 
 /**
@@ -18,10 +19,15 @@ export function itemsPage(ctx: FormContext): HTMLElement {
     if (row) openItem(ctx, row.id);
   };
   const newButton = () => h('button', { type: 'button', class: 'primary', onclick: () => void add() }, 'New item');
+  // Ready-made vehicles (cars, bikes, horses, a stagecoach) and items from the asset library.
+  const libraryButton = () => h('button', {
+    type: 'button', class: 'questlab-open', 'data-open': 'questlab', title: 'Ready-made vehicles and items, with their pictures and settings',
+    onclick: () => openQuestLab(ctx, { kinds: ['vehicle', 'item'], open: (row) => openItem(ctx, row.id) }),
+  }, '🐾 Add QuestLab Assets');
   const cards = store.rows('items').map((row) => itemCard(ctx, row));
   return listPage(
-    { title: 'Items', count: cards.length, about: 'Things players can pick up, wear or ride. Define them here, then place them in scenes. Click an item to change it.', actions: [newButton()] },
-    cards.length ? h('div', { class: 'grid tiles' }, ...cards) : emptyState('🎒', 'No items yet. An item can be picked up, worn, or ridden like a vehicle.', newButton()),
+    { title: 'Items', count: cards.length, about: 'Things players can pick up, wear or ride. Define them here, then place them in scenes. Click an item to change it.', actions: [libraryButton(), newButton()] },
+    cards.length ? h('div', { class: 'grid tiles' }, ...cards) : emptyState('🎒', 'No items yet. An item can be picked up, worn, or ridden like a vehicle; or start from a ready-made one.', h('div', { class: 'row-actions' }, libraryButton(), newButton())),
   );
 }
 
@@ -98,7 +104,7 @@ function itemBody(ctx: FormContext, row: Row): HTMLElement {
   const about = section(`${kind.icon} Item`, kind.tone, 'item',
     url ? h('img', { class: 'preview large checker', src: url, alt: '' }) : h('div', { class: 'preview none' }, 'No picture yet: choose an image below.'),
     form(ITEM_FIELDS, row, (key, value) => void store.patch('items', id, { [key]: value }, SHAPING.has(key)), ctx),
-    h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: removeRow(ctx, 'items', row, `the item “${row.name}”`) }, 'Delete item')));
+    h('div', { class: 'row-actions' }, keepInLibraryButton(ctx, 'items', row), h('button', { type: 'button', class: 'danger', onclick: removeRow(ctx, 'items', row, `the item “${row.name}”`) }, 'Delete item')));
 
   const behaviour = h('div', { class: 'panel-column' },
     section('📍 In the scene', 'var(--tone-background)', 'scene', settingsForm(row.blocking ? [...IN_SCENE, ...BLOCKING] : IN_SCENE)),

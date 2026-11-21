@@ -41,6 +41,12 @@ return [
     'media_dir' => env('QBL_MEDIA_DIR', storage_path('app/media')),
     'media_url' => env('QBL_MEDIA_URL', '/media'),
 
+    // The asset library's shipped pack (library.json and its pictures, from scenarios/assets/library):
+    // where the API reads it, and the URL the web server serves it under. In the containers the
+    // checkout's scenarios/assets is mounted at /repo/scenarios/assets.
+    'library_dir' => env('QBL_LIBRARY_DIR', is_dir(base_path('../../scenarios/assets/library')) ? realpath(base_path('../../scenarios/assets/library')) : '/repo/scenarios/assets/library'),
+    'library_url' => env('QBL_LIBRARY_URL', '/scenario-assets/library'),
+
     // Requests per minute each access token may make to /api/v1 (the public API for schools).
     'api_rate_limit' => (int) env('QBL_API_RATE_LIMIT', 600),
 ];

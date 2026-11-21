@@ -6,7 +6,7 @@
  *
  *   php apps/api/tests/porting.php
  */
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi', 'ActivityStore', 'Api/Sql', 'Api/Reports'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi', 'ActivityStore', 'Api/Sql', 'Api/Reports'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 

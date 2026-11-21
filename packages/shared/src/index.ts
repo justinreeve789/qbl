@@ -20,3 +20,4 @@ export * from './infobox.js';
 export * from './sky.js';
 export * from './icons.js';
 export * from './site.js';
+export * from './roles.js';

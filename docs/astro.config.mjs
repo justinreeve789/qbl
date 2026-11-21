@@ -82,6 +82,7 @@ export default defineConfig({
             { label: 'Reading the reports', slug: 'editor/reports' },
             { label: 'Plans, credits and the AI generator', slug: 'editor/plans-and-generator' },
             { label: 'The district admin panel', slug: 'editor/district-admin' },
+            { label: 'The asset library and content admins', slug: 'editor/asset-library' },
           ],
         },
         {
@@ -115,6 +116,7 @@ export default defineConfig({
             { label: 'Instances, teams and save data', slug: 'developers/instances' },
             { label: 'Generating missions with AI', slug: 'developers/generation' },
             { label: "Characters' voices (text-to-speech)", slug: 'developers/voices' },
+            { label: 'The asset library', slug: 'developers/asset-library' },
             { label: 'Architecture', slug: 'developers/architecture' },
             { label: 'HTTP API contract (internal)', slug: 'developers/api' },
             { label: 'Billing, credits and district sign-in', slug: 'developers/billing' },

@@ -177,6 +177,7 @@ export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
               select(MEDIA_TABS.filter(([key]) => !['all', 'audio', 'video'].includes(key)).map(([key, label]) => [key, label] as const), String(params(media).category ?? ''),
                 (v) => void store.patch('media', id, { params: withValue(params(store.byId('media', id)!), 'category', v) }, true), `Automatic (${MEDIA_TABS.find(([key]) => key === category(media))?.[1]})`))
           : null,
+        mediaCredit(media),
         h('div', { class: 'row-actions' }, removeButton(ctx, 'media', media, `“${mediaLabel(media)}”. Anything using it will be left without it`)));
       if (media.type !== 'image') return h('div', { class: 'media-panel single' }, details);
       const animation = h('section', { class: 'panel-section', 'data-section': 'sheet', style: '--tone: var(--tone-move)' },
@@ -190,4 +191,13 @@ export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
       if (part === 'sheet') dialog.querySelector('[data-section=sheet]')?.scrollIntoView({ block: 'start' });
     },
   });
+}
+
+/** Who made a picture and under which licence, for one copied from the QuestLab asset library. Keep it with the picture: CC BY art must be credited. */
+function mediaCredit(media: Row): HTMLElement | null {
+  const credit = params(media).credit as { title?: string; author?: string; license?: string; url?: string } | undefined;
+  if (!credit?.author) return null;
+  return h('p', { class: 'media-credit' }, '🎨 ',
+    credit.url ? h('a', { href: credit.url, target: '_blank', rel: 'noopener' }, credit.title || 'Art') : (credit.title || 'Art'),
+    ` by ${credit.author}`, credit.license ? ` · ${credit.license}` : '');
 }

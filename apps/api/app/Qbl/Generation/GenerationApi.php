@@ -69,7 +69,7 @@ class GenerationApi
         if (! $user) {
             throw new StoreError(401, 'Unauthenticated.');
         }
-        if (! in_array($user['role'] ?? '', ['teacher', 'admin'], true)) {
+        if (! \App\Qbl\Roles::isStaff($user['role'] ?? null)) {
             throw new StoreError(403, 'The generator is for teachers.');
         }
         $me = (int) $user['id'];

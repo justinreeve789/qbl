@@ -13,7 +13,7 @@
  * other assets (scenarios/assets/starship/uploads for the demo) and the document points there.
  * Needs PHP with the pdo_sqlite and zip extensions.
  */
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 

@@ -49,6 +49,12 @@ Things players can pick up, wear or ride. Each card shows the item's picture and
 
 The panel has the item itself on the left: its name and picture, **Unique** (only one player can hold it), **Physical**, **Blocking** (avatars walk around it), **Wearable** and **Vehicle**. A vehicle is always a single object: it goes where it is driven and stays where it is left. On the right are its settings, in groups that appear only when they apply: **In the scene** (scale, where it stands, and the blocking radius for a blocking item), **Worn** or **Ridden** (offsets, in front of or behind the avatar, which way the artwork faces, and **Hide the avatar below**: how far down the item's picture the avatar stops being drawn, 0 at the top and 1 at the bottom, so a rider sits in a UFO or a car instead of their legs showing beneath it), **Vehicle** (speed multiplier), **In the bag** for something players carry (when they have it, and the description they read in their bag), and **When it is there** (conditions). Place items in scenes from the scene editor.
 
+### QuestLab Assets: ready-made vehicles
+
+**🐾 Add QuestLab Assets** on the Items page opens the asset library's vehicles: four cars (a red convertible, a yellow roadster, a farm truck and a silver hatchback), a motorcycle, a bicycle, two saddled horses (bay and palomino) and a stagecoach with its team of horses. Each card shows it moving (wheels turning, legs walking), its speed and who drew it.
+
+**+ Add to scenario** copies its sprite sheet into the scenario's media and makes a vehicle that is ready to ride: its `idle` and `walk` animations play by themselves, it is moved so the rider sits in the seat (on the driver's box, in the saddle, behind the wheel), the rider is cut off below the seat, and it goes faster than walking. In the cars with a roof the rider is seen through the windows. Horses can also `gallop` with a *Play an animation* action. Change any of it afterwards in the item's panel, and place it in a scene.
+
 ## Characters
 
 ![The Characters tab: a card for each character, showing how it stands and its close-up portrait](../../../assets/screenshots/editor-characters.webp)
@@ -78,6 +84,14 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 **🔊 Voice**: the voice the character's lines are recorded in, from the server's list (women, men, children, and robots and creatures). **▶ Listen** plays a sample; **🎙️ Record its lines** records every line the character says (in dialogue and in conversations), once, on the server. Players then hear the recording, with each word lit as it is spoken. Change a line or the voice and record again: only what changed is recorded. Lines that show a variable other than the player's name (a score, say) can't be recorded ahead of time, so the browser reads those. The Characters page has **🎙️ Record voices** for every character at once, **🎭 Give everyone a voice** for characters that have none, and shows how many lines are recorded. Publish afterwards so players get the recordings.
 
 **Browser voice**: pitch, pace and a preferred voice name, for the lines that have no recording, which the browser reads aloud.
+
+### QuestLab Assets: ready-made characters
+
+**🐾 Add QuestLab Assets** (at the top of the Characters page, and on it while it is empty) opens a library of ready-made animals: two squirrels, three birds (bluebird, hen, hawk), two dogs, two cats, a komodo dragon, a snake, a turtle, a mountain goat, a horse and two fish. Each card shows the animal moving in a little scene, its close-up, what it can do (*stands*, *walks*, and moves such as `peck`, `bark`, `sit`, `graze` or `hide`) and who drew it. Filter by kind or search (`bird`, `farm`, `jump`...).
+
+**+ Add to scenario** copies the animal's sprite sheet and close-up into the scenario's media (filed under Characters) and makes a character from them, with its poses and moves already set up; the toast's **Open it** opens it. It is then a character like any other: rename it, give it a voice, change its frames, place it in scenes, and play its moves with a *Play an animation* action. Adding the same animal again shares the pictures already copied and names the new one *Red Squirrel 2*, and so on.
+
+The art is free to use: public domain (CC0), or CC BY (the mountain goat, the horses, the stagecoach's horses and the bicycle), which must be credited. The credit is kept on the media it adds (shown in its Details) and listed in the library's **All credits**. Pixel art is scaled up in whole steps so it stays crisp. How the library is stored, and how to add to it, is in [The asset library](/docs/developers/asset-library/).
 
 Place characters in scenes, where a click can run an indirect event. Players' avatars are characters too, but they are the platform's, the same in every scenario: a scenario does not define them.
 

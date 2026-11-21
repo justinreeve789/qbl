@@ -1,4 +1,4 @@
-import { codeProblem, normalizeCode, SCENARIO_CODE_MAX, validateScenario } from '@qbl/shared';
+import { codeProblem, editsAllScenarios, normalizeCode, SCENARIO_CODE_MAX, validateScenario } from '@qbl/shared';
 import { session } from '../session';
 import { issueItem } from './issues';
 import { playUrl, previewUrl } from '../config';
@@ -131,7 +131,7 @@ export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement
       column(['title', 'subtitle', 'description', 'shortname', 'default_language', 'intro_media_landscape_id', 'intro_media_portrait_id'])),
     part('🎮 Who plays, and how', 'var(--ok)', 'playing',
       setting(['visibility']),
-      session.role === 'admin'
+      editsAllScenarios(session.role)
         ? setting(['tier'])
         : store.settings.tier === 'curricular' ? h('p', { class: 'muted', 'data-tier': 'curricular' }, '🔒 A curricular mission: teachers need a teacher plan to play and assign it.') : null,
       column(['start_scene_id', 'max_players', 'require_login', 'enable_save_session', 'allow_groups']),
