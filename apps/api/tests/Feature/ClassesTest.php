@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Scenario;
 use App\Models\User;
+use App\Qbl\Avatars;
 use Database\Seeders\AvatarSeeder;
 use Database\Seeders\ShippedScenarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,32 +108,62 @@ class ClassesTest extends TestCase
         $this->seed(AvatarSeeder::class);
         $this->seed(AvatarSeeder::class);
         $document = $this->getJson('/api/scenarios/starshipexplorer/play')->json('scenario');
-        $this->assertSame(range(900001, 900010), array_column($document['avatars'], 'id'));
+        $this->assertSame(range(900011, 900019), array_column($document['avatars'], 'id'));
+        $this->assertSame(['Asimov', 'Buck', 'Gil', 'Lucy', 'Mallory', 'Pinta', 'Riona', 'Sam', 'Val'], array_column($document['avatars'], 'name'));
         $this->assertArrayNotHasKey('avatar_media_ids', $document, 'avatars are characters now');
-        $nova = $document['avatars'][0];
-        $this->assertSame(['stand_right' => ['media_id' => 900001], 'portrait' => ['media_id' => 950001]], $nova['animations'], 'one picture facing right, and its close-up');
-        // Sprocket is drawn from a platform sheet, which seeding twice does not repeat.
-        $this->assertSame(2, DB::table('platform_media')->count());
-        $sprocket = $document['avatars'][9];
-        $sheet = collect($document['assets'])->firstWhere('id', $sprocket['animations']['walk_right']['media_id']);
-        $this->assertSame(['columns' => 6, 'rows' => 3], $sheet['sheet']);
-        $this->assertSame('/scenario-assets/platform/avatars/sprocket-sheet.png', $sheet['url']);
-        $this->assertSame([6, 7, 8, 9, 10, 11], $sprocket['animations']['walk_right']['frames']);
+        // Each is one platform picture, given for the way the art faces, and its close-up; seeding twice does not repeat them.
+        $this->assertSame(18, DB::table('platform_media')->count());
+        [$asimov, , $gil] = $document['avatars'];
+        $this->assertSame(['stand_left', 'portrait'], array_keys($asimov['animations']), 'Asimov faces left');
+        $this->assertSame(['stand_right', 'portrait'], array_keys($gil['animations']), 'Gil faces right');
+        $picture = collect($document['assets'])->firstWhere('id', $asimov['animations']['stand_left']['media_id']);
+        $this->assertSame('/scenario-assets/platform/avatars/asimov.png', $picture['url']);
         foreach (collect($document['assets'])->where('id', '>=', 800000) as $media) {
             $this->assertFileExists(base_path('../../scenarios/assets/platform/'.substr($media['url'], strlen('/scenario-assets/platform/'))));
         }
 
         $ann = $this->user('Ann', 'student');
-        $this->as($ann)->getJson('/api/avatars')->assertOk()->assertJsonCount(10, 'avatars')->assertJsonPath('avatar_media_id', null);
+        $this->as($ann)->getJson('/api/avatars')->assertOk()->assertJsonCount(9, 'avatars')->assertJsonPath('avatar_media_id', null);
         $this->as($ann)->putJson('/api/me/avatar', ['avatar_media_id' => 101])->assertStatus(422);
-        $this->as($ann)->putJson('/api/me/avatar', ['avatar_media_id' => 900004])->assertOk();
-        $this->as($ann)->getJson('/api/me')->assertJsonPath('user.avatar_media_id', 900004);
+        $this->as($ann)->putJson('/api/me/avatar', ['avatar_media_id' => 900014])->assertOk();
+        $this->as($ann)->getJson('/api/me')->assertJsonPath('user.avatar_media_id', 900014);
         config(['qbl.service_key' => 'k']);
         $this->withHeaders(['X-QBL-Service-Key' => 'k'])->postJson('/api/internal/auth/verify', ['token' => $ann->createToken('game')->plainTextToken])
-            ->assertOk()->assertJsonPath('user.avatar_media_id', 900004);
+            ->assertOk()->assertJsonPath('user.avatar_media_id', 900014);
 
         // A teacher previewing a draft sees the same avatars.
         $teacher = $this->user('Teacher', 'teacher');
-        $this->assertSame(range(900001, 900010), array_column($this->as($teacher)->getJson('/api/editor/scenarios/1/preview')->assertOk()->json('scenario.avatars'), 'id'));
+        $this->assertSame(range(900011, 900019), array_column($this->as($teacher)->getJson('/api/editor/scenarios/1/preview')->assertOk()->json('scenario.avatars'), 'id'));
+    }
+
+    public function test_a_database_with_the_first_cast_of_avatars_gets_the_new_one_in_its_place(): void
+    {
+        $pdo = DB::connection()->getPdo();
+        $first = [];
+        foreach (Avatars::FIRST_CAST as $id => $url) {
+            $first[] = ['id' => $id, 'name' => "Old $id", 'image_url' => $url, 'settings' => ['scale' => 0.85]];
+        }
+        Avatars::seed($pdo, $first);
+        DB::table('avatars')->insert(['id' => 40, 'name' => 'Ours', 'image_url' => '/media/ours.png', 'settings' => '{}', 'active' => 1, 'sequence' => 0, 'organization_id' => 7]);
+        $ann = $this->user('Ann', 'student');
+        $bo = $this->user('Bo', 'student');
+        DB::table('users')->where('id', $ann->id)->update(['avatar_media_id' => 900003]);
+        DB::table('users')->where('id', $bo->id)->update(['avatar_media_id' => 900040]);
+
+        $migration = require database_path('migrations/2026_11_21_000200_replace_platform_avatars.php');
+        $migration->up();
+        $migration->up(); // again: nothing more happens
+
+        $this->assertSame([11, 12, 13, 14, 15, 16, 17, 18, 19, 40], DB::table('avatars')->where('active', 1)->orderBy('id')->pluck('id')->all());
+        $this->assertSame(10, DB::table('avatars')->where('active', 0)->count(), 'the first cast is kept, withdrawn');
+        $this->assertNull(DB::table('users')->where('id', $ann->id)->value('avatar_media_id'), 'a player who had chosen one of the first cast chooses again');
+        $this->assertSame(900040, (int) DB::table('users')->where('id', $bo->id)->value('avatar_media_id'), "an organization's own avatar is untouched");
+        $this->as($ann)->getJson('/api/avatars')->assertOk()->assertJsonCount(9, 'avatars')->assertJsonPath('avatars.0.name', 'Asimov');
+        $this->as($ann)->putJson('/api/me/avatar', ['avatar_media_id' => 900003])->assertStatus(422);
+
+        $migration->down();
+        $this->assertSame(range(1, 10), DB::table('avatars')->where('active', 1)->whereNull('organization_id')->orderBy('id')->pluck('id')->all());
+        $migration->up();
+        $this->assertSame(range(11, 19), DB::table('avatars')->where('active', 1)->whereNull('organization_id')->orderBy('id')->pluck('id')->all());
     }
 }

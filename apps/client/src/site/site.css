@@ -53,18 +53,10 @@ h3 {
   .qs-bob { animation: qs-bob 3.2s ease-in-out infinite; animation-delay: var(--delay, 0s); }
   .qs-hop:hover { animation: qs-hop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-  /* Sprocket, drawn from his sprite sheet: 6 columns x 3 rows of 120 x 180 frames. */
-  .qs-sprocket {
-    aspect-ratio: 2 / 3;
-    background: url('../../../../scenarios/assets/platform/avatars/sprocket-sheet.png') no-repeat;
-    background-size: 600% 300%;
-    background-position: 0 0;
-    filter: drop-shadow(0 10px 14px rgb(0 0 0 / 0.45)) drop-shadow(0 0 20px rgb(34 211 238 / 0.25));
-  }
-  /* Frames 15, 16, 17, 16: a wave. */
-  .qs-sprocket-wave { animation: qs-wave 0.8s steps(1, end) infinite; }
-  /* Frames 12, 13, 14, 13: a cheer. */
-  .qs-sprocket-cheer { animation: qs-cheer 0.9s steps(1, end) infinite; }
+  /* Turned the other way, to face their bubble or the middle. `scale` composes with the bob's transform. */
+  .qs-flip { scale: -1 1; }
+  /* Asimov, the robot, gets a cyan glow in place of the pink one. */
+  .qs-glow-cyan { filter: drop-shadow(0 10px 14px rgb(0 0 0 / 0.45)) drop-shadow(0 0 20px rgb(34 211 238 / 0.25)); }
 
   /* Speech bubbles. --ring is the accent colour; the tail is a rotated square on one edge. */
   .qs-bubble {
@@ -133,25 +125,8 @@ h3 {
   70% { transform: translateY(0) scale(1.03, 0.96); }
 }
 
-@keyframes qs-wave {
-  0% { background-position: 60% 100%; }
-  25% { background-position: 80% 100%; }
-  50% { background-position: 100% 100%; }
-  75% { background-position: 80% 100%; }
-  100% { background-position: 60% 100%; }
-}
-
-@keyframes qs-cheer {
-  0% { background-position: 0% 100%; }
-  25% { background-position: 20% 100%; }
-  50% { background-position: 40% 100%; }
-  75% { background-position: 20% 100%; }
-  100% { background-position: 0% 100%; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .js .qs-pop, .js .qs-rise { opacity: 1; transform: none; }
-  .qs-sprocket { background-position: 60% 100%; }
 }
