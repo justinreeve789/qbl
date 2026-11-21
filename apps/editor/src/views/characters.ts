@@ -4,6 +4,7 @@ import {
 } from '@qbl/shared';
 import type { Row } from '../api';
 import { animationPreview, characterOf, framePosition, framesOf, mediaOf, parseFrames, storedAnimations } from '../characters';
+import { checkFeet, mirror, sheetOf, walkCycle, WALK_DURATION, WALK_FRAMES, type Bitmap } from '../walkCycle';
 import { mediaLabel, mediaUrl, params } from '../describe';
 import { confirmDelete, h, help, toast } from '../dom';
 import { form, withValue, type FormContext } from '../fields';
@@ -91,6 +92,7 @@ function characterCard(ctx: FormContext, row: Row): HTMLElement {
       settings.roams === true || steps ? h('span', { class: 'chip roams', title: 'Walks around on its own, the same for everyone' }, steps ? `🗺️ Routine of ${steps}` : '🗺️ Walks around') : null),
     h('div', { class: 'row-actions' },
       h('button', { type: 'button', class: 'primary', 'data-open': 'character', onclick: open }, '✏️ Edit character'),
+      stand ? makeWalkButton(ctx, id, '🚶 Make walk') : null,
       h('span', { class: 'spacer' }),
       h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the character “${row.name}”`) && void store.remove('characters', id) }, 'Delete')),
   );
@@ -149,7 +151,9 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
     h('h3', { class: 'section-head' }, '🎬 Animations', help(ABOUT_ANIMATIONS)),
     legacy ? h('p', { class: 'notice' }, 'Read from the character’s picture and close-up. Changing anything here saves them as animations.') : null,
     group('🧍 Standing', 'stand', ['stand_right', 'stand_left']),
-    group('🚶 Walking', 'walk', ['walk_right', 'walk_left']),
+    group('🚶 Walking', 'walk', ['walk_right', 'walk_left'], stand ? h('div', { class: 'anim-make-walk' },
+      makeWalkButton(ctx, id, '✨ Make a walk from the standing picture'),
+      h('small', { class: 'muted' }, `${WALK_FRAMES} frames, feet first: a full step apart as each heel lands, side by side as they pass, always on the ground.`)) : null),
     group('🖼️ Close-up for story boxes', 'portrait', ['portrait']),
     group('✨ Moves and other animations', 'move', others, others.length ? null : h('p', { class: 'muted small' }, 'None yet. Add one to play with a “Play an animation” action, or to replace a built-in move.'), addAnimation(ctx, id, animations)));
 
@@ -378,6 +382,109 @@ function frameGrid(ctx: FormContext, characterId: number, name: string, animatio
   });
   box.dataset.character = String(characterId);
   return box;
+}
+
+// ------------------------------------------------------------- making a walk
+
+function makeWalkButton(ctx: FormContext, id: number, label: string): HTMLButtonElement {
+  const button = h('button', {
+    type: 'button', class: 'make-walk', 'data-make-walk': id,
+    title: 'Make a six-frame walking sprite sheet from the standing picture: the legs are cut out and stepped, feet first',
+    onclick: async () => {
+      button.disabled = true;
+      button.textContent = '⏳ Making the walk…';
+      try {
+        await makeWalk(ctx, id);
+      } finally {
+        button.disabled = false;
+        button.textContent = label;
+      }
+    },
+  }, label) as HTMLButtonElement;
+  return button;
+}
+
+/**
+ * Makes a character's walk from its standing picture (see walkCycle.ts): six frames on one sprite
+ * sheet, saved in the scenario's media at the standing picture's scale and made its "walk right"
+ * (walking left is that, mirrored, unless drawn). The frames are as tall as the standing picture and
+ * centred on it, so the character keeps its size and place when it starts and stops walking.
+ */
+async function makeWalk(ctx: FormContext, id: number): Promise<void> {
+  const { store } = ctx;
+  const row = store.byId('characters', id);
+  if (!row) return;
+  const character = characterOf(store, row);
+  const stand = resolvePose(character, false, 'right');
+  const media = stand ? store.byId('media', stand.animation.media_id) : undefined;
+  if (!stand || !media || media.type !== 'image') return void toast('Choose a standing picture first: the walk is made from it.', 'error');
+  if (character.animations?.walk_right && !confirm(`${row.name} already walks right with “${mediaLabel(store.byId('media', character.animations.walk_right.media_id) ?? media)}”. Replace that with a walk made from the standing picture?`)) return;
+
+  let picture: Bitmap;
+  try {
+    picture = await standingBitmap(store, media, stand.animation);
+  } catch {
+    return void toast('The standing picture could not be read here (is it on another site?). Upload it to Media and try again.', 'error');
+  }
+  // Made facing right: a standing picture that faces left (or is shown mirrored) is turned first.
+  if (stand.flip !== (stand.animation.flip === true)) picture = mirror(picture);
+
+  const cycle = walkCycle(picture);
+  const feet = checkFeet(cycle);
+  const sheet = sheetOf(cycle);
+  const canvas = document.createElement('canvas');
+  canvas.width = sheet.width;
+  canvas.height = sheet.height;
+  canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(sheet.data), sheet.width, sheet.height), 0, 0);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) return void toast('The walk could not be saved as a picture.', 'error');
+  const base = String(row.name || 'character').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'character';
+  let added: Row;
+  try {
+    added = await store.api.upload(store.scenarioId, new File([blob], `${base}-walk.png`, { type: 'image/png' }));
+  } catch (e) {
+    return void toast(`The walk could not be uploaded: ${(e as Error).message}`, 'error');
+  }
+  store.bundle.media.push(added);
+  await store.patch('media', added.id, {
+    scale_x: media.scale_x ?? 1, scale_y: media.scale_y ?? 1,
+    params: { ...params(added), category: 'character', sheet: { columns: WALK_FRAMES, rows: 1 }, made_from: { media_id: media.id, as: cycle.mode === 'legs' ? 'walk' : 'bob' } },
+  });
+  changeAnimation(ctx, id, 'walk_right', { media_id: added.id, duration: WALK_DURATION });
+
+  if (cycle.mode === 'bob') {
+    toast(`No legs could be found to step with (${(cycle.why ?? '').replace(/\.$/, '').toLowerCase()}), so ${row.name} bobs along instead. Draw walking frames for real steps.`);
+  } else {
+    const share = Math.round(feet.stepShare * 100);
+    const frames = (list: number[]) => list.map((f) => f + 1).join(' and ');
+    toast(feet.ok
+      ? `Made a ${WALK_FRAMES}-frame walk. The feet land a step apart (${share}% of ${row.name}’s height) in frames ${frames(feet.apart)} and pass side by side in frames ${frames(feet.together)}.`
+      : `Made a ${WALK_FRAMES}-frame walk, but have a look at it: ${feet.problems[0]}`, feet.ok ? undefined : 'error');
+  }
+  openAnimation(ctx, id, 'walk_right');
+}
+
+/** The first frame of a standing animation, as pixels: the whole frame, so the walk lines up with it. */
+async function standingBitmap(store: FormContext['store'], media: Row, animation: CharacterAnimation): Promise<Bitmap> {
+  const sheet = await framesOf(store, media);
+  const url = sheet?.url ?? mediaUrl(store, media);
+  if (!url) throw new Error('no picture');
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.src = url;
+  await image.decode();
+  const columns = sheet?.columns ?? 1;
+  const rows = sheet?.rows ?? 1;
+  const frame = sheet ? (animationFrames(animation, mediaOf(media))?.[0] ?? 0) : 0;
+  const width = Math.floor(image.naturalWidth / columns);
+  const height = Math.floor(image.naturalHeight / rows);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const g = canvas.getContext('2d', { willReadFrequently: true })!;
+  g.drawImage(image, (frame % columns) * width, Math.floor(frame / columns) * height, width, height, 0, 0, width, height);
+  const data = g.getImageData(0, 0, width, height); // throws for a picture from a site that does not allow it
+  return { width, height, data: data.data };
 }
 
 // ----------------------------------------------------------------- portraits
