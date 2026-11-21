@@ -41,6 +41,7 @@ Type, and use the toolbar for **bold**, *italic*, underline, a highlight, a head
 | 👆 **Reveal card** | A question or prompt that opens to show what it hides. What it hides is not read aloud until it is opened. |
 | 🃏 **Flip card** | A card with a front and a back that turns over when tapped. |
 | ✏️ **Answer box** | A box to type an answer in. See [Answer boxes](#answer-boxes). |
+| 🎛️ **Controls** | A bench of sliders, switches, a wheel of chance and meters side by side, with lines that show only while the controls are set a certain way. See [Hands-on instruments](#hands-on-instruments). |
 | 📖 **Glossary word** | Select a word in the text first. Players tap it to see what it means, and it goes into their glossary. |
 | 🔢 **Variable** | A variable's value, such as a score, shown as a blue chip in the editor. |
 | 📄 **New page** | What comes after is on the next page. Players step through with **Next** and **Back** (or ← and →), the dots showing where they are. The box's buttons are on the last page. |
@@ -69,6 +70,22 @@ An **answer box** saves what the player types in a variable when they press one 
 4. After the test, a second infobox can say: `You predicted {{prediction}}. The strip reads 3.`
 
 The student has committed to a guess before seeing the result, and you can read what it was.
+
+## Hands-on instruments
+
+A 🎛️ **Controls** block puts several controls side by side, for students to experiment with: set the rope length and the number of pulley wheels, switch a battery on, spin a wheel to see which way the wind blows. Each control saves its value in a variable when a button of the box is pressed, as an answer box does, so the button's action and later conditions can test it.
+
+| Control | Written as | Saves |
+| ------- | ---------- | ----- |
+| Slider | `<input data-qbl="slider" data-var="rope" data-min="0" data-max="20" data-step="1" data-value="8" data-unit=" m" data-label="Rope">` | a number from `min` to `max` |
+| Switch | `<input data-qbl="switch" data-var="brake" data-label="Brake">` | 1 (on) or 0 (off) |
+| Wheel of chance | `<div data-qbl="wheel" data-var="wind" data-options="Calm\|Breezy\|Gusty" data-label="Wind"></div>` | the option it lands on (repeat an option to make it likelier) |
+| Meter | `<div data-qbl="meter" data-var="rope" data-min="0" data-max="20" data-label="Rope out"></div>` | nothing: it shows a value as a bar |
+| Shown when | `<div data-qbl="when" data-when="rope >= 12; brake = 1">Enough rope!</div>` | nothing: what is inside shows only while every condition holds, as students move the controls |
+
+Clicking the block opens its HTML with a reminder of how each is written; its card in the editor lists what it holds. Add each control's variable on the [Variables tab](/docs/editor/library/#variables) first. Put `{{rope}}` in `data-value` to open the box as the student left it.
+
+**Example: a pulley rescue.** A box with a *Rope length* slider, a *Pulley wheels* slider and a *Brake* switch, a line that shows *"The rope is too short to reach Mo"* while the rope is under 12 m, and two buttons, **Lift!** and **Step away**. **Lift!** sets `tested` to 1; the actions after the box test the variables: with the rope long enough, two wheels or more and the brake on, Mo comes up; otherwise a box says what went wrong, and the instrument opens again. The AI generator builds its experiments this way.
 
 ## Marking right and wrong answers
 

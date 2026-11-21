@@ -15,9 +15,54 @@ final class BlueprintSchema
 {
     public const KEY = '^[a-z][a-z0-9_]{1,30}$';
 
-    public const INTERACTIONS = ['talk', 'collect', 'inspect', 'question', 'experiment', 'team_task'];
+    public const INTERACTIONS = ['talk', 'collect', 'inspect', 'use', 'question', 'experiment', 'team_task'];
 
+    /** Drawn for a character when the mission plays them. */
     public const GESTURES = ['wave', 'point', 'cheer', 'think'];
+
+    /** What a character (or the student) can do in a little scene: see Cutscenes. */
+    public const BEATS = ['walk', 'say', 'gesture', 'wait', 'leave', 'fall'];
+
+    /** The controls of an instrument: what students set. */
+    public const CONTROLS = ['slider', 'switch', 'wheel'];
+
+    /** How a condition on an instrument's controls compares. */
+    public const COMPARE = ['=', '!=', '<', '>', '<=', '>='];
+
+    public const CALLOUT_TONES = ['tip', 'fact', 'warn', 'think'];
+
+    /** Times of day a scene's living sky can show, in order (see packages/shared/src/sky.ts). */
+    public const SKY_TIMES = ['dawn', 'morning', 'midday', 'afternoon', 'golden', 'sunset', 'dusk', 'night'];
+
+    /**
+     * Lights a scene can have: each a thing drawn and stood in the scene, with a glow over it that moves
+     * as it says (`glow`: flicker, fire, glow, blink), in its colour, reaching `radius` pixels, and its
+     * usual height with what holds it (`cm`). `at` is where its light is in the picture, if it cannot be
+     * found by looking (fractions across and down).
+     */
+    public const LIGHTS = [
+        'lantern' => ['glow' => 'flicker', 'color' => '#ffc46b', 'radius' => 120, 'cm' => 160, 'at' => [0.5, 0.25]],
+        'torch' => ['glow' => 'flicker', 'color' => '#ffb050', 'radius' => 110, 'cm' => 150, 'at' => [0.5, 0.12]],
+        'campfire' => ['glow' => 'fire', 'color' => '#ff9a40', 'radius' => 180, 'cm' => 70, 'at' => [0.5, 0.55]],
+        'candle' => ['glow' => 'flicker', 'color' => '#ffd27a', 'radius' => 60, 'cm' => 30, 'at' => [0.5, 0.15]],
+        'lamp' => ['glow' => 'glow', 'color' => '#ffe2a0', 'radius' => 150, 'cm' => 280, 'at' => [0.5, 0.1], 'period' => 6],
+        'beacon' => ['glow' => 'blink', 'color' => '#ff4a3a', 'radius' => 70, 'cm' => 110, 'at' => [0.5, 0.1]],
+        'crystal' => ['glow' => 'glow', 'color' => '#8ad8ff', 'radius' => 110, 'cm' => 80, 'at' => [0.5, 0.4], 'period' => 4],
+        'screen' => ['glow' => 'glow', 'color' => '#7ae0ff', 'radius' => 90, 'cm' => 110, 'at' => [0.5, 0.4], 'period' => 3],
+    ];
+
+    /** What can be in the air of a scene. */
+    public const ATMOSPHERES = ['fireflies', 'leaves', 'snow', 'rain', 'dust', 'bubbles'];
+
+    /** Gestures a cutscene can ask for: the drawn ones, and moves every figure can do. */
+    public const CUTSCENE_GESTURES = ['wave', 'point', 'cheer', 'think', 'jump', 'spin', 'dance'];
+
+    /** How a creature that is only there for life moves through a scene. */
+    public const AMBIENT_MOTIONS = ['lands', 'walks_by', 'flies_by', 'swims_by'];
+
+    public const FOREGROUND_PLACES = ['bottom', 'left', 'right'];
+
+    public const WIDTHS = ['normal', 'wide'];
 
     public const ITEM_KINDS = ['collectible', 'tool', 'evidence', 'prop', 'vehicle'];
 
@@ -36,6 +81,49 @@ final class BlueprintSchema
             'xp' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 50],
             'note' => $text('Two to four words shown with it: "Sample collected".', 40),
         ]];
+        $cutscene = ['type' => 'array', 'maxItems' => 8, 'description' => 'Optional: a little scene played right after this, for everyone in the scene, so the place reacts to what students did: the characters (or the student) walk somewhere, say something, make a gesture, wait, or leave. Things happen in order. Use them to show cause and effect: the gate creaks open and the keeper strolls through it; the robot zooms over to the fixed pump and does a happy spin; the heron, startled, flaps off.', 'items' => [
+            'type' => 'object', 'required' => ['who', 'do'],
+            'properties' => [
+                'who' => ['type' => 'string', 'description' => 'A character key of a character in this scene, or "player" for the student.'],
+                'do' => ['type' => 'string', 'enum' => self::BEATS, 'description' => 'walk: to x. say: a line in a speech bubble (text). gesture: wave, point, cheer, think (drawn for them when asked), or jump, spin, dance. wait: seconds. leave: walk off the left or right edge and be gone for good (not the guide, and not someone students still need). fall: they slip out of sight (off a cliff, into a crevasse, swept off by the river), crying out (text), after walking to x if given; an interaction that rescues them must bring them back. Not the guide.'],
+                'x' => ['type' => 'number', 'minimum' => 0.08, 'maximum' => 0.92, 'description' => 'walk: where to, across the scene. fall: where they go over.'],
+                'text' => $text('say: what they say; fall: what they cry out. At most 120 characters.', 120),
+                'gesture' => ['type' => 'string', 'enum' => self::CUTSCENE_GESTURES],
+                'seconds' => ['type' => 'number', 'minimum' => 0.5, 'maximum' => 6],
+                'edge' => ['type' => 'string', 'enum' => ['left', 'right'], 'description' => 'leave: which way they go.'],
+            ],
+        ]];
+        $controlCondition = ['type' => 'object', 'required' => ['control', 'op', 'value'], 'properties' => [
+            'control' => $key,
+            'op' => ['type' => 'string', 'enum' => self::COMPARE],
+            'value' => ['type' => ['number', 'string'], 'description' => 'A number for a slider, 1 or 0 for a switch (on/off), an option for a wheel.'],
+        ]];
+        $instrument = ['type' => 'object', 'required' => ['controls', 'goal', 'test', 'success'], 'description' => 'experiment: a hands-on instrument students work with, its controls side by side on one panel: sliders to set a number (no typing), switches, a wheel of chance to spin. What it shows changes at once as they move the controls (shows), and they press the test button to try it. Make it fit the scene and the learning: a pulley with a slider for the rope and one for the wheels, a circuit board of switches with a bulb that lights, a mixing desk for paint colours, a wheel of chance for which way the wind blows a seed.', 'properties' => [
+            'controls' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 6, 'items' => ['type' => 'object', 'required' => ['key', 'kind', 'label'], 'properties' => [
+                'key' => $key,
+                'kind' => ['type' => 'string', 'enum' => self::CONTROLS, 'description' => 'slider: a number from min to max in steps. switch: on (1) or off (0). wheel: spun, lands on one of its options at random (repeat an option to make it likelier).'],
+                'label' => $text('"Rope length", "Battery", "Wind".', 30),
+                'min' => ['type' => 'number'], 'max' => ['type' => 'number'], 'step' => ['type' => 'number'], 'start' => ['type' => 'number'],
+                'unit' => $text('slider: shown after the number ("cm", "°C"), or empty.', 10),
+                'options' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 10, 'items' => $text('An option on the wheel.', 20)],
+            ]]],
+            'shows' => ['type' => 'array', 'maxItems' => 8, 'description' => 'What the instrument shows while its controls are set a certain way, at once, before testing: "💡 The bulb glows dimly" while one battery is on; "The water is boiling!" above 100 °C. Make cause and effect visible; never give the goal away outright.', 'items' => ['type' => 'object', 'required' => ['when', 'text'], 'properties' => [
+                'when' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 4, 'items' => $controlCondition],
+                'text' => $text('Short, one line, may start with an emoji.', 120),
+            ]]],
+            'meters' => ['type' => 'array', 'maxItems' => 3, 'description' => 'Bars that show a slider\'s value at a glance.', 'items' => ['type' => 'object', 'required' => ['control', 'label'], 'properties' => [
+                'control' => $key,
+                'label' => $text('"Rope out", "Heat".', 30),
+            ]]],
+            'goal' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 6, 'items' => $controlCondition, 'description' => 'When the test succeeds: all of these hold. Use ranges (>= and <=) for sliders where a range makes sense.'],
+            'test' => $text('The test button: "Lift!", "Close the circuit", "Mix it".', 30),
+            'misses' => ['type' => 'array', 'maxItems' => 4, 'description' => 'What testing tells students when it fails, for the commonest wrong settings: a nudge with a reason, not the answer.', 'items' => ['type' => 'object', 'required' => ['when', 'text'], 'properties' => [
+                'when' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 4, 'items' => $controlCondition],
+                'text' => $text('"The rope slips: with one wheel you would need to pull Mo\'s whole weight."', 200),
+            ]]],
+            'success' => $text('Explanation shown when it works.', 500),
+            'objective' => ['type' => 'string'],
+        ]];
 
         return [
             'type' => 'object',
@@ -46,7 +134,7 @@ final class BlueprintSchema
                 'description' => $text('For the teacher: what the mission is about, what students do, and what they learn. 2-4 sentences.', 800),
                 'story' => ['type' => 'object', 'required' => ['premise', 'player_role', 'resolution'], 'properties' => [
                     'premise' => $text('The situation that needs solving.', 600),
-                    'player_role' => $text('Who the students are in the story (they are always a crew of space explorers from the starship).', 200),
+                    'player_role' => $text('Who the students are in the story (they are always space explorers from the starship).', 200),
                     'resolution' => $text('How the mission ends when they succeed.', 400),
                 ]],
                 'art_direction' => ['type' => 'object', 'properties' => [
@@ -62,8 +150,67 @@ final class BlueprintSchema
                         'title' => $text('Name shown when students arrive: "Wilting Marsh".', 40),
                         'description' => $text('For the teacher: what happens here.', 300),
                         'kind' => ['type' => 'string', 'enum' => Sizes::SCENE_KINDS, 'description' => 'outdoor; indoor (inside a building, a ship, a lab: there is a back wall); underground (a cave, a burrow, a cellar); up_high (a rooftop, a treetop, a cliff ledge); underwater. Vary them: a mission that only ever walks along one street is dull.'],
-                        'background' => $text('What the background picture shows, as a side-on view: the place, its landmarks and the objects that are part of the scenery, left to right. No characters or people. Do not describe the art style; that is added for you. Do not describe doors, holes or ladders that are exits: they are drawn for you where the exits say.', 700),
+                        'background' => $text('What the background picture shows, as a side-on view: the place, its landmarks and the objects that are part of the scenery, left to right. Things in it are at real sizes beside a 130 cm child (a door is taller than them, a house many times taller): describe them as seen from a few metres away. No characters or people. Do not describe the art style; that is added for you. Do not describe doors, holes or ladders that are exits: they are drawn for you where the exits say. With distance: only what is near (the far view is its own picture).', 700),
                         'ground_line' => ['type' => 'number', 'minimum' => 0.55, 'maximum' => 0.8, 'description' => 'Where the walkable floor begins, as a fraction of the picture height from the top. Everything below it is floor students walk on.'],
+                        'width' => ['type' => 'string', 'enum' => self::WIDTHS, 'description' => 'normal (default): a little wider than the screen. wide: a long place students walk along while the view follows them (a street, a riverbank, a long hall): about one and a half times as long. Use wide for one or two scenes where a journey fits.'],
+                        'distance' => $text('Optional, for outdoor, up_high and underwater scenes: what is seen far away behind the place (the sky and clouds, far hills, a city skyline, a moon). It is drawn as a picture of its own that drifts slower than the scene as students walk, for depth. Best in wide scenes.', 300),
+                        'foreground' => ['type' => 'object', 'required' => ['look', 'where'], 'description' => 'Optional: something big and close to the viewer that students walk behind, for depth: the top of a wall we peer over, the edge of a crate, a fern, a rock, part of a market stall. Use it in one or two scenes, where it fits the place.', 'properties' => [
+                            'look' => $text('What it is, as one object: "the top of an old stone wall with moss on it".', 200),
+                            'where' => ['type' => 'string', 'enum' => self::FOREGROUND_PLACES, 'description' => 'bottom: a low strip along the bottom edge (a wall top). left or right: a piece in that bottom corner (a fern, a crate, a lamp post).'],
+                        ]],
+                        'floor' => ['type' => 'object', 'description' => 'Optional: where students can walk, when it is not the whole floor. Make it match the place: a room ends at its walls, a ledge ends at the drop, a pond in the middle of a garden is walked around.', 'properties' => [
+                            'left' => ['type' => 'number', 'minimum' => 0, 'maximum' => 0.4, 'description' => 'Where the walkable floor starts from the left (0: at the edge). Not with an exit on the left edge.'],
+                            'right' => ['type' => 'number', 'minimum' => 0.6, 'maximum' => 1, 'description' => 'Where it ends on the right (1: at the edge). Not with an exit on the right edge.'],
+                            'blocked' => ['type' => 'array', 'maxItems' => 2, 'items' => ['type' => 'object', 'required' => ['x', 'width', 'what'], 'properties' => [
+                                'x' => ['type' => 'number', 'minimum' => 0.15, 'maximum' => 0.85, 'description' => 'Its middle, across the scene.'],
+                                'width' => ['type' => 'number', 'minimum' => 0.05, 'maximum' => 0.22],
+                                'what' => $text('Something lying in the floor that students walk around, painted into the background there: "a small round pond with lily pads", "a crack in the ice", "a flower bed".', 160),
+                            ]]],
+                        ]],
+                        'arrival' => ['type' => 'object', 'description' => 'Optional: what happens the first time students arrive here, for everyone there: a tense moment (a character slips off the cliff the moment you arrive, a bridge cracks, an alarm goes off) or a surprise. Played once.', 'properties' => [
+                            'title' => $text('Shown big: "Look out!"', 40),
+                            'dialogue' => ['type' => 'array', 'maxItems' => 4, 'items' => $line],
+                            'cutscene' => $cutscene,
+                        ]],
+                        'details' => ['type' => 'array', 'maxItems' => 5, 'description' => 'Things in the scene students can click to read about, painted into the background: colour, jokes, red herrings, small clues. They are only looked at, never picked up or counted.', 'items' => ['type' => 'object', 'required' => ['x', 'label', 'look', 'text'], 'properties' => [
+                            'x' => ['type' => 'number', 'minimum' => 0.1, 'maximum' => 0.9],
+                            'label' => $text('Its name: "Old boot".', 30),
+                            'look' => $text('What is painted there: "a muddy old boot with a flower growing out of it".', 160),
+                            'text' => $text('What the student notices, as their own thought: "Someone lost a boot. Something is growing in it!"', 160),
+                            'placement' => ['type' => 'string', 'enum' => ['back', 'ground']],
+                        ]]],
+                        'ambient' => ['type' => 'array', 'maxItems' => 2, 'description' => 'Optional: a little life that has nothing to do with the lesson: birds that land, peck about and fly off; a cat that strolls by; fish that swim past. One or two in most scenes.', 'items' => [
+                            'type' => 'object', 'required' => ['key', 'look', 'motion', 'size_cm'],
+                            'properties' => [
+                                'key' => $key,
+                                'look' => $text('What it looks like: "a small round blue bird with an orange beak".', 160),
+                                'motion' => ['type' => 'string', 'enum' => self::AMBIENT_MOTIONS, 'description' => 'lands: flies in, lands on the floor, hops and pecks, flies off. walks_by: walks across the floor. flies_by: flies across the sky. swims_by: swims across (underwater).'],
+                                'size_cm' => ['type' => 'integer', 'minimum' => 5, 'maximum' => 150],
+                            ],
+                        ]],
+                        'sky' => ['type' => 'object', 'required' => ['time'], 'description' => 'Outdoor and up_high scenes: a living sky behind the scene, drawn by the game, with the sun or the moon and stars, and clouds drifting by. It can change slowly while students are there: a sunset passing through gold, orange, pink and purple into a starry dusk; a dawn. Most outdoor scenes have one; choose the time from the story.', 'properties' => [
+                            'time' => ['type' => 'string', 'enum' => self::SKY_TIMES, 'description' => 'The time of day when students arrive.'],
+                            'until' => ['type' => 'string', 'enum' => self::SKY_TIMES, 'description' => 'Optional: what it slowly becomes over about ten minutes, and then stays (afternoon until dusk: a sunset).'],
+                            'clouds' => ['type' => 'string', 'enum' => ['none', 'few', 'many']],
+                        ]],
+                        'lights' => ['type' => 'array', 'maxItems' => 4, 'description' => 'Optional: lights that glow and move, where the place has them: lanterns and torches that flicker at night, a campfire with embers rising, a crashed ship\'s beacon still blinking, glowing crystals in a cave, a lab screen. Each is drawn and stood in the scene, with its glow over it; they shine fully in the dark and only a little by day.', 'items' => [
+                            'type' => 'object', 'required' => ['x', 'kind', 'look'],
+                            'properties' => [
+                                'x' => ['type' => 'number', 'minimum' => 0.05, 'maximum' => 0.95],
+                                'kind' => ['type' => 'string', 'enum' => array_keys(self::LIGHTS), 'description' => 'lantern, torch, candle (flicker); campfire (flickers, embers rise); lamp, crystal, screen (glow, breathing slowly); beacon (blinks on and off).'],
+                                'look' => $text('What it looks like, with what holds it: "an iron lantern hanging from a wooden post", "a red warning beacon on a bent antenna sticking out of the wreck".', 160),
+                                'placement' => ['type' => 'string', 'enum' => ['ground', 'back', 'wall'], 'description' => 'ground: out on the floor. back: at the back of the floor. wall: hung on the back wall (indoors, underground).'],
+                                'color' => ['type' => 'string', 'pattern' => '^#[0-9a-fA-F]{6}$', 'description' => 'Optional: its light\'s colour, if not the usual for its kind.'],
+                                'height_cm' => ['type' => 'integer', 'minimum' => 10, 'maximum' => 600, 'description' => 'Optional: how tall it is, with what holds it.'],
+                            ],
+                        ]],
+                        'atmosphere' => ['type' => 'array', 'maxItems' => 2, 'description' => 'Optional: what is in the air: fireflies at dusk, leaves falling in an autumn wood, snow, rain, dust floating in a sunbeam in an old barn, bubbles rising under water.', 'items' => [
+                            'type' => 'object', 'required' => ['kind'],
+                            'properties' => [
+                                'kind' => ['type' => 'string', 'enum' => self::ATMOSPHERES],
+                                'amount' => ['type' => 'string', 'enum' => ['few', 'some', 'many']],
+                            ],
+                        ]],
                         'indoor' => ['type' => 'boolean', 'description' => 'Older field: the same as kind "indoor".'],
                         'exits' => ['type' => 'array', 'maxItems' => 4, 'items' => [
                             'type' => 'object', 'required' => ['to'],
@@ -84,19 +231,20 @@ final class BlueprintSchema
                                 'locked_message' => $text('Shown while it is still closed.', 160),
                             ],
                         ]],
-                        'props' => ['type' => 'array', 'maxItems' => 3, 'items' => ['type' => 'object', 'required' => ['item', 'x'], 'properties' => [
+                        'props' => ['type' => 'array', 'maxItems' => 4, 'items' => ['type' => 'object', 'required' => ['item', 'x'], 'properties' => [
                             'item' => $key,
                             'x' => ['type' => 'number', 'minimum' => 0.1, 'maximum' => 0.9],
                         ]]],
                     ],
                 ]],
                 'characters' => ['type' => 'array', 'minItems' => 1, 'maxItems' => $limits['max_characters'], 'items' => [
-                    'type' => 'object', 'required' => ['key', 'name', 'role', 'appearance', 'personality', 'scene', 'x'],
+                    'type' => 'object', 'required' => ['key', 'name', 'role', 'appearance', 'personality', 'scene', 'x', 'height_cm'],
                     'properties' => [
                         'key' => $key,
                         'name' => $text('Name.', 40),
                         'role' => $text('Their part in the story.', 200),
                         'appearance' => $text('Only what they look like: species or kind of being, body shape, height relative to a child, clothing, colours (name 3-4 main colours), one or two distinctive features. Full body. Friendly and appropriate for children. No text or logos on clothing.', 500),
+                        'height_cm' => ['type' => 'integer', 'minimum' => 30, 'maximum' => 260, 'description' => 'How tall they are, beside 130 cm child explorers: an adult 165-185, a grandparent 160, a small robot 70, a dog 60, a tall alien 220. They are drawn to that size.'],
                         'personality' => $text('How they talk and behave, in a few words.', 200),
                         'voice' => ['type' => 'object', 'description' => 'What they sound like, to choose the voice their lines are recorded in.', 'properties' => [
                             'gender' => ['type' => 'string', 'enum' => ['female', 'male', 'neutral'], 'description' => 'neutral for a robot, a computer or a creature that is neither.'],
@@ -108,8 +256,9 @@ final class BlueprintSchema
                         'scene' => $key,
                         'x' => ['type' => 'number', 'minimum' => 0.12, 'maximum' => 0.88, 'description' => 'Where they stand, as a fraction of the scene width.'],
                         'gestures' => ['type' => 'array', 'maxItems' => 2, 'items' => ['type' => 'string', 'enum' => self::GESTURES], 'description' => 'Drawn animations besides idle and walk (every character gets those).'],
-                        'wanders' => ['type' => 'boolean', 'description' => 'True for a character who paces back and forth near their spot while waiting (a busy inventor, a restless guard). Never the guide.'],
-                        'chatter' => ['type' => 'array', 'maxItems' => 2, 'items' => $text('Something they mutter to themselves now and then, in a speech bubble: a hint or a joke. At most 80 characters.', 80)],
+                        'walks' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 4, 'items' => ['type' => 'number', 'minimum' => 0.1, 'maximum' => 0.9], 'description' => 'Optional: spots across the scene they stroll between on their own, stopping at each for a while (a gardener tending rows, a guard on patrol, a shopkeeper). Students click them wherever they are. Never the guide.'],
+                        'wanders' => ['type' => 'boolean', 'description' => 'Older field: paces a little either side of their spot. Prefer walks.'],
+                        'chatter' => ['type' => 'array', 'maxItems' => 3, 'items' => $text('Something they say to themselves now and then, in a speech bubble: a hint, a joke, a bit of local colour. At most 80 characters.', 80)],
                     ],
                 ]],
                 'items' => ['type' => 'array', 'maxItems' => $limits['max_items'], 'items' => [
@@ -117,35 +266,55 @@ final class BlueprintSchema
                     'properties' => [
                         'key' => $key,
                         'name' => $text('Name.', 40),
-                        'kind' => ['type' => 'string', 'enum' => self::ITEM_KINDS, 'description' => 'collectible/tool/evidence: shown on an interaction students click. prop: scenery that stands in a scene (blocks walking). vehicle: something students can ride.'],
+                        'kind' => ['type' => 'string', 'enum' => self::ITEM_KINDS, 'description' => 'collectible/tool/evidence: a thing students can pick up into their bag (collect, or given by an interaction), or that an interaction shows. prop: scenery that stands in a scene (blocks walking), or what a use is done on. vehicle: something students can ride.'],
                         'appearance' => $text('Only what it looks like, as a single object: shape, material, colours, details. No text.', 400),
+                        'description' => $text('For a thing students carry: what they read when they point at it in their bag, one short sentence ("A coil of strong rope, long enough to reach the top of a tree").', 140),
                         'size_cm' => ['type' => 'integer', 'minimum' => 2, 'maximum' => 1200, 'description' => 'Its real longest side in centimetres: a pollen vial 12, a book 25, a toolbox 50, a crate 70, a barrel 100, a console 140, a door 210, a tree 600. A child explorer is 130. It is drawn to that scale.'],
                         'size' => ['type' => 'string', 'enum' => ['small', 'medium', 'large'], 'description' => 'Older field, used only without size_cm.'],
                     ],
                 ]],
-                'interactions' => ['type' => 'array', 'minItems' => 3, 'maxItems' => 24, 'items' => [
+                'interactions' => ['type' => 'array', 'minItems' => 3, 'maxItems' => 30, 'items' => [
                     'type' => 'object', 'required' => ['key', 'type', 'scene', 'label'],
                     'properties' => [
                         'key' => $key,
-                        'type' => ['type' => 'string', 'enum' => self::INTERACTIONS, 'description' => 'talk: a conversation with a character. collect: pick up an item (a sample, a clue). inspect: look closely at something and learn from it. question: a multiple-choice question that checks understanding. experiment: change a quantity step by step until a target is reached. team_task: something that needs several students to each do their part (e.g. three crew members each turn a valve).'],
+                        'type' => ['type' => 'string', 'enum' => self::INTERACTIONS, 'description' => 'talk: a conversation with a character. collect: pick up a thing into the bag; only things that will be used (every thing in the bag must help solve the mission). inspect: look closely at something and learn from it (it can turn out to matter, or hand something over). use: use a thing from the bag on something in the scene, or give it to a character (the puzzle of a point-and-click adventure). question: a multiple-choice question that checks understanding. experiment: a hands-on instrument with controls side by side (instrument). team_task: something that needs several students to each do their part (e.g. three crew members each turn a valve).'],
                         'scene' => $key,
                         'label' => $text('Short text shown over it: "Collect a sample", "Talk to Dr. Ren".', 40),
                         'x' => ['type' => 'number', 'minimum' => 0.1, 'maximum' => 0.9, 'description' => 'Where it is, as a fraction of the scene width. Not needed for talk (it is where the character stands).'],
                         'placement' => ['type' => 'string', 'enum' => Sizes::PLACEMENTS, 'description' => 'Where its item is: ground (lying or standing on the floor students walk on: a rock sample, a footprint, a dropped tool), back (standing against the back where the floor meets the scenery: machines, consoles, big plants), surface (small things, on a table, bench or flat rock that is added for you), wall (mounted on the back wall: a map, a switch, a gauge; only in indoor and underground scenes). Default: by its size.'],
+                        'look' => $text('For an interaction with no item: what students look at there, painted into the background at that spot ("a crack in the cave wall", "the old well"). A small question mark marks it.', 160),
                         'hidden' => ['type' => 'boolean', 'description' => 'True for a discovery that only appears when a student walks close to it: a clue in the shadows, a fossil in the dirt. Use one or two per mission for students who explore.'],
-                        'role' => ['type' => 'string', 'description' => 'Optional: the key of the crew role whose job this is. Only students in that role can do it; it counts for the whole crew. Not for talk or question.'],
-                        'share' => $text('Optional: a short finding written into the crew log for everyone when this is done ("Soil pH: 4, very acidic"). Use it with role tasks, so the crew must pool what each role found.', 120),
+                        'quiet' => ['type' => 'boolean', 'description' => 'inspect: no question mark over it, only its name when students come near or point at it, like the scene\'s details: for a thing that looks like nothing much but turns out to matter (the scarecrow\'s coat hides the key).'],
                         'resolves' => ['type' => 'string', 'description' => 'Optional: the key of a twist this sets right (it clears the way the twist blocked).'],
-                        'character' => ['type' => 'string', 'description' => 'talk: the character key.'],
-                        'item' => ['type' => 'string', 'description' => 'collect/inspect/experiment/team_task: the item key drawn there (optional for inspect/experiment/team_task).'],
-                        'requires' => ['type' => 'array', 'maxItems' => 3, 'items' => $key, 'description' => 'Keys of interactions or steps that must be done first.'],
+                        'character' => ['type' => 'string', 'description' => 'talk: the character key. use: the character the thing is given to (instead of a spot in the scene).'],
+                        'item' => ['type' => 'string', 'description' => 'collect: the item picked up (it goes into the bag). inspect/experiment/team_task: the item drawn there (optional). use: what the thing is used on, drawn there (a prop: a locked chest, a rusty gate; optional: without it, look says what is painted there).'],
+                        'uses' => ['type' => 'string', 'description' => 'use: the key of the thing from the bag that is used (collected, given or made earlier).'],
+                        'keeps' => ['type' => 'boolean', 'description' => 'use: true when the thing stays in the bag afterwards (a torch, a magnifier); otherwise it is used up or handed over.'],
+                        'gives' => ['type' => 'string', 'description' => 'Optional, for any interaction but collect: the key of a thing that goes into the bag when it is done (the keeper gives a key, the chest holds a map).'],
+                        'hint' => $text('use: what clicking it without the right thing says: what is wrong, and a nudge towards what would help ("The latch is rusted solid. Something slippery might loosen it."). For a character, what they say they need.', 200),
+                        'rescues' => ['type' => 'string', 'description' => 'Optional: the key of a character this saves after they fell (a fall in a cutscene, often on arriving in the scene). It shows only while they are in trouble, and they are back once it is done. Its item is best a picture of them in trouble ("Mo clinging to a root below the edge").'],
+                        'cutscene' => $cutscene,
+                        'requires' => ['type' => 'array', 'maxItems' => 3, 'items' => $key, 'description' => 'Keys of interactions, combinations, steps or twists that must be done (or have happened) first. A use needs no requirement for its thing: it is there once the thing is in the bag.'],
                         'locked_hint' => $text('Optional: shown when clicked before it is available. Only used when requires has one key.', 160),
                         'after' => ['type' => 'string', 'description' => 'question only: the key of an interaction right after which this question pops up by itself (it can also be reopened by clicking it).'],
                         'at_report' => ['type' => 'boolean', 'description' => 'question only: asked by the guide in the final debrief, when the crew reports back, instead of standing in a scene. Its scene is the guide\'s; no x. Never listed in steps.'],
-                        'dialogue' => ['type' => 'array', 'maxItems' => 8, 'items' => $line, 'description' => 'talk: the conversation, in order. Other types: optional lines a character says first.'],
+                        'dialogue' => ['type' => 'array', 'maxItems' => 8, 'items' => $line, 'description' => 'talk: the conversation, in order. use: what is said once the thing has been used or given. Other types: optional lines a character says first.'],
                         'info' => ['type' => 'object', 'required' => ['title', 'body'], 'properties' => [
                             'title' => $text('Heading.', 60),
                             'body' => $text('What the student observes or learns: concrete, accurate, at the grade level. Up to 3 short paragraphs separated by blank lines.', 900),
+                            'picture' => ['type' => 'string', 'description' => 'Optional: an item key whose picture is shown large at the top.'],
+                            'callout' => ['type' => 'object', 'required' => ['tone', 'text'], 'description' => 'Optional: a coloured note under the text.', 'properties' => [
+                                'tone' => ['type' => 'string', 'enum' => self::CALLOUT_TONES, 'description' => 'tip, fact (did you know), warn (careful), think (something to wonder about).'],
+                                'text' => $text('One or two sentences.', 240),
+                            ]],
+                            'cards' => ['type' => 'array', 'maxItems' => 4, 'description' => 'Optional: flip cards students turn over: a word and what it means, a question and its answer.', 'items' => ['type' => 'object', 'required' => ['front', 'back'], 'properties' => [
+                                'front' => $text('Front.', 80),
+                                'back' => $text('Back.', 200),
+                            ]]],
+                            'reveal' => ['type' => 'object', 'required' => ['prompt', 'text'], 'description' => 'Optional: a card that opens: a question to think about before seeing the answer.', 'properties' => [
+                                'prompt' => $text('"Why do you think…?"', 120),
+                                'text' => $text('What it shows when opened.', 300),
+                            ]],
                         ]],
                         'question' => ['type' => 'object', 'required' => ['prompt', 'choices', 'objective'], 'properties' => [
                             'prompt' => $text('The question.', 300),
@@ -158,42 +327,33 @@ final class BlueprintSchema
                             'objective' => ['type' => 'string', 'description' => 'The learning objective id it checks (LO1...).'],
                             'standards' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Standard codes it gives evidence for.'],
                         ]],
-                        'experiment' => ['type' => 'object', 'required' => ['quantity', 'unit', 'start', 'min', 'max', 'target', 'increase', 'decrease', 'success'], 'properties' => [
-                            'quantity' => $text('What changes: "pH", "Weight on the bridge".', 40),
-                            'unit' => $text('Unit shown after the number, or empty.', 12),
-                            'start' => ['type' => 'integer'], 'min' => ['type' => 'integer'], 'max' => ['type' => 'integer'], 'target' => ['type' => 'integer'],
-                            'increase' => $text('Button that adds one: "Add a drop of base".', 60),
-                            'decrease' => $text('Button that takes one away.', 60),
-                            'success' => $text('Explanation shown when the target is reached.', 500),
-                            'objective' => ['type' => 'string'],
-                        ]],
-                        'team' => ['type' => 'object', 'required' => ['success'], 'properties' => [
-                            'needed' => ['type' => 'integer', 'minimum' => 2, 'maximum' => 6, 'description' => 'How many different students must each do the same part. Not with roles.'],
+                        'instrument' => $instrument,
+                        'team' => ['type' => 'object', 'required' => ['needed', 'part', 'success'], 'properties' => [
+                            'needed' => ['type' => 'integer', 'minimum' => 2, 'maximum' => 6, 'description' => 'How many different students must each do their part.'],
                             'part' => $text('What one student does: "turns a valve".', 160),
-                            'roles' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 4, 'description' => 'Instead of needed and part: each listed crew role does its own different part, and it is done when every one has.', 'items' => ['type' => 'object', 'required' => ['role', 'part'], 'properties' => [
-                                'role' => $key,
-                                'part' => $text('What that role does: "reads the pressure gauge".', 120),
-                            ]]],
                             'success' => $text('Shown to everyone in the scene when the team is done.', 200),
                         ]],
                         'award' => $award,
                     ],
                 ]],
-                'roles' => ['type' => 'array', 'maxItems' => 4, 'description' => 'Optional crew roles (2 to 4): each student picks one at the start and has jobs only that role can do, so the crew must split up and pool what they find. No more roles than the fewest students who play.', 'items' => [
-                    'type' => 'object', 'required' => ['key', 'name', 'description'],
+                'combinations' => ['type' => 'array', 'maxItems' => 3, 'description' => 'Optional: two things from the bag that students put together to make a third (a rope and a hook make a grappling hook; a lens and a tube make a telescope). The two are used up and the new one goes into the bag. The making should make sense, and teach something where it can.', 'items' => [
+                    'type' => 'object', 'required' => ['key', 'items', 'makes', 'text'],
                     'properties' => [
                         'key' => $key,
-                        'name' => $text('"Botanist", "Engineer", "Navigator".', 30),
-                        'description' => $text('What this role does in the mission, to a student: "You study the plants and test the soil."', 200),
+                        'items' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 2, 'items' => $key, 'description' => 'The two item keys.'],
+                        'makes' => $key,
+                        'text' => $text('Shown when they are put together: "You tie the hook to the rope: a grappling hook!"', 160),
                     ],
                 ]],
-                'twists' => ['type' => 'array', 'maxItems' => 2, 'description' => 'One or two surprises that change the situation part-way (a storm rolls in, a bridge gives way, a sample turns out to be something else, an animal steals a tool). Each should teach something: what students learn about the topic by dealing with it.', 'items' => [
-                    'type' => 'object', 'required' => ['key', 'after', 'title', 'dialogue'],
+                'twists' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 2, 'description' => 'One or two twists or turns that change the situation part-way: a twist makes things harder (fog hides the landmarks, the labels were swapped), a turn changes luck or a heart (a gust knocks down just the branch needed, a grumpy keeper becomes a friend). Each should teach something: what students learn about the topic by dealing with it. At least one is invented for this mission.', 'items' => [
+                    'type' => 'object', 'required' => ['key', 'after', 'title', 'dialogue', 'invented'],
                     'properties' => [
                         'key' => $key,
-                        'after' => ['type' => 'string', 'description' => 'The interaction or step key right after which it happens.'],
+                        'invented' => ['type' => 'boolean', 'description' => 'true for a twist you invented for this mission, out of its place, its story and its topic (not one of the ideas you were given). At least one twist is invented.'],
+                        'after' => ['type' => 'string', 'description' => 'The interaction or step key right after which it happens (not a combination).'],
                         'title' => $text('Flashed big across the screen, at most 5 words: "RUMBLE! The ground shakes!"', 50),
                         'dialogue' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 4, 'items' => $line, 'description' => 'Characters react and say what it means (they can speak from anywhere, over the radio).'],
+                        'cutscene' => $cutscene,
                         'notice' => $text('One line for crew members who were elsewhere when it happened: "A rockslide has blocked the canyon path!"', 160),
                         'blocks' => ['type' => 'object', 'required' => ['to'], 'description' => 'Optional: it closes the way from the scene where it happens to another scene until it is set right.', 'properties' => [
                             'to' => $key,
@@ -211,7 +371,7 @@ final class BlueprintSchema
                     'properties' => [
                         'key' => $key,
                         'text' => $text('Checklist line. A step with several interactions shows its count automatically.', 120),
-                        'done_when' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 6, 'items' => $key, 'description' => 'Interaction keys; the step is done when all of them are.'],
+                        'done_when' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 6, 'items' => $key, 'description' => 'Interaction (or combination) keys; the step is done when all of them are.'],
                         'after' => ['type' => 'string', 'description' => 'Optional: a step key (or a twist key); this step is only listed once that one is done (or has happened).'],
                         'optional' => ['type' => 'boolean'],
                     ],
@@ -224,6 +384,7 @@ final class BlueprintSchema
                     'debrief' => $text('What the guide says before asking the debrief questions (the at_report questions): "Before we fly home, tell me what you worked out."', 200),
                     'dialogue' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 6, 'items' => $line],
                     'award' => $award,
+                    'cutscene' => $cutscene,
                 ]],
                 'badge' => ['type' => 'object', 'required' => ['name', 'appearance'], 'properties' => [
                     'name' => $text('A patch students can buy in the marketplace with their stars, only from this mission.', 40),

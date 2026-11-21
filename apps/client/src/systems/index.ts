@@ -1,12 +1,15 @@
 import type { SceneSystemClass } from '../core/SceneRuntime';
+import { AtmosphereSystem } from './AtmosphereSystem';
 import { CameraSystem } from './CameraSystem';
 import { DebugSystem } from './DebugSystem';
 import { HotspotSystem } from './HotspotSystem';
 import { LayerSystem } from './LayerSystem';
+import { LightSystem } from './LightSystem';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
 import { PreloadSystem } from './PreloadSystem';
 import { PropsSystem } from './PropsSystem';
 import { RemotePlayersSystem } from './RemotePlayersSystem';
+import { SkySystem } from './SkySystem';
 import { SpeechSystem } from './SpeechSystem';
 
 /**
@@ -18,6 +21,9 @@ import { SpeechSystem } from './SpeechSystem';
  */
 export const sceneSystems: SceneSystemClass[] = [
   LayerSystem,
+  SkySystem,
+  LightSystem,
+  AtmosphereSystem,
   PropsSystem,
   RemotePlayersSystem,
   LocalPlayerSystem,

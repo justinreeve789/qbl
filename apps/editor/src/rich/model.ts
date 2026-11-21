@@ -28,6 +28,8 @@ export type Block =
   | { kind: 'flip'; front: string; back: string }
   | { kind: 'callout'; tone: CalloutTone; html: string }
   | { kind: 'answer'; variable: string; placeholder: string }
+  /** Sliders, switches, wheels, meters and `when` blocks: kept as their HTML, edited as HTML. */
+  | { kind: 'controls'; html: string }
   | { kind: 'page' };
 export type BlockKind = Block['kind'];
 
@@ -100,6 +102,9 @@ export function blockOf(node: Node): Block | null {
     return { kind: 'callout', tone: tone && tone in CALLOUT_TONES ? (tone as CalloutTone) : 'tip', html: serialize([...node.childNodes]) };
   }
   if (tag === 'input' && kind === 'answer') return { kind: 'answer', variable: node.getAttribute('data-var') ?? '', placeholder: node.getAttribute('placeholder') ?? '' };
+  if ((tag === 'div' && ['panel', 'wheel', 'meter', 'when'].includes(kind ?? '')) || (tag === 'input' && (kind === 'slider' || kind === 'switch'))) {
+    return { kind: 'controls', html: controlsHtml(node) };
+  }
   if (tag === 'figure') {
     const caption = node.querySelector('figcaption')?.textContent?.trim() ?? '';
     const img = node.querySelector('img');
@@ -113,10 +118,18 @@ export function blockOf(node: Node): Block | null {
   if (tag === 'audio') return { kind: 'audio', media: heldMedia(node), src: srcOf(node), autoplay: node.hasAttribute('autoplay'), loop: node.hasAttribute('loop') };
   // A paragraph holding nothing but a picture, a video, a sound or an answer box is that thing.
   if (tag === 'p') {
-    const inner = only(node, 'img, video, audio, input[data-qbl="answer"]');
+    const inner = only(node, 'img, video, audio, input[data-qbl="answer"], input[data-qbl="slider"], input[data-qbl="switch"]');
     if (inner) return blockOf(inner);
   }
   return null;
+}
+
+/** A control's HTML as the game reads it: as the sanitiser left it, its media placeholders put back. */
+function controlsHtml(node: Element): string {
+  const copy = node.cloneNode(true) as Element;
+  // The sanitiser gives inputs their type; the game gives it again.
+  for (const input of [copy, ...copy.querySelectorAll('input')]) if (input.tagName === 'INPUT' && input.getAttribute('data-qbl') !== 'answer') input.removeAttribute('type');
+  return copy.outerHTML.replace(/(?:^|\/)?qbl-media\/(\d+)/g, '{{media:$1}}');
 }
 
 // ------------------------------------------------------------------ writing
@@ -149,6 +162,8 @@ export function blockHtml(b: Block): string {
       return `<div data-qbl="callout" data-tone="${b.tone}">${b.html}</div>`;
     case 'answer':
       return `<input data-qbl="answer"${attr('data-var', b.variable)}${attr('placeholder', b.placeholder)}>`;
+    case 'controls':
+      return b.html;
   }
 }
 
@@ -192,6 +207,7 @@ function write(n: Node, blocks?: Map<Element, Block>): string {
   }
   if (tag === 'span') {
     if (n.getAttribute('data-qbl') === 'word' && n.getAttribute('data-word')) return `<span data-qbl="word"${attr('data-word', n.getAttribute('data-word'))}>${inner()}</span>`;
+    if (n.getAttribute('data-qbl') === 'value' && n.getAttribute('data-var')) return `<span data-qbl="value"${attr('data-var', n.getAttribute('data-var'))}></span>`;
     return inner();
   }
   if (tag === 'hr' && n.getAttribute('data-qbl') === 'page') return '<hr data-qbl="page">';

@@ -8,6 +8,7 @@ import { characterRoams, doorsOf, normalizeRoutine, routeBetween, startPlacement
 import { ScenarioIndex } from './scenario.js';
 import { placeholderVariables } from './text.js';
 import { BUTTON_MARKS, INFOBOX_SIZES, infoboxRefs } from './infobox.js';
+import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
 import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
 
@@ -505,6 +506,12 @@ export function validateScenario(doc: unknown): ValidationResult {
         for (const word of refs.words) {
           if (!glossaryIds.has(word)) warn(`${path}.content`, `The content has a glossary word (${word}) that is not in the glossary`);
         }
+        for (const name of refs.controls) {
+          if (!variables.has(name)) err(`${path}.content`, `A control (slider, switch or wheel) saves to the variable "${name}", which is not defined`);
+        }
+        for (const name of refs.reads) {
+          if (!variables.has(name) && !refs.controls.includes(name) && !refs.answers.includes(name) && !isReserved(name)) warn(`${path}.content`, `The content shows or tests "${name}", which is neither a control in this box nor a variable`);
+        }
         if (a.media_id != null) {
           needMedia(a.media_id, `${path}.media_id`);
           const top = media.get(a.media_id);
@@ -564,6 +571,33 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (!(spot.radius > 0)) err(`${p}.radius`, 'radius is a number of pixels greater than 0');
       if (spot.radius_y != null && !(spot.radius_y > 0)) err(`${p}.radius_y`, 'radius_y is a number of pixels greater than 0');
       if (spot.strength != null && (spot.strength < 0 || spot.strength > 100)) err(`${p}.strength`, 'strength is a percentage from 0 to 100');
+    });
+    if (scene.sky) {
+      const p = `${sp}.sky`;
+      if (!SKY_TIMES.includes(scene.sky.time)) err(`${p}.time`, `time is one of ${SKY_TIMES.join(', ')}`);
+      if (scene.sky.until != null && !SKY_TIMES.includes(scene.sky.until)) err(`${p}.until`, `until is one of ${SKY_TIMES.join(', ')}`);
+      if (scene.sky.minutes != null && !(scene.sky.minutes > 0)) err(`${p}.minutes`, 'minutes is a number greater than 0');
+      for (const key of ['horizon', 'sun_x'] as const) {
+        const v = scene.sky[key];
+        if (v != null && (typeof v !== 'number' || v < 0 || v > 1)) err(`${p}.${key}`, `${key} is a share from 0 to 1`);
+      }
+      if (scene.sky.shade != null && (scene.sky.shade < 0 || scene.sky.shade > 100)) err(`${p}.shade`, 'shade is a percentage from 0 to 100');
+    }
+    const COLOR = /^#[0-9a-fA-F]{6}$/;
+    (scene.lights ?? []).forEach((light, i) => {
+      const p = `${sp}.lights[${i}]`;
+      if (typeof light.x !== 'number' || typeof light.y !== 'number') err(p, 'A light needs x and y');
+      if (light.radius != null && !(light.radius > 0)) err(`${p}.radius`, 'radius is a number of pixels greater than 0');
+      if (light.color != null && !COLOR.test(light.color)) err(`${p}.color`, 'color is #rrggbb');
+      if (light.kind != null && !['flicker', 'fire', 'glow', 'blink', 'twinkle'].includes(light.kind)) err(`${p}.kind`, 'kind is flicker, fire, glow, blink or twinkle');
+      if (light.strength != null && (light.strength < 0 || light.strength > 100)) err(`${p}.strength`, 'strength is a percentage from 0 to 100');
+      if (light.period != null && !(light.period > 0)) err(`${p}.period`, 'period is a number of seconds greater than 0');
+    });
+    (scene.atmosphere ?? []).forEach((a, i) => {
+      const p = `${sp}.atmosphere[${i}]`;
+      if (!['fireflies', 'leaves', 'snow', 'rain', 'dust', 'bubbles'].includes(a.kind)) err(`${p}.kind`, 'kind is fireflies, leaves, snow, rain, dust or bubbles');
+      if (a.amount != null && !['few', 'some', 'many'].includes(a.amount)) err(`${p}.amount`, 'amount is few, some or many');
+      if (a.color != null && !COLOR.test(a.color)) err(`${p}.color`, 'color is #rrggbb');
     });
     if (scene.group_id != null && s.scene_groups && !s.scene_groups.some((g) => g.id === scene.group_id)) {
       warn(`${sp}.group_id`, `Scene group ${scene.group_id} does not exist`);
@@ -627,6 +661,42 @@ export function validateScenario(doc: unknown): ValidationResult {
         return;
       }
       e.actions.forEach((a, ai) => checkAction(a, `${path}.actions[${ai}]`, scene));
+    });
+  });
+
+  // The bag: things players carry, and what two of them make together.
+  (s.items ?? []).forEach((it, i) => {
+    if (it.carried_when != null) {
+      if (!Array.isArray(it.carried_when)) err(`items[${i}].carried_when`, 'carried_when is a list of conditions');
+      else checkConditions(it.carried_when, `items[${i}](carried_when)`);
+    }
+  });
+  const carried = new Set((s.items ?? []).filter((it) => Array.isArray(it.carried_when) && it.carried_when.length > 0).map((it) => it.id));
+  /** What can be done anywhere, in whatever scene the player puts two things together. */
+  const ANYWHERE = ['variable', 'text_overlay', 'audio', 'glossary', 'infobox', 'wait', 'dialogue'];
+  (s.combinations ?? []).forEach((c, i) => {
+    const path = `combinations[${i}]`;
+    if (!Array.isArray(c.items) || c.items.length !== 2) return err(`${path}.items`, 'A combination puts two items together');
+    c.items.forEach((id, k) => {
+      if (!items.has(id)) err(`${path}.items[${k}]`, `Item ${id} does not exist (it may have been deleted)`);
+      else if (!carried.has(id)) warn(`${path}.items[${k}]`, `Item ${id} is never carried (it has no carried_when), so it can never be put with anything`);
+    });
+    if (String(c.items[0]) === String(c.items[1])) err(`${path}.items`, 'A combination puts two different items together');
+    checkConditions(c.conditions, path);
+    if (!Array.isArray(c.actions) || c.actions.length === 0) return err(`${path}.actions`, 'A combination needs actions: what putting the two together does');
+    c.actions.forEach((a, ai) => {
+      const ap = `${path}.actions[${ai}]`;
+      const type = normalizeActionType(a.type);
+      if (!type || !ANYWHERE.includes(type)) return err(`${ap}.type`, `A combination can do what works in any scene: ${ANYWHERE.join(', ')}`);
+      checkConditions(a.conditions, ap);
+      if (type === 'variable') {
+        const v = a as { name?: string; operator?: string };
+        if (!v.name || !variables.has(v.name)) err(`${ap}.name`, `Variable "${v.name ?? ''}" is not declared in global_variables`);
+        if (!VARIABLE_OPS.includes(v.operator as never)) err(`${ap}.operator`, `Unknown operator "${v.operator ?? ''}"`);
+      } else if (type === 'dialogue' && (a as { speaker?: string }).speaker === 'character') {
+        err(`${ap}.speaker`, 'Only the player speaks in a combination: no character is sure to be there');
+      }
+      if (type === 'text_overlay' || type === 'dialogue') checkText((a as { text?: string }).text, `${ap}.text`);
     });
   });
 

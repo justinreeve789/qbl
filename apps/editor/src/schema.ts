@@ -474,6 +474,50 @@ export const SHADOW_SPOT_FIELDS: Field[] = [
   { key: 'strength', label: 'Darkness at the centre (%)', kind: 'number', min: 0, max: 100, placeholder: '60', slider: { min: 0, max: 100 }, wide: true, hint: 'A figure at the centre is darkened by this much; towards the edge the shade fades to nothing. Put spots where the picture already shows shade: under a tree, behind a pillar, in a doorway.' },
 ];
 
+/** A light: a glow over the scene that moves as its kind says. */
+export const LIGHT_FIELDS: Field[] = [
+  { key: 'name', label: 'Name', kind: 'text', wide: true },
+  { key: 'x', label: 'Centre X', kind: 'number' },
+  { key: 'y', label: 'Centre Y', kind: 'number' },
+  {
+    key: 'kind', label: 'How it moves', kind: 'select', placeholder: 'Flicker (a flame)', wide: true,
+    options: [['flicker', 'Flicker: a lantern, a torch, a candle'], ['fire', 'Fire: a campfire, with embers rising'], ['glow', 'Glow: steady, slowly breathing (crystals, a window)'], ['blink', 'Blink: on and off (a beacon, a warning light)'], ['twinkle', 'Twinkle: a sparkle now and then']],
+  },
+  { key: 'color', label: 'Colour', kind: 'color', placeholder: '#ffc46b' },
+  { key: 'radius', label: 'Reach (px)', kind: 'number', min: 1, placeholder: '90', slider: { min: 10, max: 400 } },
+  { key: 'strength', label: 'Brightness (%)', kind: 'number', min: 0, max: 100, placeholder: '70', slider: { min: 0, max: 100 } },
+  { key: 'period', label: 'Seconds per breath or blink', kind: 'number', min: 0.1, step: 0.1, placeholder: '4 (glow), 1.4 (blink)' },
+];
+
+/** A scene's living sky (params.sky). */
+export const SKY_FIELDS: Field[] = [
+  {
+    key: 'time', label: 'Time of day', kind: 'select', placeholder: 'No living sky',
+    options: [['dawn', 'Dawn'], ['morning', 'Morning'], ['midday', 'Midday'], ['afternoon', 'Afternoon'], ['golden', 'Golden hour'], ['sunset', 'Sunset'], ['dusk', 'Dusk'], ['night', 'Night']],
+  },
+  {
+    key: 'until', label: 'Slowly becomes', kind: 'select', placeholder: 'Stays as it is',
+    options: [['dawn', 'Dawn'], ['morning', 'Morning'], ['midday', 'Midday'], ['afternoon', 'Afternoon'], ['golden', 'Golden hour'], ['sunset', 'Sunset'], ['dusk', 'Dusk'], ['night', 'Night']],
+    hint: 'While a player is here the sky moves on to this, through the times between (afternoon to dusk passes through gold, orange, pink and purple), and then stays.',
+  },
+  { key: 'minutes', label: 'Over (minutes)', kind: 'number', min: 0.1, step: 0.5, placeholder: '8' },
+  { key: 'horizon', label: 'Horizon (share of the height)', kind: 'number', min: 0, max: 1, step: 0.01, placeholder: '0.6', slider: { min: 0, max: 1 }, hint: 'Where the sun sets: behind the scenery at this height.' },
+  { key: 'sun_x', label: 'Sun across the screen', kind: 'number', min: 0, max: 1, step: 0.01, placeholder: '0.72', slider: { min: 0, max: 1 } },
+  { key: 'shade', label: 'Scene takes on its light (%)', kind: 'number', min: 0, max: 100, placeholder: '60', slider: { min: 0, max: 100 }, hint: 'Warmer at sunset, bluer at night, over everything in the scene.' },
+  { key: 'sun', label: 'Show the sun or moon', kind: 'bool', default: true },
+  { key: 'stars', label: 'Stars when it is dark', kind: 'bool', default: true },
+];
+
+/** What is in the air (the first of params.atmosphere). */
+export const ATMOSPHERE_FIELDS: Field[] = [
+  {
+    key: 'kind', label: 'What', kind: 'select', placeholder: 'Nothing',
+    options: [['fireflies', 'Fireflies'], ['leaves', 'Falling leaves'], ['snow', 'Snow'], ['rain', 'Rain'], ['dust', 'Dust in the light'], ['bubbles', 'Bubbles (under water)']],
+  },
+  { key: 'amount', label: 'How much', kind: 'select', placeholder: 'Some', options: [['few', 'A few'], ['some', 'Some'], ['many', 'Lots']] },
+  { key: 'color', label: 'Colour', kind: 'color', placeholder: 'Its own' },
+];
+
 /** A background or foreground layer (docs/src/content/docs/developers/extensions.md). */
 export const LAYER_FIELDS: Field[] = [
   { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true },
@@ -485,6 +529,7 @@ export const LAYER_FIELDS: Field[] = [
   { key: 'scroll_speed_x', label: 'Drift right (px per second)', kind: 'number', placeholder: '0', slider: { min: -200, max: 200 }, hint: 'For repeated images: clouds, water, stars. Negative drifts left.' },
   { key: 'scroll_speed_y', label: 'Drift down (px per second)', kind: 'number', placeholder: '0', slider: { min: -200, max: 200 } },
   { key: 'parallax', label: 'Parallax', kind: 'number', min: 0, step: 0.05, placeholder: '1', slider: { min: 0, max: 2 }, hint: '1 moves with the scene. Less than 1 moves slower, as if far away; 0 stays put on the screen. More than 1 moves faster, for a foreground close to the viewer.', wide: true },
+  { key: 'sky', label: 'Part of the sky', kind: 'bool', hint: 'Clouds or a far view: with a living sky (Scene settings), it takes on the sky’s light as it changes, golden at sunset and blue at night.' },
 ];
 
 export const SPAWN_FIELDS: Field[] = [
@@ -559,6 +604,9 @@ export const LABEL_SOLID: Field[] = [
   { key: 'solid', label: 'Solid: players walk around it', kind: 'bool', structural: true, hint: 'Players cannot walk through it and are led around it. It stops being in the way when its hotspot’s conditions no longer hold (a rock that has been cleared). How it is drawn is still “Where it stands”.' },
   { key: 'solid_radius', label: 'Size of the obstacle (px)', kind: 'number', min: 1, placeholder: 'A third of its width', slider: { min: 1, max: 300 }, hint: 'The radius of the circle at its base that cannot be walked on.' },
 ];
+/** How a label draws attention: a hint shown only nearby, and (pictures) a gentle pulse. Kept in the label's params. */
+export const LABEL_HINT: Field = { key: 'show_near', label: 'Only show it near (px)', kind: 'number', min: 1, placeholder: 'Always shown', slider: { min: 50, max: 800 }, hint: 'A hint: shown only while the player is this close to the hotspot, or the pointer is over it. Use it for a thing’s name over a small marker, so the scene is not covered in words.' };
+export const LABEL_PULSE: Field = { key: 'pulse', label: 'Pulse to draw the eye', kind: 'bool', hint: 'The picture grows and shrinks gently while the hotspot can be clicked. Off by default: the pointer already shows what can be clicked.' };
 export const LABEL_TEXT: Field = { key: 'text', label: 'Text', kind: 'text', wide: true };
 export const LABEL_MEDIA: Field = { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true };
 export const LABEL_SPRITEMAP: Field[] = spritemap;
@@ -603,6 +651,7 @@ export const ITEM_SETTINGS_FIELDS: Field[] = [
     options: [['object', 'An object: players walk behind and in front of it'], ['background', 'On the floor: players always walk over it']],
   },
   { key: 'blocking_radius', label: 'Blocking radius (px)', kind: 'number', min: 1, placeholder: 'A third of its width', slider: { min: 1, max: 300 } },
+  { key: 'description', label: 'Description in the bag', kind: 'text', wide: true, hint: 'For something players carry (it has carried_when conditions): what they read when they point at it in their bag.' },
   { key: 'attach_offset_x', label: 'Worn or ridden: offset X', kind: 'number', placeholder: '0' },
   { key: 'attach_offset_y', label: 'Offset Y', kind: 'number', placeholder: '0' },
   { key: 'attach_layer', label: 'Drawn', kind: 'select', placeholder: 'In front of the avatar', options: [['front', 'In front of the avatar'], ['behind', 'Behind the avatar']] },

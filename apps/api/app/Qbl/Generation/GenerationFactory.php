@@ -158,13 +158,14 @@ class GenerationFactory
             new GenerationRuns($this->store->pdo()),
             $this->standards(),
             new StandardsAligner($this->standards(), $this->alignLlm()),
-            new MissionDesigner($this->llm(), (array) $this->config('limits', ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 14])),
+            new MissionDesigner($this->llm(), (array) $this->config('limits', ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 18]), bigMomentChance: (float) $this->config('pacing.big_moment_chance', 0.25)),
             fn (string $dir) => new AssetDirector($images, $style, $judge, $dir, max(1, $attempts), $log, $spend, $pictures),
             $this->store,
             (string) $this->config('work_dir'),
             $log,
             $spend,
             $this->voices($options['voices'] ?? null, $log),
+            new GenerationEvents($this->store->pdo()),
         );
     }
 

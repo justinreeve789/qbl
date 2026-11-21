@@ -269,6 +269,8 @@ function build(start: RichOptions): Instance {
         return [h('div', { class: 'rt-flip-card' }, h('span', { class: 'front' }, words(b.front, 50) || 'Front'), h('span', { class: 'turn' }, '↻'), h('span', { class: 'back' }, words(b.back, 50) || 'Back'))];
       case 'answer':
         return [h('div', { class: 'rt-answer-card' }, h('span', { class: 'rt-fake-input' }, b.placeholder || 'Type your answer'), b.variable ? h('span', { class: 'rt-saves' }, 'saved in ', h('code', null, `{{${b.variable}}}`)) : h('span', { class: 'rt-saves warn' }, '⚠ choose the variable it is saved in'))];
+      case 'controls':
+        return [h('div', { class: 'rt-controls-card' }, controlsSummary(b.html) || 'Controls')];
       case 'page':
         return [h('span', { class: 'rt-page-label' }, 'Page 2 starts here')];
     }
@@ -449,7 +451,7 @@ function build(start: RichOptions): Instance {
     if (show) (palette.querySelector('button') as HTMLElement | null)?.focus();
   };
   const choices: Array<{ icon: string; name: string; about: string; run: () => void; kind?: string }> = [
-    ...(['picture', 'gallery', 'video', 'audio', 'callout', 'reveal', 'flip', 'answer', 'page'] as BlockKind[]).map((kind) => ({ ...BLOCKS[kind], kind, run: () => void add(kind) })),
+    ...(['picture', 'gallery', 'video', 'audio', 'callout', 'reveal', 'flip', 'answer', 'controls', 'page'] as BlockKind[]).map((kind) => ({ ...BLOCKS[kind], kind, run: () => void add(kind) })),
     { icon: '📖', name: 'Glossary word', about: 'A word players can tap to see what it means. Select it in the text first.', kind: 'word', run: () => void addWord() },
     { icon: '🔢', name: 'Variable', about: 'Shows a variable’s value, such as a score or the player’s name.', kind: 'variable', run: () => void addVariable() },
   ];
@@ -671,4 +673,18 @@ function openDesigner(o: RichOptions, start: string, closed: (html: string) => v
     },
   });
   panel.dialog.addEventListener('close', () => closed(latest));
+}
+
+/** What a controls block holds, in a line: "Slider: Rope · Switch: Brake · Shows when rope >= 6". */
+function controlsSummary(html: string): string {
+  const parts: string[] = [];
+  const names: Record<string, string> = { slider: 'Slider', switch: 'Switch', wheel: 'Wheel', meter: 'Meter', value: 'Value' };
+  for (const m of html.matchAll(/<(?:input|div|span)(?:[^>"']|"[^"]*"|'[^']*')*>/gi)) {
+    const tag = m[0];
+    const kind = /data-qbl\s*=\s*"([a-z]+)"/i.exec(tag)?.[1] ?? '';
+    const label = /data-label\s*=\s*"([^"]*)"/i.exec(tag)?.[1] ?? /data-var\s*=\s*"([^"]*)"/i.exec(tag)?.[1] ?? '';
+    if (names[kind]) parts.push(`${names[kind]}${label ? `: ${label}` : ''}`);
+    if (kind === 'when') parts.push(`Shows when ${/data-when\s*=\s*"([^"]*)"/i.exec(tag)?.[1] ?? '…'}`);
+  }
+  return parts.join(' · ');
 }

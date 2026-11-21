@@ -223,6 +223,20 @@ export class SceneEngine {
   }
 
   /**
+   * Run actions in order outside any event of the scene, as an event's own would be (they need no
+   * ids): what putting two things from the bag together does.
+   */
+  runActions(list: Array<Omit<Action, 'id'> & { id?: Id }>): Promise<void> {
+    const actions = list.map((a) => ({ ...a, id: a.id ?? this.adHocId-- }) as Action);
+    return this.trigger({ id: this.adHocId--, actions });
+  }
+
+  /** Settles when the event with this id, if it is running, has finished. */
+  finished(eventId: Id): Promise<void> {
+    return this.runs.get(eventId)?.finished ?? Promise.resolve();
+  }
+
+  /**
    * Another player's event (audience: scene) reached this action: show it here too. Only what is
    * seen and heard is taken; nothing here changes this player's variables, position or progress.
    */

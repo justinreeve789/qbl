@@ -35,6 +35,7 @@ export const infobox: Presenter<'infobox'> = (action, pc) => {
         return e ? { term: e.term, definition: ctx.text(e.definition), image: e.media_id != null ? ctx.mediaUrl(e.media_id) : null } : null;
       },
       learn: (id) => ctx.learn(id) != null,
+      vars: ctx.vars.get,
       chosen: async (index, answers) => {
         const cta = buttons[index];
         for (const [name, typed] of Object.entries(answers)) ctx.vars.apply(name, 'set', answerValue(typed));

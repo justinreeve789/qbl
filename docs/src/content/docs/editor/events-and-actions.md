@@ -63,6 +63,8 @@ A hotspot can have **labels** that mark it in the scene: a **Text**, an **Image*
 
 Picture labels can be made **Solid**, so players walk around them. A solid label stops being in the way when its hotspot's conditions no longer hold, such as a rock that has been cleared.
 
+**Only show it near** makes a label a hint: it appears only while the player is within that many pixels of the hotspot, or points at it, which keeps a scene from being covered in words (a small question mark that is always there, with the thing's name as a hint above it, is how generated missions mark what can be clicked). A picture can **Pulse to draw the eye**; pictures hold still unless you ask, since the pointer already shows what can be clicked.
+
 ## Actions
 
 Under 🎬 Actions, **+ Add action…** lists every type with a one-line description. A new action arrives with sensible starting values so it is valid straight away.

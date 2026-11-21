@@ -57,6 +57,96 @@ final class ImageTools
         return (string) ob_get_clean();
     }
 
+    /**
+     * The quiet marker for something to click: a white question mark with a dark outline and a soft
+     * shadow, drawn here (not by an image model), so every mission marks things the same way. $size is
+     * its height in pixels. Drawn four times larger and scaled down, for smooth edges.
+     */
+    public static function questionMark(int $size = 64, array $ink = [255, 255, 255], array $edge = [43, 35, 64]): GdImage
+    {
+        $k = 4;
+        $h = $size * $k;
+        $w = (int) round($h * 0.7);
+        $im = self::blank($w, $h);
+        imagealphablending($im, true);
+        // The stroke's path: over the top of a circle and round to its lower right, in to the middle,
+        // and a short stem down; then the dot.
+        $cx = $w / 2;
+        $r = $h * 0.22;
+        $cy = $h * 0.08 + $r + $h * 0.06;
+        $path = [];
+        for ($a = 200; $a <= 400; $a += 3) {
+            $path[] = [$cx + $r * cos(deg2rad($a)), $cy + $r * sin(deg2rad($a))];
+        }
+        [$ex, $ey] = end($path);
+        $stemTop = [$cx, $cy + $r * 1.25];
+        for ($t = 0; $t <= 1; $t += 0.05) {
+            $path[] = [$ex + ($stemTop[0] - $ex) * $t, $ey + ($stemTop[1] - $ey) * $t];
+        }
+        for ($y = $stemTop[1]; $y <= $h * 0.66; $y += 2) {
+            $path[] = [$cx, $y];
+        }
+        $dot = [$cx, $h * 0.85];
+        $paint = function (array $rgb, int $alpha, float $radius, float $dy) use ($im, $path, $dot, $h) {
+            $c = imagecolorallocatealpha($im, $rgb[0], $rgb[1], $rgb[2], $alpha);
+            foreach ($path as [$x, $y]) {
+                imagefilledellipse($im, (int) round($x), (int) round($y + $dy), (int) round(2 * $radius), (int) round(2 * $radius), $c);
+            }
+            imagefilledellipse($im, (int) round($dot[0]), (int) round($dot[1] + $dy), (int) round(2 * ($radius + $h * 0.015)), (int) round(2 * ($radius + $h * 0.015)), $c);
+        };
+        $stroke = $h * 0.065;
+        $outline = $h * 0.03;
+        // A soft shadow below, the dark outline, then the white mark.
+        $paint([0, 0, 0], 100, $stroke + $outline + $h * 0.012, $h * 0.03);
+        $paint($edge, 0, $stroke + $outline, 0);
+        $paint($ink, 0, $stroke, 0);
+        imagealphablending($im, false);
+
+        return self::resize($im, (int) round($w / $k), $size);
+    }
+
+    /**
+     * A layout and scale guide for a background, sent with its request: the floor as a grey band below
+     * the ground line, grey child-sized figures standing at the back and the front of the floor, and a
+     * doorway's outline beside them. It shows the image model how big things are where, which words
+     * alone do not. $person is a child's height in pixels at the middle of the floor; $depth gives the
+     * scale at a feet line.
+     *
+     * @param  callable(int): float  $depth
+     */
+    public static function scaleGuide(int $w, int $h, int $ground, int $person, callable $depth, array $blocked = []): GdImage
+    {
+        $im = imagecreatetruecolor($w, $h);
+        imagefilledrectangle($im, 0, 0, $w, $h, imagecolorallocate($im, 236, 236, 236));
+        imagefilledrectangle($im, 0, $ground, $w, $h, imagecolorallocate($im, 196, 196, 196));
+        $line = imagecolorallocate($im, 120, 120, 120);
+        imagesetthickness($im, 3);
+        imageline($im, 0, $ground, $w, $ground, $line);
+        $figure = imagecolorallocate($im, 110, 110, 110);
+        $stand = function (int $x, int $feet) use ($im, $figure, $person, $depth) {
+            $tall = (int) round($person * $depth($feet));
+            $head = (int) round($tall * 0.26);
+            imagefilledellipse($im, $x, $feet - $tall + (int) ($head / 2), $head, $head, $figure);
+            imagefilledrectangle($im, $x - (int) ($tall * 0.13), $feet - $tall + $head, $x + (int) ($tall * 0.13), $feet - (int) ($tall * 0.38), $figure);
+            imagefilledrectangle($im, $x - (int) ($tall * 0.11), $feet - (int) ($tall * 0.4), $x - (int) ($tall * 0.02), $feet, $figure);
+            imagefilledrectangle($im, $x + (int) ($tall * 0.02), $feet - (int) ($tall * 0.4), $x + (int) ($tall * 0.11), $feet, $figure);
+        };
+        $back = $ground + 6;
+        $front = $h - (int) (($h - $ground) * 0.12);
+        $stand((int) ($w * 0.2), $back);
+        $stand((int) ($w * 0.5), (int) (($back + $front) / 2));
+        $stand((int) ($w * 0.8), $front);
+        // A doorway at the back, 1.6 times a child's height: how big a door is next to them.
+        $door = (int) round($person * 1.6 * $depth($back));
+        $dx = (int) ($w * 0.33);
+        imagerectangle($im, $dx, $back - $door, $dx + (int) ($door * 0.45), $back, $line);
+        foreach ($blocked as [$x0, $x1, $y0, $y1]) {
+            imageellipse($im, (int) (($x0 + $x1) / 2), (int) (($y0 + $y1) / 2), $x1 - $x0, $y1 - $y0, $line);
+        }
+
+        return $im;
+    }
+
     public static function resize(GdImage $im, int $w, int $h): GdImage
     {
         $out = self::blank($w, $h);
@@ -73,8 +163,11 @@ final class ImageTools
         return $s >= 1 ? self::copy($im) : self::resize($im, max(1, (int) round(imagesx($im) * $s)), max(1, (int) round(imagesy($im) * $s)));
     }
 
-    /** Cropped to the aspect of w x h about the centre, then resized to exactly w x h. */
-    public static function cover(GdImage $im, int $w, int $h): GdImage
+    /**
+     * Cropped to the aspect of w x h, then resized to exactly w x h. $anchorY says what is kept of a
+     * picture too tall for it: 0.5 its middle, 1 its bottom.
+     */
+    public static function cover(GdImage $im, int $w, int $h, float $anchorY = 0.5): GdImage
     {
         $sw = imagesx($im);
         $sh = imagesy($im);
@@ -82,9 +175,29 @@ final class ImageTools
         $cw = (int) round($w / $scale);
         $ch = (int) round($h / $scale);
         $out = self::blank($w, $h);
-        imagecopyresampled($out, $im, 0, 0, (int) (($sw - $cw) / 2), (int) (($sh - $ch) / 2), $w, $h, $cw, $ch);
+        imagecopyresampled($out, $im, 0, 0, (int) (($sw - $cw) / 2), (int) (($sh - $ch) * max(0.0, min(1.0, $anchorY))), $w, $h, $cw, $ch);
 
         return $out;
+    }
+
+    /** The share of the picture that is see-through (sampled). */
+    public static function clearShare(GdImage $im): float
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $step = max(1, (int) floor(sqrt($w * $h / 40000)));
+        $clear = 0;
+        $n = 0;
+        for ($y = 0; $y < $h; $y += $step) {
+            for ($x = 0; $x < $w; $x += $step) {
+                $n++;
+                if (((imagecolorat($im, $x, $y) >> 24) & 0x7F) > 100) {
+                    $clear++;
+                }
+            }
+        }
+
+        return $n ? $clear / $n : 0.0;
     }
 
     public static function crop(GdImage $im, int $x, int $y, int $w, int $h): GdImage
@@ -319,6 +432,55 @@ final class ImageTools
         }
 
         return $im;
+    }
+
+    /**
+     * Where the light is in a picture of something lit (a lantern's glass, a campfire's flames, a
+     * beacon): the middle of its brightest, warmest opaque part, as fractions across and down. Null when
+     * nothing stands out (a flat placeholder), so the caller can fall back on where such a light usually is.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    public static function brightSpot(GdImage $im): ?array
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $step = max(1, (int) floor(max($w, $h) / 160));
+        $points = [];
+        for ($y = 0; $y < $h; $y += $step) {
+            for ($x = 0; $x < $w; $x += $step) {
+                $c = imagecolorat($im, $x, $y);
+                if ((($c >> 24) & 0x7F) > 40) {
+                    continue; // see-through
+                }
+                $r = ($c >> 16) & 0xFF;
+                $g = ($c >> 8) & 0xFF;
+                $b = $c & 0xFF;
+                // Light is bright, and lamps and flames are warm or vivid: brightness, a little more for colour.
+                $points[] = [$x, $y, 0.299 * $r + 0.587 * $g + 0.114 * $b + 0.25 * (max($r, $g, $b) - min($r, $g, $b))];
+            }
+        }
+        if (count($points) < 20) {
+            return null;
+        }
+        $values = array_column($points, 2);
+        sort($values);
+        $top = $values[(int) floor(count($values) * 0.97)];
+        $median = $values[intdiv(count($values), 2)];
+        if ($top - $median < 40) {
+            return null;
+        }
+        $sx = $sy = $sw = 0.0;
+        foreach ($points as [$x, $y, $v]) {
+            if ($v >= $top) {
+                $wt = $v - $median;
+                $sx += $x * $wt;
+                $sy += $y * $wt;
+                $sw += $wt;
+            }
+        }
+
+        return $sw > 0 ? [round($sx / $sw / max(1, $w - 1), 3), round($sy / $sw / max(1, $h - 1), 3)] : null;
     }
 
     /** The box around everything not see-through: [x, y, w, h], or null for an empty picture. */

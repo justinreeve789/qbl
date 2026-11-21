@@ -24,6 +24,7 @@ use App\Qbl\ClassApi;
 use App\Qbl\ClassStore;
 use App\Qbl\EditorApi;
 use App\Qbl\Generation\GenerationApi;
+use App\Qbl\Generation\GenerationEvents;
 use App\Qbl\Generation\GenerationProgress;
 use App\Qbl\Generation\GenerationRuns;
 use App\Qbl\Generation\Http\HttpClient;
@@ -96,7 +97,7 @@ final class FakeStripe implements HttpClient
 
 $pdo = new PDO('sqlite::memory:');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-foreach ([...ScenarioStore::sqliteSchema(), ...Clients::sqliteSchema(), ...Credits::sqliteSchema(), ...GenerationRuns::sqliteSchema()] as $sql) {
+foreach ([...ScenarioStore::sqliteSchema(), ...Clients::sqliteSchema(), ...Credits::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
     $pdo->exec($sql);
 }
 $pdo->exec('ALTER TABLE organizations ADD COLUMN integrations_enabled_at');
@@ -409,6 +410,13 @@ same($gen->handle('GET', ['all'], [], $teacher)[0], 403, 'a teacher cannot list 
 $all = $gen->handle('GET', ['all'], [], ['id' => 3, 'role' => 'admin'])[1]['generations'];
 check(count($all) >= 4 && isset($all[0]['user']['name']) && array_key_exists('usd', $all[0]), 'an administrator can, with who asked and what each spent');
 same($gen->handle('GET', ['nonsense'], [], $teacher)[0], 404, 'anything else is not found');
+
+// The audit log of a run (what each call took and cost): administrators only.
+$auditLog = new GenerationEvents($pdo);
+$auditLog->record($runId, ['type' => 'picture', 'kind' => 'background', 'step' => 'background:orchard', 'stage' => 'drawing', 'usd' => 0.134, 'seconds' => 12.5, 'outcome' => 'kept']);
+same($gen->handle('GET', [(string) $runId, 'events'], [], $teacher)[0], 403, 'a teacher cannot see what a generation cost call by call');
+[$status, $audited] = $gen->handle('GET', [(string) $runId, 'events'], [], ['id' => 3, 'role' => 'admin']);
+same([$status, count($audited['events']), $audited['events'][0]['step'], $audited['events'][0]['duration_ms'], $audited['totals']['total']['usd']], [200, 1, 'background:orchard', 12500, 0.134], 'an administrator can, with every call and the totals');
 
 // ClassApi passes plans through to Classes.
 $classApi = new ClassApi($pdo, null, $entitlements);

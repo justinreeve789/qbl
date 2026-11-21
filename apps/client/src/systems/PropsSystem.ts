@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import {
   blockingRadius, characterRoams, doorPoint, doorsOf, nearestWalkable, parseIds, Pathfinder, scaleAt, shadeAt, shadeTint, speedFactorAt,
-  stepToward, testConditions, walkSignature, walkSpeed,
+  stepToward, takesItems, testConditions, walkSignature, walkSpeed,
   type ActionHandle, type Circle, type DialogueAction, type Door, type Id, type Item, type Npc, type NpcRec, type Point, type WalkAction,
 } from '@qbl/shared';
 import { deferred } from '../actions/Presenter';
@@ -71,6 +71,8 @@ export class PropsSystem implements SceneSystem {
   private finder: { signature: string; pathfinder: Pathfinder } | null = null;
   /** The first frame has been drawn: characters arriving after it fade in. */
   private drawn = false;
+  /** Characters placed here (not roaming) that are away while their conditions fail: they come back when they hold. */
+  private away = new Set<Id>();
 
   constructor(private rt: SceneRuntime) {}
 
@@ -97,6 +99,7 @@ export class PropsSystem implements SceneSystem {
     for (const placement of def.characters ?? []) {
       const npc = ctx.index.characters.get(placement.character_id);
       if (npc && !characterRoams(npc) && !this.characters.has(npc.id)) {
+        if (!testConditions(npc.conditions, ctx.vars.get)) this.away.add(npc.id);
         this.character(npc, { x: placement.position_x, y: placement.position_y, facing: placement.facing }, placement.event_id, false);
       }
     }
@@ -150,7 +153,18 @@ export class PropsSystem implements SceneSystem {
     this.characters.set(npc.id, placed);
     if (eventId != null) {
       this.interactive(figure.sprite, () => {
-        if (!ctx.ui.capturesInput && !this.rt.leaving && !placed.leaving) void engine.triggerById(eventId);
+        if (ctx.ui.capturesInput || this.rt.leaving || placed.leaving) return;
+        // With a thing picked in the bag: given to the character, if their event takes things.
+        if (ctx.bag.selected != null) {
+          const event = ctx.index.events.get(eventId)?.event;
+          if (!event || !takesItems(event, (id) => ctx.index.events.get(id)?.event)) {
+            ctx.bag.refuse(`${npc.name} does not need that.`);
+            return;
+          }
+          ctx.bag.spend(engine.triggerById(eventId));
+          return;
+        }
+        void engine.triggerById(eventId);
       });
     }
     return placed;
@@ -337,9 +351,37 @@ export class PropsSystem implements SceneSystem {
     return this.rt.engine.host.present(action, this.rt.engine);
   }
 
-  /** Re-check each item's "exists" conditions. */
+  /**
+   * Re-check each item's "exists" conditions, and each character's: one whose conditions stop holding
+   * (it left for good in a cutscene) fades away.
+   */
   variablesChanged() {
-    for (const p of this.items.values()) p.exists = testConditions(p.item.conditions, this.rt.ctx.vars.get);
+    const get = this.rt.ctx.vars.get;
+    for (const p of this.items.values()) p.exists = testConditions(p.item.conditions, get);
+    for (const c of this.characters.values()) {
+      if (!c.leaving && !testConditions(c.figure.npc.conditions, get)) {
+        if (!c.roams) this.away.add(c.figure.npc.id);
+        this.leave(c);
+      }
+    }
+    // Back once their conditions hold again (rescued), fading in where they are placed.
+    for (const id of [...this.away]) {
+      const npc = this.rt.ctx.index.characters.get(id);
+      const placement = (this.rt.def.characters ?? []).find((p) => p.character_id === id);
+      if (!npc || !placement || !testConditions(npc.conditions, get)) continue;
+      const gone = this.characters.get(id);
+      if (gone?.leaving) {
+        this.characters.delete(id);
+        gone.figure.destroy();
+      } else if (gone) continue;
+      this.away.delete(id);
+      const c = this.character(npc, { x: placement.position_x, y: placement.position_y, facing: placement.facing }, placement.event_id, false);
+      if (c && this.drawn) {
+        c.figure.sprite.setAlpha(0);
+        c.figure.label.setAlpha(0);
+        c.figure.fadeTo(1, DOOR_FADE_MS);
+      }
+    }
   }
 
   /**

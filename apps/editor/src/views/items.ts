@@ -64,6 +64,7 @@ const IN_SCENE = pick(ITEM_SETTINGS_FIELDS, ['scale', 'placement']).map((f) => (
 const BLOCKING = pick(ITEM_SETTINGS_FIELDS, ['blocking_radius']);
 const CARRIED = pick(ITEM_SETTINGS_FIELDS, ['attach_offset_x', 'attach_offset_y', 'attach_layer', 'art_faces', 'hide_rider_below'], { attach_offset_x: 'Offset X', attach_offset_y: 'Offset Y' });
 const VEHICLE = pick(ITEM_SETTINGS_FIELDS, ['speed_multiplier'], { speed_multiplier: 'Speed multiplier' });
+const IN_BAG = pick(ITEM_SETTINGS_FIELDS, ['description']);
 /** Ticking these shows or hides a group of settings. */
 const SHAPING = new Set(['wearable', 'vehicle', 'blocking', 'media_id']);
 
@@ -85,6 +86,13 @@ export function openItem(ctx: FormContext, id: number) {
   });
 }
 
+/** For something players carry: when they have it, in words ("has_rope > 0"). Null for anything else. */
+function carriedWhen(row: Row): string | null {
+  const when = params(row, 'settings').carried_when;
+  if (!Array.isArray(when) || when.length === 0) return null;
+  return when.map((c: { variable?: string; operator?: string; operand?: unknown }) => `${c.variable} ${c.operator} ${String(c.operand)}`).join(' and ');
+}
+
 function itemBody(ctx: FormContext, row: Row): HTMLElement {
   const { store } = ctx;
   const id = row.id;
@@ -102,6 +110,7 @@ function itemBody(ctx: FormContext, row: Row): HTMLElement {
     section('📍 In the scene', 'var(--tone-background)', 'scene', settingsForm(row.blocking ? [...IN_SCENE, ...BLOCKING] : IN_SCENE)),
     row.wearable || row.vehicle ? section(row.vehicle && !row.wearable ? '🧍 Ridden' : row.wearable && !row.vehicle ? '🧍 Worn' : '🧍 Worn or ridden', 'var(--tone-character)', 'carried', settingsForm(CARRIED)) : null,
     row.vehicle ? section('🚙 Vehicle', 'var(--tone-vehicle)', 'vehicle', settingsForm(VEHICLE)) : null,
+    carriedWhen(row) ? section('🎒 In the bag', 'var(--tone-item)', 'bag', h('p', { class: 'muted' }, `Players carry it while ${carriedWhen(row)}.`), settingsForm(IN_BAG)) : null,
     section('🔒 When it is there', 'var(--warn)', 'conditions', rowConditions(ctx, 'item_id', id, 'Present only when', 'Always present.')));
 
   return h('div', { class: 'two-panel' }, about, behaviour);

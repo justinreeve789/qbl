@@ -1,7 +1,7 @@
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
-import { CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SPAWN_FIELDS } from '../../schema';
+import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
 
@@ -44,6 +44,10 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
       return listPanel(model, ctx, 'shadow_spots', selection.index, 'Shadow spot',
         'A patch of shade on the floor. A figure walking through it darkens as if shade were cast over it: most at the centre of the spot, fading to nothing at its edge. Drag the spot to move it and its handle to resize it.',
         SHADOW_SPOT_FIELDS, host);
+    case 'light':
+      return listPanel(model, ctx, 'lights', selection.index, 'Light',
+        'A soft glow drawn over the scene: put it on a lantern, a campfire, a lit window or a beacon in the picture. It flickers, burns with embers rising, breathes slowly, blinks or twinkles. With a living sky it shines fully at night and only a little by day. Drag it to move it and its handle to change how far it reaches.',
+        LIGHT_FIELDS, host);
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
   }
@@ -69,6 +73,7 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
     h('div', { class: 'panel-head' }, h('h2', null, 'Scene'), isStart ? h('span', { class: 'badge' }, 'Start scene') : null),
     form(SCENE_FIELDS, scene, commit, ctx),
     form(SCENE_MUSIC_FIELDS, params(scene), (key, value, field) => void store.patch('scenes', scene.id, { params: withValue(params(store.byId('scenes', scene.id)!), key, value, field) }, key === 'music_media_id'), ctx),
+    livingPanel(model, ctx),
     mismatch
       ? h(
           'p',
@@ -93,6 +98,37 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
         },
       }, 'Delete scene'),
     ),
+  );
+}
+
+/**
+ * The living sky and what is in the air: kept in the scene's params as `sky` (an object) and
+ * `atmosphere` (a list, edited here as one kind). Lights are placed on the canvas.
+ */
+function livingPanel(model: SceneModel, ctx: FormContext): HTMLElement {
+  const { store } = model;
+  const current = () => params(store.byId('scenes', model.sceneId)!);
+  const save = (next: Bag, structural = false) => void store.patch('scenes', model.sceneId, { params: next }, structural);
+  const sky = (current().sky as Bag | undefined) ?? {};
+  const air = ((current().atmosphere as Bag[] | undefined) ?? [])[0] ?? {};
+  const setSky = (key: string, value: unknown, field: Field) => {
+    const next = withValue({ ...((current().sky as Bag | undefined) ?? {}) }, key, value, field);
+    // A sky needs a time of day; without one there is no sky.
+    save(withValue(current(), 'sky', next.time ? next : null), key === 'time');
+  };
+  const setAir = (key: string, value: unknown, field: Field) => {
+    const first = withValue({ ...((((current().atmosphere as Bag[] | undefined) ?? [])[0]) ?? {}) }, key, value, field);
+    const rest = ((current().atmosphere as Bag[] | undefined) ?? []).slice(1);
+    const list = first.kind ? [first, ...rest] : rest;
+    save(withValue(current(), 'atmosphere', list.length ? list : null), key === 'kind');
+  };
+  return h(
+    'section',
+    null,
+    h('div', { class: 'sub-head' }, h('span', null, '🌅 Living sky', help('A sky drawn behind every background, for the time of day: the sun or the moon and stars, and it can change slowly while players are here, as in a sunset. The backgrounds must be see-through where the sky shows. Mark cloud and far-view layers as part of the sky and they take on its light.'))),
+    form(SKY_FIELDS, sky, setSky, ctx),
+    h('div', { class: 'sub-head' }, h('span', null, '🍃 In the air', help('Fireflies, falling leaves, snow, rain, dust in the light or bubbles, drawn over the scene wherever players look. Nothing moves for players whose system asks for reduced motion.'))),
+    form(ATMOSPHERE_FIELDS, air, setAir, ctx),
   );
 }
 

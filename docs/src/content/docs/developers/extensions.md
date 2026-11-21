@@ -74,6 +74,9 @@ characters | array | | Character placements: `{character_id, position_x, positio
 indirect_events | array | | Events that only run via a run event action, an infobox button or a character. (Mentioned on the Events page; this is where they live.)
 
 shadow_spots | array | | Patches of shade. See [Shadow spots](#shadow-spots).
+sky | object | | A living sky behind the backgrounds. See [Living skies, lights and the air](#living-skies-lights-and-the-air).
+lights | array | | Glows that flicker, burn, breathe, blink or twinkle. See the same section.
+atmosphere | array | | What is in the air: fireflies, leaves, snow, rain, dust, bubbles. See the same section.
 team_only | bool | the group's | Show a player only their own team in this scene. See [Teams in a scene](#teams-in-a-scene).
 params.editor_map | `{x, y}` | | Where the scene's box sits on the editor's scene map (Scenes page › Map), in map pixels. The editor writes it; the game ignores it. A scene without one is placed by the map itself.
 
@@ -102,6 +105,8 @@ Parameter | Applies to | Default | Description
 placement | label | background | `background`, `object` or `front`.
 solid | picture label | false | Players walk around it. This does not change how it is drawn: add `"placement": "object"` if players should also pass behind it.
 solid_radius | picture label | 35% of its width | Radius of the obstacle, a circle at the picture's base.
+show_near | label | | A hint: the label shows only while the player's avatar is within this many scene pixels of the hotspot, or the pointer is over the hotspot. For a thing's name over a small marker, so a scene is not covered in words. Absent: always shown.
+pulse | picture label | false | The picture grows and shrinks gently while its hotspot can be clicked, to draw the eye. Pictures used to pulse by default; now they hold still unless asked, and the pointer shows what can be clicked.
 placement | item | object | `object` or `background`.
 
 ```json
@@ -131,6 +136,42 @@ strength | decimal | 60 | How dark the centre is, 0 to 100.
 ```
 
 Put spots where the artwork already shows shade. In the scene editor, add one with **Add › Shadow spot**, drag it into place and drag its two handles to size it. The spot itself draws nothing in the game; it only shades what walks through.
+
+### Living skies, lights and the air
+
+Three things make a scene feel alive without any events. All are drawn by the game in code, over or behind the scene's pictures. They are kept in the scene's `params` (`sky`, `atmosphere`) and `layout` (`lights`) and come out of the compiler as scene fields.
+
+**`sky`**: a sky behind every background layer, for a time of day: a gradient from the top of the sky to the horizon, the sun (bigger and redder as it sinks, with a soft glow) or the moon and twinkling stars. It can change slowly while a player is in the scene, through the times between: from `afternoon` until `dusk` is a sunset through gold, orange, pink and purple into a starry dusk. The backgrounds in front must be see-through where the sky shows.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+time | string | | `dawn`, `morning`, `midday`, `afternoon`, `golden`, `sunset`, `dusk` or `night`: what the sky shows when a player first arrives.
+until | string | | What it becomes, slowly; it then stays. Always forward round the clock (`night` until `dawn` goes through the small hours).
+minutes | decimal | 8 | How long the change takes, easing in and out. It carries on, not over, when the player comes back to the scene.
+horizon | decimal | 0.6 | Where the horizon is, as a share of the scene's height from the top: where the sun sets, behind the scenery.
+sun_x | decimal | 0.72 | Where across the screen the sun is (the moon is on the other side). Both stay put on the screen as the view moves, being far away.
+sun, stars | bool | true | Draw the sun or the moon; stars when it is dark.
+shade | decimal | 60 | How much the scene in front takes on the sky's light, 0 to 100: warmer at sunset, bluer at night, over everything below the labels.
+
+Layers marked `sky` (clouds, a far view) are tinted with the sky's light. A band of clouds is a tiled layer with a drift: `{ "media_id": 40, "tile": true, "scroll_speed_x": 7, "parallax": 0.06, "sky": true }`. The colours at each time are in `packages/shared/src/sky.ts` (`skyLook`), which the editor and the generator's scene previews use too.
+
+**`lights`**: soft glows drawn over the scene (they add light, so they show best in the dark). Put one where the picture has a light: a lantern's glass, a campfire, a lit window, a beacon.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+x, y | decimal | | Where the light is.
+kind | string | flicker | `flicker` (a small flame: a lantern, a torch, a candle), `fire` (a campfire: it flickers more, and embers rise from it), `glow` (steady, breathing slowly: crystals, a window, a screen), `blink` (on for a moment, then off: a beacon, a warning light) or `twinkle` (a sparkle now and then).
+color | string | #ffc46b | `#rrggbb`.
+radius | decimal | 90 | How far the glow reaches, in pixels.
+strength | decimal | 70 | How bright, 0 to 100.
+period | decimal | 4 (glow), 1.4 (blink) | Seconds for one breath or one blink.
+name | string | | For the editor.
+
+With a `sky`, lights shine at a third of their strength in full daylight and fully at night; without one (indoors, a cave) always fully.
+
+**`atmosphere`**: a list of things in the air, drawn over the scene wherever the player is looking: `{ "kind": "fireflies", "amount": "few" }`. `kind` is `fireflies` (they wander and glow, more in the dark), `leaves` (tumbling down), `snow`, `rain`, `dust` (floating slowly in the light) or `bubbles` (rising, under water); `amount` is `few`, `some` (default) or `many`; `color` (`#rrggbb`) replaces their own colours.
+
+For players whose system asks for reduced motion, nothing in the air is drawn and lights glow steadily.
 
 ### Teams in a scene
 
@@ -164,7 +205,8 @@ position_x, position_y | decimal | 0 | Top-left corner.
 display_width, display_height | decimal | scene size | Size to draw the image at.
 tile | bool | false | Repeat the image to fill the display size.
 scroll_speed_x, scroll_speed_y | decimal | 0 | For tiled layers: pixels per second the texture drifts.
-parallax | decimal | 1 | Camera scroll factor. 1 moves with the world, 0 stays fixed on screen.
+parallax | decimal | 1 | How far the layer moves as the view moves along the scene. 1 moves with the world, 0 stays fixed on screen, between drifts slower as if far away (more than 1, faster, for something close). At the scene's left edge the layer's left edge shows, whatever the screen size, so a far layer needs to be only as wide as the widest view plus `parallax` times the rest of the scene.
+sky | bool | false | Part of the sky (a band of clouds, a far view): with a scene `sky`, it takes on the sky's light as it changes.
 
 Backgrounds draw in order behind everything; foregrounds draw in order in front of avatars.
 
@@ -544,6 +586,20 @@ Markup | What players get
 
 A `{{media:ID}}` written on its own in the text, not inside a tag, shows the media itself: a picture, a video or a sound.
 
+**Controls**, for hands-on instruments with many parts side by side. Each control has a variable (`data-var`, which must be declared) that its value is saved in when a button of the box is chosen, before the button's action runs, as an answer box's is; until then the box shows what it would do. The values are logged with the choice, like answers. `{{name}}` in an attribute puts a variable's value there, so `data-value="{{rope}}"` opens the box as the player left it.
+
+Markup | What players get
+------ | ----------------
+`<div data-qbl="panel">…</div>` | A bench: what is in it stands side by side, two or three across (one column on a narrow screen).
+`<input data-qbl="slider" data-var="rope" data-min="0" data-max="20" data-step="1" data-value="8" data-unit=" m" data-label="Rope">` | A number set by sliding, with its label, its value and both ends. The value is saved as a number.
+`<input data-qbl="switch" data-var="brake" data-value="1" data-label="Brake">` | A switch, on (1) or off (0).
+`<div data-qbl="wheel" data-var="wind" data-options="Calm\|Breezy\|Calm" data-label="Wind"></div>` | A wheel of chance. Spin turns it for a couple of seconds and it lands on one of its options at random; repeat an option to make it likelier. `data-spins` limits how often it can be spun in one showing; `data-value` shows where it last landed (kept unless spun again). Nothing is saved until it has landed.
+`<span data-qbl="value" data-var="rope"></span>` | A control's value as it is now (or any variable's).
+`<div data-qbl="meter" data-var="rope" data-min="0" data-max="20" data-label="Rope out"></div>` | A bar showing a value between its ends.
+`<div data-qbl="when" data-when="rope >= 12; brake = 1">…</div>` | Shown only while every condition holds (`=`, `!=`, `<`, `>`, `<=`, `>=`, separated by `;` or `,`), on the controls as they are set now and on variables. It appears with a little lift, and a screen reader hears it.
+
+The buttons do the testing: a "Test" button sets a variable, and conditions on the following actions read the controls' variables (see how the generator builds an [instrument](/docs/developers/generation/)). The validator reports a control whose variable is not declared, and a value, meter or `when` block that reads a variable that is neither a control in the box, an answer, a declared variable nor a reserved one.
+
 Each button in `call_to_actions` can have a `mark`. `right`: the button turns green with a tick and a burst of stars for about 650 ms before the box closes and the button's action runs. `wrong`: it turns red and shakes, then the same. `try_again`: it shakes and is crossed out and **the box stays open**; its action, if any, runs while it does, and the box waits for it. The choice is logged either way, so the report's first answer is still the first one chosen. A box with `dismissible: false` needs at least one button that is always offered and is not `try_again`.
 
 The box opens with a short spring and closes with a fade. When a button's action opens another infobox, the two share the backdrop and cross over. A box opened over another (a `try_again` button's infobox) leaves the one below inert until it closes. Everything moves less when the player's system asks for reduced motion.
@@ -590,6 +646,8 @@ Conditions and variable actions are written the same way for both; only the vari
 
 Both examples are in the demo: the rockfall above the spring meadow (`rockfall`, shared, cleared again by the repair drone in the engine room) and the critters in the hydroponics bay (`critters_met`, each player's own).
 
+`QBLHolding` is the id of the thing the player has picked in their bag to use (see [The bag](#the-bag-point-and-click-things)), and 0 otherwise.
+
 Additional reserved variables: `QuestLabSceneId`, `QuestLabPlayerName`, `QuestLabPlayerCount`, and for the player's account `QuestLabStars`, `QuestLabXp`, `QuestLabRank` (the rank's name) and `QuestLabAbility_<key>` (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as `{{placeholders}}` like any other variable.
 
 Additional condition operators: `>=` and `<=`.
@@ -616,6 +674,37 @@ Items are positioned by the bottom centre of their image, like avatars.
 
 `blocking` is implemented. `physical` (pushable objects) is **not implemented yet**.
 
+### The bag: point-and-click things
+
+An item with `carried_when` is something players carry, as in a point-and-click adventure. While its conditions hold (usually a player's own variable, set to 1 by the event that picks it up and back to 0 when it is used up) it is in the player's **bag**: a bar of pictures at the foot of their screen.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+carried_when | conditions | The item is in the player's bag while these hold. Absent: it is never carried.
+description | string | What the player reads when they point at it in their bag.
+
+Using a thing works through one reserved variable, `QBLHolding`. The player picks a thing in the bag (it is marked, with a line saying what to do), then:
+
+* **clicks something in the scene.** Only hotspots that **take things** run: those whose conditions, or the conditions of one of their own actions or of an event they run, test `QBLHolding`. Give the hotspot that uses the rope the condition `QBLHolding = <the rope's id>` and it is there only while the rope is picked. Anything else clickable under the pointer says "That does not work there." Clicking empty floor walks there, still holding the thing.
+* **clicks a character.** Their click event runs if it takes things (tests `QBLHolding`), so it can thank them for the right thing and turn down anything else; otherwise the player is told the character does not need that.
+* **picks a second thing.** If `combinations` has the pair, its actions are done; otherwise the player is told the two do not go together. Picking the same thing again, or pressing Escape, puts it back.
+
+`QBLHolding` keeps the thing's id until whatever the click started has finished, so every action of the event can test it; the bag lets go at once. What happens to the thing is up to the event: set its variable to 0 to use it up, or leave it to keep it.
+
+```json
+"combinations": [{
+  "items": [21, 22],
+  "actions": [
+    { "type": "variable", "name": "has_rope", "operator": "set", "operand": 0 },
+    { "type": "variable", "name": "has_hook", "operator": "set", "operand": 0 },
+    { "type": "variable", "name": "has_grapple", "operator": "set", "operand": 1 },
+    { "type": "text_overlay", "text": "You tie the hook to the rope.", "duration": 3000 }
+  ]
+}]
+```
+
+A combination's actions need no ids and are done in whatever scene the player is in, so they are the kinds that work anywhere: `variable`, `text_overlay`, `audio`, `glossary`, `infobox`, `wait`, and `dialogue` said by the player. A combination can have `conditions`. The validator checks that both items exist and can be carried.
+
 ### Vehicles are single objects
 
 A vehicle is always `unique`, whatever the document says: there is one of it in the room. It goes with whoever is riding it, across scenes. When the rider gets out it stays in that scene at that spot, where any player can climb in. Where vehicles were left is part of the room's saved data, so a vehicle left on the planet is still on the planet next lesson.
@@ -631,7 +720,7 @@ animations | object | | The character's animations, by name. See below.
 scale | decimal | 1.0 | Display scale of its pictures. Each picture is also stretched by its own media `scale_x` and `scale_y`, so a sheet shared by several characters can be sized once, on the media, and each character sized on top of that.
 tts_voice | | | The voice its lines are recorded in, a key of the server's voice catalog. See [Characters' voices](/docs/developers/voices/).
 voice_pitch, voice_rate, voice_name | | | How the browser reads its lines that have no recording. See [Reading text aloud](#reading-text-aloud).
-conditions | array | | Scenario characters only: the character is there only while these hold.
+conditions | array | | Scenario characters only: the character is there only while these hold. One whose conditions stop holding while players are in the scene fades away (a character who leaves for good sets a shared variable it tests). One placed in the scene (not roaming) fades back in where it is placed once they hold again: a character who fell and has been rescued.
 media_id, portrait_media_id | int | | *Before animations.* One picture and a close-up. Read only when `animations` is empty (see below).
 
 ### Animations of a character

@@ -85,7 +85,7 @@ final class ScenarioPackage
         return ['zip' => $zipPath, 'json' => "$dir/scenario.json", 'document' => $document];
     }
 
-    /** What a teacher should know before running it: the crew roles, the twists, how students are assessed. */
+    /** What a teacher should know before running it: the puzzles and their answers, the twists, how students are assessed. */
     private static function forTheTeacher(array $b): array
     {
         if (! $b) {
@@ -94,22 +94,18 @@ final class ScenarioPackage
         $out = [];
         $labels = array_column($b['interactions'] ?? [], 'label', 'key');
         $titles = array_column($b['scenes'] ?? [], 'title', 'key');
-        if (! empty($b['roles'])) {
+        $names = array_column($b['items'] ?? [], 'name', 'key');
+        $characters = array_column($b['characters'] ?? [], 'name', 'key');
+        $uses = array_filter($b['interactions'] ?? [], fn ($it) => $it['type'] === 'use');
+        if ($uses || ! empty($b['combinations'])) {
             $out[] = '';
-            $out[] = 'Crew roles (each student picks one at the crew station, and can change):';
-            foreach ($b['roles'] as $r) {
-                $jobs = [];
-                foreach ($b['interactions'] as $it) {
-                    if (($it['role'] ?? null) === $r['key']) {
-                        $jobs[] = $it['label'];
-                    }
-                    foreach ($it['team']['roles'] ?? [] as $part) {
-                        if ($part['role'] === $r['key']) {
-                            $jobs[] = "{$it['label']} ({$part['part']})";
-                        }
-                    }
-                }
-                $out[] = "  {$r['name']}: {$r['description']} Jobs: ".implode('; ', $jobs).'.';
+            $out[] = 'Puzzles with the bag (the answers, for helping students who are stuck):';
+            foreach ($b['combinations'] ?? [] as $c) {
+                $out[] = '  Put together: '.implode(' + ', array_map(fn ($k) => $names[$k] ?? $k, $c['items'])).' = '.($names[$c['makes']] ?? $c['makes']).'.';
+            }
+            foreach ($uses as $it) {
+                $on = ! empty($it['character']) ? 'give it to '.($characters[$it['character']] ?? $it['character']) : '"'.$it['label'].'"';
+                $out[] = '  '.($names[$it['uses']] ?? $it['uses']).": $on in ".($titles[$it['scene']] ?? $it['scene']).(! empty($it['gives']) ? ', which gives '.($names[$it['gives']] ?? $it['gives']) : '').'.';
             }
         }
         if (! empty($b['twists'])) {

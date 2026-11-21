@@ -79,6 +79,11 @@ same([$meadow['team_only'], $meadow['shadow_spots'][0]['radius'], isset($meadow[
 same($meadow['indirect_events'][0]['actions'][1]['type'], 'glossary', 'a glossary action is an action like any other');
 $plain = ScenarioCompiler::compile(['scenario' => ['id' => 1, 'shortname' => 'x', 'title' => 'X', 'start_scene_id' => 1], 'scenes' => [['id' => 1, 'sequence' => 1]]]);
 check(! array_key_exists('team_only', $plain['scenes'][0]) && ! array_key_exists('shadow_spots', $plain['scenes'][0]), 'a scene that sets neither says nothing about them');
+$sky = ['time' => 'afternoon', 'until' => 'dusk', 'minutes' => 6];
+$lit = ScenarioCompiler::compile(['scenario' => ['id' => 1, 'shortname' => 'x', 'title' => 'X', 'start_scene_id' => 1], 'scenes' => [['id' => 1, 'sequence' => 1,
+    'layout' => json_encode(['lights' => [['x' => 10, 'y' => 20, 'kind' => 'fire']]]), 'params' => json_encode(['sky' => $sky, 'atmosphere' => [['kind' => 'fireflies']], 'music_volume' => 0.4])]]]);
+same([$lit['scenes'][0]['sky'], $lit['scenes'][0]['lights'][0]['kind'], $lit['scenes'][0]['atmosphere'][0]['kind'], isset($lit['scenes'][0]['params'])], [$sky, 'fire', 'fireflies', false], 'a scene carries its living sky, its lights and what is in the air');
+check(! array_key_exists('sky', $plain['scenes'][0]) && ! array_key_exists('lights', $plain['scenes'][0]) && ! array_key_exists('atmosphere', $plain['scenes'][0]), 'and one without them says nothing about them');
 
 // ---- teams and the room they share
 foreach ([11, 12, 13] as $student) {

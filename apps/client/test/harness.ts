@@ -7,8 +7,9 @@ import { OfflineConnection } from '../src/net/Connection';
 import { PlayScene } from '../src/scenes/PlayScene';
 import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { MovesFeature } from '../src/features/MovesFeature';
+import { BagFeature } from '../src/features/BagFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
-import type { ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
+import type { BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
@@ -187,6 +188,15 @@ export class HeadlessUi implements UiPort {
   narrationOffered = false;
   narration(available: boolean) { this.narrationOffered = available; }
   attachments() {}
+  /** The bar of things carried, as last shown, and the one picked. */
+  bagSlots: BagSlot[] = [];
+  bagPicked: number | null = null;
+  bagOn: { pick(id: number): void; drop(): void } | null = null;
+  bag(items: BagSlot[], selected: number | null, on: { pick(id: number): void; drop(): void }) {
+    this.bagSlots = items;
+    this.bagPicked = selected;
+    this.bagOn = on;
+  }
   objectives(list: ObjectiveStatus[]) { this.checklist = list; }
   toast(message: string) { this.toasts.push(message); }
   status(message: string | null) { this.statusText = message; }
@@ -212,6 +222,7 @@ export class Game {
     this.ctx.rewards.pretend();
     new RewardsFeature().start(this.ctx);
     new MovesFeature().start(this.ctx);
+    new BagFeature().start(this.ctx);
     this.world.registry.set('ctx', this.ctx);
     this.world.mount(this.scene as never);
     this.ctx.vars.onChange(() => this.objectives.refresh(this.ctx));
@@ -301,6 +312,20 @@ export class Game {
     ask.pick(i);
     await settle();
     await this.wait(48);
+  }
+
+  /** Pick a thing in the bag by its name (again to put it back; another to put the two together). */
+  async pick(name: string) {
+    const slot = this.ui.bagSlots.find((s) => s.name === name);
+    if (!slot) throw new Error(`Nothing called "${name}" in the bag: ${JSON.stringify(this.ui.bagSlots.map((s) => s.name))}`);
+    this.ui.bagOn!.pick(slot.id);
+    await settle();
+    await this.wait(48);
+  }
+
+  /** The names of the things in the bag. */
+  get bag(): string[] {
+    return this.ui.bagSlots.map((s) => s.name);
   }
 
   async dismiss() {
