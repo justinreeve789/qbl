@@ -549,6 +549,8 @@ button.character-stage:hover:not(:disabled) { border-color: var(--tone-character
 button.anim-configure { background: color-mix(in srgb, var(--tone-c) 28%, var(--button)); border-color: var(--tone-c); font-weight: 600; }
 .anim-add { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
 .anim-add input { max-width: 220px; }
+.anim-make-walk { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-top: 8px; }
+.anim-make-walk small { flex: 1 1 220px; }
 
 .animation-panel { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; align-items: start; }
 .anim-stage {

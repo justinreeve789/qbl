@@ -71,6 +71,24 @@ A character is drawn from its animations. Each is a picture (a still image, an a
 
 You need not fill them all. A pose left empty says what it uses instead (*Uses Standing, facing right, mirrored*): one standing picture is enough for a character that stands, turns and glides; add walking frames, the other side and a close-up as you have them. The first time a character gets a standing picture, a close-up is cut from the top of it, which you can replace.
 
+### Making a walk from the standing picture
+
+**🚶 Make walk** (on the character's card, and **✨ Make a walk from the standing picture** under 🚶 Walking in its panel) makes walking frames for a character that only has a standing picture. The legs are cut out of the picture and stepped, a thigh, a shin and a foot each, with the body riding on top; nothing is sent anywhere and it takes a moment. The result is a sprite sheet of six frames in a row, added to Media (`<name>-walk.png`, at the standing picture's scale) and made the character's **Walking, facing right**; walking left uses it mirrored unless you draw one.
+
+The feet are placed first and the legs follow them:
+
+| Frame | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| Front foot | heel lands | flat, knee bends | under the body | pushes off its toe | lifts | swings past |
+| Back foot | pushes off its toe | lifts | swings past | heel lands | flat, knee bends | under the body |
+
+* In frames 1 and 4 the feet are a full step apart: about three quarters of the leg's length, a quarter of a person's height.
+* In frames 3 and 6 the swinging foot passes right beside the planted one: the feet come together.
+* A planted foot is always on the ground and moves back the same distance each frame, so it does not slide. The body dips as the knee takes the weight and is highest as the feet pass, never higher than standing.
+* The frames are as tall as the standing picture, with it in their middle, so the character keeps its size and place when it starts and stops walking. A soft shadow under the feet stays where it is.
+
+A character drawn from the side gets one leg drawn twice, the far one darker; one drawn from the front or three-quarters walks on its own two legs. A standing picture facing left (or shown mirrored) is turned to face right first. When no legs can be found (a long dress, wheels, a boat) the character bobs along instead, and the message says so. The message after making a walk says where the feet are; look at the frames in the panel that opens, and draw your own if the picture's legs are hidden by something (a hand hanging beside them, a long coat). Making it again asks before replacing the walk.
+
 Each animation in the list shows a preview, its **Picture** (choose one there to draw a pose) and a summary: frames, speed, whether it loops, mirrored. **⚙️ Frames & timing** (or clicking its preview) opens the animation in a panel of its own, over the character's, with a large preview and:
 
 * **Picture**. Sheets and animated PNGs are marked in the list.
