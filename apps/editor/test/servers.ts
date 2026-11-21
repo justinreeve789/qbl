@@ -35,7 +35,7 @@ export async function startSite(env: Record<string, string> = {}): Promise<TestS
     define: { 'import.meta.env': '{}' },
     logLevel: 'silent',
   });
-  const page = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>QBL Editor</title><link rel="stylesheet" href="/editor/main.css"></head><body><div id="app"></div><script type="module" src="/editor/main.js"></script></body></html>';
+  const page = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>QuestLab</title><link rel="stylesheet" href="/editor/main.css"></head><body><div id="app"></div><script type="module" src="/editor/main.js"></script></body></html>';
 
   const apiPort = await freePort();
   const php = spawn('php', ['-S', `127.0.0.1:${apiPort}`, join(repo, 'apps/api/dev/server.php')], { env: { ...process.env, QBL_DEV_DATA: join(data, 'api'), ...env }, stdio: 'ignore' });
