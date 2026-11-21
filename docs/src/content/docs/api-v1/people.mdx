@@ -98,7 +98,7 @@ A **person** looks like this. Students have `grade_level` and `teacher_ids`; tea
 
 | Endpoint | Scope | Notes |
 | --- | --- | --- |
-| `GET /students`, `GET /teachers` | `roster:read` | Filters: `school_id`, `status` (`active` or `inactive`), `external_id`, `updated_since`, and for students `teacher_id` (the QuestLab id; see [conventions](/docs/api-v1/conventions/#ids-yours-or-qbls)). Paged. |
+| `GET /students`, `GET /teachers` | `roster:read` | Filters: `school_id`, `status` (`active` or `inactive`), `external_id`, `updated_since`, and for students `teacher_id` (the QuestLab id; see [conventions](/docs/api-v1/conventions/#ids-yours-or-questlabs)). Paged. |
 | `POST /students`, `POST /teachers` | `roster:write` | `external_id` (required), `school_id`, `grade_level` (students), `display_name` (teachers), `status`, and `teacher_ids` or `teacher_external_ids` (students) or `student_ids` or `student_external_ids` (teachers). `409` if the `external_id` is taken. |
 | `POST /students/batch`, `POST /teachers/batch` | `roster:write` | Up to 1,000 at once, **created or updated by `external_id`**. |
 | `GET /students/{id}`, `GET /teachers/{id}` | `roster:read` | The id may be `ext:` and yours. |
