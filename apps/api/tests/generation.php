@@ -34,6 +34,7 @@ use App\Qbl\Generation\Design\TwistIdeas;
 use App\Qbl\Generation\GenerationCancelled;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\GenerationFactory;
+use App\Qbl\Generation\GenerationEvents;
 use App\Qbl\Generation\GenerationRuns;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Http\HttpResponse;
@@ -90,7 +91,7 @@ $work = sys_get_temp_dir().'/qbl-generation-test-'.bin2hex(random_bytes(4));
 mkdir($work, 0775, true);
 $pdo = new PDO('sqlite::memory:');
 $store = new ScenarioStore($pdo, "$work/media", '/media');
-foreach ([...ScenarioStore::sqliteSchema(), ...StandardsStore::sqliteSchema(), ...GenerationRuns::sqliteSchema()] as $sql) {
+foreach ([...ScenarioStore::sqliteSchema(), ...StandardsStore::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
     $pdo->exec($sql);
 }
 // Every progress report a run makes, in order, to check the editor's progress bar against.
@@ -1136,6 +1137,90 @@ $resumedSpend->picture('gemini-3-pro-image', '2K', 'background');
 $again = new Spend(0);
 $again->attach("$work/cost-d-spend.json");
 same($again->total(), 0.134, 'a resumed run carries on counting from what it had spent');
+
+// ------------------------------------------------------------------ the audit log (generation_events)
+$events = new GenerationEvents($pdo);
+$byType = fn (array $log, string $type) => array_values(array_filter($log, fn ($e) => $e['type'] === $type));
+
+// A whole run: every stage in order, each with how long it took, and how it ended.
+$wholeRun = $events->forRun($result['run']);
+$stageRows = $byType($wholeRun, 'stage');
+same(array_slice(array_column($stageRows, 'step'), 0, 6), ['aligning', 'designing', 'drawing', 'building', 'voicing', 'importing'], 'the log has each stage of a run, in order');
+check(! array_filter(array_slice($stageRows, 0, 6), fn ($e) => $e['duration_ms'] === null || $e['outcome'] !== 'ok'), 'each with how long it took and that it went well');
+$seqs = array_column($wholeRun, 'seq');
+same($seqs, range(1, count($seqs)), 'events are numbered in the order they happened, and a resumed run carries on counting');
+$pictureRows = $byType($wholeRun, 'picture');
+$spentFile = json_decode((string) file_get_contents("$work/generations/{$result['run']}/spend.json"), true);
+same(count($pictureRows), array_sum(array_column($spentFile['images'], 'pictures')), 'every picture drawn is logged, as many as the spend counted');
+check(count(array_unique(array_column($pictureRows, 'stage'))) === 1 && $pictureRows[0]['stage'] === 'drawing', 'under the drawing stage');
+check(! array_diff(['background', 'sheet', 'strip'], array_column($pictureRows, 'kind')), 'with what each was (background, sheet, strip...)');
+check(count($byType($wholeRun, 'voice')) >= 5 && ! array_filter($byType($wholeRun, 'voice'), fn ($e) => $e['duration_ms'] === null || $e['model'] !== 'kokoro' || $e['label'] === null), 'each recorded voice line is logged with its text, the engine and how long it took');
+$estimateRow = $byType($wholeRun, 'estimate')[0] ?? null;
+check($estimateRow && ($estimateRow['detail']['pictures'] ?? 0) > 5, 'the estimate made before drawing is logged, to compare with what was spent');
+same(round($events->totals($result['run'])['total']['usd'], 4), round((float) $result['spend']['total'], 4), 'the log adds up to what the run says it spent');
+check(in_array('drawing', array_column($events->totals($result['run'])['stages'], 'stage'), true) && $events->totals($result['run'])['stages'][0]['stage'] === 'aligning', 'totals come by stage, in order');
+$stopped = $events->forRun($stopId);
+same([$stopped[0]['type'], $stopped[0]['step'], $stopped[0]['outcome'], $stopped[0]['duration_ms'] !== null], ['stage', 'aligning', 'cancelled', true], 'a cancelled run closes the stage it was in as cancelled');
+
+// Language-model calls: tokens, cost, time, and how they ended.
+$auditRun = $runs->create('The audit log', [], null);
+$audit = new Spend(0, ['claude-test' => ['input' => 4, 'output' => 20, 'cache_read' => 0.2, 'cache_write' => 5]]);
+$audit->logTo($events, $auditRun);
+$audit->stage('designing');
+$usage = ['input_tokens' => 1000, 'output_tokens' => 10000, 'cache_read_input_tokens' => 20000, 'cache_creation_input_tokens' => 0];
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{}']], 'stop_reason' => 'end_turn', 'usage' => $usage]))]);
+(new AnthropicModel($http, 'key', 'claude-test', 'https://api.anthropic.com', $audit))->structured('sys', ['x'], 'mission_blueprint', ['type' => 'object']);
+$audit->at('background:orchard', 2, 'Blue Orchard');
+$http = new Recorded([new HttpResponse(200, json_encode(['content' => [['type' => 'text', 'text' => '{"a": ']], 'stop_reason' => 'max_tokens', 'usage' => ['input_tokens' => 10, 'output_tokens' => 20]]))]);
+try {
+    (new AnthropicModel($http, 'key', 'claude-test', 'https://api.anthropic.com', $audit))->structured('sys', ['x'], 'style_review', ['type' => 'object']);
+} catch (GenerationError) {
+}
+$http = new Recorded([new HttpResponse(500, json_encode(['error' => ['message' => 'overloaded']]))]);
+try {
+    (new AnthropicModel($http, 'key', 'claude-test', 'https://api.anthropic.com', $audit))->structured('sys', ['x'], 'style_review', ['type' => 'object']);
+} catch (GenerationError) {
+}
+$llmRows = $events->forRun($auditRun);
+same(count($llmRows), 3, 'every language-model call is logged, even those that failed');
+same([$llmRows[0]['type'], $llmRows[0]['kind'], $llmRows[0]['step'], $llmRows[0]['stage'], $llmRows[0]['model'], $llmRows[0]['outcome']], ['llm', 'mission_blueprint', 'mission_blueprint', 'designing', 'claude-test', 'ok'], 'a call says what it was for, the stage and the model');
+same([$llmRows[0]['input_tokens'], $llmRows[0]['output_tokens'], $llmRows[0]['cache_read_tokens'], $llmRows[0]['cache_write_tokens'], round((float) $llmRows[0]['usd'], 3)], [1000, 10000, 20000, 0, 0.208], 'with its tokens, cache reads included, and what they cost');
+check($llmRows[0]['duration_ms'] !== null && $llmRows[0]['started_at'] !== null, 'and when it began and how long it took');
+same([$llmRows[1]['step'], $llmRows[1]['attempt'], $llmRows[1]['label'], $llmRows[1]['outcome']], ['background:orchard', 2, 'Blue Orchard', 'truncated'], 'a call made for a picture is logged with the picture and attempt, and one cut off by max_tokens says so');
+same([$llmRows[2]['outcome'], (float) $llmRows[2]['usd'], str_contains((string) $llmRows[2]['note'], 'overloaded')], ['error', 0.0, true], 'a call the service refused is logged as an error, with why, at no cost');
+same(round($audit->total(), 4), round((float) $events->totals($auditRun)['total']['usd'], 4), 'the log and the spend agree');
+
+// Pictures: each attempt is logged with the judge's score, and the one kept is marked.
+$pictureRun = $runs->create('The audit log, pictures', [], null);
+$pictureSpend = new Spend(0);
+$pictureSpend->logTo($events, $pictureRun);
+$pictureSpend->stage('drawing');
+$pictureImages = new PricedPlaceholder($placeholder);
+(new AssetDirector($pictureImages, $style, new StyleJudge(new GrumpyJudge), "$work/audit-c", 3, null, $pictureSpend))->drawMission($cheap, $layouts);
+$drawnRows = $byType($events->forRun($pictureRun), 'picture');
+same(count($drawnRows), count($pictureImages->drawn), 'every picture drawn is logged once');
+$perStep = [];
+foreach ($drawnRows as $e) {
+    $perStep[$e['step']][] = $e;
+}
+check(! array_filter($perStep, fn ($rows) => count(array_filter($rows, fn ($e) => $e['outcome'] === 'kept')) !== 1), 'of the attempts at each picture, exactly one is marked kept');
+$redrawn = array_values(array_filter($perStep, fn ($rows) => count($rows) === 3))[0] ?? [];
+same([array_column($redrawn, 'attempt'), array_column($redrawn, 'outcome')], [[1, 2, 3], ['kept', 'discarded', 'discarded']], 'a picture the judge disliked three times shows its attempts, the first (the best of equals) kept');
+same(array_unique(array_column($redrawn, 'score')), [4.0], 'each with the judge\'s score');
+check(! array_filter($drawnRows, fn ($e) => $e['model'] === null || $e['duration_ms'] === null || (float) $e['usd'] <= 0), 'with the model, how long it took and what it cost');
+same(round((float) $events->totals($pictureRun)['total']['usd'], 4), round($pictureSpend->total(), 4), 'the log adds up to the spend');
+$kinds = array_column($events->totals($pictureRun)['kinds'], null, 'kind');
+check(($kinds['background']['events'] ?? 0) >= 3 && ($kinds['background']['kept'] ?? 0) === 5, 'totals by kind count the pictures and how many were kept');
+$failedRun = $runs->create('The audit log, a picture that fails', [], null);
+$failing = new Spend(0);
+$failing->logTo($events, $failedRun);
+$failing->picture('gemini-3-pro-image', '2K', 'background', 1, 3.2, 'error', 'The image service said no');
+$failedRow = $events->forRun($failedRun)[0];
+same([$failedRow['outcome'], $failedRow['note'], $failedRow['duration_ms'], round((float) $failedRow['usd'], 3)], ['error', 'The image service said no', 3200, 0.136], 'a picture that fails is logged as an error with its time, and still counts as paid for (its price and the reference picture sent)');
+$quiet = new Spend(0);
+$quiet->picture('gemini-3-pro-image', '2K', 'background');
+same($quiet->total(), 0.134, 'with no log attached, spending works as before');
+check(count($events->runs(50)) >= 4 && $events->runs(1)[0]['id'] === $failedRun, 'recent runs are listed newest first, with their totals');
 
 if (getenv('KEEP')) {
     fwrite(STDOUT, "Work folder kept: $work\n");

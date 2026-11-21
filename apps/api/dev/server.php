@@ -64,7 +64,7 @@ if (str_starts_with($path, '/scenario-assets/')) {
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");
 $store = new ScenarioStore($pdo, "$dataDir/media", '/media');
 foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema(), App\Qbl\Api\Clients::sqliteSchema(), App\Qbl\Billing\Credits::sqliteSchema(),
-    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema()) as $sql) {
+    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema(), App\Qbl\Generation\GenerationEvents::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
 }
 foreach (['organizations' => ['integrations_enabled_at', 'license'], 'users' => ['self_registered_at', 'email_verified_at']] as $table => $columns) {
