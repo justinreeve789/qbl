@@ -5,7 +5,7 @@ import type { Field, FormContext } from '../fields';
 import {
   ACTION_COMMON, ACTIONS, CHARACTER_FIELDS, CHARACTER_PLACEMENT_FIELDS, CHARACTER_SETTINGS_FIELDS, EVENT_FIELDS, HOTSPOT_FIELDS, ITEM_FIELDS,
   ITEM_PLACEMENT_FIELDS, ITEM_SETTINGS_FIELDS, LABEL_FIELDS, LABEL_MEDIA, LABEL_TEXT, LAYER_FIELDS, MEDIA_FIELDS, MOVE_FIELDS, OBJECTIVE_FIELDS,
-  SCALE_AREA_FIELDS, SCENARIO_FIELDS, SCENARIO_SETTINGS_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SPAWN_FIELDS, VARIABLE_FIELDS,
+  SCALE_AREA_FIELDS, SCENARIO_FIELDS, SCENARIO_SETTINGS_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, LIGHT_FIELDS, SPAWN_FIELDS, VARIABLE_FIELDS,
 } from '../schema';
 import { openAnimation, openCharacter } from './characters';
 import { revealAction, sortedActions } from './actions';
@@ -92,6 +92,7 @@ const LAYOUT: Record<SceneList, { name: string; fields: Field[]; selection: (ind
   blocked_areas: { name: 'Blocked area', fields: [], selection: (index) => ({ kind: 'area', which: 'blocked_areas', index }) },
   scale_areas: { name: 'Scale area', fields: SCALE_AREA_FIELDS, selection: (index) => ({ kind: 'scale', index }) },
   shadow_spots: { name: 'Shadow spot', fields: SHADOW_SPOT_FIELDS, selection: (index) => ({ kind: 'shadow', index }) },
+  lights: { name: 'Light', fields: LIGHT_FIELDS, selection: (index) => ({ kind: 'light', index }) },
   background_media: { name: 'Background layer', fields: LAYER_FIELDS, selection: (index) => ({ kind: 'layer', which: 'background_media', index }) },
   foreground_media: { name: 'Foreground layer', fields: LAYER_FIELDS, selection: (index) => ({ kind: 'layer', which: 'foreground_media', index }) },
 };

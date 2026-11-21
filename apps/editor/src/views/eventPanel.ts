@@ -2,7 +2,7 @@ import type { Row } from '../api';
 import { EVENT_KINDS, params } from '../describe';
 import { confirmDelete, fold, h, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
-import { EVENT_FIELDS, HOTSPOT_FIELDS, LABEL_FIELDS, LABEL_MEDIA, LABEL_SOLID, LABEL_SPRITEMAP, LABEL_TEXT } from '../schema';
+import { EVENT_FIELDS, HOTSPOT_FIELDS, LABEL_FIELDS, LABEL_HINT, LABEL_MEDIA, LABEL_PULSE, LABEL_SOLID, LABEL_SPRITEMAP, LABEL_TEXT } from '../schema';
 import { actionList } from './actions';
 import { rowConditions } from './conditions';
 
@@ -83,6 +83,7 @@ function labelList(ctx: FormContext, event: Row): HTMLElement {
       type === 'spritemap' ? form(LABEL_SPRITEMAP, values, commit, ctx) : null,
       // A picture can be something players walk around.
       type === 'text' ? null : form(values.solid === true ? LABEL_SOLID : LABEL_SOLID.slice(0, 1), values, commit, ctx),
+      form(type === 'text' ? [LABEL_HINT] : [LABEL_HINT, LABEL_PULSE], values, commit, ctx),
       h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete('this label') && void store.remove('labels', id) }, 'Delete label')),
     );
   });

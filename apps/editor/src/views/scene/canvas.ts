@@ -1,4 +1,4 @@
-import { pictureScale, scaleAt, type Media, type ScaleArea, type ShadowSpot } from '@qbl/shared';
+import { pictureScale, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneLight, type SceneSky, type ShadowSpot } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -219,7 +219,7 @@ export class SceneCanvas {
     this.svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     this.element.style.setProperty('--u', String(1 / this.scale));
 
-    this.images.replaceChildren(...this.layerImages('background_media', W, H), ...this.layerImages('foreground_media', W, H));
+    this.images.replaceChildren(...this.skyBehind(H), ...this.layerImages('background_media', W, H), ...this.layerImages('foreground_media', W, H));
 
     const selected = this.host.selection();
     const u = 1 / this.scale; // one screen pixel, in scene pixels
@@ -228,6 +228,7 @@ export class SceneCanvas {
 
     this.drawScaleAreas(selected, u, shapes, top);
     this.drawShadowSpots(selected, u, shapes, top);
+    this.drawLights(selected, u, shapes, top);
     this.drawAreas('walkable_areas', selected, u, shapes, top);
     this.drawAreas('blocked_areas', selected, u, shapes, top);
     for (const event of this.model.events('hotspot')) this.drawHotspot(event, selected, u, W, H, shapes, top);
@@ -241,6 +242,19 @@ export class SceneCanvas {
   }
 
   // ------------------------------------------------------------------ layers
+
+  /** The living sky as players first see it, behind the backgrounds, so see-through parts show it. */
+  private skyBehind(H: number): HTMLElement[] {
+    const sky = params(this.model.row).sky as SceneSky | undefined;
+    if (!sky?.time) return [];
+    const look = skyLook(skyHour(sky, 0));
+    const horizon = H * (sky.horizon ?? 0.6) * this.scale;
+    return [h('div', {
+      class: 'layer sky-preview',
+      style: `left:0;top:0;right:0;bottom:0;background:linear-gradient(${look.top} 0px, ${look.middle} ${horizon * 0.55}px, ${look.horizon} ${horizon}px, ${look.horizon} 100%);`,
+      title: 'The living sky, as players first see it',
+    })];
+  }
 
   private layerImages(which: LayerList, W: number, H: number): HTMLElement[] {
     const selected = this.host.selection();
@@ -360,6 +374,38 @@ export class SceneCanvas {
           onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => resize(to), end: commit }),
         }, s('title', null, title)));
       }
+    });
+  }
+
+  // ------------------------------------------------------------------ lights
+
+  /** Lights, drawn as soft glows in their colour. The selected one can be dragged, and its reach changed. */
+  private drawLights(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
+    const lights = this.model.layout<SceneLight>('lights');
+    lights.forEach((light, index) => {
+      const selection: Selection = { kind: 'light', index };
+      const isSelected = sameSelection(selection, selected);
+      const commit = () => void this.model.setLayout('lights', lights);
+      const start = { x: light.x, y: light.y };
+      const radius = Number(light.radius ?? 90);
+      const color = light.color ?? '#ffc46b';
+      const strength = Math.min(1, Math.max(0, Number(light.strength ?? 70) / 100));
+      for (const [k, share] of [[1, 0.18], [0.6, 0.3], [0.25, 0.6]] as const) {
+        shapes.push(s('circle', { class: 'light-glow', cx: light.x, cy: light.y, r: radius * k, fill: color, 'fill-opacity': strength * share }));
+      }
+      const name = light.name || `Light ${index + 1}`;
+      shapes.push(
+        s('circle', {
+          class: `light-spot${isSelected ? ' selected' : ''}`, cx: light.x, cy: light.y, r: Math.max(12 * u, radius * 0.25),
+          onpointerdown: (e: PointerEvent) =>
+            this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(light, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
+        }, s('title', null, `${name} (${light.kind ?? 'flicker'})`)),
+      );
+      if (!isSelected) return;
+      top.push(s('rect', {
+        class: 'handle', x: light.x + radius - 6 * u, y: light.y - 6 * u, width: 12 * u, height: 12 * u,
+        onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => Object.assign(light, { radius: Math.max(10, Math.round(Math.abs(to.x - light.x))) }), end: commit }),
+      }, s('title', null, 'Drag to change how far it reaches')));
     });
   }
 

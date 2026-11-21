@@ -89,6 +89,9 @@ return [
         'idle_frames' => filter_var($env('QBL_GEN_IDLE_FRAMES', false), FILTER_VALIDATE_BOOL),
         // Draw a mission's small things several to a picture (a sheet cut apart) instead of one each.
         'prop_sheets' => filter_var($env('QBL_GEN_PROP_SHEETS', true), FILTER_VALIDATE_BOOL),
+        // Send a scale guide (the floor and child-sized figures) with each background, so the scenery is
+        // painted at the size of the people who walk in it.
+        'scale_guide' => filter_var($env('QBL_GEN_SCALE_GUIDE', true), FILTER_VALIDATE_BOOL),
     ],
 
     // Every picture is checked against the style's anchors before it is kept.
@@ -109,10 +112,16 @@ return [
         'csp_base_url' => $env('CSP_BASE_URL', 'https://api.commonstandardsproject.com/api/v1'),
     ],
 
+    // How many missions, out of 1, may have a big tense moment (a character falls, is trapped or swept
+    // away, and students save them). Kept rare so it stays special; decided by chance for each mission.
+    'pacing' => [
+        'big_moment_chance' => (float) $env('QBL_GEN_BIG_MOMENT_CHANCE', 0.25),
+    ],
+
     // The most the mission designer may put in one mission.
     'limits' => [
         'max_scenes' => (int) $env('QBL_GEN_MAX_SCENES', 8),
         'max_characters' => (int) $env('QBL_GEN_MAX_CHARACTERS', 6),
-        'max_items' => (int) $env('QBL_GEN_MAX_ITEMS', 14),
+        'max_items' => (int) $env('QBL_GEN_MAX_ITEMS', 18),
     ],
 ];

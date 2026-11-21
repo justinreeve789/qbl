@@ -12,7 +12,7 @@ export type EventKind = (typeof EVENT_LISTS)[EventList];
 
 /** Lists inside a scene that are not events: where things stand, areas, layers. */
 export const SCENE_LISTS = [
-  'spawn_points', 'items', 'characters', 'walkable_areas', 'blocked_areas', 'scale_areas', 'shadow_spots', 'background_media', 'foreground_media',
+  'spawn_points', 'items', 'characters', 'walkable_areas', 'blocked_areas', 'scale_areas', 'shadow_spots', 'lights', 'background_media', 'foreground_media',
 ] as const;
 export type SceneList = (typeof SCENE_LISTS)[number];
 

@@ -30,11 +30,28 @@ class PlaceholderImageGenerator implements ImageGenerator
         $outline = imagecolorallocate($im, 43, 35, 64);
         imagesetthickness($im, 4);
 
+        if ($kind === 'distance') {
+            // A far view: sky (flat chroma, to be cut out, under a living sky), and low hills on the horizon.
+            $flat = ! empty($hints['sky_key']) ? imagecolorallocate($im, ...$this->chroma) : null;
+            for ($y = 0; $y < $h; $y++) {
+                $t = $y / max(1, $h);
+                imageline($im, 0, $y, $w, $y, $flat ?? imagecolorallocate($im, (int) (150 + 80 * $t), (int) (200 + 40 * $t), 250));
+            }
+            for ($i = 0; $i < 4; $i++) {
+                imagefilledellipse($im, (int) (($i + 0.5) * $w / 4), (int) ($h * 0.75), (int) ($w / 2.5), (int) ($h * 0.3), $colour(5 + $i % 2));
+            }
+            $this->text($im, $hints['label'] ?? 'far', (int) ($w / 2), (int) ($h / 4), $outline);
+
+            return $this->png($im);
+        }
+
         if ($kind === 'background') {
             $ground = (int) ($h * ($hints['ground_line'] ?? 0.7));
+            // With a far view behind it, the sky is left in the flat chroma colour to be cut out.
+            $sky = ! empty($hints['sky_key']) ? imagecolorallocate($im, ...$this->chroma) : null;
             for ($y = 0; $y < $ground; $y++) {
                 $t = $y / max(1, $ground);
-                imageline($im, 0, $y, $w, $y, imagecolorallocate($im, (int) (124 + 80 * $t), (int) (198 + 40 * $t), 242));
+                imageline($im, 0, $y, $w, $y, $sky ?? imagecolorallocate($im, (int) (124 + 80 * $t), (int) (198 + 40 * $t), 242));
             }
             for ($i = 0; $i < 5; $i++) {
                 $cx = (int) (($i + 0.5) * $w / 5);
@@ -52,6 +69,19 @@ class PlaceholderImageGenerator implements ImageGenerator
         imagealphablending($im, false);
         imagefilledrectangle($im, 0, 0, $w, $h, $bg);
         imagealphablending($im, true);
+        if ($kind === 'clouds') {
+            // White puffs in a row, clear of both ends.
+            $white = imagecolorallocate($im, 250, 250, 255);
+            for ($i = 0; $i < 5; $i++) {
+                $cx = (int) (($i + 0.6) * $w / 5.2);
+                $cy = (int) ($h * (0.35 + 0.2 * ($i % 2)));
+                foreach ([[-0.5, 0.1, 0.55], [0, 0, 0.75], [0.5, 0.12, 0.5]] as [$dx, $dy, $r]) {
+                    imagefilledellipse($im, (int) ($cx + $dx * 110), (int) ($cy + $dy * 80), (int) (220 * $r), (int) (150 * $r), $white);
+                }
+            }
+
+            return $this->png($im);
+        }
         imagesavealpha($im, true);
 
         if ($kind === 'strip' || $kind === 'character') {
@@ -76,6 +106,17 @@ class PlaceholderImageGenerator implements ImageGenerator
                 imagefilledellipse($im, $cx, $cy, 2 * $r, 2 * $r, $c);
                 imageellipse($im, $cx, $cy, 2 * $r, 2 * $r, $outline);
                 imagefilledellipse($im, (int) ($cx - $r / 3), (int) ($cy - $r / 3), (int) ($r / 2), (int) ($r / 2), $colour(4));
+            }
+        } elseif ($kind === 'foreground') {
+            // Close to the viewer: a wall top along the bottom, or a bush in a corner, running off the edges.
+            $where = $hints['where'] ?? 'bottom';
+            if ($where === 'bottom') {
+                imagefilledrectangle($im, 0, (int) ($h * 0.7), $w, $h, $colour(3));
+                imagerectangle($im, -4, (int) ($h * 0.7), $w + 4, $h + 4, $outline);
+            } else {
+                $cx = $where === 'left' ? 0 : $w;
+                imagefilledellipse($im, $cx, $h, (int) ($w * 1.4), (int) ($h * 1.3), $colour(3));
+                imageellipse($im, $cx, $h, (int) ($w * 1.4), (int) ($h * 1.3), $outline);
             }
         } elseif ($kind === 'passage') {
             $this->passage($im, $w, $h, $hints['via'] ?? 'door', $colour, $outline);

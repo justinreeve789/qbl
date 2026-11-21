@@ -18,6 +18,25 @@ final class ScenePreview
      * @param  array<string, string>  $files  File name => path, as MissionBuilder returns them.
      * @return array<string, string> scene shortname => preview PNG path
      */
+    /** The top, middle and horizon of the sky at each time of day, as the game draws them (sky.ts). */
+    private const SKY = [
+        'dawn' => [[43, 58, 122], [138, 111, 176], [246, 163, 138]],
+        'morning' => [[90, 168, 230], [159, 208, 242], [230, 242, 246]],
+        'midday' => [[61, 143, 224], [124, 188, 240], [207, 233, 247]],
+        'afternoon' => [[74, 150, 220], [140, 194, 238], [232, 238, 221]],
+        'golden' => [[91, 136, 200], [233, 183, 126], [255, 207, 122]],
+        'sunset' => [[58, 79, 154], [217, 112, 138], [255, 154, 74]],
+        'dusk' => [[31, 42, 102], [106, 74, 142], [215, 122, 138]],
+        'night' => [[11, 16, 48], [27, 35, 80], [46, 58, 110]],
+    ];
+
+    private static function mix(array $a, array $b, float $t): array
+    {
+        $t = max(0.0, min(1.0, $t));
+
+        return [(int) round($a[0] + ($b[0] - $a[0]) * $t), (int) round($a[1] + ($b[1] - $a[1]) * $t), (int) round($a[2] + ($b[2] - $a[2]) * $t)];
+    }
+
     public static function write(array $document, array $files, string $dir, float $scale = 0.5): array
     {
         if (! is_dir($dir)) {
@@ -38,12 +57,40 @@ final class ScenePreview
             $h = (int) $scene['height'];
             $im = imagecreatetruecolor($w, $h);
             imagealphablending($im, true);
-            foreach ($scene['background_media'] as $layer) {
-                if ($bg = $load($layer['media_id'])) {
-                    imagecopyresampled($im, $bg, 0, 0, 0, 0, $w, $h, imagesx($bg), imagesy($bg));
+            // Layers where they are when the view is at the scene's left end (a far view drifts from there).
+            $layer = function (array $layer) use ($im, $load, $w, $h) {
+                if ($pic = $load($layer['media_id'])) {
+                    // A far view drifts as students walk; seen all at once, it is stretched to the scene's width.
+                    $dw = ($layer['parallax'] ?? 1) < 1 ? max($w, (int) ($layer['display_width'] ?? $w)) : (int) ($layer['display_width'] ?? $w);
+                    imagecopyresampled($im, $pic, (int) ($layer['position_x'] ?? 0), (int) ($layer['position_y'] ?? 0), 0, 0, $dw, (int) ($layer['display_height'] ?? $h), imagesx($pic), imagesy($pic));
+                }
+            };
+            // A living sky behind it all, as students first see it (see packages/shared/src/sky.ts).
+            if ($sky = $scene['sky'] ?? null) {
+                [$top, $middle, $low] = self::SKY[$sky['time']] ?? self::SKY['midday'];
+                $horizon = (int) ($h * ($sky['horizon'] ?? 0.6));
+                for ($y = 0; $y < $h; $y++) {
+                    $c = $y < $horizon * 0.55 ? self::mix($top, $middle, $y / max(1, $horizon * 0.55)) : ($y < $horizon ? self::mix($middle, $low, ($y - $horizon * 0.55) / max(1, $horizon * 0.45)) : $low);
+                    imageline($im, 0, $y, $w, $y, imagecolorallocate($im, ...$c));
                 }
             }
-            $stand = function (?GdImage $pic, float $x, float $feet, float $s = 1.0) use ($im) {
+            foreach ($scene['background_media'] as $l) {
+                $layer($l);
+            }
+            // Figures and things on the floor are a little smaller at the back of it (the scene's scale area).
+            $depth = function (float $y) use ($scene): float {
+                foreach ($scene['scale_areas'] ?? [] as $a) {
+                    if ($y >= $a['y'] && $y <= $a['y'] + $a['height']) {
+                        $t = ($y - $a['y']) / max(1, $a['height']);
+
+                        return ($a['scale_top'] + ($a['scale_bottom'] - $a['scale_top']) * $t) / 100;
+                    }
+                }
+
+                return 1.0;
+            };
+            $stand = function (?GdImage $pic, float $x, float $feet, float $s = 1.0) use ($im, $depth) {
+                $s *= $depth($feet);
                 if ($pic) {
                     $pw = (int) (imagesx($pic) * $s);
                     $ph = (int) (imagesy($pic) * $s);
@@ -68,21 +115,35 @@ final class ScenePreview
             }
             $texts = [];
             foreach ($scene['hotspots'] as $hotspot) {
-                // Only the first of several hotspots on one spot (a "locked" twin, a "waiting" twin) is drawn.
+                // Only the first of several hotspots on one spot (a "locked" twin, a "waiting" twin, what is
+                // left after a use) is drawn.
                 $spot = $hotspot['position_x'].','.$hotspot['position_y'];
-                if (isset($texts[$spot]) || preg_match('/-(closed|locked|waiting)$/', $hotspot['shortname'] ?? '')) {
+                if (isset($texts[$spot]) || preg_match('/-(closed|locked|waiting|done|use)$/', $hotspot['shortname'] ?? '')) {
                     continue;
                 }
                 foreach ($hotspot['labels'] as $label) {
                     if ($label['type'] === 'image' && ($pic = $load($label['media']))) {
-                        $pw = imagesx($pic);
-                        $ph = imagesy($pic);
-                        imagecopy($im, $pic, (int) ($label['position_x'] - $pw / 2), (int) ($label['position_y'] - $ph / 2), 0, 0, $pw, $ph);
+                        $pw = (int) round(imagesx($pic) * (float) ($label['scale_x'] ?? 1));
+                        $ph = (int) round(imagesy($pic) * (float) ($label['scale_y'] ?? 1));
+                        imagecopyresampled($im, $pic, (int) ($label['position_x'] - $pw / 2), (int) ($label['position_y'] - $ph / 2), 0, 0, $pw, $ph, imagesx($pic), imagesy($pic));
                     } elseif ($label['type'] === 'text') {
                         $texts[$spot][] = [$label['position_x'], $label['position_y'], (string) $label['text']];
                     }
                 }
                 $texts[$spot] ??= [];
+            }
+
+            foreach ($scene['foreground_media'] ?? [] as $l) {
+                $layer($l);
+            }
+            // Lights: a soft glow in their colour.
+            foreach ($scene['lights'] ?? [] as $l) {
+                [$r, $g, $b] = sscanf(ltrim($l['color'] ?? '#ffc46b', '#'), '%02x%02x%02x');
+                $radius = (int) ($l['radius'] ?? 90);
+                for ($k = 10; $k >= 1; $k--) {
+                    $d = (int) (2 * $radius * $k / 10);
+                    imagefilledellipse($im, (int) $l['x'], (int) $l['y'], $d, $d, imagecolorallocatealpha($im, $r, $g, $b, 118));
+                }
             }
 
             // Overlays are drawn on the scaled picture, so lines and text stay readable.
@@ -100,6 +161,13 @@ final class ScenePreview
                     array_push($points, (int) ($pt['x'] * $scale), (int) ($pt['y'] * $scale));
                 }
                 imagepolygon($small, $points, $green);
+            }
+            foreach ($scene['blocked_areas'] ?? [] as $poly) {
+                $points = [];
+                foreach ($poly as $pt) {
+                    array_push($points, (int) ($pt['x'] * $scale), (int) ($pt['y'] * $scale));
+                }
+                imagepolygon($small, $points, $red);
             }
             foreach ($scene['hotspots'] as $hotspot) {
                 [$x, $y, $r] = [$hotspot['position_x'], $hotspot['position_y'], (float) $hotspot['radius']];

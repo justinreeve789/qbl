@@ -50,7 +50,9 @@ class StyleJudge
         upper left, no gradients or texture), colour (palette, saturation, value range), shapes (rounded, simple,
         proportions like the anchors), rendering (flat 2D vector, not 3D, photo, painterly or pixel art),
         subject (shows what was asked; for a character's frames or portrait, the same character design exactly),
-        composition (framing and the stated requirements; no text, no extra objects).
+        composition (framing and the stated requirements; no text, no extra objects; for a background, the scale
+        requirement above all: scenery far too big or too small for the people who will stand in it is a
+        composition problem).
         A 7 means a viewer would accept it beside the anchors without noticing; a 9 is indistinguishable.
         List concrete problems, then write "fix": one short paragraph of instructions that would correct them
         in a redraw, phrased as requirements for the picture.

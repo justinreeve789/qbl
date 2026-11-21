@@ -13,11 +13,32 @@
  *   <span data-qbl="word" data-word="ID">      a glossary word: tapped, it says what it means
  *   <img>, <video>, <audio> with src="{{media:ID}}"
  *
+ * Controls, for hands-on instruments with many parts side by side. Each has a variable
+ * (`data-var`) its value is saved in when a button of the box is chosen, before the button's
+ * action runs, as an answer box's is; until then the box shows what they would do:
+ *
+ *   <div data-qbl="panel">                     a bench: what is in it stands side by side
+ *   <input data-qbl="slider" data-var="v" data-min="0" data-max="10" data-step="1"
+ *          data-value="5" data-unit="cm" data-label="Rope">   a number, set by sliding
+ *   <input data-qbl="switch" data-var="v" data-label="Battery">  on (1) or off (0)
+ *   <div data-qbl="wheel" data-var="v" data-options="Sun|Rain|Wind" data-label="Weather">
+ *                                               a wheel of chance, spun by the player: lands on
+ *                                               one of its options (repeat one to make it likelier);
+ *                                               data-value shows where it last landed
+ *   <span data-qbl="value" data-var="v">        a control's value as it is now (or a variable's)
+ *   <div data-qbl="meter" data-var="v" data-min="0" data-max="10" data-label="Light">   a bar
+ *   <div data-qbl="when" data-when="v >= 4; battery = 1">   shown only while all of these hold, on
+ *                                               the controls as they are now and on variables
+ *
  * Everything here is free of the DOM, so the validator and the server-side tools can use it.
  */
 
 /** The `data-qbl` kinds the game knows. */
-export const INFOBOX_BLOCKS = ['page', 'gallery', 'flip', 'callout', 'answer', 'word'] as const;
+export const INFOBOX_BLOCKS = ['page', 'gallery', 'flip', 'callout', 'answer', 'word', 'panel', 'slider', 'switch', 'wheel', 'value', 'meter', 'when'] as const;
+
+/** The controls: what the player sets, each saved in its variable when a button is chosen. */
+export const INFOBOX_CONTROLS = ['slider', 'switch', 'wheel'] as const;
+export type InfoboxControl = (typeof INFOBOX_CONTROLS)[number];
 export type InfoboxBlock = (typeof INFOBOX_BLOCKS)[number];
 
 /** The tones of a callout, with the icon each is drawn with. */
@@ -47,6 +68,10 @@ export interface InfoboxRefs {
   answers: string[];
   /** Glossary entry ids of tappable words. */
   words: string[];
+  /** Variables controls (sliders, switches, wheels) write to. */
+  controls: string[];
+  /** Variables shown or tested (values, meters, `when` blocks). */
+  reads: string[];
   /** How many pages the box has. */
   pages: number;
 }
@@ -60,7 +85,10 @@ function attr(tag: string, name: string): string | null {
 
 /** The opening tags in some HTML whose `data-qbl` is `kind`. */
 function tagsOf(html: string, kind: InfoboxBlock): string[] {
-  return [...html.matchAll(/<[a-z][^>]*\sdata-qbl\s*=\s*["']?([a-z_]+)["']?[^>]*>/gi)].filter((m) => m[1]!.toLowerCase() === kind).map((m) => m[0]);
+  // A tag runs to the first ">" outside quotes: a `when` block's conditions may hold one.
+  return [...html.matchAll(/<[a-z](?:[^>"']|"[^"]*"|'[^']*')*>/gi)]
+    .map((m) => m[0])
+    .filter((tag) => /\sdata-qbl\s*=/i.test(tag) && (attr(tag, 'data-qbl') ?? '').toLowerCase() === kind);
 }
 
 export function infoboxRefs(html: string | null | undefined): InfoboxRefs {
@@ -68,7 +96,54 @@ export function infoboxRefs(html: string | null | undefined): InfoboxRefs {
   const media = [...new Set([...text.matchAll(MEDIA)].map((m) => Number(m[1])))];
   const answers = [...new Set(tagsOf(text, 'answer').map((t) => attr(t, 'data-var')?.trim() ?? '').filter(Boolean))];
   const words = [...new Set(tagsOf(text, 'word').map((t) => attr(t, 'data-word')?.trim() ?? '').filter(Boolean))];
-  return { media, answers, words, pages: tagsOf(text, 'page').length + 1 };
+  const varsOf = (kinds: InfoboxBlock[]) => kinds.flatMap((k) => tagsOf(text, k).map((t) => attr(t, 'data-var')?.trim() ?? '')).filter(Boolean);
+  const controls = [...new Set(varsOf([...INFOBOX_CONTROLS]))];
+  const tested = tagsOf(text, 'when').flatMap((t) => parseWhen(attr(t, 'data-when') ?? '').map((c) => c.variable));
+  const reads = [...new Set([...varsOf(['value', 'meter']), ...tested])];
+  return { media, answers, words, controls, reads, pages: tagsOf(text, 'page').length + 1 };
+}
+
+/** A condition of a `when` block: `name op value`. */
+export interface WhenCondition {
+  variable: string;
+  operator: '=' | '!=' | '<' | '>' | '<=' | '>=';
+  operand: string | number;
+}
+
+/**
+ * A `when` block's conditions, from `data-when`: separated by `;` (or `,`), each `name op value`
+ * with op one of = != < > <= >=. A value that reads as a number is one. Parts that do not read are
+ * left out.
+ */
+export function parseWhen(spec: string): WhenCondition[] {
+  const out: WhenCondition[] = [];
+  for (const part of spec.split(/[;,]/)) {
+    const m = /^\s*([A-Za-z_]\w*)\s*(!=|<=|>=|=|<|>)\s*(.*?)\s*$/.exec(part);
+    if (!m) continue;
+    out.push({ variable: m[1]!, operator: m[2] as WhenCondition['operator'], operand: answerValue(m[3]!.replace(/^["']|["']$/g, '')) });
+  }
+  return out;
+}
+
+/** Whether every condition holds, reading values with `get`. Numbers compare as numbers; text by equality. */
+export function testWhen(conditions: WhenCondition[], get: (name: string) => unknown): boolean {
+  return conditions.every((c) => {
+    const raw = get(c.variable);
+    const value = typeof raw === 'string' ? answerValue(raw) : raw;
+    const a = typeof value === 'number' ? value : typeof value === 'boolean' ? Number(value) : value ?? '';
+    const b = c.operand;
+    if (c.operator === '=') return String(a) === String(b);
+    if (c.operator === '!=') return String(a) !== String(b);
+    const x = Number(a);
+    const y = Number(b);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+    return c.operator === '<' ? x < y : c.operator === '>' ? x > y : c.operator === '<=' ? x <= y : x >= y;
+  });
+}
+
+/** A wheel's options, from `data-options` (separated by `|`). */
+export function wheelOptions(spec: string | null | undefined): string[] {
+  return (spec ?? '').split('|').map((o) => o.trim()).filter(Boolean);
 }
 
 /** Point every `{{media:ID}}` in a text at another id. Ids `map` returns null for are left as they are. */

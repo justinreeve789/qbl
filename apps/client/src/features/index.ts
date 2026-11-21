@@ -1,5 +1,6 @@
 import type { GameFeature } from '../core/GameFeature';
 import { AttachmentsFeature } from './AttachmentsFeature';
+import { BagFeature } from './BagFeature';
 import { ChatFeature } from './ChatFeature';
 import { ConnectionFeature } from './ConnectionFeature';
 import { GlossaryFeature } from './GlossaryFeature';
@@ -15,5 +16,5 @@ import { TeamsFeature } from './TeamsFeature';
  * To add one, write a GameFeature and add it here.
  */
 export function gameFeatures(): GameFeature[] {
-  return [new ConnectionFeature(), new ChatFeature(), new ObjectivesFeature(), new AttachmentsFeature(), new ProgressFeature(), new RewardsFeature(), new MovesFeature(), new PlayersFeature(), new TeamsFeature(), new GlossaryFeature()];
+  return [new ConnectionFeature(), new ChatFeature(), new ObjectivesFeature(), new AttachmentsFeature(), new BagFeature(), new ProgressFeature(), new RewardsFeature(), new MovesFeature(), new PlayersFeature(), new TeamsFeature(), new GlossaryFeature()];
 }

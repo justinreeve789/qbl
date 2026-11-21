@@ -6,7 +6,7 @@ import { pictureNode } from './picture';
 import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
 import { infoboxView, type BoxView } from './infobox/view';
-import type { AccountActions, AccountView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
+import type { AccountActions, AccountView, BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -44,6 +44,7 @@ export class Ui implements UiPort {
   readonly sidebar = new Sidebar();
   readonly narrator = new Narrator();
   private toasts = el('div', 'qbl-toasts');
+  private bagBar = el('div', 'qbl-bagbar');
   private banner = el('div', 'qbl-banner');
   private modals = 0;
   private video: HTMLVideoElement | null = null;
@@ -51,7 +52,10 @@ export class Ui implements UiPort {
   constructor(parent: HTMLElement) {
     this.root = el('div', 'qbl-ui');
     this.banner.hidden = true;
-    this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.toasts, this.banner);
+    this.bagBar.hidden = true;
+    this.bagBar.setAttribute('role', 'toolbar');
+    this.bagBar.setAttribute('aria-label', 'Things you carry');
+    this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.bagBar, this.toasts, this.banner);
     parent.appendChild(this.root);
     this.followKeyboard();
   }
@@ -470,7 +474,7 @@ export class Ui implements UiPort {
     const previous = document.activeElement as HTMLElement | null;
     let reading = { stop() {} };
     const view = infoboxView(html, buttons, {
-      dismissible: o.dismissible, hero: o.hero, size: o.size, accent: o.accent, word: o.word, learn: o.learn, chosen: o.chosen, layer,
+      dismissible: o.dismissible, hero: o.hero, size: o.size, accent: o.accent, word: o.word, learn: o.learn, vars: o.vars, chosen: o.chosen, layer,
       onPage: (page) => {
         reading.stop();
         reading = this.read(page, o.speak);
@@ -613,6 +617,56 @@ export class Ui implements UiPort {
   /** Small buttons for things the player is wearing or riding. */
   attachments(items: Array<{ id: number; name: string }>, onRemove: (id: number) => void) {
     this.sidebar.setAttachments(items, onRemove);
+  }
+
+  private bagKey = '';
+  private bagEscape: ((e: KeyboardEvent) => void) | null = null;
+
+  /**
+   * The things the player carries, in a bar at the foot of the screen. Click one to pick it (then
+   * click where to use it, or another thing to put them together); click it again, or press Escape,
+   * to put it back.
+   */
+  bag(items: BagSlot[], selected: number | null, on: { pick(id: number): void; drop(): void }) {
+    const key = JSON.stringify([items, selected]);
+    if (key === this.bagKey) return;
+    this.bagKey = key;
+    this.bagBar.hidden = items.length === 0;
+    const slots = el('div', 'qbl-bagbar-slots');
+    for (const item of items) {
+      const b = el('button', 'qbl-bagbar-slot');
+      b.type = 'button';
+      b.title = item.description ? `${item.name}: ${item.description}` : item.name;
+      b.setAttribute('aria-label', item.name);
+      b.setAttribute('aria-pressed', String(item.id === selected));
+      if (item.id === selected) b.classList.add('picked');
+      if (item.image) {
+        const img = el('img');
+        img.src = item.image;
+        img.alt = '';
+        img.draggable = false;
+        b.append(img);
+      } else {
+        b.append(el('span', 'qbl-bagbar-name', item.name));
+      }
+      // The canvas must not see the click as a walk.
+      b.addEventListener('pointerdown', (e) => e.stopPropagation());
+      b.addEventListener('click', () => on.pick(item.id));
+      slots.append(b);
+    }
+    const picked = items.find((i) => i.id === selected);
+    const hint = el('div', 'qbl-bagbar-hint', picked ? `Using the ${picked.name}: click where to use it, or another thing to put them together.` : '');
+    hint.hidden = !picked;
+    this.bagBar.replaceChildren(hint, slots);
+    if (this.bagEscape) window.removeEventListener('keydown', this.bagEscape);
+    this.bagEscape = null;
+    if (picked) {
+      this.bagEscape = (e: KeyboardEvent) => {
+        if (e.key !== 'Escape' || this.capturesInput) return;
+        on.drop();
+      };
+      window.addEventListener('keydown', this.bagEscape);
+    }
   }
 
   /** The mission checklist, in the side panel. An empty list takes its tab away. */

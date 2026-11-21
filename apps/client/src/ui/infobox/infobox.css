@@ -219,7 +219,40 @@ p .qbl-answer-box, li .qbl-answer-box, td .qbl-answer-box { display: inline-bloc
   100% { transform: translate(var(--dx), var(--dy)) scale(1) rotate(200deg); opacity: 0; }
 }
 
+/* Controls: a bench of sliders, switches, wheels and what shows their effect, side by side */
+.qbl-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: start; margin: 12px 0; padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14); }
+.qbl-panel > p { margin: 0; }
+.qbl-control { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.18); min-width: 0; }
+.qbl-control-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.qbl-control-label { font-weight: 700; font-size: 14px; }
+.qbl-control-value { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 18px; color: var(--accent, #ffd34d); }
+.qbl-slider-input { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; margin: 6px 0; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(90deg, var(--accent, #ffd34d) var(--fill, 50%), rgba(255, 255, 255, 0.22) var(--fill, 50%)); }
+.qbl-slider-input::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 3px solid var(--accent, #ffd34d); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+.qbl-slider-input::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--accent, #ffd34d); }
+.qbl-slider-input:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.qbl-slider-ends { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.7; }
+.qbl-switch { flex-direction: row; align-items: center; cursor: pointer; }
+.qbl-switch-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.qbl-switch-track { flex: none; width: 50px; height: 28px; border-radius: 999px; background: rgba(255, 255, 255, 0.25); position: relative; transition: background-color 0.2s; }
+.qbl-switch-knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); transition: transform 0.2s var(--ease-spring, ease); }
+.qbl-switch.on .qbl-switch-track { background: #23a55a; }
+.qbl-switch.on .qbl-switch-knob { transform: translateX(22px); }
+.qbl-switch-input:focus-visible + .qbl-switch-track { outline: 3px solid #fff; outline-offset: 2px; }
+.qbl-wheel { align-items: center; }
+.qbl-wheel-holder { position: relative; width: min(190px, 100%); aspect-ratio: 1; }
+.qbl-wheel-face { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+.qbl-wheel-face svg { width: 100%; height: 100%; display: block; }
+.qbl-wheel-pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 22px solid #fff; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4)); }
+.qbl-wheel.landed .qbl-control-value { animation: qbl-pop 0.3s var(--ease-spring, ease) both; }
+.qbl-meter-bar { height: 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.qbl-meter-fill { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #8ecae6, var(--accent, #ffd34d)); transition: width 0.25s var(--ease-out, ease); }
+.qbl-live-value { font-variant-numeric: tabular-nums; font-weight: 800; }
+.qbl-when { margin: 6px 0; }
+.qbl-when.appear { animation: qbl-rise 0.3s var(--ease-out, ease) both; }
+
 @media (max-width: 520px) {
+  .qbl-panel { grid-template-columns: 1fr; }
   .qbl-infobox-body { padding: 18px 18px 6px; }
   .qbl-infobox-foot { padding: 6px 18px 16px; }
   .qbl-infobox[data-pages]:not([data-pages='1']) .qbl-infobox-body { padding-right: 18px; padding-top: 30px; }
@@ -227,6 +260,6 @@ p .qbl-answer-box, li .qbl-answer-box, td .qbl-answer-box { display: inline-bloc
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .qbl-infobox, .qbl-backdrop, .qbl-page.qbl-enter > *, .qbl-infobox .qbl-infobox-actions > *, .qbl-word-card, .qbl-choice.is-right, .qbl-choice.is-wrong, .qbl-answer-box.qbl-missing { animation: none !important; }
-  .qbl-flip-inner, .qbl-gallery-track, .qbl-dot, .qbl-step { transition: none !important; }
+  .qbl-infobox, .qbl-backdrop, .qbl-page.qbl-enter > *, .qbl-infobox .qbl-infobox-actions > *, .qbl-word-card, .qbl-choice.is-right, .qbl-choice.is-wrong, .qbl-answer-box.qbl-missing, .qbl-when.appear, .qbl-wheel.landed .qbl-control-value { animation: none !important; }
+  .qbl-flip-inner, .qbl-gallery-track, .qbl-dot, .qbl-step, .qbl-switch-knob, .qbl-meter-fill { transition: none !important; }
 }

@@ -18,6 +18,8 @@ export interface BoxOptions {
   accent?: string | null;
   word?: ContentEnv['word'];
   learn?: ContentEnv['learn'];
+  /** A game variable's value, for what the box shows or tests. */
+  vars?: ContentEnv['vars'];
   /** Covers the screen: where zoomed pictures and word cards are drawn. */
   layer: HTMLElement;
   /**
@@ -89,7 +91,7 @@ export function infoboxView(html: string, buttons: BoxButton[], o: BoxOptions): 
   if (o.still) box.classList.add('still');
   if (o.accent) box.style.setProperty('--qbl-box-accent', o.accent);
 
-  const content = buildContent(html, { layer: o.layer, word: o.word, learn: o.learn, motion, submit: () => submit() });
+  const content = buildContent(html, { layer: o.layer, word: o.word, learn: o.learn, vars: o.vars, motion, submit: () => submit() });
   const { pages } = content;
   const multi = pages.length > 1;
   box.dataset.pages = String(pages.length);
@@ -191,7 +193,8 @@ export function infoboxView(html: string, buttons: BoxButton[], o: BoxOptions): 
       const name = a.dataset.var;
       if (name) out[name] = a.value;
     }
-    return out;
+    // Sliders, switches and wheels: as they are set now (a wheel not spun yet, as nothing).
+    return { ...content.controls.values(), ...out };
   };
 
   const sparkle = (button: HTMLElement) => {

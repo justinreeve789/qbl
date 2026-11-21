@@ -24,7 +24,7 @@ class GenerateScenarioTest extends TestCase
     {
         parent::setUp();
         $this->work = sys_get_temp_dir().'/qbl-generate-feature-'.bin2hex(random_bytes(4));
-        config(['qbl.media_dir' => "{$this->work}/media", 'qbl_generation.work_dir' => "{$this->work}/generations", 'qbl_generation.images.driver' => 'placeholder']);
+        config(['qbl.media_dir' => "{$this->work}/media", 'qbl_generation.work_dir' => "{$this->work}/generations", 'qbl_generation.images.driver' => 'placeholder', 'qbl_generation.pacing.big_moment_chance' => 1]);
         $this->app->forgetInstance(ScenarioStore::class);
         $model = new \FakeModel(require __DIR__.'/../fixtures/generation/blueprint.php');
         $this->app->singleton(GenerationFactory::class, fn ($app) => new GenerationFactory(config('qbl_generation'), $app->make(ScenarioStore::class), null, $model));
@@ -65,7 +65,7 @@ class GenerateScenarioTest extends TestCase
 
         // The teacher can open it in the editor and publish it.
         $token = $teacher->createToken('test')->plainTextToken;
-        $this->withToken($token)->getJson("/api/editor/scenarios/{$scenario->id}")->assertOk()->assertJsonCount(2, 'characters');
+        $this->withToken($token)->getJson("/api/editor/scenarios/{$scenario->id}")->assertOk()->assertJsonCount(4, 'characters');
         $code = $this->withToken($token)->postJson("/api/editor/scenarios/{$scenario->id}/publish")->assertOk()->json('scenario.code');
         $this->assertSame($scenario->code, $code);
     }

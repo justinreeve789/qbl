@@ -104,6 +104,8 @@ export class PlayScene extends Phaser.Scene {
     const engine = this.engine;
     ctx.vars.provide('QBLSceneId', () => def.id);
     ctx.vars.provide('QBLHotspotCoordinates', () => engine.hotspotCoordinates);
+    // Two things from the bag put together: what that does happens in the scene being played.
+    ctx.bag.run = (actions) => engine.runActions(actions);
 
     const self = this;
     this.runtime = {

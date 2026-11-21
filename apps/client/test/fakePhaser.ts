@@ -219,6 +219,7 @@ export class FakeWorld {
       setBounds() {}, centerOn() {}, startFollow() {}, fadeIn() {}, setZoom() {},
       fadeOut: (ms: number) => world.schedule(ms, () => camera.emit('camerafadeoutcomplete')),
       getWorldPoint: (x: number, y: number) => ({ x, y }),
+      worldView: { x: 0, y: 0, width: 1280, height: 720 },
     });
     scene.cameras = { main: camera };
     const input = new Emitter() as Emitter & Record<string, any>;

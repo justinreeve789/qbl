@@ -159,3 +159,10 @@
 .rt-stage .qbl-infobox[data-size='large'] { width: 100%; }
 .rt-stage-bar { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
 .rt-stage-note { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* A controls block: sliders, switches and wheels, kept as HTML */
+.rt-controls-card { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--tone, #5b6ee1) 12%, transparent); font-weight: 600; }
+.rt-controls-html { width: 100%; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.45; }
+.rt-controls-help ul { margin: 4px 0 0; padding-left: 18px; }
+.rt-controls-help li { margin: 3px 0; }
+.rt-controls-help code { font-size: 11.5px; word-break: break-all; }

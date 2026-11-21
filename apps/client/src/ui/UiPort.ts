@@ -9,6 +9,15 @@ export interface OverlayHandle extends ActionHandle {
   transition(to: { alpha?: number; scaleX?: number; scaleY?: number }, durationMs: number): void;
 }
 
+/** One thing in the player's bag, as shown. */
+export interface BagSlot {
+  id: number;
+  name: string;
+  /** Its picture, or null to show its name. */
+  image: string | null;
+  description?: string;
+}
+
 /** An infobox's button, as shown. */
 export interface InfoboxButton {
   label: string;
@@ -33,6 +42,8 @@ export interface InfoboxOptions {
   word?: (id: string) => InfoboxWord | null;
   /** The player looked a word up. True when it is new to their glossary. */
   learn?: (id: string) => boolean;
+  /** A variable's value: what the box's live values, meters and `when` blocks show of the game. */
+  vars?: (name: string) => unknown;
   /**
    * A button was chosen, with what was typed in the answer boxes (by variable name), before the
    * box closes. For a `try_again` button the box stays open until this settles.
@@ -106,6 +117,11 @@ export interface UiPort {
 
   chat(mode: ChatMode, send: { text(t: string): void; emote(e: string): void }): void;
   attachments(items: Array<{ id: number; name: string }>, onRemove: (id: number) => void): void;
+  /**
+   * The bar of things the player carries, as in a point-and-click adventure: one button each, the
+   * picked one (`selected`) marked, with a line saying what picking does. An empty list hides it.
+   */
+  bag(items: BagSlot[], selected: number | null, on: { pick(id: number): void; drop(): void }): void;
   objectives(list: ObjectiveStatus[]): void;
   /**
    * Who else is playing: the people in the scenario, with where they are. `on.profile` opens a

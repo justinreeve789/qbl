@@ -514,6 +514,15 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
 /* Bottom left, clear of the column of buttons; above the on-screen keyboard while typing on a phone. */
 .qbl-hud { position: absolute; left: calc(var(--qbl-edge) + var(--safe-l)); right: calc(var(--qbl-edge) + var(--safe-r) + var(--qbl-tab) + 12px); bottom: calc(16px + var(--safe-b)); bottom: max(calc(16px + var(--safe-b)), calc(var(--qbl-keyboard) + 8px)); display: flex; align-items: flex-end; z-index: 12; }
 /* Closed: a round chat button. Open (typing, or a click on it): a bar the width of the screen. */
+/* The things the player carries: a bar at the foot of the screen, as in a point-and-click adventure. */
+.qbl-bagbar { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(calc(16px + var(--safe-b)), calc(var(--qbl-keyboard) + 8px)); z-index: 12; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: min(640px, calc(100vw - 2 * var(--qbl-tab) - 48px)); pointer-events: none; }
+.qbl-bagbar-slots { display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: rgba(12, 23, 78, 0.72); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); overflow-x: auto; pointer-events: auto; }
+.qbl-bagbar-slot { flex: none; display: grid; place-items: center; width: 56px; height: 56px; padding: 4px; border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; transition: border-color 0.15s, background-color 0.15s, transform 0.15s; }
+.qbl-bagbar-slot:hover { border-color: rgba(255, 255, 255, 0.7); }
+.qbl-bagbar-slot.picked { border-color: #ffd34d; background: rgba(255, 211, 77, 0.22); transform: translateY(-3px); }
+.qbl-bagbar-slot img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; }
+.qbl-bagbar-name { font-size: 10px; line-height: 1.1; text-align: center; overflow: hidden; }
+.qbl-bagbar-hint { padding: 4px 12px; border-radius: 999px; background: rgba(12, 23, 78, 0.88); color: #fff; font-size: 13px; text-align: center; }
 .qbl-chat { position: relative; display: flex; align-items: center; gap: 4px; width: var(--qbl-tab); max-width: 100%; height: var(--qbl-tab); box-sizing: border-box; border-radius: calc(var(--qbl-tab) / 2); border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(12, 23, 78, 0.88); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); overflow: hidden; pointer-events: auto; transition: width 0.2s ease, border-color 0.2s, background-color 0.2s; }
 .qbl-chat:hover { border-color: rgba(255, 255, 255, 0.7); }
 .qbl-chat.open { width: 100%; border-color: #fff; background: rgba(10, 18, 60, 0.97); }
@@ -567,6 +576,8 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
   /* Author overlays keep clear of the player's button at the top and of the chat and dock at the bottom. */
   .qbl-overlays { top: calc(var(--qbl-tab) + 22px + var(--safe-t)); right: calc(16px + var(--safe-r)); left: calc(16px + var(--safe-l)); bottom: calc(var(--qbl-dock) + var(--qbl-tab) + 24px); }
   .qbl-hud { right: calc(var(--qbl-edge) + var(--safe-r)); bottom: max(calc(var(--qbl-dock) + 12px), calc(16px + var(--safe-b)), calc(var(--qbl-keyboard) + 8px)); }
+  .qbl-bagbar { bottom: max(calc(var(--qbl-dock) + 12px), calc(16px + var(--safe-b)), calc(var(--qbl-keyboard) + 8px)); max-width: calc(100vw - var(--qbl-tab) - 40px); }
+  .qbl-bagbar-slot { width: 46px; height: 46px; }
   /* While a panel is open over the bottom of the scene, the closed chat button would sit on it. */
   .qbl-ui:has(.qbl-sidebar.open) .qbl-chat:not(.open) { visibility: hidden; }
   .qbl-story { bottom: calc(var(--qbl-dock) + 14px); }

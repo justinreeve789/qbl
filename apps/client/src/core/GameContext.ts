@@ -1,3 +1,4 @@
+import { Bag } from './Bag';
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
@@ -38,6 +39,9 @@ export class GameContext {
   /** Stars, XP, rank, belongings and the marketplace. */
   readonly rewards: Rewards;
 
+  /** What the player carries, and the thing they have picked to use. */
+  readonly bag: Bag;
+
   constructor(
     readonly scenario: Scenario,
     readonly user: User,
@@ -70,6 +74,10 @@ export class GameContext {
     });
     this.vars.provide('QBLVideoPlaying', () => (ui.videoPlaying ? 1 : 0));
     this.vars.provide('QBLVideoTimeIndex', () => ui.videoTime);
+
+    this.bag = new Bag(scenario, this.vars.get);
+    this.bag.say = (text) => ui.toast(text, 2600);
+    this.vars.provide('QBLHolding', () => this.bag.holding);
   }
 
   // ------------------------------------------------------------- other players
