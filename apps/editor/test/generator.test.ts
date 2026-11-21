@@ -91,13 +91,13 @@ test('the header chip follows a run from other pages, and says when it is ready'
   await page.click('.top-nav [data-place=editor]');
   await page.waitForSelector('.gen-chip [data-progress]');
   assert.match(await page.textContent('.gen-chip') ?? '', /\d+%/);
-  assert.match(await page.title(), /^\(\d+%\) QuestLab$/, 'the tab says how far it has got');
+  assert.match(await page.title(), /^\(\d+%\) QBL Editor$/, 'the tab says how far it has got');
   await page.waitForFunction(() => /Pictures/.test(document.querySelector('.gen-chip')?.textContent ?? ''), null, { timeout: 15000 });
   // Made: a message with a way to open it, and the chip and the percent in the title go.
   await page.waitForSelector('.toast.with-action', { timeout: 20000 });
   assert.match(await page.textContent('.toast.with-action') ?? '', /is ready/);
   assert.equal(await page.locator('.gen-chip').count(), 0);
-  assert.equal(await page.title(), 'QuestLab');
+  assert.equal(await page.title(), 'QBL Editor');
   await page.click('.toast-action');
   await page.waitForFunction(() => /^#\/s\/\d+/.test(window.location.hash));
 });
