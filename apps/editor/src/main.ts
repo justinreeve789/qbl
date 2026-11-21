@@ -36,7 +36,7 @@ const account = h('div', { class: 'account' });
 const view = h('div', { class: 'view' });
 const nav = h('nav', { class: 'top-nav', 'aria-label': 'Site' });
 const generating = h('div', { class: 'gen-chip-host', 'aria-live': 'polite' });
-root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QBL Editor'), nav, saving, h('span', { class: 'spacer' }), generating, account), view);
+root.append(h('header', { class: 'top' }, h('a', { class: 'brand', href: '#/' }, 'QuestLab Editor'), nav, saving, h('span', { class: 'spacer' }), generating, account), view);
 
 /**
  * The AI generator's run, from any page: a chip in the header with its progress (it opens the

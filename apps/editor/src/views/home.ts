@@ -49,7 +49,7 @@ export function loginView(api: Api, done: (user: User) => void, refused?: User, 
   const node = h(
     'form',
     { class: 'login card', 'data-refused': refused?.role },
-    h('h1', null, 'QBL Editor'),
+    h('h1', null, 'QuestLab Editor'),
     refused
       ? h('div', { class: 'issue warning', role: 'status' },
           h('p', null, `This browser is signed in as ${refused.name}${refused.email ? ` (${refused.email})` : ''}, ${aRole(refused.role)}. The editor and Classes are for teachers and admins.`),
