@@ -25,6 +25,7 @@ const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['blocked_areas', 'Blocked area'],
   ['scale_areas', 'Scale area (depth)'],
   ['shadow_spots', 'Shadow spot (shade)'],
+  ['lights', 'Light (a glow that flickers, breathes or blinks)'],
   ['background_media', 'Background layer'],
   ['foreground_media', 'Foreground layer'],
 ];
@@ -104,7 +105,7 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
     toast(target ? `Players who walk off the ${side} edge go to “${sceneLabel(target)}”. Change the scene and arrival point in the jump action.` : 'Add another scene, then choose it in the jump action.');
   }
 
-  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots', entry: unknown, kind: Selection['kind']) {
+  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights', entry: unknown, kind: Selection['kind']) {
     const list = model.layout(key);
     await model.setLayout(key, [...list, entry], true);
     const index = list.length;
@@ -160,6 +161,8 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
       case 'shadow_spots':
         // Flattened, as a shadow lying on a floor seen at an angle usually is.
         return void addToLayout('shadow_spots', { name: 'shade', x: Math.round(at.x), y: Math.round(at.y), radius: 160, radius_y: 70, strength: 60 }, 'shadow');
+      case 'lights':
+        return void addToLayout('lights', { name: 'lantern', x: Math.round(at.x), y: Math.round(at.y), radius: 90, kind: 'flicker', color: '#ffc46b', strength: 70 }, 'light');
       case 'background_media':
       case 'foreground_media': {
         const layers = model.layers(what);

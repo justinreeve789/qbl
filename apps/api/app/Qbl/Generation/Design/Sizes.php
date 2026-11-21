@@ -32,6 +32,23 @@ final class Sizes
     /** The tallest anything is drawn: well within a 1200-pixel scene. */
     public const MAX_PX = 760;
 
+    /** A scene's size in pixels: every scene is this tall; normal and wide scenes are this wide. */
+    public const SCENE_HEIGHT = 1200;
+
+    public const SCENE_WIDTH = ['normal' => 2250, 'wide' => 3600];
+
+    /**
+     * Depth: whatever stands at the back of the floor (on the ground line) is drawn at DEPTH_BACK of
+     * its size, and at the bottom edge at DEPTH_FRONT, in proportion between, so walking towards the
+     * viewer reads as coming closer. Sizes above are at the middle of the floor.
+     */
+    public const DEPTH_BACK = 0.9;
+
+    public const DEPTH_FRONT = 1.08;
+
+    /** How tall characters are when the blueprint does not say. */
+    public const CHARACTER_CM = 150;
+
     /** The longest side of an item, in centimetres. */
     public static function cm(array $item): int
     {
@@ -49,6 +66,30 @@ final class Sizes
 
         // Small things a little larger than true (a 12 cm vial is 62 pixels, not 21), large ones true to scale.
         return (int) round(min(self::MAX_PX, max($true, 52 + 0.8 * $cm)));
+    }
+
+    public static function sceneWidth(array $scene): int
+    {
+        return self::SCENE_WIDTH[$scene['width'] ?? 'normal'] ?? self::SCENE_WIDTH['normal'];
+    }
+
+    /** A character's height in centimetres, within what can be drawn. */
+    public static function characterCm(array $c): int
+    {
+        $cm = is_numeric($c['height_cm'] ?? null) ? (int) round((float) $c['height_cm']) : self::CHARACTER_CM;
+
+        return max(30, min(260, $cm));
+    }
+
+    /**
+     * How much a figure is scaled where its feet are, between the ground line (the back of the floor)
+     * and the bottom edge; the same gradient the scene's scale area gives figures that walk.
+     */
+    public static function depth(int $feet, int $ground, int $height = self::SCENE_HEIGHT): float
+    {
+        $t = max(0.0, min(1.0, ($feet - $ground) / max(1, $height - $ground)));
+
+        return self::DEPTH_BACK + (self::DEPTH_FRONT - self::DEPTH_BACK) * $t;
     }
 
     public static function sceneKind(array $scene): string

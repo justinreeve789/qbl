@@ -16,7 +16,12 @@ export const RESERVED_VARIABLES = [
   'QBLStars',
   'QBLXp',
   'QBLRank',
+  // The item the player is using from their bag: its id while they have picked it and click
+  // something with it, and while what that click started is still running. 0 otherwise.
+  'QBLHolding',
 ] as const;
+/** The variable a hotspot or a character's event tests to take something from the player's bag. */
+export const HOLDING = 'QBLHolding';
 /** `QBLAbility_<key>` is 1 while the player has a marketplace ability with that key equipped, else 0. */
 export const ABILITY_PREFIX = 'QBLAbility_';
 export type ReservedVariable = (typeof RESERVED_VARIABLES)[number];

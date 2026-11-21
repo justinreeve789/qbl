@@ -101,6 +101,8 @@ final class ArtStyle
         // own approved sheet carries the style) get only the props, which has no one and nowhere in it.
         $roles = match ($kind) {
             'background' => ['environment', 'character'],
+            'distance' => ['environment'],
+            'foreground', 'clouds' => ['props'],
             'character' => ['character', 'props'],
             'strip', 'portrait' => ['props'],
             'item', 'vehicle', 'badge', 'passage', 'opening', 'sheet' => ['props'],
@@ -122,13 +124,13 @@ final class ArtStyle
     /** Whether a kind is cut out of its background. */
     public static function cutout(string $kind): bool
     {
-        return in_array($kind, ['character', 'strip', 'portrait', 'item', 'vehicle', 'badge', 'passage', 'opening', 'sheet'], true);
+        return in_array($kind, ['character', 'strip', 'portrait', 'item', 'vehicle', 'badge', 'passage', 'opening', 'sheet', 'foreground', 'clouds'], true);
     }
 
     /**
      * The prompt for a picture.
      *
-     * @param  string  $kind  background | character | portrait | strip | item | vehicle | badge | passage | opening
+     * @param  string  $kind  background | distance | foreground | clouds | character | portrait | strip | item | vehicle | badge | passage | opening | sheet
      * @param  string  $subject  What to draw, in plain words, without any style words.
      * @param  Reference[]  $references  Sent with the request, in this order.
      * @param  array  $vars  Values for placeholders in the kind's sentence ({frames}).
@@ -141,6 +143,9 @@ final class ArtStyle
         // A style written before passages and sheets were drawn words them as single objects, or as below.
         $sentence = $b['kinds'][$kind] ?? (in_array($kind, ['passage', 'opening'], true) ? ($b['kinds']['item'] ?? null) : null)
             ?? ($kind === 'sheet' ? 'A sheet of {count} separate objects, in a grid of {columns} columns and {rows} rows, read left to right and top to bottom: {subject}. Each object whole and centred in its own cell with wide empty space around it, none touching or overlapping. No numbers, labels or grid lines.' : null)
+            ?? ($kind === 'foreground' ? 'A foreground piece for a 2D game scene, seen very close to the viewer, so large and a little darker than the scene behind it: {subject}. Its bottom edge runs straight off the bottom of the picture; nothing else is in the picture.' : null)
+            ?? ($kind === 'clouds' ? 'Clouds for the sky of a side-on 2D game, seen from far below, soft and simple: {subject}. Nothing but the clouds in the picture.' : null)
+            ?? ($kind === 'distance' ? 'The far distance of a side-on 2D game background, seen from far away, as it would show behind a scene: {subject}. Only the sky and what is far off, low on the horizon in the lower part of the picture; no ground near the viewer, no floor and nothing close. Soft, simplified and slightly hazy, lighter and less saturated than things near by.' : null)
             ?? throw new GenerationError("The art style has no picture kind \"$kind\".");
         $replace = ['{subject}' => rtrim(trim($subject), '.')];
         foreach ($vars as $k => $v) {

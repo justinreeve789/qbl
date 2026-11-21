@@ -17,6 +17,7 @@ export const BLOCKS: Record<BlockKind, { icon: string; name: string; about: stri
   reveal: { icon: '👆', name: 'Reveal card', about: 'A question or a prompt that opens to show what it hides.', tone: '#2f8fd6' },
   flip: { icon: '🃏', name: 'Flip card', about: 'A card with a front and a back. Tap it to turn it over.', tone: '#e07b39' },
   answer: { icon: '✏️', name: 'Answer box', about: 'A box to type an answer in, saved in a variable when a button is pressed.', tone: '#2bb3a0' },
+  controls: { icon: '🎛️', name: 'Controls', about: 'Hands-on controls players set (sliders, switches, a wheel of chance) and what shows their effect at once (values, meters, text that appears when the settings are right). They are saved in their variables when a button is pressed.', tone: '#5b6ee1' },
   page: { icon: '📄', name: 'New page', about: 'What comes after is on the next page. Players step through with Next.', tone: '#7d8492' },
 };
 
@@ -41,6 +42,8 @@ export function newBlock(kind: BlockKind, media: number[] = []): Block {
       return { kind, front: '<p>A word or a question</p>', back: '<p>What it means, or the answer</p>' };
     case 'answer':
       return { kind, variable: '', placeholder: 'Type your answer' };
+    case 'controls':
+      return { kind, html: '<div data-qbl="panel"><input data-qbl="slider" data-var="amount" data-min="0" data-max="10" data-value="5" data-label="Amount"><div data-qbl="meter" data-var="amount" data-max="10" data-label="Shows"></div></div><div data-qbl="when" data-when="amount >= 8">That is a lot!</div>' };
     case 'page':
       return { kind };
   }
@@ -176,6 +179,24 @@ export function editBlock(ctx: FormContext, start: Block, apply: (b: Block) => v
             }, a.variable ? 'Change…' : 'Choose…'))),
           field('Hint in the empty box', textInput(a.placeholder, 'Type your answer', (placeholder) => change({ placeholder }))),
           h('p', { class: 'muted' }, 'When the player presses one of the box’s buttons, what they typed is saved in the variable before the button’s action runs. A number is saved as a number. Show it with {{name}}, test it in a condition, and see it in the class report.'),
+        ];
+      }
+      case 'controls': {
+        const area = h('textarea', { class: 'rt-controls-html', rows: '10', spellcheck: 'false', 'aria-label': 'The controls as HTML' }) as HTMLTextAreaElement;
+        area.value = b.html;
+        area.addEventListener('change', () => change({ html: area.value.trim() }));
+        return [
+          field('As HTML', area),
+          h('div', { class: 'muted rt-controls-help' },
+            h('p', null, 'Each control saves to a variable (data-var) when a button of the box is pressed:'),
+            h('ul', null,
+              h('li', null, h('code', null, '<input data-qbl="slider" data-var="v" data-min="0" data-max="10" data-step="1" data-value="5" data-unit="cm" data-label="Rope">')),
+              h('li', null, h('code', null, '<input data-qbl="switch" data-var="v" data-label="Battery">'), ' (1 on, 0 off)'),
+              h('li', null, h('code', null, '<div data-qbl="wheel" data-var="v" data-options="Sun|Rain|Wind" data-label="Weather"></div>'), ' (a wheel of chance; repeat an option to make it likelier)'),
+              h('li', null, h('code', null, '<span data-qbl="value" data-var="v"></span>'), ', ', h('code', null, '<div data-qbl="meter" data-var="v" data-min="0" data-max="10"></div>')),
+              h('li', null, h('code', null, '<div data-qbl="when" data-when="v >= 6; battery = 1">…</div>'), ': shown only while all of these hold'),
+              h('li', null, h('code', null, '<div data-qbl="panel">…</div>'), ' puts controls side by side')),
+          ),
         ];
       }
       case 'page':

@@ -13,7 +13,7 @@ export type Addable =
   | 'background_media' | 'foreground_media'
   | 'start' | 'end' | 'indirect' | 'hotspot-click' | 'hotspot-walk'
   | 'edge-left' | 'edge-right' | 'edge-top' | 'edge-bottom'
-  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots';
+  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights';
 
 /** An icon and a colour for each kind of thing a scene holds. */
 const LOOK: Record<string, readonly [icon: string, tone: string]> = {
@@ -93,6 +93,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     section('Walkable areas', 'walkable_areas', model.layout<Point[]>('walkable_areas').map((a, index) => entry({ kind: 'area', which: 'walkable_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
     section('Scale areas', 'scale_areas', model.layout('scale_areas').map((a, index) => entry({ kind: 'scale', index }, String(a.name || `Scale area ${index + 1}`), `${a.scale_top}% → ${a.scale_bottom}%`))),
     section('Shadow spots', 'shadow_spots', model.layout('shadow_spots').map((a, index) => entry({ kind: 'shadow', index }, String(a.name || `Shadow ${index + 1}`), `${a.strength ?? 60}%`))),
+    section('Lights', 'lights', model.layout('lights').map((a, index) => entry({ kind: 'light', index }, String(a.name || `Light ${index + 1}`), String(a.kind ?? 'flicker')))),
     section('Blocked areas', 'blocked_areas', model.layout<Point[]>('blocked_areas').map((a, index) => entry({ kind: 'area', which: 'blocked_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
   );
 }

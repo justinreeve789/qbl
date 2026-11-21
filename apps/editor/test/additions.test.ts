@@ -113,6 +113,27 @@ test('a shadow spot is added to the scene, drawn, and edited', async () => {
   assert.match(await page.innerText('.outline'), /Shadow spots/);
 });
 
+test('a light is placed and edited; the scene gets a living sky and fireflies', async () => {
+  await page.locator('select:has(option[value=lights])').selectOption('lights');
+  await page.waitForSelector('svg .light-spot.selected');
+  await page.locator('.inspector [data-field=kind] select').selectOption('fire');
+  await type('.inspector [data-field=radius] input[type=number]', '150');
+  let scene = (await draft()).scenes[0]!;
+  assert.deepEqual([scene.lights![0]!.kind, scene.lights![0]!.radius, scene.lights![0]!.name], ['fire', 150, 'lantern']);
+  assert.match(await page.innerText('.outline'), /Lights/);
+  await page.click('.outline >> text=Scene settings');
+  await page.locator('.inspector [data-field=time] select').selectOption('golden');
+  await page.locator('.inspector [data-field=until] select').selectOption('dusk');
+  await page.locator('.inspector [data-field=kind] select').selectOption('fireflies');
+  await page.waitForSelector('.stage .sky-preview');
+  scene = (await draft()).scenes[0]!;
+  assert.deepEqual([scene.sky, scene.atmosphere], [{ time: 'golden', until: 'dusk' }, [{ kind: 'fireflies' }]]);
+  // No time of day: no sky.
+  await page.locator('.inspector [data-field=time] select').selectOption('');
+  await page.waitForFunction(() => !document.querySelector('.stage .sky-preview'));
+  assert.equal((await draft()).scenes[0]!.sky, undefined);
+});
+
 test('a hotspot label can be background, or a solid object players walk around', async () => {
   await page.locator('select:has(option[value=shadow_spots])').selectOption('hotspot-click');
   await page.click('text=+ Add label');

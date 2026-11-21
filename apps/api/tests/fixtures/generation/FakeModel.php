@@ -38,7 +38,8 @@ final class FakeModel implements LanguageModel
                 $b = $this->blueprint;
                 if ($this->blueprints === 1) {
                     // A first draft with a mistake the validator must catch: two correct answers.
-                    $b['interactions'][4]['question']['choices'][0]['correct'] = true;
+                    $q = array_search('q_pollen', array_column($b['interactions'], 'key'), true);
+                    $b['interactions'][$q]['question']['choices'][0]['correct'] = true;
                 }
 
                 return $b;

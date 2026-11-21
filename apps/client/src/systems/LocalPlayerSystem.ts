@@ -193,7 +193,9 @@ export class LocalPlayerSystem implements SceneSystem {
 
   private onPointerMove(pointer: Phaser.Input.Pointer) {
     const p = this.worldPoint(pointer);
-    const clickable = !this.rt.engine.hotspotsBlocked && this.rt.system(HotspotSystem).clickableAt(p.x, p.y);
+    const hotspots = this.rt.system(HotspotSystem);
+    hotspots.pointerAt(p.x, p.y);
+    const clickable = !this.rt.engine.hotspotsBlocked && hotspots.clickableAt(p.x, p.y);
     this.rt.scene.input.setDefaultCursor(clickable ? 'pointer' : 'default');
   }
 

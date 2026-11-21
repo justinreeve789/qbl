@@ -7,7 +7,11 @@ import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 /** Background and foreground layers, including tiled, drifting and parallax ones. */
 export class LayerSystem implements SceneSystem {
   private scrolling: Array<{ sprite: Phaser.GameObjects.TileSprite; vx: number; vy: number }> = [];
+  /** Layers that drift slower (or faster) than the world as the view moves: placed every frame. */
+  private drifting: Array<{ object: Phaser.GameObjects.Image | Phaser.GameObjects.TileSprite; x: number; y: number; factor: number }> = [];
   private objects: Phaser.GameObjects.GameObject[] = [];
+  /** Layers that are part of the sky: SkySystem tints them with its light. */
+  readonly skyLayers: Array<Phaser.GameObjects.Image | Phaser.GameObjects.TileSprite> = [];
 
   constructor(private rt: SceneRuntime) {}
 
@@ -37,12 +41,19 @@ export class LayerSystem implements SceneSystem {
         object = scene.add.image(x, y, key).setOrigin(0, 0).setDisplaySize(w, h);
       }
       object.setDepth(depth + i);
-      if (layer.parallax != null) object.setScrollFactor(layer.parallax);
+      // Parallax by where the view is, not by Phaser's scroll factor, which shifts with the zoom: at
+      // the scene's left edge the layer's left edge shows, whatever the size of the screen.
+      if (layer.parallax != null && layer.parallax !== 1) this.drifting.push({ object, x, y, factor: layer.parallax });
+      if (layer.sky) this.skyLayers.push(object);
       this.objects.push(object);
     });
   }
 
   update(_time: number, delta: number) {
+    if (this.drifting.length) {
+      const view = this.rt.scene.cameras.main.worldView;
+      for (const d of this.drifting) d.object.setPosition(d.x + view.x * (1 - d.factor), d.y + view.y * (1 - d.factor));
+    }
     for (const s of this.scrolling) {
       s.sprite.tilePositionX += (s.vx * delta) / 1000;
       s.sprite.tilePositionY += (s.vy * delta) / 1000;
@@ -53,5 +64,7 @@ export class LayerSystem implements SceneSystem {
     for (const o of this.objects) o.destroy();
     this.objects = [];
     this.scrolling = [];
+    this.drifting = [];
+    this.skyLayers.length = 0;
   }
 }

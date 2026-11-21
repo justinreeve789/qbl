@@ -222,6 +222,10 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .shadow-spot { fill: transparent; stroke: #9aa0ff; stroke-width: 1.5; stroke-dasharray: 3 4; cursor: pointer; }
 .shadow-spot.selected { stroke-width: 3; stroke-dasharray: none; cursor: move; }
 .shadow-spot-shade { fill: #05060f; pointer-events: none; }
+.light-glow { pointer-events: none; mix-blend-mode: screen; }
+.light-spot { fill: transparent; stroke: #ffd36b; stroke-width: 1.5; stroke-dasharray: 3 4; cursor: pointer; }
+.light-spot.selected { stroke-width: 3; stroke-dasharray: none; cursor: move; }
+.sky-preview { position: absolute; pointer-events: none; }
 .scale-area.selected { stroke-width: 3; stroke-dasharray: 8 5; cursor: move; fill: rgba(255, 210, 74, 0.12); }
 .scale-figure { pointer-events: none; }
 .scale-figure rect, .scale-figure circle { fill: rgba(255, 210, 74, 0.55); stroke: #1a1a1a; stroke-width: 1; }

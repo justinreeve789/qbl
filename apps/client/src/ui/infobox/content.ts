@@ -1,6 +1,7 @@
 import { CALLOUT_TONES } from '@qbl/shared';
 import { emojiIcon } from '../icons';
 import { sanitizeHtml } from '../sanitize';
+import { buildControls, type Controls } from './controls';
 
 /** What a glossary word says when it is tapped. */
 export interface WordInfo {
@@ -20,12 +21,16 @@ export interface ContentEnv {
   submit?: () => void;
   /** False when the player prefers reduced motion: things change at once. */
   motion: boolean;
+  /** A game variable's value, for what a box shows or tests that is not one of its controls. */
+  vars?: (name: string) => unknown;
 }
 
 /** An infobox's content, ready to show: its pages, its answer boxes, and its videos and sounds. */
 export interface RichContent {
   pages: HTMLElement[];
   answers: HTMLInputElement[];
+  /** Its sliders, switches and wheels. */
+  controls: Controls;
   /** A page is now showing: start whatever on it starts by itself. */
   shown(page: HTMLElement): void;
   /** Pause every video and sound. */
@@ -45,7 +50,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, t
 }
 
 /** Whether a page has anything on it worth a page of its own. */
-const hasContent = (page: HTMLElement) => (page.textContent ?? '').trim() !== '' || page.querySelector('img, video, audio, input') != null;
+const hasContent = (page: HTMLElement) => (page.textContent ?? '').trim() !== '' || page.querySelector('img, video, audio, input, [data-qbl]') != null;
 
 /**
  * Turn an infobox's HTML into what the player sees: sanitised, split into pages at each
@@ -97,6 +102,10 @@ export function buildContent(html: string, env: ContentEnv): RichContent {
     media.push(...page.querySelectorAll<HTMLMediaElement>('video, audio'));
   }
   const answers = pages.flatMap((p) => [...p.querySelectorAll<HTMLInputElement>('input[data-qbl="answer"]')]);
+  const box = el('div');
+  box.append(...pages);
+  const controls = buildControls(box, { get: env.vars, motion: env.motion });
+  cleanups.push(() => controls.destroy());
   for (const input of answers) {
     input.classList.add('qbl-answer-box');
     if (!input.getAttribute('aria-label')) input.setAttribute('aria-label', input.placeholder || 'Your answer');
@@ -120,6 +129,7 @@ export function buildContent(html: string, env: ContentEnv): RichContent {
   return {
     pages,
     answers,
+    controls,
     shown(page) {
       for (const m of page.querySelectorAll<HTMLMediaElement>('video[autoplay], audio[autoplay]')) {
         if (m.closest('.qbl-slide:not(.current)')) continue;

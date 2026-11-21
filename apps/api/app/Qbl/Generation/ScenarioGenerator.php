@@ -121,7 +121,7 @@ class ScenarioGenerator
                 $this->runs->update($id, ['blueprint' => $blueprint]);
             }
             file_put_contents("$dir/blueprint.json", json_encode($blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-            $this->say(sprintf('"%s": %d scenes, %d characters, %d items, %d interactions, %d crew roles, %d twists', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions']), count($blueprint['roles'] ?? []), count($blueprint['twists'] ?? [])));
+            $this->say(sprintf('"%s": %d scenes, %d characters, %d items, %d interactions (%d with the bag), %d combinations, %d twists', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions']), count(array_filter($blueprint['interactions'], fn ($it) => ($it['type'] ?? '') === 'use')), count($blueprint['combinations'] ?? []), count($blueprint['twists'] ?? [])));
             $director = ($this->director)($dir);
             $estimate = $director->estimate($blueprint);
             $this->say(sprintf('Drawing it will take about %d pictures, about $%.2f%s.', $estimate['pictures'], $estimate['usd'], $this->spend ? sprintf(' (spent so far: $%.2f%s)', $this->spend->total(), $this->spend->budget() > 0 ? sprintf(' of a $%.2f budget', $this->spend->budget()) : '') : ''));
@@ -227,8 +227,9 @@ class ScenarioGenerator
 
     /**
      * What each background must leave room for: where its edges lead, where its doors, holes and ladders
-     * stand, and where things hang on its wall. scene => [exits => [edge => "towards the Lab"],
-     * passages => [[via, x, towards]], wall => [x...]].
+     * stand, where things hang on its wall, and what students look at where there is no object of its own
+     * (painted in). scene => [exits => [edge => "towards the Lab"], passages => [[via, x, towards]],
+     * wall => [x...], looks => [[x, what, where]]].
      */
     public static function layouts(array $b): array
     {
@@ -250,6 +251,18 @@ class ScenarioGenerator
             $scene = $scenes[$it['scene']] ?? null;
             if ($scene && ! empty($it['item']) && isset($items[$it['item']]) && AssetDirector::placementOf($it, $items[$it['item']], $scene) === 'wall') {
                 $out[$it['scene']]['wall'][] = (float) ($it['x'] ?? 0.5);
+            }
+            // Something to look at that has no object: the background shows it where its marker is.
+            if ($scene && empty($it['item']) && ! empty($it['look']) && isset($it['x']) && empty($it['character']) && empty($it['at_report'])) {
+                $out[$it['scene']]['looks'][] = ['x' => (float) $it['x'], 'what' => $it['look'], 'where' => AssetDirector::placementOf($it, null, $scene)];
+            }
+        }
+        // Things in the scene to look at (details): painted in where they are.
+        foreach ($b['scenes'] as $scene) {
+            foreach ($scene['details'] ?? [] as $d) {
+                if (! empty($d['look']) && isset($d['x'])) {
+                    $out[$scene['key']]['looks'][] = ['x' => (float) $d['x'], 'what' => $d['look'], 'where' => ($d['placement'] ?? 'back') === 'ground' ? 'ground' : 'back'];
+                }
             }
         }
 

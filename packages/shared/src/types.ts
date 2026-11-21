@@ -636,6 +636,17 @@ export interface Label extends Spritemap {
   solid?: boolean;
   /** [ext] Radius of that obstacle in scene pixels. Default: 35% of the picture's width. */
   solid_radius?: number;
+  /**
+   * [ext] A picture on a hotspot players click grows and shrinks gently, to draw the eye. Default
+   * false: clickable things hold still, and the pointer (and a hint label) says what can be clicked.
+   */
+  pulse?: boolean;
+  /**
+   * [ext] A hint: the label is shown only while the player's avatar is within this many scene pixels
+   * of the hotspot, or the pointer is over the hotspot. For a thing's name over a small marker, so a
+   * scene is not covered in words. Absent: always shown (while the hotspot is there).
+   */
+  show_near?: number;
 }
 
 // --------------------------------------------------------------- events
@@ -838,7 +849,31 @@ export interface Item {
   hide_rider_below?: number;
   /** [ext] Vehicles only: walking speed multiplier while riding. Default 1.5. */
   speed_multiplier?: number;
+  /**
+   * [ext] A thing the player can carry, as in a point-and-click adventure: it is in their bag (the
+   * item bar on their screen) while these hold, usually a variable of their own an event sets to 1
+   * when they pick it up and back to 0 when it is used up. From the bag the player picks it to use
+   * it on something in the scene (see `QBLHolding`) or puts it with another thing they carry
+   * (`combinations`). Absent: never carried.
+   */
+  carried_when?: Condition[];
+  /** [ext] What the player is told about it when they look at it in their bag. */
+  description?: string;
   params?: Params;
+}
+
+/**
+ * [ext] Two things a player carries that make something when put together: a rope and a hook make
+ * a grappling hook. The player picks one in their bag, then the other; when the conditions hold, the
+ * actions are done in order, in the scene the player is in, as an event's would be (they need no
+ * ids): usually setting the two things' variables to 0, the new thing's to 1, and saying what
+ * happened. Two things with no combination tell the player they do not go together.
+ */
+export interface Combination {
+  /** The two items, in either order. */
+  items: [Id, Id];
+  conditions?: Condition[];
+  actions: Array<Omit<Action, 'id'> & { id?: Id }>;
 }
 
 /**
@@ -974,8 +1009,18 @@ export interface SceneLayer {
   /** Pixels per second the tiled texture scrolls. */
   scroll_speed_x?: number;
   scroll_speed_y?: number;
-  /** Camera scroll factor for parallax. 1 moves with the world, 0 is pinned to the screen. */
+  /**
+   * How far the layer moves as the view moves along the scene: 1 with the world, 0 pinned to the
+   * screen; between, a distant layer (a sky, far hills) that drifts slower. At the scene's left edge
+   * the layer's left edge shows, so a distant layer needs to be only as wide as the view plus that
+   * fraction of the rest of the scene.
+   */
   parallax?: number;
+  /**
+   * [ext] Part of the sky (clouds, a far view behind the scene): with a scene `sky`, it takes on the
+   * sky's light as it changes (golden at sunset, blue at night).
+   */
+  sky?: boolean;
 }
 
 export interface SpawnPoint {
@@ -1013,6 +1058,66 @@ export interface ShadowSpot {
   radius_y?: number;
   /** How dark the centre is, 0 to 100. Default 60. */
   strength?: number;
+}
+
+/** [ext] The times of day a scene's sky can show, in the order a day goes. */
+export type SkyTime = 'dawn' | 'morning' | 'midday' | 'afternoon' | 'golden' | 'sunset' | 'dusk' | 'night';
+
+/**
+ * [ext] A living sky behind a scene (behind every background layer): a gradient of the time of day with
+ * the sun or the moon and stars, which can change slowly while players are there (a sunset). The
+ * backgrounds in front need their sky to be see-through. See sky.ts.
+ */
+export interface SceneSky {
+  /** What the sky shows when a player first arrives. */
+  time: SkyTime;
+  /** What it turns into, slowly, while players are in the scene; it then stays. */
+  until?: SkyTime;
+  /** How long the change takes, in minutes. Default 8. */
+  minutes?: number;
+  /** Where the horizon is, from the top, as a share of the scene's height: where the sun sets. Default 0.6. */
+  horizon?: number;
+  /** Where across the screen the sun or the moon is, from 0 (left) to 1. Default 0.72. */
+  sun_x?: number;
+  /** Show the sun or the moon. Default true. */
+  sun?: boolean;
+  /** Show stars when it is dark. Default true. */
+  stars?: boolean;
+  /** How much the scene in front takes on the sky's light, from 0 (not at all) to 100. Default 60. */
+  shade?: number;
+}
+
+/**
+ * [ext] A light in a scene: a soft glow drawn over the scene that moves as its kind says. Lights shine
+ * fully in the dark and only a little in daylight (with a `sky`); without a sky, always fully.
+ */
+export interface SceneLight {
+  name?: string;
+  x: number;
+  y: number;
+  /** How far the glow reaches, in pixels. Default 90. */
+  radius?: number;
+  /** #rrggbb. Default a warm #ffc46b. */
+  color?: string;
+  /**
+   * flicker: a small flame (a lantern, a torch, a candle). fire: a campfire, flickering more, with
+   * embers rising. glow: steady, slowly breathing (crystals, a lit window, a screen). blink: on and off
+   * (a beacon, a warning light). twinkle: a sparkle now and then. Default flicker.
+   */
+  kind?: 'flicker' | 'fire' | 'glow' | 'blink' | 'twinkle';
+  /** How bright, from 0 to 100. Default 70. */
+  strength?: number;
+  /** Seconds for one breath (glow) or one blink. Default 4 and 1.4. */
+  period?: number;
+}
+
+/** [ext] Something in the air of a scene, drawn over it: fireflies at dusk, falling leaves, snow, rain. */
+export interface SceneAtmosphere {
+  kind: 'fireflies' | 'leaves' | 'snow' | 'rain' | 'dust' | 'bubbles';
+  /** How much of it. Default some. */
+  amount?: 'few' | 'some' | 'many';
+  /** #rrggbb, instead of its own colours. */
+  color?: string;
 }
 
 /**
@@ -1072,6 +1177,12 @@ export interface Scene {
   scale_areas?: ScaleArea[];
   /** [ext] Patches of shade on the floor. A figure walking through one darkens, most at its centre. */
   shadow_spots?: ShadowSpot[];
+  /** [ext] A living sky behind the backgrounds (see SceneSky). */
+  sky?: SceneSky | null;
+  /** [ext] Lights that glow, flicker or blink: lanterns, campfires, a crashed ship's beacons. */
+  lights?: SceneLight[] | null;
+  /** [ext] What is in the air: fireflies, leaves, snow, rain, dust, bubbles. */
+  atmosphere?: SceneAtmosphere[] | null;
   /**
    * [ext] Show a player only the members of their own team in this scene. Absent: as the scene's
    * group says (`scene_groups`), and failing that everyone playing is shown.
@@ -1180,6 +1291,8 @@ export interface Scenario {
   private_messages?: boolean;
   /** [ext] Spec version this document was written against. */
   spec_version?: number;
+  /** [ext] Things players carry that can be put together to make something new (see `Item.carried_when`). */
+  combinations?: Combination[];
 
   /** Save-game data for the requesting player, when there is any. */
   session?: Session | null;

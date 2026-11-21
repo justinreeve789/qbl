@@ -33,6 +33,7 @@ Coordinates are in **scene pixels**, measured from the top left of the scene. Ev
 | **Walkable area**, **Blocked area** | Where feet may and may not go |
 | **Scale area (depth)** | Makes things smaller towards the back of the scene |
 | **Shadow spot (shade)** | A patch of shade figures darken in |
+| **Light** | A glow that flickers, burns, breathes or blinks: a lantern, a campfire, a beacon |
 | **Background layer**, **Foreground layer** | A picture behind or in front of the avatars |
 
 Items and characters must be defined first on their own pages; if there are none, the editor tells you so.
@@ -46,6 +47,7 @@ Select **⚙️ Scene settings**. The form has:
 * **Zoom**, **Show avatars**, and **Group**.
 * **Background music for this scene**, with its volume. Empty uses the scenario's music.
 * **Who players see here**, for missions with teams.
+* **🌅 Living sky** and **🍃 In the air**: see [A living scene](#a-living-scene).
 * **Make this the start scene** and **Delete scene**.
 
 ### Layers
@@ -56,6 +58,7 @@ A scene's picture is made of **background layers** (behind the avatars, first at
 * Given a **Shown width/height** and an **X/Y** position, to place a picture inside a larger scene.
 * Made to **drift** (px per second, right and down) for clouds, water or stars.
 * Given a **Parallax** below 1 to move slower than the scene, as if far away. 0 stays put on the screen.
+* Marked **Part of the sky** (clouds, a far view), so a living sky tints it with its light.
 
 Select a layer in the outline to reorder it with **↑ Further back** and **↓ Further forward**.
 
@@ -78,6 +81,16 @@ Do not put a spawn point inside a walk-in hotspot that jumps, or arriving player
 A **scale area** is a box where things are drawn smaller or larger depending on how high up they stand: **Size at the top edge (%)** and **Size at the bottom edge (%)**, with an even change between. A new one covers the walkable part of the scene at 50% to 100%. **Walking speed follows size (%)** decides whether a small, distant figure also walks slower (100 is one to one, 0 ignores size). Outside every box, things are normal size.
 
 A **shadow spot** is a patch of shade on the floor: figures walking through it darken, most at the centre. Place it where your picture already shows shade, and give it a **Radius** and a flatter **Radius up and down**.
+
+### A living scene
+
+Three things make a scene feel alive, drawn by the game itself:
+
+* **🌅 Living sky** (in Scene settings): choose a **Time of day** and the game draws a sky behind your backgrounds, with the sun or the moon and twinkling stars. Choose what it **Slowly becomes** and **Over** how many minutes, and the sky changes while players are there: *Afternoon* to *Dusk* is a sunset through gold, orange, pink and purple into a starry dusk. **Horizon** is where the sun sets, behind your scenery; **Scene takes on its light** tints everything a little warmer at sunset and bluer at night. Your background pictures must be see-through where the sky should show. The canvas shows the sky as players first see it.
+* **Lights** (Add › Light): a soft glow you put on a lantern, a campfire, a lit window or a beacon in your picture. Choose **How it moves**: *Flicker* (a flame), *Fire* (a campfire, with embers rising), *Glow* (slowly breathing: crystals, a screen), *Blink* (a beacon) or *Twinkle*, and its **Colour**, **Reach** and **Brightness**. Drag it into place and drag its handle to change its reach. Under a living sky, lights shine fully at night and only a little by day.
+* **🍃 In the air** (in Scene settings): fireflies, falling leaves, snow, rain, dust in the light or bubbles under water, a few or lots.
+
+Keep it subtle: a few lights where the picture has lights, not everywhere. Players whose device asks for reduced motion see the lights glow steadily and nothing in the air.
 
 ## Exits to other scenes
 

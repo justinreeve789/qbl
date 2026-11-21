@@ -18,15 +18,19 @@ const ATTRS: Record<string, string[]> = {
   video: ['src', 'poster', 'loop', 'muted', 'autoplay', 'title'],
   audio: ['src', 'loop', 'autoplay', 'title'],
   details: ['open'],
-  input: ['placeholder', 'data-var', 'maxlength', 'inputmode', 'aria-label'],
-  span: ['data-word'],
+  input: ['placeholder', 'data-var', 'maxlength', 'inputmode', 'aria-label', 'data-min', 'data-max', 'data-step', 'data-value', 'data-unit', 'data-label'],
+  span: ['data-word', 'data-var'],
+  div: ['data-var', 'data-options', 'data-value', 'data-label', 'data-min', 'data-max', 'data-unit', 'data-when', 'data-spins'],
   td: ['colspan', 'rowspan'],
   th: ['colspan', 'rowspan'],
 };
 /** Which element each `data-qbl` kind may be on. */
 const BLOCK_TAGS: Record<string, string[]> = {
   page: ['hr'], gallery: ['div'], flip: ['div'], callout: ['div'], answer: ['input'], word: ['span'],
+  panel: ['div'], slider: ['input'], switch: ['input'], wheel: ['div'], value: ['span'], meter: ['div'], when: ['div'],
 };
+/** Attributes only a control (or what shows one) may carry. */
+const CONTROL_ATTRS = new Set(['data-min', 'data-max', 'data-step', 'data-value', 'data-unit', 'data-label', 'data-options', 'data-when', 'data-spins']);
 const SIZES = new Set(['small', 'medium', 'large']);
 const SAFE_URL = /^(https?:|mailto:|\/(?!\/)|\.{0,2}\/|[^:]*$)/i;
 const URL_ATTRS = new Set(['href', 'src', 'poster']);
@@ -47,8 +51,8 @@ function copy(source: Node, target: Node, doc: Document) {
     }
     const kind = el.getAttribute('data-qbl')?.trim().toLowerCase() ?? '';
     const block = (INFOBOX_BLOCKS as readonly string[]).includes(kind) && BLOCK_TAGS[kind]!.includes(tag) ? kind : null;
-    // The only input there is: an answer box.
-    if (tag === 'input' && block !== 'answer') continue;
+    // The only inputs there are: an answer box, a slider and a switch.
+    if (tag === 'input' && block !== 'answer' && block !== 'slider' && block !== 'switch') continue;
     const out = doc.createElement(tag);
     if (block) out.setAttribute('data-qbl', block);
     for (const name of ATTRS[tag] ?? []) {
@@ -58,6 +62,8 @@ function copy(source: Node, target: Node, doc: Document) {
       if (name === 'data-size' && !SIZES.has(value)) continue;
       if (name === 'data-var' && !/^[A-Za-z_]\w*$/.test(value)) continue;
       if (name === 'data-word' && block !== 'word') continue;
+      if (name === 'data-var' && tag !== 'input' && !['wheel', 'value', 'meter'].includes(block ?? '')) continue;
+      if (CONTROL_ATTRS.has(name) && !block) continue;
       out.setAttribute(name, value);
     }
     if (block === 'callout') {
@@ -68,7 +74,11 @@ function copy(source: Node, target: Node, doc: Document) {
       out.setAttribute('target', '_blank');
       out.setAttribute('rel', 'noopener noreferrer');
     }
-    if (tag === 'input') {
+    if (tag === 'input' && block === 'slider') {
+      out.setAttribute('type', 'range');
+    } else if (tag === 'input' && block === 'switch') {
+      out.setAttribute('type', 'checkbox');
+    } else if (tag === 'input') {
       out.setAttribute('type', 'text');
       out.setAttribute('autocomplete', 'off');
       out.setAttribute('spellcheck', 'false');
