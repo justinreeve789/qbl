@@ -168,7 +168,7 @@ export function scenarioListView(api: Api, open: (id: number) => void, options: 
       { class: 'card', 'data-scenario': s.id },
       h('div', { class: 'card-title' }, h('strong', null, s.title), h('span', { class: 'publish-state', 'data-state': s.published_at ? 'published' : 'draft' }, s.published_at ? 'Published' : 'Draft')),
       h('p', { class: 'muted' }, s.subtitle ?? ''),
-      h('p', null, h('code', { class: 'code' }, s.code), s.user_id == null ? h('span', { class: 'badge' }, 'Shared sample') : null),
+      s.user_id == null ? h('p', null, h('span', { class: 'badge' }, 'Shared sample')) : null,
       h(
         'div',
         { class: 'row-actions' },
@@ -207,7 +207,7 @@ export function scenarioListView(api: Api, open: (id: number) => void, options: 
     h(
       'div',
       { class: 'page-head' },
-      h('div', null, h('h1', null, 'Scenarios', help('A scenario is a whole mission: its scenes, and everything that can happen in them. Each has a code players use to open it (you can change it on its Publish page). Export downloads one as a ZIP file (its JSON and uploaded files) to keep as a backup; Import a ZIP makes a new scenario from such a file.'))),
+      h('div', null, h('h1', null, 'Scenarios', help('A scenario is a whole mission: its scenes, and everything that can happen in them. Export downloads one as a ZIP file (its JSON and uploaded files) to keep as a backup; Import a ZIP makes a new scenario from such a file.'))),
       h('div', { class: 'row-actions' },
         zip,
         h('button', { type: 'button', onclick: () => zip.click() }, 'Import a ZIP'),
