@@ -203,7 +203,10 @@ export class Ui implements UiPort {
     const revealAll = () => {
       window.clearInterval(reveal);
       shown = text.length;
-      line.textContent = text;
+      // When it is read aloud the whole line is already there, each word in its own span so it can
+      // be lit as it is said: setting the text again would throw the spans away, and the words
+      // would never light up.
+      if (!reading.active) line.textContent = text;
       whole();
     };
     const reveal = window.setInterval(() => {
