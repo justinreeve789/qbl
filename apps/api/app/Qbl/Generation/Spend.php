@@ -50,6 +50,16 @@ class Spend
     /** @var array{total: float, llm: array<string, array>, images: array<string, array>} */
     private array $ledger = ['total' => 0.0, 'llm' => [], 'images' => []];
 
+    /** Where each call is also written for auditing (generation_events), and what it is part of. */
+    private ?GenerationEvents $events = null;
+
+    private int $run = 0;
+
+    private ?string $stage = null;
+
+    /** @var array{step: string, attempt: ?int, label: ?string}|null the picture being worked on */
+    private ?array $at = null;
+
     /**
      * @param  float  $budget  USD; 0 for no budget.
      * @param  array  $prices  Added to and overriding PRICES.
@@ -79,6 +89,43 @@ class Spend
         return $this->budget;
     }
 
+    /** Write every call to this run's audit log (generation_events); null stops. */
+    public function logTo(?GenerationEvents $events, int $run = 0): void
+    {
+        $this->events = $events;
+        $this->run = $run;
+        $this->stage = null;
+        $this->at = null;
+    }
+
+    /** The stage the run is in: calls are logged under it. Moving on forgets the picture being worked on. */
+    public function stage(?string $stage): void
+    {
+        $this->stage = $stage;
+        $this->at = null;
+    }
+
+    /**
+     * What the next calls are for: this picture (by its key), this attempt at it. A picture's judge call
+     * is logged with the picture it judges. Null clears it.
+     */
+    public function at(?string $step, ?int $attempt = null, ?string $label = null): void
+    {
+        $this->at = $step === null ? null : ['step' => $step, 'attempt' => $attempt, 'label' => $label];
+    }
+
+    /** What came of the attempts at a picture, for the audit log (see GenerationEvents::attempts). */
+    public function attempts(string $step, array $attempts, ?int $kept, ?string $note = null): void
+    {
+        $this->events?->attempts($this->run, $step, $attempts, $kept, $note);
+    }
+
+    /** An extra event for the audit log (the picture estimate, say), under the current stage. */
+    public function note(array $event): void
+    {
+        $this->events?->record($this->run, $event + ['stage' => $this->stage]);
+    }
+
     public function total(): float
     {
         return round((float) $this->ledger['total'], 4);
@@ -103,7 +150,7 @@ class Spend
      *
      * @param  array{input_tokens?: int, output_tokens?: int, cache_read_input_tokens?: int, cache_creation_input_tokens?: int}  $usage
      */
-    public function llm(string $model, string $purpose, array $usage): float
+    public function llm(string $model, string $purpose, array $usage, ?float $seconds = null, ?string $stopReason = null): float
     {
         $p = $this->prices[$model] ?? $this->prices[self::family($model)] ?? null;
         $tokens = [
@@ -126,12 +173,28 @@ class Spend
         }
         $row['usd'] = round($row['usd'] + $cost, 5);
         unset($row);
+        $this->events?->record($this->run, [
+            'stage' => $this->stage, 'type' => 'llm', 'kind' => $purpose, 'step' => $this->at['step'] ?? $purpose, 'label' => $this->at['label'] ?? null,
+            'attempt' => $this->at['attempt'] ?? null, 'model' => $model, 'seconds' => $seconds,
+            'input_tokens' => $tokens['input'], 'output_tokens' => $tokens['output'], 'cache_read_tokens' => $tokens['cache_read'], 'cache_write_tokens' => $tokens['cache_write'],
+            'usd' => round($cost, 5), 'outcome' => match ($stopReason) { 'max_tokens' => 'truncated', 'refusal' => 'refused', default => 'ok' },
+            'detail' => array_filter(['stop_reason' => $stopReason ?: null, 'priced' => is_array($p)], fn ($v) => $v !== null),
+        ]);
 
         return $this->add($cost);
     }
 
+    /** A language-model call that failed (no usage to price): logged for the audit, nothing is added to the spend. */
+    public function llmFailed(string $model, string $purpose, ?float $seconds, string $why): void
+    {
+        $this->events?->record($this->run, [
+            'stage' => $this->stage, 'type' => 'llm', 'kind' => $purpose, 'step' => $this->at['step'] ?? $purpose, 'label' => $this->at['label'] ?? null,
+            'attempt' => $this->at['attempt'] ?? null, 'model' => $model, 'seconds' => $seconds, 'outcome' => 'error', 'note' => $why,
+        ]);
+    }
+
     /** A picture drawn (whether or not it is kept), with how many reference images were sent. */
-    public function picture(string $model, ?string $size, string $kind, int $references = 0): float
+    public function picture(string $model, ?string $size, string $kind, int $references = 0, ?float $seconds = null, string $outcome = 'ok', ?string $why = null): float
     {
         $cost = $this->pictureWithReferences($model, $size, $references);
         $key = $model.($size ? "@$size" : '');
@@ -141,6 +204,11 @@ class Spend
         $row['kinds'][$kind] = ($row['kinds'][$kind] ?? 0) + 1;
         $row['usd'] = round($row['usd'] + $cost, 5);
         unset($row);
+        $this->events?->record($this->run, [
+            'stage' => $this->stage, 'type' => 'picture', 'kind' => $kind, 'step' => $this->at['step'] ?? $kind, 'label' => $this->at['label'] ?? null,
+            'attempt' => $this->at['attempt'] ?? null, 'model' => $model, 'size' => $size, 'references' => $references, 'seconds' => $seconds,
+            'usd' => round($cost, 5), 'outcome' => $outcome, 'note' => $why,
+        ]);
 
         return $this->add($cost);
     }

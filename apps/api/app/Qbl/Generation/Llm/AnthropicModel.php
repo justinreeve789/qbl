@@ -153,13 +153,22 @@ class AnthropicModel implements LanguageModel
     /** @return array{int, array} */
     private function call(string $purpose, array $body): array
     {
-        $response = $this->http->send('POST', rtrim($this->baseUrl, '/').'/v1/messages', [
-            'x-api-key' => $this->apiKey,
-            'anthropic-version' => '2023-06-01',
-        ], $body, timeout: $this->timeout);
+        $t0 = microtime(true);
+        try {
+            $response = $this->http->send('POST', rtrim($this->baseUrl, '/').'/v1/messages', [
+                'x-api-key' => $this->apiKey,
+                'anthropic-version' => '2023-06-01',
+            ], $body, timeout: $this->timeout);
+        } catch (\Throwable $e) {
+            $this->spend?->llmFailed($this->model, $purpose, microtime(true) - $t0, $e->getMessage());
+            throw $e;
+        }
+        $seconds = microtime(true) - $t0;
         $data = $response->json();
         if ($this->spend && is_array($data['usage'] ?? null)) {
-            $this->spend->llm($this->model, $purpose, $data['usage']);
+            $this->spend->llm($this->model, $purpose, $data['usage'], $seconds, (string) ($data['stop_reason'] ?? ''));
+        } elseif ($this->spend) {
+            $this->spend->llmFailed($this->model, $purpose, $seconds, 'HTTP '.$response->status.': '.mb_substr((string) ($data['error']['message'] ?? json_encode($data)), 0, 500));
         }
 
         return [$response->status, $data];

@@ -165,6 +165,7 @@ class GenerationFactory
             $log,
             $spend,
             $this->voices($options['voices'] ?? null, $log),
+            new GenerationEvents($this->store->pdo()),
         );
     }
 

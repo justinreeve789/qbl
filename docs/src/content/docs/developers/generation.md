@@ -75,6 +75,37 @@ The language model costs less, and is kept down too:
 
 For a mission like the test one (five scenes, two characters, eleven small things, three doors and holes), drawing once takes 17 pictures, about $1.95 at list prices, where it took 31, about $4.27, before; redraws come on top, up to the budget. Prices change: `QuestLab_GEN_PRICES` overrides any of them (JSON, the shape of `Spend::PRICES`).
 
+## The audit log
+
+`spend.json` is a running total. For auditing, every run also writes **one row per thing it did that took time or money** to the `generation_events` table (`GenerationEvents`; the migration is `2026_11_21_000100_create_generation_events_table`, and `php artisan migrate` creates it). The rows go in as it works, so a run that fails or is cancelled leaves its log up to that point, and a resumed run carries on numbering (`seq`) where it left off.
+
+| Column | What it holds |
+|---|---|
+| `generation_id`, `seq`, `stage` | The run, the order things happened in, and the stage (aligning, designing, drawing, building, voicing, importing). |
+| `type` | `llm` (a language-model call, the judge's too), `picture`, `voice` (a recorded line), `stage` (the clock on the wall for a stage), `estimate` (what drawing was expected to cost, to compare with what it did). |
+| `kind`, `step`, `label`, `attempt` | What it was for. For a call: its purpose (`curriculum_alignment`, `mission_blueprint`, `style_review`...). For a picture: what was drawn (`background`, `sheet`, `strip`...). `step` is the picture's key (`strip:keeper:walk`); a judge call carries the key and attempt of the picture it judged. |
+| `model`, `size`, `references` | The model, a picture's size, how many reference pictures were sent. |
+| `started_at`, `duration_ms` | When it began (UTC, to the millisecond) and how long it took. |
+| `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens` | A call's tokens. Output includes the model's thinking. |
+| `usd` | What it cost at list prices (see `Spend::PRICES`): an estimate, not a bill. A picture or call that failed is logged with the error and what was charged. |
+| `score`, `outcome`, `note` | The judge's score for a picture attempt, and how it ended: `ok`, `error`, `truncated` (cut off by `max_tokens`), `refused`, `kept`, `discarded` (a better attempt was kept), `rejected` (a problem found before judging), `cancelled`, `failed`. |
+
+Read it with `php artisan qbl:generation-log` (recent runs, with time and cost), `qbl:generation-log 42` (one run by stage and by kind of work), `--steps` (every event in order, `--type=llm` to filter) or `--json`. Administrators also get it from the editor's API: `GET /api/editor/generations/{id}/events`. Teachers do not see costs. A few queries:
+
+```sql
+-- where a run's money went
+SELECT type, kind, COUNT(*) AS calls, SUM(duration_ms) / 1000 AS seconds, SUM(usd) AS usd
+FROM generation_events WHERE generation_id = 42 AND type IN ('llm', 'picture', 'voice') GROUP BY type, kind ORDER BY usd DESC;
+
+-- what the judge costs, across runs
+SELECT generation_id, COUNT(*) AS calls, SUM(usd) AS usd FROM generation_events WHERE type = 'llm' AND kind = 'style_review' GROUP BY generation_id;
+
+-- pictures that took several attempts
+SELECT step, COUNT(*) AS attempts, SUM(usd) AS usd FROM generation_events WHERE type = 'picture' GROUP BY generation_id, step HAVING COUNT(*) > 1;
+```
+
+Logging never stops a run: a row that cannot be written is dropped (and noted in the PHP error log). Calls made outside a generation (voicing a scenario from the editor, say) are not in it.
+
 ## What a generated mission contains
 
 The model writes a **blueprint**, never event ids or action lists. MissionBuilder turns it into rows with fixed patterns, so the result always passes the validator and plays:

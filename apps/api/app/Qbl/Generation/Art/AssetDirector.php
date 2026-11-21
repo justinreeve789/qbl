@@ -589,6 +589,7 @@ class AssetDirector
             }
             $prompt = $this->style->prompt('sheet', $list, $refs, ['count' => $count, 'columns' => $cols, 'rows' => $rows], $notes, $this->images->transparency(), $accents);
             $this->say("Drawing $count things on one sheet ($sheetKey), attempt $attempt");
+            $this->spend?->at($sheetKey, $attempt, "$count things on one sheet");
             try {
                 $raw = $this->draw($prompt, $refs, $aspect, $this->images->transparency(), $hints);
             } catch (GenerationError $e) {
@@ -648,14 +649,19 @@ class AssetDirector
     private function draw(string $prompt, array $refs, string $aspect, bool $transparent, array $hints): string
     {
         $this->spend?->checkLimit('drawing '.($hints['label'] ?? $hints['kind'] ?? 'a picture'));
+        $t0 = microtime(true);
+        $failure = null;
         try {
             return $this->images->generate($prompt, $refs, $aspect, $transparent, $hints);
+        } catch (\Throwable $e) {
+            $failure = $e->getMessage();
+            throw $e;
         } finally {
             // Paid for whether or not it comes back usable. A generator that does not say its price is
             // counted at Spend::UNKNOWN_PICTURE, except the placeholder, which is free.
             if ($this->spend) {
                 [$model, $size] = $this->images instanceof PricedImageGenerator ? $this->images->pricing($hints) : [$this->images->describe(), null];
-                $this->spend->picture($model, $size, (string) ($hints['kind'] ?? 'picture'), count($refs));
+                $this->spend->picture($model, $size, (string) ($hints['kind'] ?? 'picture'), count($refs), microtime(true) - $t0, $failure === null ? 'ok' : 'error', $failure);
             }
         }
     }
@@ -691,6 +697,7 @@ class AssetDirector
             $refs = [$sheet, ...$this->style->anchorsFor('strip')];
             $prompt = $this->style->prompt('strip', "$name ".self::MOTION[$animation], $refs, ['frames' => $count], $notes, $this->images->transparency(), $accents);
             $this->say("Drawing $name: $animation ($count frames), attempt $attempt");
+            $this->spend?->at($assetKey, $attempt, "$name: $animation");
             try {
                 $raw = $this->draw($prompt, $refs, $aspect, $this->images->transparency(), ['kind' => 'strip', 'frames' => $count, 'animation' => $animation, 'label' => $name]);
             } catch (GenerationError $e) {
@@ -1139,6 +1146,7 @@ class AssetDirector
             }
             $prompt = $this->style->prompt($kind, $subject, $refs, [], [...$notes, ...$extra], $this->images->transparency() && ArtStyle::cutout($kind), $accents);
             $this->say("Drawing $key, attempt $attempt");
+            $this->spend?->at($key, $attempt, ($hints['label'] ?? '') !== '' ? (string) $hints['label'] : $key);
             try {
                 $raw = $this->draw($prompt, $refs, $aspect, $this->images->transparency() && ArtStyle::cutout($kind), $hints);
                 [$im, $problem] = $finish($raw);
@@ -1201,7 +1209,35 @@ class AssetDirector
     {
         $entry = ['key' => $key, 'kind' => $kind, 'provider' => $this->images->describe(), 'style' => $this->style->key.'@'.$this->style->version(), 'prompt' => $prompt, 'attempts' => $attempts] + $extra;
         $this->manifest[$key] = $entry;
+        $this->logAttempts($key, $attempts, $extra);
         file_put_contents("{$this->workDir}/assets/".self::file($key).'.json', json_encode($entry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Tells the audit log how each attempt at a picture came out: which one was kept (the one the
+     * attempts loops chose: most cells filled, then the highest score, the first of equals), and each
+     * attempt's judge score.
+     */
+    private function logAttempts(string $key, array $attempts, array $extra): void
+    {
+        if (! $this->spend || ! $attempts) {
+            return;
+        }
+        $kept = null;
+        if (($extra['accepted'] ?? true) !== false) {
+            $best = null;
+            foreach ($attempts as $a) {
+                if (isset($a['problem']) && ! isset($a['score'])) {
+                    continue;
+                }
+                $rank = [(int) ($a['cells'] ?? 0), (float) ($a['score'] ?? 10) - (isset($a['problem']) ? 3 : 0)];
+                if (! $best || $rank > $best[0]) {
+                    $best = [$rank, (int) $a['attempt']];
+                }
+            }
+            $kept = $best[1] ?? null;
+        }
+        $this->spend->attempts($key, $attempts, $kept, ! empty($extra['below_bar']) ? 'kept below the style bar' : null);
     }
 
     /** A picture accepted by an earlier run of the same generation, if its files are still there. */
@@ -1257,6 +1293,7 @@ class AssetDirector
                 $notes = $kind === 'background' ? [sprintf('The walkable floor starts %d%% of the way down the picture and is open and empty', round(($spec['ground_line'] ?? 0.7) * 100)), 'No characters or people'] : [];
                 $prompt = $this->style->prompt($kind, $spec['subject'], $refs, [], $notes, $this->images->transparency() && ArtStyle::cutout($kind));
                 $this->say("Drawing anchor candidate $role $v");
+                $this->spend?->at("anchor:$role-$v", 1, "anchor candidate $role $v");
                 // Anchors define the style: always the main image model, never the cheaper props one.
                 $raw = $this->draw($prompt, $refs, $kind === 'background' ? '16:9' : ($kind === 'item' ? '16:9' : ($kind === 'portrait' ? '1:1' : '3:4')), $this->images->transparency() && ArtStyle::cutout($kind), ['kind' => $kind, 'label' => "$role $v", 'ground_line' => $spec['ground_line'] ?? 0.7, 'anchor' => true]);
                 $im = ImageTools::load($raw);

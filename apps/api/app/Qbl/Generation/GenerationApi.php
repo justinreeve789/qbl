@@ -23,6 +23,7 @@ use Throwable;
  *   GET   editor/generations/active       the one being made now (or null): what the editor's progress chip asks
  *   GET   editor/generations/all          administrators: everyone's latest, with who asked and what each spent
  *   GET   editor/generations/{id}         one generation: its status and progress, and the scenario once it is done
+ *   GET   editor/generations/{id}/events  administrators: the audit log of the run (every call, picture and stage, with time and cost) and its totals
  *   POST  editor/generations/{id}/cancel  stop it (now if it has not started; else between two pictures)
  */
 class GenerationApi
@@ -100,6 +101,14 @@ class GenerationApi
             }
             if (count($parts) === 1 && $method === 'GET') {
                 return [200, ['generation' => $this->present($run, $admin), 'now' => $this->now()]];
+            }
+            if (($parts[1] ?? null) === 'events' && $method === 'GET') {
+                if (! $admin) {
+                    throw new StoreError(403, 'Only an administrator can see what a generation cost.');
+                }
+                $events = new GenerationEvents($this->pdo);
+
+                return [200, ['generation' => $this->present($run, true), 'totals' => $events->totals((int) $run['id']), 'events' => $events->forRun((int) $run['id']), 'now' => $this->now()]];
             }
             if (($parts[1] ?? null) === 'cancel' && $method === 'POST') {
                 return [200, ['generation' => $this->present($this->cancel($run), $admin), 'credits' => $this->creditsOf((int) $run['user_id']), 'now' => $this->now()]];
