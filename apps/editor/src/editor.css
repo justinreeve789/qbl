@@ -1391,3 +1391,11 @@ button.questlab-open:hover:not(:disabled) { background: color-mix(in srgb, var(-
 .questlab-add { align-self: stretch; margin-top: 2px; }
 .questlab-credits { margin-top: 14px; }
 .media-credit { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+/* Vehicles in the library: each kind in a scene of its own. */
+.questlab-card[data-group='Cars'] .questlab-photo {
+  background: linear-gradient(#9ccff7, #dff1ff 58%, #8a8f99 58%, #6f747d 84%, #f2f2f2 84%, #f2f2f2 86%, #6f747d 86%);
+}
+.questlab-card[data-group='Bikes'] .questlab-photo { background: linear-gradient(#a7d8ff, #e6f5ff 60%, #c9b48a 60%, #b39b6c 100%); }
+.questlab-card[data-group='Horses'] .questlab-photo,
+.questlab-card[data-group='Horse-drawn'] .questlab-photo { background: linear-gradient(#ffd9a8, #fff0d6 58%, #c8a86a 58%, #a98a4e 100%); }
+.questlab-card.kind-vehicle .questlab-walk { max-width: 96%; }

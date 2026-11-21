@@ -88,7 +88,7 @@ class ScenarioStore
     ];
 
     /** What an uploaded file may be, by detected MIME type. SVG is left out on purpose: it can carry script. */
-    private const UPLOADS = [
+    public const UPLOADS = [
         'image/png' => ['image', 'png'], 'image/jpeg' => ['image', 'jpg'], 'image/webp' => ['image', 'webp'], 'image/gif' => ['image', 'gif'],
         'audio/mpeg' => ['audio', 'mp3'], 'audio/wav' => ['audio', 'wav'], 'audio/x-wav' => ['audio', 'wav'], 'audio/ogg' => ['audio', 'ogg'],
         'video/mp4' => ['video', 'mp4'], 'video/webm' => ['video', 'webm'],

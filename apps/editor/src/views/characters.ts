@@ -58,7 +58,7 @@ export function charactersPage(ctx: FormContext): HTMLElement {
 
 /** Opens the QuestLab asset library: ready-made animals to add to the scenario. */
 function questLabButton(ctx: FormContext): HTMLElement {
-  return h('button', { type: 'button', class: 'questlab-open', 'data-open': 'questlab', title: 'Ready-made characters, with their pictures and animations', onclick: () => openQuestLab(ctx, (row) => openCharacter(ctx, row.id)) }, '🐾 Add QuestLab Assets');
+  return h('button', { type: 'button', class: 'questlab-open', 'data-open': 'questlab', title: 'Ready-made characters, with their pictures and animations', onclick: () => openQuestLab(ctx, { kinds: ['character'], open: (row) => openCharacter(ctx, row.id) }) }, '🐾 Add QuestLab Assets');
 }
 
 function characterCard(ctx: FormContext, row: Row): HTMLElement {

@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """
-Build the QuestLab asset library: ready-made characters anyone can add to a scenario from the
-editor's Characters page ("Add QuestLab Assets").
+Build the QuestLab asset library's shipped pack: ready-made animals and vehicles anyone can add to a
+scenario (the editor's "Add QuestLab Assets", the /api/editor/library API, `php artisan qbl:library`).
 
-Every picture comes from OpenGameArt.org under a licence that lets us ship it (CC0, or CC-BY with
-the credit kept). This script downloads the originals, cuts out the frames each animal needs, takes
-away flat backgrounds, turns every animal to face right, crops them all the same way (so the feet
-stay put from frame to frame), scales them to a size that suits a scene (pixel art by whole numbers,
-so it stays crisp), and lays the frames out as one sprite sheet per character.
+Every picture comes from OpenGameArt.org under a licence that lets us ship it (CC0, or CC BY with
+the credit kept), except the stagecoach's coach, which is drawn here (CC0). This script downloads
+the originals, cuts out the frames each asset needs, takes away flat backgrounds, turns everything
+to face right, crops all of an asset's frames the same way (so feet and wheels stay put), scales
+them to suit a scene (pixel art by whole numbers, so it stays crisp), spins wheels, and lays the
+frames out as one sprite sheet per asset.
 
-Out, under apps/editor/public/questlab-assets/ (Vite copies it into the editor build):
-  index.json                       the library: each character, its sheet, animations and credit
-  characters/<id>/sheet.png        its frames, a grid numbered from 0 at the top left
-  characters/<id>/portrait.png     a square close-up for story boxes
-  characters/<id>/preview.png      an animated PNG of it walking, for the library's cards
+Out, under scenarios/assets/library/ (served as /scenario-assets/library/; the API reads it there):
+  library.json                     the pack: each asset, its definition, files and credit (AssetLibrary::importPack)
+  characters/<id>/sheet.png        an animal's frames, a grid numbered from 0 at the top left
+  characters/<id>/portrait.png     its square close-up for story boxes
+  vehicles/<id>/sheet.png          a vehicle's frames (idle, then walk: wheels turning, legs moving)
+  */<id>/preview.png               an animated PNG of it moving, for the library's cards
   CREDITS.md                       who drew what, under which licence
 
 Run: python3 tools/make-questlab-assets.py   (needs Pillow, numpy and scipy, and the network the
-first time; downloads are kept in $QBL_ASSET_CACHE, default /tmp/qbl-questlab-cache).
+first time; downloads are kept in $QBL_ASSET_CACHE, default /tmp/qbl-questlab-cache). Then
+`php artisan qbl:library import --refresh` brings an installation's library up to date with it.
 """
 from __future__ import annotations
 
@@ -32,11 +35,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageSequence
+from PIL import Image, ImageDraw, ImageSequence
 from scipy import ndimage
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / 'apps/editor/public/questlab-assets'
+OUT = ROOT / 'scenarios/assets/library'
 CACHE = Path(os.environ.get('QBL_ASSET_CACHE', '/tmp/qbl-questlab-cache'))
 OGA = 'https://opengameart.org/sites/default/files/'
 
@@ -92,6 +95,21 @@ SOURCES: dict[str, Source] = {
                        {'fish.png': OGA + 'fish_full.png'}),
     'overcrafted-goldfish': Source('Cartoon Goldfish', 'overcrafted', 'CC0', 'https://opengameart.org/content/cartoon-goldfish',
                                    {'goldfish.zip': OGA + 'Goldfish%20Animation.zip'}),
+    # ------------------------------------------------------------------ vehicles
+    'sujit-cars': Source('Side View Cars Game Assets', 'Sujit Yadav (Unlucky Studio)', 'CC0', 'https://opengameart.org/content/side-view-cars-game-assets',
+                         {'cars.zip': OGA + 'Side%20view%20Cars_Game%20assets.zip'}),
+    'chasers-car': Source('2D Small Car', 'Chasersgaming', 'CC0', 'https://opengameart.org/content/2d-small-car',
+                          {'car.png': OGA + 'spr_silvercar_0.png'}),
+    'chasers-bike': Source('2D Bike Sprite', 'Chasersgaming', 'CC0', 'https://opengameart.org/content/2d-bike-sprite',
+                           {'bike.png': OGA + 'spr_bike_0.png'}),
+    'clint-bicycle': Source('Bicycle', 'Clint Bellanger', 'CC-BY 3.0', 'https://opengameart.org/content/bicycle',
+                            {'bicycle.png': OGA + 'bicycle.png'}),
+    'lpc-horse': Source('LPC Horse Extended', 'bluecarrot16 (“[LPC] Horse”), modified by Benjamin K. Smith (BenCreating)', 'CC-BY 3.0',
+                        'https://opengameart.org/content/lpc-horse-extended', {'horse.zip': OGA + 'LPC%20Horse%20Extended.zip'},
+                        'Original horse: https://opengameart.org/content/lpc-horses'),
+    'questlab-coach': Source('Stagecoach', 'QuestLab (the coach), with horses by bluecarrot16 and Benjamin K. Smith (“LPC Horse Extended”)', 'CC-BY 3.0',
+                             'https://opengameart.org/content/lpc-horse-extended', {},
+                             'The coach is drawn by tools/make-questlab-assets.py (CC0); the horses are CC BY 3.0.'),
 }
 
 
@@ -438,23 +456,437 @@ def build(c: Character) -> dict:
     else:
         shots[0].save(folder / 'preview.png')
 
-    src = SOURCES[c.source]
+    definition = {'animations': {name: {'file': 'sheet', **a} for name, a in animations.items()}}
+    definition['animations']['portrait'] = {'file': 'portrait'}
     return {
-        'id': c.id,
+        'slug': c.id,
+        'kind': 'character',
         'name': c.name,
-        'group': c.group,
-        'about': c.about,
+        'category': c.group,
+        'description': c.about,
         'style': c.style,
         'tags': c.tags,
-        'sheet': {'file': f'characters/{c.id}/sheet.png', 'columns': columns, 'rows': rows, 'count': len(frames), 'frame_width': fw, 'frame_height': fh},
-        'portrait': f'characters/{c.id}/portrait.png',
-        'preview': f'characters/{c.id}/preview.png',
-        'animations': animations,
-        'credit': {'title': src.title, 'author': src.author, 'license': src.license, 'url': src.page, **({'note': src.note} if src.note else {})},
+        'definition': definition,
+        'files': {
+            'sheet': {'file': f'characters/{c.id}/sheet.png', 'params': {'sheet': {'columns': columns, 'rows': rows, 'count': len(frames)}}},
+            'portrait': {'file': f'characters/{c.id}/portrait.png'},
+            'preview': {'file': f'characters/{c.id}/preview.png'},
+        },
+        'credit': credit(SOURCES[c.source]),
     }
 
 
-LICENCE_URLS = {'CC0': 'https://creativecommons.org/publicdomain/zero/1.0/', 'CC-BY 4.0': 'https://creativecommons.org/licenses/by/4.0/'}
+def credit(src: Source) -> dict:
+    return {'title': src.title, 'author': src.author, 'license': src.license, 'url': src.page, **({'note': src.note} if src.note else {})}
+
+
+# =========================================================================== vehicles
+#
+# A vehicle is an item with vehicle: true. Its sheet has an `idle` animation (standing still) and a
+# `walk` one (wheels turning, legs moving), which the game plays by itself while it is ridden. The
+# rider is drawn behind it and cut off below the seat (hide_rider_below), so they seem to sit in it.
+
+AVATAR = 225  # how tall the platform's avatars stand in a scene, in pixels
+WAIST = round(AVATAR * 0.45)  # where they are cut when they sit
+VEHICLE_PREVIEW = (240, 140)
+
+
+@dataclass
+class Vehicle:
+    id: str
+    name: str
+    group: str
+    source: str
+    about: str
+    style: str
+    idle: Frames  # facing right, all frames the same size
+    walk: Frames
+    seat: tuple[float, float]  # where the rider sits, in the frames' pixels (x, y)
+    ms_idle: int = 1000
+    ms_walk: int = 100
+    extra: list[tuple[str, Frames, int, bool]] = field(default_factory=list)  # (name, frames, ms per frame, repeat)
+    speed: float = 1.5
+    layer: str = 'front'
+    closed: bool = False  # it has a roof: the rider is lowered until their head is under it, and seen through the windows
+    tags: list[str] = field(default_factory=list)
+
+
+def spokes(tyre: Image.Image) -> int:
+    """How many times the tyre's pattern repeats round it (its spokes), so a turn by 360/n looks the same."""
+    a = np.array(tyre.convert('L'), dtype=float)
+    h, w = a.shape
+    cx, cy, r = w / 2, h / 2, min(w, h) * 0.3
+    ring = [a[int(cy + r * np.sin(t)), int(cx + r * np.cos(t))] for t in np.linspace(0, 2 * np.pi, 720, endpoint=False)]
+    power = np.abs(np.fft.rfft(np.array(ring) - np.mean(ring)))
+    return int(np.argmax(power[3:40]) + 3)
+
+
+def wheel_spots(sample: Image.Image, body: Image.Image) -> list[tuple[float, float, float]]:
+    """Wheels (x, y, diameter) of a car: where the finished picture has more than the body alone."""
+    s = np.array(sample)[:, :, 3] > 128
+    b = np.array(body)[:, :, 3] > 128
+    diff = ndimage.binary_opening(s & ~b, iterations=2)
+    labels, _ = ndimage.label(diff)
+    boxes = [box for box in ndimage.find_objects(labels) if (box[0].stop - box[0].start) * (box[1].stop - box[1].start) > 200]
+    # Pieces of one wheel (cut by the body) overlap across: join them.
+    boxes.sort(key=lambda b: b[1].start)
+    wheels: list[list[int]] = []
+    for box in boxes:
+        x0, x1, y0, y1 = box[1].start, box[1].stop, box[0].start, box[0].stop
+        if wheels and x0 < wheels[-1][1] - 10:
+            w = wheels[-1]
+            wheels[-1] = [min(w[0], x0), max(w[1], x1), min(w[2], y0), max(w[3], y1)]
+        else:
+            wheels.append([x0, x1, y0, y1])
+    return [((x0 + x1) / 2, y1 - (x1 - x0) / 2, x1 - x0) for x0, x1, y0, y1 in wheels]
+
+
+def turning(body: Image.Image, tyre: Image.Image, wheels: list[tuple[float, float, float]], count: int) -> Frames:
+    """Frames of a car whose wheels turn forward (clockwise, as it faces right), the body drawn over them."""
+    tyre = tyre.crop(tyre.getchannel('A').getbbox())
+    period = 360 / spokes(tyre)
+    out = []
+    for i in range(count):
+        canvas = Image.new('RGBA', body.size)
+        for x, y, d in wheels:
+            size = max(1, round(d))
+            turned = tyre.resize((size, size), Image.LANCZOS).rotate(-period * i / count, Image.BICUBIC)
+            canvas.alpha_composite(turned, (round(x - size / 2), round(y - size / 2)))
+        canvas.alpha_composite(body)
+        out.append(canvas)
+    return out
+
+
+def turn_patch(image: Image.Image, centre: tuple[float, float], radius: float, degrees: float) -> Image.Image:
+    """Pixel art: turn the round part of a picture inside `radius` about `centre` (a hub turning)."""
+    out = image.copy()
+    cx, cy = centre
+    box = (round(cx - radius), round(cy - radius), round(cx + radius) + 1, round(cy + radius) + 1)
+    patch = image.crop(box).rotate(-degrees, Image.NEAREST, center=(cx - box[0], cy - box[1]))
+    mask = Image.new('L', patch.size)
+    ImageDraw.Draw(mask).ellipse((cx - box[0] - radius, cy - box[1] - radius, cx - box[0] + radius, cy - box[1] + radius), fill=255)
+    out.paste(patch, box[:2], mask)
+    return out
+
+
+def see_through(frame: Image.Image, test, alpha: int = 70) -> Image.Image:
+    """Windows the rider is seen through: pixels for which test(r, g, b, x, y) holds become faint."""
+    a = np.array(frame)
+    h, w = a.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w]
+    mask = test(a[:, :, 0].astype(int), a[:, :, 1].astype(int), a[:, :, 2].astype(int), xs / w, ys / h) & (a[:, :, 3] > 0)
+    a[mask, 3] = np.minimum(a[mask, 3], alpha)
+    return Image.fromarray(a)
+
+
+def nearest(frames: Frames, k: float) -> Frames:
+    return [f.resize((round(f.width * k), round(f.height * k)), Image.NEAREST) for f in frames]
+
+
+def smooth(frames: Frames, k: float) -> Frames:
+    return [f.resize((round(f.width * k), round(f.height * k)), Image.LANCZOS) for f in frames]
+
+
+# ------------------------------------------------------------------- the stagecoach's coach
+
+OUTLINE, BODY, BODY_D, BODY_L = (43, 24, 18, 255), (150, 42, 32, 255), (112, 30, 24, 255), (190, 74, 48, 255)
+TRIM, WOOD, WOOD_D = (226, 172, 72, 255), (104, 64, 36, 255), (62, 38, 24, 255)
+GLASS, GLASS_L = (44, 56, 72, 255), (126, 156, 186, 255)
+WHEEL, WHEEL_D, IRON = (206, 146, 54, 255), (146, 96, 34, 255), (46, 46, 52, 255)
+LEATHER, CANVAS, LAMP = (88, 54, 32, 255), (146, 140, 120, 255), (248, 218, 112, 255)
+
+
+def coach_wheel(d: ImageDraw.ImageDraw, cx: float, cy: float, r: float, degrees: float) -> None:
+    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=IRON)
+    d.ellipse((cx - r + 1, cy - r + 1, cx + r - 1, cy + r - 1), fill=WHEEL)
+    d.ellipse((cx - r + 3, cy - r + 3, cx + r - 3, cy + r - 3), fill=None, outline=WHEEL_D)
+    for k in range(12):
+        t = np.radians(degrees + k * 30)
+        d.line((cx + 3 * np.cos(t), cy + 3 * np.sin(t), cx + (r - 3) * np.cos(t), cy + (r - 3) * np.sin(t)), fill=WHEEL_D)
+    d.ellipse((cx - 3, cy - 3, cx + 3, cy + 3), fill=WHEEL_D, outline=OUTLINE)
+    d.point((cx, cy), fill=OUTLINE)
+
+
+def coach(degrees: float) -> Image.Image:
+    """A Concord stagecoach, drawn at the LPC horses' scale (one pixel of theirs), facing right; ground at y = 86."""
+    im = Image.new('RGBA', (150, 92))
+    d = ImageDraw.Draw(im)
+    # Undercarriage first: the perch between the axles and the pole out to the horses.
+    d.line((20, 70, 58, 74), fill=WOOD_D, width=2)
+    d.line((58, 73, 84, 67), fill=WOOD_D, width=2)
+    d.line((58, 75, 84, 69), fill=OUTLINE)
+    # The boot: a leather luggage box hung behind.
+    d.rounded_rectangle((1, 30, 11, 50), radius=3, fill=LEATHER, outline=OUTLINE)
+    d.line((3, 38, 9, 38), fill=WOOD_D)
+    # The body: egg-shaped, red, hung on leather straps.
+    body = [(12, 24), (50, 24), (54, 30), (56, 40), (54, 50), (48, 58), (16, 58), (10, 50), (8, 40), (9, 30)]
+    d.polygon(body, fill=BODY)
+    shade = Image.new('RGBA', im.size)
+    ImageDraw.Draw(shade).rectangle((0, 49, 150, 60), fill=BODY_D)
+    mask = Image.new('L', im.size)
+    ImageDraw.Draw(mask).polygon(body, fill=255)
+    im.paste(shade, (0, 0), Image.fromarray((np.array(mask) * (np.array(shade)[:, :, 3] > 0)).astype('uint8')))
+    d = ImageDraw.Draw(im)
+    d.line((12, 26, 50, 26), fill=BODY_L)
+    d.line((10, 31, 10, 46), fill=BODY_L)
+    d.line((9, 46, 55, 46), fill=TRIM)
+    d.polygon(body, outline=OUTLINE)
+    for x0, x1 in ((13, 21), (27, 35), (41, 50)):
+        d.rectangle((x0, 29, x1, 39), fill=GLASS, outline=TRIM)
+        d.line((x0 + 2, 37, x0 + 5, 31), fill=GLASS_L)
+    d.rectangle((25, 27, 37, 56), outline=OUTLINE)
+    d.point((35, 44), fill=TRIM)
+    d.line((14, 58, 18, 67), fill=LEATHER, width=2)
+    d.line((47, 58, 52, 70), fill=LEATHER, width=2)
+    # The roof, its rail and the luggage.
+    d.rectangle((10, 20, 52, 24), fill=WOOD_D, outline=OUTLINE)
+    d.line((11, 17, 51, 17), fill=WOOD)
+    for x in (11, 30, 51):
+        d.line((x, 17, x, 20), fill=WOOD)
+    d.rectangle((15, 10, 29, 19), fill=LEATHER, outline=OUTLINE)
+    d.line((22, 10, 22, 19), fill=TRIM)
+    d.rounded_rectangle((32, 13, 43, 19), radius=2, fill=CANVAS, outline=OUTLINE)
+    # The driver's box, its seat and footboard, and a lamp.
+    d.rectangle((55, 35, 66, 45), fill=WOOD, outline=OUTLINE)
+    d.rectangle((54, 25, 56, 35), fill=LEATHER, outline=OUTLINE)
+    d.rectangle((55, 31, 66, 34), fill=LEATHER, outline=OUTLINE)
+    d.polygon([(63, 45), (66, 45), (75, 54), (71, 54)], fill=WOOD_D, outline=OUTLINE)
+    d.rectangle((55, 26, 58, 30), fill=LAMP, outline=OUTLINE)
+    # The wheels, over everything.
+    coach_wheel(d, 20, 70, 16, degrees)
+    coach_wheel(d, 58, 74, 12, degrees * 16 / 12)
+    return im
+
+
+def lpc_horse_layers(folder: Path, anim: str, coat: str, mane: str, face: str | None, tack: bool) -> Image.Image:
+    """One of the LPC horse's sheets (Walk, Gallop, Idle) with its coat, mane and tail, markings, blanket and saddle laid on."""
+    sheet = rgba(folder / f'Horse/Horse {anim} {coat}.png')
+    layers = [f'Markings/Mane:Tail/Mane:Tail {anim} {mane}.png']
+    if face:
+        layers.append(f'Markings/Face/{face} {anim}.png')
+    if tack:
+        layers += [f'Accessories/Blanket {anim}.png', f'Accessories/Saddle {anim}.png']
+    for layer in layers:
+        sheet.alpha_composite(rgba(folder / layer))
+    return sheet
+
+
+def horse_right(sheet: Image.Image, frames: int) -> Frames:
+    """The frames of a horse sheet that face right (the bottom row of the walk and gallop; the idle sheet's fourth)."""
+    if sheet.height == 128:
+        return [sheet.crop((128 * 3, 0, 128 * 4, 128))]
+    return [sheet.crop((128 * i, 384, 128 * (i + 1), 512)) for i in range(frames)]
+
+
+def vehicles() -> list[Vehicle]:
+    s = {key: fetch(key) for key in ('sujit-cars', 'chasers-car', 'chasers-bike', 'clint-bicycle', 'lpc-horse', 'questlab-coach')}
+    cars = s['sujit-cars'] / 'cars.zip.d/Game assets/Cars'
+    out: list[Vehicle] = []
+
+    def cartoon_car(id: str, name: str, about: str, body: Path, sample: Path, plain: Path, tyre: Path, half_sample: bool,
+                    height: int, seat: tuple[float, float], roof_cut: tuple[int, int, int, int] | None, speed: float, tags: list[str]) -> Vehicle:
+        """One of Sujit Yadav's cars, which face left: turned round, its wheels set turning. `seat` and `roof_cut`
+        (taken off to make a convertible) are in the turned body's pixels."""
+        b, smp, pl = (rgba(p).transpose(Image.FLIP_LEFT_RIGHT) for p in (body, sample, plain))
+        k = 2 if half_sample else 1
+        spots = [(x * k, y * k, dd * k) for x, y, dd in wheel_spots(smp, pl)]
+        if roof_cut:
+            ImageDraw.Draw(b).rectangle(roof_cut, fill=(0, 0, 0, 0))
+        b = see_through(b, lambda r, g, bl, x, y: (y < 0.5) & (np.maximum(np.maximum(r, g), bl) - np.minimum(np.minimum(r, g), bl) < 40) & (np.maximum(np.maximum(r, g), bl) < 170))
+        frames = turning(b, rgba(tyre), spots, 6)
+        # Crop now, then scale to the height wanted; the seat moves with it.
+        box = frames[0].getchannel('A').getbbox()
+        for f in frames[1:]:
+            bb = f.getchannel('A').getbbox()
+            box = (min(box[0], bb[0]), min(box[1], bb[1]), max(box[2], bb[2]), max(box[3], bb[3]))
+        frames = [f.crop(box) for f in frames]
+        z = height / frames[0].height
+        frames = smooth(frames, z)
+        return Vehicle(id, name, 'Cars', 'sujit-cars', about, 'cartoon', frames[:1], frames, ((seat[0] - box[0]) * z, (seat[1] - box[1]) * z),
+                       ms_walk=70, speed=speed, closed=roof_cut is None, tags=tags)
+
+    out.append(cartoon_car('red-convertible', 'Red Convertible', 'A low red sports car with the top down, so everyone can see who is driving.',
+                           cars / '4 - Super Car/Cars/car_1.png', cars / '4 - Super Car/Cars/supercar_2_3.png', cars / '4 - Super Car/Cars/car_4.png',
+                           cars / '4 - Super Car/Cars/tyre.png', True, 150, (580, 350), (350, 160, 660, 344), 2.4, ['city', 'race', 'road']))
+    out.append(cartoon_car('yellow-roadster', 'Yellow Roadster', 'A bright yellow roadster with pop-up headlights and no roof.',
+                           cars / '2 - Unknown/Cars/car_1.png', cars / '2 - Unknown/Cars/sample.png', cars / '2 - Unknown/Cars/car_1.png',
+                           cars / '2 - Unknown/Cars/tyre.png', False, 150, (580, 108), (300, 0, 660, 104), 2.2, ['city', 'road']))
+    out.append(cartoon_car('farm-truck', 'Farm Truck', 'An orange flatbed truck for hauling hay, crates and friends; the driver waves from the cab.',
+                           cars / '3 - Truck/truck_1.png', cars / '3 - Truck/sample.png', cars / '3 - Truck/truck_1.png',
+                           cars / '3 - Truck/tyre.png', False, 230, (864, 268), None, 1.8, ['farm', 'road']))
+
+    # A silver hatchback, pixel art drawn at three pixels a pixel and facing left.
+    car = rgba(s['chasers-car'] / 'car.png')
+    car = car.resize((car.width // 3, car.height // 3), Image.NEAREST).transpose(Image.FLIP_LEFT_RIGHT)
+    car = see_through(car, lambda r, g, b, x, y: (y < 0.45) & (g > r + 6) & (g > 140))
+    wheels = [(car.width - 1 - 54 / 3, 121 / 3), (car.width - 1 - 238 / 3, 121 / 3)]
+    frames = []
+    for i in range(6):
+        f = car
+        for c in wheels:
+            f = turn_patch(f, c, 5.5, i * 15)
+        frames.append(f)
+    box = frames[0].getchannel('A').getbbox()
+    frames = nearest([f.crop(box) for f in frames], 6)
+    out.append(Vehicle('silver-hatchback', 'Silver Hatchback', 'Cars', 'chasers-car', 'A family hatchback, in crisp pixel art.', 'pixel',
+                       frames[:1], frames, ((40 - box[0]) * 6, (27 - box[1]) * 6), ms_walk=80, speed=2.0, closed=True, tags=['city', 'road', 'family']))
+
+    # A motorcycle: pixel art at three pixels a pixel. Its back hub turns; the whole bike hums as it goes.
+    bike = rgba(s['chasers-bike'] / 'bike.png')
+    bike = bike.resize((bike.width // 3, bike.height // 3), Image.NEAREST)
+    frames = []
+    for i in range(6):
+        f = turn_patch(bike, (17, 46), 8.5, i * 15)
+        lifted = Image.new('RGBA', f.size)
+        lifted.alpha_composite(f, (0, -1 if i % 2 else 0))
+        frames.append(lifted)
+    box = (0, 0, bike.width, bike.height)
+    box = bike.getchannel('A').getbbox()
+    box = (box[0], max(0, box[1] - 1), box[2], box[3])
+    frames = nearest([f.crop(box) for f in frames], 3)
+    out.append(Vehicle('motorcycle', 'Motorcycle', 'Bikes', 'chasers-bike', 'A sleek black sports motorcycle.', 'pixel',
+                       [nearest([bike.crop(box)], 3)[0]], frames, ((40 - box[0]) * 3, (20 - box[1]) * 3), ms_walk=60, speed=2.6, tags=['city', 'road']))
+
+    # A bicycle, rendered from 3D, eight frames of pedalling; its shadow is left out.
+    cycle = rgba(s['clint-bicycle'] / 'bicycle.png')
+    frames = []
+    for i in range(8):
+        f = cycle.crop((64 * i, 64 * 4, 64 * (i + 1), 64 * 5))
+        a = np.array(f)
+        rgb = a[:, :, :3].astype(int)
+        shadow = (a[:, :, 3] < 250) & (rgb.max(axis=2) - rgb.min(axis=2) < 16) & (rgb.max(axis=2) < 120)
+        a[shadow] = 0
+        frames.append(Image.fromarray(a))
+    box = frames[0].getchannel('A').getbbox()
+    for f in frames[1:]:
+        bb = f.getchannel('A').getbbox()
+        box = (min(box[0], bb[0]), min(box[1], bb[1]), max(box[2], bb[2]), max(box[3], bb[3]))
+    frames = nearest([f.crop(box) for f in frames], 4)
+    out.append(Vehicle('bicycle', 'Bicycle', 'Bikes', 'clint-bicycle', 'A red bicycle that pedals along.', 'rendered',
+                       frames[:1], frames, ((23 - box[0]) * 4, (20 - box[1]) * 4), ms_walk=80, speed=1.6, tags=['park', 'city']))
+
+    # Horses to ride: saddled, walking, galloping when asked.
+    lpc = s['lpc-horse'] / 'horse.zip.d/LPC Horse Extended'
+    for id, name, coat, mane, face, about in (
+        ('bay-horse', 'Bay Horse', 'Brown', 'Black', None, 'A saddled brown horse with a black mane, to ride at a walk or a gallop.'),
+        ('palomino-horse', 'Palomino Horse', 'Gold', 'White', 'Blaze', 'A saddled golden horse with a white mane and a blaze.'),
+    ):
+        walk = horse_right(lpc_horse_layers(lpc, 'Walk', coat, mane, face, True), 6)
+        gallop = horse_right(lpc_horse_layers(lpc, 'Gallop', coat, mane, face, True), 6)
+        idle = horse_right(lpc_horse_layers(lpc, 'Idle', coat, mane, face, True), 1)
+        saddle = horse_right(rgba(lpc / 'Accessories/Saddle Walk.png'), 1)[0].getchannel('A').getbbox()
+        frames = idle + walk + gallop
+        box = frames[0].getchannel('A').getbbox()
+        for f in frames[1:]:
+            bb = f.getchannel('A').getbbox()
+            box = (min(box[0], bb[0]), min(box[1], bb[1]), max(box[2], bb[2]), max(box[3], bb[3]))
+        frames = nearest([f.crop(box) for f in frames], 4)
+        seat = (((saddle[0] + saddle[2]) / 2 - box[0]) * 4, (saddle[1] + 2 - box[1]) * 4)
+        out.append(Vehicle(id, name, 'Horses', 'lpc-horse', about, 'pixel', frames[:1], frames[1:7], seat, ms_walk=130, speed=1.8,
+                           extra=[('gallop', frames[7:13], 80, True)], tags=['farm', 'west', 'history']))
+
+    # The stagecoach: the coach drawn above, pulled by a pair of LPC horses.
+    near = horse_right(lpc_horse_layers(lpc, 'Walk', 'Brown', 'Black', None, False), 6)
+    far = horse_right(lpc_horse_layers(lpc, 'Walk', 'Black', 'Black', 'Star', False), 6)
+    near_idle = horse_right(lpc_horse_layers(lpc, 'Idle', 'Brown', 'Black', None, False), 1)[0]
+    far_idle = horse_right(lpc_horse_layers(lpc, 'Idle', 'Black', 'Black', 'Star', False), 1)[0]
+
+    def team(i: int, idle: bool) -> Image.Image:
+        canvas = Image.new('RGBA', (190, 92))
+        f, n = (far_idle, near_idle) if idle else (far[i], near[(i + 2) % 6])
+        dim = Image.fromarray((np.array(f) * np.array([0.8, 0.8, 0.85, 1])).astype('uint8'))
+        canvas.alpha_composite(dim, (50, -9))
+        canvas.alpha_composite(coach(0 if idle else i * 5), (0, 0))
+        canvas.alpha_composite(n, (42, -6))
+        d = ImageDraw.Draw(canvas)
+        d.line((63, 31, 128, 34), fill=OUTLINE)  # the reins
+        return canvas
+
+    frames = [team(0, True)] + [team(i, False) for i in range(6)]
+    box = frames[0].getchannel('A').getbbox()
+    for f in frames[1:]:
+        bb = f.getchannel('A').getbbox()
+        box = (min(box[0], bb[0]), min(box[1], bb[1]), max(box[2], bb[2]), max(box[3], bb[3]))
+    frames = nearest([f.crop(box) for f in frames], 3)
+    out.append(Vehicle('stagecoach', 'Stagecoach', 'Horse-drawn', 'questlab-coach',
+                       'A red Concord stagecoach and its team of two horses; the rider takes the reins up on the box.', 'pixel', frames[:1], frames[1:], ((60 - box[0]) * 3, (32 - box[1]) * 3),
+                       ms_walk=140, speed=1.4, tags=['west', 'history', 'travel']))
+    return out
+
+
+def build_vehicle(v: Vehicle) -> dict:
+    frames = [solid(f) for f in v.idle + v.walk + [f for _, fr, _, _ in v.extra for f in fr]]
+    box = frames[0].getchannel('A').getbbox()
+    for f in frames[1:]:
+        bb = f.getchannel('A').getbbox()
+        if bb:
+            box = (min(box[0], bb[0]), min(box[1], bb[1]), max(box[2], bb[2]), max(box[3], bb[3]))
+    frames = [f.crop(box) for f in frames]
+    seat = (v.seat[0] - box[0], v.seat[1] - box[1])
+    fw, fh = frames[0].size
+    columns = max(1, min(len(frames), 6, MAX_SHEET // fw))
+    rows = (len(frames) + columns - 1) // columns
+    sheet = Image.new('RGBA', (columns * fw, rows * fh))
+    for i, f in enumerate(frames):
+        sheet.paste(f, ((i % columns) * fw, (i // columns) * fh))
+    folder = OUT / 'vehicles' / v.id
+    folder.mkdir(parents=True, exist_ok=True)
+    sheet.save(folder / 'sheet.png', optimize=True)
+
+    n_idle, n_walk = len(v.idle), len(v.walk)
+    animations = [{'name': 'idle', 'frames': list(range(n_idle)), 'duration': v.ms_idle * n_idle},
+                  {'name': 'walk', 'frames': list(range(n_idle, n_idle + n_walk)), 'duration': v.ms_walk * n_walk}]
+    start = n_idle + n_walk
+    for name, fr, ms, repeat in v.extra:
+        animations.append({'name': name, 'frames': list(range(start, start + len(fr))), 'duration': ms * len(fr), 'repeat': repeat})
+        start += len(fr)
+
+    # The card's picture: it moving, as an animated PNG.
+    pw, ph = VEHICLE_PREVIEW
+    fit = min(pw / fw, ph / fh)
+    shots = []
+    for i in animations[1]['frames']:
+        canvas = Image.new('RGBA', VEHICLE_PREVIEW)
+        shot = frames[i].resize((round(fw * fit), round(fh * fit)), Image.LANCZOS)
+        canvas.paste(shot, ((pw - shot.width) // 2, ph - shot.height - 4), shot)
+        shots.append(canvas)
+    shots[0].save(folder / 'preview.png', save_all=True, append_images=shots[1:], duration=v.ms_walk, loop=0, disposal=1)
+
+    # Where the rider sits: the vehicle is moved so its seat is under them, and lowered when the seat is
+    # higher than their waist; they are cut off at the seat.
+    seat_height = fh - seat[1]
+    # Open: the rider's waist at the seat. Closed: lower, so the top of their head is just under the roof.
+    lift = seat_height - WAIST
+    if v.closed:
+        lift = min(lift, fh * 0.96 - AVATAR)
+    settings = {
+        'scale': 1,
+        'art_faces': 'right',
+        'attach_layer': v.layer,
+        'attach_offset_x': round(fw / 2 - seat[0]),
+        'attach_offset_y': round(lift),
+        'hide_rider_below': round(min(1, max(0, 1 - seat_height / fh)), 3),
+        'speed_multiplier': v.speed,
+    }
+    return {
+        'slug': v.id,
+        'kind': 'vehicle',
+        'name': v.name,
+        'category': v.group,
+        'description': v.about,
+        'style': v.style,
+        'tags': v.tags,
+        'definition': {'file': 'sheet', 'item': {'physical': False, 'blocking': False, 'wearable': False, 'settings': settings}},
+        'files': {
+            'sheet': {'file': f'vehicles/{v.id}/sheet.png', 'params': {'sheet': {'columns': columns, 'rows': rows, 'count': len(frames)}, 'animations': animations}},
+            'preview': {'file': f'vehicles/{v.id}/preview.png'},
+        },
+        'credit': credit(SOURCES[v.source]),
+    }
+
+
+LICENCE_URLS = {'CC0': 'https://creativecommons.org/publicdomain/zero/1.0/', 'CC-BY 3.0': 'https://creativecommons.org/licenses/by/3.0/',
+                'CC-BY 4.0': 'https://creativecommons.org/licenses/by/4.0/'}
 
 
 def main() -> None:
@@ -465,20 +897,23 @@ def main() -> None:
     for c in characters():
         print(f'building {c.id}')
         entries.append(build(c))
-    groups = list(dict.fromkeys(e['group'] for e in entries))
-    (OUT / 'index.json').write_text(json.dumps({'version': 1, 'groups': groups, 'characters': entries}, indent=1, ensure_ascii=False) + '\n')
+    for v in vehicles():
+        print(f'building {v.id}')
+        entries.append(build_vehicle(v))
+    (OUT / 'library.json').write_text(json.dumps({'version': 2, 'assets': entries}, indent=1, ensure_ascii=False) + '\n')
 
-    lines = ['# QuestLab assets: credits', '',
-             'The characters in the QuestLab asset library are built from art published on OpenGameArt.org.',
-             'Frames were cut out, backgrounds removed, turned to face right, cropped and scaled by',
-             '`tools/make-questlab-assets.py`. Each keeps its original licence; CC-BY art must be credited',
-             'wherever it is used (the editor copies the credit onto the media it adds).', '']
+    lines = ['# QuestLab asset library: credits', '',
+             'The animals and vehicles in the QuestLab asset library are built from art published on OpenGameArt.org',
+             '(the stagecoach\'s coach is drawn by the script itself). Frames were cut out, backgrounds removed, turned',
+             'to face right, cropped and scaled, and wheels set turning, by `tools/make-questlab-assets.py`. Each keeps its',
+             'original licence; CC BY art must be credited wherever it is used (adding an asset copies the credit onto',
+             'the media it adds).', '']
     for e in entries:
         cr = e['credit']
         lines.append(f"- **{e['name']}**: “{cr['title']}” by {cr['author']}, {cr['license']} ({LICENCE_URLS.get(cr['license'], '')}). {cr['url']}"
                      + (f" {cr['note']}" if cr.get('note') else ''))
     (OUT / 'CREDITS.md').write_text('\n'.join(lines) + '\n')
-    print(f'{len(entries)} characters written to {OUT.relative_to(ROOT)}')
+    print(f'{len(entries)} assets written to {OUT.relative_to(ROOT)}')
 
 
 if __name__ == '__main__':

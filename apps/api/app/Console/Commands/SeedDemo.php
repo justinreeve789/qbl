@@ -14,7 +14,7 @@ class SeedDemo extends Command
         {--reset : Put the shipped scenarios (Starship Explorer) back, replacing any edits made to them}
         {--password= : Also create teacher@qbl.test, student1@qbl.test and student2@qbl.test with this password}';
 
-    protected $description = 'Seed the avatars, the marketplace catalogue and the shipped scenarios (the Starship Explorer demo)';
+    protected $description = 'Seed the avatars, the marketplace catalogue, the asset library and the shipped scenarios (the Starship Explorer demo)';
 
     public function handle(): int
     {

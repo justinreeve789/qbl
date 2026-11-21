@@ -40,8 +40,8 @@ $dataDir = getenv('QBL_DEV_DATA') ?: dirname(__DIR__, 3).'/.data/dev-api';
 $path = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Uploaded media.
-if (preg_match('#^/media/(\d+/[a-f0-9]{24}\.[a-z0-9]{2,4})$#', $path, $m) && is_file("$dataDir/media/$m[1]")) {
+// Uploaded media (and the files given to library assets, under library/).
+if (preg_match('#^/media/((?:library/)?\d+/[a-f0-9]{24}\.[a-z0-9]{2,4})$#', $path, $m) && is_file("$dataDir/media/$m[1]")) {
     header('Content-Type: '.(mime_content_type("$dataDir/media/$m[1]") ?: 'application/octet-stream'));
     header('X-Content-Type-Options: nosniff');
     readfile("$dataDir/media/$m[1]");
@@ -64,7 +64,7 @@ if (str_starts_with($path, '/scenario-assets/')) {
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");
 $store = new ScenarioStore($pdo, "$dataDir/media", '/media');
 foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema(), App\Qbl\Api\Clients::sqliteSchema(), App\Qbl\Billing\Credits::sqliteSchema(),
-    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema()) as $sql) {
+    App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema(), App\Qbl\Library\AssetLibrary::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
 }
 foreach (['organizations' => ['integrations_enabled_at', 'license'], 'users' => ['self_registered_at', 'email_verified_at']] as $table => $columns) {
@@ -93,6 +93,10 @@ foreach (require __DIR__.'/../database/seeders/data/shop.php' as $sequence => $i
     $pdo->prepare('INSERT OR IGNORE INTO `shop_items` (`id`, `scenario_id`, `name`, `description`, `kind`, `slot`, `price`, `image_url`, `settings`, `active`, `sequence`) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, 1, ?)')
         ->execute([$item['id'], $item['name'], $item['description'] ?? null, $item['kind'], $item['slot'] ?? null, $item['price'], $item['image_url'] ?? null, json_encode($item['settings'] ?? []), $sequence + 1]);
 }
+
+// The asset library's shipped pack (scenarios/assets/library), each asset added once, as LibrarySeeder does.
+$library = new App\Qbl\Library\AssetLibrary($pdo, "$dataDir/media", '/media', dirname(__DIR__, 3).'/scenarios/assets/library');
+$library->importPack();
 
 // The platform's avatars, added once, as AvatarSeeder does.
 App\Qbl\Avatars::seed($pdo, require __DIR__.'/../database/seeders/data/avatars.php');
@@ -327,6 +331,10 @@ if (str_starts_with($path, '/api/district/')) {
         });
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
     respond(...$district->handle($method, substr($path, strlen('/api/district')), $body, $user, $files));
+}
+if (str_starts_with($path, '/api/editor/library') && preg_match('#^/api/editor/library(/.*)?$#', $path, $m)) {
+    $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
+    respond(...(new App\Qbl\Library\LibraryApi($library, $store))->handle($method, $m[1] ?? '', $body, $user, $files, $_GET));
 }
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];

@@ -6,6 +6,51 @@ export interface Row {
   [column: string]: unknown;
 }
 
+/** One file of a library asset: its sheet, close-up, picture, sound or card preview. */
+export interface LibraryFile {
+  id: number;
+  role: string;
+  type: 'image' | 'audio' | 'video';
+  url: string;
+  width: number | null;
+  height: number | null;
+  params: { sheet?: { columns: number; rows: number; count?: number }; animations?: { name: string; frames: number[]; duration?: number; repeat?: boolean }[] };
+}
+
+/** A ready-made asset of the library (see App\Qbl\Library\AssetLibrary). */
+export interface LibraryAsset {
+  id: number;
+  slug: string;
+  kind: 'character' | 'vehicle' | 'item' | 'picture' | 'sound';
+  name: string;
+  category: string | null;
+  description: string | null;
+  tags: string[];
+  style: string | null;
+  definition: {
+    file?: string;
+    animations?: Record<string, { file: string; frames?: number[]; duration?: number; repeat?: boolean }>;
+    item?: { settings?: Record<string, unknown> } & Record<string, unknown>;
+  };
+  credit: { title?: string; author?: string; license?: string; url?: string; note?: string } | null;
+  files: LibraryFile[];
+  file_urls: Record<string, string>;
+}
+
+export interface LibraryList {
+  assets: LibraryAsset[];
+  categories: { name: string; count: number }[];
+  kinds: string[];
+}
+
+/** What adding an asset made: the row (a character or an item), and the media it uses (`copied`: those new). */
+export interface LibraryAdded {
+  asset: LibraryAsset;
+  created: { table: Table; row: Row } | null;
+  media: Row[];
+  copied: number[];
+}
+
 export type Table = 'shop_items' | 'media' | 'variables' | 'items' | 'characters' | 'scenes' | 'events' | 'actions' | 'conditions' | 'labels';
 
 export interface Bundle extends Record<Table, Row[]> {
@@ -491,6 +536,14 @@ export class Api {
       this.onBusy(--this.pending > 0);
     }
   }
+
+  /** The asset library: `kind` one or several (character, vehicle, item, picture, sound), comma-separated. */
+  library = async (query: { kind?: string; category?: string; q?: string } = {}) => {
+    const search = new URLSearchParams(Object.entries(query).filter(([, v]) => v) as [string, string][]).toString();
+    return this.call<LibraryList>('GET', `/editor/library${search ? `?${search}` : ''}`, undefined, true);
+  };
+  addLibraryAsset = async (asset: number | string, scenarioId: number, name?: string) =>
+    this.call<LibraryAdded>('POST', `/editor/library/${asset}/add`, { scenario_id: scenarioId, ...(name ? { name } : {}) });
 
   async upload(id: number, file: File): Promise<Row> {
     const form = new FormData();

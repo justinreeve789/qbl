@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer, request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -41,17 +41,13 @@ export async function startSite(env: Record<string, string> = {}): Promise<TestS
   const php = spawn('php', ['-S', `127.0.0.1:${apiPort}`, join(repo, 'apps/api/dev/server.php')], { env: { ...process.env, QBL_DEV_DATA: join(data, 'api'), ...env }, stdio: 'ignore' });
   await waitFor(`http://127.0.0.1:${apiPort}/api/me`);
 
-  const types: Record<string, string> = { '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.md': 'text/markdown' };
-  const publicDir = join(repo, 'apps/editor/public');
+  const types: Record<string, string> = { '.js': 'text/javascript', '.css': 'text/css' };
   const server = createServer((req, res) => {
     const path = (req.url ?? '/').split('?')[0]!;
     if (path === '/editor' || path === '/editor/') {
       res.writeHead(200, { 'Content-Type': 'text/html' }).end(page);
     } else if (/^\/editor\/main\.(js|css)$/.test(path)) {
       res.writeHead(200, { 'Content-Type': types[extname(path)] }).end(readFileSync(join(dist, path.slice('/editor/'.length))));
-    } else if (path.startsWith('/editor/') && !path.includes('..') && existsSync(join(publicDir, path.slice('/editor/'.length))) && statSync(join(publicDir, path.slice('/editor/'.length))).isFile()) {
-      // The editor's own files (public/, copied into the build by Vite): the QuestLab asset library.
-      res.writeHead(200, { 'Content-Type': types[extname(path)] ?? 'application/octet-stream' }).end(readFileSync(join(publicDir, path.slice('/editor/'.length))));
     } else {
       // Everything else belongs to the API server.
       const upstream = request({ host: '127.0.0.1', port: apiPort, path: req.url, method: req.method, headers: req.headers }, (answer) => {

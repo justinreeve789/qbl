@@ -9,6 +9,7 @@ use App\Http\Controllers\EditorController;
 use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\InternalController;
+use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\PlayController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\SsoController;
@@ -65,6 +66,10 @@ Route::post('/sso/{org}/saml/acs', [SsoController::class, 'samlAcs'])->whereNumb
 Route::get('/sso/clever/login', [SsoController::class, 'cleverLogin'])->middleware('throttle:30,1');
 Route::get('/sso/clever/callback', [SsoController::class, 'cleverCallback'])->middleware('throttle:30,1');
 
+// The asset library: ready-made characters, vehicles, items, pictures and sounds to add to scenarios
+// (App\Qbl\Library\LibraryApi lists the routes). Teachers read and add; administrators change it.
+Route::any('/editor/library/{path?}', LibraryController::class)->where('path', '.*')->middleware(['auth:sanctum', 'throttle:120,1']);
+
 // The editor. One controller hands every request to App\Qbl\EditorApi, which lists the routes.
 Route::any('/editor/{path?}', EditorController::class)->where('path', '.*')->middleware('auth:sanctum');
 
@@ -85,4 +90,8 @@ Route::prefix('internal')->middleware(ServiceKey::class)->group(function () {
     Route::post('/scenarios/{scenario}/messages', [InternalController::class, 'logMessages'])->whereNumber('scenario');
     Route::get('/scenarios/{scenario}/instances/{group}', [InternalController::class, 'loadInstance'])->whereNumber('scenario');
     Route::put('/scenarios/{scenario}/instances/{group}', [InternalController::class, 'saveInstance'])->whereNumber('scenario');
+    // The asset library, for the platform's own services (the generator, the game server, scripts).
+    Route::get('/library', [InternalController::class, 'library']);
+    Route::get('/library/{asset}', [InternalController::class, 'libraryAsset'])->where('asset', '[a-z0-9-]+');
+    Route::post('/scenarios/{scenario}/library/{asset}', [InternalController::class, 'addLibraryAsset'])->whereNumber('scenario')->where('asset', '[a-z0-9-]+');
 });

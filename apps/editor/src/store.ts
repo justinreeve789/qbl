@@ -1,4 +1,4 @@
-import { Api, ApiError, type Bundle, type Row, type Table } from './api';
+import { Api, ApiError, type Bundle, type LibraryAdded, type Row, type Table } from './api';
 import { toast } from './dom';
 
 /**
@@ -97,6 +97,20 @@ export class Store {
       this.emit();
     }
     return row;
+  }
+
+  /**
+   * Add an asset of the library to the scenario: the server copies its pictures into the media (once)
+   * and makes its character or item; both are taken in here.
+   */
+  async addFromLibrary(asset: number | string, name?: string): Promise<LibraryAdded | undefined> {
+    const added = await this.send(() => this.api.addLibraryAsset(asset, this.scenarioId, name));
+    if (added) {
+      for (const media of added.media) if (!this.byId('media', media.id)) this.bundle.media.push(media);
+      if (added.created) this.bundle[added.created.table].push(added.created.row);
+      this.emit(true);
+    }
+    return added;
   }
 
   /**
