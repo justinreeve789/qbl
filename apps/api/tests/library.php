@@ -6,7 +6,7 @@
  *
  *   php apps/api/tests/library.php
  */
-foreach (['StoreError', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ScenarioStore', 'ScenarioDecompiler', 'Library/AssetLibrary', 'Library/LibraryApi'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ScenarioStore', 'ScenarioDecompiler', 'Library/AssetLibrary', 'Library/LibraryApi', 'Library/ContentAdmins'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -172,6 +172,34 @@ same($api->handle('GET', 'night-sky', [], $teacher)[0], 200, 'and shown to its o
 same([$status, $body['asset']['slug']], [201, 'squirrel-two'], 'administrators keep a scenario\'s character through the API');
 same($api->handle('DELETE', 'squirrel-two', [], $admin)[0], 204, 'and remove assets');
 same($api->handle('GET', 'squirrel-two', [], $admin)[0], 404, 'which are gone');
+
+// ------------------------------------------------------------------ content admins
+$content = ['id' => 4, 'name' => 'Curator', 'role' => 'content_admin'];
+$pdo->exec("INSERT INTO `users` (`id`, `name`, `email`, `role`) VALUES (4, 'Curator', 'curator@example.test', 'teacher'), (5, 'Guest', 'guest@example.test', 'guest')");
+$apiWithAdmins = new LibraryApi($library, $store, new App\Qbl\Library\ContentAdmins($pdo));
+[$status, $body] = $apiWithAdmins->handle('POST', 'managers', ['email' => 'Curator@Example.test'], $admin);
+same([$status, array_column($body['managers'], 'email')], [200, ['curator@example.test']], 'an administrator makes a teacher a content admin by address');
+same($pdo->query('SELECT role FROM users WHERE id = 4')->fetchColumn(), 'content_admin', 'which changes their role');
+same($apiWithAdmins->handle('POST', 'managers', ['email' => 'nobody@example.test'], $admin)[0], 404, 'an unknown address is refused');
+same($apiWithAdmins->handle('POST', 'managers', ['email' => 'guest@example.test'], $admin)[0], 422, 'and so is a guest');
+same($apiWithAdmins->handle('GET', 'managers', [], $content)[0], 403, 'content admins do not choose content admins');
+same($apiWithAdmins->handle('GET', 'managers', [], $teacher)[0], 403, 'nor do teachers');
+[$status, $body] = $apiWithAdmins->handle('GET', '', [], $content, [], ['inactive' => '1']);
+check($status === 200 && isset($body['assets'][0]['used_in']), 'content admins see how much each asset is used');
+same($body['assets'][array_search('stagecoach', array_column($body['assets'], 'slug'))]['used_in'], 1, 'the stagecoach is in one scenario');
+same($apiWithAdmins->handle('GET', 'night-sky', [], $content)[0], 200, 'and every organization\'s assets');
+[$status, $body] = $apiWithAdmins->handle('PATCH', 'night-sky', ['description' => 'Stars', 'active' => false], $content);
+same([$status, $body['asset']['active']], [200, false], 'content admins change and withdraw assets');
+[$status, $body] = $apiWithAdmins->handle('PATCH', 'night-sky/files/image', ['params' => ['sheet' => ['columns' => 2, 'rows' => 1]]], $content);
+same([$status, $body['asset']['files'][0]['params']['sheet']], [200, ['columns' => 2, 'rows' => 1]], 'and the settings of a file');
+[$status, $body] = $apiWithAdmins->handle('POST', 'capture', ['scenario_id' => $sid, 'table' => 'items', 'row_id' => $coach['id'], 'slug' => 'coach-two'], $content);
+same([$status, $body['asset']['kind']], [201, 'vehicle'], 'and keep a scenario\'s things in the library');
+same($apiWithAdmins->handle('DELETE', 'coach-two', [], $content)[0], 204, 'and remove assets');
+same($store->canEdit($store->scenario($other), $content), true, 'content admins edit everyone\'s scenarios');
+same($store->canEdit($store->scenario($other), ['id' => 3, 'role' => 'teacher']), false, 'teachers only their own');
+same(count($store->listFor($content)), count($store->listFor($admin)), 'content admins list every scenario');
+[$status, $body] = $apiWithAdmins->handle('DELETE', 'managers/4', [], $admin);
+same([$status, $body['managers'], $pdo->query('SELECT role FROM users WHERE id = 4')->fetchColumn()], [200, [], 'teacher'], 'an administrator makes a content admin a teacher again');
 
 unlink($png);
 exec('rm -rf '.escapeshellarg($mediaDir));

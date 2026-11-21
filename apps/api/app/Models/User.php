@@ -14,6 +14,9 @@ class User extends Authenticatable
     const ROLE_STUDENT = 'student';
     const ROLE_TEACHER = 'teacher';
 
+    /** A teacher who also edits every scenario and manages the asset library (App\Qbl\Roles). */
+    const ROLE_CONTENT_ADMIN = 'content_admin';
+
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = ['name', 'email', 'password', 'role', 'avatar_media_id'];

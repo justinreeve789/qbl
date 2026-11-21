@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Qbl\Roles;
 use App\Models\User;
 use Illuminate\Console\Command;
 
@@ -18,11 +19,11 @@ use Illuminate\Console\Command;
  */
 class UpdateRole extends Command
 {
-    protected $signature = 'qbl:update-role {email} {--role= : student, teacher or admin}';
+    protected $signature = 'qbl:update-role {email} {--role= : student, teacher, content_admin or admin}';
 
-    protected $description = 'Show or change the role of an existing user (student, teacher or admin)';
+    protected $description = 'Show or change the role of an existing user (student, teacher, content_admin or admin)';
 
-    private const ROLES = [User::ROLE_STUDENT, User::ROLE_TEACHER, User::ROLE_ADMIN];
+    private const ROLES = Roles::ASSIGNABLE;
 
     public function handle(): int
     {

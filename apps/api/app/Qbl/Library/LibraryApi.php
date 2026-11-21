@@ -2,6 +2,7 @@
 
 namespace App\Qbl\Library;
 
+use App\Qbl\Roles;
 use App\Qbl\ScenarioStore;
 use App\Qbl\StoreError;
 
@@ -17,19 +18,27 @@ use App\Qbl\StoreError;
  *   POST   library/{asset}/add           {scenario_id, name?}: add it to a scenario they can edit
  *                                        {asset, created: {table, row}, media: [rows used], copied: [ids of new media]}
  *
- * Administrators (the platform's library):
+ * Content admins and administrators (who manage the library; see App\Qbl\Roles):
  *
+ *   GET    library?inactive=1            withdrawn assets too; each asset says in how many scenarios it is used (`used_in`)
  *   POST   library                       {kind, name, slug?, category?, description?, tags?, style?, definition?, credit?, organization_id?, active?, sequence?}
  *   PATCH  library/{asset}               the same, any of them
  *   DELETE library/{asset}
  *   POST   library/{asset}/files         multipart: file, role (sheet, portrait, image, sound, preview...), params (JSON: sheet, animations)
+ *   PATCH  library/{asset}/files/{role}  {params}: change its sheet grid, animations or scale
  *   DELETE library/{asset}/files/{role}
  *   POST   library/capture               {scenario_id, table: characters|items|media, row_id, name?, slug?, category?, description?, tags?, credit?}
  *                                        keep something made in a scenario as a library asset
+ *
+ * Administrators only:
+ *
+ *   GET    library/managers              {managers}: the content admins
+ *   POST   library/managers              {email}: make that account a content admin
+ *   DELETE library/managers/{userId}     make a content admin a teacher again
  */
 class LibraryApi
 {
-    public function __construct(private AssetLibrary $library, private ScenarioStore $store) {}
+    public function __construct(private AssetLibrary $library, private ScenarioStore $store, private ?ContentAdmins $contentAdmins = null) {}
 
     /**
      * @param  string  $path  what follows /api/editor/library
@@ -50,10 +59,15 @@ class LibraryApi
             throw new StoreError(401, 'Unauthenticated.');
         }
         $role = $user['role'] ?? '';
-        if (! in_array($role, ['teacher', 'admin'], true)) {
+        if (! Roles::isStaff($role)) {
             throw new StoreError(403, 'The asset library is for teachers and content creators.');
         }
-        $admin = $role === 'admin';
+        // Who may change it: content admins and administrators.
+        $admin = Roles::managesLibrary($role);
+
+        if (($parts[0] ?? '') === 'managers') {
+            return $this->managers($method, $parts, $body, $user);
+        }
 
         if ($parts === []) {
             if ($method === 'GET') {
@@ -65,8 +79,17 @@ class LibraryApi
                     'inactive' => $admin && filter_var($query['inactive'] ?? false, FILTER_VALIDATE_BOOL),
                 ];
 
+                $assets = $this->library->all($filter, $user);
+                if ($admin) {
+                    $used = $this->library->usage();
+                    foreach ($assets as &$asset) {
+                        $asset['used_in'] = $used[$asset['slug']] ?? 0;
+                    }
+                    unset($asset);
+                }
+
                 return [200, [
-                    'assets' => $this->library->all($filter, $user),
+                    'assets' => $assets,
                     'categories' => $this->library->categories($filter, $user),
                     'kinds' => array_keys(AssetLibrary::KINDS),
                 ]];
@@ -82,7 +105,7 @@ class LibraryApi
         if ($parts === ['capture'] && $method === 'POST') {
             $this->mustBeAdmin($admin);
             $scenarioId = $this->editable((int) ($body['scenario_id'] ?? 0), $user);
-            $attrs = array_intersect_key($body, array_flip(['name', 'slug', 'category', 'description', 'tags', 'style', 'credit', 'organization_id', 'sequence']));
+            $attrs = array_intersect_key($body, array_flip(['name', 'slug', 'category', 'description', 'tags', 'style', 'credit', 'organization_id', 'sequence', 'active']));
 
             return [201, ['asset' => $this->library->capture($this->store, $scenarioId, (string) ($body['table'] ?? ''), (int) ($body['row_id'] ?? 0), $attrs + ['created_by' => $user['id']])]];
         }
@@ -117,8 +140,29 @@ class LibraryApi
             if (count($rest) === 2 && $method === 'DELETE') {
                 return [200, ['asset' => $this->library->removeFile($asset['id'], $rest[1])]];
             }
+            if (count($rest) === 2 && $method === 'PATCH') {
+                return [200, ['asset' => $this->library->updateFileParams($asset['id'], $rest[1], (array) ($body['params'] ?? []))]];
+            }
         }
         throw new StoreError(404, 'Not found.');
+    }
+
+    /** The content admins: listed, added and removed by administrators. */
+    private function managers(string $method, array $parts, array $body, array $user): array
+    {
+        if (! Roles::isAdmin($user['role'] ?? null)) {
+            throw new StoreError(403, 'Only administrators can choose the content admins.');
+        }
+        if (! $this->contentAdmins) {
+            throw new StoreError(503, 'Content admins cannot be changed on this server.');
+        }
+
+        return match (true) {
+            count($parts) === 1 && $method === 'GET' => [200, ['managers' => $this->contentAdmins->all()]],
+            count($parts) === 1 && $method === 'POST' => [200, ['managers' => $this->contentAdmins->add((string) ($body['email'] ?? ''))]],
+            count($parts) === 2 && $method === 'DELETE' && ctype_digit($parts[1]) => [200, ['managers' => $this->contentAdmins->remove((int) $parts[1])]],
+            default => throw new StoreError(404, 'Not found.'),
+        };
     }
 
     private function deleted(int $id): array
@@ -142,7 +186,7 @@ class LibraryApi
     private function mustBeAdmin(bool $admin): null
     {
         if (! $admin) {
-            throw new StoreError(403, 'Only administrators can change the library.');
+            throw new StoreError(403, 'Only content admins and administrators can change the library.');
         }
 
         return null;

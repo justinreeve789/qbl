@@ -3,7 +3,7 @@ title: The asset library
 description: Ready-made characters, vehicles, items, pictures and sounds kept once for the whole platform, and added to any scenario.
 ---
 
-The asset library holds things anyone can add to a scenario: animals, vehicles, items, pictures and sounds. QuestLab ships a pack of them; administrators can add more, from files or from something made in a scenario. Teachers see them in the editor under **🐾 Add QuestLab Assets** (Characters and Items pages).
+The asset library holds things anyone can add to a scenario: animals, vehicles, items, pictures and sounds. QuestLab ships a pack of them; content admins and administrators look after it on the editor's [Asset library page](/docs/editor/asset-library/), and can add more, from files or from something made in a scenario. Teachers see them in the editor under **🐾 Add QuestLab Assets** (Characters and Items pages).
 
 Adding an asset **copies** the files it uses into the scenario's media (once per scenario: a second Red Squirrel shares the first one's sheet) and creates the row it describes. Nothing in a scenario points back at the library afterwards, so a scenario exports, duplicates and plays whole, and changing or withdrawing an asset never breaks one.
 
@@ -83,18 +83,37 @@ php artisan qbl:library withdraw motorcycle     # and: restore motorcycle
 
 ## HTTP API
 
-Under `/api/editor/library`, with the editor's sign-in. Teachers and administrators list and add; only administrators change the library.
+Under `/api/editor/library`, with the editor's sign-in. Teachers list and add; content admins and administrators (`App\Qbl\Roles::managesLibrary`) also see withdrawn assets and change the library; only administrators choose the content admins.
+
+### Roles
+
+`App\Qbl\Roles` (PHP) and `roles.ts` in `@qbl/shared` (TypeScript) are where the roles are decided; check through them rather than comparing role names:
+
+| Role | `isStaff` | `editsAllScenarios` | `managesLibrary` | `isAdmin` |
+| --- | --- | --- | --- | --- |
+| `teacher` | ✓ | | | |
+| `content_admin` | ✓ | ✓ | ✓ | |
+| `admin` | ✓ | ✓ | ✓ | ✓ |
+| `student`, `guest` | | | | |
+
+`editsAllScenarios` covers editing every scenario (curricular missions and shared samples too), changing a mission's tier, and playing or assigning curricular missions without a plan. A content admin is made on the Asset library page (`App\Qbl\Library\ContentAdmins`) or with `php artisan qbl:update-role {email} --role=content_admin`.
+
+### Routes
 
 | | |
 | --- | --- |
-| `GET library?kind=vehicle,item&category=&q=&tag=` | `{assets, categories, kinds}` |
+| `GET library?kind=vehicle,item&category=&q=&tag=` | `{assets, categories, kinds}`. For content admins, `inactive=1` adds withdrawn assets, and each asset carries `used_in` (how many scenarios added it) |
 | `GET library/{asset}` | `{asset}`; `{asset}` is an id or a slug |
 | `POST library/{asset}/add` `{scenario_id, name?}` | Adds it to a scenario the user can edit: `{asset, created: {table, row}, media, copied}` |
-| `POST library` | Create an asset (administrators) |
+| `POST library` | Create an asset (content admins and administrators, as below) |
 | `PATCH library/{asset}` / `DELETE library/{asset}` | Change or remove one |
 | `POST library/{asset}/files` | Multipart `file`, `role`, `params` (JSON) |
+| `PATCH library/{asset}/files/{role}` `{params}` | Change a file's sheet grid or animations |
 | `DELETE library/{asset}/files/{role}` | |
-| `POST library/capture` `{scenario_id, table, row_id, name?, slug?, category?, tags?, credit?}` | Keep a scenario's character, item or media row |
+| `POST library/capture` `{scenario_id, table, row_id, name?, slug?, category?, tags?, credit?, active?}` | Keep a scenario's character, item or media row |
+| `GET library/managers` | `{managers: [{id, name, email}]}`, the content admins (administrators only) |
+| `POST library/managers` `{email}` | Make an account a content admin: 404 without an account, 422 for an administrator or a guest |
+| `DELETE library/managers/{user}` | Make a content admin a teacher again |
 
 For the platform's own services (the generator, the game server, scripts) the same reads and adding are on the internal API, with the service key (`X-QBL-Service-Key`):
 

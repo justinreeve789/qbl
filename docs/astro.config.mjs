@@ -82,6 +82,7 @@ export default defineConfig({
             { label: 'Reading the reports', slug: 'editor/reports' },
             { label: 'Plans, credits and the AI generator', slug: 'editor/plans-and-generator' },
             { label: 'The district admin panel', slug: 'editor/district-admin' },
+            { label: 'The asset library and content admins', slug: 'editor/asset-library' },
           ],
         },
         {

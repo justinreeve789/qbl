@@ -10,7 +10,7 @@ import { form, withValue, type FormContext } from '../fields';
 import { openPanel } from '../panel';
 import { CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
-import { openQuestLab } from './questlab';
+import { keepInLibraryButton, openQuestLab } from './questlab';
 import { gettingAround } from './routine';
 import { recordAllButton, voiceSection } from './voices';
 
@@ -139,7 +139,7 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
     form(CHARACTER_SETTINGS_FIELDS, params(row, 'settings'), (key, value, field) => void store.patch('characters', id, { settings: withValue(params(store.byId('characters', id)!, 'settings'), key, value, field) }, field.structural === true), ctx),
     rowConditions(ctx, 'character_id', id, 'Present only when', 'Always present.'),
     gettingAround(ctx, row),
-    h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the character “${row.name}”`) && void store.remove('characters', id) }, 'Delete character')));
+    h('div', { class: 'row-actions' }, keepInLibraryButton(ctx, 'characters', row), h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the character “${row.name}”`) && void store.remove('characters', id) }, 'Delete character')));
 
   const others = Object.keys(animations).filter((n) => !isPose(n));
   const group = (title: string, tone: Tone, names: string[], ...extra: Array<HTMLElement | null>) =>

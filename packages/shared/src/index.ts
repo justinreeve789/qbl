@@ -18,3 +18,4 @@ export * from './speech.js';
 export * from './infobox.js';
 export * from './icons.js';
 export * from './site.js';
+export * from './roles.js';

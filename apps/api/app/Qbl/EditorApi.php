@@ -65,7 +65,7 @@ class EditorApi
         if (! $user) {
             throw new StoreError(401, 'Unauthenticated.');
         }
-        if (! in_array($user['role'] ?? '', ['teacher', 'admin'], true)) {
+        if (! Roles::isStaff($user['role'] ?? null)) {
             throw new StoreError(403, 'The editor is for teachers and content creators.');
         }
         if (($parts[0] ?? '') !== 'scenarios') {
@@ -95,7 +95,7 @@ class EditorApi
         $scenario = $this->store->scenario($id);
         // A copy to make one's own: of a scenario one can edit as it is now, or of anyone's public mission as it was published.
         if ($scenario && array_slice($parts, 2) === ['duplicate'] && $method === 'POST') {
-            if (ClassStore::isCurricular($scenario) && ($user['role'] ?? '') !== 'admin' && $this->entitlements && ! $this->entitlements->curricular((int) $user['id'])) {
+            if (ClassStore::isCurricular($scenario) && ! Roles::editsAllScenarios($user['role'] ?? null) && $this->entitlements && ! $this->entitlements->curricular((int) $user['id'])) {
                 throw new StoreError(402, 'That is one of the curricular missions, which come with a Teacher plan.');
             }
             if ($this->store->canEdit($scenario, $user)) {
@@ -114,7 +114,7 @@ class EditorApi
         }
         // A curricular mission a teacher can edit (a shared sample, or their own copy) is still only
         // theirs to open, preview or export while their plan includes curricular missions.
-        if (ClassStore::isCurricular($scenario) && ($user['role'] ?? '') !== 'admin' && $this->entitlements && ! $this->entitlements->curricular((int) $user['id'])) {
+        if (ClassStore::isCurricular($scenario) && ! Roles::editsAllScenarios($user['role'] ?? null) && $this->entitlements && ! $this->entitlements->curricular((int) $user['id'])) {
             throw new StoreError(402, 'That is one of the curricular missions, which come with a Teacher plan.');
         }
         $rest = array_slice($parts, 2);
@@ -130,8 +130,8 @@ class EditorApi
 
         if ($rest === ['code'] && $method === 'PUT') {
             // The shared samples (the demo among them) are linked from outside the editor; only an admin may move them.
-            if ($scenario['user_id'] === null && ($user['role'] ?? '') !== 'admin') {
-                throw new StoreError(403, 'Only an admin can change the code of a shared sample.');
+            if ($scenario['user_id'] === null && ! Roles::editsAllScenarios($user['role'] ?? null)) {
+                throw new StoreError(403, 'Only an admin or a content admin can change the code of a shared sample.');
             }
 
             return [200, ['scenario' => $this->store->changeCode($id, (string) ($body['code'] ?? ''))]];
@@ -197,8 +197,8 @@ class EditorApi
         if (! in_array($asked, ['free', 'curricular'], true)) {
             throw new StoreError(422, 'A mission\'s tier is "free" or "curricular".');
         }
-        if ($asked !== $now && ($user['role'] ?? '') !== 'admin') {
-            throw new StoreError(403, 'Only an administrator can change whether a mission is free or curricular.');
+        if ($asked !== $now && ! Roles::editsAllScenarios($user['role'] ?? null)) {
+            throw new StoreError(403, 'Only an administrator or a content admin can change whether a mission is free or curricular.');
         }
         if ($asked === 'curricular') {
             $body['settings']['tier'] = 'curricular';

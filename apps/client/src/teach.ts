@@ -1,3 +1,4 @@
+import { editsAllScenarios } from '@qbl/shared';
 import { icon } from './ui/icons';
 import { dueLabel, type Mission } from './home';
 
@@ -230,7 +231,7 @@ export function buildTeacherDesk(desk: Promise<TeacherDesk>, user: { id?: number
   void desk
     .catch((): TeacherDesk => ({ assignments: null, scenarios: null, students: null }))
     .then((d) => {
-      const own = d.scenarios ? ownScenarios(d.scenarios, user.id, user.role === 'admin') : [];
+      const own = d.scenarios ? ownScenarios(d.scenarios, user.id, editsAllScenarios(user.role)) : [];
       top.fill(d, own);
       slot.replaceChildren(assignmentsSection(d, now), scenariosSection(d, own));
     });

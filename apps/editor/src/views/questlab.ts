@@ -1,9 +1,10 @@
-import { isPose, type CharacterAnimation } from '@qbl/shared';
-import type { LibraryAsset, LibraryList, Row } from '../api';
+import { isPose, managesLibrary, type CharacterAnimation } from '@qbl/shared';
+import type { LibraryAsset, LibraryList, Row, Table } from '../api';
 import { params } from '../describe';
 import { h, toast } from '../dom';
 import type { FormContext } from '../fields';
 import { openPanel } from '../panel';
+import { session } from '../session';
 
 /**
  * "Add QuestLab Assets": the asset library as a pop-up of cards, on the Characters page (animals)
@@ -32,6 +33,55 @@ export function loadLibrary(kinds: string[], store: FormContext['store']): Promi
     list.catch(() => lists.delete(key));
   }
   return list;
+}
+
+/** After the library changed (its admin screen, "Keep in library"): fetch it again next time. */
+export function forgetLibrary() {
+  lists.clear();
+}
+
+/**
+ * "📚 Keep in library", on a character's or an item's panel, for content admins and administrators:
+ * copies the row (with its pictures, animations and settings) into the asset library, withdrawn
+ * until it is offered to teachers on the library's own screen. Null for everyone else.
+ */
+export function keepInLibraryButton(ctx: FormContext, table: Extract<Table, 'characters' | 'items'>, row: Row): HTMLElement | null {
+  if (!managesLibrary(session.role)) return null;
+  return h('button', { type: 'button', 'data-keep': '', title: 'Copy it into the asset library, to offer it to every teacher', onclick: () => openKeep(ctx, table, row) }, '📚 Keep in library');
+}
+
+function openKeep(ctx: FormContext, table: 'characters' | 'items', row: Row) {
+  const draft = { name: String(row.name ?? ''), category: '', tags: '', description: '' };
+  const field = (key: keyof typeof draft, label: string, placeholder = '') => h('label', { class: `field${key === 'description' ? ' wide' : ''}`, 'data-field': key },
+    h('span', { class: 'field-label' }, label),
+    h('input', { value: draft[key], placeholder, oninput: (e: Event) => (draft[key] = (e.target as HTMLInputElement).value) }));
+  const keep = h('button', { type: 'button', class: 'primary', 'data-keep-confirm': '' }, 'Keep it');
+  const panel = openPanel({
+    key: `keep-${table}-${row.id}`, kind: 'keep-in-library', store: ctx.store, size: 'medium', tone: 'var(--tone-character)',
+    title: () => `📚 Keep “${String(row.name)}” in the library`,
+    body: () => h('div', null,
+      h('div', { class: 'form' },
+        field('name', 'Name'), field('category', 'Category', table === 'items' ? 'Cars, Horses…' : 'Squirrels, Birds…'),
+        field('tags', 'Tags', 'Separated by commas'), field('description', 'Description', 'One sentence for the card')),
+      h('p', { class: 'muted small' }, 'Its pictures, animations and settings are copied as they are saved now. It starts withdrawn: offer it to teachers, and say who drew it, on the Library page.'),
+      h('div', { class: 'row-actions' }, keep)),
+  });
+  keep.onclick = async () => {
+    keep.disabled = true;
+    try {
+      await ctx.store.settled();
+      const asset = await ctx.store.api.captureAsset({
+        scenario_id: ctx.store.scenarioId, table, row_id: row.id as number, name: draft.name.trim() || undefined,
+        category: draft.category.trim() || undefined, tags: draft.tags.trim() || undefined, description: draft.description.trim() || undefined, active: false,
+      });
+      forgetLibrary();
+      panel.close();
+      toast(`Kept ${asset.name} in the library.`, 'info', { label: 'Open the library', run: () => (window.location.hash = `#/library/${asset.slug}`) });
+    } catch (err) {
+      keep.disabled = false;
+      toast(err instanceof Error ? err.message : 'Could not keep it.', 'error');
+    }
+  };
 }
 
 /** What each pop-up remembers between redraws: the category picked and the words searched. */
@@ -63,7 +113,8 @@ function libraryBody(ctx: FormContext, options: QuestLabOptions): HTMLElement {
     h('p', { class: 'questlab-intro' }, vehicles
       ? 'Cars, bikes, horses and more, ready to ride: each comes with its picture, wheels or legs that move while it is ridden, and a seat for the rider. '
       : 'Animals ready to drop into your scenario, each with its pictures, a close-up for story boxes and its animations already set up. ',
-    'Adding one copies its pictures into this scenario’s media; change anything afterwards on its own panel, then place it in a scene.'),
+    'Adding one copies its pictures into this scenario’s media; change anything afterwards on its own panel, then place it in a scene.',
+    managesLibrary(session.role) ? h('a', { class: 'questlab-manage', href: '#/library', 'data-manage': '' }, ' Manage the library →') : null),
     h('p', { class: 'muted questlab-loading' }, 'Loading the library…'),
   );
   loadLibrary(options.kinds, ctx.store).then(

@@ -5,7 +5,7 @@ import { form, withValue, type Field, type FormContext } from '../fields';
 import { openPanel } from '../panel';
 import { ITEM_FIELDS, ITEM_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
-import { openQuestLab } from './questlab';
+import { keepInLibraryButton, openQuestLab } from './questlab';
 import { chip, emptyState, listPage, pick, removeRow, section, thumbButton, tileActions, tileTitle } from './kit';
 
 /**
@@ -96,7 +96,7 @@ function itemBody(ctx: FormContext, row: Row): HTMLElement {
   const about = section(`${kind.icon} Item`, kind.tone, 'item',
     url ? h('img', { class: 'preview large checker', src: url, alt: '' }) : h('div', { class: 'preview none' }, 'No picture yet: choose an image below.'),
     form(ITEM_FIELDS, row, (key, value) => void store.patch('items', id, { [key]: value }, SHAPING.has(key)), ctx),
-    h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: removeRow(ctx, 'items', row, `the item “${row.name}”`) }, 'Delete item')));
+    h('div', { class: 'row-actions' }, keepInLibraryButton(ctx, 'items', row), h('button', { type: 'button', class: 'danger', onclick: removeRow(ctx, 'items', row, `the item “${row.name}”`) }, 'Delete item')));
 
   const behaviour = h('div', { class: 'panel-column' },
     section('📍 In the scene', 'var(--tone-background)', 'scene', settingsForm(row.blocking ? [...IN_SCENE, ...BLOCKING] : IN_SCENE)),

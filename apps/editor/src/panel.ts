@@ -1,5 +1,4 @@
 import { h, redraw } from './dom';
-import type { Store } from './store';
 
 /**
  * A pop-up panel over the page, for editing one thing (a media file, a character, one of its
@@ -11,12 +10,19 @@ import type { Store } from './store';
  * alters which fields show (a structural change), its title on every change. It closes by itself
  * when what it edits is deleted (its title or body comes back null) and when the address changes.
  */
+/** Something that says when what a panel shows has changed. */
+export interface Changes {
+  onChange(listener: (structural: boolean) => void): () => void;
+  emit(structural?: boolean): void;
+}
+
 export interface PanelOptions {
   /** Names the panel. Opening one that is already open brings it back instead of opening another. */
   key: string;
   /** What kind of panel it is, as `data-panel`: "media", "character", "animation". */
   kind: string;
-  store: Store;
+  /** What it redraws with: a scenario's Store, or any other source of changes (the library's admin screen has its own). */
+  store: Changes;
   /** The heading. Null when the thing it edits is gone, which closes the panel. */
   title: () => Node | string | null;
   /** The content. Null closes the panel. */

@@ -81,7 +81,7 @@ class ClassApi
         if (($parts[0] ?? '') !== 'teach') {
             throw new StoreError(404, 'Not found.');
         }
-        if (! in_array($role, ['teacher', 'admin'], true)) {
+        if (! Roles::isStaff($role)) {
             throw new StoreError(403, 'This is for teachers.');
         }
         $admin = $role === 'admin';

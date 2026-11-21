@@ -1,4 +1,4 @@
-import { siteLinks, type SiteLink } from '@qbl/shared';
+import { isStaff, managesLibrary, siteLinks, type SiteLink } from '@qbl/shared';
 import { Api, ApiError, type User } from './api';
 import { config } from './config';
 import { emojiIcon, icon } from './icons';
@@ -12,6 +12,7 @@ import { districtView } from './views/district';
 import { generateView, prefillGenerator } from './views/generate';
 import { progressBar, runName, STAGE_NAMES, tracker } from './generations';
 import { planView } from './views/plan';
+import { libraryAdminView } from './views/libraryAdmin';
 import { session } from './session';
 import { loginView, scenarioListView } from './views/home';
 import { TABS, workspace, type Tab } from './views/workspace';
@@ -87,10 +88,11 @@ function placeHref(link: SiteLink): string {
 }
 
 /** The editor's own pages beside the site's places: the generator, the plan, and (for those who run one) the district. */
-const PAGES: Array<{ key: string; hash: string; label: string; emoji: string; hint: string; staff: boolean }> = [
-  { key: 'generate', hash: '#/generate', label: 'Generate', emoji: '✨', hint: 'Make a mission with AI', staff: true },
-  { key: 'plan', hash: '#/plan', label: 'Plan', emoji: '💳', hint: 'Your plan and generator credits', staff: true },
-  { key: 'district', hash: '#/district', label: 'District', emoji: '🏛️', hint: 'Sign-in, rosters and API clients for a school or district', staff: false },
+const PAGES: Array<{ key: string; hash: string; label: string; emoji: string; hint: string; who: 'staff' | 'library' | 'district' }> = [
+  { key: 'generate', hash: '#/generate', label: 'Generate', emoji: '✨', hint: 'Make a mission with AI', who: 'staff' },
+  { key: 'plan', hash: '#/plan', label: 'Plan', emoji: '💳', hint: 'Your plan and generator credits', who: 'staff' },
+  { key: 'library', hash: '#/library', label: 'Asset library', emoji: '📚', hint: 'The asset library: ready-made characters, vehicles and more', who: 'library' },
+  { key: 'district', hash: '#/district', label: 'District', emoji: '🏛️', hint: 'Sign-in, rosters and API clients for a school or district', who: 'district' },
 ];
 
 /** Whether this account may open the district admin panel. */
@@ -99,13 +101,13 @@ const runsDistrict = (u: User | null) => !!u && (u.role === 'admin' || (u.admin_
 function drawNav() {
   const hash = window.location.hash;
   const here = hash === '#/classes' ? 'classes' : PAGES.find((p) => hash.startsWith(p.hash))?.key ?? 'editor';
-  const staff = !!user && (user.role === 'teacher' || user.role === 'admin');
+  const staff = isStaff(user?.role);
   const links = staff ? siteLinks(user!.role) : [];
   const mark = (key: string) => ({ class: key === here ? 'current' : null, 'aria-current': key === here ? 'page' : null });
   clear(
     nav,
     ...links.map((link) => h('a', { href: placeHref(link), title: link.hint, 'data-place': link.key, ...mark(link.key) }, icon(link.icon), link.label)),
-    ...PAGES.filter((p) => (p.staff ? staff : runsDistrict(user))).map((p) => h('a', { href: p.hash, title: p.hint, 'data-place': p.key, ...mark(p.key) }, emojiIcon(p.emoji), p.label)),
+    ...PAGES.filter((p) => (p.who === 'staff' ? staff : p.who === 'library' ? managesLibrary(user?.role) : runsDistrict(user))).map((p) => h('a', { href: p.hash, title: p.hint, 'data-place': p.key, ...mark(p.key) }, emojiIcon(p.emoji), p.label)),
   );
 }
 
@@ -184,7 +186,7 @@ async function route() {
   drawAccount();
   drawNav();
   // Follow the teacher's generator runs from every page (only teachers and administrators make them).
-  if (user && (user.role === 'teacher' || user.role === 'admin')) {
+  if (user && isStaff(user.role)) {
     if (followed !== user.id) {
       followed = user.id;
       tracker.start(api);
@@ -203,8 +205,8 @@ async function route() {
   // The district admin panel is for whoever runs an organization, teacher or not.
   const district = /^#\/district(?:\/(\d+))?$/.exec(window.location.hash);
   if (district && runsDistrict(user)) return show(districtView(api, district[1] ? Number(district[1]) : null, go));
-  if (user.role !== 'teacher' && user.role !== 'admin' && runsDistrict(user)) return go('#/district');
-  if (user.role !== 'teacher' && user.role !== 'admin') {
+  if (!isStaff(user.role) && runsDistrict(user)) return go('#/district');
+  if (!isStaff(user.role)) {
     // Not a dead end: the game and the editor share one sign-in per browser, so the usual cause is
     // a guest or student sign-in left from playing. The form says which account this is and what
     // the server has as its role, and signing in with a teacher's account replaces it.
@@ -217,6 +219,14 @@ async function route() {
 
   if (window.location.hash === '#/classes') return show(classesView(api));
   if (window.location.hash === '#/plan') return show(planView(api));
+  const library = /^#\/library(?:\/([a-z0-9-]+))?$/.exec(window.location.hash);
+  if (library) {
+    if (!managesLibrary(user.role)) {
+      toast('Only content admins and administrators look after the library.', 'error');
+      return go('#/');
+    }
+    return show(libraryAdminView(api, user, library[1] ?? null, go));
+  }
   if (window.location.hash === '#/generate') return show(generateView(api, (id) => go(`#/s/${id}`)));
   if (window.location.hash === '#/new') {
     // From the missions page's "New scenario": the list, with the dialog open over it. The address

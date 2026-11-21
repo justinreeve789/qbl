@@ -14,6 +14,7 @@ export interface LibraryFile {
   url: string;
   width: number | null;
   height: number | null;
+  bytes?: number | null;
   params: { sheet?: { columns: number; rows: number; count?: number }; animations?: { name: string; frames: number[]; duration?: number; repeat?: boolean }[] };
 }
 
@@ -35,6 +36,26 @@ export interface LibraryAsset {
   credit: { title?: string; author?: string; license?: string; url?: string; note?: string } | null;
   files: LibraryFile[];
   file_urls: Record<string, string>;
+}
+
+/** An asset as content admins see it in the library's admin screen. */
+export interface ManagedAsset extends LibraryAsset {
+  organization_id: number | null;
+  source: 'pack' | 'upload' | 'scenario' | string;
+  active: boolean;
+  sequence: number;
+  /** In how many scenarios it is used. */
+  used_in?: number;
+  updated_at?: string;
+}
+
+/** What the admin screen can change on an asset. */
+export type AssetChanges = Partial<Pick<ManagedAsset, 'slug' | 'kind' | 'name' | 'category' | 'description' | 'tags' | 'style' | 'definition' | 'credit' | 'organization_id' | 'active' | 'sequence'>>;
+
+export interface ContentAdmin {
+  id: number;
+  name: string;
+  email: string;
 }
 
 export interface LibraryList {
@@ -542,6 +563,27 @@ export class Api {
     const search = new URLSearchParams(Object.entries(query).filter(([, v]) => v) as [string, string][]).toString();
     return this.call<LibraryList>('GET', `/editor/library${search ? `?${search}` : ''}`, undefined, true);
   };
+  // The library's admin screen (content admins and administrators).
+  libraryAll = async () => (await this.call<{ assets: ManagedAsset[]; categories: { name: string; count: number }[] }>('GET', '/editor/library?inactive=1', undefined, true));
+  createAsset = async (attrs: AssetChanges) => (await this.call<{ asset: ManagedAsset }>('POST', '/editor/library', attrs)).asset;
+  updateAsset = async (id: number, attrs: AssetChanges) => (await this.call<{ asset: ManagedAsset }>('PATCH', `/editor/library/${id}`, attrs)).asset;
+  deleteAsset = async (id: number) => this.call<void>('DELETE', `/editor/library/${id}`);
+  async uploadAssetFile(id: number, role: string, file: File, params: object = {}): Promise<ManagedAsset> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('role', role);
+    form.append('params', JSON.stringify(params));
+    return (await this.call<{ asset: ManagedAsset }>('POST', `/editor/library/${id}/files`, form)).asset;
+  }
+  updateAssetFile = async (id: number, role: string, params: object) => (await this.call<{ asset: ManagedAsset }>('PATCH', `/editor/library/${id}/files/${role}`, { params })).asset;
+  removeAssetFile = async (id: number, role: string) => (await this.call<{ asset: ManagedAsset }>('DELETE', `/editor/library/${id}/files/${role}`)).asset;
+  /** Keep a scenario's character, item or media row in the library. */
+  captureAsset = async (attrs: { scenario_id: number; table: 'characters' | 'items' | 'media'; row_id: number; name?: string; slug?: string; category?: string; tags?: string; description?: string; active?: boolean }) =>
+    (await this.call<{ asset: ManagedAsset }>('POST', '/editor/library/capture', attrs)).asset;
+  contentAdmins = async () => (await this.call<{ managers: ContentAdmin[] }>('GET', '/editor/library/managers', undefined, true)).managers;
+  addContentAdmin = async (email: string) => (await this.call<{ managers: ContentAdmin[] }>('POST', '/editor/library/managers', { email })).managers;
+  removeContentAdmin = async (id: number) => (await this.call<{ managers: ContentAdmin[] }>('DELETE', `/editor/library/managers/${id}`)).managers;
+
   addLibraryAsset = async (asset: number | string, scenarioId: number, name?: string) =>
     this.call<LibraryAdded>('POST', `/editor/library/${asset}/add`, { scenario_id: scenarioId, ...(name ? { name } : {}) });
 

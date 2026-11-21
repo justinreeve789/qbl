@@ -277,6 +277,21 @@ class AssetLibrary
         return $this->recordFile($found['id'], $role, 'media:library/'.$found['id'].'/'.$name, rtrim($this->mediaUrl, '/').'/library/'.$found['id'].'/'.$name, $type, $params, $filename ?? basename($path));
     }
 
+    /** Change what a file carries into scenarios (its sheet grid, animations, scale), keeping the file. */
+    public function updateFileParams(int|string $asset, string $role, array $params): array
+    {
+        $found = $this->get($asset);
+        foreach ($found['files'] as $file) {
+            if ($file['role'] === $role) {
+                $this->run('UPDATE `library_asset_files` SET `params` = ?, `updated_at` = ? WHERE `id` = ?', [self::json(self::cleanFileParams($params)), self::now(), $file['id']]);
+                $this->run('UPDATE `library_assets` SET `updated_at` = ? WHERE `id` = ?', [self::now(), $found['id']]);
+
+                return $this->get($found['id']);
+            }
+        }
+        throw new StoreError(404, "That asset has no {$role} file.");
+    }
+
     /** Take a file away from an asset. */
     public function removeFile(int|string $asset, string $role): array
     {
@@ -437,7 +452,7 @@ class AssetLibrary
             'name' => $attrs['name'] ?? $row['name'] ?? $row['filename'] ?? 'Untitled',
             'source' => 'scenario',
             'definition' => $definition,
-        ] + array_intersect_key($attrs, array_flip(['slug', 'category', 'description', 'tags', 'style', 'credit', 'organization_id', 'created_by', 'sequence'])));
+        ] + array_intersect_key($attrs, array_flip(['slug', 'category', 'description', 'tags', 'style', 'credit', 'organization_id', 'created_by', 'sequence', 'active'])));
         foreach ($roles as $mediaId => $role) {
             $m = $mediaById[$mediaId];
             $path = $store->mediaFile($m) ?? throw new StoreError(422, "The file of “{$m['filename']}” is not on this server, so it cannot be kept.");
@@ -504,6 +519,20 @@ class AssetLibrary
         }
 
         return $counts;
+    }
+
+    /** In how many scenarios each asset is used (has media copied from it), by slug. */
+    public function usage(): array
+    {
+        $scenarios = [];
+        foreach ($this->select("SELECT `scenario_id`, `params` FROM `media` WHERE `params` LIKE ?", ['%"library"%']) as $m) {
+            $slug = (json_decode((string) $m['params'], true) ?: [])['library']['asset'] ?? null;
+            if (is_string($slug)) {
+                $scenarios[$slug][(int) $m['scenario_id']] = true;
+            }
+        }
+
+        return array_map('count', $scenarios);
     }
 
     // ====================================================================== presenting
@@ -783,10 +812,10 @@ class AssetLibrary
         return $role;
     }
 
-    /** [SQL condition, params] limiting rows to what `$user` may see; none for admins, or when there is no user (internal callers). */
+    /** [SQL condition, params] limiting rows to what `$user` may see; none for those who manage the library, or when there is no user (internal callers). */
     private function visibility(?array $user): array
     {
-        if ($user === null || ($user['role'] ?? '') === 'admin') {
+        if ($user === null || \App\Qbl\Roles::managesLibrary($user['role'] ?? null)) {
             return ['', []];
         }
         $org = $this->select('SELECT `organization_id` FROM `users` WHERE `id` = ?', [(int) ($user['id'] ?? 0)])[0]['organization_id'] ?? null;

@@ -15,7 +15,7 @@ if (PHP_SAPI !== 'cli-server') {
     http_response_code(500);
     exit("This is a development server. Run it with php -S.\n");
 }
-foreach (['StoreError', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 // The rest (the voices, the HTTP client they use) as they are needed.
@@ -101,6 +101,20 @@ $library->importPack();
 // The platform's avatars, added once, as AvatarSeeder does.
 App\Qbl\Avatars::seed($pdo, require __DIR__.'/../database/seeders/data/avatars.php');
 
+// The role a dev sign-in gets: one starting "admin" is an admin, "content" a content admin, "student" a
+// student, the rest teachers; unless the account was since made a content admin or a teacher again
+// (on the library's Content admins list), which is kept.
+$devRole = function (string $email) use ($pdo): string {
+    $kept = $pdo->prepare('SELECT `role` FROM `users` WHERE `email` = ?');
+    $kept->execute([$email]);
+    $role = $kept->fetchColumn();
+    if (in_array($role, ['content_admin', 'teacher'], true) && ! str_starts_with($email, 'admin') && ! str_starts_with($email, 'student')) {
+        return $role;
+    }
+
+    return str_starts_with($email, 'admin') ? 'admin' : (str_starts_with($email, 'content') ? 'content_admin' : (str_starts_with($email, 'student') ? 'student' : 'teacher'));
+};
+
 function respond(int $status, ?array $body): never
 {
     http_response_code($status);
@@ -153,8 +167,8 @@ if ($path === '/api/auth/login' && $method === 'POST') {
     if ($email === '') {
         respond(422, ['message' => 'Enter an email address.']);
     }
-    // Anyone can sign in with any address. One starting "admin" is an admin, "student" a student, and the rest teachers.
-    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'email' => $email, 'role' => str_starts_with($email, 'admin') ? 'admin' : (str_starts_with($email, 'student') ? 'student' : 'teacher')];
+    // Anyone can sign in with any address; $devRole says with which role.
+    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'email' => $email, 'role' => $devRole($email)];
     // Kept as a row, so a teacher can add the student to a class by this address.
     $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, $account['role']]);
     respond(200, $issue($account));
@@ -189,7 +203,7 @@ if ($path === '/api/auth/reset-password' && $method === 'POST') {
     if ($problem) {
         respond(422, ['message' => $problem]);
     }
-    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'email' => $email, 'role' => str_starts_with($email, 'admin') ? 'admin' : (str_starts_with($email, 'student') ? 'student' : 'teacher')];
+    $account = ['id' => crc32($email) % 100000 + 10, 'name' => ucfirst(strtok($email, '@')), 'email' => $email, 'role' => $devRole($email)];
     $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `email`, `role`, `stars`, `xp`) VALUES (?, ?, ?, ?, 100, 0)')->execute([$account['id'], $account['name'], $email, $account['role']]);
     respond(200, $issue($account));
 }
@@ -334,7 +348,7 @@ if (str_starts_with($path, '/api/district/')) {
 }
 if (str_starts_with($path, '/api/editor/library') && preg_match('#^/api/editor/library(/.*)?$#', $path, $m)) {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
-    respond(...(new App\Qbl\Library\LibraryApi($library, $store))->handle($method, $m[1] ?? '', $body, $user, $files, $_GET));
+    respond(...(new App\Qbl\Library\LibraryApi($library, $store, new App\Qbl\Library\ContentAdmins($pdo)))->handle($method, $m[1] ?? '', $body, $user, $files, $_GET));
 }
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];

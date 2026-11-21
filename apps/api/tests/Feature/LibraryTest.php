@@ -36,6 +36,14 @@ class LibraryTest extends TestCase
         return User::create(['name' => ucfirst($role), 'email' => "$role@example.test", 'password' => 'secret-password', 'role' => $role])->createToken('test')->plainTextToken;
     }
 
+    /** As someone else: the guard otherwise keeps the first user of the test. */
+    private function as(string $token): static
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->withToken($token);
+    }
+
     public function test_the_seeder_fills_the_library_and_the_models_read_it(): void
     {
         $this->assertSame(16, LibraryAsset::ofKind('character')->count());
@@ -64,6 +72,42 @@ class LibraryTest extends TestCase
 
         // Teachers cannot change the library; administrators can.
         $this->withToken($token)->postJson('/api/editor/library', ['kind' => 'picture', 'name' => 'Sky'])->assertForbidden();
+    }
+
+    public function test_a_content_admin_edits_every_scenario_and_looks_after_the_library(): void
+    {
+        $teacher = $this->token('teacher');
+        $content = $this->token('content_admin');
+        $admin = $this->token('admin');
+        $id = $this->as($teacher)->postJson('/api/editor/scenarios', ['title' => 'Pond'])->assertCreated()->json('scenario.id');
+        $settings = $this->as($teacher)->getJson("/api/editor/scenarios/$id")->assertOk()->json('scenario.settings') ?? [];
+
+        // Every scenario: listed, changed, made curricular (which a teacher cannot do).
+        $this->assertContains($id, array_column($this->as($content)->getJson('/api/editor/scenarios')->assertOk()->json('scenarios'), 'id'));
+        $this->as($content)->patchJson("/api/editor/scenarios/$id", ['title' => 'Pond (checked)', 'settings' => ['tier' => 'curricular'] + $settings])->assertOk()
+            ->assertJsonPath('scenario.title', 'Pond (checked)')->assertJsonPath('scenario.settings.tier', 'curricular');
+
+        // The library, withdrawn assets too, with how much each is used.
+        $this->as($teacher)->postJson('/api/editor/library/red-squirrel/add', ['scenario_id' => $id])->assertCreated();
+        $squirrel = collect($this->as($content)->getJson('/api/editor/library?inactive=1')->assertOk()->json('assets'))->firstWhere('slug', 'red-squirrel');
+        $this->assertSame(1, $squirrel['used_in']);
+        $this->as($content)->patchJson("/api/editor/library/{$squirrel['id']}", ['active' => false])->assertOk()->assertJsonPath('asset.active', false);
+        $this->assertNotContains('red-squirrel', array_column($this->as($teacher)->getJson('/api/editor/library')->json('assets'), 'slug'));
+        $this->as($content)->patchJson("/api/editor/library/{$squirrel['id']}/files/sheet", ['params' => ['sheet' => ['columns' => 5, 'rows' => 1]]])->assertOk();
+        $this->as($teacher)->patchJson("/api/editor/library/{$squirrel['id']}", ['active' => true])->assertForbidden();
+
+        // Only administrators choose the content admins.
+        $this->as($content)->getJson('/api/editor/library/managers')->assertForbidden();
+        $this->as($admin)->getJson('/api/editor/library/managers')->assertOk()->assertJsonPath('managers.0.email', 'content_admin@example.test');
+        $teacherId = User::where('email', 'teacher@example.test')->value('id');
+        $this->as($admin)->postJson('/api/editor/library/managers', ['email' => 'teacher@example.test'])->assertOk()->assertJsonCount(2, 'managers');
+        $this->assertSame('content_admin', User::find($teacherId)->role);
+        $this->as($admin)->deleteJson("/api/editor/library/managers/$teacherId")->assertOk()->assertJsonCount(1, 'managers');
+        $this->assertSame('teacher', User::find($teacherId)->role);
+        $this->as($admin)->postJson('/api/editor/library/managers', ['email' => 'admin@example.test'])->assertStatus(422);
+
+        $this->artisan('qbl:update-role', ['email' => 'teacher@example.test', '--role' => 'content_admin'])->assertSuccessful();
+        $this->assertSame('content_admin', User::find($teacherId)->role);
     }
 
     public function test_the_model_adds_and_keeps_assets(): void

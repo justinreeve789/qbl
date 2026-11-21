@@ -1,4 +1,5 @@
 import type { IconName } from './icons.js';
+import { isStaff } from './roles.js';
 
 /** One of the site's main places, as the navigation menus list them. */
 export interface SiteLink {
@@ -25,7 +26,7 @@ const LINKS: SiteLink[] = [
  * page (their assignments, "Look in", missions to try), whose menu has the Editor and Classes.
  */
 export function homePath(role: string | undefined): string {
-  return role === 'teacher' || role === 'admin' ? '/editor/#/' : '/missions';
+  return isStaff(role) ? '/editor/#/' : '/missions';
 }
 
 /**
@@ -34,7 +35,7 @@ export function homePath(role: string | undefined): string {
  * the missions page only, so a student's menu offers just the way back to it.
  */
 export function siteLinks(role: string | undefined): SiteLink[] {
-  return role === 'teacher' || role === 'admin' ? LINKS.map((l) => ({ ...l })) : LINKS.filter((l) => l.key === 'missions').map((l) => ({ ...l }));
+  return isStaff(role) ? LINKS.map((l) => ({ ...l })) : LINKS.filter((l) => l.key === 'missions').map((l) => ({ ...l }));
 }
 
 // ------------------------------------------------------------------ scenario codes

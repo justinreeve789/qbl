@@ -10,7 +10,7 @@ import { applyOperator } from './variables.js';
 export interface User {
   id: string;
   name: string;
-  role: 'student' | 'teacher' | 'admin' | 'guest';
+  role: 'student' | 'teacher' | 'content_admin' | 'admin' | 'guest';
   avatar_media_id?: Id;
   /** Ids of the shop items the player has equipped, comma-separated: what their avatar wears. */
   look?: string;
@@ -556,10 +556,6 @@ function blocksForEveryone(item: Item): boolean {
   return item.blocking === true && !(item.conditions && item.conditions.length > 0);
 }
 
-/** Teachers and admins. A teacher follows one team at a time, and can switch to another. */
-export function isStaff(role: string | undefined): boolean {
-  return role === 'teacher' || role === 'admin';
-}
 
 /**
  * Whether `viewer` is shown `subject`: they are in the same scene and, where the scene is

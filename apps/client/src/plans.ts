@@ -1,4 +1,4 @@
-import type { User } from '@qbl/shared';
+import { isStaff, type User } from '@qbl/shared';
 import type { Api, Billing, PlanCard } from './net/Api';
 
 /** Where the missions page goes once someone has signed in, when a page sent them there (sessionStorage). */
@@ -51,7 +51,7 @@ export async function showPlans(api: Api): Promise<void> {
   const missions = el('a', 'qbl-site-link', 'Missions');
   missions.href = '/missions';
   nav.append(missions);
-  if (user && (user.role === 'teacher' || user.role === 'admin')) {
+  if (user && isStaff(user.role)) {
     const editor = el('a', 'qbl-site-link', 'Editor');
     editor.href = '/editor/#/plan';
     nav.append(editor);

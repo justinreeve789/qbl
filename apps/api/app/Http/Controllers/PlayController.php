@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Qbl\Roles;
 use App\Models\Scenario;
 use App\Models\ScenarioSession;
 use App\Qbl\ClassStore;
@@ -33,7 +34,8 @@ class PlayController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
         // A curricular mission needs a plan that includes it: the player's own, or in an assigned game their teacher's.
-        if ($classes->needsPlan($scenario->id, $user?->id, $group) && $user?->role !== 'admin') {
+        // Admins and content admins look after the curricular missions, so they play them without a plan.
+        if ($classes->needsPlan($scenario->id, $user?->id, $group) && ! Roles::editsAllScenarios($user?->role)) {
             return $user && $user->role !== 'guest'
                 ? response()->json(['message' => 'This is one of the curricular missions, which come with a Teacher plan.', 'needs_plan' => true], 403)
                 : response()->json(['message' => 'Unauthenticated.'], 401);

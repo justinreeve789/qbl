@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { characterPicture, isStaff, normalizeScenario, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { characterPicture, isStaff, normalizeScenario, roleLabel, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
@@ -519,7 +519,7 @@ async function start() {
   ui.account({
     name: user.name,
     guest: user.role === 'guest',
-    subtitle: user.role === 'guest' ? 'Playing as a guest' : isStaff(user.role) ? (user.role === 'admin' ? 'Administrator' : 'Teacher') : undefined,
+    subtitle: user.role === 'guest' ? 'Playing as a guest' : isStaff(user.role) ? roleLabel(user.role) : undefined,
     avatar: face?.url ? face : null,
     links: preview ? [] : siteLinks(user.role),
   }, {

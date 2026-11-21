@@ -23,6 +23,7 @@ use App\Qbl\Generation\GenerationFactory;
 use App\Qbl\Generation\Http\CurlHttpClient;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Library\AssetLibrary;
+use App\Qbl\Library\ContentAdmins;
 use App\Qbl\Library\LibraryApi;
 use App\Qbl\ProgressStore;
 use App\Qbl\ScenarioStore;
@@ -48,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AssetLibrary::class, fn () => new AssetLibrary(
             DB::connection()->getPdo(), config('qbl.media_dir'), config('qbl.media_url'), config('qbl.library_dir'), config('qbl.library_url'),
         ));
-        $this->app->singleton(LibraryApi::class, fn ($app) => new LibraryApi($app->make(AssetLibrary::class), $app->make(ScenarioStore::class)));
+        $this->app->singleton(LibraryApi::class, fn ($app) => new LibraryApi($app->make(AssetLibrary::class), $app->make(ScenarioStore::class), new ContentAdmins(DB::connection()->getPdo())));
         // Plans, Stripe and generator credits (config/qbl_billing.php). With billing off, everything is open.
         $this->app->singleton(HttpClient::class, fn () => new CurlHttpClient(2));
         $this->app->singleton(Plans::class, fn () => new Plans(config('qbl_billing')));

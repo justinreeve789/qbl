@@ -173,25 +173,26 @@ class ScenarioStore
         return $row ? $this->decode('scenarios', $row) : null;
     }
 
-    /** Scenarios a user may edit: their own, shared samples with no owner, or all of them for an admin. */
+    /** Scenarios a user may edit: their own, shared samples with no owner, or all of them for an admin or content admin. */
     public function listFor(array $user): array
     {
         $sql = 'SELECT `id`, `code`, `shortname`, `title`, `subtitle`, `user_id`, `published_at`, `updated_at` FROM `scenarios`';
-        $rows = ($user['role'] ?? '') === 'admin'
+        $rows = Roles::editsAllScenarios($user['role'] ?? null)
             ? $this->all("$sql ORDER BY `updated_at` DESC")
             : $this->all("$sql WHERE `user_id` = ? OR `user_id` IS NULL ORDER BY `updated_at` DESC", [$user['id']]);
 
         return array_map(fn ($r) => ['id' => (int) $r['id'], 'user_id' => $r['user_id'] === null ? null : (int) $r['user_id']] + $r, $rows);
     }
 
+    /** Whether `$user` may change `$scenario`: their own and the shared samples; every one for admins and content admins (App\Qbl\Roles). */
     public function canEdit(array $scenario, array $user): bool
     {
         $role = $user['role'] ?? '';
-        if ($role === 'admin') {
+        if (Roles::editsAllScenarios($role)) {
             return true;
         }
 
-        return $role === 'teacher' && ($scenario['user_id'] === null || (int) $scenario['user_id'] === (int) $user['id']);
+        return $role === Roles::TEACHER && ($scenario['user_id'] === null || (int) $scenario['user_id'] === (int) $user['id']);
     }
 
     /** The scenario JSON generated from the tables as they are now (a draft: not what players get). */

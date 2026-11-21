@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Qbl\Roles;
 use App\Qbl\Library\AssetLibrary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -79,10 +80,10 @@ class LibraryAsset extends Model
         return $query;
     }
 
-    /** What a user may see: the platform's assets and their organization's (everything, for an admin). */
+    /** What a user may see: the platform's assets and their organization's (everything, for those who manage the library). */
     public function scopeVisibleTo(Builder $query, ?User $user): Builder
     {
-        if ($user?->role === 'admin') {
+        if (Roles::managesLibrary($user?->role)) {
             return $query;
         }
 

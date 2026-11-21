@@ -1399,3 +1399,35 @@ button.questlab-open:hover:not(:disabled) { background: color-mix(in srgb, var(-
 .questlab-card[data-group='Horses'] .questlab-photo,
 .questlab-card[data-group='Horse-drawn'] .questlab-photo { background: linear-gradient(#ffd9a8, #fff0d6 58%, #c8a86a 58%, #a98a4e 100%); }
 .questlab-card.kind-vehicle .questlab-walk { max-width: 96%; }
+
+/* The library's admin screen (#/library): every asset, withdrawn ones too, and the content admins. */
+.library-admin .page-head p { max-width: 60ch; margin: 4px 0 0; }
+.library-tile.withdrawn .tile-thumb img { opacity: 0.45; filter: grayscale(0.6); }
+.library-badge { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(20, 22, 30, 0.85); border: 1px solid var(--warn); color: var(--warn); font-size: 11px; font-weight: 700; }
+.library-panel .panel-column { min-width: 0; }
+.library-save { margin-top: 12px; }
+.library-files { display: grid; gap: 10px; }
+.library-file { display: grid; grid-template-columns: 112px 1fr; gap: 10px; align-items: start; padding: 8px; border: 1px solid var(--edge); border-radius: 8px; }
+.library-file audio, .library-file video { width: 112px; }
+.library-file-thumb { display: grid; place-items: center; width: 112px; height: 84px; border-radius: 6px; background: var(--checker); overflow: hidden; }
+.library-file-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+.library-file-text { display: grid; gap: 6px; min-width: 0; }
+.library-grid-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.library-grid-fields input { width: 64px; }
+.library-anims textarea, .library-json { width: 100%; font-family: var(--mono, ui-monospace, monospace); font-size: 12px; }
+.library-upload { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.library-upload input:not([type='file']) { width: 150px; }
+.library-anim-rows { display: grid; gap: 4px; margin: 6px 0; }
+.library-anim-head, .library-anim-row { display: grid; grid-template-columns: 1.3fr 1fr 1.2fr 70px 80px 28px; gap: 6px; align-items: center; }
+.library-anim-row input, .library-anim-row select { min-width: 0; width: 100%; }
+.library-json-fold { margin-top: 10px; }
+.library-admins { margin-top: 28px; }
+.library-admins h2 { margin-top: 0; }
+.library-people { display: grid; gap: 6px; margin-bottom: 10px; }
+.library-person { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--edge); border-radius: 8px; }
+.library-admins .row-actions input[type='email'] { width: 260px; max-width: 100%; }
+.questlab-manage { margin-left: 4px; white-space: nowrap; }
+.library-admin .questlab-tools select { width: auto; flex: 0 0 auto; }
+.library-admin .questlab-tools .questlab-search { width: 260px; flex: 0 0 auto; }
+.library-tile .tile-thumb img { image-rendering: pixelated; }
+.library-upload input[list] { width: 110px; }
