@@ -406,6 +406,59 @@ $engine->down = true;
 $voiced = (new Voicer($engine, $catalog))->voiceBuilt($built, $work, 'en');
 same([$voiced['recorded'], count($voiced['warnings']), str_contains($voiced['warnings'][0], 'qbl:voice')], [0, 1, true], 'a service that is down does not stop a mission being made: it is a warning, with what to do later');
 
+// ------------------------------------------------------------------ the narrator
+same($catalog->narrator('en-us'), 'storyteller', 'English scenarios are narrated by the storyteller');
+check(array_intersect(['dramatic', 'charismatic', 'storyteller'], $catalog->get('storyteller')['traits']) === ['dramatic', 'charismatic', 'storyteller'], 'who is dramatic and charismatic');
+same([$catalog->narrator('es'), $catalog->narrator('fr-FR'), $catalog->narrator('ja')], ['alex-es', 'siwis', 'kumo'], 'other languages have a narrator of their own');
+same($catalog->narrator('xx'), null, 'a language with none leaves the narration to the browser');
+$override = VoiceCatalog::load($catalogPath, 'captain');
+same([$override->narrator('en'), $override->narrator('es')], ['captain', 'alex-es'], 'QBL_TTS_NARRATOR changes the narrator for scenarios in its language only');
+same(VoiceCatalog::load($catalogPath, 'nobody')->narrator('en'), 'storyteller', 'and a voice the catalog does not have is ignored');
+same([$catalog->narratorFor([], 'en'), $catalog->narratorFor(['narrator_voice' => 'onyx'], 'en'), $catalog->narratorFor(['narrator_voice' => 'none'], 'en')], ['storyteller', 'onyx', null], 'a scenario may choose its own narrator, or none');
+
+same(Voicer::infoboxWords('<h2>The&nbsp;Water Cycle</h2><p>Water <b>goes</b> round.</p><ul><li>Rain</li><li>Snow</li></ul>'), 'The Water Cycle Water goes round. Rain Snow', 'an infobox is read as the player sees it, a word at each break');
+same(Voicer::infoboxWords('<p>One</p><hr data-qbl="page"><p>Two</p>'), null, 'but not a box of pages, each read on its own');
+same(Voicer::infoboxWords('<div data-qbl="flip"><p>Front</p><p data-unread>Back</p></div>'), null, 'nor one whose words depend on play');
+
+$told = $store->createScenario(['title' => 'Told'], null);
+$tid = (int) $told['id'];
+$tscene = (int) $store->bundle($tid)['scenes'][0]['id'];
+$tevent = $store->createRow($tid, 'events', ['scene_id' => $tscene, 'kind' => 'start']);
+$act = fn (string $type, array $p) => $store->createRow($tid, 'actions', ['event_id' => $tevent['id'], 'type' => $type, 'params' => $p]);
+$n1 = $act('narration', ['text' => 'Long ago, {{QBLPlayerName}}, there was a valley.']);
+$n2 = $act('narration', ['text' => 'Quietly.', 'narrate' => false]);
+$t1 = $act('text_overlay', ['text' => 'Chapter One', 'narrate' => true]);
+$t2 = $act('text_overlay', ['text' => 'Not read aloud.']);
+$i1 = $act('infobox', ['content' => '<p>Rivers run <i>downhill</i>.</p>', 'narrate' => true]);
+$guide = $store->createRow($tid, 'characters', ['name' => 'Guide', 'settings' => []]);
+$act('dialogue', ['speaker' => 'character', 'character_id' => $guide['id'], 'text' => 'Hello!']);
+$narrated = fn () => array_values(array_filter(Voicer::lines($store->bundle($tid), $catalog), fn ($l) => $l['character_id'] === 0));
+same(array_map(fn ($l) => [$l['action_id'], $l['voice'], $l['text']], $narrated()), [
+    [$n1['id'], 'storyteller', 'Long ago, {{QBLPlayerName}}, there was a valley.'],
+    [$t1['id'], 'storyteller', 'Chapter One'],
+    [$i1['id'], 'storyteller', 'Rivers run downhill.'],
+], 'what no character says is the default narrator\'s: narrations, and text overlays and infoboxes read aloud');
+check(! in_array($n2['id'], array_column($narrated(), 'action_id'), true) && ! in_array($t2['id'], array_column($narrated(), 'action_id'), true), 'what is not read aloud is not the narrator\'s to record: a narration marked so, a text overlay not marked');
+same(count(array_filter(Voicer::lines($store->bundle($tid)), fn ($l) => $l['voice'] !== null && $l['character_id'] === 0)), 0, 'with no catalog to ask, there is no default narrator');
+
+$engine = new FakeEngine;
+$tellers = new ScenarioVoicer($store, new Voicer($engine, $catalog, null));
+$r = $tellers->record($tid);
+same([$r['recorded'], $r['lines']], [3, 3], 'Record voices records the narrator\'s lines (and not the one marked not to be read)');
+same($engine->said[0], ['Long ago, explorer, there was a valley.', $catalog->get('storyteller')['engines']['kokoro']], 'in the storyteller\'s voice');
+$after = array_column($store->bundle($tid)['actions'], null, 'id');
+same([isset($after[$n1['id']]['params']['narration_media_id']), isset($after[$n2['id']]['params']['narration_media_id']), isset($after[$t2['id']]['params']['narration_media_id'])], [true, false, false], 'each plays its recording');
+$store->updateScenario($tid, ['settings' => ['narrator_voice' => 'onyx'] + (array) ($store->scenario($tid)['settings'] ?? [])]);
+$r = $tellers->record($tid);
+same([$r['recorded'], $r['kept'], $engine->said[3][1]], [3, 0, $catalog->get('onyx')['engines']['kokoro']], 'a new narrator records them all again, in the new voice');
+$store->updateScenario($tid, ['settings' => ['narrator_voice' => 'none'] + (array) ($store->scenario($tid)['settings'] ?? [])]);
+$r = $tellers->record($tid);
+$after = array_column($store->bundle($tid)['actions'], null, 'id');
+same([$r['removed'], isset($after[$n1['id']]['params']['narration_media_id'])], [3, false], 'no narrator: the recordings go, and the browser reads the narration');
+$store->updateScenario($tid, ['settings' => array_diff_key((array) ($store->scenario($tid)['settings'] ?? []), ['narrator_voice' => 1])]);
+$given = $tellers->assign($tid);
+check(($given[$guide['id']] ?? null) !== null && $given[$guide['id']] !== 'storyteller', 'giving characters voices leaves the narrator\'s voice to the narrator');
+
 // ------------------------------------------------------------------ a real Kokoro, when there is one
 if ($url = getenv('KOKORO_URL')) {
     $live = KokoroEngine::fromConfig(['url' => $url]);

@@ -200,6 +200,11 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-story.watching .qbl-story-portrait { left: 14px; bottom: 12px; width: 84px; height: 96px; font-size: 40px; }
 .qbl-story.watching .qbl-story-text { font-size: 15px; min-height: 0; }
 .qbl-story.watching .qbl-story-name { margin-top: -26px; font-size: 13px; }
+/* The narrator: the same box with no close-up, the words centred and a touch grander. */
+.qbl-story.narration { padding: 22px 34px 24px; min-height: 0; }
+.qbl-story.narration .qbl-story-text { min-height: 0; text-align: center; font-style: italic; font-size: 20px; }
+.qbl-story.narration.watching { padding: 14px 22px; }
+.qbl-story.narration.watching .qbl-story-text { font-size: 15px; }
 /* A conversation's answers: under the line in the story box, or alone in a box when the line is a bubble. */
 .qbl-story.choosing { cursor: default; }
 .qbl-story.answers-only { padding: 14px 18px; min-height: 0; cursor: default; }
@@ -224,6 +229,8 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-bubble.asking { cursor: default; }
 @media (max-width: 560px) {
   .qbl-story { padding-left: 118px; min-height: 110px; }
+  .qbl-story.narration { padding: 16px 20px 20px; min-height: 0; }
+  .qbl-story.narration .qbl-story-text { font-size: 17px; }
   .qbl-answer { font-size: 15px; padding: 9px 12px; }
   .qbl-story-portrait { width: 86px; height: 104px; left: 14px; }
   .qbl-story-text { font-size: 16px; }

@@ -44,6 +44,12 @@ return [
     // The voices characters can be given, by name, with what each one is on every service.
     'voices' => $env('QBL_TTS_VOICES', resource_path('speech/voices.json')),
 
+    // The narrator: the voice that reads what no character says (narration actions, and the text
+    // overlays and infoboxes read aloud) in scenarios that do not choose one in their settings. A key
+    // of the voice catalog, used for scenarios in its language; for other languages, and when this is
+    // empty, the catalog's own narrators (in English "storyteller", a dramatic, charismatic voice).
+    'narrator' => (string) $env('QBL_TTS_NARRATOR', ''),
+
     // Recordings already made, by service, voice and text, so recording a scenario again (or a copy
     // of it) only records the lines that changed.
     'cache_dir' => $env('QBL_TTS_CACHE_DIR', storage_path('app/speech')),

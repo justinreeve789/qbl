@@ -232,6 +232,19 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...narration,
     ],
   },
+  narration: {
+    label: 'Narration',
+    about: 'The narrator speaks: a story box with no portrait, read aloud in the narrator’s voice.',
+    fields: [
+      { key: 'text', label: 'What the narrator says', kind: 'textarea', wide: true, hint: 'For what no character says: setting the scene, what happens next. Use {{variable_name}} to show a variable.' },
+      { key: 'duration', label: 'Stays for (ms)', kind: 'number', min: 0, placeholder: 'Until the player continues', hint: 'With a time it closes by itself, but not before the voice has finished.' },
+      {
+        key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'Yes: the narrator reads it', options: [['true', 'Yes: read this aloud'], ['false', 'No: never read this aloud']],
+        hint: 'Read in the narrator’s voice (Settings, “Talking and reading”) once the voices are recorded (Characters, “Record voices”); until then the browser’s voice reads it. Players can switch reading aloud off for themselves.',
+      },
+      narration[1]!,
+    ],
+  },
   conversation: {
     label: 'Conversation',
     about: 'A dialogue tree: lines said by the player and characters, where the player picks what to say next.',
@@ -359,7 +372,7 @@ export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
 /** An icon and a colour for each action type, by what kind of thing it does. */
 const SAY = '#2f6fed', SHOW = '#8e5bd6', SOUND = '#0f9d8a', FLOW = '#c77b12', PLAYER = '#d6457a', STATE = '#3b8f4a';
 export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: string]> = {
-  infobox: ['📋', SAY], dialogue: ['💬', SAY], conversation: ['🔀', SAY], text_overlay: ['🔤', SAY],
+  infobox: ['📋', SAY], dialogue: ['💬', SAY], narration: ['📜', SAY], conversation: ['🔀', SAY], text_overlay: ['🔤', SAY],
   image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
@@ -396,6 +409,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return {};
     case 'dialogue':
       return { text: 'Hello!' };
+    case 'narration':
+      return { text: 'And so our story begins…' };
     case 'conversation':
       return starterConversation();
     case 'freeze':
@@ -469,6 +484,10 @@ export const SCENARIO_SETTINGS_FIELDS: Field[] = [
   {
     key: 'narration', label: 'Read text aloud', kind: 'select', placeholder: 'Only where an action says so', options: [['on', 'Everything: dialogue, infoboxes and text overlays'], ['off', 'Only where an action says so']], wide: true,
     hint: 'The browser’s own voice reads the text and highlights each word as it is spoken. It needs no recordings. Any action can say otherwise for itself, and players can switch it off.',
+  },
+  {
+    key: 'narrator_voice', label: 'The narrator’s voice', kind: 'voice', wide: true, placeholder: 'The default narrator',
+    hint: 'Reads what no character says: narration, and the text overlays and infoboxes that are read aloud. Recorded with the characters’ lines (Characters, “Record voices”). “None” leaves them to the browser’s voice.',
   },
   { key: 'move_speed', label: 'Walking speed (px per second)', kind: 'number', min: 50, placeholder: '420', slider: { min: 50, max: 1000, step: 10 } },
   { key: 'asset_base_url', label: 'Base address for media', kind: 'text', wide: true, hint: 'Media whose address is not absolute is loaded from here. Uploaded files do not need it.' },

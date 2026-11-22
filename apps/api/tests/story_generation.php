@@ -329,7 +329,11 @@ check($voiceOf('Once there was') !== null, 'the narrator\'s lines are recorded')
 same($voiceOf('High up it was cold'), $voiceOf('Once there was'), 'all in one narrator\'s voice');
 check($voiceOf('Good morning, Fen') !== null && $voiceOf('Good morning, Fen') !== $voiceOf('Once there was'), 'which is not Drip\'s');
 check(count(array_unique(array_filter(array_map(fn ($c) => $c['tts_voice'] ?? null, $doc['characters'])))) === 3, 'each character has a voice of their own');
-same(count(array_filter(Voicer::lines($store->bundle($scenarioId)), fn ($l) => $l['character_id'] === 0)), 4, 'the editor finds the narrator\'s lines to record again');
+$narrated = array_values(array_filter(Voicer::lines($store->bundle($scenarioId)), fn ($l) => $l['character_id'] === 0));
+// The captions, and the title card and "The End" too: a story reads everything aloud, and what no character says is the narrator's.
+same(array_column($narrated, 'text')[0] ?? null, 'Drip Goes Round', 'the narrator reads the title');
+same(count($narrated), 7, 'the editor finds the narrator\'s lines to record again');
+check(count(array_filter($narrated, fn ($l) => $l['media_id'] !== null)) === 7, 'every one recorded when the story was made');
 // The README.
 $zip = new ZipArchive;
 $zip->open($result['zip']);

@@ -21,7 +21,7 @@ export interface ChoiceHandle {
 
 export type PresentedAction = Extract<
   Action,
-  { type: 'audio' | 'dialogue' | 'shop' | 'image_fixed' | 'image_overlay' | 'infobox' | 'spritemap' | 'text_overlay' | 'video' }
+  { type: 'audio' | 'dialogue' | 'narration' | 'shop' | 'image_fixed' | 'image_overlay' | 'infobox' | 'spritemap' | 'text_overlay' | 'video' }
 >;
 
 /**

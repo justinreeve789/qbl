@@ -114,3 +114,21 @@ test('a line not read aloud still arrives a few letters at a time', async () => 
   assert.equal(line().querySelectorAll('.qbl-word').length, 0);
   h.finish();
 });
+
+test('the narrator’s story box has no close-up and no name, and its words light up as the recording says them', async () => {
+  const ui = new Ui(document.body as unknown as HTMLElement);
+  const h = ui.portraitDialogue('The reactor needs you, Sam.', { narrator: true, duration: 0, speak: { audioUrl: '/media/8/narrator.mp3', timings } });
+  const audio = FakeAudio.last!;
+  await tick();
+  const box = [...document.querySelectorAll('.qbl-story')].at(-1)!;
+  assert.ok(box.classList.contains('narration'));
+  assert.equal(box.querySelector('.qbl-story-portrait'), null, 'no close-up');
+  assert.equal(box.querySelector('.qbl-story-name'), null, 'no name');
+  assert.equal(box.getAttribute('aria-label'), 'The narrator says');
+  audio.currentTime = 0.75;
+  await tick(40);
+  const words = [...box.querySelectorAll('.qbl-word')];
+  assert.equal(words.findIndex((w) => w.classList.contains('speaking')), 2, '“needs”');
+  h.finish();
+  assert.equal(box.isConnected, false);
+});

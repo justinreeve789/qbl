@@ -53,6 +53,8 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       return 'Open the marketplace';
     case 'dialogue':
       return `${values.speaker === 'character' ? String(store.byId('characters', values.character_id as number | null)?.name ?? 'Character') : 'Player'} ${values.style === 'portrait' ? 'says, in a story box' : 'says'}: ${clip(String(values.text ?? ''))}`;
+    case 'narration':
+      return `Narrator: ${clip(String(values.text ?? ''))}`;
     case 'conversation': {
       const lines = Array.isArray(values.lines) ? (values.lines as Array<Record<string, unknown>>) : [];
       const first = lines.find((l) => l.id === values.start) ?? lines[0];

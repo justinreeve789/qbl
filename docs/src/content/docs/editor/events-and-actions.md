@@ -84,6 +84,7 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 | ------ | ------------ |
 | 📋 **Infobox** | A box of text, pictures, video, sounds and cards, with optional buttons. It can have several pages. [More](/docs/editor/infoboxes/) |
 | 💬 **Dialogue** | A speech bubble over the speaker, or a *story box* with a portrait. The speaker is the player or a **Character** |
+| 📜 **Narration** | The narrator speaks: the same story box, with no portrait or name, read aloud in the narrator's voice. For setting the scene and saying what happens next |
 | 🔀 **Conversation** | A dialogue tree: lines said by the player and characters, where the player picks what to say next. [More](/docs/editor/conversations/) |
 | 🔤 **Text overlay** | Text over the screen: where, how long, size, colour and style |
 
@@ -156,4 +157,4 @@ These have their own pages, because they are where most of a mission's teaching 
 
 ### Reading aloud
 
-Text-showing actions have **Read aloud** and **Recording to play instead**. The browser's own voice reads the text and lights each word as it is spoken. Lines of characters who have a recorded voice (Characters, **🎙️ Record voices**) play their recording, lit word by word as it is said; a recording you attach yourself is lit at an even pace over its length. Set it for the whole mission in Settings, and override it per action. Players can switch it off for themselves.
+Text-showing actions have **Read aloud** and **Recording to play instead**. The browser's own voice reads the text and lights each word as it is spoken. Lines of characters who have a recorded voice (Characters, **🎙️ Record voices**) play their recording, lit word by word as it is said; a recording you attach yourself is lit at an even pace over its length. Set it for the whole mission in Settings, and override it per action. Players can switch it off for themselves. What no character says (narrations, and text overlays and infoboxes read aloud) is the **narrator's**: by default a dramatic, charismatic storyteller, or another voice (or none) chosen in Settings, under **💬 Talking and reading**. **🎙️ Record voices** records the narrator's lines along with the characters'.

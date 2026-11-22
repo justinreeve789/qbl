@@ -225,6 +225,7 @@ class EditorApi
                 return [200, [
                     'engine' => $engine?->name(),
                     'voices' => array_values(array_map(fn ($v) => $catalog->describe($v), $catalog->forLanguage($lang))),
+                    'narrator' => $catalog->narrator($lang),
                     'lines' => $status ? ['total' => $status['lines'], 'recorded' => $status['kept'], 'to_record' => $status['remaining']] : null,
                 ]];
             }

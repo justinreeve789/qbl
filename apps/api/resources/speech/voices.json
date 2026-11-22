@@ -1,5 +1,5 @@
 {
-  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\" and a speed; for openai a voice and instructions. A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md.",
+  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\" and a speed; for openai a voice and instructions. A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md. narrators: the default narrator's voice for each language, for scenarios that do not choose one (Scenario.narrator_voice).",
   "stand_ins": {
     "en": "explorer",
     "es": "explorador",
@@ -19,6 +19,16 @@
     "hi": "नमस्ते, खोजकर्ता! तुम्हारा स्वागत है। चलो शुरू करें?",
     "ja": "こんにちは、探検家さん！さあ、始めましょう。",
     "zh": "你好，探险家！我们开始吧。"
+  },
+  "narrators": {
+    "en": "storyteller",
+    "es": "alex-es",
+    "fr": "siwis",
+    "it": "nicola",
+    "pt": "alex-pt",
+    "hi": "omega-hi",
+    "ja": "kumo",
+    "zh": "yunxi"
   },
   "voices": [
     {
@@ -895,6 +905,33 @@
         "openai": {
           "voice": "verse",
           "instructions": "Speak like a tiny, quick, mischievous creature."
+        }
+      }
+    },
+    {
+      "key": "storyteller",
+      "name": "Storyteller",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "dramatic",
+        "charismatic",
+        "engaging",
+        "expressive",
+        "storyteller",
+        "narrator"
+      ],
+      "description": "Dramatic and charismatic: a born storyteller who makes every moment sound like the start of an adventure. The default narrator.",
+      "engines": {
+        "kokoro": {
+          "voice": "bm_fable(2)+bm_lewis(1)",
+          "speed": 0.94
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "You are the narrator of an adventure for young explorers. Speak like a charismatic, dramatic storyteller: warm, rich and expressive, building suspense, with pauses for effect and a sense of wonder."
         }
       }
     },

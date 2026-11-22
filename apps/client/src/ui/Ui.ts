@@ -190,21 +190,25 @@ export class Ui implements UiPort {
    * lights up as it is spoken). `revealAll` shows the rest at once; `revealed` settles when all
    * of it is showing. `stop` ends the reading and the letters.
    */
-  private storyBox(text: string, o: { name?: string; portrait?: CharacterPicture; watching?: boolean; speak?: SpeakOptions }) {
-    const node = el('div', `qbl-story${o.watching ? ' watching' : ''}`);
-    const frame = el('div', 'qbl-story-portrait');
-    if (o.portrait?.url) {
-      frame.append(pictureNode(o.portrait, 'qbl-story-picture'));
-    } else {
-      frame.append(el('span', '', (o.name ?? '?').slice(0, 1).toUpperCase()));
-    }
+  private storyBox(text: string, o: { name?: string; portrait?: CharacterPicture; watching?: boolean; narrator?: boolean; speak?: SpeakOptions }) {
+    const node = el('div', `qbl-story${o.watching ? ' watching' : ''}${o.narrator ? ' narration' : ''}`);
     const body = el('div', 'qbl-story-body');
-    if (o.name) body.append(el('strong', 'qbl-story-name', o.name));
+    // The narrator has no face: the box is the same, without the close-up or a name.
+    if (!o.narrator) {
+      const frame = el('div', 'qbl-story-portrait');
+      if (o.portrait?.url) {
+        frame.append(pictureNode(o.portrait, 'qbl-story-picture'));
+      } else {
+        frame.append(el('span', '', (o.name ?? '?').slice(0, 1).toUpperCase()));
+      }
+      node.append(frame);
+      if (o.name) body.append(el('strong', 'qbl-story-name', o.name));
+    }
     const line = el('p', 'qbl-story-text');
     body.append(line);
-    node.append(frame, body);
+    node.append(body);
     node.setAttribute('role', o.watching ? 'status' : 'dialog');
-    node.setAttribute('aria-label', o.name ? `${o.name} says` : 'Dialogue');
+    node.setAttribute('aria-label', o.narrator ? 'The narrator says' : o.name ? `${o.name} says` : 'Dialogue');
     this.root.append(node);
 
     line.textContent = text;
@@ -247,7 +251,7 @@ export class Ui implements UiPort {
     };
   }
 
-  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle {
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; narrator?: boolean; speak?: SpeakOptions }): ActionHandle {
     const story = this.storyBox(text, o);
     story.body.append(el('span', 'qbl-story-more', o.duration > 0 ? '' : '▶'));
 

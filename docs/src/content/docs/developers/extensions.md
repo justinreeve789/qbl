@@ -36,6 +36,7 @@ The game server only lets a player move to a scene listed in the current scene's
 scene_groups | array | | Groups of scenes, each `{id, name, team_only}`. A scene names its group with `group_id`. See [Teams in a scene](#teams-in-a-scene).
 glossary | array | | Words the mission teaches. See [Glossary](#glossary).
 narration | string | off | `on`: dialogue, infoboxes and text overlays are read aloud unless an action says otherwise. `off`: only actions marked `narrate`. See [Reading text aloud](#reading-text-aloud).
+narrator_voice | string | the default narrator | The narrator's voice: what no character says (`narration` actions, and the text overlays and infoboxes read aloud) is recorded in it. A key of the server's voice catalog. Absent: the server's default narrator for the scenario's language (in English, "storyteller": dramatic and charismatic). `none`: no narrator, so the browser reads them. See [The narrator](#the-narrator).
 private_messages | bool | false | Players may send typed messages to one other player. See [Messages](#messages).
 
 ### Objectives
@@ -225,7 +226,7 @@ The generator paints a scene's water as a flat chroma colour, cuts it out and pu
 
 **Off stage.** A character placed beyond the left or right edge of a scene (`position_x` below 0, or past the scene's width) waits off stage, out of sight, until a walk brings it on: it walks straight in to the edge, then on to where the walk says. A walk to a point beyond an edge walks it off the stage and out of sight. This works in any scene, not only stories.
 
-**Captions.** A text overlay with `text_font_style: "caption"` is a story's narration: a soft panel of words, usually at `bottom center`. A text overlay read aloud stays until the voice has finished, as a speech bubble does. A scenario's `narrator_voice` (a key of the voice catalog) is the voice its read-aloud text overlays are recorded in (`qbl:voice`, the editor's "Record voices" and the generator record them).
+**Captions.** A text overlay with `text_font_style: "caption"` is a story's narration: a soft panel of words, usually at `bottom center`. A text overlay read aloud stays until the voice has finished, as a speech bubble does. A scenario's `narrator_voice` (a key of the voice catalog) is the voice its read-aloud text overlays are recorded in (`qbl:voice`, the editor's "Record voices" and the generator record them). A story box for the narrator is the [`narration`](#the-narrator) action.
 
 ### Teams in a scene
 
@@ -334,7 +335,7 @@ Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 audience | string | player | `player`: only the player who sets the event off sees it. `scene`: every player in the scene sees and hears it as it happens.
 
-Every kind of event can have an `audience`. With `scene`, these actions are shown to the other players in the scene at the moment they happen for the player who set the event off: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `translate` and `cancel`. In a shared dialogue, "the player" is the player who set it off: the bubble hangs over their avatar, and a story box shows their name and portrait.
+Every kind of event can have an `audience`. With `scene`, these actions are shown to the other players in the scene at the moment they happen for the player who set the event off: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `narration`, `translate` and `cancel`. In a shared dialogue, "the player" is the player who set it off: the bubble hangs over their avatar, and a story box shows their name and portrait.
 
 Everything an event *does* stays with the player who set it off, whatever the audience: `variable`, `award`, `jump`, `freeze`, `avatar`, `shop`, `infobox` and the timing actions. Nothing another player's event shows can change your variables, move you or open a box you must answer. (A variable that should change for everyone is a shared variable; see [Variables](#variables). An avatar being hidden is seen by everyone anyway.)
 
@@ -383,6 +384,23 @@ The bubble follows the speaker and keeps itself on screen. It sits above them wh
 ```
 
 A story conversation is normally the player's own (`audience: player`, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.
+
+### The narrator
+
+A new action type, `narration`, is the narrator speaking: the same story box as a portrait dialogue, with no close-up and no name, its words centred. It is for what no character says: setting the scene, what happens next, a word from the storyteller.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+text | string | | What the narrator says. May contain `{{variable}}` placeholders.
+duration | int | 0 | Milliseconds it stays. 0 or absent: until the player clicks, or presses Enter or Space, to continue (once to show the whole line, again to go on). With a duration it closes by itself, but not before the voice has finished.
+narrate | bool | true | A narration is read aloud whatever the scenario's `narration` setting, unless this is `false`.
+narration_media_id | int | | Its recording, made in the scenario's [narrator's voice](#reading-text-aloud) by "Record voices".
+
+```json
+{ "type": "narration", "text": "Long ago, beyond the edge of every map, there was a valley where the rivers ran uphill." }
+```
+
+Shown to the scene (`audience: scene`), the other players get the smaller box at the top of the screen that closes by itself, as with a story conversation.
 
 ### Conversations (dialogue trees)
 
@@ -454,9 +472,10 @@ Dialogue, infoboxes and text overlays can be read aloud, with **each word highli
 Parameter | Applies to | Default | Description
 --------- | ---------- | ------- | -----------
 narration | scenario | off | `on`: read everything unless an action says otherwise.
-narrate | dialogue, conversation, infobox, text_overlay | the scenario's | `true` or `false` for this action.
-narration_media_id | dialogue, infobox, text_overlay, a conversation's line | | An audio recording to play instead of the browser's voice. When the recording has word timings (`speech`, below), each word is lit as the recording says it; otherwise the words are paced evenly over its length.
+narrate | dialogue, narration, conversation, infobox, text_overlay | the scenario's (a narration's: `true`) | `true` or `false` for this action.
+narration_media_id | dialogue, narration, infobox, text_overlay, a conversation's line | | An audio recording to play instead of the browser's voice. When the recording has word timings (`speech`, below), each word is lit as the recording says it; otherwise the words are paced evenly over its length.
 speech | media (audio) | | The recording's words and when each is said: `{text, line?, voice?, engine?, words: [{w, s, e}], duration?}`, in milliseconds. Recordings made by the server's text-to-speech service have it. See [Characters' voices](/docs/developers/voices/).
+narrator_voice | scenario | the default narrator | The voice what no character says is recorded in: narrations, and the text overlays and infoboxes read aloud. `none`: the browser reads them. See [Characters' voices](/docs/developers/voices/#the-narrator).
 tts_voice | character | | The voice the character's lines are recorded in: a key of the server's voice catalog ("heart", "captain", "robot"). See [Characters' voices](/docs/developers/voices/).
 voice_pitch, voice_rate | character | 1 | How the browser's voice sounds reading the character's lines that have no recording: 0 to 2, and 0.5 to 2.
 voice_name | character | | For lines with no recording: part of the name of a browser voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
