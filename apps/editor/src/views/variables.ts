@@ -1,6 +1,7 @@
 import type { Table } from '../api';
 import { confirmDelete, h, help } from '../dom';
 import { form, type FormContext } from '../fields';
+import { renameVariable } from '../rename';
 import { VARIABLE_FIELDS } from '../schema';
 import type { Store } from '../store';
 import { emptyState, listPage } from './kit';
@@ -45,7 +46,11 @@ export function variablesPage(ctx: FormContext): HTMLElement {
     const scope = scopeOf(variable);
     const used = uses.get(name) ?? 0;
     return h('div', { class: 'var-row', role: 'row', 'data-variable': name, 'data-scope': scope },
-      form(VARIABLE_FIELDS, variable, (key, value, field) => void store.patch('variables', variable.id, { [key]: value ?? (key === 'default_value' ? 0 : value) }, field.structural === true || key === 'variable_name'), ctx),
+      form(VARIABLE_FIELDS, variable, (key, value, field) => {
+        // A new name: everything that names the variable follows it.
+        if (key === 'variable_name') return void renameVariable(store, variable, value);
+        void store.patch('variables', variable.id, { [key]: value ?? (key === 'default_value' ? 0 : value) }, field.structural === true);
+      }, ctx),
       h('span', { class: `chip var-uses${used ? '' : ' muted'}`, title: used ? `Used in ${used} place${used === 1 ? '' : 's'}: conditions, actions and text that shows it` : 'Nothing tests it, changes it or shows it yet' }, used ? `${used} use${used === 1 ? '' : 's'}` : 'Not used'),
       h('button', { type: 'button', class: 'danger icon tile-delete', title: 'Delete', 'aria-label': `Delete ${name}`, onclick: () => confirmDelete(`the variable “${name}”`) && void store.remove('variables', variable.id) }, '🗑'));
   });
