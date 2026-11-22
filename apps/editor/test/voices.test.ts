@@ -91,7 +91,8 @@ test('a character is given a voice from the list, and it can be heard', async ()
   const select = card().locator('[data-field=tts_voice] select');
   await page.waitForFunction(() => !document.querySelector<HTMLSelectElement>('dialog[data-panel=character] [data-field=tts_voice] select')?.disabled);
   const groups = await select.locator('optgroup').evaluateAll((g) => g.map((x) => (x as HTMLOptGroupElement).label));
-  assert.deepEqual(groups, ['Women', 'Men', 'Children', 'Robots and creatures']);
+  assert.deepEqual(groups, ['Larger than life', 'Women', 'Men', 'Children', 'Robots and creatures']);
+  assert.ok((await select.locator('optgroup[label="Larger than life"] option').count()) >= 20, 'with the theatrical voices (giants, pixies, villains) in a group of their own');
   assert.ok((await select.locator('option').count()) > 30, 'a good many voices to choose from');
   assert.match(await card().locator('.voice-note').innerText(), /0 of its 2 lines play a recording/);
   await select.selectOption('robot');
@@ -101,7 +102,7 @@ test('a character is given a voice from the list, and it can be heard', async ()
   await card().locator('button:has-text("Listen")').click();
   const heard = await sample;
   assert.equal(heard.headers()['content-type'], 'audio/mpeg');
-  assert.equal(asked.at(-1)?.voice, 'af_alloy(1)+am_echo(1)', 'the sample is said in the voice, as the catalog makes it on Kokoro');
+  assert.equal(asked.at(-1)?.voice, 'af_alloy(0.5)+am_echo(0.5)', 'the sample is said in the voice, as the catalog makes it on Kokoro (a blend, its weights adding up to 1)');
   const draft = (await rest<{ scenario: Scenario }>('GET', '/preview')).scenario;
   assert.equal(draft.characters![0]!.tts_voice, 'robot');
 });

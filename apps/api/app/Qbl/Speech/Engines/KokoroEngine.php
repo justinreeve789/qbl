@@ -15,7 +15,15 @@ use App\Qbl\Speech\SpeechError;
  *
  * A voice is ['voice' => one of its voices ("af_heart") or a blend of them ("af_bella(2)+af_sky(1)",
  * weighted), 'speed' => 0.25 to 4, 'lang' => its language code, only to override the one the voice
- * implies]. See https://github.com/remsky/Kokoro-FastAPI.
+ * implies ("a": a Japanese voice reading English), 'volume' => 0.1 to 4, for a voice that comes out
+ * quieter or louder than the others]. See https://github.com/remsky/Kokoro-FastAPI.
+ *
+ * A blend can also take a voice away: "am_santa(1.5)-am_michael(0.5)" is Santa pushed further from
+ * an ordinary man than Santa is, a caricature of him. That is how the catalog's theatrical voices
+ * (giants, pixies, wizards) are made. The weights are sent adding up to 1 (those taken away counted
+ * as negative), and the service must use them as they are: VOICE_WEIGHT_NORMALIZATION=false, as the
+ * tts container in docker-compose.yml has it. A service left at its default still speaks such a
+ * voice clearly, only much closer to the ordinary one.
  */
 class KokoroEngine implements SpeechEngine
 {
@@ -45,7 +53,7 @@ class KokoroEngine implements SpeechEngine
         $body = [
             'model' => 'kokoro',
             'input' => $text,
-            'voice' => (string) ($voice['voice'] ?? 'af_heart'),
+            'voice' => self::blend((string) ($voice['voice'] ?? 'af_heart')),
             'response_format' => 'mp3',
             'speed' => max(0.25, min(4.0, (float) ($voice['speed'] ?? 1.0))),
             'stream' => false,
@@ -53,6 +61,9 @@ class KokoroEngine implements SpeechEngine
         ];
         if (! empty($voice['lang'])) {
             $body['lang_code'] = (string) $voice['lang'];
+        }
+        if (isset($voice['volume']) && (float) $voice['volume'] !== 1.0) {
+            $body['volume_multiplier'] = max(0.1, min(4.0, (float) $voice['volume']));
         }
         $data = $this->call('POST', '/dev/captioned_speech', $body);
         $audio = base64_decode((string) ($data['audio'] ?? ''), true);
@@ -70,6 +81,55 @@ class KokoroEngine implements SpeechEngine
         }
 
         return new Speech($audio, 'mp3', $words, $words ? $words[array_key_last($words)]['e'] : null);
+    }
+
+    /**
+     * A blend as Kokoro-FastAPI is sent it, with weights that add up to 1 once those taken away are
+     * counted as negative: "af_bella(2)+af_sky(1)" is "af_bella(0.6667)+af_sky(0.3333)", and
+     * "am_santa(3)-am_michael(1)" is "am_santa(1.5)-am_michael(0.5)". A single voice is its name.
+     */
+    public static function blend(string $voice): string
+    {
+        $parts = self::parts($voice);
+        if (count($parts) === 1 && $parts[0][1] > 0) {
+            return $parts[0][0];
+        }
+        $sum = array_sum(array_column($parts, 1));
+        if ($sum <= 0) {
+            throw new SpeechError("The voice \"$voice\" takes away as much as it adds, which leaves no voice.");
+        }
+        $out = '';
+        foreach ($parts as $i => [$name, $weight]) {
+            if ($i === 0 && $weight < 0) {
+                throw new SpeechError("The voice \"$voice\" must start with a voice that is added.");
+            }
+            $out .= ($i === 0 ? '' : ($weight < 0 ? '-' : '+')).$name.'('.rtrim(rtrim(number_format(abs($weight) / $sum, 4, '.', ''), '0'), '.').')';
+        }
+
+        return $out;
+    }
+
+    /**
+     * The voices a blend is made of, with the weight of each (negative when taken away).
+     *
+     * @return list<array{0: string, 1: float}>
+     */
+    public static function parts(string $voice): array
+    {
+        $parts = [];
+        foreach (preg_split('/([+-])/', $voice, -1, PREG_SPLIT_DELIM_CAPTURE) as $i => $token) {
+            if ($i % 2) {
+                $sign = $token === '-' ? -1.0 : 1.0;
+
+                continue;
+            }
+            if (! preg_match('/^\s*([A-Za-z0-9_]+)\s*(?:\(\s*(\d+(?:\.\d+)?)\s*\))?\s*$/', $token, $m) || (isset($m[2]) && (float) $m[2] <= 0)) {
+                throw new SpeechError("\"$voice\" is not a Kokoro voice or a blend of them, such as af_bella(2)+af_sky(1).");
+            }
+            $parts[] = [$m[1], ($sign ?? 1.0) * (float) ($m[2] ?? 1)];
+        }
+
+        return $parts;
     }
 
     public function voices(): array

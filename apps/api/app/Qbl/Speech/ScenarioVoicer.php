@@ -16,7 +16,7 @@ use App\Qbl\ScenarioStore;
  */
 final class ScenarioVoicer
 {
-    public function __construct(private ScenarioStore $store, private Voicer $voicer) {}
+    public function __construct(private ScenarioStore $store, private Voicer $voicer, private ?VoicePicker $picker = null) {}
 
     /**
      * @param  array{force?: bool, limit?: ?int, seconds?: ?float, dry?: bool, character_id?: ?int}  $options
@@ -139,7 +139,7 @@ final class ScenarioVoicer
                 $wanted[(int) $c['id']] = ['describe' => (string) $c['name']];
             }
         }
-        $picked = (new VoicePicker($this->voicer->catalog()))->pick($wanted, $rows['scenario']['default_language'] ?? 'en', $taken);
+        $picked = ($this->picker ?? new VoicePicker($this->voicer->catalog()))->pick($wanted, $rows['scenario']['default_language'] ?? 'en', $taken);
         foreach ($rows['characters'] as $c) {
             if (isset($picked[(int) $c['id']])) {
                 $this->store->updateRow($scenarioId, 'characters', (int) $c['id'], ['settings' => ['tts_voice' => $picked[(int) $c['id']]] + (array) ($c['settings'] ?? [])]);

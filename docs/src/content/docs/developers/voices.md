@@ -15,7 +15,9 @@ By default the service is [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a
 - With an NVIDIA GPU, set `QuestLab_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0` in `.env` and give the container the GPU.
 - Not wanted: set `QuestLab_TTS_DRIVER=none` (nothing is recorded; the browser reads every line) and `docker compose stop tts`.
 
-Outside Docker, run it with `docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` and set `QuestLab_TTS_URL=http://localhost:8880`.
+- It runs with `VOICE_WEIGHT_NORMALIZATION=false`, so blends are made with exactly the weights QuestLab sends. The [theatrical voices](#theatrical-voices) need this.
+
+Outside Docker, run it with `docker run -p 8880:8880 -e VOICE_WEIGHT_NORMALIZATION=false ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` and set `QuestLab_TTS_URL=http://localhost:8880`.
 
 ## Giving characters voices and recording their lines
 
@@ -34,17 +36,18 @@ docker compose exec app php artisan qbl:voice {code} --force       # record ever
 **Any text, in a random voice:** `qbl:tts` says whatever you give it in a voice picked at random from the catalog and saves it as an MP3. It is for trying voices out and for one-off audio, such as a clip to upload as media; it does not touch any scenario.
 
 ```sh
-docker compose exec app php artisan qbl:tts "Welcome aboard, {{QuestLabPlayerName}}!"   # a random English voice: tts-<voice>.mp3
-docker compose exec app php artisan qbl:tts "¿Listos?" --lang=es --gender=female    # a random Spanish woman
-docker compose exec app php artisan qbl:tts "Halt!" --trait=robot --trait=stern     # a voice that sounds like either
+docker compose exec app php artisan qbl:tts "Welcome aboard, {{QuestLabPlayerName}}!"   # a random theatrical English voice: tts-<voice>.mp3
+docker compose exec app php artisan qbl:tts "¿Listos?" --lang=es --gender=female    # a random Spanish woman or girl
+docker compose exec app php artisan qbl:tts "Halt!" --trait=spooky --trait=regal    # a voice that sounds like either
+docker compose exec app php artisan qbl:tts "Good morning." --style=natural         # an everyday voice instead
 docker compose exec app php artisan qbl:tts "Ready?" --count=5 --out=takes/         # five different voices, to compare
 docker compose exec app php artisan qbl:tts --file=intro.txt --voice=captain --timings  # one voice, with word timings in a .json
 docker compose cp app:/app/tts-captain.mp3 .                                        # copy a file out of the container
 ```
 
-The pick is from voices of `--lang` (default `en`, American and British; `any` for every language) that have a voice of their own on the service in use, so two picks never borrow the same one. `--gender` (female, male, neutral), `--age` (child, young, adult, elder) and `--trait` narrow it, and `--seed` makes it repeatable. With no text it says the catalog's sample line in the voice's language. `{{QuestLabPlayerName}}` is said as the stand-in word ("explorer"); other placeholders are refused. Recordings are cached like a scenario's, so saying the same text in the same voice again does not call the service.
+The pick is from the [theatrical voices](#theatrical-voices) (`--style=dramatic`, the default: giants, pixies, pantomime villains), from the everyday ones (`--style=natural`) or from all of them (`--style=any`). When no theatrical voice fits what else is asked (Hindi has none, for one), it falls back to voices with some character and then to any, and says so. It is from voices of `--lang` (default `en`, American and British; `any` for every language) that have a voice of their own on the service in use, so two picks never borrow the same one. `--gender` (female, male, neutral), `--age` (child, young, adult, elder) and `--trait` narrow it, and `--seed` makes it repeatable. With no text it says the catalog's sample line in the voice's language. `{{QuestLabPlayerName}}` is said as the stand-in word ("explorer"); other placeholders are refused. Recordings are cached like a scenario's, so saying the same text in the same voice again does not call the service.
 
-**The mission generator** gives every character a voice from what the blueprint says of them (gender, age, how they sound, their personality and role), a different one each, and records their lines before packaging. `--no-voices` skips it. If the service is down the mission is still made, with a warning; record the lines later with `qbl:voice` or the editor.
+**The mission generator** gives every character a voice from what the blueprint says of them (gender, age, how they sound, their personality and role), a different one each, and records their lines before packaging. It is asked to cast the mission like a cartoon, and voices are [chosen for their flair](#theatrical-voices): a troll gets the giant's voice, an inventor the boffin's, and the guide, who must be easy to follow, a clear one unless the story makes them a character too. `--no-voices` skips it. If the service is down the mission is still made, with a warning; record the lines later with `qbl:voice` or the editor.
 
 ### What is recorded
 
@@ -73,7 +76,7 @@ The game matches the words shown against the recorded words, in order. Capitals 
 
 ## The voices
 
-The voices are in `apps/api/resources/speech/voices.json`: about 50 of them, 35 in English (American and British women, men, children, older people, robots and creatures) and a few each in Spanish, French, Italian, Brazilian Portuguese, Hindi, Japanese and Mandarin. A scenario is offered the voices of its language (`default_language`). Japanese and Mandarin recordings have no word timings, so their words are paced evenly.
+The voices are in `apps/api/resources/speech/voices.json`: about 90 of them, 62 in English (American and British women, men, children, older people, robots and creatures, and 27 theatrical characters) and a few each in Spanish, French, Italian, Brazilian Portuguese, Hindi, Japanese and Mandarin. A scenario is offered the voices of its language (`default_language`). Japanese and Mandarin recordings have no word timings, so their words are paced evenly.
 
 A character's `tts_voice` is a **key of this catalog** ("heart", "captain", "robot"), never a service's own voice name. Each voice says who it sounds like and what it is on every service:
 
@@ -82,6 +85,7 @@ A character's `tts_voice` is a **key of this catalog** ("heart", "captain", "rob
   "key": "captain", "name": "Captain", "gender": "male", "age": "adult", "lang": "en-US", "accent": "American",
   "traits": ["commanding", "deep", "warm", "confident", "leader", "captain"],
   "description": "A deep, commanding voice with warmth: a captain, a leader.",
+  "flair": 1,
   "engines": {
     "kokoro": { "voice": "am_michael(1)+am_fenrir(1)", "speed": 0.95 },
     "openai": { "voice": "onyx", "instructions": "Commanding but warm, like a ship's captain." }
@@ -90,6 +94,33 @@ A character's `tts_voice` is a **key of this catalog** ("heart", "captain", "rob
 ```
 
 On Kokoro, a voice is one of its 54 voices or a weighted blend of them (`af_bella(2)+af_sky(1)`), at a speed from 0.25 to 4. Blends are how the catalog has voices Kokoro does not ship with, such as children, a robot or a mentor. To add a voice, add an entry: give it a new key, say who it is, and say what it is on Kokoro. `qbl:voice --list` checks that every Kokoro voice it uses exists, and `qbl:voice --sample=<key>` lets you hear it. `QuestLab_TTS_VOICES` points at another catalog file.
+
+### Theatrical voices
+
+Kokoro's own voices are natural and even. It has no settings for emotion or pitch, so the catalog's **theatrical voices** (`"flair": 2`) are made from the three things it does have:
+
+- **A blend that takes a voice away.** `am_santa(1.5)-am_michael(0.5)` is Santa pushed further from an ordinary man than Santa is: a caricature of him, higher and merrier (the Gnome). `bm_lewis(1.5)-bf_alice(0.5)` pushes a deep man away from a girl, and comes out about half an octave deeper and nearly flat (the Giant). The weights are sent adding up to 1, with those taken away counted as negative. Keep what is taken away at about 0.8 or less: further out, speech starts to break up.
+- **Voices borrowed from another language.** Kokoro's Japanese and Mandarin voices are far higher (and one or two far deeper) than any of its English ones, and they read English clearly when told to: `"voice": "jf_tebukuro", "lang": "a"` is the Pixie, an octave above the highest English voice. `lang` is Kokoro's language code to read in (`a` American, `b` British, `e` Spanish, `f` French, `i` Italian, `p` Portuguese). This works well for English, Spanish and Portuguese, partly for Italian, and poorly for French, whose few theatrical voices are built on the French and Italian voices themselves.
+- **Speed**, slow for the huge and the grand, fast for the small and the zany, and `volume` (0.1 to 4) for a voice that comes out quieter or louder than the rest.
+
+```json
+{
+  "key": "giant", "name": "Giant", "gender": "male", "age": "adult", "lang": "en-GB", "accent": "British",
+  "traits": ["booming", "deep", "rumbling", "slow", "gruff", "giant", "ogre", "troll", "bear", "golem", "huge"],
+  "description": "A very deep, slow rumble: a giant, an ogre, a troll under the bridge, a great sleepy bear.",
+  "flair": 2,
+  "engines": {
+    "kokoro": { "voice": "bm_lewis(1.5)-bf_alice(0.5)", "speed": 0.85, "volume": 1.4 },
+    "openai": { "voice": "onyx", "instructions": "A British giant: very deep, slow and rumbling, each word heavy. Larger than life." }
+  }
+}
+```
+
+The English ones are Giant, Dragon, Gnome, Jolly, Thespian, Wizard, Imp, Hero, Pirate, Boffin, Villain, Sprout, Goblin, Pixie, Mouse, Fox, Ghost, Witch, Queen, Godmother, Bubbles, Fusspot, Warrior, Diva, Alien, Gizmo and Colossus. Spanish and Portuguese have a giant, a fairy, a gnome and a trickster each, Italian the same four, and French a fairy. Every one was recorded and transcribed back by a speech recogniser to check that it is still easy to understand, and every one returns word timings like any other voice.
+
+`flair` is how much of a character a voice is: 0 (or absent) an everyday voice, 1 one with character (the jolly Grandpa, Puck the trickster), 2 a theatrical one. When characters are given voices (the generator, **🎭 Give everyone a voice**, `qbl:voice --assign`), a voice must first fit the character's gender and age; after that each word of the description found among a voice's traits is worth 5 points and each step of flair `QBL_TTS_FLAIR` points (3 by default). So a theatrical voice beats an everyday one that matches one more word, a character nothing is said of gets a theatrical voice, and a guide described as "warm, friendly, clear" keeps an everyday one. `QBL_TTS_FLAIR=0` chooses by fit alone; a higher number makes the cast theatrical nearly always. In the editor's list the theatrical voices are grouped under **Larger than life**.
+
+A Kokoro-FastAPI that is not the `tts` container must be started with `VOICE_WEIGHT_NORMALIZATION=false`. Left at its default it halves a blend that takes a voice away: the line is still said clearly, but in a voice much closer to the ordinary one. Everything else works the same either way.
 
 ## Using another text-to-speech service
 
@@ -130,6 +161,7 @@ Variable | Default | What
 `QuestLab_TTS_TIMEOUT` | 120 | Seconds to wait for one line.
 `QuestLab_TTS_CACHE_DIR` | `/data/speech` (Docker), `storage/app/speech` | Recordings already made.
 `QuestLab_TTS_VOICES` | `resources/speech/voices.json` | The voice catalog.
+`QBL_TTS_FLAIR` | 3 | How strongly [theatrical voices](#theatrical-voices) are chosen for characters. 0: by fit alone.
 
 ## Editor API
 

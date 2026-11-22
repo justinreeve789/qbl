@@ -44,6 +44,13 @@ return [
     // The voices characters can be given, by name, with what each one is on every service.
     'voices' => $env('QBL_TTS_VOICES', resource_path('speech/voices.json')),
 
+    // How strongly voices with character are chosen over everyday ones when characters are given
+    // voices (the generator, the editor's "Give everyone a voice", qbl:voice --assign). Every voice in
+    // the catalog has a flair: 0 everyday, 1 with character, 2 theatrical (a giant, a pixie, a
+    // pantomime villain). 3 (the default): a larger-than-life cast wherever a character's description
+    // does not say otherwise. 0: voices are chosen by fit alone. Higher: theatrical nearly always.
+    'flair' => (float) $env('QBL_TTS_FLAIR', 3),
+
     // Recordings already made, by service, voice and text, so recording a scenario again (or a copy
     // of it) only records the lines that changed.
     'cache_dir' => $env('QBL_TTS_CACHE_DIR', storage_path('app/speech')),

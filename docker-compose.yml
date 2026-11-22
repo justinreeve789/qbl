@@ -163,6 +163,8 @@ services:
       QBL_TTS_URL: ${QBL_TTS_URL:-http://tts:8880}
       QBL_TTS_API_KEY: ${QBL_TTS_API_KEY:-}
       QBL_TTS_TIMEOUT: ${QBL_TTS_TIMEOUT:-}
+      # How strongly theatrical voices are chosen for characters: 3 by default, 0 for everyday voices.
+      QBL_TTS_FLAIR: ${QBL_TTS_FLAIR:-}
       QBL_TTS_OPENAI_URL: ${QBL_TTS_OPENAI_URL:-}
       QBL_TTS_OPENAI_KEY: ${QBL_TTS_OPENAI_KEY:-}
       QBL_TTS_OPENAI_MODEL: ${QBL_TTS_OPENAI_MODEL:-}
@@ -216,6 +218,10 @@ services:
     environment:
       # Its test page (/web) is not needed: nothing outside the network reaches it anyway.
       ENABLE_WEB_PLAYER: "false"
+      # Blends are used with the weights the app sends (which add up to 1). The catalog's theatrical
+      # voices take a voice away from another ("am_santa(1.5)-am_michael(0.5)") to exaggerate it, and
+      # with Kokoro-FastAPI's own normalizing they come out much tamer.
+      VOICE_WEIGHT_NORMALIZATION: "false"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8880/health"]
       interval: 15s
