@@ -61,7 +61,6 @@ class MissionBuilder
     private const REVEAL = [340, 170];
 
     /** How far an older-style wandering character paces either side of their spot. */
-    private const WANDER = 110;
 
     /** A thing's name shows while the student is this close to it (or the pointer is over it). */
     public const HINT_NEAR = 300;
@@ -599,7 +598,6 @@ class MissionBuilder
         }
 
         $spawns = [['name' => 'default', 'position_x' => (int) (($left + $right) / 2), 'position_y' => $this->clear((int) (($left + $right) / 2), min($bottom - 40, $ground + (int) ($floor * 0.55)))]];
-        $placements = [];
         // The far view, drifting slower than the scene: it shows its left edge at the scene's left edge and
         // its right edge at the scene's right edge on the widest screens (a view about 2400 pixels wide).
         $layersBack = [];
@@ -700,21 +698,21 @@ class MissionBuilder
             if ($c['scene'] !== $key) {
                 continue;
             }
-            [$charId, , $sheet] = $this->characterIds[$c['key']];
+            [, , $sheet] = $this->characterIds[$c['key']];
             [$x, $feet] = $this->characterSpots[$c['key']];
             $dispatcher = $this->talkDispatcher($sceneId, $c, $key);
-            $placements[] = ['character_id' => $charId, 'position_x' => $x, 'position_y' => $feet, 'facing' => $x > $W / 2 ? 'left' : 'right', 'event_id' => $dispatcher];
-            if ($routine = $this->routine($c, $x, $feet)) {
-                $this->rows['characters'][$this->characterRows[$c['key']]]['settings'] += ['routine' => $routine, 'walk_speed' => 90];
-            }
+            // Where they start: this scene, at their spot. Clicking them runs the scene's talk dispatcher,
+            // which only runs here; they stay here (they do not walk around on their own, so students find
+            // them where their conversations and cutscenes expect them).
+            $this->rows['characters'][$this->characterRows[$c['key']]]['settings'] += [
+                'scene_id' => $sceneId, 'position_x' => $x, 'position_y' => $feet, 'facing' => $x > $W / 2 ? 'left' : 'right', 'event_id' => $dispatcher,
+            ];
             // Their name over their head when students come near, also clickable: "Talk to Dr. Ren", or the
-            // report label once the mission is ready. Not for one who walks about: the label would stay behind.
-            if (! $this->moves($c)) {
-                $height = (int) (($sheet['frame_height'] ?? $sheet['height']) * self::characterScale($c) * Sizes::depth($feet, $ground));
-                $label = $this->hotspot($sceneId, "label-{$c['key']}", [$x, $feet - (int) ($height / 2)], max(70, (int) ($height / 2)), click: true, conditions: isset($this->vars["away_{$c['key']}"]) ? [$this->cond("away_{$c['key']}", '=', 0)] : []);
-                $this->text($label, $x, $feet - $height - 30, "{{label_{$c['key']}}}", 'Talk to '.$c['name'], hint: true);
-                $this->action($label, 'run_event', ['target_event_id' => $dispatcher]);
-            }
+            // report label once the mission is ready.
+            $height = (int) (($sheet['frame_height'] ?? $sheet['height']) * self::characterScale($c) * Sizes::depth($feet, $ground));
+            $label = $this->hotspot($sceneId, "label-{$c['key']}", [$x, $feet - (int) ($height / 2)], max(70, (int) ($height / 2)), click: true, conditions: isset($this->vars["away_{$c['key']}"]) ? [$this->cond("away_{$c['key']}", '=', 0)] : []);
+            $this->text($label, $x, $feet - $height - 30, "{{label_{$c['key']}}}", 'Talk to '.$c['name'], hint: true);
+            $this->action($label, 'run_event', ['target_event_id' => $dispatcher]);
         }
 
         // ---- the scene's interactions, at varied depths on the floor
@@ -751,7 +749,6 @@ class MissionBuilder
             'spawn_points' => $spawns,
             'scale_areas' => [['name' => 'depth', 'x' => 0, 'y' => $ground, 'width' => $W, 'height' => $H - $ground, 'scale_top' => (int) round(Sizes::DEPTH_BACK * 100), 'scale_bottom' => (int) round(Sizes::DEPTH_FRONT * 100), 'speed_effect' => 60]],
             'items' => $layoutItems,
-            'characters' => $placements,
         ] + ($lights ? ['lights' => $lights] : []);
     }
 
@@ -1182,7 +1179,7 @@ class MissionBuilder
             $feet = $player ? $ground + (int) ((self::HEIGHT - $ground) * 0.4) : ($this->characterSpots[$who][1] ?? $ground + 100);
             switch ($beat['do'] ?? '') {
                 case 'walk':
-                    $this->action($e, 'walk', [...($player ? ['target' => 'player'] : ['character_id' => $id]), 'to' => 'point', 'position_x' => (int) round(max(0.08, min(0.92, (float) $beat['x'])) * $width), 'position_y' => $feet]);
+                    $this->action($e, 'walk', [...($player ? ['target' => 'player'] : ['character_id' => $id, 'scene_id' => $this->sceneIds[$sceneKey]]), 'to' => 'point', 'position_x' => (int) round(max(0.08, min(0.92, (float) $beat['x'])) * $width), 'position_y' => $feet]);
                     break;
                 case 'say':
                     $this->dialogue($e, ['speaker' => $who, 'text' => mb_substr((string) $beat['text'], 0, 160)], style: 'bubble');
@@ -1196,7 +1193,7 @@ class MissionBuilder
                 case 'fall':
                     if (! $player) {
                         if (isset($beat['x'])) {
-                            $this->action($e, 'walk', ['character_id' => $id, 'to' => 'point', 'position_x' => (int) round(max(0.08, min(0.92, (float) $beat['x'])) * $width), 'position_y' => $feet]);
+                            $this->action($e, 'walk', ['character_id' => $id, 'scene_id' => $this->sceneIds[$sceneKey], 'to' => 'point', 'position_x' => (int) round(max(0.08, min(0.92, (float) $beat['x'])) * $width), 'position_y' => $feet]);
                         }
                         $this->action($e, 'animate', [...$target, 'animation' => 'jump']);
                         $this->dialogue($e, ['speaker' => $who, 'text' => mb_substr((string) ($beat['text'] ?? 'Whoa! Help!'), 0, 160)], style: 'bubble');
@@ -1206,7 +1203,7 @@ class MissionBuilder
                     break;
                 case 'leave':
                     if (! $player) {
-                        $this->action($e, 'walk', ['character_id' => $id, 'to' => 'point', 'position_x' => ($beat['edge'] ?? 'right') === 'left' ? 20 : $width - 20, 'position_y' => $feet]);
+                        $this->action($e, 'walk', ['character_id' => $id, 'scene_id' => $this->sceneIds[$sceneKey], 'to' => 'point', 'position_x' => ($beat['edge'] ?? 'right') === 'left' ? 20 : $width - 20, 'position_y' => $feet]);
                         $this->action($e, 'variable', ['name' => "away_$who", 'operator' => 'set', 'operand' => 1]);
                     }
                     break;
@@ -1631,55 +1628,6 @@ class MissionBuilder
         $this->action($report, 'freeze', ['frozen' => false]);
 
         return $report;
-    }
-
-    /**
-     * What a character does on their own, run by the game server for everyone: stroll between their spots
-     * (or, older blueprints, pace either side of theirs), and now and then say one of their lines in a bubble.
-     */
-    private function routine(array $c, int $x, int $feet): ?array
-    {
-        $chatter = array_values(array_filter((array) ($c['chatter'] ?? []), fn ($l) => is_string($l) && trim($l) !== ''));
-        $say = fn (int $i) => isset($chatter[$i]) ? [['type' => 'dialogue', 'text' => mb_substr($chatter[$i], 0, 120)]] : [];
-        $min = 230;
-        $max = $this->width - 230;
-        if ($c['key'] !== $this->guide && ! empty($c['walks'])) {
-            $steps = [];
-            foreach (array_values($c['walks']) as $i => $f) {
-                $steps[] = ['type' => 'walk', 'to' => 'point', 'position_x' => (int) max($min, min($max, round((float) $f * $this->width))), 'position_y' => $this->clear((int) round((float) $f * $this->width), $feet)];
-                $steps[] = ['type' => 'wait', 'duration' => 3000 + 1500 * ($i % 3)];
-                array_push($steps, ...$say($i));
-            }
-
-            return ['steps' => $steps, 'loop' => true];
-        }
-        if ($this->moves($c)) {
-            return ['steps' => [
-                ['type' => 'walk', 'to' => 'point', 'position_x' => max($min, $x - self::WANDER), 'position_y' => $feet],
-                ['type' => 'wait', 'duration' => 2500],
-                ...$say(0),
-                ['type' => 'walk', 'to' => 'point', 'position_x' => min($max, $x + self::WANDER), 'position_y' => $feet],
-                ['type' => 'wait', 'duration' => 3500],
-                ...$say(1),
-            ], 'loop' => true];
-        }
-        if ($chatter) {
-            $steps = [];
-            foreach ($chatter as $i => $_) {
-                $steps[] = ['type' => 'wait', 'duration' => 9000 + 5000 * $i];
-                array_push($steps, ...$say($i));
-            }
-
-            return ['steps' => $steps, 'loop' => true];
-        }
-
-        return null;
-    }
-
-    /** Whether a character walks about on their own: never the guide, whom students must be able to find. */
-    private function moves(array $c): bool
-    {
-        return (! empty($c['walks']) || ! empty($c['wanders'])) && $c['key'] !== $this->guide;
     }
 
     /**

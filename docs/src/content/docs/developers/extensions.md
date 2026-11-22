@@ -74,7 +74,7 @@ walkable_areas | array of polygons | whole scene | Where feet may be. A polygon 
 blocked_areas | array of polygons | | Holes cut out of the walkable areas (furniture, pits).
 spawn_points | array | | Named places players appear. See below.
 items | array | | Item placements: `{item_id, position_x, position_y}`.
-characters | array | | Character placements: `{character_id, position_x, position_y, facing, event_id}`.
+characters | array | | *Before characters had a start of their own.* Character placements: `{character_id, position_x, position_y, facing, event_id}`. A character's first placement, taking the scenes in order, is read as where it starts (see [Characters live in the world](#characters-live-in-the-world)); later ones are not used (the checks say so).
 indirect_events | array | | Events that only run via a run event action, an infobox button or a character. (Mentioned on the Events page; this is where they live.)
 
 shadow_spots | array | | Patches of shade. See [Shadow spots](#shadow-spots).
@@ -316,7 +316,7 @@ Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 text | string | | What is said. `{{variable}}` placeholders work.
 speaker | string | player | `player`, or `character`.
-character_id | int | | The character, when `speaker` is `character`. For a bubble it must be placed in the scene; a story box can carry a voice from anywhere.
+character_id | int | | The character, when `speaker` is `character`. A bubble hangs over the character in the player's scene; when it is elsewhere the line is shown in a story box. A story box can carry a voice from anywhere.
 style | string | bubble | `bubble`: a speech bubble over the speaker. `portrait`: a story box.
 duration | int | | Milliseconds on screen. Absent: a bubble stays long enough to read, and a story box stays until the player continues. A click closes either sooner.
 
@@ -353,7 +353,7 @@ Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 id | string | | Unique within the conversation: 1 to 32 letters, digits, `-` and `_`. What choices and `next` point at.
 speaker | string | player | `player`, or `character`.
-character_id | int | | The character, when `speaker` is `character`. As a bubble it must be placed in the scene; a story box can carry a voice from anywhere.
+character_id | int | | The character, when `speaker` is `character`. As a bubble it hangs over the character in the player's scene; when it is elsewhere the line is shown in a story box. A story box can carry a voice from anywhere.
 text | string | | What is said. `{{variable}}` placeholders work.
 narration_media_id | int | | A recording of this line, played instead of the browser's voice.
 conditions | array | | The line is said only while these hold. Otherwise the conversation passes over it to its `next`, so one line can stand in for another ("Back again?" before "Hello, stranger").
@@ -451,7 +451,7 @@ A new action type, `animate`, plays an animation on something in the scene. See 
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 animation | string | | The animation's name: one of the character's or avatar's animations (not a pose), one defined on an item's sprite sheet, or a built-in move (`jump`, `spin`, `crouch`, `wave`, `dance`). Empty: stop what is playing and return to standing and walking.
-target | string | player | `player`: the avatar of the player whose event this is. `item`: an item or vehicle, on the floor of this scene or being worn or ridden. `character`: a character placed in this scene. `action`: a picture that an `image_fixed` action is showing.
+target | string | player | `player`: the avatar of the player whose event this is. `item`: an item or vehicle, on the floor of this scene or being worn or ridden. `character`: a character in the player's scene (one that is elsewhere is not seen to animate; the checks warn when it may be elsewhere). `action`: a picture that an `image_fixed` action is showing.
 item_id, character_id, target_id | int | | Which item, character or action, for those targets.
 
 ```json
@@ -468,20 +468,23 @@ Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 target | string | character | `character` or `player`: the avatar of the player whose event this is.
 character_id | int | | Which character, for `target: "character"`.
-to | string | point | `point`: a spot in the scene the walker is in. `spawn`: one of that scene's spawn points. `scene`: another scene, through its doors (below).
+scene_id | int | | A character's walk: the scene to walk to (see below). The player's: for `to: "scene"`, the scene to go to.
+to | string | point | A character's walk: `point` (a spot in that scene), `spawn` (one of its spawn points) or `scene` (just into it, stopping where its door brings it). The player's: `point` or `spawn` in the scene they are in, or `scene`, out through this scene's door.
 position_x, position_y | int | | For `point`. The walker stops at the nearest spot it can stand on.
-spawn_point | string | | For `spawn`: the spawn point. For `scene`: a spawn point of that scene to walk on to once there (roaming characters only).
-scene_id | int | | For `scene`: the scene to walk to.
+spawn_point | string | | For `spawn`: the spawn point.
+wander | bool | true | For a character that [walks around on its own](#walking-around-on-its-own): start again once there (`true`), or stay there until another walk sends it on (`false`). A walk with `wander` on sets it walking around again.
 speed | int | | Scene pixels per second. Default: the character's `walk_speed`, else the scenario's `move_speed`. A player is never walked faster than `move_speed`.
 facing | string | | `left` or `right`: turn this way on arriving. Default: the way it walked (at a spawn point, the way the spawn point faces).
 
 ```json
-{ "type": "walk", "character_id": 3, "to": "scene", "scene_id": 12, "spawn_point": "console" }
+{ "type": "walk", "character_id": 3, "scene_id": 12, "to": "point", "position_x": 880, "position_y": 610, "wander": false }
 ```
 
-**Doors.** To walk `to` a scene, the walker heads for a **door**: a hotspot of its scene whose own actions include a `jump` to that scene (the first jump counts; one on an infobox button does not). Walk-in hotspots are preferred, which is what the [scene map](/docs/editor/scenarios-and-scenes/) makes between scenes. On reaching the hotspot it goes through and arrives at the spawn point the jump names, facing the way that spawn point faces, exactly as a player would. A roaming character goes through as many rooms as it takes (the fewest), and only through doors whose conditions on shared variables hold, so a door locked by a room variable keeps characters out too. The door's other actions are not run: they belong to players.
+**A character walks in the world.** Characters [live in the world](#characters-live-in-the-world), so a character's walk names the scene as well as the spot: from wherever the character is when the action runs, it takes the quickest way there, scene by scene. It is walked by the game server, for everyone, and stays where it went. A walk written before walks named a scene (no `scene_id`, `to` `point` or `spawn`) goes to the scene of its event; `to: "scene"` with a `spawn_point` is read as `to: "spawn"` in that scene. In one of a character's own events (which can run in any scene) a walk must name its scene.
 
-**Who sees it.** A character that [roams](#characters-that-walk-around-on-their-own) is walked by the game server, for everyone, and stays where it went. Any other character walks on the player's own screen (or, when the event's `audience` is `scene`, on everyone's in the scene), like any other thing an event shows; one that walks out through a door is gone from the scene until it is entered again. The player walks themselves through the room as usual (their position reaches everyone through the room state), even while [frozen](#freeze): a freeze and walks make a cutscene. A player walked `to` a scene goes through a door of this scene, running the door's actions as if they had walked in (or clicked it), so only a scene next to this one can be reached.
+**Doors.** To get to another scene, the walker heads for a **door**: a hotspot of the scene it is in whose own actions include a `jump` (the first jump counts; one on an infobox button does not). Walk-in hotspots are preferred, which is what the [scene map](/docs/editor/scenarios-and-scenes/) makes between scenes. On reaching the hotspot it goes through and arrives at the spawn point the jump names, facing the way that spawn point faces, exactly as a player would. A character goes through as many rooms as it takes (the fewest), and only through doors whose conditions on shared variables hold, so a door locked by a room variable keeps characters out too. The door's other actions are not run: they belong to players.
+
+**The player** walks themselves through the room as usual (their position reaches everyone through the room state), even while [frozen](#freeze): a freeze and walks make a cutscene. A player walked `to` a scene goes through a door of this scene, running the door's actions as if they had walked in (or clicked it), so only a scene next to this one can be reached.
 
 With `blocking` (the default) the next action waits until the walker arrives, or stops trying: there is no way there, another walk took over, or (for the player) the player walked off elsewhere.
 
@@ -771,7 +774,7 @@ A vehicle is always `unique`, whatever the document says: there is one of it in 
 
 ## Characters
 
-Everyone who walks around a scene is a **character**: the avatars players choose from, and the characters (NPCs) a scenario places. Both are drawn from their **animations**, by name, and nothing else; they differ in where they live. A scenario's characters are in `characters` and placed by `scenes[].characters`. Avatars belong to the platform, the same in every scenario: the server adds them to the document as `avatars` (above), and a player's choice of avatar (`avatar_media_id` on their account, `avatar` in the room) is an avatar's `id`.
+Everyone who walks around a scene is a **character**: the avatars players choose from, and the characters (NPCs) a scenario defines. Both are drawn from their **animations**, by name, and nothing else; they differ in where they live. A scenario's characters are in `characters`; each [lives in the world](#characters-live-in-the-world), starting in a scene of its own. Avatars belong to the platform, the same in every scenario: the server adds them to the document as `avatars` (above), and a player's choice of avatar (`avatar_media_id` on their account, `avatar` in the room) is an avatar's `id`.
 
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
@@ -780,7 +783,7 @@ animations | object | | The character's animations, by name. See below.
 scale | decimal | 1.0 | Display scale of its pictures. Each picture is also stretched by its own media `scale_x` and `scale_y`, so a sheet shared by several characters can be sized once, on the media, and each character sized on top of that.
 tts_voice | | | The voice its lines are recorded in, a key of the server's voice catalog. See [Characters' voices](/docs/developers/voices/).
 voice_pitch, voice_rate, voice_name | | | How the browser reads its lines that have no recording. See [Reading text aloud](#reading-text-aloud).
-conditions | array | | Scenario characters only: the character is there only while these hold. One whose conditions stop holding while players are in the scene fades away (a character who leaves for good sets a shared variable it tests). One placed in the scene (not roaming) fades back in where it is placed once they hold again: a character who fell and has been rescued.
+conditions | array | | Scenario characters only: the character is seen, by each player, only while these hold (by that player's variables too). One whose conditions stop holding while a player is in its scene fades away for them, and fades back in where it is once they hold again: a character who fell and has been rescued, or one who leaves for good (a shared variable it tests).
 media_id, portrait_media_id | int | | *Before animations.* One picture and a close-up. Read only when `animations` is empty (see below).
 
 ### Animations of a character
@@ -823,48 +826,48 @@ Here she stands and walks from one sheet (mirrored when facing left), her close-
 
 **Platform avatars** (Laravel API) are rows of `avatars`. An avatar's `settings.animations` names pictures that are rows of `platform_media` (the platform's own pictures, which several avatars can share); an older row with `image_url` (and a sheet in `settings`) and `portrait_url` is read as one picture and a close-up. `database/seeders/data/avatars.php` gives pictures by address and seeding makes one `platform_media` row per address.
 
-A placement's `event_id` names an indirect event in the same scene that runs when the character is clicked, typically an infobox with what they say.
+### Characters live in the world
 
-### Characters that walk around on their own
-
-A character with `roams: true`, or with a `routine`, **lives in the world**. There is one of it per instance (team), kept by the game server like a [unique item](#items): every player sees it in the same place, it walks between scenes, and where it was left is saved with the instance (`characters` in [room data](/docs/developers/save-data/#room-data)). It starts at its **first placement**, taking the scenes in order. Placing it in other scenes too does not make copies: it says what clicking it does in that scene (`event_id`). Its `conditions` still decide, for each player, whether it can be seen.
+A scenario's characters belong to the world, not to scenes. There is **one of each per instance** (team), kept by the game server like a [unique item](#items): every player sees it in the same place, walk actions send it from scene to scene, and where it was left is saved with the instance (`characters` in [room data](/docs/developers/save-data/#room-data)). Its `conditions` decide, for each player, whether they can see it.
 
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
-roams | bool | false | It walks around on its own. Set by itself when it has a routine.
+scene_id | int | | The scene it starts in. Without one it is in no scene: a voice for story boxes, say.
+position_x, position_y | int | | Where it stands there at the start: its feet.
+facing | string | right | `left` or `right`, at the start.
+event_id | int | | The event that runs when a player clicks it: one of its own `events`.
+events | array | | The character's own events (below).
+roams | bool | false | It [walks around on its own](#walking-around-on-its-own).
 walk_speed | int | `move_speed` | Scene pixels per second when a walk does not say.
-routine | object | | What it does on its own (below).
-
-A **routine** is a list of steps the server runs one after another, for everyone, whether or not anyone is watching:
-
-Parameter | Type | Default | Description
---------- | ---- | ------- | -----------
-steps | array | | The steps, in order.
-loop | bool | true | Start again from the first step after the last.
-conditions | array | | It keeps to its routine only while these hold. When they stop holding it stops where it is, and carries on with the step it was on when they hold again.
-
-Each step is written as the action it is, without an `id` and without saying who does it (it is the character itself): `walk` (any destination above), `wait`, `dialogue` (a bubble over the character; `style`, `speaker` and `character_id` are not used), `animate` (`animation` only) and `variable`. A step may have `conditions` (it is skipped while they do not hold) and `blocking: false` (the next step starts at once: say something while walking).
 
 ```json
-{ "id": 3, "name": "Robo", "walk_speed": 240,
+{ "id": 3, "name": "Robo", "scene_id": 10, "position_x": 640, "position_y": 820, "facing": "left",
+  "roams": true, "walk_speed": 240, "event_id": 70,
   "animations": { "stand_right": { "media_id": 50 }, "walk_right": { "media_id": 51 } },
-  "routine": {
-    "conditions": [{ "variable": "robo_on", "operator": "=", "operand": 1 }],
-    "steps": [
-      { "type": "walk", "to": "scene", "scene_id": 12, "spawn_point": "console" },
-      { "type": "dialogue", "text": "Readings look normal." },
-      { "type": "animate", "animation": "wave" },
-      { "type": "wait", "duration": 4000 },
-      { "type": "variable", "name": "robo_laps", "operator": "+", "operand": 1 },
-      { "type": "walk", "to": "scene", "scene_id": 10 }
-    ] } }
+  "events": [
+    { "id": 70, "shortname": "talk", "actions": [{ "id": 71, "type": "dialogue", "speaker": "character", "character_id": 3, "text": "Beep! Need a hand?" }] },
+    { "id": 72, "shortname": "treasure", "actions": [{ "id": 73, "type": "dialogue", "speaker": "character", "character_id": 3, "text": "You found it!" }] }
+  ] }
 ```
 
-**Only shared variables count.** A routine is nobody's in particular, so conditions on a player's own variables are left out (the validator warns), and a `variable` step can only change a room-scoped variable. To have a character stop and talk, set a shared variable in the event that starts the conversation, and make the routine's conditions test it.
+**Its own events.** A character's `events` are events like a scene's (conditions, actions, `audience`), but they belong to no scene: each has the character's `character_id` and no `scene_id`, and runs in whichever scene the player is in. Clicking the character runs `event_id`; any scene's [`run_event`](/docs/developers/action/#run-event) can start any of them (digging up a treasure in one scene can have the character remark on it). Their jumps count as jumps from every scene. A bubble line (`dialogue` or `conversation` with `speaker: "character"`) whose character is not in the player's scene is shown in a story box instead; an animation of a character that is not there is not seen.
 
-**Walk actions come first.** A player's event can send a roaming character anywhere with a `walk` action. The routine waits until it has arrived, then carries on with its current step (a walk step sets off again from where the character now is). The server takes only walks that an event of the sender's scene contains, no more than four a second per player.
+**Things a scene does to a character.** Because a character can be elsewhere, the checks warn about a scene's actions that need it there (a bubble line, an animation, a `run_event` of a character's event that has one): when it walks around on its own, when walk actions also take it to other scenes, and (an error, for an animation) when nothing ever brings it to that scene. The editor shows the same warning on the action's card as it is written.
 
-**Media.** A roaming character can turn up in any scene, so its pictures load with the scenario's global media rather than with a scene.
+**Older documents.** A character placed in scenes (`scenes[].characters`) starts at its first placement, taking the scenes in order, and that placement's `event_id` (an indirect event of that scene) is what clicking it runs; such an event runs only in its scene, which the checks point out for a character that can be elsewhere. The editor and the API's migration store the start with the character; ZIPs made before are read the same way.
+
+### Walking around on its own
+
+A character with `roams: true` walks around by itself, for everyone, whether or not anyone is watching:
+
+1. It chooses **3 to 7 spots** in the walkable area of the scene it is in, each one it can reach from where it stands.
+2. It walks to each in turn, stopping **2 to 10 seconds** (at random) between them.
+3. After the last, it heads for a **door with no conditions** (a hotspot whose jump leads to another scene, with no conditions on the hotspot or the jump) that it can walk to, chosen at random, goes through it and arrives at the spawn point the jump names.
+4. In the new scene it starts again. In a scene with no such door it chooses new spots and keeps walking around there.
+
+A [`walk` action](#walk) still sends it where the action says; once there it walks around again, unless the walk has `wander: false`, in which case it stays until another walk sends it on. Whether it is walking around is saved with the instance when a walk action changed it. Routines (a list of steps a character repeated) are gone: make a character do things with events and actions. A character that had a routine walks around on its own.
+
+**Media.** A character that walks around on its own can turn up in any scene, so its pictures load with the scenario's global media; any other character's load with the scenes it starts in or is walked to. A character's own events can run in any scene, so their media are global too.
 
 ## Animations
 
@@ -1008,4 +1011,4 @@ These need no special support; they are combinations of the pieces above.
 * Animating what an avatar wears along with a sheet animation: worn items follow the figure's position, not its frames.
 * A screen for editing the platform's marketplace catalogue and the ranks.
 * Characters bumping into one another or into players: characters walk around the scene's obstacles, but not around other figures.
-* A routine step that plays a sound, or runs one of the scene's events: what an event does belongs to a player, and a routine belongs to no one.
+* A character walking around on its own does not stop for a player talking to it: to keep it still, walk it somewhere with `wander: false` at the start of the conversation, and set it off again (a walk with `wander` on) at the end.

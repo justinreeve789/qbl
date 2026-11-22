@@ -768,7 +768,8 @@ same(count($orchard['blocked_areas']), 1, 'nobody walks through the pond');
 $pondXs = array_column($orchard['blocked_areas'][0], 'x');
 $pondYs = array_column($orchard['blocked_areas'][0], 'y');
 check(! array_filter($orchard['spawn_points'], fn ($p) => $p['position_x'] > min($pondXs) && $p['position_x'] < max($pondXs) && $p['position_y'] > min($pondYs) && $p['position_y'] < max($pondYs)), 'nobody arrives in it');
-check(! array_filter($orchard['characters'], fn ($p) => $p['position_x'] > min($pondXs) && $p['position_x'] < max($pondXs) && $p['position_y'] > min($pondYs) && $p['position_y'] < max($pondYs)), 'nobody stands in it');
+$inOrchard = array_values(array_filter($doc['characters'], fn ($c) => ($c['scene_id'] ?? null) === $orchard['id']));
+check($inOrchard && ! array_filter($inOrchard, fn ($p) => $p['position_x'] > min($pondXs) && $p['position_x'] < max($pondXs) && $p['position_y'] > min($pondYs) && $p['position_y'] < max($pondYs)), 'nobody stands in it');
 same([$orchard['scale_areas'][0]['scale_top'], $orchard['scale_areas'][0]['scale_bottom']], [90, 108], 'figures are smaller at the back of the floor');
 $landing = $scenesByName['landing'];
 same([count($landing['foreground_media']), $landing['foreground_media'][0]['position_x']], [1, 0], 'the landing has a fern in front, in the left corner');
@@ -910,12 +911,16 @@ $characters = array_column($doc['characters'], null, 'name');
 foreach ($characters as $name => $c) {
     check(isset($c['animations']['stand_right'], $c['animations']['walk_right'], $c['animations']['portrait']), "$name stands, walks and has a portrait");
 }
-same(array_column($characters['Pip']['routine']['steps'] ?? [], 'type'), ['wait', 'dialogue'], 'Pip, who falls, stays where he is (to come back there) and mutters');
+same([isset($characters['Pip']['routine']), $characters['Pip']['roams'] ?? false, $characters['Pip']['scene_id'] ?? null], [false, false, $scenesByName['hive']['id']], 'Pip starts in his scene and stays there: characters have no routines, and nobody generated walks around on their own');
+check(! array_filter($doc['scenes'], fn ($sc) => ! empty($sc['characters'])), 'no character is placed in a scene: each starts in one of its own');
+foreach ($characters as $name => $c) {
+    check(is_int($c['event_id'] ?? null) && isset($c['position_x'], $c['position_y']), "$name starts at a spot, and clicking runs their talk");
+}
 check($characters['Pip']['scale'] < $characters['Keeper Ama']['scale'] && $characters['Keeper Ama']['scale'] < $characters['Captain Zee']['scale'], 'a small robot is drawn smaller than the keeper, the tall pilot taller');
-same(array_column($characters['Granny Odo']['routine']['steps'] ?? [], 'type'), ['walk', 'wait', 'dialogue', 'walk', 'wait', 'dialogue'], 'Granny Odo strolls between her spots and says her bits now and then');
+same([isset($characters['Granny Odo']['routine']), $characters['Granny Odo']['scene_id'] ?? null], [false, $scenesByName['orchard']['id']], 'Granny Odo stands in the orchard');
 $twistScene = array_values(array_filter($byShort, fn ($e, $k) => str_starts_with($k, 'orchard/cutscene-burst'), ARRAY_FILTER_USE_BOTH))[0] ?? null;
 check($twistScene && in_array($twistScene['id'], $runs($byShort['orchard/twist-burst']), true) && str_contains(json_encode($twistScene['actions']), 'knitting is soaked'), 'the twist makes Granny Odo jump');
-same([isset($byShort['orchard/label-gran']), isset($byShort['hive/label-bot']), isset($byShort['landing/label-keeper'])], [false, true, true], 'a character who paces has no label left behind; Pip and the guide keep theirs');
+same([isset($byShort['orchard/label-gran']), isset($byShort['hive/label-bot']), isset($byShort['landing/label-keeper'])], [true, true, true], 'everyone stands where they start, so everyone has a label');
 
 $objectives = array_column($doc['objectives'], 'text', 'id');
 same($objectives['samples'], 'Collect pollen in the orchard ({{count_samples}}/2)', 'a step of several shows its count');

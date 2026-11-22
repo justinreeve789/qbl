@@ -18,7 +18,7 @@ export interface Surroundings {
 
 /**
  * A character of the scenario in a scene, with its name over its head. It stands where it was
- * put, facing the way it was told, and walks when a walk action or its routine sends it somewhere:
+ * put, facing the way it was told, and walks where the room says it is walking:
  * the walking pose plays, it turns the way it goes, and it grows and shrinks and darkens with the
  * scene's scale areas and shadow spots, as players do. It plays what an `animate` action asks.
  */

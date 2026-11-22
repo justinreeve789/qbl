@@ -45,8 +45,9 @@ class ScenarioStore
             'is_intro_scene' => 'bool', 'zoom' => 'num', 'show_avatars' => 'bool', 'width' => 'int', 'height' => 'int',
             'background_media' => 'json', 'foreground_media' => 'json', 'layout' => 'json', 'params' => 'json',
         ],
+        // An event belongs to a scene, or (kind `character`) to a character: one of its own, which runs in any scene.
         'events' => [
-            'scene_id' => 'int', 'kind' => 'str', 'shortname' => 'str', 'sequence' => 'int', 'overridable' => 'bool', 'block_hotspots' => 'bool',
+            'scene_id' => 'int', 'character_id' => 'int', 'kind' => 'str', 'shortname' => 'str', 'sequence' => 'int', 'overridable' => 'bool', 'block_hotspots' => 'bool',
             'position_x' => 'num', 'position_y' => 'num', 'radius' => 'num', 'activate_by_trigger' => 'bool', 'once' => 'bool',
             'reveal_radius' => 'num', 'reveal_full_radius' => 'num', 'audience' => 'str',
         ],
@@ -66,7 +67,7 @@ class ScenarioStore
 
     /** For tables without a scenario_id: the columns that point at a parent row, and that parent's table. */
     private const PARENTS = [
-        'events' => ['scene_id' => 'scenes'],
+        'events' => ['scene_id' => 'scenes', 'character_id' => 'characters'],
         'actions' => ['event_id' => 'events'],
         'labels' => ['event_id' => 'events'],
         'conditions' => ['event_id' => 'events', 'action_id' => 'actions', 'item_id' => 'items', 'character_id' => 'characters'],
@@ -75,7 +76,7 @@ class ScenarioStore
     private const ENUMS = [
         'media.type' => ['audio', 'image', 'video'],
         'variables.scope' => ['player', 'room'],
-        'events.kind' => ['start', 'end', 'hotspot', 'indirect'],
+        'events.kind' => ['start', 'end', 'hotspot', 'indirect', 'character'],
         'events.audience' => ['player', 'scene'],
         'labels.type' => ['text', 'image', 'spritemap'],
         'shop_items.kind' => ProgressStore::KINDS,
@@ -424,6 +425,25 @@ class ScenarioStore
     {
         $this->assertOwned($scenarioId, $table, $rowId);
         unset($attrs['scenario_id']);
+        // An event stays where it belongs: a scene's in a scene (of any kind but `character`), a character's with its character.
+        if ($table === 'events') {
+            $was = $this->one('SELECT `scene_id`, `character_id`, `kind` FROM `events` WHERE `id` = ?', [$rowId]);
+            $mine = $was['character_id'] !== null;
+            if ((array_key_exists('kind', $attrs) && ($attrs['kind'] === 'character') !== $mine)
+                || ($mine && array_key_exists('scene_id', $attrs) && $attrs['scene_id'] !== null)
+                || (! $mine && array_key_exists('character_id', $attrs) && $attrs['character_id'] !== null)) {
+                throw new StoreError(422, 'An event cannot move between a scene and a character.');
+            }
+            // A scene's event can move to another of the scenario's scenes; a character's stays its own, and a character's.
+            if ($mine) {
+                unset($attrs['scene_id'], $attrs['character_id'], $attrs['kind']);
+            } else {
+                unset($attrs['character_id']);
+                if (array_key_exists('scene_id', $attrs) && $attrs['scene_id'] === null) {
+                    unset($attrs['scene_id']);
+                }
+            }
+        }
         $row = $this->encode($table, $this->cleanCharacter($scenarioId, $table, $attrs));
         $this->assertValid($scenarioId, $table, $row, false);
         $this->update($table, $rowId, $row);
@@ -437,6 +457,12 @@ class ScenarioStore
     {
         if ($table === 'characters' && is_array($attrs['settings'] ?? null)) {
             $attrs['settings'] = NpcCharacter::cleanSettings($attrs['settings'], fn (int $mediaId) => $this->scenarioOf('media', $mediaId) === $scenarioId);
+            // Where it starts, and what clicking it runs, are this scenario's.
+            foreach (['scene_id' => 'scenes', 'event_id' => 'events'] as $key => $table2) {
+                if (isset($attrs['settings'][$key]) && $this->scenarioOf($table2, (int) $attrs['settings'][$key]) !== $scenarioId) {
+                    throw new StoreError(422, "$key does not refer to something in this scenario.");
+                }
+            }
         }
 
         return $attrs;
@@ -450,11 +476,21 @@ class ScenarioStore
             switch ($table) {
                 case 'scenes':
                     foreach ($this->ids('SELECT `id` FROM `events` WHERE `scene_id` = ?', [$rowId]) as $eventId) {
+                        $this->forgetClick($scenarioId, $eventId);
                         $this->deleteEvent($eventId);
                     }
                     $this->run('UPDATE `scenarios` SET `start_scene_id` = NULL WHERE `id` = ? AND `start_scene_id` = ?', [$scenarioId, $rowId]);
+                    // Characters that started there start nowhere now (the checks say so).
+                    $this->changeCharacters($scenarioId, function (array $settings) use ($rowId) {
+                        if ((int) ($settings['scene_id'] ?? 0) === $rowId) {
+                            unset($settings['scene_id'], $settings['position_x'], $settings['position_y']);
+                        }
+
+                        return $settings;
+                    });
                     break;
                 case 'events':
+                    $this->forgetClick($scenarioId, $rowId);
                     $this->deleteEvent($rowId);
 
                     return;
@@ -466,6 +502,10 @@ class ScenarioStore
                     break;
                 case 'characters':
                     $this->run('DELETE FROM `conditions` WHERE `character_id` = ?', [$rowId]);
+                    // Its own events go with it.
+                    foreach ($this->ids('SELECT `id` FROM `events` WHERE `character_id` = ?', [$rowId]) as $eventId) {
+                        $this->deleteEvent($eventId);
+                    }
                     break;
                 case 'shop_items':
                     // Players who bought it lose it. Their stars are not refunded: withdraw an item by making it inactive instead.
@@ -819,6 +859,30 @@ class ScenarioStore
 
     // =================================================================== helpers
 
+    /** A character whose click ran an event that is going no longer runs anything when clicked. */
+    private function forgetClick(int $scenarioId, int $eventId): void
+    {
+        $this->changeCharacters($scenarioId, function (array $settings) use ($eventId) {
+            if ((int) ($settings['event_id'] ?? 0) === $eventId) {
+                unset($settings['event_id']);
+            }
+
+            return $settings;
+        });
+    }
+
+    /** Change the settings of a scenario's characters; only those that change are written. */
+    private function changeCharacters(int $scenarioId, callable $change): void
+    {
+        foreach ($this->all('SELECT `id`, `settings` FROM `characters` WHERE `scenario_id` = ?', [$scenarioId]) as $c) {
+            $settings = json_decode((string) $c['settings'], true) ?: [];
+            $next = $change($settings);
+            if ($next !== $settings) {
+                $this->run('UPDATE `characters` SET `settings` = ? WHERE `id` = ?', [json_encode($next ?: new \stdClass, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $c['id']]);
+            }
+        }
+    }
+
     private function deleteEvent(int $eventId): void
     {
         $this->run('DELETE FROM `conditions` WHERE `event_id` = ? OR `action_id` IN (SELECT `id` FROM `actions` WHERE `event_id` = ?)', [$eventId, $eventId]);
@@ -842,10 +906,13 @@ class ScenarioStore
     private function inScenario(string $table): string
     {
         $scenes = '(SELECT `id` FROM `scenes` WHERE `scenario_id` = ?)';
-        $events = "(SELECT `id` FROM `events` WHERE `scene_id` IN $scenes)";
+        $characters = '(SELECT `id` FROM `characters` WHERE `scenario_id` = ?)';
+        // A scene's events, and the characters' own.
+        $owned = "(`scene_id` IN $scenes OR `character_id` IN $characters)";
+        $events = "(SELECT `id` FROM `events` WHERE $owned)";
 
         return match ($table) {
-            'events' => "`scene_id` IN $scenes",
+            'events' => $owned,
             'actions', 'labels' => "`event_id` IN $events",
             'conditions' => "(`event_id` IN $events OR `action_id` IN (SELECT `id` FROM `actions` WHERE `event_id` IN $events)"
                 .' OR `item_id` IN (SELECT `id` FROM `items` WHERE `scenario_id` = ?) OR `character_id` IN (SELECT `id` FROM `characters` WHERE `scenario_id` = ?))',
@@ -853,9 +920,10 @@ class ScenarioStore
         };
     }
 
+    /** As many copies of the scenario's id as inScenario() has placeholders. */
     private function scopeParams(string $table, int $scenarioId): array
     {
-        return array_fill(0, $table === 'conditions' ? 4 : 1, $scenarioId);
+        return array_fill(0, match ($table) { 'events', 'actions', 'labels' => 2, 'conditions' => 6, default => 1 }, $scenarioId);
     }
 
     /** Which scenario a row belongs to, following its parents, or null if there is no such row. */
@@ -915,6 +983,10 @@ class ScenarioStore
                 throw new StoreError(422, 'Exactly one of '.implode(', ', array_keys(self::PARENTS[$table])).' is required.');
             }
         }
+        // A character's own event is of kind `character`, and only such an event is a character's.
+        if ($table === 'events' && $creating && (($row['kind'] ?? '') === 'character') !== isset($row['character_id'])) {
+            throw new StoreError(422, 'A character\'s own event is of kind "character", and belongs to the character, not to a scene.');
+        }
         if ($table === 'variables' && isset($row['variable_name'])) {
             if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/', $row['variable_name']) || str_starts_with($row['variable_name'], 'QBL') || str_starts_with($row['variable_name'], 'QL_')) {
                 throw new StoreError(422, 'Variable names use letters, digits and underscores, and may not start with QBL or QL_ (those are the system\'s own).');
@@ -949,7 +1021,9 @@ class ScenarioStore
             ],
             'events' => [
                 'kind' => 'hotspot', 'overridable' => false, 'block_hotspots' => false, 'activate_by_trigger' => true, 'once' => false, 'audience' => 'player',
-                'sequence' => $next('SELECT MAX(`sequence`) AS n FROM `events` WHERE `scene_id` = ? AND `kind` = ?', [$attrs['scene_id'] ?? 0, $attrs['kind'] ?? 'hotspot']),
+                'sequence' => isset($attrs['character_id'])
+                    ? $next('SELECT MAX(`sequence`) AS n FROM `events` WHERE `character_id` = ?', [$attrs['character_id']])
+                    : $next('SELECT MAX(`sequence`) AS n FROM `events` WHERE `scene_id` = ? AND `kind` = ?', [$attrs['scene_id'] ?? 0, $attrs['kind'] ?? 'hotspot']),
             ] + (($attrs['kind'] ?? 'hotspot') === 'hotspot' ? ['radius' => 100] : []),
             'actions' => [
                 'blocking' => true, 'params' => [],
@@ -1104,6 +1178,15 @@ class ScenarioStore
      * Statements that create the tables in SQLite, for the dev server and the tests only.
      * In production the tables come from the Laravel migration, which must list the same columns.
      */
+    /** Columns added since the tables were first made, for SQLite databases made before them (the dev server's). */
+    public static function sqliteUpgrade(PDO $pdo): void
+    {
+        $have = array_column($pdo->query('PRAGMA table_info(`events`)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+        if ($have && ! in_array('character_id', $have, true)) {
+            $pdo->exec('ALTER TABLE `events` ADD COLUMN `character_id` INTEGER');
+        }
+    }
+
     public static function sqliteSchema(): array
     {
         $sql = [];

@@ -1,5 +1,5 @@
 import { locateIssue, type ActionType, type Issue, type IssuePlace, type SceneList, type ScenarioList } from '@qbl/shared';
-import { EVENT_KINDS, mediaLabel, sceneLabel } from '../describe';
+import { CHARACTER_EVENT, EVENT_KINDS, mediaLabel, sceneLabel } from '../describe';
 import { h, openFold } from '../dom';
 import type { Field, FormContext } from '../fields';
 import {
@@ -8,6 +8,7 @@ import {
   SCALE_AREA_FIELDS, SCENARIO_FIELDS, SCENARIO_SETTINGS_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, LIGHT_FIELDS, SPAWN_FIELDS, VARIABLE_FIELDS,
 } from '../schema';
 import { openAnimation, openCharacter } from './characters';
+import { openCharacterEvent } from './characterWorld';
 import { revealAction, sortedActions } from './actions';
 import { openMedia } from './library';
 import { openItem } from './items';
@@ -143,6 +144,8 @@ export function whereIs(ctx: FormContext, doc: unknown, issue: Pick<Issue, 'path
     if (place.entry.list === 'assets' && typeof id === 'number') label = mediaLabel(store.byId('media', id)) || name;
     if (place.entry.list === 'characters' && typeof id === 'number') label = String(store.byId('characters', id)?.name ?? name ?? '');
     trail.push(label ? `${look.name} “${label}”` : `${look.name} ${index != null ? nth(index) : ''}`.trim());
+    // One of the character's own events, and what in it.
+    if (place.entry.list === 'characters' && place.event) return { ...eventPlace(ctx, place, trail), go: entryGo(ctx, base, look.tab, place) };
     if (animation) trail.push(`Animation “${animation}”`);
     if (place.condition) trail.push(conditionName(place.condition));
     const field = labelIn(look.fields, place.field);
@@ -169,7 +172,7 @@ function eventPlace(ctx: FormContext, place: IssuePlace, trail: string[]): Issue
   const { store } = ctx;
   const ev = place.event!;
   const row = ev.id != null ? store.byId('events', ev.id) : undefined;
-  const kind = EVENT_KINDS[ev.kind];
+  const kind = ev.kind === 'character' ? CHARACTER_EVENT : EVENT_KINDS[ev.kind];
   const name = (row?.shortname as string | null | undefined) || ev.name;
   trail.push(name ? `${kind} “${name}”` : `${kind} ${ev.id ?? nth(ev.index)}`);
 
@@ -265,9 +268,21 @@ function entryGo(ctx: FormContext, base: string, tab: Tab, place: IssuePlace): I
       break;
     case 'characters':
       if (typeof id === 'number' && store.byId('characters', id)) {
-        reveal = entry.animation
-          ? { open: () => { openCharacter(ctx, id); openAnimation(ctx, id, entry.animation!); }, selector: 'dialog[data-panel]', field }
-          : { open: () => openCharacter(ctx, id), selector: 'dialog[data-panel="character"]', field };
+        const eventId = place.event?.kind === 'character' ? place.event.id : undefined;
+        const actionId = place.action?.id;
+        reveal = eventId != null && store.byId('events', eventId)
+          ? {
+              open: () => {
+                if (actionId != null) revealAction(actionId);
+                openCharacter(ctx, id);
+                openCharacterEvent(ctx, id, eventId);
+              },
+              selector: actionId != null ? `dialog[data-panel="character-event"] [data-action="${actionId}"]` : 'dialog[data-panel="character-event"]',
+              field,
+            }
+          : entry.animation
+            ? { open: () => { openCharacter(ctx, id); openAnimation(ctx, id, entry.animation!); }, selector: 'dialog[data-panel]', field }
+            : { open: () => openCharacter(ctx, id), selector: 'dialog[data-panel="character"]', field };
       }
       break;
     case 'items':

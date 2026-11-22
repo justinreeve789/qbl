@@ -57,7 +57,7 @@ export abstract class GameConnection {
     return this.state.players.get(this.sessionId);
   }
 
-  /** A character that walks around on its own, where the room says it is. */
+  /** A character, where the room says it is. */
   npc(characterId: Id): NpcRec | undefined {
     return this.state.npcs?.get(String(characterId));
   }
@@ -86,7 +86,7 @@ export abstract class GameConnection {
   whisper(to: string, text: string) { this.send(C2S.Whisper, { to, text }); }
   /** Something the player did that a teacher's report counts: a hotspot used, an answer chosen. */
   track(msg: TrackMessage) { this.send(C2S.Track, msg); }
-  /** A walk action for a character that roams: the server walks it, for everyone. */
+  /** A walk action for a character: the server walks it, for everyone. */
   walk(msg: WalkMessage) { this.send(C2S.Walk, msg); }
 }
 

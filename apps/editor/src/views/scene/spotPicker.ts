@@ -1,6 +1,6 @@
 import { sceneLabel } from '../../describe';
 import { h } from '../../dom';
-import { select, type SpotRequest } from '../../fields';
+import { select, usePopupPicker, type SpotRequest } from '../../fields';
 import { openPanel } from '../../panel';
 import type { Store } from '../../store';
 import { SceneCanvas } from './canvas';
@@ -8,9 +8,10 @@ import { SceneModel } from './model';
 
 /**
  * Choose a spot by clicking a picture of a scene, in a pop-up: for forms that are not beside the
- * scene editor's canvas, such as the steps of a character's routine. It opens on the scene the
- * request names (else the first), and another scene can be chosen, since a routine's character
- * may be anywhere. Returns a function that closes it without a spot.
+ * scene editor's canvas (a character's start, a walk in one of its events), and for a spot in a
+ * scene other than the one being edited (a walk to another scene). It opens on the scene the
+ * request names (else the first), and another scene can be chosen; the request is told which.
+ * Returns a function that closes it without a spot.
  */
 export function pickSpotInPopup(store: Store, request: SpotRequest): () => void {
   const scenes = store.rows('scenes').slice().sort((a, b) => Number(a.sequence) - Number(b.sequence) || a.id - b.id);
@@ -39,7 +40,7 @@ export function pickSpotInPopup(store: Store, request: SpotRequest): () => void 
       at: id === request.sceneId ? request.at : null,
       done: (at) => {
         chosen = true;
-        request.done(at);
+        request.done(at, id);
         panel.close();
       },
       cancelled: () => !switching && panel.close(),
@@ -77,3 +78,5 @@ export function pickSpotInPopup(store: Store, request: SpotRequest): () => void 
   }
   return () => panel.close();
 }
+
+usePopupPicker(pickSpotInPopup);

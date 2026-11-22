@@ -195,7 +195,7 @@ test('the scenario lists jumps made in choices, and the validator checks the tre
   const has = (part: string) => assert.ok(messages.some((m) => m.includes(part)), `expected “${part}” in:\n${messages.join('\n')}`);
   has('lines[0].choices[0].next: There is no line "gone"');
   has('lines[0].choices[1].text: A choice needs something to say');
-  has('lines[0].character_id: The speaking character is not placed in this scene');
+  has('lines[0].character_id: The speaking character does not exist');
   has('lines[1].id: Two lines are called "a"');
   has('lines[2]: Line "lonely" is never said');
   has('choices[1].actions[0]: An award in a conversation choice is not given');

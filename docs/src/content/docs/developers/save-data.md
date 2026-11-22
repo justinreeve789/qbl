@@ -44,6 +44,6 @@ Parameter | Type | Description
 --------- | ---- | -----------
 variables | object | Values of room-scoped variables with `persist` not false.
 items | object | For each unique item id: `{scene_id, x, y}`, where it was left.
-characters | object | For each [character that roams](/docs/developers/extensions/#characters-that-walk-around-on-their-own), by id: `{scene_id, x, y, facing, step}`, where it was left and the routine step it was on. A scene that no longer exists sends it back to its first placement.
+characters | object | For each [character](/docs/developers/extensions/#characters-live-in-the-world), by id: `{scene_id, x, y, facing, wanders?}`, where it was left, and (`wanders`) whether it was walking around on its own when a walk action changed that. A scene that no longer exists sends it back to where it starts.
 
 It is loaded when the first player of a group arrives and saved when the room empties and whenever it changes. It is not part of the scenario JSON; clients receive it through the live room state.

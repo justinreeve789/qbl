@@ -156,7 +156,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number) {
-    // Offline, the characters that roam are moved here; online the game server moves them.
+    // Offline, the characters are moved here; online the game server moves them.
     this.ctx.connection.tick();
     this.ctx.syncRoomVariables();
     for (const system of this.systems) system.update?.(time, delta);

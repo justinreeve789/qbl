@@ -76,12 +76,15 @@ class ScenarioCompiler
         }
 
         $events = [];
+        // A character's own events: they belong to no scene.
+        $characterEvents = [];
         foreach (self::sorted($rows['events'] ?? [], 'sequence') as $e) {
             $eventId = self::int($e['id']);
+            $ofCharacter = ($e['kind'] ?? '') === 'character' || ($e['character_id'] ?? null) !== null;
             $event = [
                 'id' => $eventId,
                 'shortname' => $e['shortname'] ?? null,
-                'scene_id' => self::int($e['scene_id']),
+                ...($ofCharacter ? ['character_id' => self::int($e['character_id'])] : ['scene_id' => self::int($e['scene_id'])]),
                 'overridable' => self::bool($e['overridable'] ?? false),
                 'block_hotspots' => self::bool($e['block_hotspots'] ?? false),
                 'conditions' => $conditions['event_id'][$eventId] ?? [],
@@ -110,6 +113,11 @@ class ScenarioCompiler
             $event['actions'] = $actions[$eventId] ?? [];
             if ($event['shortname'] === null) {
                 unset($event['shortname']);
+            }
+            if ($ofCharacter) {
+                $characterEvents[self::int($e['character_id'])][] = $event;
+
+                continue;
             }
             $events[self::int($e['scene_id'])][self::EVENT_KEYS[$e['kind']]][] = $event;
         }
@@ -145,7 +153,8 @@ class ScenarioCompiler
                 // Whether the scene shows a player only their own team. Absent: as its group says.
                 'team_only' => array_key_exists('team_only', self::json($sc['params'] ?? null)) && self::json($sc['params'] ?? null)['team_only'] !== null ? self::bool(self::json($sc['params'] ?? null)['team_only']) : null,
                 'items' => $layout['items'] ?? [],
-                'characters' => $layout['characters'] ?? [],
+                // Characters start in a scene of their own now; placements are kept only from before.
+                'characters' => ($layout['characters'] ?? []) ?: null,
                 // A close-up bench: its substances, containers, tools, reactions, readouts, watches and graph.
                 'bench' => is_array($layout['bench'] ?? null) && $layout['bench'] ? $layout['bench'] : null,
                 // The scene's own background music, when it has one, is kept in params.
@@ -216,19 +225,29 @@ class ScenarioCompiler
         $characters = [];
         foreach (self::sorted($rows['characters'] ?? [], 'id') as $c) {
             $characterId = self::int($c['id']);
-            $characters[] = self::strip(array_merge(self::json($c['settings'] ?? null), [
+            $characters[] = self::strip(array_merge(array_diff_key(self::json($c['settings'] ?? null), ['routine' => 1, 'events' => 1]), [
                 'id' => $characterId,
                 'scenario_id' => $id,
                 'name' => $c['name'],
                 'media_id' => self::intOrNull($c['media_id'] ?? null),
                 'conditions' => $conditions['character_id'][$characterId] ?? null,
+                'events' => $characterEvents[$characterId] ?? null,
             ]));
         }
 
-        // jump_targets and assets are generated, as the Scenarios page describes.
+        // jump_targets and assets are generated, as the Scenarios page describes. A character's own
+        // events run in any scene, so their jumps lead from every one.
+        $anywhere = [];
+        foreach ($characterEvents as $list) {
+            foreach ($list as $event) {
+                foreach ($event['actions'] as $action) {
+                    self::collectJumps($action, $anywhere);
+                }
+            }
+        }
         $jumpTargets = [];
         foreach ($scenes as $scene) {
-            $targets = [];
+            $targets = $anywhere;
             foreach (self::EVENT_KEYS as $key) {
                 foreach ($scene[$key] as $event) {
                     foreach ($event['actions'] as $action) {

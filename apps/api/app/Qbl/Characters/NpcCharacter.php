@@ -3,8 +3,11 @@
 namespace App\Qbl\Characters;
 
 /**
- * A character a scenario defines and places in its scenes: a row of `characters`, whose
- * `settings` hold its animations, size and voice. Its pictures are the scenario's media.
+ * A character a scenario defines: a row of `characters`, whose `settings` hold its animations,
+ * size and voice, where it starts (`scene_id`, `position_x`, `position_y`, `facing`), whether it
+ * walks around on its own (`roams`, `walk_speed`) and which of its events a click runs
+ * (`event_id`). Its own events are rows of `events` with its `character_id`. Its pictures are the
+ * scenario's media.
  *
  * Rows written before characters had animations have a picture (`media_id`) and a close-up
  * (`settings.portrait_media_id`) instead; they are read as animations (see animationsFromPicture),
@@ -46,7 +49,7 @@ final class NpcCharacter extends Character
                 unset($settings['animations']);
             }
         }
-        // Walking around on its own: a yes or no, a speed, and a routine of steps.
+        // Walking around on its own: a yes or no, and how fast it walks.
         if (array_key_exists('roams', $settings)) {
             if ($settings['roams'] === true) {
                 $settings['roams'] = true;
@@ -62,55 +65,34 @@ final class NpcCharacter extends Character
                 unset($settings['walk_speed']);
             }
         }
-        if (array_key_exists('routine', $settings)) {
-            $routine = self::cleanRoutine($settings['routine']);
-            if ($routine === null) {
-                unset($settings['routine']);
-            } else {
-                $settings['routine'] = $routine;
+        // Routines are gone: a character moves by walk actions in events, or walks around on its own.
+        unset($settings['routine']);
+        // Where it starts: a scene (its id; the store checks it is the scenario's), a spot, a way to face.
+        foreach (['scene_id', 'event_id'] as $key) {
+            if (array_key_exists($key, $settings)) {
+                if (is_numeric($settings[$key]) && (int) $settings[$key] > 0) {
+                    $settings[$key] = (int) $settings[$key];
+                } else {
+                    unset($settings[$key]);
+                }
             }
         }
+        foreach (['position_x', 'position_y'] as $key) {
+            if (array_key_exists($key, $settings)) {
+                if (is_numeric($settings[$key])) {
+                    $settings[$key] = round((float) $settings[$key], 1);
+                } else {
+                    unset($settings[$key]);
+                }
+            }
+        }
+        if (array_key_exists('facing', $settings) && ! in_array($settings['facing'], ['left', 'right'], true)) {
+            unset($settings['facing']);
+        }
+        // Its own events are rows of their own (events with this character's id), not settings.
+        unset($settings['events']);
 
         return $settings;
-    }
-
-    /** The kinds of step a routine can have, as in @qbl/shared ROUTINE_STEP_TYPES. */
-    public const ROUTINE_STEPS = ['walk', 'wait', 'dialogue', 'animate', 'variable'];
-
-    /** At most this many steps: a routine is a loop of a few things, not a script. */
-    public const MAX_ROUTINE_STEPS = 100;
-
-    /**
-     * A routine kept to its shape: a list of steps of the known kinds (other keys of a step are
-     * kept as they are, like an action's params), whether it loops, and its conditions. Null when
-     * it has no steps left.
-     */
-    public static function cleanRoutine(mixed $routine): ?array
-    {
-        if (! is_array($routine) || ! is_array($routine['steps'] ?? null)) {
-            return null;
-        }
-        $steps = [];
-        foreach (array_values($routine['steps']) as $step) {
-            if (is_array($step) && in_array($step['type'] ?? null, self::ROUTINE_STEPS, true)) {
-                $steps[] = $step;
-            }
-            if (count($steps) >= self::MAX_ROUTINE_STEPS) {
-                break;
-            }
-        }
-        if (! $steps) {
-            return null;
-        }
-        $out = ['steps' => $steps];
-        if (($routine['loop'] ?? true) === false) {
-            $out['loop'] = false;
-        }
-        if (is_array($routine['conditions'] ?? null) && $routine['conditions']) {
-            $out['conditions'] = array_values(array_filter($routine['conditions'], 'is_array'));
-        }
-
-        return $out;
     }
 
     public function toDocument(): array

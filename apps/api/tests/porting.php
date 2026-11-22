@@ -238,44 +238,72 @@ same([count($b['shop_items']), $b['shop_items'][0]['active']], [1, false], 'a du
 $store->deleteScenario($dupe);
 same([is_file("$dir/media/{$media['filepath']}"), is_dir("$dir/media/$dupe")], [true, false], 'deleting the duplicate removes its files and leaves the original\'s');
 
-// ---- characters that walk around on their own, and walk actions, travel with a duplicate
+// ---- characters: where they start, what clicking them runs, their own events and walk actions travel with a duplicate
 $roam = (int) $store->createScenario(['title' => 'Roaming'], 1)['id'];
 $roamMedia = $store->addMediaFile($roam, $png, 'guide.png');
-$roamEvent = $store->createRow($roam, 'events', ['scene_id' => $store->bundle($roam)['scenes'][0]['id'], 'kind' => 'indirect']);
+$hall = $store->bundle($roam)['scenes'][0];
+$roamEvent = $store->createRow($roam, 'events', ['scene_id' => $hall['id'], 'kind' => 'indirect']);
 $lab = $store->createRow($roam, 'scenes', ['shortname' => 'lab']);
 $guide = $store->createRow($roam, 'characters', ['name' => 'Guide', 'settings' => [
     'animations' => ['stand_right' => ['media_id' => $roamMedia['id']]],
-    'roams' => 'yes please', 'walk_speed' => -3,
-    'routine' => ['loop' => false, 'steps' => [
-        ['type' => 'walk', 'to' => 'scene', 'scene_id' => $lab['id']],
-        ['type' => 'dialogue', 'text' => 'Hello', 'narration_media_id' => $roamMedia['id']],
-        ['type' => 'jump', 'scene_id' => $lab['id']],
-        'junk',
-    ]],
+    'roams' => 'yes please', 'walk_speed' => -3, 'facing' => 'up', 'position_x' => 'here',
+    'routine' => ['steps' => [['type' => 'wait', 'duration' => 1]]],
 ]]);
-same([$guide['settings']['routine']['steps'][0]['type'], count($guide['settings']['routine']['steps']), $guide['settings']['routine']['loop'], isset($guide['settings']['roams']), isset($guide['settings']['walk_speed'])], ['walk', 2, false, false, false], 'a routine keeps its steps of the kinds it can have; roams is a yes or nothing; a speed is a positive number');
-$walk = $store->createRow($roam, 'actions', ['event_id' => $roamEvent['id'], 'type' => 'walk', 'params' => ['character_id' => $guide['id'], 'to' => 'scene', 'scene_id' => $lab['id']]]);
+same([isset($guide['settings']['roams']), isset($guide['settings']['walk_speed']), isset($guide['settings']['routine']), isset($guide['settings']['facing']), isset($guide['settings']['position_x'])], [false, false, false, false, false], 'roams is a yes or nothing; a speed is a positive number; routines are gone; facing and a spot are kept to their shape');
+$elsewhere = (int) $store->createScenario(['title' => 'Elsewhere'], 1)['id'];
+$otherScene = $store->bundle($elsewhere)['scenes'][0];
+same($api->handle('PATCH', "scenarios/$roam/rows/characters/{$guide['id']}", ['settings' => ['scene_id' => $otherScene['id']]], $teacher)[0], 422, 'a character cannot start in another scenario\'s scene');
+$store->deleteScenario($elsewhere);
+// Her own event, which a click runs.
+[$status, $body] = $api->handle('POST', "scenarios/$roam/rows/events", ['character_id' => $guide['id'], 'kind' => 'character', 'shortname' => 'talk'], $teacher);
+same($status, 201, 'a character can have an event of its own');
+$talkEvent = $body['row'];
+same([$talkEvent['scene_id'], $talkEvent['character_id']], [null, $guide['id']], 'belonging to the character, not to a scene');
+same($api->handle('POST', "scenarios/$roam/rows/events", ['character_id' => $guide['id'], 'kind' => 'indirect'], $teacher)[0], 422, 'a character\'s event is of kind character');
+same($api->handle('POST', "scenarios/$roam/rows/events", ['scene_id' => $hall['id'], 'kind' => 'character'], $teacher)[0], 422, 'and only a character\'s event is');
+same($api->handle('PATCH', "scenarios/$roam/rows/events/{$talkEvent['id']}", ['kind' => 'start'], $teacher)[0], 422, 'it cannot become a scene\'s');
+$store->createRow($roam, 'actions', ['event_id' => $talkEvent['id'], 'type' => 'dialogue', 'params' => ['text' => 'Hi', 'speaker' => 'character', 'character_id' => $guide['id']]]);
+$guide = $store->updateRow($roam, 'characters', $guide['id'], ['settings' => ['animations' => ['stand_right' => ['media_id' => $roamMedia['id']]], 'roams' => true, 'walk_speed' => 120, 'scene_id' => $hall['id'], 'position_x' => 300, 'position_y' => 800, 'facing' => 'left', 'event_id' => $talkEvent['id']]]);
+$walk = $store->createRow($roam, 'actions', ['event_id' => $roamEvent['id'], 'type' => 'walk', 'params' => ['character_id' => $guide['id'], 'to' => 'point', 'scene_id' => $lab['id'], 'position_x' => 500, 'position_y' => 900, 'wander' => false]]);
 same($walk['type'], 'walk', 'a walk action can be added');
+$doc = ScenarioCompiler::compile($store->bundle($roam));
+$g = $doc['characters'][0];
+same([$g['scene_id'], $g['position_x'], $g['facing'], $g['roams'], $g['event_id'], count($g['events']), $g['events'][0]['character_id'], isset($g['events'][0]['scene_id'])], [$hall['id'], 300, 'left', true, $talkEvent['id'], 1, $guide['id'], false], 'the document has her start, her click and her own events');
+check(! array_filter($doc['scenes'], fn ($sc) => array_key_exists('characters', $sc)), 'and no placements in the scenes');
 [$status, $body] = $api->handle('POST', "scenarios/$roam/duplicate", [], $teacher);
 $b = $store->bundle((int) $body['scenario']['id']);
 $labCopy = array_values(array_filter($b['scenes'], fn ($sc) => $sc['shortname'] === 'lab'))[0];
+$hallCopy = array_values(array_filter($b['scenes'], fn ($sc) => $sc['shortname'] !== 'lab'))[0];
 $guideCopy = $b['characters'][0];
+$talkCopy = array_values(array_filter($b['events'], fn ($e) => $e['kind'] === 'character'))[0];
 $walkCopy = array_values(array_filter($b['actions'], fn ($a) => $a['type'] === 'walk'))[0];
-$steps = $guideCopy['settings']['routine']['steps'];
 same(
-    [$steps[0]['scene_id'], $steps[1]['narration_media_id'], $walkCopy['params']['scene_id'], $walkCopy['params']['character_id']],
-    [$labCopy['id'], $b['media'][0]['id'], $labCopy['id'], $guideCopy['id']],
-    'the routine\'s scene and recording, and the walk action\'s scene and character, point at the copies'
+    [$guideCopy['settings']['scene_id'], $guideCopy['settings']['event_id'], $talkCopy['character_id'], $walkCopy['params']['scene_id'], $walkCopy['params']['character_id'], $walkCopy['params']['wander']],
+    [$hallCopy['id'], $talkCopy['id'], $guideCopy['id'], $labCopy['id'], $guideCopy['id'], false],
+    'in the copy her start scene, her click event, her own event and the walk action point at the copies'
 );
 $store->deleteScenario((int) $body['scenario']['id']);
 if (class_exists(ZipArchive::class)) {
     [, $out] = $api->handle('GET', "scenarios/$roam/export", [], $teacher);
     [$status, $in] = $api->handle('POST', 'scenarios/import', [], $teacher, ['file' => ['tmp_name' => $out['download']['path'], 'name' => 'roaming.zip']]);
     $back = $store->bundle((int) $in['scenario']['id']);
-    $labBack = array_values(array_filter($back['scenes'], fn ($sc) => $sc['shortname'] === 'lab'))[0];
-    same([$status, $back['characters'][0]['settings']['routine']['steps'][0]['scene_id'], $back['characters'][0]['settings']['routine']['loop']], [201, $labBack['id'], false], 'and a ZIP export brings the routine back in, pointing at the imported scene');
+    $hallBack = array_values(array_filter($back['scenes'], fn ($sc) => $sc['shortname'] !== 'lab'))[0];
+    $talkBack = array_values(array_filter($back['events'], fn ($e) => $e['kind'] === 'character'))[0];
+    same([$status, $back['characters'][0]['settings']['scene_id'], $back['characters'][0]['settings']['event_id'], $talkBack['character_id'], count(array_filter($back['actions'], fn ($a) => $a['event_id'] === $talkBack['id']))], [201, $hallBack['id'], $talkBack['id'], $back['characters'][0]['id'], 1], 'and a ZIP export brings her back in, with her own event and its action');
     $store->deleteScenario((int) $in['scenario']['id']);
 }
+// Deleting her click event forgets it; deleting her scene leaves her nowhere; deleting her takes her events.
+$spare = $store->createRow($roam, 'events', ['character_id' => $guide['id'], 'kind' => 'character']);
+$store->updateRow($roam, 'characters', $guide['id'], ['settings' => ['scene_id' => $lab['id'], 'event_id' => $spare['id']] + $guide['settings']]);
+$store->deleteRow($roam, 'events', $spare['id']);
+same(isset($store->bundle($roam)['characters'][0]['settings']['event_id']), false, 'deleting the event a click runs forgets it');
+// An older document, with a placement, imports with the placement as her start.
+$old = ScenarioDecompiler::rows(['id' => 5, 'title' => 'Old', 'start_scene_id' => 1, 'characters' => [['id' => 3, 'name' => 'Ada', 'routine' => ['steps' => [['type' => 'wait', 'duration' => 1]]]]], 'scenes' => [
+    ['id' => 1, 'sequence' => 1, 'indirect_events' => [['id' => 9, 'actions' => []]]],
+    ['id' => 2, 'sequence' => 2, 'characters' => [['character_id' => 3, 'position_x' => 10, 'position_y' => 20, 'facing' => 'left', 'event_id' => 9]]],
+]]);
+same(array_intersect_key($old['characters'][0]['settings'], array_flip(['scene_id', 'position_x', 'position_y', 'facing', 'event_id', 'roams', 'routine'])), ['scene_id' => 2, 'position_x' => 10, 'position_y' => 20, 'facing' => 'left', 'event_id' => 9, 'roams' => true], 'an older document: the placement is the start, the routine becomes walking around');
+check(! isset($old['scenes'][1]['layout']['characters']), 'and the placement is not kept in the scene');
 // ---- a conversation keeps its lines, and the ids in them point at the copies
 $talk = $store->createRow($roam, 'actions', ['event_id' => $roamEvent['id'], 'type' => 'conversation', 'params' => ['style' => 'portrait', 'start' => 'l1', 'lines' => [
     ['id' => 'l1', 'speaker' => 'character', 'character_id' => $guide['id'], 'text' => 'Shall we go to the lab?', 'narration_media_id' => $roamMedia['id'], 'choices' => [

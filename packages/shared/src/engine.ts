@@ -182,10 +182,10 @@ export class SceneEngine {
     return true;
   }
 
-  /** Start an event by id (must belong to this scene). */
+  /** Start an event by id: one of this scene's, or a character's own (they run in any scene). */
   triggerById(eventId: Id): Promise<void> {
     const found = this.index.events.get(eventId);
-    if (!found || found.scene.id !== this.scene.id) {
+    if (!found || (found.scene && found.scene.id !== this.scene.id)) {
       this.host.warn?.(`run_event: event ${eventId} is not in scene ${this.scene.id}`);
       return Promise.resolve();
     }
@@ -249,7 +249,7 @@ export class SceneEngine {
   watch(eventId: Id, actionId: Id, actor: string): void {
     if (this.stopped || this.leaving) return;
     const found = this.index.events.get(eventId);
-    if (!found || found.scene.id !== this.scene.id || found.event.audience !== 'scene') return;
+    if (!found || (found.scene && found.scene.id !== this.scene.id) || found.event.audience !== 'scene') return;
     const action = found.event.actions.find((a) => a.id === actionId);
     if (!action || !isShownToScene(action)) return;
     if (action.type === 'cancel') {

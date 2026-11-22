@@ -35,8 +35,8 @@ export interface Field {
   /** media: which type of file may be picked. `visual`: a picture or a video. */
   mediaType?: 'image' | 'audio' | 'video' | 'visual';
   /**
-   * spawn: the sibling field that holds the scene whose spawn points are listed. `here`: the scene
-   * being edited, or, where there is none (a character's routine), every scene's.
+   * spawn: the sibling field that holds the scene whose spawn points are listed (when it is empty,
+   * the scene being edited). `here`: the scene being edited, or, where there is none, every scene's.
    */
   sceneKey?: string;
   /** event: only list events of these kinds. */
@@ -60,13 +60,15 @@ export interface Field {
   /** Take the full width of the form rather than half. Fields with a slider do unless this is false. */
   wide?: boolean;
   /** Shown only when this says so, given the form's values: a field that only means something for some choices. */
-  when?: (values: Values) => boolean;
+  when?: (values: Values, ctx: FormContext) => boolean;
   /**
    * number: the X of a spot in the scene, whose Y is the field named `y`. Where the form can pick
    * spots (`FormContext.pickSpot`), a button after the two lets the spot be chosen by clicking the
    * scene. `prompt` says what the click chooses ("Click where the walker should go").
+   * `sceneKey`: the sibling field holding the scene the spot is in, when it need not be the one
+   * being edited (a character's walk to another scene); choosing a spot in another scene sets it.
    */
-  spot?: { y: string; prompt: string };
+  spot?: { y: string; prompt: string; sceneKey?: string };
 }
 
 /** A spot to be chosen by clicking a scene. */
@@ -75,10 +77,10 @@ export interface SpotRequest {
   prompt: string;
   /** The spot as it is now, if it has one, drawn so it can be seen while choosing. */
   at: { x: number; y: number } | null;
-  /** The scene to show, where the form is not about one scene (a character's routine). */
+  /** The scene to show, where the form is not about one scene, or the spot is in another. */
   sceneId?: number;
-  /** Called with the spot clicked, in scene pixels. */
-  done(at: { x: number; y: number }): void;
+  /** Called with the spot clicked, in scene pixels, and the scene it was clicked in. */
+  done(at: { x: number; y: number }, sceneId?: number): void;
   /** Called when choosing stops without a spot: Escape, Cancel, another choice begun, or the returned function called. */
   cancelled?(): void;
 }
@@ -102,20 +104,29 @@ export interface FormContext {
   pickSpot?: (request: SpotRequest) => () => void;
   /** Where there is no `sceneId`: the scene a spot is most likely in, shown first when picking one. */
   spotScene?: number;
-  /** The character whose form this is (a routine step), for pickers that list its things. */
+  /** The character whose form this is (one of its own events), for pickers that list its things. */
   characterId?: number;
+}
+
+/**
+ * Choosing a spot on a picture of any scene, in a pop-up (views/scene/spotPicker.ts sets it): for
+ * a spot in a scene other than the one being edited, or a form beside no scene at all.
+ */
+let popupPicker: ((store: Store, request: SpotRequest) => () => void) | null = null;
+export function usePopupPicker(pick: (store: Store, request: SpotRequest) => () => void) {
+  popupPicker = pick;
 }
 
 const NEW = '__new__';
 
 export function form(fields: readonly Field[], values: Values, commit: Commit, ctx: FormContext): HTMLElement {
-  const shown = fields.filter((f) => !f.when || f.when(values));
+  const shown = fields.filter((f) => !f.when || f.when(values, ctx));
   const nodes = new Map<Field, HTMLElement>(shown.map((f) => [f, control(f, values, commit, ctx)]));
   const children: HTMLElement[] = [];
   for (const f of shown) {
     children.push(nodes.get(f)!);
     // The button for a spot goes after its Y, so it sits under the pair.
-    const x = ctx.pickSpot ? shown.find((other) => other.spot?.y === f.key) : undefined;
+    const x = ctx.pickSpot || popupPicker ? shown.find((other) => other.spot?.y === f.key) : undefined;
     if (x) children.push(spotButton(x, f, nodes.get(x)!, nodes.get(f)!, values, commit, ctx));
   }
   return h('div', { class: 'form' }, ...children);
@@ -146,14 +157,21 @@ function spotButton(xField: Field, yField: Field, xNode: HTMLElement, yNode: HTM
       const [bx, by] = boxes();
       const x = read(bx, xField.key);
       const y = read(by, yField.key);
+      // The scene the spot is in: the one a sibling field names, else the one being edited.
+      const sceneKey = xField.spot!.sceneKey;
+      const named = sceneKey && typeof values[sceneKey] === 'number' ? (values[sceneKey] as number) : undefined;
+      const sceneId = named ?? ctx.sceneId ?? ctx.spotScene;
+      // The scene editor's canvas picks in its own scene; any other scene opens in a pop-up.
+      const pick = ctx.pickSpot && (ctx.sceneId == null || sceneId === ctx.sceneId) ? ctx.pickSpot : popupPicker ? (r: SpotRequest) => popupPicker!(ctx.store, r) : null;
+      if (!pick) return;
       button.textContent = 'Click the scene… (Esc to stop)';
       button.classList.add('picking');
       button.setAttribute('aria-pressed', 'true');
-      cancel = ctx.pickSpot!({
+      cancel = pick({
         prompt: xField.spot!.prompt,
         at: x != null && y != null ? { x, y } : null,
-        sceneId: ctx.sceneId ?? ctx.spotScene,
-        done: (at) => {
+        sceneId,
+        done: (at, chosenScene) => {
           stop();
           const [bx2, by2] = boxes();
           if (bx2) bx2.value = String(at.x);
@@ -162,6 +180,10 @@ function spotButton(xField: Field, yField: Field, xNode: HTMLElement, yNode: HTM
           for (const box of [bx2, by2]) box?.dispatchEvent(new Event('change'));
           if (!bx2) commit(xField.key, at.x, xField);
           if (!by2) commit(yField.key, at.y, yField);
+          // Picked in another scene: the walk goes there.
+          if (sceneKey && chosenScene != null && chosenScene !== (named ?? ctx.sceneId)) {
+            commit(sceneKey, chosenScene, { key: sceneKey, label: 'Scene', kind: 'scene', structural: true });
+          }
         },
         cancelled: stop,
       });
@@ -268,19 +290,24 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       return wrap(idSelect(ctx.store.rows('characters').map((r) => [r.id, String(r.name)]), value, set, 'Choose a character'));
     case 'spawn': {
       const pointsOf = (scene: Row | undefined) => ((params(scene ?? ({} as Row), 'layout').spawn_points as Array<{ name: string }> | undefined) ?? []).map((p) => p.name);
+      const named = values[f.sceneKey ?? 'scene_id'] as number | null | undefined;
       const names = f.sceneKey === 'here'
         ? (ctx.sceneId != null ? pointsOf(ctx.store.byId('scenes', ctx.sceneId)) : [...new Set(ctx.store.rows('scenes').flatMap(pointsOf))])
-        : pointsOf(ctx.store.byId('scenes', values[f.sceneKey ?? 'scene_id'] as number | null));
+        : pointsOf(ctx.store.byId('scenes', (named ?? ctx.sceneId) as number | null));
       const current = value == null ? '' : String(value);
       const points = names.map((n) => [n, n] as const).concat(current && !names.includes(current) ? [[current, `${current} (not in this scene)`]] : []);
       return wrap(select(points, current, (v) => set(v === '' ? null : v), f.placeholder ?? 'The default spawn point'));
     }
     case 'event': {
-      const events = ctx.store.rows('events').filter((e) => (!f.eventKinds || f.eventKinds.includes(e.kind as string)) && (!f.eventHere || e.scene_id === ctx.sceneId));
+      // A character's own events run in any scene, so they are listed with this scene's.
+      const events = ctx.store.rows('events').filter((e) => (!f.eventKinds || f.eventKinds.includes(e.kind as string)) && (!f.eventHere || e.scene_id === ctx.sceneId || e.character_id != null));
       const options = events.map((e) => {
+        if (e.character_id != null) {
+          return [e.id, `${String(ctx.store.byId('characters', e.character_id as number)?.name ?? 'A character')} › ${eventLabel(e)} (the character’s own)`] as [number, string];
+        }
         const sameScene = e.scene_id === ctx.sceneId;
         const scene = sameScene ? '' : `${sceneLabel(ctx.store.byId('scenes', e.scene_id as number))} › `;
-        return [e.id, `${scene}${eventLabel(e)} (${EVENT_KINDS[e.kind as keyof typeof EVENT_KINDS].toLowerCase()})`] as [number, string];
+        return [e.id, `${scene}${eventLabel(e)} (${(EVENT_KINDS[e.kind as keyof typeof EVENT_KINDS] ?? String(e.kind)).toLowerCase()})`] as [number, string];
       });
       return wrap(idSelect(options, value, set, f.placeholder ?? 'Choose an event'));
     }
@@ -424,16 +451,16 @@ const builtInChoices = (except: readonly string[] = []): Choice[] =>
 const named = (names: Iterable<string>): Choice[] => [...new Set(names)].sort().map((n) => [n, n] as const);
 
 /**
- * The animations an animation field offers, grouped. A character (the one an animate action names,
- * or the routine's own) offers only the animations defined for it on the Characters page, not its
- * poses; an item, its sprite sheet's and the built-in moves; anything else, every name the scenario
- * knows of. Null while an animate action is on a character but none is chosen yet.
+ * The animations an animation field offers, grouped. A character (the one an animate action names)
+ * offers only the animations defined for it on the Characters page, not its poses; an item, its
+ * sprite sheet's and the built-in moves; anything else, every name the scenario knows of. Null
+ * while an animate action is on a character but none is chosen yet.
  */
 export function animationChoices(values: Values, ctx: FormContext): ChoiceGroup[] | null {
   const { store } = ctx;
-  const onCharacter = ctx.characterId != null || values.target === 'character';
+  const onCharacter = values.target === 'character';
   if (onCharacter) {
-    const characterId = ctx.characterId ?? (values.character_id as number | null | undefined);
+    const characterId = values.character_id as number | null | undefined;
     const character = characterId != null ? store.byId('characters', characterId) : undefined;
     if (!character) return null;
     const own = Object.keys(characterOf(store, character).animations ?? {}).filter((n) => !isPose(n));

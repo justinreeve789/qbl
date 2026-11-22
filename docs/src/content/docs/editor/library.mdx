@@ -120,29 +120,23 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 
 **🐾 Add QuestLab Assets** (at the top of the Characters page, and on it while it is empty) opens a library of ready-made animals: two squirrels, three birds (bluebird, hen, hawk), two dogs, two cats, a komodo dragon, a snake, a turtle, a mountain goat, a horse and two fish. Each card shows the animal moving in a little scene, its close-up, what it can do (*stands*, *walks*, and moves such as `peck`, `bark`, `sit`, `graze` or `hide`) and who drew it. Filter by kind or search (`bird`, `farm`, `jump`...).
 
-**+ Add to scenario** copies the animal's sprite sheet and close-up into the scenario's media (filed under Characters) and makes a character from them, with its poses and moves already set up; the toast's **Open it** opens it. It is then a character like any other: rename it, give it a voice, change its frames, place it in scenes, and play its moves with a *Play an animation* action. Adding the same animal again shares the pictures already copied and names the new one *Red Squirrel 2*, and so on.
+**+ Add to scenario** copies the animal's sprite sheet and close-up into the scenario's media (filed under Characters) and makes a character from them, with its poses and moves already set up; the toast's **Open it** opens it. It is then a character like any other: rename it, give it a voice, change its frames, choose the scene it starts in, and play its moves with a *Play an animation* action. Adding the same animal again shares the pictures already copied and names the new one *Red Squirrel 2*, and so on.
 
 The art is free to use: public domain (CC0), or CC BY (the mountain goat, the horses, the stagecoach's horses and the bicycle), which must be credited. The credit is kept on the media it adds (shown in its Details) and listed in the library's **All credits**. Pixel art is scaled up in whole steps so it stays crisp. How the library is stored, and how to add to it, is in [The asset library](/docs/developers/asset-library/).
 
-Place characters in scenes, where a click can run an indirect event. Players' avatars are characters too, but they are the platform's, the same in every scenario: a scenario does not define them.
+Players' avatars are characters too, but they are the platform's, the same in every scenario: a scenario does not define them.
 
-### Getting around
+### Where it is
 
-Tick **Walks around on its own** to make the character part of the world rather than of each scene. There is then one of it for everyone playing together: all players see it in the same place, a [Walk](/docs/editor/events-and-actions/#walking) action can send it to another scene, and it stays where it went, between visits too. It starts where it is first placed (taking the scenes in order); placing it in other scenes only says what clicking it does there. **Walking speed** is how fast it goes when a walk does not say.
+Characters live in the world, not in scenes: each is in one place at a time, the same for everyone playing together, and stays where walk actions take it (between visits too). **Starts in** is the scene it is in when a game starts; **📍 Pick the spot** opens a picture of that scene to click where it stands (another scene can be chosen there), and the menu beside it says which way it faces. On the Scenes page it is drawn where it starts, under **Characters who start here**, and can be dragged; **Add to scene… › Character** starts a character in that scene instead (it moves from wherever it started). A character in no scene is nowhere to be seen, but can still speak in story boxes.
 
-A character that walks around on its own can have a **Routine**: steps it repeats by itself, for everyone, whether or not anyone is watching. **+ Add step** offers:
+Tick **Walks around on its own** to have it wander: it walks to 3 to 7 spots it can reach in the scene it is in, stopping 2 to 10 seconds between them, then leaves through a door that has no conditions and does the same in the next scene. A scene with no such door keeps it. A Walk action still sends it where the action says, and can stop it there or set it off again. **Walking speed** is how fast it goes when a walk does not say.
 
-* 🚶 **Walk somewhere**: to a spot, a spawn point, or another scene through its doors, as the Walk action does. For a spot, **📍 Pick on the scene** opens a picture of the scene to click: the scene the character will most likely be in at that step (where it starts, or where an earlier step walked it), and another can be chosen at the top.
-* ⏳ **Wait**.
-* 💬 **Say something**: a speech bubble over the character.
-* 🤸 **Play an animation**.
-* 🔢 **Change a shared variable**.
+### Its events
 
-Each step can have conditions, and can let the next step start at once (untick **Wait for this to finish**, to talk while walking). Use the arrows to change the order. **Start again after the last step** makes it loop (it does unless you untick it).
+Everything players do with a character is in its own events, on its panel. **+ New event** adds one and opens it, with its conditions and actions, as a scene's events have; **When clicked, run** chooses which one a click runs (the first one made, to begin with). Any scene can run the others with a **Run event** action: digging up a treasure in one scene can have the character say something about it. A character's events run in the player's scene, wherever the character is: a line it says in a bubble while it is somewhere else is shown in a story box instead.
 
-**Keeps to its routine only when** stops the character where it is while its conditions do not hold; it carries on where it left off when they hold again. Only **shared variables** (marked *shared by everyone*) count here and in the steps, because a routine belongs to no one player. To stop a character for a conversation, set a shared variable in the event that starts it, test it here, and set it back at the end.
-
-A player's Walk action comes first: the routine waits for the character to get there, then carries on.
+Because characters move about, an action of a scene that needs one there (a bubble line, an animation, or running one of its events that has them) is marked ⚠️ on its card when the character might be elsewhere: it walks around on its own, walk actions also take it to other scenes, or nothing ever brings it to that scene. The Publish page lists the same warnings.
 
 ## Objectives
 

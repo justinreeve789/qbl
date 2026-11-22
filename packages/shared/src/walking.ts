@@ -3,28 +3,109 @@ import { inHotspot, isWalkable, nearestWalkable, type WalkContext } from './geom
 import type { ScenarioIndex } from './scenario.js';
 import {
   BUILT_IN_MOVES,
-  type Character, type CharacterPlacement, type Condition, type Hotspot, type Id, type Media, type Npc, type Point,
-  type Routine, type RoutineStep, type Scenario, type Scene, type VarValue, type WalkAction,
+  type Action, type Character, type CharacterPlacement, type Condition, type GameEvent, type Hotspot, type Id, type Media, type Npc, type Point,
+  type Scenario, type Scene, type VarValue, type WalkAction,
 } from './types.js';
 import { testConditions } from './variables.js';
 
 /**
- * Walking: the rules shared by the game server (characters that roam) and the browser (characters
- * walking on one player's screen, and the player's own avatar walked by an action).
+ * Walking: the rules shared by the game server (where characters are, and where they walk) and the
+ * browser (the player's own avatar walked by an action, and single-player games).
  */
 
-/** Whether a character lives in the world and walks around it on its own (see `Npc.roams`). */
-export function characterRoams(npc: Pick<Npc, 'roams' | 'routine'> | null | undefined): boolean {
-  return npc?.roams === true || (npc?.routine?.steps?.length ?? 0) > 0;
+/** Whether a character walks around on its own (see `Npc.roams`). */
+export function characterRoams(npc: Pick<Npc, 'roams'> | null | undefined): boolean {
+  return npc?.roams === true;
 }
 
-/** Where a roaming character starts: its first placement, taking the scenes in order. */
-export function startPlacement(scenario: Pick<Scenario, 'scenes'>, characterId: Id): { scene: Scene; placement: CharacterPlacement } | null {
+/** Where a character starts: a scene, and a spot in it. */
+export interface CharacterStart {
+  scene: Scene;
+  x: number;
+  y: number;
+  facing?: 'left' | 'right';
+}
+
+/**
+ * Where a character starts: its own scene and spot, or, for one written before characters had
+ * them, its first placement, taking the scenes in order. Null when it is in no scene.
+ */
+export function characterStart(scenario: Pick<Scenario, 'scenes'>, npc: Pick<Npc, 'id' | 'scene_id' | 'position_x' | 'position_y' | 'facing'>): CharacterStart | null {
+  if (npc.scene_id != null) {
+    const scene = scenario.scenes.find((s) => s.id === npc.scene_id);
+    if (!scene) return null;
+    const middle = { x: (scene.width ?? 800) / 2, y: (scene.height ?? 600) * 0.75 };
+    return {
+      scene,
+      x: typeof npc.position_x === 'number' ? npc.position_x : middle.x,
+      y: typeof npc.position_y === 'number' ? npc.position_y : middle.y,
+      facing: npc.facing === 'left' ? 'left' : npc.facing === 'right' ? 'right' : undefined,
+    };
+  }
+  const placed = firstPlacement(scenario, npc.id);
+  return placed ? { scene: placed.scene, x: placed.placement.position_x, y: placed.placement.position_y, facing: placed.placement.facing } : null;
+}
+
+/** A character's first placement in the scenes (before characters had a start of their own). */
+export function firstPlacement(scenario: Pick<Scenario, 'scenes'>, characterId: Id): { scene: Scene; placement: CharacterPlacement } | null {
   for (const scene of scenario.scenes) {
     const placement = (scene.characters ?? []).find((p) => p.character_id === characterId);
     if (placement) return { scene, placement };
   }
   return null;
+}
+
+/** Visit every action of a list, including those on infobox buttons and conversation choices. */
+export function eachActionIn(actions: Action[] | undefined, visit: (a: Action) => void): void {
+  const walk = (a: Action) => {
+    visit(a);
+    if (a.type === 'infobox') for (const cta of a.call_to_actions ?? []) if (cta.action) walk(cta.action as Action);
+    if (a.type === 'conversation') for (const line of a.lines ?? []) for (const c of line.choices ?? []) for (const inner of c.actions ?? []) walk(inner as Action);
+  };
+  for (const a of actions ?? []) walk(a);
+}
+
+/** Every event of a scenario with where it belongs: a scene's, or a character's own. */
+export function allEvents(scenario: Pick<Scenario, 'scenes' | 'characters'>): Array<{ event: GameEvent; scene: Scene | null; character: Npc | null }> {
+  const out: Array<{ event: GameEvent; scene: Scene | null; character: Npc | null }> = [];
+  for (const scene of scenario.scenes) {
+    for (const key of ['start_events', 'end_events', 'hotspots', 'indirect_events'] as const) {
+      for (const event of scene[key] ?? []) out.push({ event, scene, character: null });
+    }
+  }
+  for (const character of scenario.characters ?? []) for (const event of character.events ?? []) out.push({ event, scene: null, character });
+  return out;
+}
+
+/**
+ * Where a character can be, as far as the document says: null when anywhere (it walks around on
+ * its own), else the scene it starts in and every scene a walk action sends it to.
+ */
+export function characterScenes(scenario: Pick<Scenario, 'scenes' | 'characters'>, npc: Npc): Set<Id> | null {
+  if (characterRoams(npc)) return null;
+  const out = new Set<Id>();
+  const start = characterStart(scenario, npc);
+  if (start) out.add(start.scene.id);
+  for (const { event, scene } of allEvents(scenario)) {
+    eachActionIn(event.actions, (a) => {
+      if (a.type !== 'walk' || (a.target ?? 'character') !== 'character' || a.character_id !== npc.id) return;
+      const to = a.scene_id ?? scene?.id;
+      if (to != null) out.add(to);
+    });
+  }
+  return out;
+}
+
+/**
+ * Whether a character is sure to be in a scene when an action of that scene runs: `here` (it is
+ * only ever there), `maybe` (it can be there, and elsewhere), `anywhere` (it walks around on its
+ * own) or `never` (nothing ever takes it there).
+ */
+export function characterPresence(scenario: Pick<Scenario, 'scenes' | 'characters'>, npc: Npc, sceneId: Id): 'here' | 'maybe' | 'anywhere' | 'never' {
+  const scenes = characterScenes(scenario, npc);
+  if (!scenes) return 'anywhere';
+  if (!scenes.has(sceneId)) return 'never';
+  return scenes.size === 1 ? 'here' : 'maybe';
 }
 
 /** How fast a character walks, in scene pixels per second. */
@@ -117,23 +198,45 @@ export function doorPoint(ctx: WalkContext, hotspot: Pick<Hotspot, 'position_x' 
   return near && inHotspot(hotspot, near.x, near.y) ? near : null;
 }
 
-// --------------------------------------------------------------- routines
+// --------------------------------------------------------------- wandering
 
-/** A routine as it should be: its steps' types checked, and loop on unless it says otherwise. */
-export function normalizeRoutine(raw: unknown): Routine | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const r = raw as Partial<Routine>;
-  const steps = (Array.isArray(r.steps) ? r.steps : []).filter(
-    (s): s is RoutineStep => !!s && typeof s === 'object' && ['walk', 'wait', 'dialogue', 'animate', 'variable'].includes((s as RoutineStep).type),
-  );
-  if (!steps.length) return null;
-  return { steps, loop: r.loop !== false, conditions: Array.isArray(r.conditions) ? r.conditions : [] };
+/** How many spots a character walks to in a scene before it leaves, and how long it stops at each (ms). */
+export const WANDER_SPOTS = { min: 3, max: 7 } as const;
+export const WANDER_PAUSE = { min: 2000, max: 10_000 } as const;
+
+/** A whole number from `min` to `max`, both included. */
+export function randomBetween(random: () => number, min: number, max: number): number {
+  return min + Math.floor(random() * (max - min + 1));
+}
+
+/**
+ * Spots for a character to walk to in a scene: 3 to 7 of them, in the walkable area, each one it
+ * can get to from where it stands (`reachable`). Fewer when the scene has little room. Spots are
+ * kept apart, so that it really walks between them.
+ */
+export function wanderSpots(ctx: WalkContext, from: Point, random: () => number, reachable: (from: Point, to: Point) => boolean): Point[] {
+  const wanted = randomBetween(random, WANDER_SPOTS.min, WANDER_SPOTS.max);
+  const apart = Math.max(40, Math.min(ctx.width, ctx.height) * 0.08);
+  const out: Point[] = [];
+  for (let tries = 0; out.length < wanted && tries < wanted * 40; tries++) {
+    const at = { x: random() * ctx.width, y: random() * ctx.height };
+    if (!isWalkable(ctx, at.x, at.y)) continue;
+    const previous = out[out.length - 1] ?? from;
+    if (Math.hypot(at.x - previous.x, at.y - previous.y) < apart) continue;
+    if (!reachable(from, at)) continue;
+    out.push({ x: Math.round(at.x), y: Math.round(at.y) });
+  }
+  return out;
+}
+
+/** The doors a character walking around on its own may leave by: those with no conditions at all, into a scene that exists. */
+export function openDoors(index: ScenarioIndex, scene: Scene): Door[] {
+  return doorsOf(scene).filter((d) => d.conditions.length === 0 && !!index.scene(d.to));
 }
 
 /**
  * How long a character's move lasts, as its own animation of that name says or else the built-in
- * move: 0 when it loops until stopped, or means nothing to this character. The game server uses
- * this to wait for an animation in a routine, as the browser does in an event.
+ * move: 0 when it loops until stopped, or means nothing to this character.
  */
 export function moveDuration(character: Pick<Character, 'animations'> | null | undefined, name: string, mediaOf: (id: Id) => Media | undefined): number {
   const drawn = !isPose(name) ? character?.animations?.[name] : undefined;

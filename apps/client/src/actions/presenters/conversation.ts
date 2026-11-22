@@ -11,16 +11,15 @@ import { bubbleAnchor, speakerOf, speech } from './dialogue';
  */
 export function conversationLine(action: ConversationAction, line: ConversationLine, choices: ConversationChoice[], pc: PresenterContext): ChoiceHandle {
   const { ctx } = pc;
-  const style = action.style === 'bubble' ? 'bubble' : 'portrait';
   const byCharacter = line.speaker === 'character';
   const characterId = byCharacter ? line.character_id : undefined;
+  // Characters walk about the world: one that is not in this scene says its bubble line in a story box.
+  const away = action.style === 'bubble' && byCharacter && !pc.locate({ character_id: characterId });
+  const style = action.style === 'bubble' && !away ? 'bubble' : 'portrait';
   const text = ctx.text(line.text);
   const speak = isNarrated(ctx.scenario, action) ? speech(pc, { narration_media_id: line.narration_media_id }, characterId) : undefined;
   const who = style === 'portrait' ? speakerOf(pc, characterId, undefined) : undefined;
   const anchor = style === 'bubble' ? bubbleAnchor(pc, byCharacter ? { character_id: characterId } : {}) : undefined;
-  if (style === 'bubble' && byCharacter && !pc.locate({ character_id: characterId })) {
-    pc.warn(`conversation ${action.id}: character ${String(characterId)} is not in this scene`);
-  }
   const name = who?.name ?? (byCharacter ? pc.locate({ character_id: characterId })?.name : undefined);
 
   const shown = style === 'portrait'

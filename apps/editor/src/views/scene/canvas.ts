@@ -755,6 +755,8 @@ export class SceneCanvas {
         const y = num(p.position_y);
         if (x == null || y == null) return null;
         if (p.target === 'player') return { kind: 'walk', at: { x, y }, from: null, name: '🚶 The player walks here' };
+        // A character's walk to a spot of another scene is not marked on this one.
+        if (p.scene_id != null && p.scene_id !== this.model.sceneId) return null;
         const character = store.byId('characters', p.character_id as number | null);
         const placed = this.model.layout('characters').find((c) => c.character_id === p.character_id);
         const from = placed ? { x: Number(placed.position_x ?? 0), y: Number(placed.position_y ?? 0) } : null;

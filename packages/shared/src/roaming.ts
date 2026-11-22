@@ -1,12 +1,15 @@
 import { distance, inHotspot, nearestWalkable, speedFactorAt, stepToward, type WalkContext } from './geometry.js';
 import { Pathfinder, walkSignature } from './pathfinder.js';
-import { dialogueDuration, type ScenarioIndex } from './scenario.js';
-import type { Id, Npc, Point, Routine, RoutineStep, Scenario, Scene, VarValue, VariableOperator, WalkAction } from './types.js';
-import { characterRoams, doorPoint, moveDuration, roomConditionsHold, routeBetween, startPlacement, walkSpeed, type Door } from './walking.js';
+import type { ScenarioIndex } from './scenario.js';
+import type { Id, Npc, Point, Scenario, Scene, VarValue, WalkAction } from './types.js';
+import {
+  characterRoams, characterStart, doorPoint, openDoors, randomBetween, roomConditionsHold, routeBetween, walkSpeed, wanderSpots,
+  WANDER_PAUSE, type Door,
+} from './walking.js';
 
 /**
- * Where a roaming character is, as the room state carries it to every player. Keyed by the
- * character's id (within the team's part of the room, like unique items).
+ * Where a character is, as the room state carries it to every player. Keyed by the character's
+ * id (within the team's part of the room, like unique items).
  */
 export interface NpcRec {
   character_id: number;
@@ -17,47 +20,43 @@ export interface NpcRec {
   facing: string;
   /** Walking right now: the walking pose plays. */
   moving: boolean;
-  /** The animation it was last asked to play, as `name:count` (as for players). Cleared when it walks. */
-  anim: string;
-  /** The routine line it is saying, as `count:step` (the step's index in its routine), or empty. */
-  line: string;
   /** While it walks because a player's walk action asked: that request's ticket. Empty otherwise. */
   trip: string;
 }
 
-/** Where a character is to walk: a walk action or routine step, without who walks. */
-export type WalkSpec = Pick<WalkAction, 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing'>;
+/** Where a character is to walk: a walk action, without who walks. */
+export type WalkSpec = Pick<WalkAction, 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing' | 'wander'>;
 
-/** Where a roaming character was left, kept with the instance between sessions. */
+/** Where a character was left, kept with the instance between sessions. */
 export interface SavedNpc {
   scene_id: Id;
   x: number;
   y: number;
   facing?: string;
-  /** The routine step it was on. */
-  step?: number;
+  /** Whether it was walking around on its own, when that is not what the character does by itself (a walk action stopped it, or set it off). */
+  wanders?: boolean;
 }
 
-/** What Roamers needs from the World that owns it. */
-export interface RoamerHost {
+/** What Walkers needs from the World that owns it. */
+export interface WalkerHost {
   scenario: Scenario;
   index: ScenarioIndex;
   /** The room state's map of characters (or a plain Map). */
   npcs: { get(key: string): NpcRec | undefined; set(key: string, value: NpcRec): unknown; forEach(cb: (value: NpcRec, key: string) => void): void };
   newNpc(): NpcRec;
   now(): number;
+  /** A number from 0 up to 1: where it wanders, and for how long it stops. */
+  random(): number;
   /** Where feet may be in a scene right now. */
   walkContext(sceneId: Id): WalkContext;
-  /** A shared (room) variable's value, and changing one. */
+  /** A shared (room) variable's value: doors with conditions on one open as it says. */
   roomVariable(name: string): VarValue | undefined;
-  setRoomVariable(name: string, operator: VariableOperator, operand: VarValue | undefined): void;
   /** Something worth saving changed (a character stopped somewhere new). */
   changed(): void;
 }
 
 /** A walk under way: the doors still to go through, and the corners to the next one. */
 interface Journey {
-  spec: WalkSpec;
   doors: Door[];
   /** Corners still to pass in the scene the character is in. */
   path: Point[];
@@ -69,75 +68,81 @@ interface Journey {
   done: boolean;
 }
 
+/**
+ * What a character walking around on its own is doing: standing still for a while (`pause`),
+ * walking to one of the spots it chose in this scene (`spot`), or heading out through a door
+ * (`door`). `idle`: it is not walking around on its own.
+ */
+type Phase = 'idle' | 'pause' | 'spot' | 'door';
+
 interface Mind {
   npc: Npc;
-  routine: Routine | null;
-  step: number;
-  /** The current step has begun, and is waiting to finish. */
-  started: boolean;
-  /** For a step that takes time: when it is over. */
+  /** Walking around on its own: what the character does, unless a walk action said otherwise. */
+  wanders: boolean;
+  phase: Phase;
+  /** `pause`: when it sets off again. */
   until: number;
-  /** The routine's walk (a walk step, or one that goes on while later steps run). */
+  /** The spots in this scene it has still to walk to before it leaves. */
+  spots: Point[];
+  /** The walk it is on: to a spot or a door of its own, or where a player's walk action sends it. */
   journey: Journey | null;
-  /** A player's walk action, which comes before the routine. */
-  command: { ticket: string; journey: Journey } | null;
-  /** The routine's conditions did not hold last time: it has stopped where it was. */
-  paused: boolean;
-  /** Finished, for a routine that does not loop. */
-  finished: boolean;
-  count: number;
+  /** The walk is a player's walk action: its ticket, and whether to walk around again on arriving. */
+  command: { ticket: string; wander: boolean } | null;
 }
 
-/** How many steps that take no time a routine may run in one tick, so a loop of them cannot hang the server. */
-const STEPS_PER_TICK = 20;
 /** The longest time one tick may cover: after a pause, characters do not leap. */
 const MAX_TICK_MS = 250;
 /** How close counts as there. */
 const ARRIVED = 2;
 
 /**
- * The roaming characters of one instance: where each is, and what it is doing. The game server
- * ticks it a few times a second; so does the browser in single-player mode. It changes only the
- * records in `host.npcs`, which the room state carries to every player.
+ * The characters of one instance: where each is, and where it is walking. Every character that
+ * starts in a scene is here, once per instance, so every player sees it in the same place. Ones
+ * that walk around on their own (`Npc.roams`) choose 3 to 7 spots they can reach in the scene they
+ * are in, walk to each in turn and stop at each for 2 to 10 seconds, then leave through a door that
+ * has no conditions, and do the same in the next scene. Any character walks where a player's walk
+ * action sends it.
+ *
+ * The game server ticks it a few times a second; so does the browser in single-player mode. It
+ * changes only the records in `host.npcs`, which the room state carries to every player.
  */
-export class Roamers {
+export class Walkers {
   private minds = new Map<Id, Mind>();
   private finders = new Map<Id, { signature: string; finder: Pathfinder }>();
   private last: number;
 
-  constructor(private host: RoamerHost, saved: Record<string, SavedNpc> | undefined) {
+  constructor(private host: WalkerHost, saved: Record<string, SavedNpc> | undefined) {
     this.last = host.now();
     for (const npc of host.scenario.characters ?? []) {
-      if (!characterRoams(npc)) continue;
-      const start = startPlacement(host.scenario, npc.id);
+      const start = characterStart(host.scenario, npc);
       if (!start) continue;
       const key = String(npc.id);
       const kept = saved?.[key];
-      const keptOk = kept && host.index.scene(kept.scene_id) && Number.isFinite(kept.x) && Number.isFinite(kept.y);
+      const keptOk = !!kept && !!host.index.scene(kept.scene_id) && Number.isFinite(kept.x) && Number.isFinite(kept.y);
       let rec = host.npcs.get(key);
       if (!rec) {
         rec = host.newNpc();
         rec.character_id = npc.id;
         const sceneId = keptOk ? kept.scene_id : start.scene.id;
-        const wanted = keptOk ? { x: kept.x, y: kept.y } : { x: start.placement.position_x, y: start.placement.position_y };
+        const wanted = keptOk ? { x: kept.x, y: kept.y } : { x: start.x, y: start.y };
         const at = nearestWalkable(host.walkContext(sceneId), wanted) ?? wanted;
         rec.scene_id = sceneId;
         rec.x = at.x;
         rec.y = at.y;
-        rec.facing = (keptOk ? kept.facing : start.placement.facing) === 'left' ? 'left' : 'right';
+        rec.facing = (keptOk ? kept.facing : start.facing) === 'left' ? 'left' : 'right';
         rec.moving = false;
-        rec.anim = '';
-        rec.line = '';
         rec.trip = '';
         host.npcs.set(key, rec);
       }
-      const routine = npc.routine ?? null;
-      const step = keptOk && routine && Number.isInteger(kept.step) && kept.step! >= 0 && kept.step! < routine.steps.length ? kept.step! : 0;
-      this.minds.set(npc.id, { npc, routine, step, started: false, until: 0, journey: null, command: null, paused: false, finished: false, count: 0 });
+      const wanders = keptOk && typeof kept.wanders === 'boolean' ? kept.wanders : characterRoams(npc);
+      const mind: Mind = { npc, wanders, phase: 'idle', until: 0, spots: [], journey: null, command: null };
+      this.minds.set(npc.id, mind);
+      // Not all at once: each stands a moment before it first sets off.
+      if (wanders) this.freshRound(mind, rec, host.now());
     }
   }
 
-  /** Whether a character roams in this instance. */
+  /** Whether a character is in this instance's world (it starts in a scene). */
   has(characterId: Id): boolean {
     return this.minds.has(characterId);
   }
@@ -146,10 +151,15 @@ export class Roamers {
     return this.host.npcs.get(String(characterId));
   }
 
+  /** Whether a character is walking around on its own right now. */
+  wandering(characterId: Id): boolean {
+    return this.minds.get(characterId)?.wanders === true;
+  }
+
   /**
-   * A player's walk action: walk the character there now, before anything its routine wants.
-   * Returns false when it cannot go (no way there); the record's `trip` carries the ticket until
-   * it arrives, or until another walk takes over.
+   * A player's walk action: walk the character there now, whatever it was doing. Returns false
+   * when it cannot go (no way there); the record's `trip` carries the ticket until it arrives, or
+   * until another walk takes over.
    */
   command(characterId: Id, spec: WalkSpec, ticket: string): boolean {
     const mind = this.minds.get(characterId);
@@ -157,9 +167,11 @@ export class Roamers {
     if (!mind || !rec) return false;
     const journey = this.plan(mind, rec, spec);
     if (!journey) return false;
-    mind.command = { ticket, journey };
+    mind.journey = journey;
+    mind.command = { ticket, wander: characterRoams(mind.npc) && spec.wander !== false };
+    mind.phase = 'idle';
+    mind.spots = [];
     rec.trip = ticket;
-    rec.anim = '';
     return true;
   }
 
@@ -179,7 +191,9 @@ export class Roamers {
     const out: Record<string, SavedNpc> = {};
     for (const [id, mind] of this.minds) {
       const rec = this.record(id);
-      if (rec) out[String(id)] = { scene_id: rec.scene_id, x: Math.round(rec.x), y: Math.round(rec.y), facing: rec.facing, step: mind.routine ? mind.step : undefined };
+      if (!rec) continue;
+      const own = characterRoams(mind.npc);
+      out[String(id)] = { scene_id: rec.scene_id, x: Math.round(rec.x), y: Math.round(rec.y), facing: rec.facing, ...(mind.wanders !== own ? { wanders: mind.wanders } : {}) };
     }
     return out;
   }
@@ -187,149 +201,127 @@ export class Roamers {
   // ------------------------------------------------------------ thinking
 
   private think(mind: Mind, rec: NpcRec, now: number, dt: number): void {
-    // A player's walk comes first; the routine waits for it.
-    if (mind.command) {
-      this.advance(mind, rec, mind.command.journey, dt);
-      if (mind.command.journey.done) {
-        if (rec.trip === mind.command.ticket) rec.trip = '';
-        mind.command = null;
-        // The routine's walk was interrupted: it sets off again from wherever the character is now.
-        if (mind.journey && !mind.journey.done) mind.journey = this.plan(mind, rec, mind.journey.spec);
-      }
+    if (mind.journey && !mind.journey.done) {
+      this.advance(rec, mind.journey, dt);
+      if (!mind.journey.done) return;
+      this.arrived(mind, rec, now);
+    }
+    if (mind.phase === 'pause' && now >= mind.until) this.onward(mind, rec, now);
+  }
+
+  /** The walk it was on is over: what next. */
+  private arrived(mind: Mind, rec: NpcRec, now: number): void {
+    mind.journey = null;
+    const command = mind.command;
+    if (command) {
+      mind.command = null;
+      if (rec.trip === command.ticket) rec.trip = '';
+      // Walking around again, or staying here until another walk sends it on.
+      mind.wanders = command.wander;
+      this.host.changed();
+      if (mind.wanders) this.freshRound(mind, rec, now);
+      else mind.phase = 'idle';
       return;
     }
-    const routine = mind.routine;
-    if (!routine || mind.finished) return;
-    if (!roomConditionsHold(this.host.scenario, routine.conditions, (n) => this.host.roomVariable(n))) {
-      // Told to stop: it stands where it is, and carries on with this step when allowed again.
-      if (!mind.paused) {
-        mind.paused = true;
-        this.halt(rec);
-      }
+    if (!mind.wanders) {
+      mind.phase = 'idle';
       return;
     }
-    if (mind.paused) {
-      mind.paused = false;
-      if (mind.journey && !mind.journey.done) mind.journey = this.plan(mind, rec, mind.journey.spec);
-    }
-    if (mind.journey && !mind.journey.done) this.advance(mind, rec, mind.journey, dt);
-    this.runSteps(mind, rec, routine, now);
-  }
-
-  private runSteps(mind: Mind, rec: NpcRec, routine: Routine, now: number): void {
-    for (let n = 0; n < STEPS_PER_TICK; n++) {
-      const step = routine.steps[mind.step];
-      if (!step) return;
-      if (!mind.started) {
-        if (!roomConditionsHold(this.host.scenario, step.conditions, (v) => this.host.roomVariable(v))) {
-          if (!this.next(mind, routine)) return;
-          continue;
-        }
-        this.begin(mind, rec, step, now);
-        mind.started = true;
-        if (step.blocking === false) {
-          if (!this.next(mind, routine)) return;
-          continue;
-        }
-      }
-      if (!this.over(mind, step, now)) return;
-      if (!this.next(mind, routine)) return;
+    if (mind.phase === 'door') {
+      // Through the door, into the next scene: a new round of spots there, setting off at once.
+      mind.spots = this.chooseSpots(rec);
+      this.onward(mind, rec, now);
+    } else if (mind.spots.length) {
+      this.pause(mind, now);
+    } else {
+      this.leave(mind, rec, now);
     }
   }
 
-  /** On to the next step. False when the routine has ended. */
-  private next(mind: Mind, routine: Routine): boolean {
-    mind.started = false;
-    mind.step++;
-    if (mind.step < routine.steps.length) return true;
-    if (routine.loop === false) {
-      mind.finished = true;
-      mind.step = routine.steps.length - 1;
-      return false;
+  /** Walk to the next spot, or, with none left, out of the scene. */
+  private onward(mind: Mind, rec: NpcRec, now: number): void {
+    while (mind.spots.length) {
+      const spot = mind.spots.shift()!;
+      const journey = this.journeyTo(mind, rec, [], spot);
+      if (journey) {
+        mind.journey = journey;
+        mind.phase = 'spot';
+        return;
+      }
     }
-    mind.step = 0;
-    return true;
+    this.leave(mind, rec, now);
   }
 
-  private begin(mind: Mind, rec: NpcRec, step: RoutineStep, now: number): void {
-    switch (step.type) {
-      case 'walk':
-        mind.journey = this.plan(mind, rec, step);
-        break;
-      case 'wait':
-        mind.until = now + Math.max(0, Number(step.duration) || 0);
-        break;
-      case 'dialogue': {
-        mind.count++;
-        rec.line = `${mind.count}:${mind.step}`;
-        const text = typeof step.text === 'string' ? step.text : '';
-        mind.until = now + (step.duration && step.duration > 0 ? step.duration : dialogueDuration(text));
-        break;
+  /**
+   * Out through a door with no conditions, one it can walk to, chosen at random. A scene with no
+   * such door keeps it: it chooses new spots here and goes on walking around.
+   */
+  private leave(mind: Mind, rec: NpcRec, now: number): void {
+    const scene = this.host.index.scene(rec.scene_id);
+    const ctx = this.host.walkContext(rec.scene_id);
+    const from = { x: rec.x, y: rec.y };
+    const doors = scene ? openDoors(this.host.index, scene).filter((d) => {
+      const at = doorPoint(ctx, d.hotspot, from);
+      return !!at && (inHotspot(d.hotspot, from.x, from.y) || !!this.finder(rec.scene_id, ctx).find(from, at));
+    }) : [];
+    if (doors.length) {
+      const door = doors[Math.floor(this.host.random() * doors.length)] ?? doors[0]!;
+      const journey = this.journeyTo(mind, rec, [door], null);
+      if (journey) {
+        mind.journey = journey;
+        mind.phase = 'door';
+        return;
       }
-      case 'animate': {
-        mind.count++;
-        const name = typeof step.animation === 'string' ? step.animation : '';
-        rec.anim = name ? `${name}:${mind.count}` : '';
-        mind.until = now + (name ? moveDuration(mind.npc, name, (id) => this.host.index.media.get(id)) : 0);
-        break;
-      }
-      case 'variable':
-        this.host.setRoomVariable(step.name, step.operator, step.operand);
-        break;
-      default:
     }
+    mind.spots = this.chooseSpots(rec);
+    this.pause(mind, now);
   }
 
-  /** Whether a step that has begun is over. */
-  private over(mind: Mind, step: RoutineStep, now: number): boolean {
-    if (step.type === 'walk') return !mind.journey || mind.journey.done;
-    if (step.type === 'dialogue' || step.type === 'wait' || step.type === 'animate') {
-      if (now < mind.until) return false;
-      // The line has been said: the bubble goes.
-      if (step.type === 'dialogue') {
-        const rec = this.record(mind.npc.id);
-        if (rec) rec.line = '';
-      }
-      return true;
-    }
-    return true;
+  /** Begin walking around here: a moment's pause, then 3 to 7 spots of this scene. */
+  private freshRound(mind: Mind, rec: NpcRec, now: number): void {
+    mind.spots = this.chooseSpots(rec);
+    this.pause(mind, now);
+  }
+
+  private pause(mind: Mind, now: number): void {
+    mind.phase = 'pause';
+    mind.until = now + randomBetween(() => this.host.random(), WANDER_PAUSE.min, WANDER_PAUSE.max);
+  }
+
+  /** 3 to 7 spots of the scene the character is in, each one it can walk to from where it stands. */
+  private chooseSpots(rec: NpcRec): Point[] {
+    const ctx = this.host.walkContext(rec.scene_id);
+    const finder = this.finder(rec.scene_id, ctx);
+    return wanderSpots(ctx, { x: rec.x, y: rec.y }, () => this.host.random(), (from, to) => !!finder.find(from, to));
   }
 
   // ------------------------------------------------------------- walking
 
-  /** Work out how to get there from where the character is. Null: there is no way. */
+  /** Work out how to get where a walk action says from where the character is. Null: there is no way. */
   private plan(mind: Mind, rec: NpcRec, spec: WalkSpec): Journey | null {
     const to = spec.to ?? 'point';
-    const speed = walkSpeed(this.host.scenario, mind.npc, spec);
-    const facing = spec.facing === 'left' || spec.facing === 'right' ? spec.facing : undefined;
-    let doors: Door[] = [];
+    const target = this.host.index.scene(spec.scene_id ?? rec.scene_id);
+    if (!target) return null;
     let end: Point | null = null;
-    let endFacing = facing;
-    const here = this.host.index.scene(rec.scene_id);
-    if (!here) return null;
+    let facing = spec.facing === 'left' || spec.facing === 'right' ? spec.facing : undefined;
     if (to === 'point') {
       if (typeof spec.position_x !== 'number' || typeof spec.position_y !== 'number') return null;
       end = { x: spec.position_x, y: spec.position_y };
     } else if (to === 'spawn') {
-      const spawn = (here.spawn_points ?? []).find((p) => p.name === spec.spawn_point);
+      const spawn = (target.spawn_points ?? []).find((p) => p.name === spec.spawn_point);
       if (!spawn) return null;
       end = { x: spawn.position_x, y: spawn.position_y };
-      endFacing ??= spawn.facing;
-    } else if (to === 'scene') {
-      const target = spec.scene_id != null ? this.host.index.scene(spec.scene_id) : undefined;
-      if (!target) return null;
-      const route = routeBetween(this.host.index, rec.scene_id, target.id, (door) => this.open(door));
-      if (!route) return null;
-      doors = route;
-      const spawn = spec.spawn_point ? (target.spawn_points ?? []).find((p) => p.name === spec.spawn_point) : undefined;
-      if (spawn) {
-        end = { x: spawn.position_x, y: spawn.position_y };
-        endFacing ??= spawn.facing;
-      }
-    } else {
+      facing ??= spawn.facing;
+    } else if (to !== 'scene') {
       return null;
     }
-    const journey: Journey = { spec, doors, path: [], end, speed, facing: endFacing, done: false };
+    const doors = routeBetween(this.host.index, rec.scene_id, target.id, (door) => this.open(door));
+    if (!doors) return null;
+    return this.journeyTo(mind, rec, doors, end, walkSpeed(this.host.scenario, mind.npc, spec), facing);
+  }
+
+  private journeyTo(mind: Mind, rec: NpcRec, doors: Door[], end: Point | null, speed = walkSpeed(this.host.scenario, mind.npc), facing?: 'left' | 'right'): Journey | null {
+    const journey: Journey = { doors, path: [], end, speed, facing, done: false };
     this.leg(journey, rec);
     return journey;
   }
@@ -360,7 +352,7 @@ export class Roamers {
   }
 
   /** Walk on for `dt` milliseconds: along the corners, through doors, and stop on arriving. */
-  private advance(mind: Mind, rec: NpcRec, journey: Journey, dt: number): void {
+  private advance(rec: NpcRec, journey: Journey, dt: number): void {
     if (journey.done) return;
     let budget = (journey.speed * dt) / 1000;
     let guard = 0;
@@ -397,7 +389,6 @@ export class Roamers {
       rec.x = to.x;
       rec.y = to.y;
       rec.moving = true;
-      if (rec.anim) rec.anim = '';
       budget -= factor > 0 ? moved / factor : budget;
       if (distance(to, corner) <= ARRIVED) journey.path.shift();
       else break;
@@ -415,7 +406,6 @@ export class Roamers {
     rec.x = at.x;
     rec.y = at.y;
     if (spawn?.facing) rec.facing = spawn.facing;
-    rec.line = '';
     this.host.changed();
   }
 
@@ -424,10 +414,6 @@ export class Roamers {
     rec.moving = false;
     if (journey.facing) rec.facing = journey.facing;
     this.host.changed();
-  }
-
-  private halt(rec: NpcRec): void {
-    rec.moving = false;
   }
 
   private middle(scene: Scene): Point {

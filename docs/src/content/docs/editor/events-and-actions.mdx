@@ -153,15 +153,19 @@ An **award** is given **once per student** by default, however often the event r
 
 ### Walking
 
-**Walk** moves someone on foot: around whatever is in the way, with their walking pictures, turning the way they go. Choose **Who walks** and **Walk to**; only the fields for that destination are shown.
+**Walk** moves someone on foot: around whatever is in the way, with their walking pictures, turning the way they go. Choose **Who walks**; only the fields that mean something for that walker and destination are shown.
 
-* **A spot in the scene**: its **X** and **Y**. Press **📍 Pick on the scene** and click the scene where the walker should go, rather than typing the numbers; **Esc** or **Cancel** stops without changing them. While the event is selected, the spot is drawn on the canvas as a marker, with a dashed line from where the character stands, and the marker can be dragged.
-* **A spawn point in the scene**: one of the scene's spawn points.
-* **Another scene, through its doors**: the walker heads for a hotspot of this scene whose jump goes to that scene (an exit made on the scene map is one), goes through it and arrives at the spawn point the jump names. **Then walk on to** sends a character that walks around on its own on to a spawn point there.
+**A character** lives in the world, so a walk says where in the world: **To the scene** (this one, unless you choose another) and **And in it**:
+
+* **To a spot**: its **X** and **Y**. Press **📍 Pick on the scene** and click where the character should go, rather than typing the numbers; for a spot in another scene a picture of that scene opens in a pop-up (choosing another scene there changes the walk's scene too). **Esc** or **Cancel** stops without changing anything. While the event is selected, a spot in this scene is drawn on the canvas as a marker, with a dashed line from where the character starts, and the marker can be dragged.
+* **To a spawn point** of that scene.
+* **Just in**: it stops where the door brings it.
+
+From wherever it is when the walk starts, the character takes the quickest way, scene by scene, through the doors (hotspots whose jump leads on, such as exits made on the scene map), arriving at the spawn point each jump names. Everyone playing together sees it go, and it stays where it went. For a character that walks around on its own, **Then walk around on its own again** says whether it carries on wandering once there, or stays put until another walk sends it on.
+
+**The player** walks to a spot or a spawn point of the scene they are in, or to **another scene, through this scene's door**: they go through it as if they had walked into it. The player walks even while frozen, so **Freeze**, then **Walk** the player, makes a short cutscene.
 
 **Speed** is in pixels per second (players walk at 420 unless the scenario says otherwise), and **Face on arriving** turns the walker at the end. With **Wait for this to finish** ticked, the next action waits until they get there.
-
-What happens depends on the character. One set to **walk around on its own** (Characters page, *Getting around*) walks for everyone, can cross several rooms, and stays where it went. Any other character walks on this player's screen in this scene, and is back in its place next time; one that walks out through a door is gone until the scene is entered again. The player walks even while frozen, so **Freeze**, then **Walk** the player, makes a short cutscene; walked to another scene, they go through the door as if they had walked into it.
 
 ### Infoboxes, questions and conversations
 

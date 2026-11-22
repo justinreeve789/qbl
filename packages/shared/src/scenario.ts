@@ -2,7 +2,7 @@ import type {
   AvatarCharacter, Npc, Action, ActionType, GameEvent, GlossaryEntry, Hotspot, Id, Item, Label, Media, Placement, Scenario, Scene, SceneLayer, SpawnPoint,
 } from './types.js';
 import { characterMediaIds, normalizeNpc, scenarioAvatars } from './characters.js';
-import { characterRoams, normalizeRoutine } from './walking.js';
+import { allEvents, characterRoams, characterScenes, eachActionIn, firstPlacement } from './walking.js';
 
 const ACTION_TYPES: ActionType[] = [
   'animate', 'award', 'glossary', 'shop', 'dialogue', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
@@ -27,11 +27,37 @@ function bySequence<T extends { sequence?: number }>(list: T[]): T[] {
     .map((x) => x.item);
 }
 
-function normalizeEvent<T extends GameEvent>(event: T): T {
-  const actions = bySequence(event.actions ?? []).map((a) => {
-    const type = normalizeActionType(a.type) ?? a.type;
-    return { ...a, type, blocking: a.blocking ?? true } as Action;
-  });
+/**
+ * A character's walk names the scene it goes to. One written before that (to a spot or a spawn
+ * point of "this scene") goes to the scene of its event; one to a scene's spawn point is a walk
+ * to that spawn point of that scene.
+ */
+function normalizeWalk(a: Action, scene: Scene | null): Action {
+  if (a.type !== 'walk' || (a.target ?? 'character') !== 'character') return a;
+  const to = a.to ?? 'point';
+  if (to === 'scene' && a.spawn_point) return { ...a, to: 'spawn' };
+  if ((to === 'point' || to === 'spawn') && a.scene_id == null && scene) return { ...a, scene_id: scene.id };
+  return a;
+}
+
+function normalizeActions(list: Action[], scene: Scene | null): Action[] {
+  const one = (raw: Action): Action => {
+    const type = normalizeActionType(raw.type) ?? raw.type;
+    let a = normalizeWalk({ ...raw, type, blocking: raw.blocking ?? true } as Action, scene);
+    // Walks on buttons and in conversation choices are walks of the same event.
+    if (a.type === 'infobox' && a.call_to_actions?.length) {
+      a = { ...a, call_to_actions: a.call_to_actions.map((cta) => (cta.action ? { ...cta, action: normalizeWalk(cta.action as Action, scene) } : cta)) } as Action;
+    }
+    if (a.type === 'conversation' && a.lines?.length) {
+      a = { ...a, lines: a.lines.map((line) => (line.choices?.length ? { ...line, choices: line.choices.map((c) => (c.actions?.length ? { ...c, actions: c.actions.map((inner) => normalizeWalk(inner as Action, scene)) } : c)) } : line)) } as Action;
+    }
+    return a;
+  };
+  return bySequence(list).map(one);
+}
+
+function normalizeEvent<T extends GameEvent>(event: T, scene: Scene | null = null): T {
+  const actions = normalizeActions(event.actions ?? [], scene);
   return {
     ...event,
     overridable: event.overridable ?? false,
@@ -58,11 +84,11 @@ export function normalizeScenario(input: Scenario): Scenario {
     show_avatars: scene.show_avatars ?? true,
     background_media: scene.background_media ?? [],
     foreground_media: scene.foreground_media ?? [],
-    start_events: (scene.start_events ?? []).map(normalizeEvent),
-    end_events: (scene.end_events ?? []).map(normalizeEvent),
-    indirect_events: (scene.indirect_events ?? []).map(normalizeEvent),
+    start_events: (scene.start_events ?? []).map((e) => normalizeEvent(e, scene)),
+    end_events: (scene.end_events ?? []).map((e) => normalizeEvent(e, scene)),
+    indirect_events: (scene.indirect_events ?? []).map((e) => normalizeEvent(e, scene)),
     hotspots: (scene.hotspots ?? []).map((h) => ({
-      ...normalizeEvent(h),
+      ...normalizeEvent(h, scene),
       radius: h.radius ?? -1,
       activate_by_trigger: h.activate_by_trigger ?? false,
       labels: h.labels ?? [],
@@ -98,18 +124,38 @@ export function normalizeScenario(input: Scenario): Scenario {
     // A vehicle is one object in the world: it goes where it is driven, stays where it is left, and
     // whoever finds it there can use it. That is what `unique` means, so every vehicle is unique.
     items: (input.items ?? []).map((item) => (item.vehicle && !item.unique ? { ...item, unique: true } : item)),
-    // Characters written before they had animations get them from their picture and close-up.
-    // A character with a routine roams: the routine walks it around the world.
-    characters: (input.characters ?? []).map((c) => {
-      const npc = normalizeNpc(c, (id) => assets.get(id));
-      const routine = normalizeRoutine(npc.routine);
-      return { ...npc, routine, roams: characterRoams({ roams: npc.roams, routine }) };
-    }),
+    characters: (input.characters ?? []).map((c) => normalizeCharacter(normalizeNpc(c, (id) => assets.get(id)), scenes)),
     avatars: scenarioAvatars(input, (id) => assets.get(id)),
     assets: [...assets.values()].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100)),
     scenes,
   };
   out.jump_targets = computeJumpTargets(out);
+  return out;
+}
+
+/**
+ * A character as it is now. Written before they had animations: they get them from their picture
+ * and close-up (normalizeNpc). Before they lived in the world: their first placement in the
+ * scenes is where they start, and its event is what clicking them runs. Before routines went: a
+ * character with a routine walked around on its own, and still does.
+ */
+function normalizeCharacter(npc: Npc, scenes: Scene[]): Npc {
+  const out: Npc & { routine?: unknown } = { ...npc };
+  if (out.scene_id == null) {
+    const placed = firstPlacement({ scenes }, npc.id);
+    if (placed) {
+      out.scene_id = placed.scene.id;
+      out.position_x = placed.placement.position_x;
+      out.position_y = placed.placement.position_y;
+      if (placed.placement.facing) out.facing = placed.placement.facing;
+      if (out.event_id == null && placed.placement.event_id != null) out.event_id = placed.placement.event_id;
+    }
+  }
+  const routine = out.routine as { steps?: unknown[] } | null | undefined;
+  if (routine && Array.isArray(routine.steps) && routine.steps.length) out.roams = true;
+  delete out.routine;
+  out.roams = characterRoams(out);
+  out.events = (npc.events ?? []).map((e) => ({ ...normalizeEvent(e), character_id: npc.id }));
   return out;
 }
 
@@ -159,16 +205,7 @@ function eventsOf(scene: Scene): GameEvent[] {
 }
 
 function walkActions(scene: Scene, visit: (a: Action) => void): void {
-  const walk = (a: Action) => {
-    visit(a);
-    if (a.type === 'infobox') {
-      for (const cta of a.call_to_actions ?? []) if (cta.action) walk(cta.action as Action);
-    }
-    if (a.type === 'conversation') {
-      for (const line of a.lines ?? []) for (const c of line.choices ?? []) for (const inner of c.actions ?? []) walk(inner as Action);
-    }
-  };
-  for (const e of eventsOf(scene)) for (const a of e.actions) walk(a);
+  for (const e of eventsOf(scene)) eachActionIn(e.actions, visit);
 }
 
 /** Visit every action of a scene's events, including those on infobox buttons and conversation choices. */
@@ -176,11 +213,17 @@ export function forEachAction(scene: Scene, visit: (a: Action) => void): void {
   walkActions(scene, visit);
 }
 
-/** Scene ids reachable from each scene through jump actions (including those on infobox buttons and conversation choices). */
+/**
+ * Scene ids reachable from each scene through jump actions (including those on infobox buttons and
+ * conversation choices). A character's own events run in whatever scene the player is in, so
+ * their jumps lead from every scene.
+ */
 export function computeJumpTargets(scenario: Scenario): Record<string, Id[]> {
   const out: Record<string, Id[]> = {};
+  const anywhere = new Set<Id>();
+  for (const c of scenario.characters ?? []) for (const e of c.events ?? []) eachActionIn(e.actions, (a) => a.type === 'jump' && anywhere.add(a.scene_id));
   for (const scene of scenario.scenes) {
-    const targets = new Set<Id>();
+    const targets = new Set<Id>(anywhere);
     walkActions(scene, (a) => {
       if (a.type === 'jump') targets.add(a.scene_id);
     });
@@ -207,14 +250,15 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
   });
   const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
   for (const p of scene.items ?? []) add(items.get(p.item_id)?.media_id);
-  const chars = new Map((scenario.characters ?? []).map((c) => [c.id, c]));
-  for (const p of scene.characters ?? []) {
-    const c = chars.get(p.character_id);
+  // The characters that can be here: those that start here or are walked here. (Those that walk
+  // around on their own can be anywhere, so their pictures are loaded for every scene.)
+  for (const c of scenario.characters ?? []) {
+    if (!characterScenes(scenario, c)?.has(scene.id)) continue;
     for (const id of characterMediaIds(c)) add(id);
     // Not normalized yet: the older picture fields.
-    if (!c?.animations) {
-      add(c?.media_id);
-      add(c?.portrait_media_id);
+    if (!c.animations) {
+      add(c.media_id);
+      add(c.portrait_media_id);
     }
   }
   return [...ids];
@@ -232,8 +276,17 @@ export function collectGlobalMediaIds(scenario: Scenario): Id[] {
   for (const item of scenario.items ?? []) {
     if ((item.vehicle || item.wearable) && item.media_id != null) ids.add(item.media_id);
   }
-  // A character that roams can walk into any scene.
+  // A character that walks around on its own can walk into any scene.
   for (const c of scenario.characters ?? []) if (characterRoams(c)) for (const id of characterMediaIds(c)) ids.add(id);
+  // A character's own events run in whatever scene the player is in.
+  for (const c of scenario.characters ?? []) {
+    for (const e of c.events ?? []) {
+      eachActionIn(e.actions, (a) => {
+        for (const id of [a.media_id, 'narration_media_id' in a ? a.narration_media_id : null, a.type === 'award' ? a.badge_media_id : null]) if (id != null) ids.add(id);
+        if (a.type === 'conversation') for (const line of a.lines ?? []) if (line.narration_media_id != null) ids.add(line.narration_media_id);
+      });
+    }
+  }
   return [...ids];
 }
 
@@ -256,7 +309,8 @@ export class ScenarioIndex {
   readonly scenes = new Map<Id, Scene>();
   readonly media = new Map<Id, Media>();
   readonly items = new Map<Id, Item>();
-  readonly events = new Map<Id, { event: GameEvent; scene: Scene }>();
+  /** Every event by id: a scene's (with its scene), or a character's own (with its character, and no scene). */
+  readonly events = new Map<Id, { event: GameEvent; scene: Scene | null; character: Npc | null }>();
   readonly hotspots = new Map<Id, { hotspot: Hotspot; scene: Scene }>();
   /** The scenario's characters (NPCs) and the avatars players choose from, by id. */
   readonly characters = new Map<Id, Npc>();
@@ -269,9 +323,9 @@ export class ScenarioIndex {
     for (const a of scenario.avatars ?? []) this.avatars.set(a.id, a);
     for (const scene of scenario.scenes) {
       this.scenes.set(scene.id, scene);
-      for (const e of eventsOf(scene)) this.events.set(e.id, { event: e, scene });
       for (const h of scene.hotspots ?? []) this.hotspots.set(h.id, { hotspot: h, scene });
     }
+    for (const found of allEvents(scenario)) this.events.set(found.event.id, found);
   }
 
   scene(id: Id): Scene | undefined {

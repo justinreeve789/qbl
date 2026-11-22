@@ -214,23 +214,18 @@ test('areas: move a corner, add one, remove one; add a blocked area', async () =
   assert.equal((await draft()).scenes[0]!.blocked_areas!.length, 0);
 });
 
-test('spawn points, a placed item, and a character that runs an event when clicked', async () => {
+test('spawn points, a placed item, and a character that starts here', async () => {
   await page.selectOption('.add-menu', 'spawn');
   await page.waitForSelector('.inspector [data-field=name]');
   await type('.inspector [data-field=name] input', 'jetty');
   await inspector('[data-field=facing] select').selectOption('left');
 
-  await page.selectOption('.add-menu', 'indirect');
-  await page.waitForSelector('.event-panel');
-  await type('.inspector [data-field=shortname] input', 'keeper-talks');
-  await inspector('.add-action').selectOption('infobox');
-  await page.waitForSelector('details.action[open]');
-
   await page.selectOption('.add-menu', 'item');
   await page.waitForSelector('.stage-overlay .placement.items');
+  // A character lives in the world: adding one here makes this scene where it starts.
   await page.selectOption('.add-menu', 'character');
   await page.waitForSelector('.stage-overlay .placement.characters');
-  await inspector('[data-field=event_id] select').selectOption({ index: 1 });
+  await page.waitForSelector('.inspector [data-character-start]');
   await dragBy('.stage-overlay .placement.characters', -80, 0);
 
   const doc = await draft();
@@ -238,8 +233,10 @@ test('spawn points, a placed item, and a character that runs an event when click
   assert.deepEqual(scene.spawn_points!.map((p) => p.name), ['default', 'jetty']);
   assert.equal(scene.spawn_points![1]!.facing, 'left');
   assert.equal(scene.items![0]!.item_id, doc.items![0]!.id);
-  assert.equal(scene.characters![0]!.event_id, scene.indirect_events![0]!.id);
-  assert.ok(scene.characters![0]!.position_x < scene.items![0]!.position_x, 'the character was dragged left of the item');
+  const keeper = doc.characters![0]!;
+  assert.equal(keeper.scene_id, scene.id, 'the character starts in this scene');
+  assert.equal(scene.characters, undefined, 'and is not placed in it');
+  assert.ok(keeper.position_x! < scene.items![0]!.position_x, 'the character was dragged left of the item');
 
   await page.click('.outline-item >> text=jetty');
   await page.click('.inspector >> text=Delete');

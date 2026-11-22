@@ -21,7 +21,7 @@ const CHAT_INTERVAL_MS = 800;
 const LOG_INTERVAL_MS = 5000;
 /** Things a player can do in a second that are worth a line in the activity log. */
 const TRACK_PER_SECOND = 5;
-/** How often characters that roam take a step: as often as the room state is sent. */
+/** How often the characters take a step: as often as the room state is sent. */
 const TICK_MS = 50;
 
 /** Who joined, and into which instance. Worked out in onAuth, handed to onJoin. */
@@ -126,7 +126,7 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       this.world(client)?.animate(client.sessionId, msg);
     });
 
-    // A walk action of the player's event, for a character that roams: the world walks it, for everyone.
+    // A walk action of the player's event, for a character: the world walks it, for everyone.
     this.onMessage(C2S.Walk, (client: Client, msg: WalkMessage) => {
       this.world(client)?.walk(client.sessionId, msg);
     });
@@ -182,7 +182,7 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       });
     });
 
-    // Characters that roam keep walking whether or not anyone is in their scene.
+    // Characters keep walking whether or not anyone is in their scene.
     this.clock.setInterval(() => {
       for (const world of this.ready.values()) world.tick();
     }, TICK_MS);

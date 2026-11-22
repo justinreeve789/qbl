@@ -6,9 +6,9 @@ import { startSite, type TestSite } from './servers';
 
 /**
  * Choosing where a walk goes by clicking the scene (“📍 Pick on the scene”) instead of typing X
- * and Y: in the scene editor, where the canvas is beside the form, and in a character's routine,
- * where a pop-up shows a scene to click. The walk's destination is then drawn on the canvas as a
- * marker that can be dragged. Set QBL_SHOTS to a folder to keep screenshots along the way.
+ * and Y: in the scene editor, where the canvas is beside the form; for a walk to another scene,
+ * and a character's start, a pop-up shows the scene to click. The walk's destination is then drawn
+ * on the canvas as a marker that can be dragged. Set QBL_SHOTS to a folder to keep screenshots.
  */
 let site: TestSite;
 let browser: Browser;
@@ -72,11 +72,9 @@ before(async () => {
   const bundle = await rest<{ scenes: Array<{ id: number }> }>('GET', '');
   hall = bundle.scenes[0]!.id;
   lab = (await rest<{ row: { id: number } }>('POST', '/rows/scenes', { shortname: 'lab', width: 1200, height: 600 })).row.id;
-  character = (await rest<{ row: { id: number } }>('POST', '/rows/characters', { name: 'Robo' })).row.id;
-  await rest('PATCH', `/rows/scenes/${hall}`, {
-    shortname: 'hall', width: 1200, height: 600,
-    layout: { spawn_points: [{ name: 'default', position_x: 100, position_y: 400 }], characters: [{ character_id: character, position_x: 300, position_y: 400 }] },
-  });
+  await rest('PATCH', `/rows/scenes/${hall}`, { shortname: 'hall', width: 1200, height: 600, layout: { spawn_points: [{ name: 'default', position_x: 100, position_y: 400 }] } });
+  // Robo starts in the hall.
+  character = (await rest<{ row: { id: number } }>('POST', '/rows/characters', { name: 'Robo', settings: { scene_id: hall, position_x: 300, position_y: 400 } })).row.id;
   await page.reload();
   await page.waitForSelector('.tabs');
 });
@@ -147,8 +145,8 @@ test('while picking, a click on a character picks the spot instead of selecting 
   await page.waitForFunction(() => !document.querySelector('.canvas-scroll.picking'));
   assert.equal(await page.locator('.inspector .event-panel').count(), 1, 'the hotspot is still the one selected');
   near(await action().locator('[data-field=position_x] input').inputValue(), 300, 'X');
-  const placed = (await draft()).scenes[0]!.characters![0]!;
-  assert.deepEqual([placed.position_x, placed.position_y], [300, 400], 'Robo did not move');
+  const placed = (await draft()).characters![0]!;
+  assert.deepEqual([placed.scene_id, placed.position_x, placed.position_y], [hall, 300, 400], 'Robo did not move');
 
   await pickButton().click();
   await page.waitForSelector('.canvas-scroll.picking');
@@ -158,50 +156,53 @@ test('while picking, a click on a character picks the spot instead of selecting 
   near(await action().locator('[data-field=position_x] input').inputValue(), 300, 'X unchanged');
 });
 
-test('a walk step of a routine: pick the spot on a picture of the scene, in a pop-up', async () => {
+test('a walk to another scene: the spot is picked on a picture of that scene, in a pop-up', async () => {
+  await action().locator('[data-field=scene_id] select').selectOption(String(lab));
+  await saved();
+  await page.waitForFunction(() => document.querySelector('.inspector details.action[open] [data-field=scene_id] select')?.closest('details') != null);
+  await pickButton().click();
+  const popup = page.locator('dialog[data-panel=pick-spot]');
+  await popup.waitFor();
+  assert.equal(await popup.locator('select[aria-label=Scene]').inputValue(), String(lab), 'it opens on the scene the walk goes to');
+  const lay = popup.locator('.stage-overlay');
+  await page.waitForFunction(() => (document.querySelector('dialog[data-panel=pick-spot] .stage-overlay')?.getBoundingClientRect().width ?? 0) > 100);
+  await shot('walk-popup');
+  await clickScene(lay, 250, 500);
+  await page.waitForFunction(() => !document.querySelector('dialog[data-panel=pick-spot]'));
+  await saved();
+  const walk = (await draft()).scenes[0]!.hotspots!.at(-1)!.actions[0]! as unknown as Record<string, number>;
+  assert.equal(walk.scene_id, lab);
+  near(walk.position_x, 250, 'saved X');
+  near(walk.position_y, 500, 'saved Y');
+  assert.match(await action().locator('summary').innerText(), /Robo walks to .* in lab/);
+  assert.equal(await page.locator('.action-marker.walk').count(), 0, 'a spot in the lab is not marked on the hall');
+});
+
+test('a character’s start: pick the spot on a picture of a scene, in a pop-up; another scene can be chosen', async () => {
   await page.click('.tabs >> text=Characters');
   await page.locator('.character-card', { has: page.locator('.card-title', { hasText: 'Robo' }) }).locator('[data-open=character]').click();
   const card = page.locator('dialog[data-panel=character]');
   await card.waitFor();
-  await card.locator('[data-fold^=character-routine] > summary').click();
-  await card.locator('[data-field=roams] input').check();
-  await saved();
-  await page.waitForSelector('dialog[data-panel=character] .routine-steps');
-  await card.locator('.routine-steps .add-action').selectOption('walk');
-  await page.waitForSelector('dialog[data-panel=character] .routine-step[open]');
-  const step = card.locator('.routine-step[data-step="0"]');
-
-  await step.locator('.spot-pick').click();
+  assert.equal(await card.locator('[data-start]').inputValue(), String(hall), 'Robo starts in the hall');
+  await card.locator('[data-pick-start]').click();
   const popup = page.locator('dialog[data-panel=pick-spot]');
   await popup.waitFor();
-  // It opens on the scene Robo starts in; another can be chosen.
   assert.equal(await popup.locator('select[aria-label=Scene]').inputValue(), String(hall));
   await popup.locator('select[aria-label=Scene]').selectOption(String(lab));
   await page.waitForSelector('dialog[data-panel=pick-spot] .canvas-scroll.picking');
   const lay = popup.locator('.stage-overlay');
   await page.waitForFunction(() => (document.querySelector('dialog[data-panel=pick-spot] .stage-overlay')?.getBoundingClientRect().width ?? 0) > 100);
-  const hover = await screenAt(lay, 250, 500);
-  await page.mouse.move(hover.x, hover.y);
-  await shot('routine-popup');
-  await clickScene(lay, 250, 500);
+  await shot('start-popup');
+  await clickScene(lay, 600, 450);
   await page.waitForFunction(() => !document.querySelector('dialog[data-panel=pick-spot]'));
+  await saved();
   assert.equal(await card.count(), 1, 'the character panel is still open');
-  near(await step.locator('[data-field=position_x] input').inputValue(), 250, 'X box');
-  near(await step.locator('[data-field=position_y] input').inputValue(), 500, 'Y box');
   const robo = (await draft()).characters![0]!;
-  const first = robo.routine!.steps[0] as unknown as Record<string, unknown>;
-  assert.equal(first.type, 'walk');
-  near(first.position_x, 250, 'saved X');
-  near(first.position_y, 500, 'saved Y');
-
-  // Closing the pop-up without a click changes nothing.
-  await step.locator('.spot-pick').click();
-  await popup.waitFor();
+  assert.equal(robo.scene_id, lab);
+  near(robo.position_x, 600, 'start X');
+  near(robo.position_y, 450, 'start Y');
+  await page.waitForFunction((lab) => (document.querySelector('dialog[data-panel=character] [data-start]') as HTMLSelectElement | null)?.value === String(lab), lab);
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => !document.querySelector('dialog[data-panel=pick-spot]'));
-  assert.equal(await card.count(), 1, 'Escape closed only the pop-up');
-  assert.equal(await step.locator('.spot-pick').innerText(), '📍 Pick on the scene');
-  near(await step.locator('[data-field=position_x] input').inputValue(), 250, 'X unchanged');
 });
 
 test('nothing went wrong in the browser along the way', () => {

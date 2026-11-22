@@ -50,45 +50,65 @@ const spritemap: Field[] = [
 ];
 
 /**
- * Where a walk goes, for a walk action and a routine's walk step. `here` lists the spawn points of
- * the scene being edited (for a routine: of every scene, since the character may be anywhere).
+ * Where a walk goes. A character walks in the world: to a scene (this one unless another is
+ * chosen), and to a spot in it, one of its spawn points, or just in, from wherever it is when the
+ * walk starts, through as many doors as it takes. The player walks in the scene they are in, or
+ * out through one of its doors.
  */
 const to = (v: Record<string, unknown>) => (v.to as string | undefined) ?? 'point';
+const isPlayer = (v: Record<string, unknown>) => v.target === 'player';
+/** Whether the walking character walks around on its own (its settings say `roams`). */
+const roams = (v: Record<string, unknown>, ctx: { store: { byId(table: 'characters', id: number | null): Record<string, unknown> | undefined } }) => {
+  const row = ctx.store.byId('characters', (v.character_id as number | null | undefined) ?? null);
+  const settings = row?.settings;
+  return !!settings && typeof settings === 'object' && (settings as Record<string, unknown>).roams === true;
+};
 export const WALK_FIELDS: Field[] = [
   {
-    key: 'to', label: 'Walk to', kind: 'select', wide: true, structural: true, default: 'point',
-    options: [['point', 'A spot in the scene'], ['spawn', 'A spawn point in the scene'], ['scene', 'Another scene, through its doors']],
-    hint: 'To another scene, the walker heads for a hotspot whose jump goes there (a door), goes through it and arrives at the spawn point that jump names, as a player would. A character that walks around on its own can go through several rooms to get there; anyone else only through a door of this scene.',
+    key: 'scene_id', label: 'To the scene', kind: 'scene', wide: true, structural: true, placeholder: 'This scene', when: (v) => !isPlayer(v),
+    hint: 'Where the character goes. It walks there from wherever it is when this runs, by the quickest way: through the doors (hotspots whose jump leads to the next scene), arriving at the spawn point each jump names, as a player would. In one of a character’s own events, choose a scene: the event can run anywhere.',
   },
   {
-    key: 'position_x', label: 'X', kind: 'number', when: (v) => to(v) === 'point', spot: { y: 'position_y', prompt: 'Click where the walker should go.' },
-    hint: 'Scene pixels from the left. The walker goes around whatever is in the way, and stops at the nearest spot it can stand on. “Pick on the scene” chooses the spot with a click; in the scene editor you can also drag its marker.',
+    key: 'to', label: 'And in it', kind: 'select', wide: true, structural: true, default: 'point', when: (v) => !isPlayer(v),
+    options: [['point', 'To a spot'], ['spawn', 'To a spawn point'], ['scene', 'Just in: stop where the door brings it']],
+  },
+  {
+    key: 'to', label: 'Walk to', kind: 'select', wide: true, structural: true, default: 'point', when: isPlayer,
+    options: [['point', 'A spot in the scene'], ['spawn', 'A spawn point in the scene'], ['scene', 'Another scene, through this scene’s door']],
+    hint: 'To another scene, the player heads for a hotspot of this scene whose jump goes there (a door), goes through it and arrives at the spawn point that jump names.',
+  },
+  {
+    key: 'position_x', label: 'X', kind: 'number', when: (v) => to(v) === 'point', spot: { y: 'position_y', prompt: 'Click where the walker should go.', sceneKey: 'scene_id' },
+    hint: 'Scene pixels from the left. The walker goes around whatever is in the way, and stops at the nearest spot it can stand on. “Pick on the scene” chooses the spot with a click, on the scene it walks to (another scene can be chosen there); in the scene editor you can also drag its marker.',
   },
   { key: 'position_y', label: 'Y', kind: 'number', hint: 'Scene pixels from the top.', when: (v) => to(v) === 'point' },
-  { key: 'spawn_point', label: 'Spawn point', kind: 'spawn', sceneKey: 'here', placeholder: 'Choose a spawn point', when: (v) => to(v) === 'spawn' },
-  { key: 'scene_id', label: 'Scene', kind: 'scene', structural: true, when: (v) => to(v) === 'scene' },
+  { key: 'spawn_point', label: 'Spawn point', kind: 'spawn', sceneKey: 'scene_id', placeholder: 'Choose a spawn point', when: (v) => to(v) === 'spawn' && !isPlayer(v) },
+  { key: 'spawn_point', label: 'Spawn point', kind: 'spawn', sceneKey: 'here', placeholder: 'Choose a spawn point', when: (v) => to(v) === 'spawn' && isPlayer(v) },
+  { key: 'scene_id', label: 'Scene', kind: 'scene', structural: true, when: (v) => to(v) === 'scene' && isPlayer(v) },
   {
-    key: 'spawn_point', label: 'Then walk on to', kind: 'spawn', sceneKey: 'scene_id', placeholder: 'Stop where the door brings it', when: (v) => to(v) === 'scene',
-    hint: 'A spawn point of that scene to walk to once there. Only a character that walks around on its own goes on; the player and other characters leave this scene through the door.',
+    key: 'wander', label: 'Then walk around on its own again', kind: 'bool', default: true, wide: true, when: (v, ctx) => !isPlayer(v) && roams(v, ctx),
+    hint: 'This character walks around on its own. Ticked, it starts again once it is there. Not ticked, it stays there until another walk action sends it on (one with this ticked sets it walking around again).',
   },
   { key: 'speed', label: 'Speed (pixels per second)', kind: 'number', min: 1, placeholder: 'The walker’s own', slider: { min: 50, max: 1000, step: 10 }, hint: 'Players walk at the scenario’s speed (420 unless the Scenario page says otherwise). A player is never walked faster than that.' },
   { key: 'facing', label: 'Face on arriving', kind: 'select', placeholder: 'The way it walked', options: [['left', 'Left'], ['right', 'Right']] },
 ];
 
 /**
- * A walk's attributes once `to` has changed: only those of the new destination are kept, so a
- * walk to another scene does not carry the X and Y it had as a walk to a spot.
+ * A walk's attributes once where it goes has changed: only those of the new destination are kept,
+ * so a walk to another scene does not carry the spawn point it had in this one.
  */
-export function tidyWalk<T extends Record<string, unknown>>(values: T): T {
+export function tidyWalk<T extends Record<string, unknown>>(values: T, changed: string = 'to'): T {
   const next: Record<string, unknown> = { ...values };
   const to = (values.to as string | undefined) ?? 'point';
   if (to !== 'point') {
     delete next.position_x;
     delete next.position_y;
   }
-  if (to !== 'scene') delete next.scene_id;
+  // The player's walk names a scene only to go through a door to it.
+  if (values.target === 'player' && to !== 'scene') delete next.scene_id;
+  if (values.target === 'player') delete next.wander;
   // A spawn point's name belongs to the scene it was chosen in.
-  delete next.spawn_point;
+  if (changed === 'to' || changed === 'scene_id' || changed === 'target') delete next.spawn_point;
   return next as T;
 }
 
@@ -222,7 +242,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
         hint: 'A bubble stays on screen by moving below or beside the speaker. A story box crosses the bottom of the screen with the speaker’s close-up and name, and waits for the player to continue: for the characters and moments that carry the story. A character’s close-up is its “portrait” animation, on the Characters page; avatars come with theirs.',
       },
       { key: 'speaker', label: 'Who speaks', kind: 'select', placeholder: 'The player', options: [['character', 'A character']], structural: true },
-      { key: 'character_id', label: 'Character', kind: 'character', hint: 'For a bubble the character must be placed in this scene. A story box can carry a voice from anywhere.' },
+      { key: 'character_id', label: 'Character', kind: 'character', hint: 'A bubble hangs over the character, so it needs to be in the player’s scene; when it is not (it walked off, or walks around on its own) the line is shown in a story box instead. A story box can carry a voice from anywhere.' },
       { key: 'duration', label: 'Stays for (ms)', kind: 'number', min: 0, placeholder: 'Bubble: long enough to read. Story box: until the player continues', hint: 'A click closes it sooner. Read aloud, a bubble stays until the voice has finished.' },
       ...narration,
     ],
@@ -233,7 +253,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     fields: [
       {
         key: 'style', label: 'Shown as', kind: 'select', wide: true, placeholder: 'A story box with each speaker’s portrait', options: [['bubble', 'Speech bubbles over the speakers']],
-        hint: 'In a story box the player’s answers are listed under the line. With bubbles each line hangs over whoever says it and the answers wait in a box at the bottom of the screen; a character speaking in a bubble must be placed in this scene. Either way the player cannot walk off while choosing.',
+        hint: 'In a story box the player’s answers are listed under the line. With bubbles each line hangs over whoever says it and the answers wait in a box at the bottom of the screen; a character not in the player’s scene says its lines in a story box instead. Either way the player cannot walk off while choosing.',
       },
       {
         key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'As the scenario’s setting says', options: [['true', 'Yes: read the lines aloud'], ['false', 'No: never read them aloud']],
@@ -283,7 +303,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
   run_event: {
     label: 'Run event',
     about: 'Run another event, usually an indirect one.',
-    fields: [{ key: 'target_event_id', label: 'Event', kind: 'event', wide: true, hint: 'An event that is already running is not started again.' }],
+    fields: [{ key: 'target_event_id', label: 'Event', kind: 'event', wide: true, hint: 'An event that is already running is not started again. A character’s own event (made on the Characters page) runs here, in the player’s scene, wherever the character is: a line it says in a bubble is shown in a story box when the character is not here.' }],
   },
   repeat: {
     label: 'Repeat',
@@ -297,15 +317,15 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
   },
   walk: {
     label: 'Walk',
-    about: 'Walk a character or the player to a spot, a spawn point, or another scene.',
+    about: 'Walk a character to a spot in any scene, or the player to a spot, a spawn point, or another scene.',
     fields: [
       {
         key: 'target', label: 'Who walks', kind: 'select', wide: true, structural: true, placeholder: 'A character', options: [['player', 'The player']],
         hint: 'Unlike Translate, a walk goes around things, plays the walking poses and turns the walker the way it goes. The player is walked even while frozen: freeze them first for a cutscene.',
       },
       {
-        key: 'character_id', label: 'Character', kind: 'character', wide: true, when: (v) => v.target !== 'player',
-        hint: 'A character set to walk around on its own (Characters page, “Getting around”) walks for everyone, can go to other scenes and stays where it went. Any other character walks on this player’s screen (or the whole scene’s, when the event’s audience is the scene) and is back in its place next time.',
+        key: 'character_id', label: 'Character', kind: 'character', wide: true, structural: true, when: (v) => v.target !== 'player',
+        hint: 'Characters live in the world, not in a scene: everyone playing together sees the character walk, and finds it where it went (kept between visits too).',
       },
       ...WALK_FIELDS,
     ],
@@ -566,11 +586,10 @@ export const SCALE_AREA_FIELDS: Field[] = [
 
 export const ITEM_PLACEMENT_FIELDS: Field[] = [{ key: 'item_id', label: 'Item', kind: 'item', wide: true }, ...position];
 
+/** Where a character starts in the scene it starts in: its feet, and the way it faces. */
 export const CHARACTER_PLACEMENT_FIELDS: Field[] = [
-  { key: 'character_id', label: 'Character', kind: 'character', wide: true },
   ...position,
   { key: 'facing', label: 'Facing', kind: 'select', placeholder: 'Right', options: [['left', 'Left'], ['right', 'Right']] },
-  { key: 'event_id', label: 'When clicked, run', kind: 'event', eventKinds: ['indirect'], placeholder: 'Nothing', hint: 'An indirect event of this scene.' },
 ];
 
 // --------------------------------------------------------------------- events

@@ -101,7 +101,10 @@ final class ScenePreview
                 $item = $items[$p['item_id']] ?? null;
                 $stand($item ? $load($item['media_id']) : null, $p['position_x'], $p['position_y'], (float) ($item['scale'] ?? 1));
             }
-            foreach ($scene['characters'] as $p) {
+            // Characters start in a scene of their own (older documents placed them in scenes).
+            $here = array_values(array_filter($document['characters'], fn ($c) => (int) ($c['scene_id'] ?? 0) === (int) $scene['id'] && isset($c['position_x'], $c['position_y'])));
+            $placed = array_map(fn ($c) => ['character_id' => $c['id'], 'position_x' => $c['position_x'], 'position_y' => $c['position_y'], 'facing' => $c['facing'] ?? 'right'], $here);
+            foreach ([...$placed, ...($scene['characters'] ?? [])] as $p) {
                 $c = $characters[$p['character_id']] ?? null;
                 $sheet = $c ? $load($c['media_id']) : null;
                 $grid = $media[$c['media_id'] ?? 0]['sheet'] ?? null;

@@ -2,10 +2,9 @@ import { checkBench, checkBenchAction } from './bench-validate.js';
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
 import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
-import { ROUTINE_STEP_TYPES } from './types.js';
-import type { Action, Character, Condition, ConversationAction, GameEvent, Id, Media, Npc, RoutineStep, Scenario, Scene, WalkAction } from './types.js';
+import type { Action, Character, Condition, ConversationAction, GameEvent, Id, Media, Npc, Scenario, Scene, WalkAction } from './types.js';
 import { CHARACTER_POSES, isPose, normalizeNpc } from './characters.js';
-import { characterRoams, doorsOf, normalizeRoutine, routeBetween, startPlacement } from './walking.js';
+import { characterPresence, characterRoams, characterStart, doorsOf, eachActionIn, firstPlacement, routeBetween } from './walking.js';
 import { ScenarioIndex } from './scenario.js';
 import { placeholderVariables } from './text.js';
 import { BUTTON_MARKS, INFOBOX_SIZES, infoboxRefs } from './infobox.js';
@@ -258,20 +257,71 @@ export function validateScenario(doc: unknown): ValidationResult {
       });
     }),
   );
+  // A character's own events belong to no scene: they run in whichever scene the player is in.
+  const eventCharacter = new Map<Id, Npc>();
+  const characterEvents = new Map<Id, GameEvent>();
+  const characterActions = new Set<Id>();
+  (s.characters ?? []).forEach((c, ci) => {
+    if (c.events != null && !Array.isArray(c.events)) return err(`characters[${ci}].events`, 'events is a list of events');
+    (c.events ?? []).forEach((e, ei) => {
+      const path = `characters[${ci}].events[${ei}]`;
+      eventIds.push([e.id, path]);
+      eventCharacter.set(e.id, c);
+      characterEvents.set(e.id, e);
+      if (e.audience != null && e.audience !== 'player' && e.audience !== 'scene') err(`${path}.audience`, 'audience is "player" or "scene"');
+      (e.actions ?? []).forEach((a, ai) => {
+        actionIds.push([a.id, `${path}.actions[${ai}]`]);
+        characterActions.add(a.id);
+      });
+    });
+  });
   unique(eventIds, 'event');
   unique(actionIds, 'action');
 
-  // Characters that roam can be in any scene; the others only where they are placed.
+  // Characters live in the world: each is in one place at a time. Those that walk around on their
+  // own may be anywhere; any other is where it starts or where a walk action took it.
   const npcs = new Map<Id, Npc>((s.characters ?? []).map((c) => [c.id, c]));
-  const canBeHere = (id: Id | undefined, scene: Scene) =>
-    id != null && (characterRoams(npcs.get(id)) || (scene.characters ?? []).some((c) => c.character_id === id));
+  const sceneName = (id: Id | undefined) => {
+    const scene = id != null ? s.scenes.find((x) => x.id === id) : undefined;
+    return scene ? `"${scene.shortname || `scene ${scene.id}`}"` : 'no scene';
+  };
+  const nameOf = (npc: Npc) => npc.name?.trim() || `Character ${npc.id}`;
+  /**
+   * An action of a scene's event that needs a character to be there: a line in a bubble over it
+   * (which is shown in a story box when it is not), or an animation of it (which nobody sees when
+   * it is not). Says so when the character may not be there. `never` is an error for an animation.
+   */
+  const needsHere = (id: Id | undefined, scene: Scene | null, path: string, what: 'speak' | 'animate') => {
+    const npc = id != null ? npcs.get(id) : undefined;
+    if (!npc) return err(path, what === 'speak' ? 'The speaking character does not exist' : 'The character to animate does not exist');
+    if (!scene) return; // A character's own event: it runs where the player is (see run_event).
+    const then = what === 'speak' ? 'its line is then shown in a story box instead of a bubble' : 'nobody then sees it animate';
+    switch (characterPresence(s, npc, scene.id)) {
+      case 'never': {
+        const message = `${nameOf(npc)} is never in this scene: it starts in ${sceneName(characterStart(s, npc)?.scene.id)} and no walk action brings it here, so ${then}`;
+        return what === 'animate' ? err(path, message) : warn(path, message);
+      }
+      case 'anywhere':
+        return warn(path, `${nameOf(npc)} walks around on its own, so it may not be in this scene when this runs; ${then}`);
+      case 'maybe':
+        return warn(path, `Walk actions take ${nameOf(npc)} to other scenes too, so it may not be in this scene when this runs; ${then}`);
+      default:
+    }
+  };
+  /** What in a character's own event needs a character to be in the player's scene: the characters it speaks as in bubbles, or animates. */
+  const presentIn = (event: GameEvent): Set<Id> => {
+    const out = new Set<Id>();
+    eachActionIn(event.actions, (a) => {
+      if (a.type === 'animate' && a.target === 'character' && a.character_id != null) out.add(a.character_id);
+      if (a.type === 'dialogue' && a.speaker === 'character' && a.style !== 'portrait' && a.character_id != null) out.add(a.character_id);
+      if (a.type === 'conversation' && a.style === 'bubble') for (const line of a.lines ?? []) if (line.speaker === 'character' && line.character_id != null) out.add(line.character_id);
+    });
+    return out;
+  };
   let index: ScenarioIndex | null = null;
   const scenarioIndex = () => (index ??= new ScenarioIndex(s));
 
-  /**
-   * Where a walk goes. `from` is the scene the walker is in, when that is known (a roaming
-   * character may be anywhere); `oneDoor` when it can only go through a door of that scene.
-   */
+  /** Where the player's avatar walks: in the scene it is in, and out only through one of its doors. */
   const checkWalk = (a: Pick<WalkAction, 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing'>, path: string, from: Scene | null, oneDoor: boolean) => {
     const to = a.to ?? 'point';
     if (a.speed != null && !(typeof a.speed === 'number' && a.speed > 0)) err(`${path}.speed`, 'speed is a number of pixels per second greater than 0');
@@ -290,7 +340,6 @@ export function validateScenario(doc: unknown): ValidationResult {
         err(`${path}.scene_id`, `Scene ${String(a.scene_id)} does not exist`);
         return;
       }
-      if (a.spawn_point && !(target.spawn_points ?? []).some((p) => p.name === a.spawn_point)) err(`${path}.spawn_point`, `Scene ${target.id} has no spawn point "${a.spawn_point}"`);
       if (from && from.id !== target.id) {
         if (oneDoor) {
           if (!doorsOf(from).some((d) => d.to === target.id)) warn(`${path}.scene_id`, 'No hotspot in this scene jumps to that scene, so there is no door to walk through');
@@ -303,6 +352,39 @@ export function validateScenario(doc: unknown): ValidationResult {
     }
   };
 
+  /**
+   * Where a character walks: a scene, and a spot in it, a spawn point of it, or just into it. It
+   * goes there from wherever it is, scene by scene through the doors. `here`: the scene of the
+   * event, which an older walk without a scene meant.
+   */
+  const checkCharacterWalk = (a: WalkAction, path: string, here: Scene | null, npc: Npc) => {
+    const to = a.to ?? 'point';
+    if (a.speed != null && !(typeof a.speed === 'number' && a.speed > 0)) err(`${path}.speed`, 'speed is a number of pixels per second greater than 0');
+    if (a.facing != null && a.facing !== 'left' && a.facing !== 'right') err(`${path}.facing`, 'facing is "left" or "right"');
+    if (a.wander != null && typeof a.wander !== 'boolean') err(`${path}.wander`, 'wander is true or false');
+    const targetId = a.scene_id ?? (to === 'scene' ? undefined : here?.id);
+    const target = targetId != null ? s.scenes.find((x) => x.id === targetId) : undefined;
+    if (targetId == null) return err(`${path}.scene_id`, 'Choose the scene to walk to');
+    if (!target) return err(`${path}.scene_id`, `Scene ${String(targetId)} does not exist (it may have been deleted)`);
+    if (to === 'point') {
+      if (typeof a.position_x !== 'number' || typeof a.position_y !== 'number') err(path, 'Choose the spot to walk to (position_x and position_y)');
+      else if (target.width && target.height && !isWalkable(walkContext(target, { width: target.width, height: target.height }), a.position_x, a.position_y)) {
+        warn(path, 'That spot is outside the walkable area: the character stops at the nearest spot it can reach');
+      }
+    } else if (to === 'spawn') {
+      if (!a.spawn_point) err(`${path}.spawn_point`, 'Choose the spawn point to walk to');
+      else if (!(target.spawn_points ?? []).some((p) => p.name === a.spawn_point)) err(`${path}.spawn_point`, `Scene ${sceneName(target.id)} has no spawn point "${a.spawn_point}"`);
+    } else if (to !== 'scene') {
+      return err(`${path}.to`, 'to is "point", "spawn" or "scene"');
+    }
+    // It can be anywhere when this runs, but it starts somewhere: is there a way from there?
+    const start = characterStart(s, npc);
+    if (!start) warn(`${path}.character_id`, `${nameOf(npc)} is in no scene (it has no start), so it cannot walk anywhere`);
+    else if (!characterRoams(npc) && start.scene.id !== target.id && !routeBetween(scenarioIndex(), start.scene.id, target.id)) {
+      warn(`${path}.scene_id`, `No doors (hotspots with a jump) lead from ${sceneName(start.scene.id)}, where ${nameOf(npc)} starts, to ${sceneName(target.id)}, so it can only get there from somewhere else`);
+    }
+  };
+
   /** A line recorded in a character's voice and changed since: the recording says the old words. */
   const checkRecording = (mediaId: Id | undefined, text: unknown, path: string) => {
     const said = mediaId != null ? media.get(mediaId)?.speech : undefined;
@@ -312,7 +394,7 @@ export function validateScenario(doc: unknown): ValidationResult {
   };
   /** `inCta`: the action is on an infobox button (`true`) or a conversation's choice (`'choice'`), not in an event. */
   /** A conversation: its lines, who says them, where its choices lead, and what they do. */
-  const checkConversation = (a: ConversationAction, path: string, scene: Scene) => {
+  const checkConversation = (a: ConversationAction, path: string, scene: Scene | null) => {
     if (a.style != null && a.style !== 'bubble' && a.style !== 'portrait') err(`${path}.style`, 'style is "bubble" or "portrait"');
     if (!Array.isArray(a.lines) || a.lines.length === 0) {
       err(`${path}.lines`, 'A conversation needs at least one line');
@@ -338,8 +420,8 @@ export function validateScenario(doc: unknown): ValidationResult {
         // A bubble needs someone to hang over; a story box can carry a voice from anywhere.
         if ((a.style ?? 'portrait') === 'portrait') {
           if (!characters.has(line.character_id as Id)) err(`${lp}.character_id`, 'The speaking character does not exist');
-        } else if (!canBeHere(line.character_id, scene)) {
-          err(`${lp}.character_id`, 'The speaking character is not placed in this scene');
+        } else {
+          needsHere(line.character_id, scene, `${lp}.character_id`, 'speak');
         }
       }
       if (line.narration_media_id != null) needMedia(line.narration_media_id, `${lp}.narration_media_id`, 'audio');
@@ -362,7 +444,7 @@ export function validateScenario(doc: unknown): ValidationResult {
     });
   };
 
-  const checkAction = (raw: Action, path: string, scene: Scene, inCta: boolean | 'choice' = false) => {
+  const checkAction = (raw: Action, path: string, scene: Scene | null, inCta: boolean | 'choice' = false) => {
     const type = normalizeActionType(raw.type);
     if (!type) {
       err(`${path}.type`, `Unknown action type "${String(raw.type)}"`);
@@ -389,18 +471,30 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'run_event': {
         const target = a.target_event_id ?? (inCta ? a.event_id : a.event_id);
         if (target == null) err(`${path}.target_event_id`, 'No event is chosen to run');
-        else if (!eventScene.has(target)) err(`${path}.target_event_id`, `Event ${target} does not exist (it may have been deleted)`);
+        else if (eventCharacter.has(target)) {
+          // A character's own event runs here, wherever the character is. What in it needs the character here?
+          if (scene) {
+            for (const id of presentIn(characterEvents.get(target)!)) {
+              const npc = npcs.get(id);
+              const presence = npc ? characterPresence(s, npc, scene.id) : 'never';
+              if (!npc || presence === 'here') continue;
+              const why = presence === 'never' ? 'is never in this scene' : presence === 'anywhere' ? 'walks around on its own and may not be in this scene' : 'may have walked to another scene';
+              warn(`${path}.target_event_id`, `This runs ${nameOf(eventCharacter.get(target)!)}’s event${characterEvents.get(target)!.shortname ? ` “${characterEvents.get(target)!.shortname}”` : ''}, which has ${nameOf(npc)} speak in a bubble or play an animation, but ${nameOf(npc)} ${why}: lines are then shown in a story box, and animations are not seen`);
+            }
+          }
+        } else if (!eventScene.has(target)) err(`${path}.target_event_id`, `Event ${target} does not exist (it may have been deleted)`);
+        else if (!scene) warn(`${path}.target_event_id`, `Event ${target} belongs to scene ${sceneName(eventScene.get(target))}, so it runs only when the player is in that scene`);
         else if (eventScene.get(target) !== scene.id) err(`${path}.target_event_id`, `Event ${target} belongs to another scene`);
         break;
       }
       case 'cancel':
         if (a.action_id == null) err(`${path}.action_id`, 'No action is chosen to stop');
-        else if (!actionScene.has(a.action_id)) err(`${path}.action_id`, `Action ${a.action_id} does not exist (it may have been deleted)`);
-        else if (actionScene.get(a.action_id) !== scene.id) warn(`${path}.action_id`, `Action ${a.action_id} is in another scene; only persistent audio can be cancelled across scenes`);
+        else if (!actionScene.has(a.action_id) && !characterActions.has(a.action_id)) err(`${path}.action_id`, `Action ${a.action_id} does not exist (it may have been deleted)`);
+        else if (scene && actionScene.has(a.action_id) && actionScene.get(a.action_id) !== scene.id) warn(`${path}.action_id`, `Action ${a.action_id} is in another scene; only persistent audio can be cancelled across scenes`);
         break;
       case 'translate':
         if (a.target_id == null) err(`${path}.target_id`, 'No action is chosen to move, resize or fade');
-        else if (!actionScene.has(a.target_id)) err(`${path}.target_id`, `Action ${a.target_id} does not exist (it may have been deleted)`);
+        else if (!actionScene.has(a.target_id) && !characterActions.has(a.target_id)) err(`${path}.target_id`, `Action ${a.target_id} does not exist (it may have been deleted)`);
         break;
       case 'variable':
         if (!VARIABLE_OPS.includes(a.operator)) err(`${path}.operator`, `Unknown operator "${a.operator}"`);
@@ -428,15 +522,16 @@ export function validateScenario(doc: unknown): ValidationResult {
         // A bubble needs someone to hang over; a portrait box can carry a voice from anywhere (a call from the ship).
         if (a.speaker === 'character' && a.style === 'portrait') {
           if (!characters.has(a.character_id as Id)) err(`${path}.character_id`, 'The speaking character does not exist');
-        } else if (a.speaker === 'character' && !canBeHere(a.character_id, scene)) {
-          err(`${path}.character_id`, 'The speaking character is not placed in this scene');
+        } else if (a.speaker === 'character') {
+          needsHere(a.character_id, scene, `${path}.character_id`, 'speak');
         }
         break;
       case 'conversation':
         checkConversation(a, path, scene);
         break;
       case 'bench':
-        checkBenchAction(a as unknown as Record<string, unknown>, path, scene.bench, { err, warn });
+        if (scene) checkBenchAction(a as unknown as Record<string, unknown>, path, scene.bench, { err, warn });
+        else warn(path, 'A bench action works the bench of the scene the player is in; a character’s own event can run in any scene');
         break;
       case 'freeze':
         if (typeof a.frozen !== 'boolean') err(`${path}.frozen`, 'frozen must be true or false');
@@ -457,7 +552,7 @@ export function validateScenario(doc: unknown): ValidationResult {
           if (!item) err(`${path}.item_id`, 'The item to animate does not exist');
           picture = item?.media_id != null ? media.get(item.media_id) : undefined;
         } else if (target === 'character') {
-          if (!canBeHere(a.character_id, scene)) err(`${path}.character_id`, 'The character to animate is not placed in this scene');
+          needsHere(a.character_id, scene, `${path}.character_id`, 'animate');
           const found = (s.characters ?? []).find((c) => c.id === a.character_id);
           const character = found && normalizeNpc(found, (id) => media.get(id));
           // A character's own animations, besides the poses, are what it can be asked to play.
@@ -465,7 +560,7 @@ export function validateScenario(doc: unknown): ValidationResult {
             warn(`${path}.animation`, isPose(a.animation) ? `"${a.animation}" is a pose the character takes by itself, not one to play` : `The character has no animation called "${a.animation}", and that is not a built-in move`);
           }
         } else if (target === 'action') {
-          if (a.target_id == null || actionScene.get(a.target_id) !== scene.id) err(`${path}.target_id`, 'The action to animate is not in this scene');
+          if (a.target_id == null || (scene ? actionScene.get(a.target_id) !== scene.id : !characterActions.has(a.target_id))) err(`${path}.target_id`, scene ? 'The action to animate is not in this scene' : 'The action to animate is not in a character’s event');
         } else if (target !== 'player') {
           err(`${path}.target`, 'target is "player", "item", "character" or "action"');
         }
@@ -484,18 +579,14 @@ export function validateScenario(doc: unknown): ValidationResult {
           err(`${path}.target`, 'target is "character" or "player"');
           break;
         }
-        const npc = target === 'character' ? npcs.get(a.character_id as Id) : undefined;
         if (target === 'character') {
-          if (!npc) {
-            err(`${path}.character_id`, 'The character to walk does not exist');
-            break;
-          }
-          if (!canBeHere(npc.id, scene)) err(`${path}.character_id`, 'The character to walk is not placed in this scene. A character that walks between scenes must be set to walk around on its own');
+          const npc = npcs.get(a.character_id as Id);
+          if (!npc) err(`${path}.character_id`, 'The character to walk does not exist');
+          else checkCharacterWalk(a, path, scene, npc);
+          break;
         }
-        // A roaming character may be anywhere when this runs, and can cross several rooms. Anyone
-        // else walks in this scene, and can only go out through one of its doors.
-        const roams = target === 'character' && characterRoams(npc);
-        checkWalk(a, path, roams ? null : scene, !roams);
+        // The player walks in the scene they are in, and can only go out through one of its doors.
+        checkWalk(a, path, scene, true);
         break;
       }
       case 'text_overlay':
@@ -653,9 +744,18 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (p.item_id == null) err(`${sp}.items[${pi}].item_id`, 'No item is chosen');
       else if (!items.has(p.item_id)) err(`${sp}.items[${pi}].item_id`, `Item ${p.item_id} does not exist (it may have been deleted)`);
     });
+    // Placements are how characters were put in scenes before they had a start of their own.
     (scene.characters ?? []).forEach((p, pi) => {
       if (p.character_id == null) err(`${sp}.characters[${pi}].character_id`, 'No character is chosen');
       else if (!characters.has(p.character_id)) err(`${sp}.characters[${pi}].character_id`, `Character ${p.character_id} does not exist (it may have been deleted)`);
+      else {
+        const npc = npcs.get(p.character_id)!;
+        const start = characterStart(s, npc);
+        // The first placement is the start, unless the character has a start of its own somewhere else.
+        const firstOne = firstPlacement(s, npc.id)?.placement === p;
+        const used = firstOne && (npc.scene_id == null || (npc.scene_id === scene.id && npc.position_x === p.position_x && npc.position_y === p.position_y));
+        if (!used) warn(`${sp}.characters[${pi}]`, `${nameOf(npc)} is in one place at a time, and starts in ${sceneName(start?.scene.id)}: this placement is not used. Walk it here with a walk action instead`);
+      }
       if (p.event_id != null && eventScene.get(p.event_id) !== scene.id) err(`${sp}.characters[${pi}].event_id`, `Event ${p.event_id} is not in this scene`);
     });
     (scene.hotspots ?? []).forEach((h, hi) => {
@@ -716,52 +816,43 @@ export function validateScenario(doc: unknown): ValidationResult {
     });
   });
 
-  // Routines: what roaming characters do on their own, run by the game server for everyone.
-  const roomVariables = new Set((s.global_variables ?? []).filter((v) => v.scope === 'room').map((v) => v.variable_name));
-  const sharedOnly = (conds: Condition[] | undefined, path: string) => {
-    checkConditions(conds, path);
-    (conds ?? []).forEach((c, ci) => {
-      if (c.variable && variables.has(c.variable) && !roomVariables.has(c.variable)) {
-        warn(`${path}.conditions[${ci}]`, `"${c.variable}" is each player's own; a character walking for everyone only follows shared (room) variables, so this condition is left out`);
-      }
-    });
-  };
+  // Characters: where each starts, what clicking it runs, and its own events.
   (s.characters ?? []).forEach((c, i) => {
     const path = `characters[${i}]`;
-    if (c.routine != null) {
-      const steps = (c.routine as { steps?: unknown }).steps;
-      if (typeof c.routine !== 'object' || !Array.isArray(steps)) return err(`${path}.routine`, 'A routine has a list of steps');
-      sharedOnly(c.routine.conditions, `${path}.routine`);
-      (steps as RoutineStep[]).forEach((step, si) => {
-        const sp = `${path}.routine.steps[${si}]`;
-        if (!step || !(ROUTINE_STEP_TYPES as string[]).includes(step.type)) return err(`${sp}.type`, `A routine step is one of: ${ROUTINE_STEP_TYPES.join(', ')}`);
-        sharedOnly(step.conditions, sp);
-        switch (step.type) {
-          case 'walk':
-            checkWalk(step, sp, null, false);
-            break;
-          case 'wait':
-            if (!(typeof step.duration === 'number' && step.duration >= 0)) err(`${sp}.duration`, 'duration is a number of milliseconds');
-            break;
-          case 'dialogue':
-            if (typeof step.text !== 'string' || step.text === '') err(`${sp}.text`, 'text is required');
-            else checkText(step.text, `${sp}.text`);
-            break;
-          case 'animate':
-            if (typeof step.animation !== 'string' || (step.animation !== '' && !ANIMATION_NAME.test(step.animation))) err(`${sp}.animation`, 'animation is a name in lowercase letters, digits and underscores, or empty to stop');
-            break;
-          case 'variable':
-            if (!VARIABLE_OPS.includes(step.operator)) err(`${sp}.operator`, `Unknown operator "${step.operator}"`);
-            if (!variables.has(step.name)) err(`${sp}.name`, `Variable "${step.name}" is not declared in global_variables`);
-            else if (!roomVariables.has(step.name)) err(`${sp}.name`, `"${step.name}" is each player's own: a routine can only change shared (room) variables`);
-            break;
-          default:
+    if ((c as { routine?: unknown }).routine != null) warn(`${path}.routine`, 'Characters no longer follow routines: one with a routine walks around on its own. Make it move with walk actions in events instead');
+    if (c.scene_id != null) {
+      const scene = s.scenes.find((x) => x.id === c.scene_id);
+      if (!scene) err(`${path}.scene_id`, `The scene it starts in (${c.scene_id}) does not exist (it may have been deleted)`);
+      else if (typeof c.position_x === 'number' && typeof c.position_y === 'number' && scene.width && scene.height && !isWalkable(walkContext(scene, { width: scene.width, height: scene.height }), c.position_x, c.position_y)) {
+        warn(path, 'It starts outside the walkable area: it is moved to the nearest spot it can stand on');
+      }
+    }
+    if (c.facing != null && c.facing !== 'left' && c.facing !== 'right') err(`${path}.facing`, 'facing is "left" or "right"');
+    if (c.roams != null && typeof c.roams !== 'boolean') err(`${path}.roams`, 'roams is true or false');
+    const start = characterStart(s, c);
+    if (characterRoams(c) && !start) warn(path, 'The character walks around on its own but starts in no scene, so it is nowhere to be seen');
+    if (c.event_id != null) {
+      if (eventCharacter.get(c.event_id)?.id === c.id) {
+        // One of its own: it runs wherever it is clicked.
+      } else if (eventCharacter.has(c.event_id)) {
+        err(`${path}.event_id`, `Event ${c.event_id} is another character’s`);
+      } else if (!eventScene.has(c.event_id)) {
+        err(`${path}.event_id`, `Event ${c.event_id} does not exist (it may have been deleted)`);
+      } else {
+        // An event of a scene (as before characters had events): it runs only when the player is in that scene.
+        const there = eventScene.get(c.event_id)!;
+        const presence = characterPresence(s, c, there);
+        if (presence !== 'here') {
+          warn(`${path}.event_id`, `Clicking ${nameOf(c)} runs an event of scene ${sceneName(there)}, which runs only there, but ${nameOf(c)} ${presence === 'anywhere' ? 'walks around on its own' : presence === 'never' ? 'is never there' : 'is walked to other scenes'}. Make it one of ${nameOf(c)}’s own events`);
         }
-      });
+      }
     }
-    if (characterRoams({ roams: c.roams, routine: normalizeRoutine(c.routine) }) && !startPlacement(s, c.id)) {
-      warn(path, 'The character walks around on its own but is not placed in any scene, so it has nowhere to start');
-    }
+    (c.events ?? []).forEach((e, ei) => {
+      const ep = `${path}.events[${ei}]`;
+      checkConditions(e.conditions, ep);
+      if (!Array.isArray(e.actions)) return err(`${ep}.actions`, 'actions must be an array');
+      e.actions.forEach((a, ai) => checkAction(a, `${ep}.actions[${ai}]`, null));
+    });
   });
 
   return done();

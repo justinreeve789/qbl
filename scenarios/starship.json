@@ -1427,6 +1427,10 @@
         {
             "scale": 0.85,
             "portrait_media_id": 110,
+            "scene_id": 2,
+            "position_x": 715,
+            "position_y": 955,
+            "event_id": 250,
             "id": 1,
             "scenario_id": 1,
             "name": "Captain Vega",
@@ -1507,7 +1511,6 @@
                     "position_y": 1119
                 }
             ],
-            "characters": [],
             "music_media_id": 30,
             "music_volume": 0.5,
             "start_events": [
@@ -1738,7 +1741,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "music_media_id": 30,
             "music_volume": 0.5,
             "start_events": [
@@ -2067,14 +2069,6 @@
                 }
             ],
             "items": [],
-            "characters": [
-                {
-                    "character_id": 1,
-                    "position_x": 715,
-                    "position_y": 955,
-                    "event_id": 250
-                }
-            ],
             "start_events": [],
             "end_events": [],
             "hotspots": [
@@ -2619,7 +2613,6 @@
                     "position_y": 860
                 }
             ],
-            "characters": [],
             "start_events": [
                 {
                     "id": 100,
@@ -2729,7 +2722,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "music_media_id": 30,
             "music_volume": 0.5,
             "start_events": [
@@ -3048,7 +3040,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "music_media_id": 30,
             "music_volume": 0.5,
             "start_events": [
@@ -3382,7 +3373,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "music_media_id": 30,
             "music_volume": 0.5,
             "start_events": [
@@ -4107,7 +4097,6 @@
             "scale_areas": [],
             "team_only": true,
             "items": [],
-            "characters": [],
             "start_events": [
                 {
                     "id": 801,
@@ -6246,7 +6235,6 @@
                 }
             ],
             "items": [],
-            "characters": [],
             "start_events": [
                 {
                     "id": 901,
@@ -6501,7 +6489,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "start_events": [
                 {
                     "id": 1001,
@@ -6761,7 +6748,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "start_events": [
                 {
                     "id": 1101,
@@ -7333,7 +7319,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "start_events": [
                 {
                     "id": 1201,
@@ -7706,7 +7691,6 @@
             ],
             "scale_areas": [],
             "items": [],
-            "characters": [],
             "start_events": [
                 {
                     "id": 1301,

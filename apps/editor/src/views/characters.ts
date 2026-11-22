@@ -5,14 +5,14 @@ import {
 import type { Row } from '../api';
 import { animationPreview, characterOf, framePosition, framesOf, mediaOf, parseFrames, storedAnimations } from '../characters';
 import { checkFeet, mirror, sheetOf, walkCycle, WALK_DURATION, WALK_FRAMES, type Bitmap } from '../walkCycle';
-import { mediaLabel, mediaUrl, params } from '../describe';
+import { mediaLabel, mediaUrl, params, sceneLabel } from '../describe';
 import { confirmDelete, h, help, toast } from '../dom';
 import { form, withValue, type FormContext } from '../fields';
 import { openPanel } from '../panel';
 import { CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
 import { keepInLibraryButton, openQuestLab } from './questlab';
-import { gettingAround } from './routine';
+import { characterEvents, whereItIs } from './characterWorld';
 import { recordAllButton, voiceSection } from './voices';
 
 type Animations = Record<string, CharacterAnimation>;
@@ -49,7 +49,7 @@ export function charactersPage(ctx: FormContext): HTMLElement {
     'div',
     { class: 'page' },
     h('div', { class: 'page-head' },
-      h('div', null, h('h1', null, 'Characters', h('span', { class: 'count' }, String(cards.length)), help('People and creatures players meet. Define them here, then place them in scenes, where clicking one can run an event. A character is drawn from its animations: give it a picture standing facing right and it can already stand, walk and turn (mirrored); add walking frames, the other side, a close-up and moves as you have them. Click a character to edit it.'))),
+      h('div', null, h('h1', null, 'Characters', h('span', { class: 'count' }, String(cards.length)), help('People and creatures players meet. Each lives in the world, not in a scene: it starts in a scene at a spot, the same for everyone playing together, and goes where walk actions send it (or walks around on its own). What players do with it is in its own events: what clicking it runs, and events any scene can start. A character is drawn from its animations: give it a picture standing facing right and it can already stand, walk and turn (mirrored); add walking frames, the other side, a close-up and moves as you have them. Click a character to edit it.'))),
       h('div', { class: 'row-actions' }, cards.length ? recordAllButton(ctx) : null, questLabButton(ctx), h('button', { type: 'button', class: 'primary', onclick: () => void add() }, 'New character'))),
     cards.length
       ? h('div', { class: 'grid characters' }, ...cards)
@@ -72,7 +72,8 @@ function characterCard(ctx: FormContext, row: Row): HTMLElement {
   const others = Object.keys(animations).filter((n) => !isPose(n));
   const conditions = store.where('conditions', 'character_id', id).length;
   const settings = params(row, 'settings');
-  const steps = ((settings.routine as { steps?: unknown[] } | undefined)?.steps ?? []).length;
+  const start = typeof settings.scene_id === 'number' ? store.byId('scenes', settings.scene_id) : undefined;
+  const events = store.where('events', 'character_id', id).length;
   const open = () => openCharacter(ctx, id);
 
   return h(
@@ -89,7 +90,9 @@ function characterCard(ctx: FormContext, row: Row): HTMLElement {
       }, animations[pose] ? '✓ ' : '', SHORT[pose])),
       others.length ? h('span', { class: 'chip pose set', 'data-tone': 'move', title: others.join(', ') }, `✨ ${others.length} more`) : null,
       conditions ? h('span', { class: 'chip cond', title: 'Only in the scene while its conditions hold' }, `🔒 ${conditions} condition${conditions === 1 ? '' : 's'}`) : null,
-      settings.roams === true || steps ? h('span', { class: 'chip roams', title: 'Walks around on its own, the same for everyone' }, steps ? `🗺️ Routine of ${steps}` : '🗺️ Walks around') : null),
+      h('span', { class: `chip start${start ? '' : ' cond'}`, title: start ? 'Where it is when a game starts' : 'It starts in no scene, so it is nowhere to be seen' }, start ? `📍 ${sceneLabel(start)}` : '📍 No scene'),
+      settings.roams === true ? h('span', { class: 'chip roams', title: 'Walks around on its own, the same for everyone' }, '🗺️ Walks around') : null,
+      events ? h('span', { class: 'chip events', title: 'Its own events' }, `💬 ${events} event${events === 1 ? '' : 's'}`) : null),
     h('div', { class: 'row-actions' },
       h('button', { type: 'button', class: 'primary', 'data-open': 'character', onclick: open }, '✏️ Edit character'),
       stand ? makeWalkButton(ctx, id, '🚶 Make walk') : null,
@@ -140,7 +143,8 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
     voiceSection(ctx, row),
     form(CHARACTER_SETTINGS_FIELDS, params(row, 'settings'), (key, value, field) => void store.patch('characters', id, { settings: withValue(params(store.byId('characters', id)!, 'settings'), key, value, field) }, field.structural === true), ctx),
     rowConditions(ctx, 'character_id', id, 'Present only when', 'Always present.'),
-    gettingAround(ctx, row),
+    whereItIs(ctx, row),
+    characterEvents(ctx, row),
     h('div', { class: 'row-actions' }, keepInLibraryButton(ctx, 'characters', row), h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the character “${row.name}”`) && void store.remove('characters', id) }, 'Delete character')));
 
   const others = Object.keys(animations).filter((n) => !isPose(n));

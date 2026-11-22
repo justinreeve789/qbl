@@ -440,6 +440,15 @@ details.action.drop-after { box-shadow: 0 4px 0 0 var(--warn); }
 .chip.tone { background: color-mix(in srgb, var(--tone) 24%, transparent); border-color: var(--tone); color: #fff; }
 .chip.anim { background: rgba(177, 140, 255, 0.2); border-color: var(--tone-move); color: #fff; }
 .chip.cond { background: rgba(245, 198, 83, 0.14); border-color: var(--warn); color: var(--warn); }
+.chip.warn { background: rgba(245, 198, 83, 0.14); border-color: var(--warn); color: var(--warn); }
+/* An action that needs a character who may not be in the player's scene when it runs. */
+.presence-flag { margin-left: auto; flex: none; }
+.issue.warning.presence-warning { margin: 6px 0 2px; padding: 8px 10px; border-radius: var(--radius); background: rgba(245, 198, 83, 0.1); border-left: 3px solid var(--warn); font-size: 13px; }
+/* A character's start, walking, and events on its panel. */
+.character-world .start-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.character-world .start-row .coords { font-variant-numeric: tabular-nums; }
+.character-events .event-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); margin: 4px 0; }
+.character-events .event-row .clicked { font-size: 12px; color: var(--ok); white-space: nowrap; }
 .chip.pose { background: transparent; border-style: dashed; border-color: color-mix(in srgb, var(--tone-c) 55%, var(--edge)); color: #c4cad5; }
 .chip.pose.set { border-style: solid; background: color-mix(in srgb, var(--tone-c) 26%, transparent); border-color: var(--tone-c); color: #fff; }
 .small { font-size: 12px; }

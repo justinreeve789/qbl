@@ -65,19 +65,21 @@ The gate will jump to the pond, so the pond has to exist before you build it. Go
 
 <Steps>
 
-1. Choose **Character** from **+ Add to scene…**. Because there is only one character, she is placed. Drag her to about `(900, 740)` and set **Facing** to *Left*, so she faces the student coming in.
+1. Choose **Character** from **+ Add to scene…**. Because there is only one character, she now starts in this scene. Drag her to about `(900, 740)` and set **Facing** to *Left*, so she faces the student coming in.
 
-2. Leave **When clicked, run** empty for now. You will point it at her conversation in a moment.
+   <Aside>
+   Characters live in the world, not in a scene: Ms. Okafor is in one place at a time, the same for every student playing together, and a Walk action could send her anywhere. This is where she is when a game starts.
+   </Aside>
 
 </Steps>
 
 ## Write her conversation
 
-A conversation is an **indirect event**: it does nothing until a click on the character starts it.
+What happens when a student clicks a character is one of the character's **own events**. It belongs to her, not to the scene, so it works wherever she is.
 
 <Steps>
 
-1. Choose **Indirect event (run by other events)** from **+ Add to scene…**. In its inspector set the **Name** to `okafor-talk`.
+1. With Ms. Okafor selected, press **✏️ Events and more…**. Under 💬 **Events**, press **+ New event**. Her first event is what a click runs (**When clicked, run** shows it). In the event's panel, set the **Name** to `okafor-talk`.
 
 2. Under 🎬 Actions, press **+ Add action…** and add these five actions, in this order:
 
@@ -95,7 +97,7 @@ A conversation is an **indirect event**: it does nothing until a click on the ch
    The freeze keeps the student from wandering off while Ms. Okafor talks. A freeze always ends when its event finishes, so even if you forgot action 5 nobody would be stuck, but release explicitly when you can.
    </Aside>
 
-3. Now select Ms. Okafor on the canvas (or under **Characters here** in the outline). Set **When clicked, run** to `okafor-talk`.
+3. Close the event's panel and hers. On her card on the **Characters** page, *💬 1 event* now shows.
 
 </Steps>
 
@@ -151,7 +153,7 @@ The path to the pond should open only after Ms. Okafor has spoken. The right edg
 The exit now does one of two things. A student who has not spoken to Ms. Okafor sees the hint and the jump is skipped. A student who has gets no hint and is sent to the pond. Because the exit is a walk-in hotspot it fires again whenever the avatar re-enters it, so the hint comes back if they try again.
 
 <Aside type="note" title="Checkpoint">
-The outline should list: **Background layers** 1, **Start events** 1 (`welcome`), **Hotspots** 1 (`edge-right`), **Indirect events** 1 (`okafor-talk`), **Spawn points** 2, **Characters here** 1, **Walkable areas** 1. Press **▶ Test this scene** with **with outlines** ticked to see them over the game. Walking into the right edge should show the hint (it cannot jump yet if the pond has no spawn point).
+The outline should list: **Background layers** 1, **Start events** 1 (`welcome`), **Hotspots** 1 (`edge-right`), **Spawn points** 2, **Characters who start here** 1, **Walkable areas** 1. (`okafor-talk` is Ms. Okafor's, on her panel.) Press **▶ Test this scene** with **with outlines** ticked to see them over the game. Walking into the right edge should show the hint (it cannot jump yet if the pond has no spawn point).
 </Aside>
 
 Next, [the pond](/docs/editor/walkthrough/pond/).

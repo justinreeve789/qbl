@@ -46,13 +46,16 @@ export const dialogue: Presenter<'dialogue'> = (action, pc, actor) => {
   const text = pc.ctx.text(action.text);
   const speak = isNarrated(pc.ctx.scenario, action) ? speech(pc, action, byCharacter ? action.character_id : undefined) : undefined;
 
-  if (action.style === 'portrait') {
+  // Characters walk about the world: one that is not in this scene says its bubble line in a story box.
+  const away = byCharacter && action.style !== 'portrait' && !pc.locate({ character_id: action.character_id });
+  if (action.style === 'portrait' || away) {
     const who = speakerOf(pc, byCharacter ? action.character_id : undefined, actor);
     return pc.ctx.ui.portraitDialogue(text, {
       name: who.name,
       portrait: who.portrait,
-      // The player who set it off reads at their own pace. Others only look on, so theirs closes by itself.
-      duration: action.duration && action.duration > 0 ? action.duration : actor ? dialogueDuration(action.text) : 0,
+      // The player who set it off reads at their own pace. Others only look on, so theirs closes by
+      // itself; so does a bubble line said from elsewhere, which would have closed by itself too.
+      duration: action.duration && action.duration > 0 ? action.duration : actor || away ? dialogueDuration(action.text) : 0,
       watching: !!actor,
       speak,
     });
@@ -60,7 +63,6 @@ export const dialogue: Presenter<'dialogue'> = (action, pc, actor) => {
 
   const who = byCharacter ? { character_id: action.character_id } : { actor };
   const speaker = pc.locate(who);
-  if (byCharacter && !speaker) pc.warn(`dialogue ${action.id}: character ${action.character_id} is not in this scene`);
   const anchor = bubbleAnchor(pc, who);
 
   return pc.ctx.ui.dialogue(text, {

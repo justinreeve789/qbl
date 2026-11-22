@@ -28,7 +28,8 @@ export type ScenarioList = (typeof SCENARIO_LISTS)[number];
  */
 export interface IssuePlace {
   scene?: { index: number; id?: Id; name?: string };
-  event?: { list: EventList; kind: EventKind; index: number; id?: Id; name?: string };
+  /** An event of the scene, or (list `events`, kind `character`) one of a character's own, with the character in `entry`. */
+  event?: { list: EventList | 'events'; kind: EventKind | 'character'; index: number; id?: Id; name?: string };
   /**
    * An action of the event. `button` is set when the path goes on into one of an infobox's buttons,
    * `line` when it goes into a line of a conversation (and `line.choice` into one of its choices).
@@ -84,6 +85,36 @@ export function locateIssue(doc: unknown, path: string): IssuePlace {
     if (rest.length) place.field = rest[rest.length - 1];
     return place;
   };
+  /** At `actions[n]` of an event: the action, and the button, line or choice the path goes on into. Returns where the path goes on. */
+  const followAction = (event: Record<string, unknown> | undefined, from: number): number => {
+    let j = from;
+    const actionIndex = t[j + 1] as number;
+    const action = at(event?.actions, actionIndex);
+    const found: NonNullable<IssuePlace['action']> = { index: actionIndex, id: idOf(action), type: str(action?.type) };
+    place.action = found;
+    j += 2;
+    const word = () => (typeof t[j] === 'string' ? (t[j] as string) : undefined);
+    if (word() === 'call_to_actions' && typeof t[j + 1] === 'number') {
+      const buttonIndex = t[j + 1] as number;
+      found.button = { index: buttonIndex, text: str(at(action?.call_to_actions, buttonIndex)?.text) };
+      j += 2;
+      // A button's own action is part of the button.
+      if (word() === 'action') j += 1;
+    } else if (word() === 'lines' && typeof t[j + 1] === 'number') {
+      const lineIndex = t[j + 1] as number;
+      const line = obj(at(action?.lines, lineIndex));
+      found.line = { index: lineIndex, id: str(line?.id), text: str(line?.text) };
+      j += 2;
+      if (word() === 'choices' && typeof t[j + 1] === 'number') {
+        const choiceIndex = t[j + 1] as number;
+        found.line.choice = { index: choiceIndex, text: str(at(line?.choices, choiceIndex)?.text) };
+        j += 2;
+        // What a choice does is part of the choice.
+        if (word() === 'actions' && typeof t[j + 1] === 'number') j += 2;
+      }
+    }
+    return j;
+  };
 
   if (name() === 'scenes' && typeof t[1] === 'number') {
     const sceneIndex = t[1];
@@ -98,30 +129,7 @@ export function locateIssue(doc: unknown, path: string): IssuePlace {
       place.event = { list, kind: EVENT_LISTS[list], index: eventIndex, id: idOf(event), name: str(event?.shortname) };
       i += 2;
       if (name() === 'actions' && typeof t[i + 1] === 'number') {
-        const actionIndex = t[i + 1] as number;
-        const action = at(event?.actions, actionIndex);
-        place.action = { index: actionIndex, id: idOf(action), type: str(action?.type) };
-        i += 2;
-        if (name() === 'call_to_actions' && typeof t[i + 1] === 'number') {
-          const buttonIndex = t[i + 1] as number;
-          place.action.button = { index: buttonIndex, text: str(at(action?.call_to_actions, buttonIndex)?.text) };
-          i += 2;
-          // A button's own action is part of the button.
-          if (name() === 'action') i += 1;
-        } else if (name() === 'lines' && typeof t[i + 1] === 'number') {
-          const lineIndex = t[i + 1] as number;
-          const line = obj(at(action?.lines, lineIndex));
-          place.action.line = { index: lineIndex, id: str(line?.id), text: str(line?.text) };
-          i += 2;
-          if (name() === 'choices' && typeof t[i + 1] === 'number') {
-            const choiceIndex = t[i + 1] as number;
-            place.action.line.choice = { index: choiceIndex, text: str(at(line?.choices, choiceIndex)?.text) };
-            i += 2;
-            // What a choice does is part of the choice.
-            if (name() === 'actions' && typeof t[i + 1] === 'number') i += 2;
-          }
-        }
-      } else if (name() === 'labels' && typeof t[i + 1] === 'number') {
+        i = followAction(event, i);      } else if (name() === 'labels' && typeof t[i + 1] === 'number') {
         place.label = { index: t[i + 1] as number };
         i += 2;
       }
@@ -145,6 +153,13 @@ export function locateIssue(doc: unknown, path: string): IssuePlace {
     if (name() === 'animations' && typeof t[i + 1] === 'string') {
       place.entry.animation = t[i + 1] as string;
       i += 2;
+    } else if (list === 'characters' && name() === 'events' && typeof t[i + 1] === 'number') {
+      // One of the character's own events.
+      const eventIndex = t[i + 1] as number;
+      const event = at(entry?.events, eventIndex);
+      place.event = { list: 'events', kind: 'character', index: eventIndex, id: idOf(event), name: str(event?.shortname) };
+      i += 2;
+      if (name() === 'actions' && typeof t[i + 1] === 'number') i = followAction(event, i);
     }
   }
 

@@ -28,9 +28,13 @@ export const EVENT_KINDS = {
   indirect: 'Indirect event',
 } as const;
 
+/** What a character's own event is called (kind `character`): it belongs to the character, not to a scene. */
+export const CHARACTER_EVENT = 'Character’s event';
+
 export function eventLabel(row: Row | undefined): string {
   if (!row) return '(missing event)';
-  return (row.shortname as string | null) || `${EVENT_KINDS[row.kind as keyof typeof EVENT_KINDS]} ${row.id}`;
+  const kind = row.kind === 'character' ? CHARACTER_EVENT : EVENT_KINDS[row.kind as keyof typeof EVENT_KINDS] ?? 'Event';
+  return (row.shortname as string | null) || `${kind} ${row.id}`;
 }
 
 export function params(row: Row, column = 'params'): Record<string, unknown> {
@@ -118,17 +122,18 @@ export function actionSummary(store: Store, type: string, values: Record<string,
   }
 }
 
-/** Where a walk goes, in a few words: "to 450, 300", "to spawn point door", "to the lab". */
+/** Where a walk goes, in a few words: "to 450, 300", "to spawn point door in the lab", "to the lab". */
 export function walkDestination(store: Store, values: Record<string, unknown>): string {
+  // A character's walk names its scene (none: this one); the player's only to leave through a door.
+  const scene = values.scene_id != null ? sceneLabel(store.byId('scenes', values.scene_id as number | null)) : null;
+  const where = scene && values.target !== 'player' ? ` in ${scene}` : '';
   switch ((values.to as string | undefined) ?? 'point') {
     case 'spawn':
-      return `to spawn point ${values.spawn_point ?? '?'}`;
-    case 'scene': {
-      const scene = sceneLabel(store.byId('scenes', values.scene_id as number | null));
-      return values.spawn_point ? `to ${scene}, then to ${values.spawn_point}` : `to ${scene}`;
-    }
+      return `to spawn point ${values.spawn_point ?? '?'}${where}`;
+    case 'scene':
+      return `to ${scene ?? '?'}`;
     default:
-      return `to ${values.position_x ?? '?'}, ${values.position_y ?? '?'}`;
+      return `to ${values.position_x ?? '?'}, ${values.position_y ?? '?'}${where}`;
   }
 }
 

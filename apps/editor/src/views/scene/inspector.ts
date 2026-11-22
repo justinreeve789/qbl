@@ -3,6 +3,7 @@ import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
 import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
+import { openCharacter } from '../characters';
 import { benchSettingsPanel, benchToolPanel, benchVesselPanel } from './benchPanels';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
 
@@ -36,7 +37,7 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
     case 'item':
       return listPanel(model, ctx, 'items', selection.index, 'Item in this scene', 'An item from the scenario’s Items list, placed here. Its position is where it stands: the middle of its bottom edge.', ITEM_PLACEMENT_FIELDS, host);
     case 'character':
-      return listPanel(model, ctx, 'characters', selection.index, 'Character in this scene', 'A character from the scenario’s Characters list, placed here. Clicking it can run an indirect event.', CHARACTER_PLACEMENT_FIELDS, host);
+      return characterPanel(model, ctx, selection.index, host);
     case 'scale':
       return listPanel(model, ctx, 'scale_areas', selection.index, 'Scale area',
         'A box in which avatars, what they wear or ride, items and characters are drawn smaller or larger depending on how far up the box they stand. Use it for depth: a path or corridor leading away from the viewer. It is separate from walkable areas, so it also sizes things placed where nobody can walk. Click the box again to drag it; drag its corners to resize it. Where boxes overlap, the first in the list applies.',
@@ -246,6 +247,39 @@ function listPanel(model: SceneModel, ctx: FormContext, key: LayoutList, index: 
           await model.setLayout(key, model.layout(key).filter((_, i) => i !== index), true);
         },
       }, 'Delete'),
+    ),
+  );
+}
+
+/**
+ * A character that starts in this scene: where it stands at the start, and the way it faces.
+ * Everything else about it (what clicking it runs, its events, whether it walks around on its
+ * own) is on its own panel: characters live in the world, not in a scene.
+ */
+function characterPanel(model: SceneModel, ctx: FormContext, index: number, host: InspectorHost): HTMLElement {
+  const entry = model.layout('characters')[index];
+  const row = entry ? model.store.byId('characters', entry.character_id as number) : undefined;
+  if (!entry || !row) return gone();
+  const commit = (name: string, value: unknown, field: Field) =>
+    void model.setLayout('characters', model.layout('characters').map((e, i) => (i === index ? withValue(e, name, value, field) : e)));
+  return h(
+    'div',
+    { class: 'panel', 'data-character-start': row.id },
+    h('div', { class: 'panel-head' }, h('h2', null, String(row.name || 'Character'), help('This character starts in this scene, here. Characters live in the world: walk actions send them to other scenes, and one that walks around on its own wanders off by itself. What clicking it runs, and its other events, are on its own panel.'))),
+    h('p', { class: 'muted' }, 'Starts here, at the spot below. Drag it on the scene to move it.'),
+    form(CHARACTER_PLACEMENT_FIELDS, entry, commit, ctx),
+    h(
+      'div',
+      { class: 'row-actions' },
+      h('button', { type: 'button', class: 'primary', 'data-open': 'character', onclick: () => openCharacter(ctx, row.id) }, '✏️ Events and more…'),
+      h('button', {
+        type: 'button', class: 'danger',
+        onclick: async () => {
+          if (!confirmDelete(`${row.name} from this scene (it then starts in no scene)`)) return;
+          host.select({ kind: 'scene' });
+          await model.setLayout('characters', model.layout('characters').filter((_, i) => i !== index), true);
+        },
+      }, 'Take out of this scene'),
     ),
   );
 }

@@ -143,7 +143,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     section('End events', 'end', events('end')),
     section('Spawn points', 'spawn', model.layout('spawn_points').map((p, index) => entry({ kind: 'spawn', index }, String(p.name ?? '')))),
     section('Items here', 'item', model.layout('items').map((p, index) => entry({ kind: 'item', index }, name('items', p.item_id)))),
-    section('Characters here', 'character', model.layout('characters').map((p, index) => entry({ kind: 'character', index }, name('characters', p.character_id)))),
+    section('Characters who start here', 'character', model.layout('characters').map((p, index) => entry({ kind: 'character', index }, name('characters', p.character_id)))),
     ...benchSections(model, entry, section),
     section('Walkable areas', 'walkable_areas', model.layout<Point[]>('walkable_areas').map((a, index) => entry({ kind: 'area', which: 'walkable_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
     section('Scale areas', 'scale_areas', model.layout('scale_areas').map((a, index) => entry({ kind: 'scale', index }, String(a.name || `Scale area ${index + 1}`), `${a.scale_top}% → ${a.scale_bottom}%`))),

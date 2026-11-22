@@ -85,10 +85,39 @@ class ScenarioDecompiler
             $this->conditions($rows, $i['conditions'] ?? [], 'item_id', $id);
         }
 
+        // Before characters had a start of their own they were placed in scenes: the first placement,
+        // taking the scenes in order, is where one starts, and its event is what clicking it runs.
+        $placed = [];
+        $scenes = array_values($d['scenes']);
+        usort($scenes, fn ($a, $b) => ($a['sequence'] ?? 0) <=> ($b['sequence'] ?? 0));
+        foreach ($scenes as $s) {
+            foreach ($s['characters'] ?? [] as $p) {
+                if (is_array($p) && isset($p['character_id']) && ! isset($placed[(int) $p['character_id']])) {
+                    $placed[(int) $p['character_id']] = ['scene_id' => $s['id'] ?? null] + $p;
+                }
+            }
+        }
         foreach ($d['characters'] ?? [] as $c) {
             $id = $this->id($c);
-            $rows['characters'][] = ['id' => $id, 'name' => $c['name'] ?? 'Character', 'media_id' => $c['media_id'] ?? null, 'settings' => array_diff_key($c, array_flip(['id', 'scenario_id', 'name', 'media_id', 'conditions']))];
+            $settings = array_diff_key($c, array_flip(['id', 'scenario_id', 'name', 'media_id', 'conditions', 'events', 'routine']));
+            $first = $placed[$id] ?? null;
+            if (! isset($settings['scene_id']) && $first && $first['scene_id'] !== null) {
+                $settings += array_filter(['scene_id' => $first['scene_id'], 'position_x' => $first['position_x'] ?? null, 'position_y' => $first['position_y'] ?? null, 'facing' => $first['facing'] ?? null], fn ($v) => $v !== null);
+                if (! isset($settings['event_id']) && isset($first['event_id'])) {
+                    $settings['event_id'] = $first['event_id'];
+                }
+            }
+            // A character with a routine (they are gone) walked around on its own.
+            if (! empty($c['routine']['steps'])) {
+                $settings['roams'] = true;
+            }
+            $rows['characters'][] = ['id' => $id, 'name' => $c['name'] ?? 'Character', 'media_id' => $c['media_id'] ?? null, 'settings' => $settings];
             $this->conditions($rows, $c['conditions'] ?? [], 'character_id', $id);
+            foreach (array_values(is_array($c['events'] ?? null) ? $c['events'] : []) as $sequence => $e) {
+                if (is_array($e)) {
+                    $this->event($rows, $e, null, 'character', $sequence + 1, $id);
+                }
+            }
         }
 
         foreach (array_values($d['scenes']) as $index => $s) {
@@ -106,7 +135,7 @@ class ScenarioDecompiler
                 'background_media' => $s['background_media'] ?? [], 'foreground_media' => $s['foreground_media'] ?? [],
                 'layout' => array_filter([
                     'walkable_areas' => $s['walkable_areas'] ?? [], 'blocked_areas' => $s['blocked_areas'] ?? [], 'spawn_points' => $s['spawn_points'] ?? [],
-                    'scale_areas' => $s['scale_areas'] ?? null, 'shadow_spots' => $s['shadow_spots'] ?? null, 'lights' => $s['lights'] ?? null, 'items' => $s['items'] ?? [], 'characters' => $s['characters'] ?? [],
+                    'scale_areas' => $s['scale_areas'] ?? null, 'shadow_spots' => $s['shadow_spots'] ?? null, 'lights' => $s['lights'] ?? null, 'items' => $s['items'] ?? [],
                     'bench' => is_array($s['bench'] ?? null) ? $s['bench'] : null,
                 ], fn ($v) => $v !== null),
                 'params' => $params ?: null,
@@ -133,11 +162,12 @@ class ScenarioDecompiler
         return $rows;
     }
 
-    private function event(array &$rows, array $e, int $sceneId, string $kind, int $sequence): void
+    /** An event of a scene, or (with `$characterId`, kind `character`) one of a character's own. */
+    private function event(array &$rows, array $e, ?int $sceneId, string $kind, int $sequence, ?int $characterId = null): void
     {
         $eventId = $this->id($e);
         $row = [
-            'id' => $eventId, 'scene_id' => $sceneId, 'kind' => $kind, 'shortname' => $e['shortname'] ?? null, 'sequence' => $sequence,
+            'id' => $eventId, 'scene_id' => $sceneId, 'character_id' => $characterId, 'kind' => $kind, 'shortname' => $e['shortname'] ?? null, 'sequence' => $sequence,
             'overridable' => $e['overridable'] ?? false, 'block_hotspots' => $e['block_hotspots'] ?? false, 'audience' => ($e['audience'] ?? 'player') === 'scene' ? 'scene' : 'player',
             'activate_by_trigger' => $e['activate_by_trigger'] ?? false, 'once' => $e['once'] ?? false,
         ];

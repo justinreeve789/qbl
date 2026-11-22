@@ -1,5 +1,5 @@
 import type { Row } from '../api';
-import { EVENT_KINDS, params } from '../describe';
+import { CHARACTER_EVENT, EVENT_KINDS, params } from '../describe';
 import { confirmDelete, fold, h, help } from '../dom';
 import { form, select, withValue, type Field, type FormContext } from '../fields';
 import { EVENT_FIELDS, HOTSPOT_FIELDS, LABEL_FIELDS, LABEL_HINT, LABEL_MEDIA, LABEL_PULSE, LABEL_SOLID, LABEL_SPRITEMAP, LABEL_TEXT } from '../schema';
@@ -16,6 +16,8 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
   const { store } = ctx;
   const id = event.id;
   const kind = event.kind as keyof typeof EVENT_KINDS;
+  // A character's own event: it belongs to the character, not to a scene, and is of no other kind.
+  const own = event.kind === 'character';
 
   const commit = (key: string, value: unknown, field: Field) => {
     if (key === 'activate_by_trigger') value = value === 'true';
@@ -36,7 +38,7 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
     h(
       'div',
       { class: 'panel-head' },
-      h('h2', null, EVENT_KINDS[kind], help(KIND_HELP[kind])),
+      h('h2', null, own ? CHARACTER_EVENT : EVENT_KINDS[kind], help(own ? CHARACTER_HELP : KIND_HELP[kind])),
       h('button', {
         type: 'button', class: 'danger',
         onclick: async () => {
@@ -47,7 +49,7 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
       }, 'Delete'),
     ),
     // Each part folds away, so a long event is easy to get around in. What is folded stays folded from event to event.
-    fold('event-settings', '⚙️ Settings', true, h('div', { class: 'form' }, h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Kind'), kindSelect)), form(EVENT_FIELDS, values, commit, ctx)),
+    fold('event-settings', '⚙️ Settings', true, own ? null : h('div', { class: 'form' }, h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Kind'), kindSelect)), form(EVENT_FIELDS, values, commit, ctx)),
     kind === 'hotspot' ? fold('event-hotspot', '🎯 Where it is and how it fires', true, form(HOTSPOT_FIELDS, values, commit, ctx)) : null,
     fold('event-conditions', `🔀 Conditions (${store.where('conditions', 'event_id', id).length})`, true, rowConditions(ctx, 'event_id', id, 'Runs only when', kind === 'hotspot' ? 'Always active.' : 'Always runs.')),
     kind === 'hotspot' ? fold('event-labels', `🏷️ Labels (${store.where('labels', 'event_id', id).length})`, true, labelList(ctx, event)) : null,
@@ -55,11 +57,13 @@ export function eventPanel(ctx: FormContext, event: Row, refresh: Array<() => vo
   );
 }
 
+const CHARACTER_HELP = 'One of the character’s own events. It runs when the character is clicked (if it is the one chosen for that), or when any scene’s “Run event” action starts it, in the scene the player is in, wherever the character is. A line the character says in a bubble is shown in a story box when it is not in the player’s scene.';
+
 const KIND_HELP: Record<keyof typeof EVENT_KINDS, string> = {
   start: 'Runs when a player enters the scene. Background music and opening text go here.',
   end: 'Runs when a player leaves the scene.',
   hotspot: 'A place in the scene that runs its actions when a player clicks it or walks into it. A walk-in hotspot along an edge with a jump action is how players move between scenes.',
-  indirect: 'Runs only when another event’s “Run event” action, or a click on a character, starts it.',
+  indirect: 'Runs only when another event’s “Run event” action starts it. (What clicking a character runs is one of its own events, on the Characters page.)',
 };
 
 /** Labels mark a hotspot in the scene: a piece of text, an image, or an animated spritemap. */

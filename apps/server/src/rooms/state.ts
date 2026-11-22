@@ -39,8 +39,9 @@ export const ItemState = schema({
 export type ItemState = SchemaType<typeof ItemState>;
 
 /**
- * A character that walks around on its own (`roams`): one exists per team, kept by the World.
- * Clients draw it where this says, and smooth the steps in between.
+ * A character of the scenario: one exists per team, kept by the World, wherever it walks (and
+ * whether it walks around on its own or only when walk actions send it). Clients draw it where
+ * this says, and smooth the steps in between.
  */
 export const NpcState = schema({
   character_id: t.int32(),
@@ -49,10 +50,6 @@ export const NpcState = schema({
   y: t.number(),
   facing: t.string(),
   moving: t.boolean(),
-  /** The animation it was last asked to play, as name:count. */
-  anim: t.string(),
-  /** The routine line it is saying, as count:step. */
-  line: t.string(),
   /** The ticket of the player's walk action it is carrying out, or "". */
   trip: t.string(),
 }, 'NpcState');
@@ -66,7 +63,7 @@ export const RoomState = schema({
   items: t.map(ItemState),
   /** Shared variables, one set per team: keyed by `team|name`. Values are JSON-encoded so numbers stay numbers. */
   vars: t.map('string'),
-  /** Characters that roam, one set per team: keyed by `team|character id`. */
+  /** The characters, one set per team: keyed by `team|character id`. */
   npcs: t.map(NpcState),
 }, 'RoomState');
 export type RoomState = SchemaType<typeof RoomState>;

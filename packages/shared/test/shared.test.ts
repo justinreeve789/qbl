@@ -701,7 +701,9 @@ test('story boxes and audiences are validated', () => {
   const problems = (d: unknown) => validateScenario(d).errors.map((e) => `${e.path}: ${e.message}`);
   const say = (extra: Record<string, unknown>) => ({ actions: [{ id: 11, type: 'dialogue', text: 'Hi', speaker: 'character', character_id: 5, ...extra }] });
   assert.deepEqual(problems(doc(say({ style: 'portrait' }), { portrait_media_id: 1 })), [], 'a story box can carry a voice from a character who is not in the scene');
-  assert.match(problems(doc(say({})))[0]!, /not placed in this scene/, 'a bubble needs someone to hang over');
+  // A bubble needs someone to hang over: one whose character is never here is shown in a story box, and the checks say so.
+  assert.deepEqual(problems(doc(say({}))), []);
+  assert.match(validateScenario(doc(say({}))).warnings.map((w) => w.message).join('\n'), /Vega is never in this scene: .* story box/, 'a bubble needs someone to hang over');
   assert.match(problems(doc(say({ style: 'portrait', character_id: 6 })))[0]!, /does not exist/);
   assert.match(problems(doc(say({ style: 'hologram' })))[0]!, /style is "bubble" or "portrait"/);
   assert.match(problems(doc({ audience: 'world' }))[0]!, /audience is "player" or "scene"/);

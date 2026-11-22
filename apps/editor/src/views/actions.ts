@@ -7,6 +7,7 @@ import { form, select, tidyAnimate, withValue, type Field, type FormContext, typ
 import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, starterConversation, tidyWalk } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 import { conversationMap } from './conversation';
+import { presenceWarning } from '../presence';
 
 /** Which action cards are open. Kept outside the view so a redraw does not close them. */
 const open = new Set<number>();
@@ -38,14 +39,18 @@ const nestedTypeOptions = typeOptions.filter(([t]) => t !== 'conversation');
 const choiceTypeOptions = nestedTypeOptions.filter(([t]) => t !== 'repeat' && t !== 'award');
 
 /**
- * Starting values for a new action. A new conversation is spoken by the first character placed in
- * this scene, or else the first of the scenario's.
+ * Starting values for a new action. A new conversation is spoken by the character whose event it
+ * is, or the first that starts in this scene, or else the first of the scenario's. A new walk in a
+ * character's own event walks that character, in the scene it starts in.
  */
 function startingParams(ctx: FormContext, type: ActionType): Record<string, unknown> {
+  const here = ctx.sceneId != null ? ctx.store.rows('characters').find((c) => params(c, 'settings').scene_id === ctx.sceneId)?.id : undefined;
+  if (type === 'walk' && ctx.characterId != null) {
+    const start = params(ctx.store.byId('characters', ctx.characterId) ?? ({} as Row), 'settings').scene_id;
+    return { ...actionDefaults(type), character_id: ctx.characterId, ...(typeof start === 'number' ? { scene_id: start } : {}) };
+  }
   if (type !== 'conversation') return actionDefaults(type);
-  const scene = ctx.sceneId != null ? ctx.store.byId('scenes', ctx.sceneId) : undefined;
-  const placed = scene ? ((params(scene, 'layout').characters as Array<{ character_id?: number }> | undefined) ?? [])[0]?.character_id : undefined;
-  return starterConversation(placed ?? ctx.store.rows('characters')[0]?.id ?? null);
+  return starterConversation(ctx.characterId ?? here ?? ctx.store.rows('characters')[0]?.id ?? null);
 }
 
 /** Have this action's card open the next time its event is drawn. */
@@ -91,9 +96,16 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     const current = () => store.byId('actions', id)!;
 
     const summary = h('span', { class: 'summary-text' });
+    // A character the action needs in the player's scene may be elsewhere: said on the card, as it is written.
+    const flag = h('span', { class: 'chip warn presence-flag', 'aria-label': 'The character may not be here', hidden: true }, '⚠️');
+    const warningBox = h('p', { class: 'issue warning presence-warning', 'data-presence': id, hidden: true });
     const describe = () => {
       const row = store.byId('actions', id);
-      if (row) summary.textContent = actionSummary(store, row.type as string, actionValues(row));
+      if (!row) return;
+      summary.textContent = actionSummary(store, row.type as string, actionValues(row));
+      const warning = presenceWarning(store, store.byId('events', eventId), String(row.type), params(row));
+      flag.hidden = warningBox.hidden = !warning;
+      flag.title = warningBox.textContent = warning ?? '';
     };
     describe();
     refresh.push(describe);
@@ -103,7 +115,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
       if (COLUMNS.has(key)) void store.patch('actions', id, { [key]: value }, key === 'media_id');
       else {
         let next = withValue(params(current()), key, value, field);
-        if (type === 'walk' && key === 'to') next = tidyWalk(next);
+        if (type === 'walk' && (key === 'to' || key === 'scene_id' || key === 'target')) next = tidyWalk(next, key);
         if (type === 'animate' && ANIMATE_SUBJECT.has(key)) next = tidyAnimate(next, ctx);
         void store.patch('actions', id, { params: next }, field.structural === true);
       }
@@ -123,6 +135,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
         ),
       ),
       form(def.fields, { ...actionValues(action), ...choice(type, params(action)) }, commit, ctx),
+      warningBox,
       type === 'conversation' ? conversationMap(ctx, id) : null,
       type === 'infobox'
         ? buttonsEditor(
@@ -152,7 +165,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     // The grip is what is dragged; the card follows it. Dropping on another card puts this action
     // before or after it, whichever half of that card the pointer is over.
     const grip = h('span', { class: 'grip', draggable: 'true', title: 'Drag to change the order', 'aria-hidden': 'true' }, '⠿');
-    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, emojiIcon(ACTION_LOOK[type][0]), ` ${def.label}`), summary), body);
+    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, emojiIcon(ACTION_LOOK[type][0]), ` ${def.label}`), summary, flag), body);
     card.addEventListener('toggle', () => (card.open ? open.add(id) : open.delete(id)));
     grip.addEventListener('click', (e) => e.preventDefault());
     grip.addEventListener('dragstart', (e) => {
@@ -225,7 +238,7 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
     const commit = (key: string, value: unknown, field: Field) => {
       if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
       let action = withValue(at(index).action ?? {}, key, value, field);
-      if (type === 'walk' && key === 'to') action = tidyWalk(action);
+      if (type === 'walk' && (key === 'to' || key === 'scene_id' || key === 'target')) action = tidyWalk(action, key);
       if (type === 'animate' && ANIMATE_SUBJECT.has(key)) action = tidyAnimate(action, ctx);
       replace(index, { ...at(index), action: { ...action, type } }, key === 'media_id' || field.structural === true);
     };
@@ -294,7 +307,7 @@ export function inlineActions(
     const commit = (key: string, value: unknown, field: Field) => {
       if ((type === 'avatar' && key === 'visible') || (type === 'freeze' && key === 'frozen')) value = value === 'true';
       let next = withValue(at(index), key, value, field);
-      if (type === 'walk' && key === 'to') next = tidyWalk(next);
+      if (type === 'walk' && (key === 'to' || key === 'scene_id' || key === 'target')) next = tidyWalk(next, key);
       // A new subject has its own animations: keep the one chosen only if it has it.
       if (type === 'animate' && ANIMATE_SUBJECT.has(key)) next = tidyAnimate(next, ctx);
       replace(index, { ...next, type }, key === 'media_id' || field.structural === true);

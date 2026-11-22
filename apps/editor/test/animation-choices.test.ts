@@ -143,24 +143,32 @@ test('an item: its sprite sheet’s animations', async () => {
   assert.equal((await lastAction()).animation ?? null, null);
 });
 
-test('a routine step lists the routine’s own character', async () => {
+test('an animate action in a character’s own event lists that character’s animations', async () => {
   await page.click('.tabs >> text=Characters');
   await page.locator('.character-card', { has: page.locator('.card-title', { hasText: 'Robo' }) }).locator('[data-open=character]').click();
   const card = page.locator('dialog[data-panel=character]');
   await card.waitFor();
-  await card.locator('[data-fold^=character-routine] > summary').click();
-  await card.locator('[data-field=roams] input').check();
+  await card.locator('[data-add=character-event]').click();
+  const panel = page.locator('dialog[data-panel=character-event]');
+  await panel.waitFor();
   await saved();
-  await card.locator('.routine-steps .add-action').selectOption('animate');
+  await panel.locator('.add-action').selectOption('animate');
+  await panel.locator('details.action[open]').waitFor();
+  await panel.locator('details.action[open] [data-field=target] select').selectOption('character');
   await saved();
-  const step = card.locator('.routine-step[data-step="0"] [data-field=animation] select');
-  await step.waitFor();
+  await panel.locator('details.action[open] [data-field=character_id] select').selectOption({ label: 'Robo' });
+  await saved();
+  const step = panel.locator('details.action[open] [data-field=animation] select');
+  await page.waitForFunction(() => document.querySelector('dialog[data-panel=character-event] details.action[open] [data-field=animation] optgroup')?.getAttribute('label')?.startsWith('Robo'));
   const list = await step.evaluate((s) => Object.fromEntries([...s.querySelectorAll('optgroup')].map((g) => [g.label, [...g.querySelectorAll('option')].map((o) => o.value)])));
   assert.deepEqual(list, { 'Robo’s animations': ['beep', 'wave'] });
   await step.selectOption('beep');
   await saved();
   const doc = (await rest<{ scenario: Scenario }>('GET', '/preview')).scenario;
-  assert.deepEqual(doc.characters!.find((c) => c.id === robo)!.routine!.steps[0], { type: 'animate', animation: 'beep' });
+  const robot = doc.characters!.find((c) => c.id === robo)!;
+  const animate = robot.events![0]!.actions[0]! as unknown as Record<string, unknown>;
+  assert.deepEqual([animate.type, animate.target, animate.character_id, animate.animation], ['animate', 'character', robo, 'beep']);
+  assert.equal(robot.event_id, robot.events![0]!.id, 'its first event is what clicking it runs');
 });
 
 test('nothing went wrong in the browser along the way', () => {

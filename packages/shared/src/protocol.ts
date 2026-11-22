@@ -84,11 +84,12 @@ export interface ShowBroadcast extends ShowMessage { session_id: string }
 /** Play an animation on the sender's avatar, for everyone in their scene. An empty name stops it. */
 export interface AnimateMessage { name: string }
 /**
- * A walk action of the sender's event, aimed at a character that roams: the game server walks it,
- * for everyone. The server checks that the sender's scene has such a walk action. `ticket` is the
- * sender's name for this request: the character's `trip` carries it until it arrives.
+ * A walk action of the sender's event, aimed at a character: the game server walks it, for
+ * everyone. The server checks that the scenario has such a walk action, in the sender's scene or
+ * in a character's own events. `ticket` is the sender's name for this request: the character's
+ * `trip` carries it until it arrives.
  */
-export interface WalkMessage extends Pick<WalkAction, 'character_id' | 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing'> {
+export interface WalkMessage extends Pick<WalkAction, 'character_id' | 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing' | 'wander'> {
   ticket: string;
 }
 /** Show or hide the sender's avatar for everyone in their scene. */

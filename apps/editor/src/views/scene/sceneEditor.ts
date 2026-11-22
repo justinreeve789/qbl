@@ -1,5 +1,6 @@
 import { previewUrl } from '../../config';
-import { sceneLabel } from '../../describe';
+import { params, sceneLabel } from '../../describe';
+import type { Row } from '../../api';
 import { h, redraw, toast } from '../../dom';
 import { select } from '../../fields';
 import type { Store } from '../../store';
@@ -127,7 +128,8 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
   async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights', entry: unknown, kind: Selection['kind']) {
     const list = model.layout(key);
     await model.setLayout(key, [...list, entry], true);
-    const index = list.length;
+    // Characters are listed in their own order (see SceneModel.characters): find the one just added.
+    const index = key === 'characters' ? model.layout('characters').findIndex((c) => c.character_id === (entry as { character_id?: number }).character_id) : list.length;
     select_(kind === 'area' ? { kind: 'area', which: key as 'walkable_areas' | 'blocked_areas', index } : ({ kind, index } as Selection));
   }
 
@@ -160,9 +162,15 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
         return void addToLayout('items', { item_id: first.id, ...position }, 'item');
       }
       case 'character': {
-        const first = store.rows('characters')[0];
-        if (!first) return toast('Create a character on the scenario’s Characters page first.', 'error');
-        return void addToLayout('characters', { character_id: first.id, ...position }, 'character');
+        // A character is in one place: one that starts nowhere comes first; one from another scene moves here.
+        const all = store.rows('characters');
+        if (!all.length) return toast('Create a character on the scenario’s Characters page first.', 'error');
+        const startOf = (c: Row) => params(c, 'settings').scene_id as number | undefined;
+        const pick = all.find((c) => startOf(c) == null) ?? all.find((c) => startOf(c) !== sceneId);
+        if (!pick) return toast('Every character already starts in this scene.', 'error');
+        const from = startOf(pick);
+        if (from != null && !confirm(`${pick.name} starts in “${sceneLabel(store.byId('scenes', from))}”. A character is in one place at a time: start it here instead?`)) return;
+        return void addToLayout('characters', { character_id: pick.id, ...position }, 'character');
       }
       case 'walkable_areas':
       case 'blocked_areas': {

@@ -1,10 +1,11 @@
 import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Circle, type WalkContext } from './geometry.js';
 import { isShownToScene } from './engine.js';
 import type { AnimateMessage, AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage, WalkMessage } from './protocol.js';
-import { Roamers, type NpcRec, type SavedNpc, type WalkSpec } from './roaming.js';
-import { forEachAction, sceneSize, sceneTeamOnly, ScenarioIndex } from './scenario.js';
+import { Walkers, type NpcRec, type SavedNpc, type WalkSpec } from './roaming.js';
+import { sceneSize, sceneTeamOnly, ScenarioIndex } from './scenario.js';
 import { ANIMATION_NAME, type Id, type Item, type Scenario, type Scene, type Session, type VarValue, type VariableOperator } from './types.js';
 import { applyOperator } from './variables.js';
+import { eachActionIn } from './walking.js';
 
 /** Who is playing. `id` is the stable key for save data. */
 export interface User {
@@ -29,7 +30,7 @@ export interface InstanceData {
   variables: Record<string, VarValue>;
   /** Where unique items were left. */
   items: Record<string, { scene_id: Id; x: number; y: number }>;
-  /** Where characters that roam were left, by character id. */
+  /** Where the characters were left, by character id. */
   characters?: Record<string, SavedNpc>;
   updated_at?: string;
 }
@@ -66,7 +67,7 @@ export interface WorldState {
   players: MapLike<PlayerRec>;
   items: MapLike<ItemRec>;
   vars: MapLike<string>;
-  /** Characters that roam, by character id. A world given none keeps its own. */
+  /** Where the characters are, by character id. A world given none keeps its own. */
   npcs?: MapLike<NpcRec>;
 }
 export interface WorldDeps {
@@ -104,8 +105,8 @@ export class World {
   readonly index: ScenarioIndex;
   private meta = new Map<string, Meta>();
   private staticObstacles = new Map<Id, Circle[]>();
-  /** The characters that walk around on their own. */
-  readonly roamers: Roamers;
+  /** The characters: where each is, and where it is walking. */
+  readonly walkers: Walkers;
   readonly npcs: MapLike<NpcRec>;
   dirty = false;
 
@@ -151,18 +152,16 @@ export class World {
     }
 
     this.npcs = state.npcs ?? new Map<string, NpcRec>();
-    this.roamers = new Roamers(
+    this.walkers = new Walkers(
       {
         scenario,
         index: this.index,
         npcs: this.npcs,
         newNpc: deps.newNpc ?? (() => ({}) as NpcRec),
         now: () => deps.now(),
+        random: () => (deps.random ?? Math.random)(),
         walkContext: (sceneId) => this.ctx(sceneId),
         roomVariable: (name) => decode(state.vars.get(name)),
-        setRoomVariable: (name, operator, operand) => {
-          this.applyRoomVariable(name, operator, operand);
-        },
         changed: () => {
           this.dirty = true;
         },
@@ -171,9 +170,9 @@ export class World {
     );
   }
 
-  /** Let time pass for the characters that walk around on their own. The game server calls this a few times a second. */
+  /** Let time pass for the characters, walking where they are going. The game server calls this a few times a second. */
   tick(): void {
-    this.roamers.tick();
+    this.walkers.tick();
   }
 
   // ------------------------------------------------------------ players
@@ -310,7 +309,8 @@ export class World {
   show(sessionId: string, msg: ShowMessage): string[] | null {
     const p = this.deps.state.players.get(sessionId);
     const found = this.index.events.get(Number(msg?.event_id));
-    if (!p || !found || found.scene.id !== p.scene_id || found.event.audience !== 'scene') return null;
+    // A scene's event in the player's scene, or a character's own, which runs in any scene.
+    if (!p || !found || (found.scene && found.scene.id !== p.scene_id) || found.event.audience !== 'scene') return null;
     const action = found.event.actions.find((a) => a.id === Number(msg.action_id));
     if (!action || !isShownToScene(action)) return null;
     return this.audience(sessionId);
@@ -373,7 +373,7 @@ export class World {
     return this.applyRoomVariable(msg?.name, msg?.operator, msg?.operand);
   }
 
-  /** Change a shared variable: for a player's variable action, or a character's routine. */
+  /** Change a shared variable, for a player's variable action. */
   private applyRoomVariable(name: string, operator: VariableOperator, rawOperand: unknown): boolean {
     const def = (this.scenario.global_variables ?? []).find((v) => v.variable_name === name);
     if (!def || (def.scope ?? 'player') !== 'room') return false;
@@ -389,33 +389,35 @@ export class World {
   }
 
   /**
-   * A walk action of the player's event, for a character that roams: walk it there, for everyone.
-   * Only a walk that an event of the player's scene has (on a button too) is taken, so a player
-   * can send a character only where the scenario sends it, and no more often than a few times a
-   * second.
+   * A walk action of the player's event, for a character: walk it there, for everyone. Only a walk
+   * that the scenario has (in an event of the player's scene, on a button or a choice too, or in
+   * one of a character's own events, which run in any scene) is taken, so a player can send a
+   * character only where the scenario sends it, and no more often than a few times a second.
    */
   walk(sessionId: string, msg: WalkMessage): boolean {
     const p = this.deps.state.players.get(sessionId);
     const m = this.meta.get(sessionId);
     const characterId = Number(msg?.character_id);
-    if (!p || !m || !this.roamers.has(characterId)) return false;
-    const scene = this.index.scene(p.scene_id);
-    if (!scene) return false;
+    if (!p || !m || !this.walkers.has(characterId)) return false;
     const spec: WalkSpec = {
       to: msg.to, position_x: msg.position_x, position_y: msg.position_y, spawn_point: msg.spawn_point,
-      scene_id: msg.scene_id, speed: msg.speed, facing: msg.facing,
+      scene_id: msg.scene_id, speed: msg.speed, facing: msg.facing, wander: typeof msg.wander === 'boolean' ? msg.wander : undefined,
     };
     let known = false;
-    forEachAction(scene, (a) => {
-      if (known || a.type !== 'walk' || (a.target ?? 'character') !== 'character' || a.character_id !== characterId) return;
-      known = sameWalk(a, spec);
-    });
+    for (const found of this.index.events.values()) {
+      if (known) break;
+      if (found.scene && found.scene.id !== p.scene_id) continue;
+      eachActionIn(found.event.actions, (a) => {
+        if (known || a.type !== 'walk' || (a.target ?? 'character') !== 'character' || a.character_id !== characterId) return;
+        known = sameWalk(a, spec);
+      });
+    }
     if (!known) return false;
     const now = this.deps.now();
     if (now - m.lastWalk < 250) return false;
     m.lastWalk = now;
     const ticket = typeof msg.ticket === 'string' ? msg.ticket.slice(0, 32) : '';
-    return this.roamers.command(characterId, spec, ticket);
+    return this.walkers.command(characterId, spec, ticket);
   }
 
   /** Put on / climb into an item, or take it off. */
@@ -481,7 +483,7 @@ export class World {
         ? { scene_id: holder.scene_id, x: holder.x, y: holder.y }
         : { scene_id: rec.scene_id, x: rec.x, y: rec.y };
     });
-    return { variables, items, characters: this.roamers.saved(), updated_at: new Date(this.deps.now()).toISOString() };
+    return { variables, items, characters: this.walkers.saved(), updated_at: new Date(this.deps.now()).toISOString() };
   }
 
   // ------------------------------------------------------------ helpers
@@ -598,10 +600,11 @@ export function parseIds(csv: string): Id[] {
 function sameWalk(a: WalkSpec, b: WalkSpec): boolean {
   const to = (w: WalkSpec) => w.to ?? 'point';
   if (to(a) !== to(b) || (a.speed ?? null) !== (b.speed ?? null) || (a.facing ?? null) !== (b.facing ?? null)) return false;
+  if ((a.scene_id ?? null) !== (b.scene_id ?? null) || (a.wander !== false) !== (b.wander !== false)) return false;
   switch (to(a)) {
     case 'point': return a.position_x === b.position_x && a.position_y === b.position_y;
     case 'spawn': return (a.spawn_point ?? '') === (b.spawn_point ?? '');
-    case 'scene': return a.scene_id === b.scene_id && (a.spawn_point ?? '') === (b.spawn_point ?? '');
+    case 'scene': return true;
     default: return false;
   }
 }
