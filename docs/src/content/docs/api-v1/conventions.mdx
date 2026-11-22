@@ -1,7 +1,12 @@
 ---
 title: "Conventions, errors and versioning"
 description: "How ids, times, pages, CSV and errors work across the whole API, and what the version 1 promise covers."
+host:
+  who: asimov
+  says: "Ids, times, pages, errors: the small rules that hold the whole API together."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Aside } from '@astrojs/starlight/components';
 
@@ -58,6 +63,10 @@ student_id,external_id,display_name,team,status,score,score_parts.objectives,sco
 ```
 
 ## Errors
+
+<Host who="buck" side="right">
+When something's wrong you get a code, a message a person can read, and the fields that caused it.
+</Host>
 
 A failed request has an HTTP status and a body in one shape. **Switch on `code`**, never on `message`, which may be reworded to be clearer.
 

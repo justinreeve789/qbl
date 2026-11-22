@@ -1,7 +1,17 @@
 ---
 title: "How QuestLab works"
 description: "The handful of ideas behind every mission: scenarios, scenes, events, actions, conditions and variables, and how teachers, classes and reports fit around them."
+host:
+  who: asimov
+  says: "Every mission is built from the same handful of pieces. Learn these few words and the rest of the docs will click into place."
+  side: right
 ---
+import Flow from '../../../components/diagrams/Flow.astro';
+
+import Host from '../../../components/Host.astro';
+
+import MissionAnatomy from '../../../components/diagrams/MissionAnatomy.astro';
+
 
 import { Aside } from '@astrojs/starlight/components';
 
@@ -9,15 +19,7 @@ QuestLab has two halves. One is the **mission**: a place students walk around, b
 
 ## The mission
 
-```text
-Scenario (the whole mission)
- ├─ Scenes (the places)
- │   ├─ Hotspots, start events, end events, indirect events
- │   │   └─ Actions (say, show, ask, move, set, award…)
- │   ├─ Characters and items placed in the scene
- │   └─ Walkable areas, exits and spawn points
- └─ Library: media, variables, characters, items, objectives, glossary, moves, shop
-```
+<MissionAnatomy />
 
 | Idea | What it is | Example |
 | --- | --- | --- |
@@ -43,6 +45,10 @@ A student clicks something, an event runs a list of actions, and the actions may
 
 ## The classroom
 
+<Host who="val" side="right">
+Teacher's corner! This half is where you come in: classes, assignments, teams, and the report that tells you what they understood.
+</Host>
+
 | Idea | What it is |
 | --- | --- |
 | **Teacher** | Builds and assigns missions, and sees reports. Lands on the missions page, their teaching page, after signing in. |
@@ -60,12 +66,24 @@ Read more in [Classes, missions and teams](/docs/editor/classes/) and [Reading t
 
 ## Building, testing and publishing
 
+<Flow loop="Change it and publish again: players keep the last version until you do" steps={[
+  { icon: '✏️', title: 'Build', text: 'Saved as you go. No save button.' },
+  { icon: '▶️', title: 'Test', text: 'Play your draft alone. Nothing is saved.' },
+  { icon: '🔍', title: 'Check', text: 'The publish check finds problems and takes you to each one.' },
+  { icon: '🚀', title: 'Publish', text: 'Players get the new version.' },
+  { icon: '📅', title: 'Assign', text: 'Give it to a class, with a due date and a note.' },
+]} />
+
 - Everything is **saved as you make it**. There is no save button.
 - **▶ Test** plays your *draft* alone, and nothing is saved.
 - **Publish** gives players the new version. Until you publish again, they keep the last one.
 - The **publish check** finds errors (a condition that names a variable that does not exist, an objective that nothing ticks off) and takes you to each with **Go there →**.
 
 ## Rewards
+
+<Host who="sam" side="left">
+Stars, XP and badges are fun, but they work best when they pay for thinking, not for clicking.
+</Host>
 
 Students earn **stars** (spent in the marketplace) and **XP** (which adds up to a rank), and can earn **badges** for specific accomplishments. They belong to the student's account and carry across missions. They are there to mark real accomplishment; the report is what tells *you* what students understood.
 

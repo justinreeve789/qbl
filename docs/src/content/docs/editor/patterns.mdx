@@ -1,7 +1,13 @@
 ---
 title: "Patterns that work"
 description: "Eight ready-made ways to build common things in a mission: collecting, gates, questions with feedback, menus, experiments, team tasks, pre and post checks, and rewards."
+host:
+  who: lucy
+  says: "Eight tried-and-true recipes. When you're wondering how to build a gate or a quiz, start here."
+  side: right
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Aside } from '@astrojs/starlight/components';
 
@@ -24,6 +30,10 @@ A reminder of the vocabulary: an **event** is a list of **actions**; a **conditi
 The picture disappears once collected, because the hotspot's condition no longer holds. Use the **observation** box to ask what they see: *"What do you notice about the leaves?"*
 
 ## 2. A gate
+
+<Host who="mallory" side="right">
+A gate is just an exit whose jump has a condition, plus a hint for anyone who isn't ready yet.
+</Host>
 
 **For:** keeping students from skipping ahead. A way out that opens when something has been done.
 
@@ -75,6 +85,10 @@ Do not have an event run itself with **Run event**: an event that is already run
 Ask students for a **prediction** before they press anything.
 
 ## 6. A team task
+
+<Host who="val" side="left">
+Make teammates need each other: put half the clues in one scene and half in another.
+</Host>
 
 **For:** several students must each do their part, and everyone sees the progress.
 

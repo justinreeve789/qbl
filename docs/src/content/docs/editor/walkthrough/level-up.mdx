@@ -1,7 +1,12 @@
 ---
 title: "5. Level it up"
 description: Turn Ms. Okafor's lines into a real conversation, ask students to predict before they investigate, and read their prediction back to them.
+host:
+  who: lucy
+  says: "Ready for more? Let's turn Ms. Okafor's lines into a real conversation and ask for a prediction first."
 ---
+import Host from '../../../../components/Host.astro';
+
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
@@ -59,6 +64,10 @@ You could also set `mission_started` from the choices (**Also do** on each one) 
 *How the same conversation looks to the student.*
 
 ## 2. Ask for a prediction
+
+<Host who="sam" side="right">
+Ask before you tell! A prediction, even a wrong one, makes students care about the answer.
+</Host>
 
 A prediction changes what a student does at the pond: they are no longer collecting facts, they are testing an idea they have already said out loud. It also tells *you* what they thought before they saw anything.
 

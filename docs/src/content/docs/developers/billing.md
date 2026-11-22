@@ -1,5 +1,9 @@
 ---
 title: "Billing, credits and district sign-in"
+host:
+  who: buck
+  says: "Plans, Stripe, credits and district sign-in: the money and the keys."
+  side: right
 ---
 
 How plans, Stripe, AI generator credits, the district admin panel and district sign-in are put together. For what teachers and district admins see, read [Plans, credits and the AI generator](/docs/editor/plans-and-generator/) and [The district admin panel](/docs/editor/district-admin/).

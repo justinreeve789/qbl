@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 /**
  * Generate a whole mission from a prompt: standards, story, scenes, characters, dialogue, events,
  * every picture in the house art style, packaged as an import ZIP and imported as a private draft.
- * See docs/src/content/docs/developers/generation.md.
+ * See docs/src/content/docs/developers/generation.mdx.
  */
 class GenerateScenario extends Command
 {

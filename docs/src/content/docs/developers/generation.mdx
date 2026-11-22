@@ -1,6 +1,11 @@
 ---
 title: "Generating missions with AI"
+host:
+  who: riona
+  says: "Behind the curtain of the generator: what it makes, what it costs, and how every picture stays in one style."
 ---
+import Flow from '../../../components/diagrams/Flow.astro';
+
 
 `php artisan qbl:generate` makes a whole mission from a teacher's prompt: it aligns the mission to curriculum standards, writes the story, scenes, characters, dialogue, questions and events, draws every picture in the house art style, and imports the result as a private draft for the teacher to review.
 
@@ -14,15 +19,25 @@ It prints its progress and ends with the new scenario's id. The mission is **pri
 
 ## What happens
 
+<Flow steps={[
+  { who: 'riona', title: 'Align', text: 'Standards, objectives' },
+  { icon: '📐', title: 'Design', text: 'The blueprint' },
+  { icon: '🎨', title: 'Draw', text: 'Every picture' },
+  { icon: '🧱', title: 'Build', text: 'Table rows' },
+  { icon: '🔊', title: 'Voice', text: 'Every line' },
+  { icon: '📦', title: 'Package', text: 'scenario.zip' },
+  { icon: '📥', title: 'Import', text: 'A private draft' },
+]} caption="Each step keeps its work, so a stopped run carries on where it stopped." />
+
 Step | What | Kept in
 ---- | ---- | -------
-1. Align | Chooses 1-3 primary standards (and up to 3 supporting ones) from those imported, and writes measurable learning objectives, vocabulary and misconceptions to address | `scenario_generations.alignment`
-2. Design | Writes the **blueprint**: story, scenes and how they connect, characters, items, interactions, the checklist, the briefing and the final report. It is checked, and sent back to be corrected until it can be built | `scenario_generations.blueprint`, `blueprint.json`
-3. Draw | Draws every picture: each character's design and animation strips (their portrait is cut from the design); the mission's small things, several to a picture; doors and holes; every background; the mission patch | `assets/` in the work folder, `scenario_generations.manifest`
-4. Build | Turns the blueprint into rows of the QuestLab tables, using the patterns from [Runtime extensions](/docs/developers/extensions/#patterns). Gives each character a voice from what the blueprint says of them, a different one each | 
-4½. Voice | Records every line the characters say, with the time of every word, on the server's text-to-speech service ([Characters' voices](/docs/developers/voices/)). Free with Kokoro. If the service is down this is a warning, not a failure | `voices/` in the work folder
-5. Package | Compiles the rows into `scenario.json` and packs it with its pictures as an import ZIP, plus a preview of each scene | `scenario.zip`, `previews/`
-6. Import | Imports the ZIP exactly as the editor's "Import a ZIP" does, as a private draft owned by `--owner`; records its standards; publishes it if `--publish` | `scenarios` and the rest; `scenario_standards`
+1\. Align | Chooses 1-3 primary standards (and up to 3 supporting ones) from those imported, and writes measurable learning objectives, vocabulary and misconceptions to address | `scenario_generations.alignment`
+2\. Design | Writes the **blueprint**: story, scenes and how they connect, characters, items, interactions, the checklist, the briefing and the final report. It is checked, and sent back to be corrected until it can be built | `scenario_generations.blueprint`, `blueprint.json`
+3\. Draw | Draws every picture: each character's design and animation strips (their portrait is cut from the design); the mission's small things, several to a picture; doors and holes; every background; the mission patch | `assets/` in the work folder, `scenario_generations.manifest`
+4\. Build | Turns the blueprint into rows of the QuestLab tables, using the patterns from [Runtime extensions](/docs/developers/extensions/#patterns). Gives each character a voice from what the blueprint says of them, a different one each | 
+4½\. Voice | Records every line the characters say, with the time of every word, on the server's text-to-speech service ([Characters' voices](/docs/developers/voices/)). Free with Kokoro. If the service is down this is a warning, not a failure | `voices/` in the work folder
+5\. Package | Compiles the rows into `scenario.json` and packs it with its pictures as an import ZIP, plus a preview of each scene | `scenario.zip`, `previews/`
+6\. Import | Imports the ZIP exactly as the editor's "Import a ZIP" does, as a private draft owned by `--owner`; records its standards; publishes it if `--publish` | `scenarios` and the rest; `scenario_standards`
 
 Each run has a work folder (`QuestLab_GEN_WORK_DIR`, `/data/generations/{id}` in Docker). If a run stops (a service is down, a key runs out of credit) carry on where it stopped, without paying for anything twice:
 

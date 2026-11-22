@@ -1,7 +1,13 @@
 ---
 title: Developers
 description: The scenario JSON, how the pieces fit together, and the HTTP and multiplayer contracts.
+host:
+  who: asimov
+  says: "Beep! Welcome to the engine room: the JSON that describes every mission, and how the machines talk to each other."
+  side: right
 ---
+import Host from '../../../components/Host.astro';
+
 
 This section is for people who work with QuestLab's data and code: writing or generating scenarios as JSON, running the platform, or building against its APIs. If you only want to make missions, start with [the editor](/docs/editor/).
 
@@ -26,6 +32,10 @@ A scenario holds scenes; a scene holds events; an event holds actions that run i
 The original pages describe the first version of the format. Everything the walk-around runtime added is **optional and additive** and is described in [Runtime extensions (spec v2)](/docs/developers/extensions/).
 
 ## The platform
+
+<Host who="asimov" side="right">
+Under the hood: one engine shared by the client and the server, Laravel for everything stored, and Colyseus for everyone in the room.
+</Host>
 
 * [Save data](/docs/developers/save-data/): what a player's save holds and how it is delivered with the scenario.
 * [Instances, teams and save data](/docs/developers/instances/): how a team's copy of a mission is kept, and which tables hold it.

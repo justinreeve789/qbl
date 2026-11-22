@@ -1,5 +1,8 @@
 ---
 title: "Labels"
+host:
+  who: lucy
+  says: "Labels are the little signs over hotspots that say: click me!"
 ---
 
 Labels are associated with a single hotspot. One hotspot can have many labels. Labels can be text, images, or spritemaps.

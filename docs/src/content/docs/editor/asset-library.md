@@ -1,6 +1,10 @@
 ---
 title: "The asset library and content admins"
 description: The editor's Asset library page, where content admins look after the ready-made characters, vehicles, items, pictures and sounds every teacher can add.
+host:
+  who: riona
+  says: "Ready-made characters, vehicles, items, pictures and sounds that every teacher can drop into a mission."
+  side: right
 ---
 
 QuestLab has a shared **asset library**: ready-made characters, vehicles, items, pictures and sounds that every teacher can add to a scenario with **🐾 Add QuestLab Assets** on the Characters and Items pages. The library is looked after by **content admins** and administrators, on the editor's **📚 Asset library** page (`/editor/#/library`).

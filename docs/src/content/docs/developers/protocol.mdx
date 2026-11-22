@@ -1,8 +1,35 @@
 ---
 title: "Multiplayer protocol"
+host:
+  who: asimov
+  says: "Bleep-bloop! This is how the game server and every player keep one world in sync."
 ---
+import Sequence from '../../../components/diagrams/Sequence.astro';
+
 
 The client joins a Colyseus room named `scenario`. Rooms are matched on `scenario` and `group`, so players who launch the same scenario with the same group key share a room, whichever scene each of them is in. The types live in `packages/shared/src/protocol.ts`.
+
+
+<Sequence
+  actors={[
+    { id: 'p', label: 'A player', sub: 'Phaser client', who: 'lucy' },
+    { id: 'g', label: 'Game server', sub: 'Colyseus', who: 'asimov' },
+    { id: 'a', label: 'API', sub: '/api/internal', icon: '🗄️' },
+  ]}
+  steps={[
+    { from: 'p', to: 'g', text: 'join { scenario, group: t7, token }' },
+    { from: 'g', to: 'a', text: 'POST /auth/verify, check access' },
+    { from: 'g', to: 'a', text: 'GET the save in instance t7' },
+    { from: 'g', to: 'p', text: 'welcome { session, team }', reply: true },
+    { from: 'p', to: 'g', text: 'move { x, y, facing }' },
+    { at: 'g', note: 'Walkable? Close enough? Else: snap' },
+    { from: 'g', to: 'p', text: 'state: everyone sees the move', reply: true },
+    { from: 'p', to: 'g', text: 'award { action_id }' },
+    { from: 'g', to: 'a', text: 'POST /scenarios/{id}/awards' },
+    { from: 'g', to: 'p', text: 'progress { delta_stars, badge }', reply: true },
+  ]}
+  caption="A player joins, moves and earns an award. The server checks everything that matters; the client only predicts."
+/>
 
 ## Join options
 

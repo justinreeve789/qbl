@@ -1,6 +1,11 @@
 ---
 title: "The district admin panel"
+host:
+  who: buck
+  says: "Single sign-on, Clever, Google and roster uploads, all from one panel. I'll keep watch at the gate."
 ---
+import Host from '../../../components/Host.astro';
+
 
 The **district admin panel** is for the technical staff who run a school's or district's QuestLab account. It is in the editor under **District** (`/editor/#/district`), for the organization's admins and for QuestLab administrators.
 
@@ -17,6 +22,10 @@ QuestLab makes the organization and names its first admin. Admins can add other 
 Single sign-on, roster syncing, roster files and API clients are an **advanced feature**. They are off until QuestLab turns them on for an organization that asks. Until then the panel says so. (QuestLab administrators: the "For QuestLab administrators" card, or `php artisan qbl:org enable "<organization>"`.)
 
 ## SAML single sign-on
+
+<Host who="buck" side="right">
+Signed responses only, and a replayed one is refused. I check every badge at the door.
+</Host>
 
 For Microsoft Entra ID (Azure AD), ADFS, Okta, ClassLink, Google as a SAML IdP, and others.
 

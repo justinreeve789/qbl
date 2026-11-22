@@ -1,7 +1,7 @@
 <?php
 
 /**
- * The AI scenario generator: `php artisan qbl:generate "..."`. See docs/src/content/docs/developers/generation.md.
+ * The AI scenario generator: `php artisan qbl:generate "..."`. See docs/src/content/docs/developers/generation.mdx.
  *
  * Every value comes from the environment (.env); what is written here is only the fallback when a
  * variable is missing or empty. Nothing here is needed to run QBL; it is only read when a scenario is
@@ -55,7 +55,7 @@ return [
             'quality' => $env('QBL_GEN_OPENAI_QUALITY', 'high'),
             'base_url' => $env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
         ],
-        // Scenario (scenario.com), with a model trained on the house style. See docs/src/content/docs/developers/generation.md.
+        // Scenario (scenario.com), with a model trained on the house style. See docs/src/content/docs/developers/generation.mdx.
         'scenario' => [
             'api_key' => (string) $env('SCENARIO_API_KEY', ''),
             'api_secret' => (string) $env('SCENARIO_API_SECRET', ''),

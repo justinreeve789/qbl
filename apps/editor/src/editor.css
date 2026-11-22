@@ -193,6 +193,11 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .outline-item { color: var(--text); }
 .outline-item.selected { background: var(--accent-solid); color: #fff; font-weight: 600; }
 .outline-item.selected small { color: #dce8ff; }
+.outline li.layer-row { display: flex; align-items: center; gap: 2px; }
+.outline li.layer-row .outline-item { flex: 1; min-width: 0; }
+.outline li.layer-row.dragging { opacity: 0.45; }
+.outline li.layer-row.drop-before { box-shadow: 0 -3px 0 var(--warn); }
+.outline li.layer-row.drop-after { box-shadow: 0 3px 0 var(--warn); }
 .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .panel-head h2 { margin: 0; }
 .panel-head { border-bottom: 2px solid var(--accent-solid); padding-bottom: 6px; }

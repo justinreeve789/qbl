@@ -1,5 +1,8 @@
 ---
 title: "Scenarios"
+host:
+  who: asimov
+  says: "The scenario is the top of the tree: one JSON document that describes a whole mission."
 ---
 
 A scenario is the top-level unit, and contains data that applies to all the scenes in the scenario. Some attributes, such as the jumpTargets and assets, are automatically generated from data contained within the scenes, and are presented at the scenario level to optimize the overall experience for a user.

@@ -1,5 +1,8 @@
 ---
 title: "Save data"
+host:
+  who: asimov
+  says: "What the game remembers between visits, and who writes it down."
 ---
 
 When `enable_save_session` is true, a player's progress is saved and delivered with the scenario the next time they visit, as the `session` object at the top level of the scenario JSON.

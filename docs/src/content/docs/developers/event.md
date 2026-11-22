@@ -1,5 +1,8 @@
 ---
 title: "Events"
+host:
+  who: mallory
+  says: "Events and hotspots in JSON: the triggers that make a scene come alive."
 ---
 
 Events are a series of actions that execute in sequential order. There are four types of events:

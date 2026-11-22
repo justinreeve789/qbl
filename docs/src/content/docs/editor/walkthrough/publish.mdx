@@ -1,7 +1,13 @@
 ---
 title: "4. Test, publish and assign"
 description: Play the draft, check it, publish it, assign it to a class, and read the report.
+host:
+  who: lucy
+  says: "Play it, publish it, give it to a class, then read what they actually thought."
+  side: right
 ---
+import Host from '../../../../components/Host.astro';
+
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
@@ -64,6 +70,10 @@ To see what a student sees, use another browser or a private window. The game an
 </Aside>
 
 ## Read the report
+
+<Host who="val" side="left">
+My favourite moment: the first answers come in. Look for the wrong answer most of the class chose.
+</Host>
 
 Press **Report** on the assignment. For each student you see their progress (not started, in progress, finished), time in the mission, objectives done, how many questions they got right on the first try, glossary words collected, hotspots explored, stars earned and messages sent. Click a name for that student's answers and steps.
 

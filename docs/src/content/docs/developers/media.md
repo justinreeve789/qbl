@@ -1,5 +1,8 @@
 ---
 title: "Media"
+host:
+  who: gil
+  says: "Pictures, sounds and video, and how a scenario points at them."
 ---
 
 A media object describes an audio, image, or video file that has been uploaded and associated with the scenario.

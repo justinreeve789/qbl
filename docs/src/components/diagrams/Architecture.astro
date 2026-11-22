@@ -1,0 +1,83 @@
+---
+// The containers and how a request travels through them, with Sam keeping an eye on the machine.
+import { Image } from 'astro:assets';
+import { CAST } from '../cast';
+
+interface Props { caption?: string }
+const { caption = 'One address in the browser; Apache sends each path to the container that answers it.' } = Astro.props;
+const routes = ['/ and /{code}', '/media', '/editor', '/docs', '/api/*', '/game (WebSocket)'];
+---
+
+<figure class="qd qd-arch">
+  <div class="qd-arch-row qd-arch-browsers">
+    <span class="qd-chip" style="--chip: var(--qd-cyan)">🎮 The game</span>
+    <span class="qd-chip" style="--chip: var(--qd-cyan)">✏️ The editor</span>
+    <span class="qd-chip" style="--chip: var(--qd-cyan)">📖 These docs</span>
+    <span class="qd-muted">in one browser, one address</span>
+  </div>
+  <div class="qd-arch-down" aria-hidden="true">https</div>
+  <div class="qd-card qd-tone" style="--tone: var(--qd-amber)">
+    <span class="qd-title">edge</span> <span class="qd-muted">Caddy · ends HTTPS · staging and production only</span>
+  </div>
+  <div class="qd-arch-down" aria-hidden="true">http</div>
+  <div class="qd-card qd-tone" style="--tone: var(--qd-pink)">
+    <span class="qd-title">apache</span> <span class="qd-muted">routes by path</span>
+    <div class="qd-arch-routes">{routes.map((r) => <code>{r}</code>)}</div>
+  </div>
+  <div class="qd-arch-down" aria-hidden="true"></div>
+  <div class="qd-arch-boxes">
+    <div class="qd-card qd-tone" style="--tone: var(--qd-blue)"><div class="qd-title">app</div><div class="qd-muted">Laravel (PHP-FPM): the API, sign-in, the compiler. Vite builds the game and editor here.</div></div>
+    <div class="qd-card qd-tone" style="--tone: var(--qd-purple)"><div class="qd-title">colyseus</div><div class="qd-muted">The game server: rooms, the shared World, saves. Calls /api/internal.</div></div>
+    <div class="qd-card qd-tone" style="--tone: var(--qd-green)"><div class="qd-title">editor · docs</div><div class="qd-muted">Static files, each behind a small Apache.</div></div>
+    <div class="qd-card qd-tone" style="--tone: var(--qd-cyan)"><div class="qd-title">tts</div><div class="qd-muted">Kokoro, characters' voices.</div></div>
+  </div>
+  <div class="qd-arch-down" aria-hidden="true"></div>
+  <div class="qd-card qd-tone qd-arch-db" style="--tone: var(--qd-amber)">
+    <span class="qd-title">🗄️ db</span> <span class="qd-muted">MariaDB · scenarios, people, saves, reports</span>
+  </div>
+  <Image src={CAST.sam.picture} alt="" height={320} class="qd-arch-sam" />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-arch { position: relative; padding-right: 9rem; }
+  .qd-arch-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .qd-arch-down {
+    height: 1.6rem;
+    margin-left: 2rem;
+    border-left: 2px solid var(--qd-line);
+    padding-left: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--sl-color-gray-3);
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .qd-arch-down::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    bottom: -2px;
+    border: 5px solid transparent;
+    border-top: 7px solid var(--qd-line);
+    border-bottom: 0;
+  }
+  .qd-arch-routes { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+  .qd-arch-boxes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+  .qd-arch :global(.qd-arch-sam) {
+    position: absolute;
+    right: -1.4rem;
+    bottom: -1rem;
+    height: 11.5rem;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    scale: -1 1;
+    filter: drop-shadow(0 6px 6px rgb(0 0 0 / 0.25));
+  }
+  @media (max-width: 50rem) {
+    .qd-arch { padding-right: 1.25rem; }
+    .qd-arch :global(.qd-arch-sam) { display: none; }
+    .qd-arch-boxes { grid-template-columns: 1fr 1fr; }
+  }
+</style>

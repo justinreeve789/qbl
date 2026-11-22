@@ -1,5 +1,9 @@
 ---
 title: "Characters' voices (text-to-speech)"
+host:
+  who: pinta
+  says: "Every character can speak! Here's the text-to-speech service behind the voices, and how lines are recorded."
+  side: right
 ---
 
 What characters say can be **recorded in a voice of their own**, and the game then plays the recording and lights each word on screen as it is spoken. The lines are recorded once, on the server, by a text-to-speech service, and kept with the scenario as audio files with the time of every word. Players never wait on the service, and a scenario with recordings plays the same on every device.

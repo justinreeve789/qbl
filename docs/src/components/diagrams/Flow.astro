@@ -1,0 +1,172 @@
+---
+// A row of steps joined by arrows (wraps to a column on narrow screens).
+//   <Flow caption="..." steps={[{ icon: '✏️', title: 'Draft', text: 'Only you see it' }, ...]} />
+// `loop` draws a return arrow from the last step to the first.
+// `minutes` on every step turns it into a timeline whose segments are sized by time.
+import { Image } from 'astro:assets';
+import { CAST, type CastName } from '../cast';
+
+interface Step {
+  icon?: string;
+  who?: CastName;
+  title: string;
+  text?: string;
+  minutes?: number;
+  tone?: 'blue' | 'green' | 'purple' | 'amber' | 'pink' | 'cyan';
+}
+interface Props {
+  steps: Step[];
+  caption?: string;
+  loop?: string;
+}
+
+const { steps, caption, loop } = Astro.props;
+const timeline = steps.every((s) => typeof s.minutes === 'number');
+const total = timeline ? steps.reduce((n, s) => n + (s.minutes ?? 0), 0) : 0;
+const tones = ['blue', 'green', 'purple', 'amber', 'pink', 'cyan'];
+---
+
+<figure class="qd qd-flow">
+  {timeline && (
+    <div class="qd-timeline" aria-hidden="true">
+      {steps.map((s, i) => (
+        <div class="qd-seg" style={`flex: ${s.minutes}; --tone: var(--qd-${s.tone ?? tones[i % tones.length]})`}>
+          <span>{s.minutes} min</span>
+        </div>
+      ))}
+    </div>
+  )}
+  <ol class:list={['qd-steps', { 'qd-steps--timeline': timeline, 'qd-steps--wrap': steps.length > 5 }]}>
+    {steps.map((s, i) => (
+      <li class="qd-card qd-tone" style={`--tone: var(--qd-${s.tone ?? tones[i % tones.length]})`}>
+        <div class="qd-step-head">
+          {s.who ? (
+            <Image src={CAST[s.who].portrait} alt="" width={64} height={64} class="qd-face" />
+          ) : s.icon ? (
+            <span class="qd-icon" aria-hidden="true">{s.icon}</span>
+          ) : (
+            <span class="qd-num" aria-hidden="true">{i + 1}</span>
+          )}
+          <span class="qd-title">{s.title}</span>
+        </div>
+        {s.text && <div class="qd-muted qd-step-text" set:html={s.text} />}
+      </li>
+    ))}
+  </ol>
+  {loop && (
+    <div class="qd-loop" aria-hidden="true">
+      <span>↺ {loop}</span>
+    </div>
+  )}
+  {timeline && <p class="qd-muted qd-total">{total} minutes in all</p>}
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 1.6rem;
+    counter-reset: step;
+  }
+  .qd-steps > li {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+  }
+  /* Arrows between steps. */
+  .qd-steps:not(.qd-steps--timeline) > li + li::before {
+    content: '';
+    position: absolute;
+    left: -1.45rem;
+    top: 1.15rem;
+    width: 1.3rem;
+    height: 0.75rem;
+    background: var(--qd-line);
+    clip-path: polygon(0 35%, 60% 35%, 60% 0, 100% 50%, 60% 100%, 60% 65%, 0 65%);
+  }
+  .qd-steps--timeline { gap: 0.6rem; }
+  /* Long flows: four to a row, no arrow into the first of a row. */
+  .qd-steps--wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 1rem; }
+  .qd-steps--wrap > li:nth-child(4n + 1)::before { display: none; }
+  .qd-step-head { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+  .qd-step-head .qd-title { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+  .qd-steps--timeline .qd-step-head { flex-direction: row; align-items: center; }
+  .qd-step-text { margin-top: 0.35rem; }
+  .qd-icon { font-size: 1.35rem; line-height: 1; }
+  .qd-num {
+    display: inline-grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--tone);
+    color: #fff;
+    font-weight: 700;
+    font-size: var(--sl-text-xs);
+  }
+  .qd-face {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 2px solid var(--tone);
+    margin: 0;
+  }
+  .qd-loop {
+    margin-top: 0.75rem;
+    border: 2px dashed var(--qd-line);
+    border-top: 0;
+    border-radius: 0 0 1rem 1rem;
+    height: 1.4rem;
+    margin-inline: 2.5rem;
+    position: relative;
+    text-align: center;
+  }
+  .qd-loop span {
+    position: relative;
+    top: 0.65rem;
+    padding: 0 0.5rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-xs);
+    font-weight: 600;
+  }
+  .qd-timeline {
+    display: flex;
+    height: 1.6rem;
+    margin-bottom: 0.9rem;
+    border-radius: 999px;
+    overflow: hidden;
+    gap: 2px;
+  }
+  .qd-seg {
+    background: var(--tone);
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .qd-total { margin-top: 0.75rem; text-align: right; }
+  @media (max-width: 40rem) {
+    .qd-steps { flex-direction: column; gap: 1.2rem; }
+    .qd-steps--wrap { display: flex; }
+    .qd-steps--wrap > li:nth-child(4n + 1)::before { display: block; }
+    .qd-steps--wrap > li:first-child::before { display: none; }
+    .qd-steps:not(.qd-steps--timeline) > li + li::before {
+      left: 1.1rem;
+      top: -1.15rem;
+      width: 0.75rem;
+      height: 1.1rem;
+      clip-path: polygon(35% 0, 65% 0, 65% 60%, 100% 60%, 50% 100%, 0 60%, 35% 60%);
+    }
+    .qd-steps > li { flex: none; }
+    .qd-loop { display: none; }
+  }
+</style>

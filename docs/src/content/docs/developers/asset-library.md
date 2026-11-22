@@ -1,6 +1,9 @@
 ---
 title: The asset library
 description: Ready-made characters, vehicles, items, pictures and sounds kept once for the whole platform, and added to any scenario.
+host:
+  who: riona
+  says: "The tables, the API and the shipped pack behind the asset library."
 ---
 
 The asset library holds things anyone can add to a scenario: animals, vehicles, items, pictures and sounds. QuestLab ships a pack of them; content admins and administrators look after it on the editor's [Asset library page](/docs/editor/asset-library/), and can add more, from files or from something made in a scenario. Teachers see them in the editor under **🐾 Add QuestLab Assets** (Characters and Items pages).

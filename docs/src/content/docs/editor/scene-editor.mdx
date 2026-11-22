@@ -1,7 +1,14 @@
 ---
 title: The scene editor
 description: Draw a scene, set where players can walk, and place hotspots, characters, items and exits.
+host:
+  who: mallory
+  says: "Paint the world, mark where feet can go, and hide something worth clicking. Let's draw a scene."
 ---
+import Host from '../../../components/Host.astro';
+
+import SceneAnatomy from '../../../components/diagrams/SceneAnatomy.astro';
+
 
 Open a scene from the Scenes page and you get the scene editor: three panes side by side.
 
@@ -16,6 +23,9 @@ Open a scene from the Scenes page and you get the scene editor: three panes side
 The toolbar above the canvas has **+ Add to scene…**, a **Zoom** list (Fit, or 25% to 200%), the scene's size and the pointer's position in scene pixels, a **with outlines** tick box, and **▶ Test this scene**. A key under the canvas colours the shapes: click hotspots, walk-in hotspots, exits to other scenes, walkable areas and blocked areas.
 
 Coordinates are in **scene pixels**, measured from the top left of the scene. Every position field in the inspector has a marker you can also drag on the canvas, so use whichever is easier.
+
+
+<SceneAnatomy />
 
 ## Adding things
 
@@ -102,6 +112,10 @@ Open the hotspot's action to choose the **Scene** to go to and the spawn point t
 
 ## Hotspots
 
+<Host who="mallory" side="right">
+Hotspots are where the action is. Click one, walk into one, or hide one until the time is right.
+</Host>
+
 ![A hotspot selected in the scene editor: its form on the right shows where it fires, its position and its radius](../../../assets/screenshots/editor-hotspot.webp)
 
 A hotspot has a position and a **Radius**. Drag its dashed ring on the canvas to change the radius.
@@ -114,6 +128,10 @@ A hotspot has a position and a **Radius**. Drag its dashed ring on the canvas to
 What a hotspot shows, and what it does, is covered in [Events and actions](/docs/editor/events-and-actions/).
 
 ## Characters and items in a scene
+
+<Host who="pinta" side="left">
+That's me! Place a character, point them the right way, and choose what happens when someone clicks.
+</Host>
 
 A placed **character** has a position, a **Facing**, and **When clicked, run**, a list of this scene's indirect events. That is how conversations start. A placed **item** has a position and is drawn like any object: players walk behind it and in front of it.
 

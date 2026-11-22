@@ -1,0 +1,65 @@
+---
+// What stays in the school's systems and what QuestLab gets, with Buck guarding the line between.
+import { Image } from 'astro:assets';
+import { CAST } from '../cast';
+
+interface Props { caption?: string }
+const { caption = 'The key from a pseudonym back to a child stays with you. A request that carries a name is refused, not quietly stored.' } = Astro.props;
+---
+
+<figure class="qd qd-privacy">
+  <div class="qd-pv-grid">
+    <div class="qd-card qd-tone" style="--tone: var(--qd-blue)">
+      <div class="qd-title">🏫 Your school's systems</div>
+      <dl>
+        <dt>Name</dt><dd>Maya Lopez</dd>
+        <dt>Email</dt><dd>maya@school.example</dd>
+        <dt>Birth date</dt><dd>2016-04-02</dd>
+        <dt>Your id</dt><dd><code class="qd-pv-key">a91f0c7e</code></dd>
+      </dl>
+    </div>
+    <div class="qd-pv-gate">
+      <span class="qd-chip qd-pv-pass" style="--chip: var(--qd-green)">✓ external_id, grade, school</span>
+      <span class="qd-pv-arrow" aria-hidden="true"></span>
+      <span class="qd-chip qd-pv-stop" style="--chip: var(--qd-pink)">✗ first_name → 422</span>
+      <Image src={CAST.buck.picture} alt="" height={300} class="qd-pv-buck" />
+    </div>
+    <div class="qd-card qd-tone" style="--tone: var(--qd-amber)">
+      <div class="qd-title">🧭 QuestLab</div>
+      <dl>
+        <dt>Your id</dt><dd><code class="qd-pv-key">a91f0c7e</code></dd>
+        <dt>Pseudonym</dt><dd>Brave Otter 417</dd>
+        <dt>Grade</dt><dd>4</dd>
+        <dt>Missions</dt><dd>What they did, and when</dd>
+      </dl>
+    </div>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-privacy { position: relative; }
+  .qd-privacy figcaption { margin-top: 1.6rem; }
+  .qd-pv-grid { display: grid; grid-template-columns: 1fr 11rem 1fr; gap: 0.75rem; align-items: center; }
+  .qd-pv-grid dl { display: grid; grid-template-columns: auto 1fr; gap: 0.2rem 0.75rem; margin: 0.5rem 0 0; }
+  .qd-pv-grid dt { color: var(--sl-color-gray-3); font-size: var(--sl-text-xs); margin: 0; }
+  .qd-pv-grid dd { margin: 0; color: var(--sl-color-white); }
+  .qd-pv-key { background: color-mix(in srgb, var(--qd-green) 25%, transparent); }
+  .qd-pv-gate { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+  .qd-pv-arrow {
+    width: 100%;
+    height: 0.9rem;
+    background: var(--qd-green);
+    clip-path: polygon(0 35%, 85% 35%, 85% 0, 100% 50%, 85% 100%, 85% 65%, 0 65%);
+  }
+  .qd-pv-stop { text-decoration: line-through; }
+  .qd-privacy :global(.qd-pv-buck) {
+    height: 8.5rem; width: auto; max-width: none; margin: 0.2rem 0 -1.2rem;
+    filter: drop-shadow(0 6px 6px rgb(0 0 0 / 0.25));
+  }
+  @media (max-width: 44rem) {
+    .qd-pv-grid { grid-template-columns: 1fr; }
+    .qd-pv-arrow { width: 0.9rem; height: 1.5rem; clip-path: polygon(35% 0, 65% 0, 65% 60%, 100% 60%, 50% 100%, 0 60%, 35% 60%); }
+    .qd-privacy :global(.qd-pv-buck) { display: none; }
+  }
+</style>

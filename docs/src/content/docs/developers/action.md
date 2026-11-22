@@ -1,5 +1,9 @@
 ---
 title: "Actions"
+host:
+  who: mallory
+  says: "Every action a mission can take, field by field."
+  side: right
 ---
 
 An event consists of actions, and actions describe what happens when the user interacts with a scene. Actions are executed in sequential order, and actions from different events can be run simultaneously.

@@ -1,7 +1,14 @@
 ---
 title: "A class period, step by step"
 description: "A 50-minute lesson plan built around a QuestLab mission, with timings, teacher moves, a lab-book template and an exit ticket. Plus two-day and three-day versions."
+host:
+  who: gil
+  says: "Fifty minutes, minute by minute. Borrow the whole plan, or just the lab book and the exit ticket."
 ---
+import Host from '../../../components/Host.astro';
+
+import Flow from '../../../components/diagrams/Flow.astro';
+
 
 import { Aside, Tabs, TabItem, Steps } from '@astrojs/starlight/components';
 
@@ -12,6 +19,14 @@ The learning goals below are the ones this sample mission records: *use evidence
 </Aside>
 
 ## The 50-minute plan
+
+<Flow steps={[
+  { title: 'Frame', minutes: 5, text: 'The problem and a first guess', tone: 'amber' },
+  { title: 'Play, part 1', minutes: 20, text: 'Explore, collect, look in', tone: 'green' },
+  { title: 'Pause', minutes: 5, text: 'A mini-lesson', tone: 'pink' },
+  { title: 'Play, part 2', minutes: 12, text: 'Examine, report', tone: 'green' },
+  { title: 'Debrief', minutes: 8, text: 'Evidence, exit ticket', tone: 'purple' },
+]} caption="The pause and the debrief are what turn play into a lesson." />
 
 | Min | Phase | Teacher | Students |
 | --- | --- | --- | --- |
@@ -93,6 +108,10 @@ A lab book turns clicks into reasoning, and it is the thing the game cannot do f
 | **My final answer, and why I am sure** | |
 
 ## The exit ticket
+
+<Host who="gil" side="right">
+One question, on paper, before they leave. It tells you tomorrow's starting point better than any score.
+</Host>
 
 One sentence each, on a card, handed in at the door:
 
