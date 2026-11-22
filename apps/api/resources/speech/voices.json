@@ -1,5 +1,5 @@
 {
-  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\" and a speed; for openai a voice and instructions. A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md. narrators: the default narrator's voice for each language, for scenarios that do not choose one (Scenario.narrator_voice).",
+  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\", a speed, and for the theatrical voices a blend that takes a voice away (\"am_santa(1.5)-am_michael(0.5)\": more Santa than Santa), a lang (the language code to read in, when the voice is borrowed from another language) and a volume; for openai a voice and instructions. flair says how much of a character a voice is: 0 or absent an everyday voice, 1 one with character, 2 a theatrical one (a giant, a pixie, a pantomime villain); voices with flair are chosen first (QL_TTS_FLAIR). A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md. narrators: the default narrator's voice for each language, for scenarios that do not choose one (Scenario.narrator_voice).",
   "stand_ins": {
     "en": "explorer",
     "es": "explorador",
@@ -121,6 +121,7 @@
         "dreamy"
       ],
       "description": "Soft and close, almost a whisper: a calm healer, a librarian, a mysterious spirit.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "af_nicole",
@@ -172,6 +173,7 @@
         "kid"
       ],
       "description": "A playful, quick voice for a girl or a small cheerful creature.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "af_sky(1)+af_bella(1)",
@@ -245,6 +247,7 @@
         "storyteller"
       ],
       "description": "Smooth and thoughtful: a wise elder of a village, a storyteller.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "af_aoede",
@@ -344,6 +347,7 @@
         "grandmotherly"
       ],
       "description": "A kindly, unhurried older woman.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "af_heart(2)+af_nicole(1)",
@@ -467,6 +471,7 @@
         "professor"
       ],
       "description": "A learned older professor, precise and calm.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "bf_emma(2)+bf_isabella(1)",
@@ -518,6 +523,7 @@
         "captain"
       ],
       "description": "A deep, commanding voice with warmth: a captain, a leader.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "am_michael(1)+am_fenrir(1)",
@@ -545,6 +551,7 @@
         "guard"
       ],
       "description": "Deep and strong: a guard, a hero, a big friendly giant.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "am_fenrir"
@@ -570,6 +577,7 @@
         "trickster"
       ],
       "description": "Playful and a bit mischievous: a trickster, a joker.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "am_puck",
@@ -596,6 +604,7 @@
         "kid"
       ],
       "description": "An eager, excited voice for a boy or a small creature.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "am_puck(1)+am_liam(1)",
@@ -694,6 +703,7 @@
         "villain"
       ],
       "description": "Deep and grave: a stern keeper, a mysterious stranger.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "am_onyx",
@@ -720,6 +730,7 @@
         "old"
       ],
       "description": "A jolly, kindly old man.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "am_santa",
@@ -746,6 +757,7 @@
         "old"
       ],
       "description": "A wise, learned older man: a professor, a wizard, a museum keeper.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "bm_george",
@@ -771,6 +783,7 @@
         "dramatic"
       ],
       "description": "Expressive and lively: a storyteller, an actor.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "bm_fable"
@@ -794,6 +807,7 @@
         "knight"
       ],
       "description": "Deep and serious: a knight, a stern inspector.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "bm_lewis",
@@ -846,6 +860,7 @@
         "ai"
       ],
       "description": "Even and precise: a robot, a ship's computer, an AI.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "af_alloy(1)+am_echo(1)",
@@ -897,6 +912,7 @@
         "tiny"
       ],
       "description": "Quick and squeaky: a tiny creature, a sprite, a little alien.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "am_puck(1)+af_sky(1)",
@@ -905,6 +921,880 @@
         "openai": {
           "voice": "verse",
           "instructions": "Speak like a tiny, quick, mischievous creature."
+        }
+      }
+    },
+    {
+      "key": "giant",
+      "name": "Giant",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "booming",
+        "deep",
+        "rumbling",
+        "slow",
+        "gruff",
+        "giant",
+        "ogre",
+        "troll",
+        "bear",
+        "golem",
+        "huge"
+      ],
+      "description": "A very deep, slow rumble: a giant, an ogre, a troll under the bridge, a great sleepy bear.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bm_lewis(1.5)-bf_alice(0.5)",
+          "speed": 0.85,
+          "volume": 1.4
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "A British giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        }
+      }
+    },
+    {
+      "key": "dragon",
+      "name": "Dragon",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "growling",
+        "deep",
+        "menacing",
+        "fierce",
+        "grumpy",
+        "dragon",
+        "monster",
+        "beast",
+        "villain",
+        "ominous"
+      ],
+      "description": "As deep as the voices go, with a growl in it: a dragon, a monster, a grumpy beast.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_onyx(1.4)-af_bella(0.4)",
+          "speed": 0.92,
+          "volume": 1.25
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "A storybook dragon: very deep, growling and menacing, but fun, never truly frightening."
+        }
+      }
+    },
+    {
+      "key": "gnome",
+      "name": "Gnome",
+      "gender": "male",
+      "age": "elder",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "jolly",
+        "merry",
+        "chuckling",
+        "twinkly",
+        "gnome",
+        "dwarf",
+        "elf",
+        "santa",
+        "cheerful",
+        "jovial"
+      ],
+      "description": "A merry, high, chuckling little old man: a gnome, a dwarf, one of Santa's elves.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_santa(1.5)-am_michael(0.5)"
+        },
+        "openai": {
+          "voice": "ballad",
+          "instructions": "A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        }
+      }
+    },
+    {
+      "key": "jolly",
+      "name": "Jolly",
+      "gender": "male",
+      "age": "elder",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "jolly",
+        "hearty",
+        "booming",
+        "merry",
+        "laughing",
+        "jovial",
+        "king",
+        "innkeeper",
+        "baker",
+        "santa"
+      ],
+      "description": "A big, deep, hearty man with a laugh in his voice: a jolly king, an innkeeper, Santa himself.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_santa(1.2)+am_onyx(0.3)-af_heart(0.5)",
+          "speed": 0.97
+        },
+        "openai": {
+          "voice": "ballad",
+          "instructions": "A big jolly man: hearty, booming and laughing, like a merry king."
+        }
+      }
+    },
+    {
+      "key": "thespian",
+      "name": "Thespian",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "theatrical",
+        "dramatic",
+        "grand",
+        "flamboyant",
+        "expressive",
+        "actor",
+        "showman",
+        "ringmaster",
+        "bard",
+        "narrator"
+      ],
+      "description": "A grand, theatrical performer who savours every word: an actor, a ringmaster, a bard.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bm_fable(1.4)-bm_daniel(0.4)",
+          "speed": 0.97
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "A grand British stage actor: theatrical and flamboyant, savouring every word."
+        }
+      }
+    },
+    {
+      "key": "wizard",
+      "name": "Wizard",
+      "gender": "male",
+      "age": "elder",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "wizard",
+        "sorcerer",
+        "mystical",
+        "ancient",
+        "wise",
+        "grand",
+        "magical",
+        "sage",
+        "owl",
+        "mysterious"
+      ],
+      "description": "An ancient, grand old voice full of secrets: a wizard, a sage, a wise old owl.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bm_george(1.5)-bm_daniel(0.5)",
+          "speed": 0.9
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "An ancient British wizard: grand, slow and mystical, full of secrets."
+        }
+      }
+    },
+    {
+      "key": "imp",
+      "name": "Imp",
+      "gender": "male",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "mischievous",
+        "sly",
+        "cheeky",
+        "quirky",
+        "trickster",
+        "imp",
+        "jester",
+        "rascal",
+        "prankster",
+        "monkey"
+      ],
+      "description": "Quick, sly and up to something: an imp, a jester, a cheeky monkey.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_puck(1.6)-am_michael(0.6)",
+          "speed": 1.12
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "A mischievous imp: quick, sly and cheeky, always up to something."
+        }
+      }
+    },
+    {
+      "key": "hero",
+      "name": "Hero",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "heroic",
+        "bold",
+        "booming",
+        "dashing",
+        "superhero",
+        "champion",
+        "knight",
+        "brave",
+        "announcer",
+        "mighty"
+      ],
+      "description": "Bold and booming, chest out: a superhero, a champion, a game-show announcer.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_fenrir(1.6)-am_liam(0.6)"
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "A cartoon superhero: bold, booming and dashing, every line a proclamation."
+        }
+      }
+    },
+    {
+      "key": "pirate",
+      "name": "Pirate",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "gruff",
+        "hearty",
+        "salty",
+        "swashbuckling",
+        "pirate",
+        "sailor",
+        "rogue",
+        "buccaneer",
+        "captain",
+        "rough"
+      ],
+      "description": "Gruff and hearty, with a laugh in it: a pirate, an old sailor, a loveable rogue.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_santa(0.8)+am_onyx(0.7)-am_michael(0.5)",
+          "speed": 0.95
+        },
+        "openai": {
+          "voice": "ash",
+          "instructions": "A storybook pirate captain: gruff, hearty and swashbuckling."
+        }
+      }
+    },
+    {
+      "key": "boffin",
+      "name": "Boffin",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "zany",
+        "eccentric",
+        "excitable",
+        "quirky",
+        "frantic",
+        "nerdy",
+        "inventor",
+        "scientist",
+        "professor",
+        "genius"
+      ],
+      "description": "Fast, high and excitable: an eccentric inventor, a zany scientist mid-experiment.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_eric(1.6)-am_echo(0.6)",
+          "speed": 1.15
+        },
+        "openai": {
+          "voice": "echo",
+          "instructions": "A zany, eccentric inventor: fast, high and excitable, bursting with ideas."
+        }
+      }
+    },
+    {
+      "key": "villain",
+      "name": "Villain",
+      "gender": "male",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "scheming",
+        "sinister",
+        "silky",
+        "haughty",
+        "dramatic",
+        "villain",
+        "baron",
+        "vizier",
+        "sly",
+        "wicked"
+      ],
+      "description": "A slow, silky pantomime villain who enjoys being wicked: a scheming baron, a vizier.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bm_fable(1)+bm_lewis(0.8)-bm_daniel(0.8)",
+          "speed": 0.9,
+          "volume": 1.4
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "A British pantomime villain: slow, silky and scheming, enjoying every wicked word."
+        }
+      }
+    },
+    {
+      "key": "sprout",
+      "name": "Sprout",
+      "gender": "male",
+      "age": "child",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "squeaky",
+        "eager",
+        "bouncy",
+        "excited",
+        "cartoon",
+        "kid",
+        "sidekick",
+        "boy",
+        "peppy",
+        "puppy"
+      ],
+      "description": "A high, bouncy cartoon boy: an eager sidekick, a puppy, a kid who cannot sit still.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "zm_yunxia(0.7)+am_puck(0.3)",
+          "speed": 1.1,
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "A squeaky, bouncy cartoon boy, eager and excited."
+        }
+      }
+    },
+    {
+      "key": "goblin",
+      "name": "Goblin",
+      "gender": "neutral",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "goblin",
+        "gremlin",
+        "cheeky",
+        "mischievous",
+        "quirky",
+        "creature",
+        "sneaky",
+        "cackling",
+        "troll",
+        "scamp"
+      ],
+      "description": "A quick, odd little voice that is neither boy nor girl: a goblin, a gremlin, a scamp.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_puck(1)+jf_nezumi(0.6)-am_michael(0.6)",
+          "speed": 1.15,
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "A cheeky little goblin: quick, odd and sneaky, giggling at its own tricks."
+        }
+      }
+    },
+    {
+      "key": "pixie",
+      "name": "Pixie",
+      "gender": "female",
+      "age": "child",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "tiny",
+        "squeaky",
+        "tinkling",
+        "sparkly",
+        "magical",
+        "pixie",
+        "fairy",
+        "sprite",
+        "high",
+        "dainty"
+      ],
+      "description": "The highest voice there is, tiny and bright: a pixie, a fairy, a talking flower.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "jf_tebukuro",
+          "speed": 1.1,
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        }
+      }
+    },
+    {
+      "key": "mouse",
+      "name": "Mouse",
+      "gender": "neutral",
+      "age": "child",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "mouse",
+        "tiny",
+        "timid",
+        "squeaky",
+        "small",
+        "shy",
+        "creature",
+        "hamster",
+        "rabbit",
+        "bird"
+      ],
+      "description": "Small, high and a little timid: a mouse, a hamster, a baby bird.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "jf_nezumi",
+          "speed": 1.1,
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "A tiny, timid mouse: small, high and squeaky."
+        }
+      }
+    },
+    {
+      "key": "fox",
+      "name": "Fox",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "sly",
+        "clever",
+        "cunning",
+        "playful",
+        "purring",
+        "fox",
+        "cat",
+        "sneaky",
+        "teasing",
+        "quirky"
+      ],
+      "description": "Light, sly and teasing: a clever fox, a cat who knows more than she says.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "jf_gongitsune",
+          "speed": 1.05,
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "nova",
+          "instructions": "A sly, clever fox: light, teasing and playful."
+        }
+      }
+    },
+    {
+      "key": "ghost",
+      "name": "Ghost",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "whispery",
+        "eerie",
+        "spooky",
+        "haunting",
+        "mysterious",
+        "ghost",
+        "spirit",
+        "phantom",
+        "shadow",
+        "breathy"
+      ],
+      "description": "A breathy, drawn-out whisper: a friendly ghost, a spirit of the forest, a voice in the dark.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "af_nicole(1.5)-af_nova(0.5)",
+          "speed": 1.1
+        },
+        "openai": {
+          "voice": "sage",
+          "instructions": "A friendly ghost: a breathy, drawn-out, eerie whisper. Spooky but gentle."
+        }
+      }
+    },
+    {
+      "key": "witch",
+      "name": "Witch",
+      "gender": "female",
+      "age": "elder",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "witch",
+        "crafty",
+        "crone",
+        "spooky",
+        "sly",
+        "enchantress",
+        "potion",
+        "hushed",
+        "wicked",
+        "cackling"
+      ],
+      "description": "Low, hushed and crafty: a witch at her cauldron, a fortune teller, an enchantress.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "af_nicole(1)+bf_lily(1)-af_heart(0.6)",
+          "speed": 1.1,
+          "volume": 1.5
+        },
+        "openai": {
+          "voice": "sage",
+          "instructions": "A storybook witch: low, hushed and crafty, relishing her spells. Fun, never truly frightening."
+        }
+      }
+    },
+    {
+      "key": "queen",
+      "name": "Queen",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "regal",
+        "haughty",
+        "grand",
+        "imperious",
+        "posh",
+        "commanding",
+        "dramatic",
+        "queen",
+        "empress",
+        "duchess"
+      ],
+      "description": "Slow, level and terribly grand: a queen, an empress, a duchess who is not amused.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bf_emma(1.6)-af_heart(0.6)",
+          "speed": 0.92
+        },
+        "openai": {
+          "voice": "fable",
+          "instructions": "A haughty British queen: slow, grand and imperious. She is not amused."
+        }
+      }
+    },
+    {
+      "key": "godmother",
+      "name": "Godmother",
+      "gender": "female",
+      "age": "elder",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "twinkly",
+        "sing-song",
+        "kindly",
+        "magical",
+        "enchanting",
+        "godmother",
+        "fairy",
+        "grandmotherly",
+        "storyteller",
+        "sweet"
+      ],
+      "description": "Sweet, bright and unhurried, with a twinkle: a fairy godmother, a kindly storyteller.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "af_aoede(1.6)-af_alloy(0.6)",
+          "speed": 0.92,
+          "volume": 0.8
+        },
+        "openai": {
+          "voice": "coral",
+          "instructions": "A fairy godmother: sweet, sing-song and twinkly, kindly and magical."
+        }
+      }
+    },
+    {
+      "key": "bubbles",
+      "name": "Bubbles",
+      "gender": "female",
+      "age": "young",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "bubbly",
+        "giddy",
+        "excitable",
+        "perky",
+        "bouncy",
+        "sparkly",
+        "cartoon",
+        "cheerleader",
+        "peppy",
+        "giggly"
+      ],
+      "description": "High, quick and giddy: a bubbly cartoon friend who is thrilled about everything.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "af_bella(1.5)-am_onyx(0.5)",
+          "speed": 1.1
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "A bubbly cartoon girl: high, giddy and thrilled about everything."
+        }
+      }
+    },
+    {
+      "key": "fusspot",
+      "name": "Fusspot",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-GB",
+      "accent": "British",
+      "traits": [
+        "prim",
+        "fussy",
+        "shrill",
+        "flustered",
+        "proper",
+        "nanny",
+        "governess",
+        "hen",
+        "squawking",
+        "bossy"
+      ],
+      "description": "High, prim and easily flustered: a fussy nanny, a governess, a mother hen.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bf_alice(1.5)-bm_lewis(0.5)",
+          "speed": 1.05
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "A prim, fussy British nanny: high, proper and easily flustered."
+        }
+      }
+    },
+    {
+      "key": "warrior",
+      "name": "Warrior",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "fierce",
+        "bold",
+        "heroic",
+        "commanding",
+        "dramatic",
+        "warrior",
+        "huntress",
+        "amazon",
+        "knight",
+        "brave"
+      ],
+      "description": "Low, firm and fearless: a warrior queen, a huntress, a knight with her sword drawn.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "af_kore(1.6)-af_sky(0.6)",
+          "volume": 0.8
+        },
+        "openai": {
+          "voice": "sage",
+          "instructions": "A fearless warrior: low, firm and bold, every line a rallying cry."
+        }
+      }
+    },
+    {
+      "key": "diva",
+      "name": "Diva",
+      "gender": "female",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "dramatic",
+        "flamboyant",
+        "showy",
+        "glamorous",
+        "operatic",
+        "diva",
+        "star",
+        "singer",
+        "actress",
+        "theatrical"
+      ],
+      "description": "Bright, brisk and centre stage: a diva, a film star, a singer between arias.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "af_sarah(1.6)-af_nicole(0.6)"
+        },
+        "openai": {
+          "voice": "coral",
+          "instructions": "A glamorous diva: bright, flamboyant and dramatic, always centre stage."
+        }
+      }
+    },
+    {
+      "key": "alien",
+      "name": "Alien",
+      "gender": "neutral",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "alien",
+        "otherworldly",
+        "strange",
+        "cosmic",
+        "weird",
+        "quirky",
+        "martian",
+        "extraterrestrial",
+        "eerie",
+        "visitor"
+      ],
+      "description": "Neither man nor woman, and not quite from here: an alien, a visitor from the stars.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "zf_xiaoyi(0.5)+jm_kumo(0.5)",
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "alloy",
+          "instructions": "A friendly alien: an odd, otherworldly lilt, curious about everything on Earth."
+        }
+      }
+    },
+    {
+      "key": "gizmo",
+      "name": "Gizmo",
+      "gender": "neutral",
+      "age": "child",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "chirpy",
+        "beeping",
+        "cute",
+        "tiny",
+        "robot",
+        "droid",
+        "gadget",
+        "bot",
+        "machine",
+        "quirky"
+      ],
+      "description": "A small, chirpy machine voice: a helper droid, a talking gadget, a little rover.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "jf_tebukuro(0.5)+af_alloy(0.5)",
+          "speed": 1.12,
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "alloy",
+          "instructions": "A small, chirpy helper robot: bright, quick and cute."
+        }
+      }
+    },
+    {
+      "key": "colossus",
+      "name": "Colossus",
+      "gender": "neutral",
+      "age": "adult",
+      "lang": "en-US",
+      "accent": "American",
+      "traits": [
+        "monotone",
+        "deep",
+        "ominous",
+        "cold",
+        "mechanical",
+        "machine",
+        "computer",
+        "golem",
+        "robot",
+        "ancient"
+      ],
+      "description": "Very deep, flat and slow: a giant machine, an ancient computer, a stone golem waking up.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "jm_kumo(1.3)-jf_alpha(0.3)",
+          "speed": 0.9,
+          "lang": "a"
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "A colossal ancient machine: very deep, flat and slow."
         }
       }
     },
@@ -991,12 +1881,146 @@
         "old"
       ],
       "description": "Un abuelo alegre.",
+      "flair": 1,
       "engines": {
         "kokoro": {
           "voice": "em_santa"
         },
         "openai": {
           "voice": "ballad"
+        }
+      }
+    },
+    {
+      "key": "gigante-es",
+      "name": "Gigante",
+      "gender": "male",
+      "age": "adult",
+      "lang": "es",
+      "accent": "Spanish",
+      "traits": [
+        "gigante",
+        "ogro",
+        "enorme",
+        "grave",
+        "booming",
+        "deep",
+        "rumbling",
+        "slow",
+        "gruff",
+        "giant"
+      ],
+      "description": "Una voz muy grave y lenta: un gigante, un ogro, un oso enorme.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bm_lewis(1.5)-bf_alice(0.5)",
+          "speed": 0.88,
+          "lang": "e",
+          "volume": 1.4
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "Speak Spanish. A giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        }
+      }
+    },
+    {
+      "key": "hada-es",
+      "name": "Hada",
+      "gender": "female",
+      "age": "child",
+      "lang": "es",
+      "accent": "Spanish",
+      "traits": [
+        "hada",
+        "duende",
+        "pequeña",
+        "mágica",
+        "aguda",
+        "tiny",
+        "squeaky",
+        "tinkling",
+        "sparkly",
+        "magical",
+        "pixie"
+      ],
+      "description": "Una voz diminuta y muy aguda: un hada, una flor que habla.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "jf_tebukuro",
+          "speed": 1.08,
+          "lang": "e"
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Speak Spanish. A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        }
+      }
+    },
+    {
+      "key": "gnomo-es",
+      "name": "Gnomo",
+      "gender": "male",
+      "age": "elder",
+      "lang": "es",
+      "accent": "Spanish",
+      "traits": [
+        "gnomo",
+        "enano",
+        "alegre",
+        "risueño",
+        "jolly",
+        "merry",
+        "chuckling",
+        "twinkly",
+        "gnome",
+        "dwarf"
+      ],
+      "description": "Un viejecito alegre y risueño: un gnomo, un enano.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "em_santa(1.5)-em_alex(0.5)",
+          "lang": "e"
+        },
+        "openai": {
+          "voice": "ballad",
+          "instructions": "Speak Spanish. A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        }
+      }
+    },
+    {
+      "key": "travieso-es",
+      "name": "Travieso",
+      "gender": "male",
+      "age": "young",
+      "lang": "es",
+      "accent": "Spanish",
+      "traits": [
+        "travieso",
+        "pícaro",
+        "bromista",
+        "duende",
+        "mischievous",
+        "sly",
+        "cheeky",
+        "quirky",
+        "trickster",
+        "imp"
+      ],
+      "description": "Rápido y pícaro, siempre tramando algo: un duende bromista.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_puck(1.6)-am_michael(0.6)",
+          "speed": 1.1,
+          "lang": "e"
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "Speak Spanish. A mischievous imp: quick, sly and cheeky, always up to something."
         }
       }
     },
@@ -1019,6 +2043,40 @@
         },
         "openai": {
           "voice": "coral"
+        }
+      }
+    },
+    {
+      "key": "fee-fr",
+      "name": "Fée",
+      "gender": "female",
+      "age": "child",
+      "lang": "fr",
+      "accent": "French",
+      "traits": [
+        "fée",
+        "lutin",
+        "petite",
+        "magique",
+        "aiguë",
+        "tiny",
+        "squeaky",
+        "tinkling",
+        "sparkly",
+        "magical",
+        "pixie"
+      ],
+      "description": "Une petite voix claire et haut perchée : une fée, une fleur qui parle.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "ff_siwis(1.4)-bm_lewis(0.4)",
+          "speed": 1.05,
+          "lang": "f"
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Speak French. A tiny pixie: very high, bright and tinkling, bubbling with magic."
         }
       }
     },
@@ -1065,6 +2123,139 @@
       }
     },
     {
+      "key": "gigante-it",
+      "name": "Gigante",
+      "gender": "male",
+      "age": "adult",
+      "lang": "it",
+      "accent": "Italian",
+      "traits": [
+        "gigante",
+        "orco",
+        "enorme",
+        "grave",
+        "booming",
+        "deep",
+        "rumbling",
+        "slow",
+        "gruff",
+        "giant"
+      ],
+      "description": "Una voce molto profonda e lenta: un gigante, un orco, un grande orso.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "im_nicola(1.4)-if_sara(0.4)",
+          "speed": 0.88,
+          "lang": "i"
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "Speak Italian. A giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        }
+      }
+    },
+    {
+      "key": "fatina-it",
+      "name": "Fatina",
+      "gender": "female",
+      "age": "child",
+      "lang": "it",
+      "accent": "Italian",
+      "traits": [
+        "fata",
+        "fatina",
+        "folletto",
+        "piccola",
+        "magica",
+        "tiny",
+        "squeaky",
+        "tinkling",
+        "sparkly",
+        "magical",
+        "pixie"
+      ],
+      "description": "Una vocina acuta e squillante: una fatina, un fiore che parla.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "if_sara(1.4)-im_nicola(0.4)",
+          "speed": 1.08,
+          "lang": "i",
+          "volume": 0.7
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Speak Italian. A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        }
+      }
+    },
+    {
+      "key": "gnomo-it",
+      "name": "Gnomo",
+      "gender": "male",
+      "age": "elder",
+      "lang": "it",
+      "accent": "Italian",
+      "traits": [
+        "gnomo",
+        "nano",
+        "allegro",
+        "ridente",
+        "jolly",
+        "merry",
+        "chuckling",
+        "twinkly",
+        "gnome",
+        "dwarf"
+      ],
+      "description": "Un vecchietto allegro e ridente: uno gnomo, un nano.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_santa(1.5)-am_michael(0.5)",
+          "lang": "i"
+        },
+        "openai": {
+          "voice": "ballad",
+          "instructions": "Speak Italian. A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        }
+      }
+    },
+    {
+      "key": "birbante-it",
+      "name": "Birbante",
+      "gender": "male",
+      "age": "young",
+      "lang": "it",
+      "accent": "Italian",
+      "traits": [
+        "birbante",
+        "furbo",
+        "dispettoso",
+        "folletto",
+        "mischievous",
+        "sly",
+        "cheeky",
+        "quirky",
+        "trickster",
+        "imp"
+      ],
+      "description": "Svelto e furbo, sempre pronto a uno scherzo.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "im_nicola(0.6)+am_puck(0.4)",
+          "speed": 1.1,
+          "lang": "i"
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "Speak Italian. A mischievous imp: quick, sly and cheeky, always up to something."
+        }
+      }
+    },
+    {
       "key": "dora-pt",
       "name": "Dora",
       "gender": "female",
@@ -1103,6 +2294,139 @@
         },
         "openai": {
           "voice": "ash"
+        }
+      }
+    },
+    {
+      "key": "gigante-pt",
+      "name": "Gigante",
+      "gender": "male",
+      "age": "adult",
+      "lang": "pt-BR",
+      "accent": "Brazilian",
+      "traits": [
+        "gigante",
+        "ogro",
+        "enorme",
+        "grave",
+        "booming",
+        "deep",
+        "rumbling",
+        "slow",
+        "gruff",
+        "giant"
+      ],
+      "description": "Uma voz muito grave e lenta: um gigante, um ogro, um urso enorme.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "bm_lewis(1.5)-bf_alice(0.5)",
+          "speed": 0.88,
+          "lang": "p",
+          "volume": 1.4
+        },
+        "openai": {
+          "voice": "onyx",
+          "instructions": "Speak Brazilian Portuguese. A giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        }
+      }
+    },
+    {
+      "key": "fada-pt",
+      "name": "Fada",
+      "gender": "female",
+      "age": "child",
+      "lang": "pt-BR",
+      "accent": "Brazilian",
+      "traits": [
+        "fada",
+        "duende",
+        "pequena",
+        "mágica",
+        "aguda",
+        "tiny",
+        "squeaky",
+        "tinkling",
+        "sparkly",
+        "magical",
+        "pixie"
+      ],
+      "description": "Uma vozinha muito aguda: uma fada, uma flor que fala.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "jf_tebukuro",
+          "speed": 1.08,
+          "lang": "p"
+        },
+        "openai": {
+          "voice": "shimmer",
+          "instructions": "Speak Brazilian Portuguese. A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        }
+      }
+    },
+    {
+      "key": "gnomo-pt",
+      "name": "Gnomo",
+      "gender": "male",
+      "age": "elder",
+      "lang": "pt-BR",
+      "accent": "Brazilian",
+      "traits": [
+        "gnomo",
+        "anão",
+        "alegre",
+        "risonho",
+        "jolly",
+        "merry",
+        "chuckling",
+        "twinkly",
+        "gnome",
+        "dwarf"
+      ],
+      "description": "Um velhinho alegre e risonho: um gnomo, um anão.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "pm_santa(1.5)-pm_alex(0.5)",
+          "lang": "p"
+        },
+        "openai": {
+          "voice": "ballad",
+          "instructions": "Speak Brazilian Portuguese. A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        }
+      }
+    },
+    {
+      "key": "travesso-pt",
+      "name": "Travesso",
+      "gender": "male",
+      "age": "young",
+      "lang": "pt-BR",
+      "accent": "Brazilian",
+      "traits": [
+        "travesso",
+        "malandro",
+        "brincalhão",
+        "duende",
+        "mischievous",
+        "sly",
+        "cheeky",
+        "quirky",
+        "trickster",
+        "imp"
+      ],
+      "description": "Rápido e malandro, sempre aprontando alguma.",
+      "flair": 2,
+      "engines": {
+        "kokoro": {
+          "voice": "am_puck(1.6)-am_michael(0.6)",
+          "speed": 1.1,
+          "lang": "p"
+        },
+        "openai": {
+          "voice": "verse",
+          "instructions": "Speak Brazilian Portuguese. A mischievous imp: quick, sly and cheeky, always up to something."
         }
       }
     },

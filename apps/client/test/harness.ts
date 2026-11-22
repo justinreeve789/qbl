@@ -9,7 +9,10 @@ import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { MovesFeature } from '../src/features/MovesFeature';
 import { BagFeature } from '../src/features/BagFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
-import type { BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
+import type {
+  BagSlot, BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BenchPanelView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow,
+  ProfileView, ShopView, SpeakOptions, UiPort,
+} from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
@@ -99,13 +102,12 @@ export class HeadlessUi implements UiPort {
     if (o.duration > 0) this.world.schedule(o.duration, end);
     return { done, cancel: end };
   }
-  /** Conversation lines waiting for an answer: what is said, by whom, the answers, and picking one. */
-  asks: Array<{ text: string; name?: string; style: string; answers: string[]; pick(i: number): void }> = [];
-  choose(text: string, answers: string[], o: { style: 'portrait' | 'bubble'; name?: string; speak?: SpeakOptions }): InfoboxHandle {
-    this.say(text, o.speak);
+  /** Answer boxes of conversations waiting for an answer: whose box it is, the style, the answers, and picking one. */
+  asks: Array<{ name?: string; style: string; answers: string[]; pick(i: number): void }> = [];
+  choose(answers: string[], o: { style: 'portrait' | 'bubble'; name?: string }): InfoboxHandle {
     let resolve!: (i: number | null) => void;
     const choice = new Promise<number | null>((r) => (resolve = r));
-    const entry = { text, name: o.name, style: o.style, answers, pick: (i: number | null) => close(i) };
+    const entry = { name: o.name, style: o.style, answers, pick: (i: number | null) => close(i) };
     const close = (i: number | null) => {
       const at = this.asks.indexOf(entry);
       if (at < 0) return;
@@ -202,6 +204,12 @@ export class HeadlessUi implements UiPort {
   }
   objectives(list: ObjectiveStatus[]) { this.checklist = list; }
   toast(message: string) { this.toasts.push(message); }
+  /** The bench panel, when a scene has a close-up bench: what it offers, what it shows, and its buttons. */
+  bench: { spec: BenchPanelSpec; on: BenchPanelActions; view: BenchPanelView | null; open: boolean } | null = null;
+  benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle {
+    const panel = (this.bench = { spec, on, view: null as BenchPanelView | null, open: true });
+    return { update: (view) => (panel.view = view), close: () => (panel.open = false) };
+  }
   status(message: string | null) { this.statusText = message; }
 }
 

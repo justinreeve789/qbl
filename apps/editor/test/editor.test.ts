@@ -140,6 +140,9 @@ test('add a hotspot with a label, an infobox, a button that changes a variable, 
   await inspector('.cta [data-field=operator] select').selectOption('+');
   await type('.cta [data-field=operand] input', '1');
   await page.click('.cta >> text=+ Add condition');
+  // The system's variables can be tested too, after the scenario's own.
+  const choices = await inspector('.cta .condition select').first().locator('option').allTextContents();
+  assert.ok(choices.includes('QL_IsTeacher (built in)') && choices.indexOf('frogs_found') < choices.indexOf('QL_PlayerName (built in)'), choices.join(', '));
   await inspector('.cta .condition select').nth(1).selectOption('<');
   await type('.cta .condition input', '3');
   await saved();

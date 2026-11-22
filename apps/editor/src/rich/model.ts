@@ -1,4 +1,4 @@
-import { CALLOUT_TONES, embedBareMedia, escapeHtml, type CalloutTone } from '@qbl/shared';
+import { CALLOUT_TONES, embedBareMedia, escapeHtml, GRAPH_JOINS, type CalloutTone, type GraphJoin } from '@qbl/shared';
 import { sanitizeHtml } from './game';
 
 /**
@@ -27,7 +27,14 @@ export type Block =
   | { kind: 'reveal'; prompt: string; html: string }
   | { kind: 'flip'; front: string; back: string }
   | { kind: 'callout'; tone: CalloutTone; html: string }
-  | { kind: 'answer'; variable: string; placeholder: string }
+  /** `accept` (with `tolerance`) is what the answer should be; `check` the variable told whether it was. */
+  | { kind: 'answer'; variable: string; placeholder: string; accept?: string; tolerance?: string; check?: string }
+  /** Maths or chemistry typeset on a line of its own. */
+  | { kind: 'math'; tex: string }
+  /** A formula's value, after a few words that say what it is. */
+  | { kind: 'calc'; label: string; formula: string; digits: string; unit: string; variable: string }
+  /** Axes with curves, points to drag and recorded data. Curves and points are held one to a line. */
+  | { kind: 'graph'; functions: string; x: string; y: string; points: string; join: GraphJoin; series: string; snap: string; xLabel: string; yLabel: string; label: string }
   /** Sliders, switches, wheels, meters and `when` blocks: kept as their HTML, edited as HTML. */
   | { kind: 'controls'; html: string }
   | { kind: 'page' };
@@ -101,7 +108,23 @@ export function blockOf(node: Node): Block | null {
     const tone = node.getAttribute('data-tone');
     return { kind: 'callout', tone: tone && tone in CALLOUT_TONES ? (tone as CalloutTone) : 'tip', html: serialize([...node.childNodes]) };
   }
-  if (tag === 'input' && kind === 'answer') return { kind: 'answer', variable: node.getAttribute('data-var') ?? '', placeholder: node.getAttribute('placeholder') ?? '' };
+  if (tag === 'input' && kind === 'answer') {
+    return {
+      kind: 'answer', variable: node.getAttribute('data-var') ?? '', placeholder: node.getAttribute('placeholder') ?? '',
+      accept: node.getAttribute('data-accept') ?? '', tolerance: node.getAttribute('data-tolerance') ?? '', check: node.getAttribute('data-check') ?? '',
+    };
+  }
+  if (tag === 'div' && kind === 'math') return { kind: 'math', tex: node.getAttribute('data-tex') ?? node.textContent ?? '' };
+  if (tag === 'div' && kind === 'graph') {
+    const a = (name: string) => node.getAttribute(name) ?? '';
+    const lines = (text: string) => text.split(';').map((t) => t.trim()).filter(Boolean).join('\n');
+    const join = a('data-join').toLowerCase();
+    return {
+      kind: 'graph', functions: lines(a('data-fn')), x: a('data-x'), y: a('data-y'), points: lines(a('data-points')),
+      join: (GRAPH_JOINS as readonly string[]).includes(join) ? (join as GraphJoin) : 'none',
+      series: a('data-series'), snap: a('data-snap'), xLabel: a('data-xlabel'), yLabel: a('data-ylabel'), label: a('data-label'),
+    };
+  }
   if ((tag === 'div' && ['panel', 'wheel', 'meter', 'when'].includes(kind ?? '')) || (tag === 'input' && (kind === 'slider' || kind === 'switch'))) {
     return { kind: 'controls', html: controlsHtml(node) };
   }
@@ -116,6 +139,14 @@ export function blockOf(node: Node): Block | null {
   if (tag === 'img') return { kind: 'picture', media: heldMedia(node), src: srcOf(node), alt: node.getAttribute('alt') ?? '', caption: '', size: sizeOf(node) };
   if (tag === 'video') return { kind: 'video', media: heldMedia(node), src: srcOf(node), autoplay: node.hasAttribute('autoplay'), loop: node.hasAttribute('loop'), caption: '' };
   if (tag === 'audio') return { kind: 'audio', media: heldMedia(node), src: srcOf(node), autoplay: node.hasAttribute('autoplay'), loop: node.hasAttribute('loop') };
+  // A paragraph that is a few words and then a formula's value is a worked-out value.
+  if (tag === 'p' && node.children.length === 1 && node.lastElementChild === node.lastChild && node.children[0]!.matches('span[data-qbl="calc"]')) {
+    const span = node.children[0]!;
+    return {
+      kind: 'calc', label: (node.textContent ?? '').trim(), formula: span.getAttribute('data-formula') ?? '', digits: span.getAttribute('data-digits') ?? '',
+      unit: span.getAttribute('data-unit') ?? '', variable: span.getAttribute('data-var') ?? '',
+    };
+  }
   // A paragraph holding nothing but a picture, a video, a sound or an answer box is that thing.
   if (tag === 'p') {
     const inner = only(node, 'img, video, audio, input[data-qbl="answer"], input[data-qbl="slider"], input[data-qbl="switch"]');
@@ -160,8 +191,19 @@ export function blockHtml(b: Block): string {
       return `<div data-qbl="flip"><div>${b.front}</div><div>${b.back}</div></div>`;
     case 'callout':
       return `<div data-qbl="callout" data-tone="${b.tone}">${b.html}</div>`;
-    case 'answer':
-      return `<input data-qbl="answer"${attr('data-var', b.variable)}${attr('placeholder', b.placeholder)}>`;
+    case 'answer': {
+      const checked = (b.accept ?? '').trim() !== '';
+      return `<input data-qbl="answer"${attr('data-var', b.variable)}${attr('placeholder', b.placeholder)}${checked ? `${attr('data-accept', b.accept)}${attr('data-tolerance', b.tolerance)}${attr('data-check', b.check)}` : ''}>`;
+    }
+    case 'math':
+      return `<div data-qbl="math"${attr('data-tex', b.tex)}>${text(b.tex)}</div>`;
+    case 'calc':
+      return `<p>${text(b.label)}${b.label ? ' ' : ''}<span data-qbl="calc"${attr('data-formula', b.formula)}${attr('data-digits', b.digits)}${attr('data-unit', b.unit)}${attr('data-var', b.variable)}></span></p>`;
+    case 'graph': {
+      const joined = (lines: string) => lines.split(/\n|;/).map((t) => t.trim()).filter(Boolean).join('; ');
+      return `<div data-qbl="graph"${attr('data-fn', joined(b.functions))}${attr('data-x', b.x)}${attr('data-y', b.y)}${attr('data-points', joined(b.points))}${attr('data-join', b.join === 'none' ? null : b.join)}`
+        + `${attr('data-series', b.series)}${attr('data-snap', b.snap)}${attr('data-xlabel', b.xLabel)}${attr('data-ylabel', b.yLabel)}${attr('data-label', b.label)}></div>`;
+    }
     case 'controls':
       return b.html;
   }
@@ -208,6 +250,11 @@ function write(n: Node, blocks?: Map<Element, Block>): string {
   if (tag === 'span') {
     if (n.getAttribute('data-qbl') === 'word' && n.getAttribute('data-word')) return `<span data-qbl="word"${attr('data-word', n.getAttribute('data-word'))}>${inner()}</span>`;
     if (n.getAttribute('data-qbl') === 'value' && n.getAttribute('data-var')) return `<span data-qbl="value"${attr('data-var', n.getAttribute('data-var'))}></span>`;
+    // Maths in a line of text, and a formula's value: kept as they were written.
+    if (n.getAttribute('data-qbl') === 'math') return `<span data-qbl="math"${attr('data-tex', n.getAttribute('data-tex') ?? n.textContent)}>${text(n.textContent ?? '')}</span>`;
+    if (n.getAttribute('data-qbl') === 'calc') {
+      return `<span data-qbl="calc"${attr('data-formula', n.getAttribute('data-formula'))}${attr('data-digits', n.getAttribute('data-digits'))}${attr('data-unit', n.getAttribute('data-unit'))}${attr('data-var', n.getAttribute('data-var'))}></span>`;
+    }
     return inner();
   }
   if (tag === 'hr' && n.getAttribute('data-qbl') === 'page') return '<hr data-qbl="page">';

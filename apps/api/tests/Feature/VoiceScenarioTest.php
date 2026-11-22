@@ -68,7 +68,7 @@ class VoiceScenarioTest extends TestCase
         $scene = (int) $store->bundle($id)['scenes'][0]['id'];
         $ada = $store->createRow($id, 'characters', ['name' => 'Ada']);
         $event = $store->createRow($id, 'events', ['scene_id' => $scene, 'kind' => 'hotspot', 'shortname' => 'talk']);
-        $line = $store->createRow($id, 'actions', ['event_id' => $event['id'], 'type' => 'dialogue', 'params' => ['text' => 'Hello, {{QBLPlayerName}}!', 'speaker' => 'character', 'character_id' => $ada['id']]]);
+        $line = $store->createRow($id, 'actions', ['event_id' => $event['id'], 'type' => 'dialogue', 'params' => ['text' => 'Hello, {{QL_PlayerName}}!', 'speaker' => 'character', 'character_id' => $ada['id']]]);
 
         $this->artisan('qbl:voice', ['key' => $scenario['code'], '--dry-run' => true])
             ->expectsOutputToContain('No character has a voice yet')

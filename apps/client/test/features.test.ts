@@ -266,12 +266,12 @@ test('stars and XP: an award shows on screen, a rank is earned, and the marketpl
   const g = new Game(scenario);
   await g.wait(100);
   assert.deepEqual(g.ui.hud, { stars: 0, xp: 0, rank: 'Cadet', next_rank_xp: 100 });
-  assert.equal(g.var('QBLAbility_translator'), 0);
+  assert.equal(g.var('QL_Ability_translator'), 0);
 
   void (g.scene as any).engine.trigger(room.indirect_events!.at(-1));
   await g.wait(50);
   assert.deepEqual(g.ui.hud, { stars: 40, xp: 120, rank: 'Explorer', next_rank_xp: 300 }, 'the award is on screen and the XP earned a rank');
-  assert.equal(g.var('QBLStars'), 40);
+  assert.equal(g.var('QL_PlayerStars'), 40);
 
   // The shop action opened the marketplace; the event waits for it to be closed.
   const shop = g.ui.shopOpen!;
@@ -284,7 +284,7 @@ test('stars and XP: an award shows on screen, a rank is earned, and the marketpl
   assert.equal(shop.view().stars, 5);
   await g.wait(50);
   assert.equal(g.ctx.connection.me!.look, '900,902', 'the room knows what the player wears, so other players see it');
-  assert.equal(g.var('QBLAbility_translator'), 1, 'an equipped ability is a variable scenarios can test');
+  assert.equal(g.var('QL_Ability_translator'), 1, 'an equipped ability is a variable scenarios can test');
   const worn = (avatar(g) as any).worn as Map<number, unknown>;
   assert.deepEqual([...worn.keys()], [900], 'the badge is drawn on the avatar; abilities are not drawn');
 
@@ -297,7 +297,7 @@ test('stars and XP: an award shows on screen, a rank is earned, and the marketpl
 test('the marketplace is a room on the ship; a mission item bought there opens something on the planet', async () => {
   const g = await startIn(3);
   // Without the survey map there is no map table at the landing site.
-  assert.equal(g.var('QBLAbility_stream_map'), 0);
+  assert.equal(g.var('QL_Ability_stream_map'), 0);
   await g.click(560, 850);
   assert.equal(g.box, undefined);
 

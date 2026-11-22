@@ -171,7 +171,7 @@ class GenerationFactory
 
     /**
      * What gives the characters voices and records their lines; null when that is switched off
-     * ($wanted false, or QBL_TTS_DRIVER=none) or the voices are not set up.
+     * ($wanted false, or QL_TTS_DRIVER=none) or the voices are not set up.
      *
      * @return ?array{picker: \App\Qbl\Speech\VoicePicker, voicer: \App\Qbl\Speech\Voicer}
      */

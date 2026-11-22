@@ -205,10 +205,12 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-story.narration .qbl-story-text { min-height: 0; text-align: center; font-style: italic; font-size: 20px; }
 .qbl-story.narration.watching { padding: 14px 22px; }
 .qbl-story.narration.watching .qbl-story-text { font-size: 15px; }
-/* A conversation's answers: under the line in the story box, or alone in a box when the line is a bubble. */
-.qbl-story.choosing { cursor: default; }
+/* A conversation's answers, after the line: the player's own story box (their close-up and name), or a plain box when the lines are bubbles. */
+.qbl-story.answering { cursor: default; border-color: #7fc8ff; }
+.qbl-story.answering .qbl-story-portrait { border-color: #7fc8ff; }
+.qbl-story.answering .qbl-story-name { background: #7fc8ff; }
 .qbl-story.answers-only { padding: 14px 18px; min-height: 0; cursor: default; }
-.qbl-answers { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.qbl-answers { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
 .qbl-story.answers-only .qbl-answers { margin: 0; }
 .qbl-answers[hidden] { display: none; }
 .qbl-answers li { animation: qbl-answer-in 0.18s ease-out backwards; }
@@ -226,7 +228,6 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
   flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
   background: #e6c36a; color: #1b1f27; font-size: 14px; font-weight: 700;
 }
-.qbl-bubble.asking { cursor: default; }
 @media (max-width: 560px) {
   .qbl-story { padding-left: 118px; min-height: 110px; }
   .qbl-story.narration { padding: 16px 20px 20px; min-height: 0; }
@@ -643,3 +644,28 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
 /* A story's narration (text_font_style "caption"): words on a soft panel at the foot of the screen. */
 .qbl-text.qbl-caption { max-width: min(860px, calc(100vw - 48px)); padding: 14px 22px; border-radius: 16px; background: rgba(12, 18, 48, 0.72); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35); line-height: 1.35; text-align: center; font-weight: 600; text-shadow: none; }
 .qbl-caption.align-bottom-center, .qbl-caption.align-top-center, .qbl-caption.align-center-center { justify-self: center; }
+/* ---------- close-up bench ---------- */
+.qbl-bench { position: absolute; inset: 0; pointer-events: none; z-index: 11; }
+.qbl-bench-side { position: absolute; top: calc(var(--qbl-edge) + var(--safe-t) + 96px); left: calc(var(--qbl-edge) + var(--safe-l)); width: min(300px, 40vw); display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; pointer-events: none; }
+.qbl-bench-readings { margin: 0; padding: 10px 14px; display: grid; gap: 4px; border-radius: 14px; background: rgba(12, 23, 78, 0.86); border: 2px solid rgba(255, 255, 255, 0.25); font-size: 0.95rem; pointer-events: auto; }
+.qbl-bench-readings[hidden] { display: none; }
+.qbl-bench-reading { display: flex; justify-content: space-between; gap: 16px; }
+.qbl-bench-reading dt { color: rgba(255, 255, 255, 0.78); }
+.qbl-bench-reading dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.qbl-bench-graph { padding: 8px; border-radius: 14px; background: rgba(12, 23, 78, 0.86); border: 2px solid rgba(255, 255, 255, 0.25); pointer-events: auto; }
+.qbl-bench-graph .qbl-graph { margin: 0; }
+.qbl-bench-graph .qbl-graph-title { font-size: 0.85rem; }
+.qbl-bench-graph-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 0.8rem; color: rgba(255, 255, 255, 0.78); }
+.qbl-bench-graph-foot .qbl-bench-button { min-height: 30px; padding: 2px 8px; font-size: 0.8rem; }
+.qbl-bench-bar { position: absolute; bottom: calc(16px + var(--safe-b)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 2 * var(--qbl-tab) - 40px); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
+.qbl-bench-group, .qbl-bench-hand { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(12, 23, 78, 0.86); border: 2px solid rgba(255, 255, 255, 0.25); pointer-events: auto; align-items: center; }
+.qbl-bench-hand { border-color: #ffd34d; padding-left: 14px; font-size: 0.9rem; font-weight: 600; }
+.qbl-bench-group:empty, .qbl-bench-hand[hidden] { display: none; }
+.qbl-bench-button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border: 2px solid transparent; border-radius: 10px; background: rgba(255, 255, 255, 0.12); color: inherit; font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.qbl-bench-button.primary { background: #2fa85a; }
+.qbl-bench-button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+@media (max-width: 900px), (orientation: portrait) {
+  .qbl-bench-side { width: min(220px, 46vw); }
+  .qbl-bench-readings { font-size: 0.85rem; }
+  .qbl-bench-bar { bottom: calc(var(--qbl-dock) + 12px + var(--safe-b)); }
+}

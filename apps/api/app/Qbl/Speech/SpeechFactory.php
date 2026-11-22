@@ -53,7 +53,7 @@ class SpeechFactory
 
     public function picker(): VoicePicker
     {
-        return new VoicePicker($this->catalog());
+        return new VoicePicker($this->catalog(), max(0.0, (float) ($this->config['flair'] ?? 3)));
     }
 
     /** Null when recording is switched off. */
@@ -69,6 +69,6 @@ class SpeechFactory
     {
         $voicer = $this->voicer($driver);
 
-        return $voicer ? new ScenarioVoicer($store, $voicer) : null;
+        return $voicer ? new ScenarioVoicer($store, $voicer, $this->picker()) : null;
     }
 }

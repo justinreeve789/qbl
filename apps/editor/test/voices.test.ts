@@ -50,7 +50,7 @@ before(async () => {
     });
   });
   await new Promise<void>((resolve) => tts.listen(0, '127.0.0.1', resolve));
-  site = await startSite({ QBL_TTS_URL: `http://127.0.0.1:${(tts.address() as AddressInfo).port}` });
+  site = await startSite({ QL_TTS_URL: `http://127.0.0.1:${(tts.address() as AddressInfo).port}` });
   browser = await chromium.launch();
   page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
   page.on('dialog', (d) => void d.accept());
@@ -72,7 +72,7 @@ before(async () => {
   const bundle = await rest<{ scenes: Array<{ id: number }> }>('GET', '');
   const robo = (await rest<{ row: { id: number } }>('POST', '/rows/characters', { name: 'Robo' })).row.id;
   const event = (await rest<{ row: { id: number } }>('POST', '/rows/events', { scene_id: bundle.scenes[0]!.id, kind: 'hotspot', shortname: 'talk', position_x: 300, position_y: 300, radius: 60 })).row.id;
-  for (const text of ['Hello, {{QBLPlayerName}}! The reactor needs you.', 'You have {{score}} stars.']) {
+  for (const text of ['Hello, {{QL_PlayerName}}! The reactor needs you.', 'You have {{score}} stars.']) {
     await rest('POST', '/rows/actions', { event_id: event, type: 'dialogue', params: { style: 'portrait', speaker: 'character', character_id: robo, text } });
   }
   await page.reload();
@@ -91,7 +91,8 @@ test('a character is given a voice from the list, and it can be heard', async ()
   const select = card().locator('[data-field=tts_voice] select');
   await page.waitForFunction(() => !document.querySelector<HTMLSelectElement>('dialog[data-panel=character] [data-field=tts_voice] select')?.disabled);
   const groups = await select.locator('optgroup').evaluateAll((g) => g.map((x) => (x as HTMLOptGroupElement).label));
-  assert.deepEqual(groups, ['Women', 'Men', 'Children', 'Robots and creatures']);
+  assert.deepEqual(groups, ['Larger than life', 'Women', 'Men', 'Children', 'Robots and creatures']);
+  assert.ok((await select.locator('optgroup[label="Larger than life"] option').count()) >= 20, 'with the theatrical voices (giants, pixies, villains) in a group of their own');
   assert.ok((await select.locator('option').count()) > 30, 'a good many voices to choose from');
   assert.match(await card().locator('.voice-note').innerText(), /0 of its 2 lines play a recording/);
   await select.selectOption('robot');
@@ -101,7 +102,7 @@ test('a character is given a voice from the list, and it can be heard', async ()
   await card().locator('button:has-text("Listen")').click();
   const heard = await sample;
   assert.equal(heard.headers()['content-type'], 'audio/mpeg');
-  assert.equal(asked.at(-1)?.voice, 'af_alloy(1)+am_echo(1)', 'the sample is said in the voice, as the catalog makes it on Kokoro');
+  assert.equal(asked.at(-1)?.voice, 'af_alloy(0.5)+am_echo(0.5)', 'the sample is said in the voice, as the catalog makes it on Kokoro (a blend, its weights adding up to 1)');
   const draft = (await rest<{ scenario: Scenario }>('GET', '/preview')).scenario;
   assert.equal(draft.characters![0]!.tts_voice, 'robot');
 });
@@ -150,13 +151,13 @@ test('the narrator: a narration is the default storyteller’s to record, and th
   const sample = page.waitForResponse((r) => r.url().endsWith('/voices/storyteller/sample'));
   await page.locator('[data-field=narrator_voice] button:has-text("Listen")').click();
   await sample;
-  assert.equal(asked.at(-1)?.voice, 'bm_fable(2)+bm_lewis(1)', 'the storyteller, as the catalog makes it on Kokoro');
+  assert.equal(asked.at(-1)?.voice, 'bm_fable(0.6667)+bm_lewis(0.3333)', 'the storyteller, as the catalog makes it on Kokoro (weights sent adding up to 1)');
 
   await page.click('.tabs >> text=Characters');
   await page.waitForSelector('.voice-tools .chip:has-text("1 of 2 lines recorded")');
   await page.click('.voice-tools button:has-text("Record voices")');
   await page.waitForSelector('.toast:has-text("Recorded 1 line")');
-  assert.deepEqual([asked.at(-1)?.input, asked.at(-1)?.voice], ['Long ago, the reactor slept.', 'bm_fable(2)+bm_lewis(1)'], 'the narration is recorded in the storyteller’s voice');
+  assert.deepEqual([asked.at(-1)?.input, asked.at(-1)?.voice], ['Long ago, the reactor slept.', 'bm_fable(0.6667)+bm_lewis(0.3333)'], 'the narration is recorded in the storyteller’s voice');
 
   await page.click('.tabs >> text=Settings');
   await page.waitForFunction(() => !document.querySelector<HTMLSelectElement>('[data-section=chat] [data-field=narrator_voice] select')?.disabled);

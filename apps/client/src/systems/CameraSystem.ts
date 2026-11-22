@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import type { ActionHandle, CameraAction, Id, Point } from '@qbl/shared';
+import { sceneBench, type ActionHandle, type CameraAction, type Id, type Point } from '@qbl/shared';
 import { deferred } from '../actions/Presenter';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
@@ -22,8 +22,12 @@ type Mode =
  * scene's bounds. A story scene's view follows whoever is acting (the last character to speak, walk or
  * move, while they are on the stage; otherwise the middle of those who are). A camera action can
  * follow a character, glide to a spot, or go back to either.
+ *
+ * A close-up bench without avatars is shown whole instead, in the middle of the window: nothing of
+ * it may be cut off, and there is nobody to follow, so camera actions leave it where it is.
  */
 export class CameraSystem implements SceneSystem {
+  private whole = false;
   private mode: Mode = { kind: 'player' };
   /** Where the view's centre is, while the camera is not following the player itself. */
   private focus: Point | null = null;
@@ -38,6 +42,13 @@ export class CameraSystem implements SceneSystem {
     const { scene, size, def } = this.rt;
     const player = this.rt.system(LocalPlayerSystem).avatar;
     const cam = scene.cameras.main;
+    this.whole = sceneBench(def) != null && def.show_avatars === false;
+    if (this.whole) {
+      cam.fadeIn(350, 0, 0, 0);
+      this.fit();
+      scene.scale.on(Phaser.Scale.Events.RESIZE, this.fit, this);
+      return;
+    }
     cam.setBounds(0, 0, size.width, size.height);
     cam.fadeIn(350, 0, 0, 0);
     this.fit();
@@ -59,6 +70,7 @@ export class CameraSystem implements SceneSystem {
 
   /** A camera action. */
   point(action: CameraAction): ActionHandle | null {
+    if (this.whole) return null;
     const cam = this.rt.scene.cameras.main;
     const target = action.target ?? (action.character_id != null ? 'character' : action.position_x != null ? 'point' : 'player');
     const ms = Math.max(0, action.duration ?? 1200);
@@ -176,6 +188,12 @@ export class CameraSystem implements SceneSystem {
   private fit() {
     const { scene, size } = this.rt;
     const { width, height } = scene.scale.gameSize;
+    if (this.whole) {
+      const cam = scene.cameras.main;
+      cam.setZoom(Math.min(width / size.width, height / size.height));
+      cam.centerOn(size.width / 2, size.height / 2);
+      return;
+    }
     const cover = Math.max(width / size.width, height / size.height);
     scene.cameras.main.setZoom(Math.max(cover, height / VIEW_HEIGHT));
   }

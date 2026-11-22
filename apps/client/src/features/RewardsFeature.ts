@@ -12,14 +12,14 @@ export class RewardsFeature implements GameFeature {
   start(ctx: GameContext): () => void {
     const { rewards, ui, connection, vars } = ctx;
 
-    // Scenarios can read these in conditions and show them with {{QBLStars}} and friends.
-    vars.provide('QBLStars', () => rewards.progress?.stars ?? 0);
-    vars.provide('QBLXp', () => rewards.progress?.xp ?? 0);
-    vars.provide('QBLRank', () => rewards.progress?.rank ?? '');
-    // An ability the player has equipped: QBLAbility_<key> is 1.
+    // Scenarios can read these in conditions and show them with {{QL_PlayerStars}} and friends.
+    vars.provide('QL_PlayerStars', () => rewards.progress?.stars ?? 0);
+    vars.provide('QL_PlayerXP', () => rewards.progress?.xp ?? 0);
+    vars.provide('QL_PlayerRank', () => rewards.progress?.rank ?? '');
+    // An ability the player has equipped: QL_Ability_<key> is 1.
     for (const item of rewards.items.values()) {
       const key = item.ability;
-      if (item.kind === 'ability' && key) vars.provide(`QBLAbility_${key}`, () => (rewards.hasAbility(key) ? 1 : 0));
+      if (item.kind === 'ability' && key) vars.provide(`QL_Ability_${key}`, () => (rewards.hasAbility(key) ? 1 : 0));
     }
 
     const view = (): ShopView => ({
@@ -62,7 +62,7 @@ export class RewardsFeature implements GameFeature {
     const draw = () => {
       const p = rewards.progress;
       ui.rewards(p ? { stars: p.stars, xp: p.xp, rank: p.rank, next_rank_xp: p.next_rank_xp } : null, () => void rewards.openShop());
-      vars.touch('QBLStars');
+      vars.touch('QL_PlayerStars');
     };
     const tell = (r: RewardMessage) => {
       const parts = [

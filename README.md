@@ -106,9 +106,11 @@ Eight containers:
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
 
 ```sh
-docker compose exec app php artisan qbl:seed            # the marketplace catalogue and the Starship Explorer demo
+docker compose exec app php artisan qbl:seed            # the marketplace catalogue, the Starship Explorer demo and the Science Lab
 docker compose exec app php artisan qbl:seed --reset    # put the shipped demo back, replacing edits made to it
 ```
+
+The **Science Lab** (`/sciencelab`) shows the science features: a lab book with typeset maths and chemistry (KaTeX), values worked out from sliders and answers checked with their units (math.js), graphs (JSXGraph), and four close-up benches to pour, mix, heat and measure at. It was made by `node tools/make-science-lab.mjs` (after `npm run build -w @qbl/shared`); change it in the editor like any other scenario. All three libraries are MIT or Apache-2.0 licensed and are loaded only by a scene or a box that uses them.
 
 The first is safe to run again: a demo that is already there is left as it is, and so are prices changed in the catalogue. Until it has been run once there is no scenario to play. To play the demo, choose "Play as a guest instead" on the sign-in screen. Compose uses local-only default secrets; copy `.env.example` to `.env` and set real ones for anything shared.
 
@@ -301,7 +303,7 @@ npm run test:api-v1                        # the public API for schools (/api/v1
 npm run test:generation                    # the AI mission generator, with a stand-in model and placeholder pictures; then validates and plays the result
 npm run test:laravel                       # the same API through real Laravel (needs `composer install` in apps/api)
 npm run test:editor                        # the editor in a headless browser (needs PHP; once: npx playwright install chromium)
-npm run validate -- scenarios/starship.json    # check a scenario document
+npm run validate -- scenarios/starship.json    # check a scenario document (scenarios/science-lab.json is the other one shipped)
 npm run seed:export                        # regenerate scenarios/starship.json from the demo's ZIP (needs PHP with SQLite and zip)
 npm run typecheck
 npm run build
@@ -385,12 +387,12 @@ Set `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` (or `OPENAI_API_KEY`) in `.env`; ev
 Characters can be given a voice of their own: their lines are recorded once by the `tts` container (Kokoro, free, no watermark) and played in the game with each word lit as it is spoken. Lines without a recording are read by the browser's voice, as before. In the editor, open a character, choose a voice under **🔊 Voice** and press **🎙️ Record its lines** (or **🎙️ Record voices** on the Characters page). From the command line:
 
 ```sh
-docker compose exec app php artisan qbl:voice --list                 # about 50 voices, in 8 languages
+docker compose exec app php artisan qbl:voice --list                 # about 90 voices, in 8 languages
 docker compose exec app php artisan qbl:voice {code} --assign        # give each character a voice and record every line
-docker compose exec app php artisan qbl:tts "Hello there!"           # say any text in a random voice, saved as tts-<voice>.mp3
+docker compose exec app php artisan qbl:tts "Hello there!"           # say any text in a random theatrical voice, saved as tts-<voice>.mp3
 ```
 
-Generated missions are voiced as they are made. The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QBL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
+Generated missions are voiced as they are made, and cast like a cartoon: besides everyday voices there are theatrical ones (a booming giant, a squeaky pixie, a jolly gnome, a pantomime villain, a zany inventor), which are chosen first (`QL_TTS_FLAIR`, 0 for everyday voices). The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
 
 ## The demo mission
 
@@ -431,7 +433,7 @@ See "Animations" in `docs/src/content/docs/developers/extensions.md`.
 - An award is given **once per student** unless the author marks it repeatable. An award can also take stars or XP away; totals stop at zero.
 - The **marketplace** sells things to wear (head, body, back, hand), pets that follow the avatar, ways for the avatar to move, and abilities. Players open it from their stars in the top-left corner of the game, or through a `shop` action, and choose what to have on under "My things". Other players see what they wear.
 - Every scenario sells the platform's catalogue (`apps/api/database/seeders/data/shop.php`; there is no screen for editing it yet). Authors add **mission-specific items** on the editor's Shop page.
-- **Abilities** are flags: while a player has one equipped, the variable `QBLAbility_<key>` is 1, and a scenario decides what that unlocks. They do not change walking speed or reveal distances.
+- **Abilities** are flags: while a player has one equipped, the variable `QL_Ability_<key>` is 1, and a scenario decides what that unlocks. They do not change walking speed or reveal distances.
 - The backend grants awards, checking each against the published scenario, and keeps a ledger of every change. See "Stars, XP and the marketplace" in `docs/src/content/docs/developers/extensions.md`.
 
 ## The editor

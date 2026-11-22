@@ -9,6 +9,10 @@ namespace App\Qbl\Speech;
  * service's own voice id, so scenarios keep their voices when the service changes. Each voice says
  * what it is on every service under `engines.<service name>`; one with nothing for the service in
  * use borrows the nearest voice that has something.
+ *
+ * `flair` says how much of a character a voice is: 0 an everyday voice, 1 one with character (a
+ * jolly grandpa, a trickster), 2 a theatrical one, larger than life (a giant, a pixie, a pantomime
+ * villain). VoicePicker reaches for flair first; `qbl:tts` picks from it.
  */
 final class VoiceCatalog
 {
@@ -22,12 +26,12 @@ final class VoiceCatalog
     /** @var array<string, string> the default narrator's voice key, by language ("en" => "storyteller") */
     private array $narrators;
 
-    /** $narrator: a voice to narrate in instead of the catalog's default, for scenarios in its language (QBL_TTS_NARRATOR). */
+    /** $narrator: a voice to narrate in instead of the catalog's default, for scenarios in its language (QL_TTS_NARRATOR). */
     public function __construct(array $data, private ?string $narrator = null)
     {
         foreach ((array) ($data['voices'] ?? []) as $v) {
             if (is_array($v) && isset($v['key'])) {
-                $this->voices[(string) $v['key']] = $v + ['name' => $v['key'], 'gender' => 'neutral', 'age' => 'adult', 'lang' => 'en', 'traits' => [], 'description' => '', 'engines' => []];
+                $this->voices[(string) $v['key']] = $v + ['name' => $v['key'], 'gender' => 'neutral', 'age' => 'adult', 'lang' => 'en', 'traits' => [], 'description' => '', 'flair' => 0, 'engines' => []];
             }
         }
         $this->standIns = (array) ($data['stand_ins'] ?? []) + ['en' => 'explorer'];
@@ -78,10 +82,11 @@ final class VoiceCatalog
     /**
      * The voices that fit what is asked, in the catalog's order. Every filter is optional:
      * `lang` matches a whole language ("en" is American and British, "en-GB" only British),
-     * `gender` and `age` match exactly, `traits` keeps voices with at least one of them, and
-     * `engine` keeps only voices with an entry of their own for that service (none borrowed).
+     * `gender` and `age` match exactly, `traits` keeps voices with at least one of them, `flair`
+     * keeps voices with at least that much of it, `max_flair` those with no more, and `engine` keeps
+     * only voices with an entry of their own for that service (none borrowed).
      *
-     * @param  array{lang?: ?string, gender?: ?string, age?: ?string, traits?: list<string>, engine?: ?string}  $want
+     * @param  array{lang?: ?string, gender?: ?string, age?: ?string, traits?: list<string>, flair?: ?int, max_flair?: ?int, engine?: ?string}  $want
      * @return array<string, array>
      */
     public function matching(array $want): array
@@ -97,6 +102,9 @@ final class VoiceCatalog
                 if (isset($want[$field]) && $want[$field] !== '' && strtolower((string) $want[$field]) !== $v[$field]) {
                     return false;
                 }
+            }
+            if ((isset($want['flair']) && (int) $v['flair'] < (int) $want['flair']) || (isset($want['max_flair']) && (int) $v['flair'] > (int) $want['max_flair'])) {
+                return false;
             }
             if ($traits && ! array_intersect($traits, array_map('strtolower', (array) $v['traits']))) {
                 return false;
@@ -193,7 +201,7 @@ final class VoiceCatalog
         return [
             'key' => $voice['key'], 'name' => $voice['name'], 'gender' => $voice['gender'], 'age' => $voice['age'], 'lang' => $voice['lang'],
             'accent' => $voice['accent'] ?? null, 'traits' => array_values((array) $voice['traits']), 'description' => $voice['description'],
-            'label' => self::label($voice),
+            'flair' => (int) ($voice['flair'] ?? 0), 'label' => self::label($voice),
         ];
     }
 

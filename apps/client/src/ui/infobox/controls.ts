@@ -1,4 +1,6 @@
-import { answerValue, parseWhen, testWhen, wheelOptions } from '@qbl/shared';
+import { answerValue, graphSpec, parseSeries, parseWhen, testWhen, wheelOptions } from '@qbl/shared';
+import { formulasNow, loadFormulas, loadGraphs } from '../science/load';
+import type { GraphHandle } from '../science/graph';
 
 /**
  * The hands-on parts of an infobox (see packages/shared/src/infobox.ts): sliders, switches and
@@ -9,6 +11,10 @@ import { answerValue, parseWhen, testWhen, wheelOptions } from '@qbl/shared';
 export interface Controls {
   /** Each control's value now, by its variable, as text (as typed answers are). */
   values(): Record<string, string>;
+  /** A value as the box has it now: a control's, or a variable of the game. */
+  get(name: string): unknown;
+  /** Settles when what the box works out (formulas, graphs) is ready to be read. */
+  ready: Promise<void>;
   destroy(): void;
 }
 
@@ -38,7 +44,13 @@ export function buildControls(root: ParentNode, env: ControlEnv): Controls {
   const refreshers: Array<() => void> = [];
   const timers: number[] = [];
   const get = (name: string) => (values.has(name) ? values.get(name) : env.get?.(name));
+  // What is worked out from the controls comes first: values and meters may show it.
+  const workings: Array<() => void> = [];
+  const cleanups: Array<() => void> = [];
+  const waits: Array<Promise<unknown>> = [];
+  let gone = false;
   const changed = () => {
+    for (const w of workings) w();
     for (const r of refreshers) r();
   };
 
@@ -213,11 +225,84 @@ export function buildControls(root: ParentNode, env: ControlEnv): Controls {
     if (when.hidden) when.dataset.unread = '';
   }
 
+  // A formula's value, from the controls as they are now and from variables.
+  const calcs = [...root.querySelectorAll<HTMLElement>('span[data-qbl="calc"]')];
+  for (const span of calcs) {
+    span.classList.add('qbl-live-value', 'qbl-calc');
+    const source = span.dataset.formula ?? '';
+    const name = span.dataset.var;
+    const unit = span.dataset.unit ?? '';
+    const digits = num(span.dataset.digits, 2);
+    span.textContent = '…';
+    workings.push(() => {
+      const f = formulasNow();
+      if (!f) return;
+      const n = f.evaluateNumber(source, get);
+      span.textContent = n == null ? '–' : `${f.formatNumber(n, digits)}${unit ? ` ${unit}` : ''}`;
+      if (!name) return;
+      if (n == null) values.delete(name);
+      else values.set(name, f.formatNumber(n, Math.max(digits, 6)));
+    });
+  }
+
+  // Graphs: curves that follow the controls, points to drag, recorded data.
+  const graphs = [...root.querySelectorAll<HTMLElement>('div[data-qbl="graph"]')];
+  for (const holder of graphs) {
+    const spec = graphSpec((n) => holder.getAttribute(n));
+    holder.classList.add('qbl-graph');
+    holder.dataset.unread = '';
+    const wait = el('div', 'qbl-graph-wait', 'Drawing the graph…');
+    holder.replaceChildren(wait);
+    const places = spec.points.map((p) => {
+      // Shown again, a point is where it was left.
+      const x = Number(answerValue(String(env.get?.(p.xVar) ?? '')));
+      const y = Number(answerValue(String(env.get?.(p.yVar) ?? '')));
+      const kept = env.get?.(p.xVar) != null && env.get?.(p.xVar) !== '' && Number.isFinite(x) && Number.isFinite(y);
+      const at = kept ? { ...p, x, y } : p;
+      values.set(p.xVar, String(at.x));
+      values.set(p.yVar, String(at.y));
+      return at;
+    });
+    let handle: GraphHandle | null = null;
+    refreshers.push(() => handle?.refresh());
+    cleanups.push(() => handle?.destroy());
+    const needs: Array<Promise<unknown>> = [loadGraphs()];
+    if (spec.functions.length) needs.push(loadFormulas());
+    waits.push(Promise.all(needs).then(async () => {
+      if (gone) return;
+      const { drawGraph } = await loadGraphs();
+      const f = formulasNow();
+      handle = drawGraph(holder, {
+        spec: { ...spec, points: places },
+        curve: (source) => f?.formulaFunction(source, get) ?? null,
+        series: spec.series ? () => parseSeries(get(spec.series!)) : undefined,
+        moved(index, x, y) {
+          const p = spec.points[index];
+          if (!p) return;
+          const round = (v: number) => String(Math.round(v * 1000) / 1000);
+          values.set(p.xVar, round(x));
+          values.set(p.yVar, round(y));
+          changed();
+        },
+      });
+    }).catch(() => {
+      wait.textContent = 'The graph could not be drawn.';
+    }));
+  }
+  if (calcs.length) waits.push(loadFormulas());
+
   changed();
+  const ready = Promise.all(waits).then(() => {
+    if (!gone) changed();
+  }, () => {});
   return {
     values: () => Object.fromEntries(values),
+    get,
+    ready,
     destroy() {
+      gone = true;
       for (const t of timers) clearTimeout(t);
+      for (const c of cleanups) c();
     },
   };
 }

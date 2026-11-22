@@ -18,9 +18,12 @@ const ATTRS: Record<string, string[]> = {
   video: ['src', 'poster', 'loop', 'muted', 'autoplay', 'title'],
   audio: ['src', 'loop', 'autoplay', 'title'],
   details: ['open'],
-  input: ['placeholder', 'data-var', 'maxlength', 'inputmode', 'aria-label', 'data-min', 'data-max', 'data-step', 'data-value', 'data-unit', 'data-label'],
-  span: ['data-word', 'data-var'],
-  div: ['data-var', 'data-options', 'data-value', 'data-label', 'data-min', 'data-max', 'data-unit', 'data-when', 'data-spins'],
+  input: ['placeholder', 'data-var', 'maxlength', 'inputmode', 'aria-label', 'data-min', 'data-max', 'data-step', 'data-value', 'data-unit', 'data-label', 'data-accept', 'data-tolerance', 'data-check'],
+  span: ['data-word', 'data-var', 'data-tex', 'data-formula', 'data-digits', 'data-unit'],
+  div: [
+    'data-var', 'data-options', 'data-value', 'data-label', 'data-min', 'data-max', 'data-unit', 'data-when', 'data-spins', 'data-tex',
+    'data-fn', 'data-x', 'data-y', 'data-points', 'data-join', 'data-series', 'data-snap', 'data-xlabel', 'data-ylabel',
+  ],
   td: ['colspan', 'rowspan'],
   th: ['colspan', 'rowspan'],
 };
@@ -28,7 +31,15 @@ const ATTRS: Record<string, string[]> = {
 const BLOCK_TAGS: Record<string, string[]> = {
   page: ['hr'], gallery: ['div'], flip: ['div'], callout: ['div'], answer: ['input'], word: ['span'],
   panel: ['div'], slider: ['input'], switch: ['input'], wheel: ['div'], value: ['span'], meter: ['div'], when: ['div'],
+  math: ['span', 'div'], calc: ['span'], graph: ['div'],
 };
+/** Attributes that only mean something on one kind of block. */
+const ONLY_ON: Record<string, string[]> = {
+  'data-tex': ['math'], 'data-formula': ['calc'], 'data-digits': ['calc'], 'data-accept': ['answer'], 'data-tolerance': ['answer'], 'data-check': ['answer'],
+  'data-fn': ['graph'], 'data-x': ['graph'], 'data-y': ['graph'], 'data-points': ['graph'], 'data-join': ['graph'], 'data-series': ['graph'], 'data-snap': ['graph'],
+  'data-xlabel': ['graph'], 'data-ylabel': ['graph'],
+};
+const NAME = /^[A-Za-z_]\w*$/;
 /** Attributes only a control (or what shows one) may carry. */
 const CONTROL_ATTRS = new Set(['data-min', 'data-max', 'data-step', 'data-value', 'data-unit', 'data-label', 'data-options', 'data-when', 'data-spins']);
 const SIZES = new Set(['small', 'medium', 'large']);
@@ -60,9 +71,10 @@ function copy(source: Node, target: Node, doc: Document) {
       if (value == null) continue;
       if (URL_ATTRS.has(name) && !SAFE_URL.test(value.trim())) continue;
       if (name === 'data-size' && !SIZES.has(value)) continue;
-      if (name === 'data-var' && !/^[A-Za-z_]\w*$/.test(value)) continue;
+      if ((name === 'data-var' || name === 'data-check' || name === 'data-series') && !NAME.test(value.trim())) continue;
+      if (ONLY_ON[name] && !ONLY_ON[name]!.includes(block ?? '')) continue;
       if (name === 'data-word' && block !== 'word') continue;
-      if (name === 'data-var' && tag !== 'input' && !['wheel', 'value', 'meter'].includes(block ?? '')) continue;
+      if (name === 'data-var' && tag !== 'input' && !['wheel', 'value', 'meter', 'calc'].includes(block ?? '')) continue;
       if (CONTROL_ATTRS.has(name) && !block) continue;
       out.setAttribute(name, value);
     }

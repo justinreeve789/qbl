@@ -1,4 +1,4 @@
-import { escapeHtml, interpolate, embedBareMedia, type ButtonMark } from '@qbl/shared';
+import { currentName, escapeHtml, interpolate, embedBareMedia, type ButtonMark } from '@qbl/shared';
 import { mediaUrl } from '../describe';
 import { h } from '../dom';
 import type { FormContext, Values } from '../fields';
@@ -21,7 +21,13 @@ export function previewBox(ctx: FormContext, values: () => Values, content: () =
   let timer = 0;
 
   const vars = () => {
-    const out = new Map<string, string | number>([['QBLPlayerName', 'Alex']]);
+    // The system's variables as a student in a class might see them.
+    const out = new Map<string, string | number>([
+      ['QL_PlayerName', 'Alex'], ['QL_TeacherName', 'Ms Rivera'], ['QL_HasTeacher', 1], ['QL_IsTeacher', 0],
+      ['QL_ScenarioLanguage', String((store.scenario as { default_language?: unknown }).default_language || 'en').slice(0, 2)], ['QL_TimeElapsed', 0],
+      ['QL_HotspotCoordinates', ''], ['QL_VideoPlaying', 0], ['QL_VideoTimeIndex', 0], ['QL_PhysicsEnabled', 0],
+      ['QL_PlayerStars', 12], ['QL_PlayerXP', 340], ['QL_PlayerRank', 'Explorer'], ['QL_PlayerCount', 1], ['QL_Holding', 0],
+    ]);
     for (const v of store.rows('variables')) out.set(String(v.variable_name), (v.default_value as string | number | null) ?? '');
     return out;
   };
@@ -31,7 +37,7 @@ export function previewBox(ctx: FormContext, values: () => Values, content: () =
     window.clearTimeout(timer);
     const v = values();
     const known = vars();
-    const fill = (text: string, html: boolean) => interpolate(text, (n) => known.get(n), { mediaUrl: urlOf, escape: html ? escapeHtml : undefined });
+    const fill = (text: string, html: boolean) => interpolate(text, (n) => known.get(currentName(n)), { mediaUrl: urlOf, escape: html ? escapeHtml : undefined });
     const html = fill(embedBareMedia(content(), (id) => store.byId('media', id)?.type as string), true);
     const ctas = ((v.call_to_actions as CtaValues[] | null | undefined) ?? []);
     const top = v.media_id != null ? store.byId('media', Number(v.media_id)) : undefined;
@@ -44,6 +50,8 @@ export function previewBox(ctx: FormContext, values: () => Values, content: () =
       size: (v.size as 'small' | 'medium' | 'large' | undefined) ?? null,
       accent: (v.accent as string | undefined) ?? null,
       layer: stage,
+      // Variables at their starting values: what a formula, a value or a `when` block reads.
+      vars: (name) => known.get(name),
       still,
       page: still ? page : 0,
       onPage: (_, i) => (page = i),

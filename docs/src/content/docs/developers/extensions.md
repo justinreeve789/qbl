@@ -245,7 +245,7 @@ A scene's `team_only` decides; if it does not say, its group's `team_only` does;
 { "id": 8, "shortname": "laboratory", "group_id": 1, "team_only": true }
 ```
 
-The demo does exactly this: the starship's rooms are shared except the laboratory, and the planet is each team's own. What is limited is what players **see and hear** of each other: avatars, emotes, chat, and events with `audience: scene`. A shared variable is always the team's own, in every scene: one team's rockfall never blocks another team's path, even in a scene where the teams can see each other. `QuestLabPlayerCount` counts the player's team. With no teams (the public instance, an assignment without teams) everyone is one team and the setting changes nothing.
+The demo does exactly this: the starship's rooms are shared except the laboratory, and the planet is each team's own. What is limited is what players **see and hear** of each other: avatars, emotes, chat, and events with `audience: scene`. A shared variable is always the team's own, in every scene: one team's rockfall never blocks another team's path, even in a scene where the teams can see each other. `QL_PlayerCount` counts the player's team. With no teams (the public instance, an assignment without teams) everyone is one team and the setting changes nothing.
 
 In the editor, groups are made on the **Scenes** page, where each scene's card has its group and shows who is seen there; a scene's own setting is in the scene editor ("Who players see here").
 
@@ -372,7 +372,7 @@ style | string | bubble | `bubble`: a speech bubble over the speaker. `portrait`
 duration | int | | Milliseconds on screen. Absent: a bubble stays long enough to read, and a story box stays until the player continues. A click closes either sooner.
 
 ```json
-{ "type": "dialogue", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QuestLabPlayerName}}!" }
+{ "type": "dialogue", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QL_PlayerName}}!" }
 ```
 
 The bubble follows the speaker and keeps itself on screen. It sits above them when there is room, below when they are near the top of the screen, and to the right or left when there is room neither above nor below; sideways it slides along to stay inside the screen while its tail keeps pointing at the speaker. A sequence of dialogue actions is a conversation; put a `freeze` before it to hold the player still. For one where the player chooses what to say, use a [conversation](#conversations-dialogue-trees).
@@ -380,7 +380,7 @@ The bubble follows the speaker and keeps itself on screen. It sits above them wh
 **The story box** (`style: "portrait"`) is for the characters and moments that carry the story. It is a panel across the bottom of the screen with the speaker's close-up portrait standing on its edge, their name, and the words appearing a few at a time. The player clicks, or presses Enter or Space, to continue: once to show the whole line, again to go on. The portrait is the speaker's `portrait` animation (or the character standing, if it has none): a character's, or for the player their avatar's.
 
 ```json
-{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QuestLabPlayerName}}! I am Captain Vega." }
+{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QL_PlayerName}}! I am Captain Vega." }
 ```
 
 A story conversation is normally the player's own (`audience: player`, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.
@@ -410,9 +410,9 @@ It is separate from `dialogue`, which says one line. The whole tree lives inside
 
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
-lines | array | | The lines, below. At least one.
+lines | array | | The lines, below. At least one. Their order is the author's (the editor lets it be changed); the conversation goes by `start`, `next` and the choices. Lines that run on with `next` and no choices are said one after another, each in its own box, before the player answers the last.
 start | string | the first line | The `id` of the line it starts with.
-style | string | portrait | `portrait`: each line in a story box with the speaker's close-up, the choices listed under it. `bubble`: each line in a bubble over its speaker, the choices in a box at the bottom of the screen.
+style | string | portrait | `portrait`: each line in a story box with the speaker's close-up. `bubble`: each line in a bubble over its speaker. Either way a line's choices come after it, once it has been said: as a story box of the player's own (their close-up and name), or for bubbles a plain box at the bottom of the screen.
 narrate | bool | the scenario's | Read the lines aloud, each in its speaker's voice. See [Reading text aloud](#reading-text-aloud).
 
 **A line**
@@ -442,7 +442,7 @@ correct | bool | | For the teacher's report: a right answer. When any choice of 
 {
   "type": "conversation",
   "lines": [
-    { "id": "hello", "speaker": "character", "character_id": 1, "text": "Ready for your briefing, {{QuestLabPlayerName}}?", "next": "ask" },
+    { "id": "hello", "speaker": "character", "character_id": 1, "text": "Ready for your briefing, {{QL_PlayerName}}?", "next": "ask" },
     {
       "id": "ask", "speaker": "character", "character_id": 1, "text": "What do plants need to grow?",
       "choices": [
@@ -481,7 +481,7 @@ voice_pitch, voice_rate | character | 1 | How the browser's voice sounds reading
 voice_name | character | | For lines with no recording: part of the name of a browser voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
 
 ```json
-{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "narrate": true, "text": "Welcome aboard, {{QuestLabPlayerName}}!" }
+{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "narrate": true, "text": "Welcome aboard, {{QL_PlayerName}}!" }
 ```
 
 A speech bubble that is being read stays until the voice has finished. One thing is read at a time: a new line stops the one before. Players have a switch for reading aloud at the foot of the side panel (it is offered when the scenario has anything to read) and their choice is kept in their browser. In the demo the story's portrait dialogue is read.
@@ -711,6 +711,17 @@ Markup | What players get
 `<div data-qbl="meter" data-var="rope" data-min="0" data-max="20" data-label="Rope out"></div>` | A bar showing a value between its ends.
 `<div data-qbl="when" data-when="rope >= 12; brake = 1">…</div>` | Shown only while every condition holds (`=`, `!=`, `<`, `>`, `<=`, `>=`, separated by `;` or `,`), on the controls as they are set now and on variables. It appears with a little lift, and a screen reader hears it.
 
+**Maths, worked-out values and graphs.** Formulas are worked out with math.js (`@qbl/shared/formula`, an entry of its own so that only a box with a formula loads it), typeset with KaTeX and drawn with JSXGraph. Each is loaded the first time a box needs it.
+
+Markup | What players get
+------ | ----------------
+`<div data-qbl="math" data-tex="\frac{m}{V}">m / V</div>`, `<span data-qbl="math" data-tex="x^2">x^2</span>` | Maths typeset by KaTeX, on a line of its own (`div`) or in a line of text (`span`). `\ce{2H2 + O2 -> 2H2O}` sets chemistry (KaTeX's mhchem). What is inside the tag is what a reader without KaTeX shows. It is not read aloud.
+`<span data-qbl="calc" data-formula="mass / volume" data-digits="2" data-unit="g/mL" data-var="density"></span>` | A formula's value, from the controls as they are now and from variables. With `data-var` (which must be declared) it is saved there when a button is chosen, and values, meters and `when` blocks of the box can read it at once. A dash when the formula has no value.
+`<input data-qbl="answer" data-var="a" data-accept="9.8 m/s^2" data-tolerance="2%" data-check="a_right">` | An answer box that is checked. When a button is chosen, `data-check` (declared) is set to 1 if what was typed is `data-accept`, else 0. `data-accept` is a number, a quantity with a unit (right in any unit of its kind; a bare number is then wrong), a formula of variables, or words; `\|` separates several. `data-tolerance` is a share (`5%`) or an amount. What is typed is worked out with no variables.
+`<div data-qbl="graph" data-fn="a*x^2; sin(x)" data-x="-5,5" data-y="-5,5" data-points="px,py=1,2; qx,qy=3,1" data-join="line" data-snap="1" data-series="log" data-xlabel="t" data-ylabel="h" data-label="Title"></div>` | Axes with a curve for each formula of `x` in `data-fn` (other names are controls and variables: curves follow sliders), points the player drags (`xVar,yVar=x,y`; saved in their two declared variables when a button is chosen; `data-snap` makes them land on multiples), joined as `data-join` says (`line` through the first two, `segment`s in order, a `polygon`), and the data recorded in the variable `data-series` as `x,y;x,y` (what a bench's graph keeps).
+
+A formula is written as math.js reads it: `+ - * / ^`, brackets, `sqrt`, `sin`, `round(x, 1)`, `pi`, and quantities with units (`(2 m + 50 cm) to cm`). A variable with nothing in it counts as 0. The parts of math.js that reach outside a formula (`import`, `createUnit`, `evaluate`, `parse` and the like) are switched off, since formulas are written by authors and answers typed by players. The validator reports a formula whose brackets do not match, a point, worked-out value or check whose variable is not declared, and warns of a name a formula reads that is neither a control of the box nor a variable.
+
 The buttons do the testing: a "Test" button sets a variable, and conditions on the following actions read the controls' variables (see how the generator builds an [instrument](/docs/developers/generation/)). The validator reports a control whose variable is not declared, and a value, meter or `when` block that reads a variable that is neither a control in the box, an answer, a declared variable nor a reserved one.
 
 Each button in `call_to_actions` can have a `mark`. `right`: the button turns green with a tick and a burst of stars for about 650 ms before the box closes and the button's action runs. `wrong`: it turns red and shakes, then the same. `try_again`: it shakes and is crossed out and **the box stays open**; its action, if any, runs while it does, and the box waits for it. The choice is logged either way, so the report's first answer is still the first one chosen. A box with `dismissible: false` needs at least one button that is always offered and is not `try_again`.
@@ -719,6 +730,51 @@ The box opens with a short spring and closes with a fade. When a button's action
 
 When a scenario is copied or imported, `{{media:ID}}` placeholders in any text are pointed at the copied media.
 * **Background music** is an audio action with `repeat` and `persist` in a scene's start events. Persistent audio is treated as the music track: only one plays at a time. When a scene starts a persistent audio action with the same media that is already playing, the music carries on without restarting; with different media, it replaces the old track. A cancel action naming the audio action's id stops it.
+
+### Bench
+
+`{ "type": "bench", "op": "reset" | "add" | "empty" | "stir" | "burner", … }` works the scene's [close-up bench](#close-up-bench): `reset` puts everything back as it started; `add` puts `amount` of `substance` into `vessel_id`; `empty` and `stir` take a `vessel_id`; `burner` lights or puts out `tool_id` (`on`: true or false; absent, it changes over). In a scene with no bench it does nothing, and the validator says so.
+
+## Close-up bench
+
+`scene.bench` makes a scene an experiment worked with the hands (`packages/shared/src/bench.ts`; run by `bench-sim.ts`, checked by `bench-validate.ts`). With `show_avatars: false` the camera shows the whole scene, and a press on nothing in particular does not walk anybody.
+
+```json
+{
+  "enabled": true,
+  "ambient": 20,
+  "substances": [
+    { "id": "vinegar", "name": "Vinegar", "color": "#e3c45c", "ph": 2.4 },
+    { "id": "baking_soda", "name": "Baking soda", "state": "solid", "color": "#ffffff" },
+    { "id": "salty_water", "name": "Salty water", "color": "#d3e4ec", "strength": 0.4 },
+    { "id": "co2", "name": "Carbon dioxide", "state": "gas" }
+  ],
+  "vessels": [
+    { "id": "beaker", "shape": "beaker", "x": 960, "y": 840, "capacity": 250, "fixed": true, "marks": true },
+    { "id": "bottle", "name": "Vinegar", "shape": "bottle", "x": 420, "y": 840, "supply": true, "pour": 20, "contents": [{ "substance": "vinegar", "amount": 500 }] }
+  ],
+  "tools": [{ "id": "burner", "kind": "burner", "x": 960, "y": 920, "vessel_id": "beaker", "power": 6 }],
+  "reactions": [
+    { "id": "fizz", "uses": [{ "substance": "vinegar", "amount": 2 }, { "substance": "baking_soda", "amount": 1 }],
+      "makes": [{ "substance": "salty_water", "amount": 2 }, { "substance": "co2", "amount": 6 }],
+      "rate": 4, "heat": -0.15, "effect": "fizz", "note": "It fizzes!" }
+  ],
+  "readouts": [{ "id": "gas", "measure": "released", "vessel_id": "beaker", "substance": "co2", "variable": "fizz_gas" }],
+  "watches": [{ "id": "fizzed", "when": "reaction", "reaction_id": "fizz", "variable": "fizz_done", "set": 1, "event_id": 760050 }],
+  "graph": { "x": "time", "y": "gas", "variable": "fizz_log" }
+}
+```
+
+* **Substances.** `state` is `liquid` (default), `solid` or `gas`; amounts are in mL, and a gram of a solid counts as one. A gas that is made leaves the container and is counted as `released`. `strength` is how strongly it colours a mixture (left out: 1 with a `color`, hardly at all without one, strongly for an indicator); `indicator` is a list of `{ ph, color }` its colour blends between; `separate` liquids keep to a layer of their own, ordered by `density`; `boils_at` caps a container's temperature. Ids are names (`[A-Za-z_]\w*`), since conditions read them.
+* **Vessels** stand on (`x`, `y`): the middle of the foot. `shape` is `tube`, `beaker`, `flask`, `cylinder`, `dish`, `bottle`, `jar` or `dropper`, each with a usual `width`, `height`, `capacity` and `pour` (how much one tip gives). `supply`: a stock bottle that never runs out and takes nothing in. `fixed`: it is poured into, never out of.
+* **Tools**: `burner` (heats `vessel_id` by `power` °C a second for 100 mL; tapped on and off), `stirrer` (picked up and tapped on a container: `stirred` holds for six seconds), `sink` (a container in the hand is emptied into it).
+* **Reactions.** `uses` must all be present; an amount of 0 is needed but not used up. A round uses the amounts given and makes `makes`; `rate` is rounds a second (absent: all at once). `when` is conditions as in an infobox's `when` block, over `temperature`, `volume`, `ph`, `stirred`, `time` and the substances (how much of each is there). `heat` warms 100 mL by so many degrees a round. `effect`: `bubbles`, `fizz`, `smoke`, `glow`, `flash` or `none`.
+* **pH** is worked out from the liquids that have one: each brings its excess of acid or base, they cancel, and the rest dilutes, which gives a strong acid and base their real titration curve. A substance with no `ph` only dilutes.
+* **Readouts** measure `volume`, `temperature`, `ph`, `amount` or `released` (of `substance`), `pours`, `time`, or a `formula` of other readouts' ids (math.js). With `variable`, the value is kept there, at most four times a second.
+* **Watches** notice a `reaction` (the first time it happens in a container), a `reading` passing a `value` (`operator`), a container that `contains` a `substance` (at least `amount`), or an `overflow`. Each sets `variable` (to `set`, else 1, or a reading's value) and runs `event_id`, an indirect event of the scene. Once, unless `repeat`. What already holds when the scene starts is not something that happened.
+* **Graph**: `x` and `y` are readout ids (`x` may be `time`). `record` is `button` (the player presses Record) or `live` (a point every half second). With `variable`, the points are kept as `x,y;x,y` (at most 300), for a graph block's `data-series`.
+
+The bench runs in each player's browser (there is no shared mode yet), is not saved between visits, and is kept in the scene's `layout` in the database, so it travels in exports and copies; a watch's `event_id` follows its event to a copy.
 
 ## The side panel
 
@@ -759,9 +815,9 @@ Conditions and variable actions are written the same way for both; only the vari
 
 Both examples are in the demo: the rockfall above the spring meadow (`rockfall`, shared, cleared again by the repair drone in the engine room) and the critters in the hydroponics bay (`critters_met`, each player's own).
 
-`QBLHolding` is the id of the thing the player has picked in their bag to use (see [The bag](#the-bag-point-and-click-things)), and 0 otherwise.
+`QL_Holding` is the id of the thing the player has picked in their bag to use (see [The bag](#the-bag-point-and-click-things)), and 0 otherwise.
 
-Additional reserved variables: `QuestLabSceneId`, `QuestLabPlayerName`, `QuestLabPlayerCount`, and for the player's account `QuestLabStars`, `QuestLabXp`, `QuestLabRank` (the rank's name) and `QuestLabAbility_<key>` (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as `{{placeholders}}` like any other variable.
+The other reserved variables these extensions add are in [Reserved Variables](/docs/developers/variable/#reserved-variables): `QL_SceneId`, `QL_PlayerCount`, and for the player's account `QL_PlayerStars`, `QL_PlayerXP`, `QL_PlayerRank` (the rank's name) and `QL_Ability_<key>` (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as `{{placeholders}}` like any other variable.
 
 Additional condition operators: `>=` and `<=`.
 
@@ -796,13 +852,13 @@ Parameter | Type | Description
 carried_when | conditions | The item is in the player's bag while these hold. Absent: it is never carried.
 description | string | What the player reads when they point at it in their bag.
 
-Using a thing works through one reserved variable, `QBLHolding`. The player picks a thing in the bag (it is marked, with a line saying what to do), then:
+Using a thing works through one reserved variable, `QL_Holding`. The player picks a thing in the bag (it is marked, with a line saying what to do), then:
 
-* **clicks something in the scene.** Only hotspots that **take things** run: those whose conditions, or the conditions of one of their own actions or of an event they run, test `QBLHolding`. Give the hotspot that uses the rope the condition `QBLHolding = <the rope's id>` and it is there only while the rope is picked. Anything else clickable under the pointer says "That does not work there." Clicking empty floor walks there, still holding the thing.
-* **clicks a character.** Their click event runs if it takes things (tests `QBLHolding`), so it can thank them for the right thing and turn down anything else; otherwise the player is told the character does not need that.
+* **clicks something in the scene.** Only hotspots that **take things** run: those whose conditions, or the conditions of one of their own actions or of an event they run, test `QL_Holding`. Give the hotspot that uses the rope the condition `QL_Holding = <the rope's id>` and it is there only while the rope is picked. Anything else clickable under the pointer says "That does not work there." Clicking empty floor walks there, still holding the thing.
+* **clicks a character.** Their click event runs if it takes things (tests `QL_Holding`), so it can thank them for the right thing and turn down anything else; otherwise the player is told the character does not need that.
 * **picks a second thing.** If `combinations` has the pair, its actions are done; otherwise the player is told the two do not go together. Picking the same thing again, or pressing Escape, puts it back.
 
-`QBLHolding` keeps the thing's id until whatever the click started has finished, so every action of the event can test it; the bag lets go at once. What happens to the thing is up to the event: set its variable to 0 to use it up, or leave it to keep it.
+`QL_Holding` keeps the thing's id until whatever the click started has finished, so every action of the event can test it; the bag lets go at once. What happens to the thing is up to the event: set its variable to 0 to use it up, or leave it to keep it.
 
 ```json
 "combinations": [{
@@ -1016,7 +1072,7 @@ scale | decimal | Wearables and pets: height as a fraction of the avatar's heigh
 offset_x, offset_y | decimal | Wearables and pets: a nudge forward and down, in avatar heights.
 animation | string | Animations: `bounce`, `float`, `sway` or `pulse`. How the avatar moves while standing.
 move | string | Moves: the animation a button on the player's screen plays, in every scenario. See [Moves](#moves-what-players-can-do-themselves).
-ability | string | Abilities: a key. While equipped, `QuestLabAbility_<key>` is 1.
+ability | string | Abilities: a key. While equipped, `QL_Ability_<key>` is 1.
 
 ```json
 "shop_items": [
@@ -1030,7 +1086,7 @@ A player owns what they buy for good, and chooses what to have on: one wearable 
 **Abilities do nothing by themselves.** They are a flag scenarios can test, so what an ability unlocks is up to each author: a hotspot only its owners see, an extra line of dialogue, a shortcut. They never change walking speed or how far away a hotspot is revealed. In the demo, the survey map makes a map table appear at the landing site:
 
 ```json
-{ "shortname": "survey-map", "conditions": [{ "variable": "QuestLabAbility_stream_map", "operator": "=", "operand": 1 }], "...": "..." }
+{ "shortname": "survey-map", "conditions": [{ "variable": "QL_Ability_stream_map", "operator": "=", "operand": 1 }], "...": "..." }
 ```
 
 ### How it is kept honest

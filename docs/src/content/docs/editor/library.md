@@ -39,7 +39,7 @@ What the scenario remembers. The page is a table with one line per variable, edi
 
 Conditions and actions refer to variables by name, so renaming one does **not** update the conditions and actions that already use it. Text can show a variable's value with `{{variable_name}}`.
 
-A few reserved names are always there, such as `{{QuestLabPlayerName}}`. See [Variables](/docs/developers/extensions/#variables).
+The system's own variables are always there, such as `{{QL_PlayerName}}` (the player's name) and `{{QL_TeacherName}}`; they are listed as **built in**. See [Reserved Variables](/docs/developers/variable/#reserved-variables).
 
 ## Items
 
@@ -99,7 +99,7 @@ Each animation in the list shows a preview, its **Picture** (choose one there to
 
 **+ Add animation** adds one by name (`wave`, `dig`, `talk`...), starting from the standing picture, and opens it to pick its frames. A *Play an animation* action plays it: on a character, its list offers only the animations added here (not the standing, walking and close-up pictures). One named like a built-in move (`jump`, `wave`, `dance`...) replaces that move with your frames. The small preview beside each animation plays it as the game will.
 
-**🔊 Voice**: the voice the character's lines are recorded in, from the server's list (women, men, children, and robots and creatures). **▶ Listen** plays a sample; **🎙️ Record its lines** records every line the character says (in dialogue and in conversations), once, on the server. Players then hear the recording, with each word lit as it is spoken. Change a line or the voice and record again: only what changed is recorded. Lines that show a variable other than the player's name (a score, say) can't be recorded ahead of time, so the browser reads those. The Characters page has **🎙️ Record voices** for every character at once, **🎭 Give everyone a voice** for characters that have none, and shows how many lines are recorded. Publish afterwards so players get the recordings.
+**🔊 Voice**: the voice the character's lines are recorded in, from the server's list: **Larger than life** first (theatrical voices: a booming giant, a squeaky pixie, a jolly gnome, a pantomime villain, a zany inventor), then women, men, children, and robots and creatures. **▶ Listen** plays a sample; **🎙️ Record its lines** records every line the character says (in dialogue and in conversations), once, on the server. Players then hear the recording, with each word lit as it is spoken. Change a line or the voice and record again: only what changed is recorded. Lines that show a variable other than the player's name (a score, say) can't be recorded ahead of time, so the browser reads those. The Characters page has **🎙️ Record voices** for every character at once, **🎭 Give everyone a voice** for characters that have none (it reaches for the theatrical voices first, going by each character's name), and shows how many lines are recorded. Publish afterwards so players get the recordings.
 
 **Browser voice**: pitch, pace and a preferred voice name, for the lines that have no recording, which the browser reads aloud.
 
@@ -156,4 +156,4 @@ What players can do from buttons on their screen. Each card is drawn like the bu
 
 ## Shop
 
-What only this scenario sells in the marketplace: something to **wear**, a **pet**, **a way of standing**, a **move** or an **ability**, priced in stars. Each card shows the picture, the price and the kind; click it or **✏️ Edit** to open it in a panel, with what is for sale on the left and the settings for its kind (where it is worn and how big, the movement, the move or the ability key) on the right. Take an item off sale with **On sale** instead of deleting it, so players who bought it keep it. An ability sets the variable `QuestLabAbility_<key>` while it is equipped, which conditions can use to offer extras. See [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace).
+What only this scenario sells in the marketplace: something to **wear**, a **pet**, **a way of standing**, a **move** or an **ability**, priced in stars. Each card shows the picture, the price and the kind; click it or **✏️ Edit** to open it in a panel, with what is for sale on the left and the settings for its kind (where it is worn and how big, the movement, the move or the ability key) on the right. Take an item off sale with **On sale** instead of deleting it, so players who bought it keep it. An ability sets the variable `QL_Ability_<key>` while it is equipped, which conditions can use to offer extras. See [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace).

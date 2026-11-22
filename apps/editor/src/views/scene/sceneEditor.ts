@@ -4,7 +4,8 @@ import { h, redraw, toast } from '../../dom';
 import { select } from '../../fields';
 import type { Store } from '../../store';
 import { SceneCanvas } from './canvas';
-import { inspector } from './inspector';
+import { freshBenchId } from './benchPanels';
+import { inspector, startBench } from './inspector';
 import { SceneModel, type Point, type Selection, type Side } from './model';
 import { outline, type Addable } from './outline';
 
@@ -27,6 +28,12 @@ const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['shadow_spots', 'Shadow spot (shade)'],
   ['lights', 'Light (a glow that flickers, breathes or blinks)'],
   ['flows', 'Flowing water (a river, a waterfall, the sea)'],
+  ['bench-vessel', 'Bench: a beaker to mix in'],
+  ['bench-supply', 'Bench: a stock bottle to pour from'],
+  ['bench-dropper', 'Bench: a dropper (a drop at a time)'],
+  ['bench-burner', 'Bench: a burner'],
+  ['bench-stirrer', 'Bench: a stirring rod'],
+  ['bench-sink', 'Bench: a sink'],
   ['background_media', 'Background layer'],
   ['foreground_media', 'Foreground layer'],
 ];
@@ -174,7 +181,43 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
         const layers = model.layers(what);
         return void model.setLayers(what, [...layers, {}], true).then(() => select_({ kind: 'layer', which: what, index: layers.length }));
       }
+      case 'bench-vessel':
+      case 'bench-supply':
+      case 'bench-dropper':
+      case 'bench-burner':
+      case 'bench-stirrer':
+      case 'bench-sink':
+        return void addToBench(what, { x: Math.round(at.x), y: Math.round(at.y) });
     }
+  }
+
+  /** Something for the scene's close-up bench, giving the scene a bench if it had none. */
+  async function addToBench(what: Addable, at: Point) {
+    await startBench(model);
+    const bench = model.bench()!;
+    const vessels = bench.vessels ?? [];
+    const tools = bench.tools ?? [];
+    // Things go along the lower third, side by side from the left, rather than on top of each other.
+    const size = model.size(() => null);
+    void at;
+    const room = Math.max(1, size.width - 400);
+    const stand = { x: Math.round(200 + ((vessels.length + tools.filter((t) => t.kind !== 'burner').length) * 230) % room), y: Math.round(size.height * 0.7) };
+    if (what === 'bench-vessel' || what === 'bench-supply' || what === 'bench-dropper') {
+      const first = bench.substances?.[0]?.id;
+      const made = what === 'bench-vessel'
+        ? { id: freshBenchId(bench, 'vessels', 'beaker'), name: 'Beaker', shape: 'beaker' as const, ...stand, marks: true }
+        : what === 'bench-supply'
+          ? { id: freshBenchId(bench, 'vessels', 'bottle'), name: bench.substances?.[0]?.name ?? 'Bottle', shape: 'bottle' as const, ...stand, supply: true, contents: first ? [{ substance: first, amount: 500 }] : [] }
+          : { id: freshBenchId(bench, 'vessels', 'dropper'), name: 'Dropper', shape: 'dropper' as const, ...stand, y: Math.round(size.height * 0.45), supply: true, contents: first ? [{ substance: first, amount: 5 }] : [] };
+      await model.setBenchPart('vessels', [...vessels, made], true);
+      return select_({ kind: 'bench-vessel', index: vessels.length });
+    }
+    const kind = what === 'bench-burner' ? 'burner' : what === 'bench-stirrer' ? 'stirrer' : 'sink';
+    // A burner goes under the first container that is mixed in, and heats it.
+    const over = kind === 'burner' ? vessels.find((v) => !v.supply) : undefined;
+    const made = { id: freshBenchId(bench, 'tools', kind), kind, ...(over ? { x: over.x, y: over.y + 80, vessel_id: over.id } : stand) } as const;
+    await model.setBenchPart('tools', [...tools, made], true);
+    return select_({ kind: 'bench-tool', index: tools.length });
   }
 
   // ------------------------------------------------------------------- layout

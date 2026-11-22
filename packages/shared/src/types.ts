@@ -6,6 +6,7 @@
  * multiplayer runtime; they are all optional and documented in
  * docs/src/content/docs/developers/extensions.md.
  */
+import type { BenchOp, SceneBench } from './bench.js';
 import type { MediaSpeech } from './speech.js';
 
 import type { ButtonMark, InfoboxSize } from './infobox.js';
@@ -238,7 +239,8 @@ export type ActionType =
   | 'wait'
   | 'walk'
   | 'weather'
-  | 'camera';
+  | 'camera'
+  | 'bench';
 
 export type Alignment =
   | 'top left' | 'top center' | 'top right'
@@ -667,7 +669,26 @@ export interface CameraAction extends ActionBase {
   /** Milliseconds the glide takes. Default 1200. The action waits for it. */
   duration?: number;
 }
+
+/**
+ * [ext] Work the scene's close-up bench from an event: put it back as it started, add something
+ * to a container, empty one, stir one, light a burner or put it out.
+ */
+export interface BenchAction extends ActionBase {
+  type: 'bench';
+  op: BenchOp;
+  /** add, empty, stir: the container. */
+  vessel_id?: string;
+  /** add: what, and how much (mL). */
+  substance?: string;
+  amount?: number;
+  /** burner: which, and whether it is lit (absent: it changes over). */
+  tool_id?: string;
+  on?: boolean;
+}
+
 export type Action =
+  | BenchAction
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | NarrationAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
@@ -814,7 +835,7 @@ export interface ShopItem {
   /** Animations: how the avatar moves when this is equipped. */
   animation?: AvatarAnimation;
   /**
-   * Abilities: a key scenarios can test. While equipped, the variable `QBLAbility_<key>` is 1,
+   * Abilities: a key scenarios can test. While equipped, the variable `QL_Ability_<key>` is 1,
    * so a condition can offer a shortcut, a translation or a hidden hotspot to players who have it.
    */
   ability?: string;
@@ -916,7 +937,7 @@ export interface Item {
    * [ext] A thing the player can carry, as in a point-and-click adventure: it is in their bag (the
    * item bar on their screen) while these hold, usually a variable of their own an event sets to 1
    * when they pick it up and back to 0 when it is used up. From the bag the player picks it to use
-   * it on something in the scene (see `QBLHolding`) or puts it with another thing they carry
+   * it on something in the scene (see `QL_Holding`) or puts it with another thing they carry
    * (`combinations`). Absent: never carried.
    */
   carried_when?: Condition[];
@@ -1316,6 +1337,8 @@ export interface Scene {
   team_only?: boolean | null;
   items?: ItemPlacement[];
   characters?: CharacterPlacement[];
+  /** [ext] A close-up bench in the scene: containers to pour between, and what happens when they mix. See bench.ts. */
+  bench?: SceneBench | null;
 }
 
 // ------------------------------------------------------------- scenario
@@ -1431,7 +1454,8 @@ export interface Scenario {
   session?: Session | null;
   /**
    * The instance the requesting player is about to join, added when the document is served:
-   * its group key, the room it belongs to and, for a team, the team's name.
+   * its group key, the room it belongs to, for a team the team's name and, in an assigned game,
+   * the name of the teacher who assigned it (`QL_TeacherName`).
    */
-  instance?: { group: string; party: string; team_name?: string } | null;
+  instance?: { group: string; party: string; team_name?: string; teacher_name?: string } | null;
 }

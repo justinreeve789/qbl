@@ -252,7 +252,7 @@ test('in a scene limited to teams a player sees only their own team', async () =
   await g.wait(50);
   const remote = () => g.scene.system(RemotePlayersSystem);
   assert.ok(remote().get('ben') && remote().get('dee'), 'on the deck both teams are there');
-  assert.equal(g.var('QBLPlayerCount'), 2, 'the player count is of the team');
+  assert.equal(g.var('QL_PlayerCount'), 2, 'the player count is of the team');
 
   // Everyone goes to the lab, which is for one team at a time.
   local(g).walkTo({ x: 1188, y: 400 });

@@ -62,6 +62,14 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       const who = first?.speaker === 'character' ? String(store.byId('characters', first.character_id as number | null)?.name ?? 'Character') : 'Player';
       return `${lines.length} line${lines.length === 1 ? '' : 's'}, ${choices} choice${choices === 1 ? '' : 's'}${first ? `: ${who}: ${clip(String(first.text ?? ''), 36)}` : ''}`;
     }
+    case 'bench': {
+      const op = String(values.op ?? 'reset');
+      if (op === 'add') return `Bench: add ${values.amount ?? '?'} of “${String(values.substance ?? '?')}” to “${String(values.vessel_id ?? '?')}”`;
+      if (op === 'empty') return `Bench: empty “${String(values.vessel_id ?? '?')}”`;
+      if (op === 'stir') return `Bench: stir “${String(values.vessel_id ?? '?')}”`;
+      if (op === 'burner') return `Bench: ${values.on === true ? 'light' : values.on === false ? 'put out' : 'change over'} “${String(values.tool_id ?? '?')}”`;
+      return 'Bench: put everything back as it started';
+    }
     case 'freeze':
       return values.frozen === false ? 'Let the player move again' : 'Stop the player from moving';
     case 'animate': {

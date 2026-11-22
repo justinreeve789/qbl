@@ -1,0 +1,2012 @@
+{
+  "spec_version": 2,
+  "chat_mode": "emotes",
+  "move_speed": 420,
+  "asset_base_url": "/scenario-assets/sciencelab",
+  "objectives": [
+    {
+      "id": "book",
+      "text": "Read the lab book and answer its question",
+      "complete_when": [
+        {
+          "variable": "book_right",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "fizz",
+      "text": "Fizz: make vinegar and baking soda react",
+      "complete_when": [
+        {
+          "variable": "fizz_done",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "fizz-lots",
+      "text": "Fizz: give off 100 mL of gas (so far: {{fizz_gas}} mL)",
+      "optional": true,
+      "complete_when": [
+        {
+          "variable": "fizz_lots",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "titration",
+      "text": "Acids and bases: bring the flask to pH 7",
+      "complete_when": [
+        {
+          "variable": "neutral",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "layers",
+      "text": "Layers: get honey, water and oil into the cylinder",
+      "complete_when": [
+        {
+          "variable": "has_honey",
+          "operator": "=",
+          "operand": 1
+        },
+        {
+          "variable": "has_water",
+          "operator": "=",
+          "operand": 1
+        },
+        {
+          "variable": "has_oil",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "dissolve",
+      "text": "Dissolve and boil: dissolve salt in water",
+      "complete_when": [
+        {
+          "variable": "salt_dissolved",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    },
+    {
+      "id": "boil",
+      "text": "Dissolve and boil: get the salt back",
+      "complete_when": [
+        {
+          "variable": "salt_back",
+          "operator": "=",
+          "operand": 1
+        }
+      ]
+    }
+  ],
+  "id": 760001,
+  "code": "sciencelab",
+  "shortname": "sciencelab",
+  "title": "Science Lab",
+  "subtitle": "A lab book with maths and graphs, and four benches to pour, mix, heat and measure at",
+  "description": "A lab book with typeset formulas, sliders that work out density, graphs to drag and a checked answer; and four close-up benches: make vinegar and baking soda fizz, titrate an acid with an indicator, layer liquids by density, and dissolve salt and boil it dry.",
+  "start_scene_id": 760001,
+  "enable_save_session": true,
+  "require_login": false,
+  "allow_groups": true,
+  "max_players": 30,
+  "default_language": "en-us",
+  "global_variables": [
+    {
+      "id": 760006,
+      "variable_name": "book_mass",
+      "default_value": 54,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760007,
+      "variable_name": "book_volume",
+      "default_value": 20,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760008,
+      "variable_name": "book_density",
+      "default_value": 2.7,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760009,
+      "variable_name": "book_ax",
+      "default_value": -2,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760010,
+      "variable_name": "book_ay",
+      "default_value": -1,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760011,
+      "variable_name": "book_bx",
+      "default_value": 2,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760012,
+      "variable_name": "book_by",
+      "default_value": 3,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760013,
+      "variable_name": "book_a",
+      "default_value": 1,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760014,
+      "variable_name": "book_answer",
+      "default_value": "",
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760015,
+      "variable_name": "book_right",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760016,
+      "variable_name": "book_read",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760048,
+      "variable_name": "visited_lab",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760049,
+      "variable_name": "fizz_done",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760050,
+      "variable_name": "fizz_lots",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760051,
+      "variable_name": "fizz_gas",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760052,
+      "variable_name": "fizz_log",
+      "default_value": "",
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760063,
+      "variable_name": "neutral",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760064,
+      "variable_name": "flask_ph",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760065,
+      "variable_name": "titration_log",
+      "default_value": "",
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760074,
+      "variable_name": "has_honey",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760075,
+      "variable_name": "has_water",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760076,
+      "variable_name": "has_oil",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760085,
+      "variable_name": "salt_dissolved",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760086,
+      "variable_name": "salt_back",
+      "default_value": 0,
+      "scope": "player",
+      "persist": true,
+      "scenario_id": 760001
+    }
+  ],
+  "assets": [
+    {
+      "id": 760030,
+      "type": "image",
+      "url": "backgrounds/hall.jpg",
+      "filename": "hall.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760060,
+      "type": "image",
+      "url": "backgrounds/fizz.jpg",
+      "filename": "fizz.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760071,
+      "type": "image",
+      "url": "backgrounds/titration.jpg",
+      "filename": "titration.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760082,
+      "type": "image",
+      "url": "backgrounds/layers.jpg",
+      "filename": "layers.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 760001
+    },
+    {
+      "id": 760094,
+      "type": "image",
+      "url": "backgrounds/boil.jpg",
+      "filename": "boil.jpg",
+      "width": 1920,
+      "height": 1080,
+      "scale_x": 1,
+      "scale_y": 1,
+      "priority": 1,
+      "scenario_id": 760001
+    }
+  ],
+  "shop_items": [],
+  "items": [],
+  "characters": [],
+  "scenes": [
+    {
+      "id": 760001,
+      "shortname": "hall",
+      "scenario_id": 760001,
+      "sequence": 1,
+      "subtitle": "The science lab",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": true,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 760030,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [
+        [
+          {
+            "x": 0,
+            "y": 810
+          },
+          {
+            "x": 1920,
+            "y": 810
+          },
+          {
+            "x": 1920,
+            "y": 1080
+          },
+          {
+            "x": 0,
+            "y": 1080
+          }
+        ]
+      ],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 960
+        },
+        {
+          "name": "from-fizz",
+          "position_x": 330,
+          "position_y": 880
+        },
+        {
+          "name": "from-titration",
+          "position_x": 690,
+          "position_y": 880
+        },
+        {
+          "name": "from-layers",
+          "position_x": 1230,
+          "position_y": 880
+        },
+        {
+          "name": "from-boil",
+          "position_x": 1590,
+          "position_y": 880
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "start_events": [
+        {
+          "id": 760033,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [
+            {
+              "id": 760032,
+              "type": "variable",
+              "variable": "visited_lab",
+              "operator": "=",
+              "operand": 0
+            }
+          ],
+          "actions": [
+            {
+              "id": 760031,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Welcome to the science lab. Read the lab book in the middle, then walk up to a bench and click it.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 9000,
+              "event_id": 760033,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "id": 760035,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 760034,
+              "type": "variable",
+              "blocking": true,
+              "name": "visited_lab",
+              "operator": "set",
+              "operand": 1,
+              "event_id": 760035,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 760028,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 960,
+          "position_y": 640,
+          "radius": 130,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760027,
+              "type": "infobox",
+              "blocking": true,
+              "content": "<h3>Lab book</h3>\n<p>Welcome to the lab. This book has what you need for the four benches. Turn the pages, move the sliders, drag the points.</p>\n<div data-qbl=\"callout\" data-tone=\"tip\"><p>On a bench, tap a bottle to pick it up, then tap a container to pour into it.</p></div>\n<hr data-qbl=\"page\">\n<h3>Density</h3>\n<p>Density says how much stuff is packed into a space:</p>\n<div data-qbl=\"math\" data-tex=\"\\text{density} = \\frac{\\text{mass}}{\\text{volume}}\">density = mass / volume</div>\n<div data-qbl=\"panel\"><input data-qbl=\"slider\" data-var=\"book_mass\" data-min=\"1\" data-max=\"200\" data-step=\"1\" data-value=\"54\" data-unit=\" g\" data-label=\"Mass\"><input data-qbl=\"slider\" data-var=\"book_volume\" data-min=\"1\" data-max=\"100\" data-step=\"1\" data-value=\"20\" data-unit=\" mL\" data-label=\"Volume\"></div>\n<p>Density: <span data-qbl=\"calc\" data-formula=\"book_mass / book_volume\" data-digits=\"2\" data-unit=\"g/mL\" data-var=\"book_density\"></span></p>\n<div data-qbl=\"when\" data-when=\"book_density > 1\"><p>That is denser than water (<span data-qbl=\"math\" data-tex=\"1\\ \\text{g/mL}\">1 g/mL</span>): it would <strong>sink</strong>.</p></div>\n<div data-qbl=\"when\" data-when=\"book_density <= 1\"><p>That is no denser than water: it would <strong>float</strong>.</p></div>\n<hr data-qbl=\"page\">\n<h3>Reading a graph: slope</h3>\n<p>Drag the two points. The slope of the line through them is how far it goes up for each step across.</p>\n<div data-qbl=\"graph\" data-x=\"-5,5\" data-y=\"-5,5\" data-points=\"book_ax,book_ay=-2,-1; book_bx,book_by=2,3\" data-join=\"line\" data-snap=\"1\" data-xlabel=\"x\" data-ylabel=\"y\"></div>\n<div data-qbl=\"math\" data-tex=\"\\text{slope} = \\frac{y_2 - y_1}{x_2 - x_1}\">slope = (y2 - y1) / (x2 - x1)</div>\n<p>Slope: <span data-qbl=\"calc\" data-formula=\"(book_by - book_ay) / (book_bx - book_ax)\" data-digits=\"2\"></span></p>\n<hr data-qbl=\"page\">\n<h3>Curves</h3>\n<p>This curve is <span data-qbl=\"math\" data-tex=\"y = a x^2\">y = a x^2</span>. Slide <em>a</em> and watch it open, flatten and turn over.</p>\n<input data-qbl=\"slider\" data-var=\"book_a\" data-min=\"-2\" data-max=\"2\" data-step=\"0.1\" data-value=\"1\" data-label=\"a\">\n<div data-qbl=\"graph\" data-fn=\"book_a * x^2\" data-x=\"-4,4\" data-y=\"-8,8\" data-xlabel=\"x\" data-ylabel=\"y\"></div>\n<p>At <span data-qbl=\"math\" data-tex=\"x = 2\">x = 2</span>, <span data-qbl=\"math\" data-tex=\"y\">y</span> is <span data-qbl=\"calc\" data-formula=\"book_a * 2^2\" data-digits=\"1\"></span>.</p>\n<hr data-qbl=\"page\">\n<h3>What fizzes?</h3>\n<p>Vinegar is a weak acid. Baking soda is a base. Together they make a salt, water and a gas that bubbles out:</p>\n<div data-qbl=\"math\" data-tex=\"\\ce{CH3COOH + NaHCO3 -> CH3COONa + H2O + CO2 ^}\">CH3COOH + NaHCO3 → CH3COONa + H2O + CO2</div>\n<p>A strong acid and a strong base cancel each other exactly:</p>\n<div data-qbl=\"math\" data-tex=\"\\ce{HCl + NaOH -> NaCl + H2O}\">HCl + NaOH → NaCl + H2O</div>\n<details><summary>Why does one drop change everything?</summary><p>Near the point where they cancel, almost no acid is left. One more drop of base is then more than all the acid that remains, and the pH leaps from acid to base.</p></details>\n<hr data-qbl=\"page\">\n<h3>Your titration</h3>\n<p>The points you record at the <strong>Acids and bases</strong> bench appear here.</p>\n<div data-qbl=\"graph\" data-x=\"0,100\" data-y=\"0,14\" data-series=\"titration_log\" data-xlabel=\"Base added (mL)\" data-ylabel=\"pH\" data-label=\"pH as base is added\"></div>\n<div data-qbl=\"callout\" data-tone=\"think\"><p>Where is the curve steepest? What is the pH there?</p></div>\n<hr data-qbl=\"page\">\n<h3>Check yourself</h3>\n<p>A block of metal has a mass of <strong>54 g</strong> and a volume of <strong>20 mL</strong>. What is its density? Give the unit.</p>\n<input data-qbl=\"answer\" data-var=\"book_answer\" data-accept=\"2.7 g/mL\" data-tolerance=\"2%\" data-check=\"book_right\" placeholder=\"For example: 1.5 g/mL\">",
+              "dismissible": true,
+              "size": "large",
+              "accent": "#1f5c53",
+              "call_to_actions": [
+                {
+                  "text": "Check my answer",
+                  "action": {
+                    "type": "run_event",
+                    "target_event_id": 760026
+                  }
+                }
+              ],
+              "event_id": 760028,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760029,
+              "event_id": 760028,
+              "type": "text",
+              "position_x": 960,
+              "position_y": 520,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "📖 Lab book",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 760037,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 330,
+          "position_y": 640,
+          "radius": 150,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760036,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760002,
+              "spawn_point": "default",
+              "event_id": 760037,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760038,
+              "event_id": 760037,
+              "type": "text",
+              "position_x": 330,
+              "position_y": 290,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Fizz",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 760040,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 690,
+          "position_y": 640,
+          "radius": 150,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760039,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760003,
+              "spawn_point": "default",
+              "event_id": 760040,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760041,
+              "event_id": 760040,
+              "type": "text",
+              "position_x": 690,
+              "position_y": 290,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Acids and bases",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 760043,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 1230,
+          "position_y": 640,
+          "radius": 150,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760042,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760004,
+              "spawn_point": "default",
+              "event_id": 760043,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760044,
+              "event_id": 760043,
+              "type": "text",
+              "position_x": 1230,
+              "position_y": 290,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Layers",
+              "placement": "front"
+            }
+          ]
+        },
+        {
+          "id": 760046,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 1590,
+          "position_y": 640,
+          "radius": 150,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760045,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760005,
+              "spawn_point": "default",
+              "event_id": 760046,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760047,
+              "event_id": 760046,
+              "type": "text",
+              "position_x": 1590,
+              "position_y": 290,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "Dissolve and boil",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 760026,
+          "scene_id": 760001,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "book-checked",
+          "actions": [
+            {
+              "id": 760023,
+              "type": "variable",
+              "blocking": true,
+              "name": "book_read",
+              "operator": "set",
+              "operand": 1,
+              "event_id": 760026,
+              "sequence": 1
+            },
+            {
+              "id": 760024,
+              "type": "run_event",
+              "blocking": true,
+              "target_event_id": 760019,
+              "event_id": 760026,
+              "sequence": 2
+            },
+            {
+              "id": 760025,
+              "type": "run_event",
+              "blocking": true,
+              "target_event_id": 760022,
+              "event_id": 760026,
+              "sequence": 3
+            }
+          ]
+        },
+        {
+          "id": 760019,
+          "scene_id": 760001,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [
+            {
+              "id": 760018,
+              "type": "variable",
+              "variable": "book_right",
+              "operator": "=",
+              "operand": 1
+            }
+          ],
+          "shortname": "book-right",
+          "actions": [
+            {
+              "id": 760017,
+              "type": "text_overlay",
+              "blocking": false,
+              "text": "Right: 54 g ÷ 20 mL = 2.7 g/mL. That is the density of aluminium.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 9000,
+              "event_id": 760019,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "id": 760022,
+          "scene_id": 760001,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [
+            {
+              "id": 760021,
+              "type": "variable",
+              "variable": "book_right",
+              "operator": "=",
+              "operand": 0
+            }
+          ],
+          "shortname": "book-wrong",
+          "actions": [
+            {
+              "id": 760020,
+              "type": "text_overlay",
+              "blocking": false,
+              "text": "Not yet. Divide the mass by the volume, and give the unit: g/mL. Open the book to try again.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 9000,
+              "event_id": 760022,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 760002,
+      "shortname": "fizz",
+      "scenario_id": 760001,
+      "sequence": 2,
+      "subtitle": "What happens when vinegar meets baking soda?",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 760060,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "bench": {
+        "enabled": true,
+        "substances": [
+          {
+            "id": "water",
+            "name": "Water",
+            "formula": "H₂O",
+            "color": "#bfe0ff",
+            "strength": 0.2,
+            "opacity": 0.6,
+            "boils_at": 100
+          },
+          {
+            "id": "vinegar",
+            "name": "Vinegar",
+            "color": "#e3c45c",
+            "opacity": 0.7,
+            "ph": 2.4
+          },
+          {
+            "id": "baking_soda",
+            "name": "Baking soda",
+            "formula": "NaHCO₃",
+            "state": "solid",
+            "color": "#ffffff"
+          },
+          {
+            "id": "salty_water",
+            "name": "Salty water",
+            "color": "#d3e4ec",
+            "strength": 0.4,
+            "opacity": 0.65
+          },
+          {
+            "id": "co2",
+            "name": "Carbon dioxide",
+            "formula": "CO₂",
+            "state": "gas"
+          }
+        ],
+        "reactions": [
+          {
+            "id": "fizz",
+            "name": "Vinegar meets baking soda",
+            "uses": [
+              {
+                "substance": "vinegar",
+                "amount": 2
+              },
+              {
+                "substance": "baking_soda",
+                "amount": 1
+              }
+            ],
+            "makes": [
+              {
+                "substance": "salty_water",
+                "amount": 2
+              },
+              {
+                "substance": "co2",
+                "amount": 6
+              }
+            ],
+            "rate": 4,
+            "heat": -0.15,
+            "effect": "fizz",
+            "note": "It fizzes! A gas is bubbling out."
+          }
+        ],
+        "vessels": [
+          {
+            "id": "beaker",
+            "name": "Beaker",
+            "shape": "beaker",
+            "x": 960,
+            "y": 840,
+            "width": 250,
+            "height": 290,
+            "capacity": 250,
+            "fixed": true,
+            "marks": true
+          },
+          {
+            "id": "vinegar_bottle",
+            "name": "Vinegar",
+            "shape": "bottle",
+            "x": 420,
+            "y": 840,
+            "supply": true,
+            "pour": 20,
+            "contents": [
+              {
+                "substance": "vinegar",
+                "amount": 500
+              }
+            ]
+          },
+          {
+            "id": "soda_jar",
+            "name": "Baking soda",
+            "shape": "jar",
+            "x": 640,
+            "y": 840,
+            "supply": true,
+            "pour": 5,
+            "contents": [
+              {
+                "substance": "baking_soda",
+                "amount": 200
+              }
+            ]
+          },
+          {
+            "id": "water_bottle",
+            "name": "Water",
+            "shape": "bottle",
+            "x": 1380,
+            "y": 840,
+            "supply": true,
+            "pour": 20,
+            "contents": [
+              {
+                "substance": "water",
+                "amount": 500
+              }
+            ]
+          }
+        ],
+        "readouts": [
+          {
+            "id": "liquid",
+            "label": "In the beaker",
+            "measure": "volume",
+            "vessel_id": "beaker"
+          },
+          {
+            "id": "temp",
+            "label": "Temperature",
+            "measure": "temperature",
+            "vessel_id": "beaker"
+          },
+          {
+            "id": "gas",
+            "label": "Gas given off",
+            "measure": "released",
+            "vessel_id": "beaker",
+            "substance": "co2",
+            "variable": "fizz_gas"
+          }
+        ],
+        "watches": [
+          {
+            "id": "fizzed",
+            "name": "It fizzes",
+            "when": "reaction",
+            "reaction_id": "fizz",
+            "variable": "fizz_done",
+            "set": 1,
+            "event_id": 760054
+          },
+          {
+            "id": "lots",
+            "name": "100 mL of gas",
+            "when": "reading",
+            "readout_id": "gas",
+            "operator": ">=",
+            "value": 100,
+            "variable": "fizz_lots",
+            "set": 1,
+            "event_id": 760056
+          }
+        ],
+        "graph": {
+          "x": "gas",
+          "y": "temp",
+          "title": "Colder as it fizzes",
+          "variable": "fizz_log"
+        }
+      },
+      "start_events": [
+        {
+          "id": 760062,
+          "scene_id": 760002,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 760061,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Tap the vinegar to pick it up, then tap the beaker to pour some in. Then add a spoonful of baking soda. What do you see, and what happens to the temperature?",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 16000,
+              "event_id": 760062,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 760058,
+          "scene_id": 760002,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 150,
+          "position_y": 1010,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760057,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760001,
+              "spawn_point": "from-fizz",
+              "event_id": 760058,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760059,
+              "event_id": 760058,
+              "type": "text",
+              "position_x": 150,
+              "position_y": 1010,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the lab",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 760054,
+          "scene_id": 760002,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "fizzed",
+          "actions": [
+            {
+              "id": 760053,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "It fizzes: the acid in the vinegar and the baking soda make carbon dioxide, a gas. Watch the temperature: this reaction takes heat in. Press Record to plot it.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 12000,
+              "event_id": 760054,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "id": 760056,
+          "scene_id": 760002,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "lots",
+          "actions": [
+            {
+              "id": 760055,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Over 100 mL of gas, from a few spoonfuls of powder. Where did it come from? The lab book has the equation.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 10000,
+              "event_id": 760056,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 760003,
+      "shortname": "titration",
+      "scenario_id": 760001,
+      "sequence": 3,
+      "subtitle": "How much base cancels the acid?",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 760071,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "bench": {
+        "enabled": true,
+        "substances": [
+          {
+            "id": "water",
+            "name": "Water",
+            "formula": "H₂O",
+            "color": "#bfe0ff",
+            "strength": 0.2,
+            "opacity": 0.6,
+            "boils_at": 100
+          },
+          {
+            "id": "acid",
+            "name": "Dilute acid",
+            "formula": "HCl",
+            "opacity": 0.5,
+            "ph": 1
+          },
+          {
+            "id": "base",
+            "name": "Dilute base",
+            "formula": "NaOH",
+            "opacity": 0.5,
+            "ph": 13
+          },
+          {
+            "id": "lemon_juice",
+            "name": "Lemon juice",
+            "color": "#f7ee9c",
+            "opacity": 0.6,
+            "ph": 2.3
+          },
+          {
+            "id": "soapy_water",
+            "name": "Soapy water",
+            "color": "#e4f1f5",
+            "opacity": 0.6,
+            "ph": 10
+          },
+          {
+            "id": "indicator",
+            "name": "Universal indicator",
+            "opacity": 0.8,
+            "indicator": [
+              {
+                "ph": 1,
+                "color": "#e53935"
+              },
+              {
+                "ph": 4,
+                "color": "#fb8c00"
+              },
+              {
+                "ph": 6,
+                "color": "#fdd835"
+              },
+              {
+                "ph": 7,
+                "color": "#43a047"
+              },
+              {
+                "ph": 9,
+                "color": "#1e88e5"
+              },
+              {
+                "ph": 11,
+                "color": "#3949ab"
+              },
+              {
+                "ph": 13,
+                "color": "#8e24aa"
+              }
+            ]
+          }
+        ],
+        "reactions": [],
+        "vessels": [
+          {
+            "id": "flask",
+            "name": "Flask of acid",
+            "shape": "flask",
+            "x": 960,
+            "y": 840,
+            "width": 280,
+            "height": 320,
+            "capacity": 250,
+            "fixed": true,
+            "contents": [
+              {
+                "substance": "acid",
+                "amount": 50
+              },
+              {
+                "substance": "indicator",
+                "amount": 2
+              }
+            ]
+          },
+          {
+            "id": "base_bottle",
+            "name": "Base: 5 mL a pour",
+            "shape": "bottle",
+            "x": 460,
+            "y": 840,
+            "supply": true,
+            "pour": 5,
+            "contents": [
+              {
+                "substance": "base",
+                "amount": 500
+              }
+            ]
+          },
+          {
+            "id": "base_dropper",
+            "name": "Base: 1 mL a drop",
+            "shape": "dropper",
+            "x": 680,
+            "y": 780,
+            "supply": true,
+            "pour": 1,
+            "contents": [
+              {
+                "substance": "base",
+                "amount": 5
+              }
+            ]
+          },
+          {
+            "id": "acid_bottle",
+            "name": "Acid: 5 mL a pour",
+            "shape": "bottle",
+            "x": 1420,
+            "y": 840,
+            "supply": true,
+            "pour": 5,
+            "contents": [
+              {
+                "substance": "acid",
+                "amount": 500
+              }
+            ]
+          }
+        ],
+        "readouts": [
+          {
+            "id": "added",
+            "label": "Base added",
+            "measure": "amount",
+            "vessel_id": "flask",
+            "substance": "base"
+          },
+          {
+            "id": "ph",
+            "label": "pH",
+            "measure": "ph",
+            "vessel_id": "flask",
+            "digits": 1,
+            "variable": "flask_ph"
+          },
+          {
+            "id": "off",
+            "measure": "formula",
+            "formula": "abs(ph - 7)",
+            "hidden": true
+          }
+        ],
+        "watches": [
+          {
+            "id": "neutral",
+            "name": "The flask is neutral",
+            "when": "reading",
+            "readout_id": "off",
+            "operator": "<=",
+            "value": 0.5,
+            "variable": "neutral",
+            "set": 1,
+            "event_id": 760067
+          }
+        ],
+        "graph": {
+          "x": "added",
+          "y": "ph",
+          "title": "pH as base is added",
+          "variable": "titration_log"
+        }
+      },
+      "start_events": [
+        {
+          "id": 760073,
+          "scene_id": 760003,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 760072,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "The flask holds 50 mL of acid with universal indicator: red means acid. Pour in base, and press Record after each pour to plot the pH. Can you stop when it turns green, at pH 7?",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 16000,
+              "event_id": 760073,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 760069,
+          "scene_id": 760003,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 150,
+          "position_y": 1010,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760068,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760001,
+              "spawn_point": "from-titration",
+              "event_id": 760069,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760070,
+              "event_id": 760069,
+              "type": "text",
+              "position_x": 150,
+              "position_y": 1010,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the lab",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 760067,
+          "scene_id": 760003,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "neutral",
+          "actions": [
+            {
+              "id": 760066,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Green: neutral, pH 7. The base has cancelled the acid exactly. Add one more drop and see what the pH does. Your graph is in the lab book.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 12000,
+              "event_id": 760067,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 760004,
+      "shortname": "layers",
+      "scenario_id": 760001,
+      "sequence": 4,
+      "subtitle": "Which liquid ends up on top?",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 760082,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "bench": {
+        "enabled": true,
+        "substances": [
+          {
+            "id": "water",
+            "name": "Water",
+            "formula": "H₂O",
+            "color": "#bfe0ff",
+            "strength": 0.2,
+            "opacity": 0.6,
+            "density": 1,
+            "boils_at": 100
+          },
+          {
+            "id": "oil",
+            "name": "Cooking oil",
+            "color": "#f2c94c",
+            "opacity": 0.75,
+            "density": 0.92,
+            "separate": true
+          },
+          {
+            "id": "honey",
+            "name": "Honey",
+            "color": "#c9861a",
+            "opacity": 0.9,
+            "density": 1.42,
+            "separate": true
+          },
+          {
+            "id": "dye",
+            "name": "Blue food dye",
+            "color": "#1e63d0",
+            "strength": 12,
+            "opacity": 0.9,
+            "density": 1
+          }
+        ],
+        "reactions": [],
+        "vessels": [
+          {
+            "id": "cylinder",
+            "name": "Measuring cylinder",
+            "shape": "cylinder",
+            "x": 960,
+            "y": 840,
+            "width": 170,
+            "height": 440,
+            "capacity": 100,
+            "fixed": true,
+            "marks": true
+          },
+          {
+            "id": "oil_bottle",
+            "name": "Cooking oil",
+            "shape": "bottle",
+            "x": 400,
+            "y": 840,
+            "supply": true,
+            "pour": 10,
+            "contents": [
+              {
+                "substance": "oil",
+                "amount": 500
+              }
+            ]
+          },
+          {
+            "id": "water_bottle",
+            "name": "Water",
+            "shape": "bottle",
+            "x": 600,
+            "y": 840,
+            "supply": true,
+            "pour": 10,
+            "contents": [
+              {
+                "substance": "water",
+                "amount": 500
+              }
+            ]
+          },
+          {
+            "id": "honey_bottle",
+            "name": "Honey",
+            "shape": "bottle",
+            "x": 1340,
+            "y": 840,
+            "supply": true,
+            "pour": 10,
+            "contents": [
+              {
+                "substance": "honey",
+                "amount": 500
+              }
+            ]
+          },
+          {
+            "id": "dye_dropper",
+            "name": "Blue dye",
+            "shape": "dropper",
+            "x": 1540,
+            "y": 780,
+            "supply": true,
+            "pour": 1,
+            "contents": [
+              {
+                "substance": "dye",
+                "amount": 5
+              }
+            ]
+          }
+        ],
+        "readouts": [
+          {
+            "id": "total",
+            "label": "In the cylinder",
+            "measure": "volume",
+            "vessel_id": "cylinder"
+          }
+        ],
+        "watches": [
+          {
+            "id": "has_honey",
+            "name": "Honey is in",
+            "when": "contains",
+            "vessel_id": "cylinder",
+            "substance": "honey",
+            "amount": 10,
+            "variable": "has_honey",
+            "set": 1
+          },
+          {
+            "id": "has_water",
+            "name": "Water is in",
+            "when": "contains",
+            "vessel_id": "cylinder",
+            "substance": "water",
+            "amount": 10,
+            "variable": "has_water",
+            "set": 1
+          },
+          {
+            "id": "has_oil",
+            "name": "Oil is in",
+            "when": "contains",
+            "vessel_id": "cylinder",
+            "substance": "oil",
+            "amount": 10,
+            "variable": "has_oil",
+            "set": 1,
+            "event_id": 760078
+          }
+        ]
+      },
+      "start_events": [
+        {
+          "id": 760084,
+          "scene_id": 760004,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 760083,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Pour oil, water and honey into the cylinder, in any order. Where does each one settle? A drop of blue dye shows which layer is the water.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 16000,
+              "event_id": 760084,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 760080,
+          "scene_id": 760004,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 150,
+          "position_y": 1010,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760079,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760001,
+              "spawn_point": "from-layers",
+              "event_id": 760080,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760081,
+              "event_id": 760080,
+              "type": "text",
+              "position_x": 150,
+              "position_y": 1010,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the lab",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 760078,
+          "scene_id": 760004,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "oil-in",
+          "actions": [
+            {
+              "id": 760077,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Oil floats on water, whatever order you pour them in: a millilitre of oil has less mass than a millilitre of water. Honey has more, so it sinks under both.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 12000,
+              "event_id": 760078,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 760005,
+      "shortname": "boil",
+      "scenario_id": 760001,
+      "sequence": 5,
+      "subtitle": "Where does the salt go, and can you get it back?",
+      "is_intro_scene": false,
+      "zoom": 1,
+      "show_avatars": false,
+      "width": 1920,
+      "height": 1080,
+      "background_media": [
+        {
+          "media_id": 760094,
+          "display_width": 1920,
+          "display_height": 1080
+        }
+      ],
+      "foreground_media": [],
+      "walkable_areas": [],
+      "blocked_areas": [],
+      "spawn_points": [
+        {
+          "name": "default",
+          "position_x": 960,
+          "position_y": 1000
+        }
+      ],
+      "scale_areas": [],
+      "items": [],
+      "characters": [],
+      "bench": {
+        "enabled": true,
+        "substances": [
+          {
+            "id": "water",
+            "name": "Water",
+            "formula": "H₂O",
+            "color": "#bfe0ff",
+            "strength": 0.2,
+            "opacity": 0.6,
+            "boils_at": 100
+          },
+          {
+            "id": "salt",
+            "name": "Salt",
+            "formula": "NaCl",
+            "state": "solid",
+            "color": "#ffffff"
+          },
+          {
+            "id": "dissolved_salt",
+            "name": "Dissolved salt",
+            "color": "#e6eef2",
+            "strength": 0.3,
+            "opacity": 0.5
+          },
+          {
+            "id": "steam",
+            "name": "Steam",
+            "state": "gas"
+          }
+        ],
+        "reactions": [
+          {
+            "id": "dissolve",
+            "name": "Salt dissolves",
+            "uses": [
+              {
+                "substance": "salt",
+                "amount": 1
+              },
+              {
+                "substance": "water",
+                "amount": 0
+              }
+            ],
+            "makes": [
+              {
+                "substance": "dissolved_salt",
+                "amount": 1
+              }
+            ],
+            "when": "stirred = 1",
+            "rate": 3,
+            "effect": "none"
+          },
+          {
+            "id": "boil",
+            "name": "Water boils away",
+            "uses": [
+              {
+                "substance": "water",
+                "amount": 1
+              }
+            ],
+            "makes": [
+              {
+                "substance": "steam",
+                "amount": 1
+              }
+            ],
+            "when": "temperature >= 100",
+            "rate": 3,
+            "effect": "smoke"
+          },
+          {
+            "id": "dry",
+            "name": "Salt is left behind",
+            "uses": [
+              {
+                "substance": "dissolved_salt",
+                "amount": 1
+              }
+            ],
+            "makes": [
+              {
+                "substance": "salt",
+                "amount": 1
+              }
+            ],
+            "when": "water < 1; temperature >= 60",
+            "rate": 4,
+            "effect": "none",
+            "note": "The water has gone, and the salt is back."
+          }
+        ],
+        "vessels": [
+          {
+            "id": "beaker",
+            "name": "Beaker",
+            "shape": "beaker",
+            "x": 960,
+            "y": 768,
+            "width": 250,
+            "height": 270,
+            "capacity": 250,
+            "fixed": true,
+            "marks": true
+          },
+          {
+            "id": "water_bottle",
+            "name": "Water",
+            "shape": "bottle",
+            "x": 420,
+            "y": 840,
+            "supply": true,
+            "pour": 25,
+            "contents": [
+              {
+                "substance": "water",
+                "amount": 500
+              }
+            ]
+          },
+          {
+            "id": "salt_jar",
+            "name": "Salt",
+            "shape": "jar",
+            "x": 640,
+            "y": 840,
+            "supply": true,
+            "pour": 5,
+            "contents": [
+              {
+                "substance": "salt",
+                "amount": 200
+              }
+            ]
+          }
+        ],
+        "tools": [
+          {
+            "id": "burner",
+            "kind": "burner",
+            "x": 960,
+            "y": 840,
+            "vessel_id": "beaker",
+            "power": 6
+          },
+          {
+            "id": "rod",
+            "kind": "stirrer",
+            "x": 1380,
+            "y": 840
+          }
+        ],
+        "readouts": [
+          {
+            "id": "temp",
+            "label": "Temperature",
+            "measure": "temperature",
+            "vessel_id": "beaker"
+          },
+          {
+            "id": "water",
+            "label": "Water",
+            "measure": "amount",
+            "vessel_id": "beaker",
+            "substance": "water"
+          },
+          {
+            "id": "salt",
+            "label": "Salt you can see",
+            "measure": "amount",
+            "vessel_id": "beaker",
+            "substance": "salt"
+          },
+          {
+            "id": "dissolved",
+            "label": "Salt dissolved",
+            "measure": "amount",
+            "vessel_id": "beaker",
+            "substance": "dissolved_salt",
+            "unit": "g"
+          }
+        ],
+        "watches": [
+          {
+            "id": "dissolved",
+            "name": "The salt dissolves",
+            "when": "reaction",
+            "reaction_id": "dissolve",
+            "variable": "salt_dissolved",
+            "set": 1,
+            "event_id": 760088
+          },
+          {
+            "id": "dry",
+            "name": "The salt comes back",
+            "when": "reaction",
+            "reaction_id": "dry",
+            "variable": "salt_back",
+            "set": 1,
+            "event_id": 760090
+          }
+        ],
+        "graph": {
+          "x": "time",
+          "y": "temp",
+          "title": "Heating up",
+          "record": "live"
+        }
+      },
+      "start_events": [
+        {
+          "id": 760096,
+          "scene_id": 760005,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "actions": [
+            {
+              "id": 760095,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "Pour water into the beaker and add a spoonful of salt. Pick up the stirring rod and tap the beaker to stir. Then tap the burner to light it, and watch the graph.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 16000,
+              "event_id": 760096,
+              "sequence": 1
+            }
+          ]
+        }
+      ],
+      "end_events": [],
+      "hotspots": [
+        {
+          "id": 760092,
+          "scene_id": 760005,
+          "overridable": false,
+          "block_hotspots": false,
+          "conditions": [],
+          "position_x": 150,
+          "position_y": 1010,
+          "radius": 70,
+          "activate_by_trigger": true,
+          "actions": [
+            {
+              "id": 760091,
+              "type": "jump",
+              "blocking": true,
+              "scene_id": 760001,
+              "spawn_point": "from-boil",
+              "event_id": 760092,
+              "sequence": 1
+            }
+          ],
+          "labels": [
+            {
+              "id": 760093,
+              "event_id": 760092,
+              "type": "text",
+              "position_x": 150,
+              "position_y": 1010,
+              "scale_x": 1,
+              "scale_y": 1,
+              "text": "← Back to the lab",
+              "placement": "front"
+            }
+          ]
+        }
+      ],
+      "indirect_events": [
+        {
+          "id": 760088,
+          "scene_id": 760005,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "dissolved",
+          "actions": [
+            {
+              "id": 760087,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "The salt is dissolving: it is still there, spread through the water too finely to see. Light the burner to find out if you can get it back.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 11000,
+              "event_id": 760088,
+              "sequence": 1
+            }
+          ]
+        },
+        {
+          "id": 760090,
+          "scene_id": 760005,
+          "overridable": true,
+          "block_hotspots": false,
+          "conditions": [],
+          "shortname": "dry",
+          "actions": [
+            {
+              "id": 760089,
+              "type": "text_overlay",
+              "blocking": true,
+              "text": "The water boiled away as steam at 100 °C, and the salt is back in the beaker. Look at the graph: the temperature climbed, then stayed flat while the water boiled.",
+              "alignment": "top center",
+              "text_font_size": 26,
+              "duration": 13000,
+              "event_id": 760090,
+              "sequence": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -12,7 +12,7 @@ import { Game } from './harness';
  */
 function mission(): Scenario {
   const has = (v: string) => [{ variable: v, operator: '>' as const, operand: 0 }];
-  const holding = (id: number) => ({ variable: 'QBLHolding', operator: '=' as const, operand: id });
+  const holding = (id: number) => ({ variable: 'QL_Holding', operator: '=' as const, operand: id });
   return normalizeScenario({
     id: 8, shortname: 'bag', title: 'Bag', start_scene_id: 1, avatar_media_ids: [9],
     assets: [
@@ -63,8 +63,8 @@ function mission(): Scenario {
       indirect_events: [
         { id: 90, shortname: 'chat-gardener', actions: [
           { id: 91, type: 'run_event', target_event_id: 92, conditions: [holding(4)] },
-          { id: 93, type: 'dialogue', speaker: 'character', character_id: 1, text: 'I do not need that.', duration: 500, conditions: [{ variable: 'QBLHolding', operator: '!=', operand: 0 }, { variable: 'QBLHolding', operator: '!=', operand: 4 }] },
-          { id: 94, type: 'dialogue', speaker: 'character', character_id: 1, text: 'Hello there.', duration: 500, conditions: [{ variable: 'QBLHolding', operator: '=', operand: 0 }] },
+          { id: 93, type: 'dialogue', speaker: 'character', character_id: 1, text: 'I do not need that.', duration: 500, conditions: [{ variable: 'QL_Holding', operator: '!=', operand: 0 }, { variable: 'QL_Holding', operator: '!=', operand: 4 }] },
+          { id: 94, type: 'dialogue', speaker: 'character', character_id: 1, text: 'Hello there.', duration: 500, conditions: [{ variable: 'QL_Holding', operator: '=', operand: 0 }] },
         ] },
         { id: 92, shortname: 'give-kite', actions: [
           { id: 95, type: 'variable', name: 'has_kite', operator: 'set', operand: 0 },
@@ -87,18 +87,18 @@ test('things are picked up into the bag, put together, used in the scene and giv
   assert.equal(g.ui.bagSlots[0].description, 'A long coil of rope.');
   assert.ok(g.ui.bagSlots[0].image, 'with its picture');
 
-  // Without anything picked, the tree only says what is wrong; QBLHolding is 0.
+  // Without anything picked, the tree only says what is wrong; QL_Holding is 0.
   await g.click(700, 350);
-  assert.equal(g.var('QBLHolding'), 0);
+  assert.equal(g.var('QL_Holding'), 0);
   assert.ok(g.ui.texts.includes('The kite is stuck up high.'));
 
   // Picked, then picked again: put back.
   await g.pick('Rope');
   assert.equal(g.ui.bagPicked, 1);
-  assert.equal(g.var('QBLHolding'), 1);
+  assert.equal(g.var('QL_Holding'), 1);
   await g.pick('Rope');
   assert.equal(g.ui.bagPicked, null);
-  assert.equal(g.var('QBLHolding'), 0);
+  assert.equal(g.var('QL_Holding'), 0);
 
   // The rope on the tree: it does not take it. The tree's own click does not run either.
   const texts = g.ui.texts.length;
@@ -126,14 +126,14 @@ test('things are picked up into the bag, put together, used in the scene and giv
   assert.deepEqual(g.bag, ['Grappling hook']);
   assert.ok(g.ui.texts.includes('You tie the hook to the rope.'));
 
-  // The grappling hook on the tree: the kite comes down. QBLHolding stays set until the event ends.
+  // The grappling hook on the tree: the kite comes down. QL_Holding stays set until the event ends.
   await g.pick('Grappling hook');
   await g.click(700, 350);
   assert.equal(g.ui.bagPicked, null, 'the bag lets go at once');
-  assert.equal(g.var('QBLHolding'), 3, 'while the event runs');
+  assert.equal(g.var('QL_Holding'), 3, 'while the event runs');
   await g.wait(700);
   assert.equal(g.var('kite_down'), 1);
-  assert.equal(g.var('QBLHolding'), 0);
+  assert.equal(g.var('QL_Holding'), 0);
   assert.deepEqual(g.bag, ['Grappling hook', 'Kite']);
 
   // Characters: something they do not want, then what they want.

@@ -206,3 +206,14 @@ test('the HTML view shows the HTML, and HTML typed there comes back as blocks', 
   assert.match((await box()).content, /<p>Hi \{\{guess\}\}\.<\/p>$/);
   assert.deepEqual(errors, []);
 });
+
+test('the 🔢 Variable block offers the system variables (QL_…) after the scenario\'s own', async () => {
+  await insert('variable');
+  await page.waitForSelector('[data-panel=variable-pick] [data-variable-pick=QL_PlayerName]');
+  assert.equal(await page.locator('[data-panel=variable-pick] [data-variable-pick^="QL_"]').count(), 16);
+  await page.click('[data-panel=variable-pick] [data-variable-pick=QL_TeacherName]');
+  await page.waitForSelector('.inspector [data-var-chip=QL_TeacherName]:not(.unknown)');
+  assert.match((await box()).content, /\{\{QL_TeacherName\}\}/);
+  const said = validateScenario(await scenario()).warnings.map((w) => w.message);
+  assert.deepEqual(said.filter((m) => m.includes('QL_')), []);
+});

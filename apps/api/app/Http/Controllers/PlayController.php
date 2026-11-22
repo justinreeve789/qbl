@@ -52,7 +52,7 @@ class PlayController extends Controller
 
         // The instance being joined: which room it belongs to, and for a team its name.
         $access = $user ? $classes->access($user->id, $user->role, $scenario->id, $group) : ['party' => $group];
-        $document['instance'] = array_filter(['group' => $group, 'party' => $access['party'], 'team_name' => $access['team_name'] ?? null], fn ($v) => $v !== null);
+        $document['instance'] = array_filter(['group' => $group, 'party' => $access['party'], 'team_name' => $access['team_name'] ?? null, 'teacher_name' => $access['teacher_name'] ?? null], fn ($v) => $v !== null);
 
         return response()->json(['scenario' => $document]);
     }

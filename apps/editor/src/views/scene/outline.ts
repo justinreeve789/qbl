@@ -1,3 +1,4 @@
+import { BENCH_SHAPES, BENCH_TOOLS, vesselName } from '@qbl/shared';
 import { emojiIcon } from '../../icons';
 import { EVENT_KINDS, eventLabel, mediaLabel } from '../../describe';
 import { h } from '../../dom';
@@ -13,13 +14,15 @@ export type Addable =
   | 'background_media' | 'foreground_media'
   | 'start' | 'end' | 'indirect' | 'hotspot-click' | 'hotspot-walk'
   | 'edge-left' | 'edge-right' | 'edge-top' | 'edge-bottom'
-  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows';
+  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows'
+  | 'bench-vessel' | 'bench-supply' | 'bench-dropper' | 'bench-burner' | 'bench-stirrer' | 'bench-sink';
 
 /** An icon and a colour for each kind of thing a scene holds. */
 const LOOK: Record<string, readonly [icon: string, tone: string]> = {
   'Background layers': ['🏞️', '#8e5bd6'], 'Foreground layers': ['🌿', '#8e5bd6'],
   'Start events': ['▶️', '#c77b12'], 'Hotspots': ['🎯', '#2f6fed'], 'Indirect events': ['🔁', '#c77b12'], 'End events': ['⏹️', '#c77b12'],
   'Spawn points': ['🚩', '#d9a400'], 'Items here': ['🎒', '#d6457a'], 'Characters here': ['🧑‍🚀', '#d6457a'],
+  'Containers': ['🧪', '#0f7a9d'], 'Tools': ['🔥', '#0f7a9d'],
   'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Shadow spots': ['🌑', '#5b6b8c'], 'Blocked areas': ['🟥', '#c0392b'],
 };
 
@@ -90,6 +93,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     section('Spawn points', 'spawn', model.layout('spawn_points').map((p, index) => entry({ kind: 'spawn', index }, String(p.name ?? '')))),
     section('Items here', 'item', model.layout('items').map((p, index) => entry({ kind: 'item', index }, name('items', p.item_id)))),
     section('Characters here', 'character', model.layout('characters').map((p, index) => entry({ kind: 'character', index }, name('characters', p.character_id)))),
+    ...benchSections(model, entry, section),
     section('Walkable areas', 'walkable_areas', model.layout<Point[]>('walkable_areas').map((a, index) => entry({ kind: 'area', which: 'walkable_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
     section('Scale areas', 'scale_areas', model.layout('scale_areas').map((a, index) => entry({ kind: 'scale', index }, String(a.name || `Scale area ${index + 1}`), `${a.scale_top}% → ${a.scale_bottom}%`))),
     section('Shadow spots', 'shadow_spots', model.layout('shadow_spots').map((a, index) => entry({ kind: 'shadow', index }, String(a.name || `Shadow ${index + 1}`), `${a.strength ?? 60}%`))),
@@ -97,4 +101,20 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     section('Flowing water', 'flows', model.layout('flows').map((a, index) => entry({ kind: 'flow', index }, String(a.name || `Water ${index + 1}`), String(a.kind ?? 'river')))),
     section('Blocked areas', 'blocked_areas', model.layout<Point[]>('blocked_areas').map((a, index) => entry({ kind: 'area', which: 'blocked_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
   );
+}
+
+/** The close-up bench's things, when the scene has one. */
+function benchSections(
+  model: SceneModel,
+  entry: (selection: Selection, text: string, note?: string) => { text: string; node: HTMLElement },
+  section: (title: string, add: Addable | null, items: Array<{ text: string; node: HTMLElement }>, sort?: boolean) => HTMLElement,
+): HTMLElement[] {
+  const bench = model.bench();
+  if (!bench) return [];
+  const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+  return [
+    h('ul', null, entry({ kind: 'bench' }, `🧪 Close-up bench${bench.enabled ? '' : ' (off)'}`, count(bench.reactions?.length ?? 0, 'reaction')).node),
+    section('Containers', 'bench-vessel', (bench.vessels ?? []).map((v, index) => entry({ kind: 'bench-vessel', index }, vesselName(v), `${BENCH_SHAPES[v.shape ?? 'beaker']?.label ?? v.shape}${v.supply ? ' · stock' : v.fixed ? ' · stays put' : ''}`))),
+    section('Tools', 'bench-burner', (bench.tools ?? []).map((t, index) => entry({ kind: 'bench-tool', index }, t.name || BENCH_TOOLS[t.kind]?.label || t.kind, t.kind === 'burner' ? `under ${t.vessel_id ?? 'nothing'}` : ''))),
+  ];
 }

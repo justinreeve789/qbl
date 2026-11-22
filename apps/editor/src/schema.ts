@@ -1,4 +1,4 @@
-import { BUILT_IN_SOUNDS, BUILT_IN_SOUND_NAMES, type ActionType } from '@qbl/shared';
+import { BENCH_OPS, BUILT_IN_SOUNDS, BUILT_IN_SOUND_NAMES, type ActionType } from '@qbl/shared';
 import type { Field } from './fields';
 
 /**
@@ -365,6 +365,18 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'duration', label: 'Over (ms)', kind: 'number', min: 0 },
     ],
   },
+  bench: {
+    label: 'Bench',
+    about: 'Work the scene’s close-up bench: put it back as it started, add something to a container, empty or stir one, light a burner.',
+    fields: [
+      { key: 'op', label: 'Do', kind: 'select', default: 'reset', structural: true, options: BENCH_OPS },
+      { key: 'vessel_id', label: 'Container', kind: 'bench', bench: 'vessels', when: (v) => ['add', 'empty', 'stir'].includes(String(v.op ?? '')) },
+      { key: 'substance', label: 'What', kind: 'bench', bench: 'substances', when: (v) => v.op === 'add' },
+      { key: 'amount', label: 'How much (mL or g)', kind: 'number', min: 0.1, step: 0.5, when: (v) => v.op === 'add' },
+      { key: 'tool_id', label: 'Burner', kind: 'bench', bench: 'burners', when: (v) => v.op === 'burner' },
+      { key: 'on', label: 'It is', kind: 'tristate', placeholder: 'Changed over', options: [['true', 'Lit'], ['false', 'Put out']], when: (v) => v.op === 'burner' },
+    ],
+  },
 };
 
 export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
@@ -379,7 +391,7 @@ export const ACTION_GROUPS: ActionGroup[] = [
   { key: 'text', label: 'Boxes and words on screen', icon: '📝', tone: '#1b8bb4', types: ['infobox', 'text_overlay'] },
   { key: 'people', label: 'Characters and the player', icon: '🧑', tone: '#d6457a', types: ['walk', 'animate', 'freeze', 'avatar'] },
   { key: 'media', label: 'Pictures, video and sound', icon: '🎞️', tone: '#8e5bd6', types: ['image_fixed', 'image_overlay', 'spritemap', 'video', 'audio', 'translate'] },
-  { key: 'scene', label: 'Scenes, camera and weather', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'camera', 'weather'] },
+  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'camera', 'weather', 'bench'] },
   { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel'] },
   { key: 'progress', label: 'Rewards and progress', icon: '🏆', tone: '#3b8f4a', types: ['award', 'glossary', 'variable', 'shop'] },
 ];
@@ -394,7 +406,7 @@ const ACTION_ICONS: Record<ActionType, string> = {
   infobox: '📋', text_overlay: '🔤',
   walk: '🚶', animate: '🤸', freeze: '✋', avatar: '👤',
   image_fixed: '📌', image_overlay: '🖼️', spritemap: '🎞️', video: '🎬', audio: '🔊', translate: '↔️',
-  jump: '🚪', camera: '🎥', weather: '🌧️',
+  jump: '🚪', camera: '🎥', weather: '🌧️', bench: '🧪',
   wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️',
   award: '⭐', glossary: '📖', variable: '🔢', shop: '🛍️',
 };
@@ -438,6 +450,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return starterConversation();
     case 'freeze':
       return { frozen: true };
+    case 'bench':
+      return { op: 'reset' };
     case 'animate':
       return { animation: 'jump' };
     case 'avatar':
@@ -789,7 +803,7 @@ export const SHOP_WEARABLE_FIELDS: Field[] = [
 export const SHOP_SLOT: Field = { key: 'slot', label: 'Worn on', kind: 'select', options: [['head', 'Head'], ['body', 'Body'], ['back', 'Back'], ['hand', 'Hand']], hint: 'One item per place can be worn at a time.' };
 export const SHOP_ANIMATION: Field = { key: 'animation', label: 'Movement', kind: 'select', options: [['bounce', 'Bounce'], ['float', 'Float'], ['sway', 'Sway'], ['pulse', 'Pulse']] };
 export const SHOP_MOVE: Field = { key: 'move', label: 'Animation', kind: 'animation', hint: 'What the button plays: a built-in move (jump, spin, crouch, wave, dance), or a name avatars’ sprite sheets define. Bought here, it is only sold in this scenario, but once owned it works in every scenario.' };
-export const SHOP_ABILITY: Field = { key: 'ability', label: 'Ability key', kind: 'text', placeholder: 'translator', hint: 'While a player has this ability equipped, the variable QBLAbility_<key> is 1. Use it in conditions to offer them something extra: a hidden hotspot, a translated sign, a shortcut.' };
+export const SHOP_ABILITY: Field = { key: 'ability', label: 'Ability key', kind: 'text', placeholder: 'translator', hint: 'While a player has this ability equipped, the variable QL_Ability_<key> is 1. Use it in conditions to offer them something extra: a hidden hotspot, a translated sign, a shortcut.' };
 
 export const CHARACTER_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text', wide: true },

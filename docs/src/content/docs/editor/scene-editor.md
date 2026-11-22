@@ -38,6 +38,8 @@ Coordinates are in **scene pixels**, measured from the top left of the scene. Ev
 
 Items and characters must be defined first on their own pages; if there are none, the editor tells you so.
 
+A scene can also be a **close-up bench**: containers to pour between, a burner, and reactions you write. See [Close-up experiments](/docs/editor/bench/).
+
 ## The scene itself
 
 Select **⚙️ Scene settings**. The form has:

@@ -597,7 +597,7 @@ $spoken = array_filter($built['actions'], fn ($a) => $a['type'] === 'dialogue' &
 $voicedLines = array_filter($spoken, fn ($a) => isset($a['params']['narration_media_id']));
 $unvoiced = array_filter($spoken, fn ($a) => ! isset($a['params']['narration_media_id']));
 check(count($voicedLines) >= 5, 'the characters\' lines are recorded ('.count($voicedLines).' of '.count($spoken).')');
-check(! array_filter($unvoiced, fn ($a) => ! preg_match('/\{\{(?!\s*QBLPlayerName)/', (string) $a['params']['text'])), 'every line left to the browser shows a variable that is only known in play');
+check(! array_filter($unvoiced, fn ($a) => ! preg_match('/\{\{(?!\s*QL_PlayerName)/', (string) $a['params']['text'])), 'every line left to the browser shows a variable that is only known in play');
 check(! array_filter($voices->said, fn ($s) => str_contains($s[0], '{{')), 'no placeholder is ever said');
 $mediaById = array_column($built['media'], null, 'id');
 $aLine = array_values($voicedLines)[0];
@@ -736,7 +736,7 @@ $set = array_column(array_filter($combo['actions'], fn ($a) => $a['type'] === 'v
 same($set, ['has_hook' => 0, 'has_twine' => 0, 'has_grabber' => 1, 'done_make_grabber' => 1], 'are used up, and make the hook on a string');
 check(in_array('count_power', array_column($combo['actions'], 'name'), true) && str_contains(json_encode($combo['actions']), 'a hook on a string!'), 'which counts for its step and says what happened');
 $fish = $byShort['burrow/fish_battery-use'];
-same($fish['conditions'][0], ['id' => $fish['conditions'][0]['id'], 'event_id' => $fish['id'], 'type' => 'variable', 'variable' => 'QBLHolding', 'operator' => '=', 'operand' => $grabber['id']], 'a use takes the thing it needs from the bag');
+same($fish['conditions'][0], ['id' => $fish['conditions'][0]['id'], 'event_id' => $fish['id'], 'type' => 'variable', 'variable' => 'QL_Holding', 'operator' => '=', 'operand' => $grabber['id']], 'a use takes the thing it needs from the bag');
 same($fish['labels'], [], 'it shows nothing of its own');
 check(! in_array('has_grabber', array_column($fish['actions'], 'name'), true), 'a thing that is kept stays in the bag');
 check(in_array('has_battery', array_column($fish['actions'], 'name'), true), 'and what it finds goes into the bag');
@@ -745,7 +745,7 @@ same([$byShort['burrow/fish_battery']['actions'][0]['type'], $byShort['burrow/fi
 check(isset($byShort['burrow/fish_battery-done']), 'and afterwards it is still there to see');
 $chatBot = $byShort['hive/chat-bot'];
 $giveRun = array_values(array_filter($chatBot['actions'], fn ($a) => ($a['target_event_id'] ?? null) === ($byShort['hive/give-give_battery']['id'] ?? -1)))[0] ?? null;
-check($giveRun && in_array(['QBLHolding', '=', $itemsByName['Robot battery']['id']], array_map(fn ($c) => [$c['variable'], $c['operator'], $c['operand']], $giveRun['conditions']), true), 'Pip takes the battery when it is given to him');
+check($giveRun && in_array(['QL_Holding', '=', $itemsByName['Robot battery']['id']], array_map(fn ($c) => [$c['variable'], $c['operator'], $c['operand']], $giveRun['conditions']), true), 'Pip takes the battery when it is given to him');
 check(str_contains(json_encode($chatBot['actions']), 'That is not what I need') && str_contains(json_encode($chatBot['actions']), 'my battery is flat'), 'anything else he turns down, and he says what he needs');
 $give = $byShort['hive/give-give_battery'];
 check(in_array('has_battery', array_column($give['actions'], 'name'), true), 'the battery leaves the bag');

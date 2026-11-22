@@ -77,7 +77,7 @@ test('the panel: write a line, give the player choices, and lead one to a new li
   await page.click('.inspector .talk-map [data-line="l1"]');
   await page.waitForSelector('dialog[data-panel=conversation] .talk-line[data-line="l1"]');
   assert.equal(await panel('.talk-nav-item').count(), 2);
-  await fill(panel('[data-field=text] textarea'), 'Welcome to the bridge, {{QBLPlayerName}}. What do plants need to grow?');
+  await fill(panel('[data-field=text] textarea'), 'Welcome to the bridge, {{QL_PlayerName}}. What do plants need to grow?');
   assert.match(await panel('.talk-nav-item[data-line="l1"] .talk-nav-text').innerText(), /Welcome to the bridge/, 'the list follows the typing');
 
   // The first choice becomes the right answer, with a variable to remember it by.
@@ -119,7 +119,7 @@ test('the panel: write a line, give the player choices, and lead one to a new li
 
   const talk = conversationIn(await draft());
   const l1 = talk.lines.find((l) => l.id === 'l1')!;
-  assert.equal(l1.text, 'Welcome to the bridge, {{QBLPlayerName}}. What do plants need to grow?');
+  assert.equal(l1.text, 'Welcome to the bridge, {{QL_PlayerName}}. What do plants need to grow?');
   assert.deepEqual(l1.choices, [
     { text: 'Sunlight and water', correct: true, actions: [{ type: 'variable', name: 'samples', operator: '+', operand: 1 }] },
     { text: 'Goodbye!' },
@@ -148,11 +148,71 @@ test('renaming a line keeps everything that led to it; deleting one ends what le
   assert.deepEqual([...issues.errors, ...issues.warnings].filter((i) => i.path.includes('.lines')), [], 'the conversation is sound');
 });
 
+test('more than one box before the player answers: “Add another box” moves the choices on to it', async () => {
+  await panel('.talk-nav-item[data-line="l1"]').click();
+  await page.waitForSelector('dialog[data-panel=conversation] .talk-line[data-line="l1"]');
+  await panel('.talk-add-box').click();
+  await page.waitForSelector('dialog[data-panel=conversation] .talk-line[data-line="l3"]');
+  assert.match(await panel('.talk-boxes').innerText(), /Box 2 of 2[\s\S]*Welcome to the bridge[\s\S]*The player answers/);
+  assert.match(await panel('.talk-line-head').innerText(), /Captain Vega says/i, 'the next box is said by the same speaker');
+  await fill(panel('[data-field=text] textarea'), 'Think carefully.');
+  // The new box sits under the one it follows, marked as following on.
+  assert.deepEqual(await panel('.talk-nav-item').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.line)), ['l1', 'l3', 'hint']);
+  assert.equal(await panel('.talk-nav-row[data-row="l3"].follows').count(), 1);
+  await shot('5-two-boxes');
+
+  let talk = conversationIn(await draft());
+  const l1 = talk.lines.find((l) => l.id === 'l1')!;
+  assert.equal(l1.next, 'l3');
+  assert.equal(l1.choices, undefined, 'the first box has no choices now');
+  assert.deepEqual(talk.lines.find((l) => l.id === 'l3')!.choices!.map((c) => c.text), ['Sunlight and water', 'Goodbye!', 'Only soil']);
+
+  // A box in a row taken out again: what led to it goes on to the box after it.
+  await panel('.talk-nav-item[data-line="hint"]').click();
+  await page.waitForSelector('dialog[data-panel=conversation] .talk-line[data-line="hint"]');
+  await panel('.talk-add-box').click();
+  await page.waitForSelector('dialog[data-panel=conversation] .talk-line[data-line="l4"]');
+  talk = conversationIn(await draft());
+  assert.equal(talk.lines.find((l) => l.id === 'hint')!.next, 'l4');
+  assert.equal(talk.lines.find((l) => l.id === 'l4')!.next, 'l1');
+  await panel('.talk-line-head button.danger').click();
+  await page.waitForFunction(() => !document.querySelector('dialog[data-panel=conversation] .talk-nav-item[data-line="l4"]'));
+  talk = conversationIn(await draft());
+  assert.equal(talk.lines.find((l) => l.id === 'hint')!.next, 'l1', 'the row closes up over the deleted box');
+});
+
+test('the lines can be put in any order, by ↑ ↓ or by dragging, and the start stays where it was', async () => {
+  const order = () => panel('.talk-nav-item').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.line));
+  await panel('.talk-nav-row[data-row="hint"] button[aria-label="Move this line up"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('dialog[data-panel=conversation] .talk-nav-item')[1]?.getAttribute('data-line') === 'hint');
+  assert.deepEqual(await order(), ['l1', 'hint', 'l3']);
+  const below = (await panel('.talk-nav-row[data-row="l3"]').boundingBox())!;
+  await panel('.talk-nav-row[data-row="l1"] .grip').dragTo(panel('.talk-nav-row[data-row="l3"]'), { targetPosition: { x: 40, y: below.height - 4 } });
+  await page.waitForFunction(() => document.querySelectorAll('dialog[data-panel=conversation] .talk-nav-item')[2]?.getAttribute('data-line') === 'l1');
+  assert.deepEqual(await order(), ['hint', 'l3', 'l1']);
+  assert.equal(await panel('.talk-nav-item[data-line="l1"] .talk-start').count(), 1, 'still the start');
+  let talk = conversationIn(await draft());
+  assert.deepEqual(talk.lines.map((l) => l.id), ['hint', 'l3', 'l1']);
+  assert.equal(talk.start, 'l1');
+  await shot('6-sorted');
+
+  // Back to the first place: the start is the first line again, and needs no naming.
+  await panel('.talk-nav-row[data-row="l1"] button[aria-label="Move this line up"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('dialog[data-panel=conversation] .talk-nav-item')[1]?.getAttribute('data-line') === 'l1');
+  await panel('.talk-nav-row[data-row="l1"] button[aria-label="Move this line up"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('dialog[data-panel=conversation] .talk-nav-item')[0]?.getAttribute('data-line') === 'l1');
+  talk = conversationIn(await draft());
+  assert.deepEqual(talk.lines.map((l) => l.id), ['l1', 'hint', 'l3']);
+  assert.equal(talk.start, undefined);
+  const issues = validateScenario(await draft());
+  assert.deepEqual([...issues.errors, ...issues.warnings].filter((i) => i.path.includes('.lines')), [], 'the conversation is sound');
+});
+
 test('closing the panel brings the map up to date', async () => {
   await page.keyboard.press('Escape');
   await page.waitForSelector('dialog[data-panel=conversation]', { state: 'detached' });
   const map = await page.innerText('.inspector .talk-map');
-  assert.match(map, /Welcome to the bridge[\s\S]*Sunlight and water[\s\S]*Ends the conversation[\s\S]*Only soil[\s\S]*Not quite[\s\S]*Back to “Welcome to the bridge/);
+  assert.match(map, /Welcome to the bridge[\s\S]*Think carefully\.[\s\S]*Sunlight and water[\s\S]*Ends the conversation[\s\S]*Only soil[\s\S]*Not quite[\s\S]*Back to “Welcome to the bridge/);
   assert.doesNotMatch(map, /Never said/);
   await shot('4-map-after', '.inspector .talk-map');
   assert.deepEqual(errors, []);

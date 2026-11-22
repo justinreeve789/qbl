@@ -4,7 +4,7 @@ import {
   animationRepeats, automaticAnimation, rankFor, revealAmount, scaleAt, sceneMusic, speedFactorAt,
   applyOperator, collectSceneMediaIds, escapeHtml, evaluateObjectives, interpolate, placeholderVariables, MoveBudget, sceneSize, computeJumpTargets, inHotspot, isWalkable,
   nearestWalkable, normalizeActionType, normalizeScenario, resolveMove, ScenarioIndex, SceneEngine,
-  testCondition, validateMove, validateScenario, VariableStore, walkContext,
+  currentName, isReserved, RESERVED_VARIABLES, SYSTEM_VARIABLES, takesItems, testCondition, validateMove, validateScenario, VariableStore, walkContext,
   type Action, type ActionHandle, type EngineHost, type GameEvent, type Scenario, type Scene,
 } from '../src/index.js';
 
@@ -139,14 +139,14 @@ test('store: saved values, scopes, remote forwarding, snapshot', () => {
   store.onChange((n, v) => seen.push(`${n}=${v}`));
   store.apply('coins', '+', 1);
   store.apply('door', 'set', 'open');
-  store.apply('QBLTimeElapsed', 'set', 0);
+  store.apply('QL_TimeElapsed', 'set', 0);
   assert.deepEqual(sent, [['door', 'set', 'open']]);
   assert.equal(store.get('door'), 'closed', 'not applied until the server echoes');
   store.setFromRemote('door', 'open');
   assert.deepEqual(seen, ['coins=5', 'door=open']);
   assert.deepEqual(store.snapshot(), { coins: 5 });
-  store.provide('QBLTimeElapsed', () => 42);
-  assert.equal(store.get('QBLTimeElapsed'), 42);
+  store.provide('QL_TimeElapsed', () => 42);
+  assert.equal(store.get('QL_TimeElapsed'), 42);
 });
 
 test('placeholders and objectives', () => {
@@ -287,7 +287,7 @@ test('validation catches broken references', () => {
   };
   const messages = validateScenario(bad).errors.map((e) => e.message).join('\n');
   for (const expected of [
-    'The start scene (99) does not exist', 'reserved QBL prefix', 'Media 1 is audio, expected image',
+    'The start scene (99) does not exist', 'kept for the system', 'Media 1 is audio, expected image',
     'at least three points', 'is inside walk-in hotspot 1', '"missing" is not declared',
     'Scene 42 does not exist', 'Duplicate action id 1', 'need a media_id',
     'Unknown action type "bogus"', 'Action 500 does not exist', '"nope" is not declared',
@@ -377,8 +377,20 @@ test('repeat loops until its condition stops it; block_hotspots gates hotspots',
   await host.advance(0);
   assert.equal(engine.triggerHotspot(hotspot), false, 'once-only hotspot does not fire twice');
   assert.equal(store.get('hits'), 1);
-  assert.equal(engine.hotspotCoordinates, '0,0');
+  assert.equal(engine.hotspotCoordinates, '', 'no hotspot is running any more');
   assert.deepEqual([...engine.flags], ['hotspot:50']);
+});
+
+test('QL_HotspotCoordinates is the running hotspot\'s position, and empty once its event is over', async () => {
+  const { engine, host, index } = setup({
+    hotspots: [{ id: 60, radius: 10, position_x: 120, position_y: 340, actions: [{ id: 61, type: 'wait', duration: 500 }] }],
+  });
+  assert.equal(engine.hotspotCoordinates, '');
+  assert.equal(engine.triggerHotspot(index.scene(1)!.hotspots![0]!), true);
+  await host.advance(100);
+  assert.equal(engine.hotspotCoordinates, '120,340');
+  await host.advance(1000);
+  assert.equal(engine.hotspotCoordinates, '');
 });
 
 test('run_event runs indirect events; jump runs end events first', async () => {
@@ -410,6 +422,61 @@ test('infobox buttons run ad hoc actions', async () => {
   const { engine, host, store } = setup({}, [{ variable_name: 'mission', default_value: 0 }]);
   await Promise.race([engine.runAction({ type: 'variable', name: 'mission', operator: 'set', operand: 1 }), host.advance(1)]);
   assert.equal(store.get('mission'), 1);
+});
+
+test('the system variables: QL_ names, reserved, usable in conditions and placeholders', () => {
+  assert.deepEqual(SYSTEM_VARIABLES.map((v) => v.name), [
+    'QL_HotspotCoordinates', 'QL_ScenarioLanguage', 'QL_TimeElapsed', 'QL_VideoPlaying', 'QL_VideoTimeIndex',
+    'QL_PlayerName', 'QL_TeacherName', 'QL_HasTeacher', 'QL_IsTeacher', 'QL_PhysicsEnabled',
+    'QL_PlayerStars', 'QL_PlayerXP', 'QL_PlayerRank', 'QL_PlayerCount', 'QL_SceneId', 'QL_Holding',
+  ]);
+  assert.ok(RESERVED_VARIABLES.every((n) => n.startsWith('QL_')), 'every system variable is QL_');
+  for (const old of ['QBLHotspotCoordinates', 'QBLScenarioLanguage', 'QBLTimeElapsed', 'QBLVideoPlaying', 'QBLVideoTimeIndex']) {
+    assert.ok(!(RESERVED_VARIABLES as readonly string[]).includes(old), `${old} is gone`);
+  }
+  assert.ok(isReserved('QL_Anything') && isReserved('QL_Holding') && !isReserved('QLX') && !isReserved('ql_player'));
+  const doc = {
+    id: 1, shortname: 't', title: 'T', start_scene_id: 1,
+    global_variables: [{ variable_name: 'QL_Mine', default_value: 0 }],
+    scenes: [{
+      id: 1, width: 100, height: 100,
+      start_events: [{ id: 1, conditions: [{ variable: 'QL_HasTeacher', operator: '=', operand: 1 }], actions: [
+        { id: 1, type: 'text_overlay', text: 'Hi {{QL_PlayerName}}, ask {{QL_TeacherName}}.', duration: 10 },
+        { id: 2, type: 'text_overlay', text: '{{QBLTimeElapsed}}', duration: 10, conditions: [{ variable: 'QBLVideoPlaying', operator: '=', operand: 1 }] },
+      ] }],
+    }],
+  };
+  const { errors, warnings } = validateScenario(doc);
+  assert.ok(errors.some((e) => e.message.includes('"QL_Mine" starts with QBL or QL_')), 'authors cannot declare a QL_ variable');
+  const said = warnings.map((w) => w.message).join('\n');
+  assert.ok(!said.includes('QL_PlayerName') && !said.includes('QL_TeacherName') && !said.includes('QL_HasTeacher'), said);
+  assert.ok(said.includes('Unknown reserved variable "QBLVideoPlaying"') && said.includes('{{QBLTimeElapsed}}'), 'the old names are reported');
+});
+
+test('the system variables\' old names still play, as their new names, and the publish check asks for the new ones', () => {
+  const vars = new VariableStore([]);
+  vars.provide('QL_PlayerName', () => 'Sam');
+  vars.provide('QL_PlayerStars', () => 7);
+  vars.provide('QL_Ability_translator', () => 1);
+  assert.equal(currentName('QBLXp'), 'QL_PlayerXP');
+  assert.equal(currentName('QBLAbility_map'), 'QL_Ability_map');
+  assert.equal(currentName('frogs'), 'frogs');
+  assert.equal(interpolate('Hi {{QBLPlayerName}}, {{QBLStars}} stars', vars.get), 'Hi Sam, 7 stars');
+  assert.ok(testCondition({ variable: 'QBLAbility_translator', operator: '=', operand: 1 }, vars.get));
+  assert.ok(takesItems({ conditions: [{ variable: 'QBLHolding', operator: '=', operand: 3 }], actions: [] }) && takesItems({ conditions: [{ variable: 'QL_Holding', operator: '!=', operand: 0 }], actions: [] }));
+  const doc = {
+    id: 1, shortname: 't', title: 'T', start_scene_id: 1,
+    scenes: [{
+      id: 1, width: 100, height: 100,
+      start_events: [{ id: 1, conditions: [{ variable: 'QBLHolding', operator: '=', operand: 1 }], actions: [
+        { id: 1, type: 'text_overlay', text: 'Well done, {{QBLPlayerName}}! You are a {{QL_PlayerRank}}.', duration: 10 },
+      ] }],
+    }],
+  };
+  const said = validateScenario(doc).warnings.map((w) => w.message);
+  assert.ok(said.some((m) => m.startsWith('QBLHolding is now called QL_Holding')), said.join('\n'));
+  assert.ok(said.some((m) => m.startsWith('{{QBLPlayerName}} is now called {{QL_PlayerName}}')), said.join('\n'));
+  assert.ok(!said.some((m) => m.includes('QL_PlayerRank')), 'new names are fine');
 });
 
 // ------------------------------------------------- the sample scenario
@@ -574,12 +641,12 @@ test('awards and abilities are checked: an award on a button is not given, an ab
 
   const room = scenario.scenes.find((s) => s.id === 2)!;
   room.hotspots![0]!.actions.push({ id: 999901, type: 'infobox', content: 'Hi', sequence: 99, call_to_actions: [{ text: 'Claim', action: { type: 'award', stars: 5 } }] } as never);
-  room.hotspots![0]!.conditions = [{ variable: 'QBLAbility_stream_map', operator: '=', operand: 1 }, { variable: 'QBLAbility_wings', operator: '=', operand: 1 }];
+  room.hotspots![0]!.conditions = [{ variable: 'QL_Ability_stream_map', operator: '=', operand: 1 }, { variable: 'QL_Ability_wings', operator: '=', operand: 1 }];
   const messages = all(scenario);
   assert.equal(messages.length, 2, messages.join('|'));
   assert.match(messages.join('|'), /No item in this scenario's shop gives the ability "wings"/);
   assert.match(messages.join('|'), /An award on a button is not given/);
-  assert.equal(new VariableStore([]).get('QBLAbility_wings'), 0, 'an ability nobody has is 0, not unknown');
+  assert.equal(new VariableStore([]).get('QL_Ability_wings'), 0, 'an ability nobody has is 0, not unknown');
 });
 
 test('an event for the whole scene shares what it shows, and nothing else', async () => {

@@ -112,6 +112,8 @@ export interface VoiceChoice {
   accent: string | null;
   traits: string[];
   description: string;
+  /** How much of a character it is: 0 an everyday voice, 1 one with character, 2 a theatrical one (a giant, a pixie). */
+  flair?: number;
   /** "Heart: woman, American". */
   label: string;
 }

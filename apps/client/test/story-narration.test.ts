@@ -91,17 +91,17 @@ test('a story box read from a recording lights each word on screen as it is said
   h.finish();
 });
 
-test('clicking a story box that is being read leaves its words in place', async () => {
+test('a conversation’s answers are the player’s own box, with no line in it, and a number key picks one', async () => {
   const ui = new Ui(document.body as unknown as HTMLElement);
-  ui.choose('The reactor needs you, Sam.', ['On my way!'], { style: 'portrait', name: 'Captain', speak: { audioUrl: '/media/7/line.mp3', timings } });
-  const audio = FakeAudio.last!;
-  await tick();
-  (document.querySelector('.qbl-story') as unknown as HTMLElement).click();
-  audio.currentTime = 1.05;
-  await tick(40);
-  assert.equal(onScreen().words.length, 5);
-  assert.equal(onScreen().lit, 3, '“you,”');
-  audio.dispatchEvent(new Event('ended'));
+  const box = ui.choose(['On my way!', 'Not yet'], { style: 'portrait', name: 'Sam' });
+  const node = document.querySelector('.qbl-story.answering') as unknown as HTMLElement;
+  assert.ok(node, 'a box of its own');
+  assert.equal(node.querySelector('.qbl-story-name')?.textContent, 'Sam');
+  assert.equal(node.querySelectorAll('.qbl-story-text').length, 0, 'no line said in it');
+  assert.equal(node.querySelectorAll('.qbl-answer').length, 2);
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '2' }));
+  assert.equal(await box.choice, 1);
+  assert.equal(document.querySelector('.qbl-story.answering'), null);
 });
 
 test('a line not read aloud still arrives a few letters at a time', async () => {

@@ -1630,7 +1630,7 @@
                             "id": 2,
                             "event_id": 330,
                             "type": "variable",
-                            "variable": "QBLAbility_stream_map",
+                            "variable": "QL_Ability_stream_map",
                             "operator": "=",
                             "operand": 1
                         }
@@ -2391,7 +2391,7 @@
                         },
                         {
                             "style": "portrait",
-                            "text": "Welcome aboard, {{QBLPlayerName}}! I am Captain Vega. This ship is yours to explore.",
+                            "text": "Welcome aboard, {{QL_PlayerName}}! I am Captain Vega. This ship is yours to explore.",
                             "speaker": "character",
                             "character_id": 1,
                             "narrate": true,
@@ -7891,7 +7891,7 @@
                     ],
                     "actions": [
                         {
-                            "content": "<h3>Stars and ranks</h3><p><b>Stars</b> are earned on missions and spent here, on things to wear, pets, new ways to move and abilities. You have <b>{{QBLStars}}</b>.</p><p><b>XP</b> is experience. It is never spent: it adds up, and as it grows you rise through the ranks. You have <b>{{QBLXp}}</b> XP.</p><p>Your rank: <b>{{QBLRank}}</b>. Both stars and XP stay with your account from mission to mission, so you need to be signed in to earn them.</p>",
+                            "content": "<h3>Stars and ranks</h3><p><b>Stars</b> are earned on missions and spent here, on things to wear, pets, new ways to move and abilities. You have <b>{{QL_PlayerStars}}</b>.</p><p><b>XP</b> is experience. It is never spent: it adds up, and as it grows you rise through the ranks. You have <b>{{QL_PlayerXP}}</b> XP.</p><p>Your rank: <b>{{QL_PlayerRank}}</b>. Both stars and XP stay with your account from mission to mission, so you need to be signed in to earn them.</p>",
                             "id": 134001,
                             "event_id": 1340,
                             "type": "infobox",

@@ -5,10 +5,10 @@ type Get = (name: string) => VarValue | undefined;
 /**
  * The player's bag, as in a point-and-click adventure: what they carry, and the thing they have
  * picked to use. Picking a thing and then clicking something in the scene uses it there (a hotspot
- * or a character's event that tests `QBLHolding` takes it); picking a second thing puts the two
+ * or a character's event that tests `QL_Holding` takes it); picking a second thing puts the two
  * together (`Scenario.combinations`). It outlives scenes, like the player's variables.
  *
- * `QBLHolding` is the picked thing's id, and stays so while whatever the click started is still
+ * `QL_Holding` is the picked thing's id, and stays so while whatever the click started is still
  * running, so the event's own conditions can keep reading it; the bag on screen lets go at once.
  */
 export class Bag {
@@ -26,7 +26,7 @@ export class Bag {
 
   constructor(private scenario: Scenario, private get: Get) {}
 
-  /** What `QBLHolding` reads: the thing picked or in use, else 0. */
+  /** What `QL_Holding` reads: the thing picked or in use, else 0. */
   get holding(): Id | 0 {
     return this.picked ?? this.using ?? 0;
   }
@@ -82,7 +82,7 @@ export class Bag {
   }
 
   /**
-   * Use the picked thing on what a click started: `QBLHolding` keeps its id until `running`
+   * Use the picked thing on what a click started: `QL_Holding` keeps its id until `running`
    * settles, while the bag on screen lets go at once.
    */
   spend(running: Promise<void>): void {

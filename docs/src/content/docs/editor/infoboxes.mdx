@@ -87,6 +87,35 @@ Clicking the block opens its HTML with a reminder of how each is written; its ca
 
 **Example: a pulley rescue.** A box with a *Rope length* slider, a *Pulley wheels* slider and a *Brake* switch, a line that shows *"The rope is too short to reach Mo"* while the rope is under 12 m, and two buttons, **Lift!** and **Step away**. **Lift!** sets `tested` to 1; the actions after the box test the variables: with the rope long enough, two wheels or more and the brake on, Mo comes up; otherwise a box says what went wrong, and the instrument opens again. The AI generator builds its experiments this way.
 
+## Maths, science and graphs
+
+Three blocks in **＋ Insert** are for science and maths. Each loads its library only in a box that uses it, so they cost nothing elsewhere.
+
+| Block | What it does |
+| ----- | ------------ |
+| **🧮 Maths or chemistry** | A formula typeset properly on a line of its own. You write it in TeX and see it as you type: `\frac{mass}{volume}`, `x^2`, `\sqrt{x}`. Wrap chemistry in `\ce{…}` and formulas, arrows and charges set themselves: `\ce{2H2 + O2 -> 2H2O}` |
+| **🧪 Worked-out value** | The value of a formula, worked out from the box's sliders and switches as they are now, and from variables. Write it as on a calculator: `mass / volume`, `round(sqrt(x), 1)`. It changes as the player moves a slider, and can be saved in a variable when a button is pressed |
+| **📈 Graph** | Axes with **curves** (formulas of `x`; other names are sliders and variables, so a curve moves with its slider), **points players drag** (each saved in two variables), and **recorded data** from a [bench](/docs/editor/bench/#graph) |
+
+A graph's points and a worked-out value work together: put two draggable points on a graph, and a worked-out value of `(by - ay) / (bx - ax)` shows the slope of the line through them as they are dragged.
+
+### Checking an answer
+
+An **Answer box** can check what was typed. Fill in **The right answer** and choose the variable that is told whether it was: 1 for right, 0 for wrong, as a button is pressed. Test that variable in a condition of what the button does next.
+
+The right answer can be:
+
+- a number: `12.5`
+- a quantity with its unit: `9.8 m/s^2`. Any unit of the same kind is then right (`980 cm/s^2`), and a bare `9.8` is not
+- a formula of variables: `mass / volume`
+- words, with several right answers separated by `|`: `carbon dioxide | CO2`
+
+**How close a number has to be** takes a share (`5%`) or an amount (`0.5`).
+
+<Aside type="tip">
+Do not name a variable after a unit (`m`, `g`, `s`, `h`, `L`). In a formula, a name with nothing in it yet is read as the unit.
+</Aside>
+
 ## Marking right and wrong answers
 
 A button's **Shows as** says what kind of answer it is:

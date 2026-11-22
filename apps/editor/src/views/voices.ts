@@ -224,13 +224,16 @@ function linesNote(ctx: FormContext, characterId: number): string {
   return `${voiced} of its ${lines.length} line${lines.length === 1 ? '' : 's'} play a recording.`;
 }
 
-/** Voices grouped for the list: girls and boys, women, men, and the rest. */
+/** Voices grouped for the list: the theatrical ones first, then women, men, children, and the rest. */
 function groups(voices: VoiceChoice[]): Array<[string, VoiceChoice[]]> {
+  const theatrical = (v: VoiceChoice): boolean => (v.flair ?? 0) >= 2;
+  const everyday = voices.filter((v) => !theatrical(v));
   const out: Array<[string, VoiceChoice[]]> = [
-    ['Women', voices.filter((v) => v.gender === 'female' && v.age !== 'child')],
-    ['Men', voices.filter((v) => v.gender === 'male' && v.age !== 'child')],
-    ['Children', voices.filter((v) => v.age === 'child' && v.gender !== 'neutral')],
-    ['Robots and creatures', voices.filter((v) => v.gender === 'neutral')],
+    ['Larger than life', voices.filter(theatrical)],
+    ['Women', everyday.filter((v) => v.gender === 'female' && v.age !== 'child')],
+    ['Men', everyday.filter((v) => v.gender === 'male' && v.age !== 'child')],
+    ['Children', everyday.filter((v) => v.age === 'child' && v.gender !== 'neutral')],
+    ['Robots and creatures', everyday.filter((v) => v.gender === 'neutral')],
   ];
   return out.filter(([, list]) => list.length);
 }

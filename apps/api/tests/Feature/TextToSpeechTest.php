@@ -58,7 +58,7 @@ class TextToSpeechTest extends TestCase
     public function test_text_is_said_in_a_random_english_voice_and_saved(): void
     {
         $out = "{$this->work}/hello.mp3";
-        $this->artisan('qbl:tts', ['text' => 'Hello, {{QBLPlayerName}}!', '--out' => $out, '--timings' => true])
+        $this->artisan('qbl:tts', ['text' => 'Hello, {{QL_PlayerName}}!', '--out' => $out, '--timings' => true])
             ->expectsOutputToContain("Saved $out: ")
             ->assertSuccessful();
 
@@ -87,6 +87,29 @@ class TextToSpeechTest extends TestCase
         $this->assertSame(['es', 'female'], [$voice['lang'], $voice['gender']]);
         $again = substr($run('a'), 4);
         $this->assertSame($first, $again, 'the same seed picks the same voice');
+    }
+
+    public function test_the_pick_is_theatrical_unless_asked_otherwise(): void
+    {
+        $catalog = $this->app->make(SpeechFactory::class)->catalog();
+        $picked = function (array $options, string $folder) {
+            $this->artisan('qbl:tts', ['text' => 'Fee, fi, fo, fum!', '--count' => 6, '--out' => "{$this->work}/$folder"] + $options)->assertSuccessful();
+
+            return array_map(fn ($file) => preg_replace('/^tts-|(-\d)?\.mp3$/', '', basename($file)), glob("{$this->work}/$folder/tts-*.mp3"));
+        };
+        foreach ($picked([], 'dramatic') as $key) {
+            $this->assertSame(2, $catalog->get($key)['flair'], "$key is a theatrical voice");
+        }
+        foreach ($picked(['--style' => 'natural'], 'natural') as $key) {
+            $this->assertSame(0, $catalog->get($key)['flair'], "$key is an everyday voice");
+        }
+        // Hindi has no theatrical voices, nor any with character: the pick falls back to the others, and says so.
+        $this->artisan('qbl:tts', ['text' => 'नमस्ते', '--lang' => 'hi', '--out' => "{$this->work}/hi.mp3"])
+            ->expectsOutputToContain('the pick is from every voice')
+            ->assertSuccessful();
+        $this->artisan('qbl:tts', ['text' => 'Hi', '--style' => 'operatic'])
+            ->expectsOutputToContain('--style must be one of')
+            ->assertFailed();
     }
 
     public function test_several_takes_are_in_different_voices(): void

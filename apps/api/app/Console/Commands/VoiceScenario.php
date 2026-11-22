@@ -48,7 +48,7 @@ class VoiceScenario extends Command
             }
             $voicer = $speech->scenarioVoicer($store, $this->option('driver'));
             if (! $voicer) {
-                $this->error('Recording voices is switched off (QBL_TTS_DRIVER=none).');
+                $this->error('Recording voices is switched off (QL_TTS_DRIVER=none).');
 
                 return self::FAILURE;
             }
@@ -102,12 +102,12 @@ class VoiceScenario extends Command
         foreach ($catalog->all() as $key => $v) {
             $on = $engine ? $catalog->specFor($key, $engine->name()) : null;
             $spec = $on ? (string) ($on['spec']['voice'] ?? json_encode($on['spec'])) : '';
-            $missing = $has && $on ? array_filter(preg_split('/\+/', $spec), fn ($part) => ! isset($has[preg_replace('/\(.*$/', '', trim($part))])) : [];
-            $rows[] = [$key, VoiceCatalog::label($v), $v['lang'], implode(', ', array_slice((array) $v['traits'], 0, 4)),
+            $missing = $has && $on ? array_filter(preg_split($engine->name() === 'kokoro' ? '/[+-]/' : '/\+/', $spec), fn ($part) => ! isset($has[preg_replace('/\(.*$/', '', trim($part))])) : [];
+            $rows[] = [$key, VoiceCatalog::label($v).(($v['flair'] ?? 0) >= 2 ? ' 🎭' : ''), $v['lang'], implode(', ', array_slice((array) $v['traits'], 0, 4)),
                 $spec.($on && $on['borrowed'] ? " (from {$on['key']})" : '').($missing ? '  MISSING: '.implode(', ', $missing) : '')];
         }
         $this->table(['Key', 'Voice', 'Language', 'Sounds', $engine ? 'On '.$engine->name() : 'Service'], $rows);
-        $this->line($engine ? count($rows).' voices. Hear one: php artisan qbl:voice --sample=heart' : 'Recording is switched off (QBL_TTS_DRIVER=none).');
+        $this->line($engine ? count($rows).' voices (🎭 theatrical). Hear one: php artisan qbl:voice --sample=giant' : 'Recording is switched off (QL_TTS_DRIVER=none).');
 
         return self::SUCCESS;
     }
@@ -121,7 +121,7 @@ class VoiceScenario extends Command
         }
         $voicer = $speech->voicer($this->option('driver'));
         if (! $voicer) {
-            $this->error('Recording voices is switched off (QBL_TTS_DRIVER=none).');
+            $this->error('Recording voices is switched off (QL_TTS_DRIVER=none).');
 
             return self::FAILURE;
         }

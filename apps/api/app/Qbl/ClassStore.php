@@ -277,7 +277,10 @@ class ClassStore
      * assignment's, `a12`), so they can meet in scenes that are not limited to a team; any other
      * instance is a room of its own.
      *
-     * @return array{allowed: bool, party: string, team_name?: string}
+     * In an assigned game (a team's or an assignment's instance) it also names the teacher who
+     * assigned it: the game's `QL_TeacherName`.
+     *
+     * @return array{allowed: bool, party: string, team_name?: string, teacher_name?: string}
      */
     public function access(int $userId, string $role, int $scenarioId, string $group): array
     {
@@ -287,6 +290,14 @@ class ClassStore
             if ($team && (int) $team['scenario_id'] === $scenarioId) {
                 $out['party'] = 'a'.$team['assignment_id'];
                 $out['team_name'] = (string) $team['name'];
+            }
+        }
+        if (preg_match('/^([at])(\d+)$/', $group, $m)) {
+            $teacher = $m[1] === 't'
+                ? $this->one('SELECT u.name, a.scenario_id FROM teams t JOIN assignments a ON a.id = t.assignment_id JOIN users u ON u.id = a.teacher_id WHERE t.id = ?', [(int) $m[2]])
+                : $this->one('SELECT u.name, a.scenario_id FROM assignments a JOIN users u ON u.id = a.teacher_id WHERE a.id = ?', [(int) $m[2]]);
+            if ($teacher && (int) $teacher['scenario_id'] === $scenarioId && trim((string) $teacher['name']) !== '') {
+                $out['teacher_name'] = (string) $teacher['name'];
             }
         }
 

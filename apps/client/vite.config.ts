@@ -53,7 +53,11 @@ export default defineConfig(({ mode }) => {
     plugins: [tailwindcss(), gameFallback()],
     resolve: {
       // Use the shared package's TypeScript source directly: no build step, instant reloads.
-      alias: { '@qbl/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
+      alias: [
+        // Formulas are their own entry, so only what works one out loads math.js.
+        { find: /^@qbl\/shared\/formula$/, replacement: fileURLToPath(new URL('../../packages/shared/src/formula.ts', import.meta.url)) },
+        { find: /^@qbl\/shared$/, replacement: fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
+      ],
     },
     server: {
       host: true,

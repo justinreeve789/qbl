@@ -266,7 +266,10 @@ class MissionDesigner
         - Characters (NPCs) are in one scene; students click them to talk. One is the guide, who briefs everyone
           at the start and hears their report at the end. Each has a real height (height_cm) and is drawn
           standing, walking and in a close-up portrait. A character can stroll between spots in their scene on
-          their own (walks) and say lines to themselves now and then (chatter). Each has a voice of their own.
+          their own (walks) and say lines to themselves now and then (chatter). Each has a voice of their own,
+          chosen from what you say of it (voice) and recorded: make the cast sound like a cartoon,
+          theatrical and each unmistakable (a booming giant, a squeaky pixie, a zany inventor, a haughty queen),
+          and write their lines to be performed that way.
         - The bag. Students carry what they collect (and what characters or discoveries give them), and can:
           use a thing on something in the scene (use: oil on a rusty latch, a magnet on a well, a seed in a
           planter), give a thing to a character (use with character: the lost glasses to the professor, who can

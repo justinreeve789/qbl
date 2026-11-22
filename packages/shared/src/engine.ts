@@ -2,7 +2,7 @@ import { lineToSay, offeredChoices, startLineId } from './conversation.js';
 import { ScenarioIndex } from './scenario.js';
 import {
   SHOWN_TO_SCENE,
-  type Action, type AnimateAction, type AwardAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
+  type Action, type AnimateAction, type AwardAction, type BenchAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
   type CameraAction, type TranslateAction, type WalkAction, type WeatherAction,
 } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
@@ -64,6 +64,8 @@ export interface EngineHost {
   converse?(action: ConversationAction, line: ConversationLine, choices: ConversationChoice[], engine: SceneEngine): ChoiceHandle;
   /** Stop the player from walking (true) or let them walk again (false). */
   freeze?(frozen: boolean): void;
+  /** Work the scene's close-up bench. */
+  bench?(action: BenchAction): void;
   /** Ask the game server to grant an award action's stars and XP. */
   award?(action: AwardAction): void;
   /** Add a word to the player's glossary. */
@@ -174,9 +176,13 @@ export class SceneEngine {
   triggerHotspot(h: Hotspot): boolean {
     if (this.hotspotsBlocked || !this.hotspotAvailable(h) || this.runs.has(h.id)) return false;
     if (h.once) this.flags.add(`hotspot:${h.id}`);
-    this.hotspotCoordinates = `${h.position_x ?? ''},${h.position_y ?? ''}`;
+    // QL_HotspotCoordinates: this hotspot's, while its event runs (or until another hotspot starts).
+    const coordinates = `${h.position_x ?? ''},${h.position_y ?? ''}`;
+    this.hotspotCoordinates = coordinates;
     this.host.started?.(h, true);
-    void this.trigger(h);
+    void this.trigger(h).finally(() => {
+      if (this.hotspotCoordinates === coordinates) this.hotspotCoordinates = '';
+    });
     return true;
   }
 
@@ -412,6 +418,10 @@ export class SceneEngine {
             this.track(run, action, h);
             if (action.blocking !== false) await this.wait(run, h);
           }
+          break;
+        }
+        case 'bench': {
+          this.host.bench?.(action);
           break;
         }
         case 'freeze': {

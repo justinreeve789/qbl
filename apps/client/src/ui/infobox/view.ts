@@ -193,8 +193,9 @@ export function infoboxView(html: string, buttons: BoxButton[], o: BoxOptions): 
       const name = a.dataset.var;
       if (name) out[name] = a.value;
     }
-    // Sliders, switches and wheels: as they are set now (a wheel not spun yet, as nothing).
-    return { ...content.controls.values(), ...out };
+    // Sliders, switches, wheels and graph points as they are set now (a wheel not spun yet, as
+    // nothing), what is worked out from them, and whether each checked answer is right.
+    return { ...content.controls.values(), ...out, ...content.checks() };
   };
 
   const sparkle = (button: HTMLElement) => {
@@ -216,6 +217,11 @@ export function infoboxView(html: string, buttons: BoxButton[], o: BoxOptions): 
 
   const choose = async (index: number) => {
     if (busy || settled || tried.has(index)) return;
+    // What is worked out with math.js has to be there before it is saved; it nearly always is.
+    busy = true;
+    await content.ready;
+    busy = false;
+    if (settled) return;
     const answers = answersNow(index);
     if (!answers) return;
     const mark = buttons[index]?.mark;

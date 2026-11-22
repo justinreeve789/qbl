@@ -1,3 +1,4 @@
+import { checkBench, checkBenchAction } from './bench-validate.js';
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
 import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
@@ -12,7 +13,7 @@ import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
 import { isBuiltInSound } from './sounds.js';
 import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
-import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
+import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES } from './variables.js';
 
 export interface Issue {
   level: 'error' | 'warning';
@@ -95,7 +96,7 @@ export function validateScenario(doc: unknown): ValidationResult {
   (s.global_variables ?? []).forEach((v, i) => {
     const path = `global_variables[${i}]`;
     if (!v.variable_name) err(path, 'variable_name is required');
-    else if (isReserved(v.variable_name)) err(path, `"${v.variable_name}" uses the reserved QBL prefix`);
+    else if (isReserved(v.variable_name)) err(path, `"${v.variable_name}" starts with QBL or QL_, which are kept for the system's own variables`);
     else if (variables.has(v.variable_name)) err(path, `Duplicate variable "${v.variable_name}"`);
     variables.add(v.variable_name);
     if (v.scope && !['player', 'room'].includes(v.scope)) err(`${path}.scope`, 'scope must be "player" or "room"');
@@ -208,17 +209,21 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (!CONDITION_OPS.includes(c.operator)) err(p, `Unknown operator "${c.operator}"`);
       if (!c.variable) err(p, 'variable is required');
       else if (isReserved(c.variable)) {
-        // QBLAbility_<key> is 1 while the player has a marketplace ability with that key equipped.
-        if (c.variable.startsWith(ABILITY_PREFIX)) {
-          if (!abilities.has(c.variable.slice(ABILITY_PREFIX.length))) warn(p, `No item in this scenario's shop gives the ability "${c.variable.slice(ABILITY_PREFIX.length)}"; it must come from the platform's catalogue`);
-        } else if (!(RESERVED_VARIABLES as readonly string[]).includes(c.variable)) warn(p, `Unknown reserved variable "${c.variable}"`);
+        const name = currentName(c.variable);
+        if (name !== c.variable) warn(p, renamed(c.variable, name));
+        // QL_Ability_<key> is 1 while the player has a marketplace ability with that key equipped.
+        if (name.startsWith(ABILITY_PREFIX)) {
+          if (!abilities.has(name.slice(ABILITY_PREFIX.length))) warn(p, `No item in this scenario's shop gives the ability "${name.slice(ABILITY_PREFIX.length)}"; it must come from the platform's catalogue`);
+        } else if (!(RESERVED_VARIABLES as readonly string[]).includes(name)) warn(p, `Unknown reserved variable "${c.variable}"`);
       } else if (!variables.has(c.variable)) err(p, `Variable "${c.variable}" is not declared in global_variables`);
     });
   };
 
   const checkText = (text: string | undefined, path: string) => {
     for (const name of placeholderVariables(text ?? '')) {
-      if (!variables.has(name) && !(RESERVED_VARIABLES as readonly string[]).includes(name)) {
+      const now = currentName(name);
+      if (now !== name) warn(path, renamed(`{{${name}}}`, `{{${now}}}`));
+      else if (!variables.has(name) && !(RESERVED_VARIABLES as readonly string[]).includes(name) && !name.startsWith(ABILITY_PREFIX)) {
         warn(path, `Placeholder {{${name}}} does not match a declared variable`);
       }
     }
@@ -451,6 +456,9 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'conversation':
         checkConversation(a, path, scene);
         break;
+      case 'bench':
+        checkBenchAction(a as unknown as Record<string, unknown>, path, scene.bench, { err, warn });
+        break;
       case 'freeze':
         if (typeof a.frozen !== 'boolean') err(`${path}.frozen`, 'frozen must be true or false');
         break;
@@ -531,9 +539,13 @@ export function validateScenario(doc: unknown): ValidationResult {
         for (const name of refs.controls) {
           if (!variables.has(name)) err(`${path}.content`, `A control (slider, switch or wheel) saves to the variable "${name}", which is not defined`);
         }
-        for (const name of refs.reads) {
-          if (!variables.has(name) && !refs.controls.includes(name) && !refs.answers.includes(name) && !isReserved(name)) warn(`${path}.content`, `The content shows or tests "${name}", which is neither a control in this box nor a variable`);
+        for (const name of refs.writes) {
+          if (!variables.has(name)) err(`${path}.content`, `The box saves a graph point, a worked-out value or whether an answer was right in the variable "${name}", which is not defined`);
         }
+        for (const name of refs.reads) {
+          if (!variables.has(name) && !refs.controls.includes(name) && !refs.writes.includes(name) && !refs.answers.includes(name) && !isReserved(name)) warn(`${path}.content`, `The content shows or tests "${name}", which is neither a control in this box nor a variable`);
+        }
+        for (const problem of refs.problems) err(`${path}.content`, problem);
         if (a.media_id != null) {
           needMedia(a.media_id, `${path}.media_id`);
           const top = media.get(a.media_id);
@@ -688,7 +700,11 @@ export function validateScenario(doc: unknown): ValidationResult {
         }
       }
     }
-    if ((scene.spawn_points ?? []).length === 0) warn(sp, 'No spawn points; players will appear at the centre of the scene');
+    if ((scene.spawn_points ?? []).length === 0 && !(scene.bench?.enabled && scene.show_avatars === false)) warn(sp, 'No spawn points; players will appear at the centre of the scene');
+    if (scene.bench != null) {
+      const indirect = new Set((scene.indirect_events ?? []).map((e) => e.id));
+      checkBench(scene.bench, `${sp}.bench`, { err, warn, variables, size: sceneSize(s, scene) ?? null, indirect: (id) => indirect.has(id) });
+    }
     (scene.items ?? []).forEach((p, pi) => {
       if (p.item_id == null) err(`${sp}.items[${pi}].item_id`, 'No item is chosen');
       else if (!items.has(p.item_id)) err(`${sp}.items[${pi}].item_id`, `Item ${p.item_id} does not exist (it may have been deleted)`);
@@ -805,4 +821,9 @@ export function validateScenario(doc: unknown): ValidationResult {
   });
 
   return done();
+}
+
+/** The publish check's note on a system variable's old name (it still works). */
+function renamed(old: string, now: string): string {
+  return `${old} is now called ${now}; the old name still works for now, but please change it`;
 }

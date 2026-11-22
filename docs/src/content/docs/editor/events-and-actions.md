@@ -75,7 +75,7 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 | 📝 Boxes and words on screen | Infobox, Text overlay |
 | 🧑 Characters and the player | Walk, Play an animation, Freeze or release player, Show or hide avatar |
 | 🎞️ Pictures, video and sound | Image in scene, Image overlay, Spritemap, Video, Audio, Translate |
-| 🎥 Scenes, camera and weather | Jump, Camera, Weather |
+| 🎥 Scenes, camera, weather and bench | Jump, Camera, Weather, Bench |
 | ⏱️ Timing and flow | Wait, Run event, Repeat, Cancel |
 | 🏆 Rewards and progress | Award stars or XP, Add a glossary word, Variable, Open the marketplace |
 
