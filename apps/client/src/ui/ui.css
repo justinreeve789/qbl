@@ -516,6 +516,7 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
 /* Closed: a round chat button. Open (typing, or a click on it): a bar the width of the screen. */
 /* The things the player carries: a bar at the foot of the screen, as in a point-and-click adventure. */
 .qbl-bagbar { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(calc(16px + var(--safe-b)), calc(var(--qbl-keyboard) + 8px)); z-index: 12; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: min(640px, calc(100vw - 2 * var(--qbl-tab) - 48px)); pointer-events: none; }
+.qbl-bagbar[hidden] { display: none; }
 .qbl-bagbar-slots { display: flex; gap: 6px; padding: 6px; border-radius: 16px; background: rgba(12, 23, 78, 0.72); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); overflow-x: auto; pointer-events: auto; }
 .qbl-bagbar-slot { flex: none; display: grid; place-items: center; width: 56px; height: 56px; padding: 4px; border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; transition: border-color 0.15s, background-color 0.15s, transform 0.15s; }
 .qbl-bagbar-slot:hover { border-color: rgba(255, 255, 255, 0.7); }
