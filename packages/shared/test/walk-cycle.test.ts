@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
-import { checkFeet, findRig, mirror, sheetOf, walkCycle, WALK_FRAMES, type Bitmap } from '../src/walkCycle';
+import { checkFeet, findRig, mirror, sheetOf, walkCycle, WALK_FRAMES, type Bitmap } from '../src/walkCycle.js';
 
 /**
  * The walk made from a standing picture (walkCycle.ts), checked the way an animator would: the
