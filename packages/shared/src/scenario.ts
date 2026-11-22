@@ -6,7 +6,7 @@ import { characterRoams, normalizeRoutine } from './walking.js';
 
 const ACTION_TYPES: ActionType[] = [
   'animate', 'award', 'glossary', 'shop', 'dialogue', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
-  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk',
+  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk', 'bench',
 ];
 
 /** "Image Fixed", "imageFixed" and "image_fixed" all become "image_fixed". */

@@ -1,4 +1,4 @@
-import { pictureScale, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneLight, type SceneSky, type ShadowSpot } from '@qbl/shared';
+import { pictureScale, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneLight, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -235,6 +235,7 @@ export class SceneCanvas {
     this.drawSpawns(selected, u, shapes);
     this.drawPlacements('items', selected, u, shapes);
     this.drawPlacements('characters', selected, u, shapes);
+    this.drawBench(selected, u, shapes);
     if (selected.kind === 'event' && !this.picking) this.drawActionMarkers(selected.id, u, top);
     if (this.picking) this.drawPicking(u, W, H, top);
 
@@ -552,6 +553,74 @@ export class SceneCanvas {
   }
 
   // ------------------------------------------------- spawn points, placements
+
+  // ------------------------------------------------------------------- bench
+
+  /**
+   * A close-up bench as it will start: each container with what is in it to begin with, and the
+   * tools. Containers and tools can be dragged; they stand on the point that is dragged.
+   */
+  private drawBench(selected: Selection, u: number, shapes: SVGElement[]) {
+    const bench = this.model.bench();
+    if (!bench) return;
+    const off = bench.enabled ? '' : ' off';
+    const commit = () => void this.model.setBench({ ...bench });
+    const substances = new Map((bench.substances ?? []).map((sub) => [sub.id, sub] as [string, BenchSubstance]));
+
+    (bench.tools ?? []).forEach((tool, index) => {
+      const selection: Selection = { kind: 'bench-tool', index };
+      const start = { x: tool.x, y: tool.y };
+      const { w, h: tall } = toolSize(tool);
+      shapes.push(s('g', {
+        class: `bench-tool ${tool.kind}${sameSelection(selection, selected) ? ' selected' : ''}${off}`,
+        onpointerdown: (e: PointerEvent) => this.begin(e, selection, {
+          move: (to, from) => Object.assign(tool, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }),
+          end: commit,
+        }),
+      },
+      s('rect', { x: tool.x - w / 2, y: tool.y - tall, width: w, height: tall, rx: 8 }),
+      s('text', { class: 'shape-name', x: tool.x, y: tool.y - tall / 2, 'font-size': 22 * u, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, BENCH_TOOLS[tool.kind]?.icon ?? '🔧'),
+      s('text', { class: 'shape-name', x: tool.x, y: tool.y + 16 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, tool.name || BENCH_TOOLS[tool.kind]?.label || tool.kind),
+      s('title', null, `${tool.name || BENCH_TOOLS[tool.kind]?.label || tool.kind}: drag to move`)));
+    });
+
+    (bench.vessels ?? []).forEach((vessel, index) => {
+      const selection: Selection = { kind: 'bench-vessel', index };
+      const start = { x: vessel.x, y: vessel.y };
+      const outline = vesselOutline(vessel.shape, vesselWidth(vessel), vesselHeight(vessel));
+      const at = (points: Array<{ x: number; y: number }>) => points.map((p) => `${vessel.x + p.x},${vessel.y - p.y}`).join(' ');
+      // What is in it to begin with, as one band of its blended colour (the game draws the layers).
+      const contents = (vessel.contents ?? []).filter((c) => c.amount > 0);
+      const amount = contents.reduce((sum, c) => sum + c.amount, 0);
+      const parts: SVGElement[] = [s('polygon', { class: 'bench-glass', points: at(outline) })];
+      if (amount > 0) {
+        let weight = 0;
+        const rgb: [number, number, number] = [0, 0, 0];
+        for (const c of contents) {
+          const sub = substances.get(c.substance);
+          const wgt = c.amount * (sub?.strength ?? (sub?.color || sub?.state === 'solid' ? 1 : 0.15));
+          const colour = parseColor(sub?.indicator?.length ? sub.indicator[Math.floor(sub.indicator.length / 2)]!.color : sub?.color, sub?.state === 'solid' ? [235, 235, 235] : [220, 236, 251]);
+          rgb[0] += colour[0] * wgt;
+          rgb[1] += colour[1] * wgt;
+          rgb[2] += colour[2] * wgt;
+          weight += wgt;
+        }
+        const level = fillHeight(outline, Math.min(1, amount / vesselCapacity(vessel)));
+        const band = outlineBand(outline, 0, level);
+        if (band.length >= 3) parts.push(s('polygon', { class: 'bench-liquid', points: at(band), style: `fill:${weight > 0 ? colorText([rgb[0] / weight, rgb[1] / weight, rgb[2] / weight]) : '#dcecfb'}` }));
+      }
+      parts.push(s('polyline', { class: 'bench-wall', points: at(outline) }));
+      shapes.push(s('g', {
+        class: `bench-vessel${sameSelection(selection, selected) ? ' selected' : ''}${vessel.supply ? ' supply' : ''}${off}`,
+        onpointerdown: (e: PointerEvent) => this.begin(e, selection, {
+          move: (to, from) => Object.assign(vessel, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }),
+          end: commit,
+        }),
+      }, ...parts,
+      s('text', { class: 'shape-name', x: vessel.x, y: vessel.y + 16 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, `${vesselName(vessel)}${vessel.supply ? ' ∞' : ''}`),
+      s('title', null, `${vesselName(vessel)}${vessel.supply ? ' (a stock bottle)' : ''}: drag to move`)));
+    });
+  }
 
   private drawSpawns(selected: Selection, u: number, shapes: SVGElement[]) {
     const spawns = this.model.layout('spawn_points');

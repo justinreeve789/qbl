@@ -8,8 +8,9 @@ const rich = `<h3>Ponds</h3><p>{{media:4}}</p><hr data-qbl="page">
 <input data-qbl="answer" data-var="guess" placeholder="Type it"><input data-var="ignored">`;
 
 test('what an infobox refers to is read from its HTML', () => {
-  assert.deepEqual(infoboxRefs(rich), { media: [4, 5], answers: ['guess'], words: ['algae'], controls: [], reads: [], pages: 3 });
-  assert.deepEqual(infoboxRefs(undefined), { media: [], answers: [], words: [], controls: [], reads: [], pages: 1 });
+  const plain = { writes: [], problems: [], uses: { formula: false, math: false, graph: false } };
+  assert.deepEqual(infoboxRefs(rich), { media: [4, 5], answers: ['guess'], words: ['algae'], controls: [], reads: [], pages: 3, ...plain });
+  assert.deepEqual(infoboxRefs(undefined), { media: [], answers: [], words: [], controls: [], reads: [], pages: 1, ...plain });
 });
 
 test('a {{media:ID}} on its own in the text shows the media; one in an address is left for the address', () => {

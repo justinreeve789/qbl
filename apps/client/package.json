@@ -14,6 +14,8 @@
   "dependencies": {
     "@colyseus/sdk": "^0.18.0",
     "@qbl/shared": "*",
+    "jsxgraph": "^1.14.3",
+    "katex": "^0.19.1",
     "navmesh": "^2.3.1",
     "phaser": "^4.2.1"
   },

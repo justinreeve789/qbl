@@ -6,6 +6,8 @@ import { pictureNode } from './picture';
 import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
 import { infoboxView, type BoxView } from './infobox/view';
+import { benchPanel } from './benchPanel';
+import type { BenchPanelActions, BenchPanelHandle, BenchPanelSpec } from './UiPort';
 import type { AccountActions, AccountView, BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -947,6 +949,10 @@ export class Ui implements UiPort {
     backdrop.addEventListener('click', (e) => e.target === backdrop && close());
     draw();
     return { done, cancel: close };
+  }
+
+  benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle {
+    return benchPanel(this.root, spec, on);
   }
 
   toast(message: string, ms = 3000) {

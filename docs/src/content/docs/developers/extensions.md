@@ -598,6 +598,17 @@ Markup | What players get
 `<div data-qbl="meter" data-var="rope" data-min="0" data-max="20" data-label="Rope out"></div>` | A bar showing a value between its ends.
 `<div data-qbl="when" data-when="rope >= 12; brake = 1">…</div>` | Shown only while every condition holds (`=`, `!=`, `<`, `>`, `<=`, `>=`, separated by `;` or `,`), on the controls as they are set now and on variables. It appears with a little lift, and a screen reader hears it.
 
+**Maths, worked-out values and graphs.** Formulas are worked out with math.js (`@qbl/shared/formula`, an entry of its own so that only a box with a formula loads it), typeset with KaTeX and drawn with JSXGraph. Each is loaded the first time a box needs it.
+
+Markup | What players get
+------ | ----------------
+`<div data-qbl="math" data-tex="\frac{m}{V}">m / V</div>`, `<span data-qbl="math" data-tex="x^2">x^2</span>` | Maths typeset by KaTeX, on a line of its own (`div`) or in a line of text (`span`). `\ce{2H2 + O2 -> 2H2O}` sets chemistry (KaTeX's mhchem). What is inside the tag is what a reader without KaTeX shows. It is not read aloud.
+`<span data-qbl="calc" data-formula="mass / volume" data-digits="2" data-unit="g/mL" data-var="density"></span>` | A formula's value, from the controls as they are now and from variables. With `data-var` (which must be declared) it is saved there when a button is chosen, and values, meters and `when` blocks of the box can read it at once. A dash when the formula has no value.
+`<input data-qbl="answer" data-var="a" data-accept="9.8 m/s^2" data-tolerance="2%" data-check="a_right">` | An answer box that is checked. When a button is chosen, `data-check` (declared) is set to 1 if what was typed is `data-accept`, else 0. `data-accept` is a number, a quantity with a unit (right in any unit of its kind; a bare number is then wrong), a formula of variables, or words; `\|` separates several. `data-tolerance` is a share (`5%`) or an amount. What is typed is worked out with no variables.
+`<div data-qbl="graph" data-fn="a*x^2; sin(x)" data-x="-5,5" data-y="-5,5" data-points="px,py=1,2; qx,qy=3,1" data-join="line" data-snap="1" data-series="log" data-xlabel="t" data-ylabel="h" data-label="Title"></div>` | Axes with a curve for each formula of `x` in `data-fn` (other names are controls and variables: curves follow sliders), points the player drags (`xVar,yVar=x,y`; saved in their two declared variables when a button is chosen; `data-snap` makes them land on multiples), joined as `data-join` says (`line` through the first two, `segment`s in order, a `polygon`), and the data recorded in the variable `data-series` as `x,y;x,y` (what a bench's graph keeps).
+
+A formula is written as math.js reads it: `+ - * / ^`, brackets, `sqrt`, `sin`, `round(x, 1)`, `pi`, and quantities with units (`(2 m + 50 cm) to cm`). A variable with nothing in it counts as 0. The parts of math.js that reach outside a formula (`import`, `createUnit`, `evaluate`, `parse` and the like) are switched off, since formulas are written by authors and answers typed by players. The validator reports a formula whose brackets do not match, a point, worked-out value or check whose variable is not declared, and warns of a name a formula reads that is neither a control of the box nor a variable.
+
 The buttons do the testing: a "Test" button sets a variable, and conditions on the following actions read the controls' variables (see how the generator builds an [instrument](/docs/developers/generation/)). The validator reports a control whose variable is not declared, and a value, meter or `when` block that reads a variable that is neither a control in the box, an answer, a declared variable nor a reserved one.
 
 Each button in `call_to_actions` can have a `mark`. `right`: the button turns green with a tick and a burst of stars for about 650 ms before the box closes and the button's action runs. `wrong`: it turns red and shakes, then the same. `try_again`: it shakes and is crossed out and **the box stays open**; its action, if any, runs while it does, and the box waits for it. The choice is logged either way, so the report's first answer is still the first one chosen. A box with `dismissible: false` needs at least one button that is always offered and is not `try_again`.
@@ -606,6 +617,51 @@ The box opens with a short spring and closes with a fade. When a button's action
 
 When a scenario is copied or imported, `{{media:ID}}` placeholders in any text are pointed at the copied media.
 * **Background music** is an audio action with `repeat` and `persist` in a scene's start events. Persistent audio is treated as the music track: only one plays at a time. When a scene starts a persistent audio action with the same media that is already playing, the music carries on without restarting; with different media, it replaces the old track. A cancel action naming the audio action's id stops it.
+
+### Bench
+
+`{ "type": "bench", "op": "reset" | "add" | "empty" | "stir" | "burner", … }` works the scene's [close-up bench](#close-up-bench): `reset` puts everything back as it started; `add` puts `amount` of `substance` into `vessel_id`; `empty` and `stir` take a `vessel_id`; `burner` lights or puts out `tool_id` (`on`: true or false; absent, it changes over). In a scene with no bench it does nothing, and the validator says so.
+
+## Close-up bench
+
+`scene.bench` makes a scene an experiment worked with the hands (`packages/shared/src/bench.ts`; run by `bench-sim.ts`, checked by `bench-validate.ts`). With `show_avatars: false` the camera shows the whole scene, and a press on nothing in particular does not walk anybody.
+
+```json
+{
+  "enabled": true,
+  "ambient": 20,
+  "substances": [
+    { "id": "vinegar", "name": "Vinegar", "color": "#e3c45c", "ph": 2.4 },
+    { "id": "baking_soda", "name": "Baking soda", "state": "solid", "color": "#ffffff" },
+    { "id": "salty_water", "name": "Salty water", "color": "#d3e4ec", "strength": 0.4 },
+    { "id": "co2", "name": "Carbon dioxide", "state": "gas" }
+  ],
+  "vessels": [
+    { "id": "beaker", "shape": "beaker", "x": 960, "y": 840, "capacity": 250, "fixed": true, "marks": true },
+    { "id": "bottle", "name": "Vinegar", "shape": "bottle", "x": 420, "y": 840, "supply": true, "pour": 20, "contents": [{ "substance": "vinegar", "amount": 500 }] }
+  ],
+  "tools": [{ "id": "burner", "kind": "burner", "x": 960, "y": 920, "vessel_id": "beaker", "power": 6 }],
+  "reactions": [
+    { "id": "fizz", "uses": [{ "substance": "vinegar", "amount": 2 }, { "substance": "baking_soda", "amount": 1 }],
+      "makes": [{ "substance": "salty_water", "amount": 2 }, { "substance": "co2", "amount": 6 }],
+      "rate": 4, "heat": -0.15, "effect": "fizz", "note": "It fizzes!" }
+  ],
+  "readouts": [{ "id": "gas", "measure": "released", "vessel_id": "beaker", "substance": "co2", "variable": "fizz_gas" }],
+  "watches": [{ "id": "fizzed", "when": "reaction", "reaction_id": "fizz", "variable": "fizz_done", "set": 1, "event_id": 760050 }],
+  "graph": { "x": "time", "y": "gas", "variable": "fizz_log" }
+}
+```
+
+* **Substances.** `state` is `liquid` (default), `solid` or `gas`; amounts are in mL, and a gram of a solid counts as one. A gas that is made leaves the container and is counted as `released`. `strength` is how strongly it colours a mixture (left out: 1 with a `color`, hardly at all without one, strongly for an indicator); `indicator` is a list of `{ ph, color }` its colour blends between; `separate` liquids keep to a layer of their own, ordered by `density`; `boils_at` caps a container's temperature. Ids are names (`[A-Za-z_]\w*`), since conditions read them.
+* **Vessels** stand on (`x`, `y`): the middle of the foot. `shape` is `tube`, `beaker`, `flask`, `cylinder`, `dish`, `bottle`, `jar` or `dropper`, each with a usual `width`, `height`, `capacity` and `pour` (how much one tip gives). `supply`: a stock bottle that never runs out and takes nothing in. `fixed`: it is poured into, never out of.
+* **Tools**: `burner` (heats `vessel_id` by `power` °C a second for 100 mL; tapped on and off), `stirrer` (picked up and tapped on a container: `stirred` holds for six seconds), `sink` (a container in the hand is emptied into it).
+* **Reactions.** `uses` must all be present; an amount of 0 is needed but not used up. A round uses the amounts given and makes `makes`; `rate` is rounds a second (absent: all at once). `when` is conditions as in an infobox's `when` block, over `temperature`, `volume`, `ph`, `stirred`, `time` and the substances (how much of each is there). `heat` warms 100 mL by so many degrees a round. `effect`: `bubbles`, `fizz`, `smoke`, `glow`, `flash` or `none`.
+* **pH** is worked out from the liquids that have one: each brings its excess of acid or base, they cancel, and the rest dilutes, which gives a strong acid and base their real titration curve. A substance with no `ph` only dilutes.
+* **Readouts** measure `volume`, `temperature`, `ph`, `amount` or `released` (of `substance`), `pours`, `time`, or a `formula` of other readouts' ids (math.js). With `variable`, the value is kept there, at most four times a second.
+* **Watches** notice a `reaction` (the first time it happens in a container), a `reading` passing a `value` (`operator`), a container that `contains` a `substance` (at least `amount`), or an `overflow`. Each sets `variable` (to `set`, else 1, or a reading's value) and runs `event_id`, an indirect event of the scene. Once, unless `repeat`. What already holds when the scene starts is not something that happened.
+* **Graph**: `x` and `y` are readout ids (`x` may be `time`). `record` is `button` (the player presses Record) or `live` (a point every half second). With `variable`, the points are kept as `x,y;x,y` (at most 300), for a graph block's `data-series`.
+
+The bench runs in each player's browser (there is no shared mode yet), is not saved between visits, and is kept in the scene's `layout` in the database, so it travels in exports and copies; a watch's `event_id` follows its event to a copy.
 
 ## The side panel
 

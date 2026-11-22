@@ -1,8 +1,9 @@
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
-import { confirmDelete, h, help } from '../../dom';
+import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
 import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
+import { benchSettingsPanel, benchToolPanel, benchVesselPanel } from './benchPanels';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
 
 export interface InspectorHost {
@@ -50,6 +51,12 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
         LIGHT_FIELDS, host);
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
+    case 'bench':
+      return benchSettingsPanel(model, ctx, host);
+    case 'bench-vessel':
+      return benchVesselPanel(model, ctx, selection.index, host);
+    case 'bench-tool':
+      return benchToolPanel(model, ctx, selection.index, host);
   }
 }
 
@@ -83,6 +90,7 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
           ' Everything in the scene is moved to match.',
         )
       : null,
+    benchSection(model, host),
     layerList(model, 'background_media', 'Background layers', 'Drawn behind the avatars, first at the back.', host),
     layerList(model, 'foreground_media', 'Foreground layers', 'Drawn in front of the avatars.', host),
     h(
@@ -130,6 +138,36 @@ function livingPanel(model: SceneModel, ctx: FormContext): HTMLElement {
     h('div', { class: 'sub-head' }, h('span', null, '🍃 In the air', help('Fireflies, falling leaves, snow, rain, dust in the light or bubbles, drawn over the scene wherever players look. Nothing moves for players whose system asks for reduced motion.'))),
     form(ATMOSPHERE_FIELDS, air, setAir, ctx),
   );
+}
+
+/** Give the scene a close-up bench, or go to the one it has. */
+function benchSection(model: SceneModel, host: InspectorHost): HTMLElement {
+  const bench = model.bench();
+  const about = 'A close-up experiment worked with the hands: players pour from one container into another, heat, stir, and watch what happens. Usually with the avatars hidden, so the whole scene is the bench.';
+  if (!bench) {
+    return h('section', { 'data-section': 'bench' },
+      h('div', { class: 'sub-head' }, h('span', null, 'Close-up bench', help(about))),
+      h('button', { type: 'button', 'data-bench-on': '', onclick: () => void startBench(model).then(() => host.select({ kind: 'bench' })) }, '🧪 Make this a close-up bench'));
+  }
+  const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+  return h('section', { 'data-section': 'bench' },
+    h('div', { class: 'sub-head' }, h('span', null, 'Close-up bench', help(about)), h('button', { type: 'button', class: 'link', onclick: () => host.select({ kind: 'bench' }) }, 'Settings')),
+    h('p', { class: 'muted' }, bench.enabled
+      ? `${count(bench.vessels?.length ?? 0, 'container')}, ${count(bench.substances?.length ?? 0, 'substance')}, ${count(bench.reactions?.length ?? 0, 'reaction')}, ${count(bench.readouts?.length ?? 0, 'readout')}.`
+      : 'Switched off.'));
+}
+
+/**
+ * Switch a bench on in a scene that has none: with water to start from, and with the avatars
+ * hidden, since a bench is worked with the pointer and a figure walking about only gets in the way.
+ */
+export async function startBench(model: SceneModel): Promise<void> {
+  if (model.bench()) return;
+  await model.setBench({ enabled: true, substances: [{ id: 'water', name: 'Water', formula: 'H₂O', color: '#bfe0ff', strength: 0.2, opacity: 0.6, boils_at: 100 }] }, true);
+  if (model.row.show_avatars !== false) {
+    await model.store.patch('scenes', model.sceneId, { show_avatars: false }, true);
+    toast('The bench is on, and avatars are hidden in this scene. Show them again in the scene settings if you want them.');
+  }
 }
 
 function layerList(model: SceneModel, which: LayerList, title: string, about: string, host: InspectorHost): HTMLElement {

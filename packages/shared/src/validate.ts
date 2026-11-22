@@ -1,3 +1,4 @@
+import { checkBench, checkBenchAction } from './bench-validate.js';
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
 import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
@@ -430,6 +431,9 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'conversation':
         checkConversation(a, path, scene);
         break;
+      case 'bench':
+        checkBenchAction(a as unknown as Record<string, unknown>, path, scene.bench, { err, warn });
+        break;
       case 'freeze':
         if (typeof a.frozen !== 'boolean') err(`${path}.frozen`, 'frozen must be true or false');
         break;
@@ -509,9 +513,13 @@ export function validateScenario(doc: unknown): ValidationResult {
         for (const name of refs.controls) {
           if (!variables.has(name)) err(`${path}.content`, `A control (slider, switch or wheel) saves to the variable "${name}", which is not defined`);
         }
-        for (const name of refs.reads) {
-          if (!variables.has(name) && !refs.controls.includes(name) && !refs.answers.includes(name) && !isReserved(name)) warn(`${path}.content`, `The content shows or tests "${name}", which is neither a control in this box nor a variable`);
+        for (const name of refs.writes) {
+          if (!variables.has(name)) err(`${path}.content`, `The box saves a graph point, a worked-out value or whether an answer was right in the variable "${name}", which is not defined`);
         }
+        for (const name of refs.reads) {
+          if (!variables.has(name) && !refs.controls.includes(name) && !refs.writes.includes(name) && !refs.answers.includes(name) && !isReserved(name)) warn(`${path}.content`, `The content shows or tests "${name}", which is neither a control in this box nor a variable`);
+        }
+        for (const problem of refs.problems) err(`${path}.content`, problem);
         if (a.media_id != null) {
           needMedia(a.media_id, `${path}.media_id`);
           const top = media.get(a.media_id);
@@ -632,7 +640,11 @@ export function validateScenario(doc: unknown): ValidationResult {
         }
       }
     }
-    if ((scene.spawn_points ?? []).length === 0) warn(sp, 'No spawn points; players will appear at the centre of the scene');
+    if ((scene.spawn_points ?? []).length === 0 && !(scene.bench?.enabled && scene.show_avatars === false)) warn(sp, 'No spawn points; players will appear at the centre of the scene');
+    if (scene.bench != null) {
+      const indirect = new Set((scene.indirect_events ?? []).map((e) => e.id));
+      checkBench(scene.bench, `${sp}.bench`, { err, warn, variables, size: sceneSize(s, scene) ?? null, indirect: (id) => indirect.has(id) });
+    }
     (scene.items ?? []).forEach((p, pi) => {
       if (p.item_id == null) err(`${sp}.items[${pi}].item_id`, 'No item is chosen');
       else if (!items.has(p.item_id)) err(`${sp}.items[${pi}].item_id`, `Item ${p.item_id} does not exist (it may have been deleted)`);

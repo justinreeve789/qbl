@@ -17,6 +17,8 @@ export * from './world.js';
 export * from './text.js';
 export * from './speech.js';
 export * from './infobox.js';
+export * from './bench.js';
+export * from './bench-sim.js';
 export * from './sky.js';
 export * from './icons.js';
 export * from './site.js';

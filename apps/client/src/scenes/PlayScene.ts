@@ -9,6 +9,7 @@ import { mediaKey, queueScene } from '../core/assets';
 import { getContext, type GameContext } from '../core/GameContext';
 import type { PlaySceneData, SceneRuntime, SceneSystem, SceneSystemClass } from '../core/SceneRuntime';
 import { sceneSystems } from '../systems';
+import { BenchSystem } from '../systems/BenchSystem';
 import { HotspotSystem } from '../systems/HotspotSystem';
 import { LocalPlayerSystem } from '../systems/LocalPlayerSystem';
 import { PropsSystem } from '../systems/PropsSystem';
@@ -99,6 +100,7 @@ export class PlayScene extends Phaser.Scene {
     };
     this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
+    this.host.benchControl = (action) => this.runtime.system(BenchSystem).run(action);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);
     const def = this.def;
     const engine = this.engine;

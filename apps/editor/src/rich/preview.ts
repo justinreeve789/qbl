@@ -44,6 +44,8 @@ export function previewBox(ctx: FormContext, values: () => Values, content: () =
       size: (v.size as 'small' | 'medium' | 'large' | undefined) ?? null,
       accent: (v.accent as string | undefined) ?? null,
       layer: stage,
+      // Variables at their starting values: what a formula, a value or a `when` block reads.
+      vars: (name) => known.get(name),
       still,
       page: still ? page : 0,
       onPage: (_, i) => (page = i),

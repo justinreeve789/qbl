@@ -2,6 +2,7 @@ import { CALLOUT_TONES } from '@qbl/shared';
 import { emojiIcon } from '../icons';
 import { sanitizeHtml } from '../sanitize';
 import { buildControls, type Controls } from './controls';
+import { formulasNow, loadFormulas, loadMath } from '../science/load';
 
 /** What a glossary word says when it is tapped. */
 export interface WordInfo {
@@ -31,6 +32,10 @@ export interface RichContent {
   answers: HTMLInputElement[];
   /** Its sliders, switches and wheels. */
   controls: Controls;
+  /** Settles when its formulas can be worked out: before then, answers cannot be checked. */
+  ready: Promise<void>;
+  /** For each answer box that is checked: whether what is typed in it is right (1) or not (0), by the variable that is told. */
+  checks(): Record<string, string>;
   /** A page is now showing: start whatever on it starts by itself. */
   shown(page: HTMLElement): void;
   /** Pause every video and sound. */
@@ -100,6 +105,17 @@ export function buildContent(html: string, env: ContentEnv): RichContent {
       });
     }
     media.push(...page.querySelectorAll<HTMLMediaElement>('video, audio'));
+    // Maths and chemistry, typeset. Until KaTeX is here (and if it never comes) it reads as it was written.
+    for (const m of page.querySelectorAll<HTMLElement>('span[data-qbl="math"], div[data-qbl="math"]')) {
+      const tex = m.dataset.tex ?? m.textContent ?? '';
+      m.classList.add('qbl-math');
+      if (m.tagName === 'DIV') m.classList.add('display');
+      if (!m.textContent) m.textContent = tex;
+      // Read aloud, typeset maths is a jumble of symbols.
+      m.dataset.unread = '';
+      if (!tex.trim()) continue;
+      void loadMath().then((k) => k.typeset(m, tex, m.tagName === 'DIV')).catch(() => {});
+    }
   }
   const answers = pages.flatMap((p) => [...p.querySelectorAll<HTMLInputElement>('input[data-qbl="answer"]')]);
   const box = el('div');
@@ -117,6 +133,15 @@ export function buildContent(html: string, env: ContentEnv): RichContent {
     input.addEventListener('input', () => input.classList.remove('qbl-missing'));
   }
 
+  const checked = answers.filter((a) => a.dataset.accept != null && a.dataset.check);
+  const ready = Promise.all([controls.ready, checked.length ? loadFormulas() : null]).then(() => {}, () => {});
+  const checks = () => {
+    const out: Record<string, string> = {};
+    const f = formulasNow();
+    for (const a of checked) out[a.dataset.check!] = f?.checkAnswer(a.value, a.dataset.accept ?? '', a.dataset.tolerance, controls.get) ? '1' : '0';
+    return out;
+  };
+
   const quiet = () => {
     for (const m of media) if (!m.paused) m.pause();
   };
@@ -130,6 +155,8 @@ export function buildContent(html: string, env: ContentEnv): RichContent {
     pages,
     answers,
     controls,
+    ready,
+    checks,
     shown(page) {
       for (const m of page.querySelectorAll<HTMLMediaElement>('video[autoplay], audio[autoplay]')) {
         if (m.closest('.qbl-slide:not(.current)')) continue;

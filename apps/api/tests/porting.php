@@ -378,6 +378,44 @@ if (class_exists(ZipArchive::class)) {
     fwrite(STDERR, "SKIPPED: the ZIP checks need PHP's zip extension.\n");
 }
 
+// ---- the Science Lab: a close-up bench is kept in the scene's layout and survives every trip
+if (class_exists(ZipArchive::class)) {
+    $labZip = dirname(__DIR__).'/database/seeders/scenarios/science-lab.zip';
+    $labDoc = json_decode(file_get_contents(dirname(__DIR__, 3).'/scenarios/science-lab.json'), true);
+    $labId = (new ScenarioArchive($store))->seed($labZip);
+    same($labId, 760001, 'the Science Lab is seeded with its own ids');
+    $lab = json_decode(json_encode($store->compile($labId)), true);
+    $benchOf = fn (array $doc) => array_column(array_map(fn ($s) => ['shortname' => $s['shortname'], 'bench' => $s['bench'] ?? null], $doc['scenes']), 'bench', 'shortname');
+    same($benchOf($lab), $benchOf($labDoc), 'every bench comes back from the database as it was shipped: substances, containers, tools, reactions, readouts, watches and graph');
+    same(array_keys(array_filter($benchOf($lab))), ['fizz', 'titration', 'layers', 'boil'], 'the hall has no bench, and is given none');
+    $book = null;
+    foreach ($lab['scenes'][0]['hotspots'] as $h) {
+        foreach ($h['actions'] as $a) {
+            if ($a['type'] === 'infobox') {
+                $book = $a['content'];
+            }
+        }
+    }
+    same([str_contains((string) $book, 'data-qbl="math" data-tex="\\ce{HCl + NaOH -> NaCl + H2O}"'), str_contains((string) $book, 'data-accept="2.7 g/mL" data-tolerance="2%" data-check="book_right"'), substr_count((string) $book, 'data-qbl="graph"')], [true, true, 3], 'the lab book keeps its typeset chemistry, its checked answer and its graphs');
+
+    // A copy gets new event ids: the watches follow them.
+    $labCopy = $store->importRows($store->bundle($labId), 1, ['title' => 'Lab copy']);
+    $copied = json_decode(json_encode($store->compile($labCopy)), true);
+    $watched = [];
+    foreach ($copied['scenes'] as $scene) {
+        $own = array_column($scene['indirect_events'] ?? [], 'id');
+        foreach ($scene['bench']['watches'] ?? [] as $w) {
+            if (isset($w['event_id'])) {
+                $watched[] = in_array($w['event_id'], $own, true);
+            }
+        }
+    }
+    same([count($watched), array_unique($watched)], [6, [true]], 'in a copy, every watch runs the copy\'s own event');
+    same(array_map(fn ($s) => count($s['bench']['substances'] ?? []), $copied['scenes']), array_map(fn ($s) => count($s['bench']['substances'] ?? []), $lab['scenes']), 'and nothing else in a bench is taken for an id');
+    $store->deleteScenario($labCopy);
+    $store->deleteScenario($labId);
+}
+
 // tidy up
 exec('rm -rf '.escapeshellarg($dir));
 echo $failures ? "$failures of $checks checks FAILED\n" : "porting: all $checks checks passed\n";

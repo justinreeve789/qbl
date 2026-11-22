@@ -1452,3 +1452,26 @@ button.questlab-open:hover:not(:disabled) { background: color-mix(in srgb, var(-
 .library-admin .questlab-tools .questlab-search { width: 260px; flex: 0 0 auto; }
 .library-tile .tile-thumb img { image-rendering: pixelated; }
 .library-upload input[list] { width: 110px; }
+
+/* ---------- close-up bench ---------- */
+.bench-vessel, .bench-tool { cursor: move; }
+.bench-glass { fill: rgba(255, 255, 255, 0.18); stroke: none; }
+.bench-liquid { opacity: 0.85; stroke: none; }
+.bench-wall { fill: none; stroke: #ffffff; stroke-width: 3; stroke-linejoin: round; filter: drop-shadow(0 0 1px #000); }
+.bench-vessel.supply .bench-wall { stroke-dasharray: 10 5; }
+.bench-vessel.selected .bench-wall { stroke: #ffd34d; stroke-width: 5; }
+.bench-tool rect { fill: rgba(59, 66, 82, 0.75); stroke: #ffffff; stroke-width: 2; }
+.bench-tool.selected rect { stroke: #ffd34d; stroke-width: 4; }
+.bench-vessel.off, .bench-tool.off { opacity: 0.45; }
+.bench-list { display: grid; gap: 6px; }
+.bench-item { border: 1px solid var(--line, #d7dbe4); border-left: 4px solid #0f7a9d; border-radius: 8px; background: var(--field, #f7f8fb); }
+.bench-item > summary { padding: 8px 10px; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.bench-item[open] > summary { border-bottom: 1px solid var(--line, #d7dbe4); }
+.bench-item > .form, .bench-item > form, .bench-item > div { padding: 8px 10px; }
+
+/* ---------- maths, worked-out values and graphs in the rich editor ---------- */
+.rt-math-preview { min-height: 48px; padding: 10px; border: 1px dashed var(--line, #d7dbe4); border-radius: 8px; background: #fff; color: #1d2340; text-align: center; overflow-x: auto; }
+.rt-problem { color: #b3261e; font-size: 0.9em; margin: 4px 0 0; }
+.rt-math-card { padding: 8px; text-align: center; overflow-x: auto; }
+.rt-calc-card, .rt-graph-card { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; }
+.rt-calc-card code { font-weight: 600; }

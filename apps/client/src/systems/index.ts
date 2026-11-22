@@ -1,5 +1,6 @@
 import type { SceneSystemClass } from '../core/SceneRuntime';
 import { AtmosphereSystem } from './AtmosphereSystem';
+import { BenchSystem } from './BenchSystem';
 import { CameraSystem } from './CameraSystem';
 import { DebugSystem } from './DebugSystem';
 import { HotspotSystem } from './HotspotSystem';
@@ -28,6 +29,7 @@ export const sceneSystems: SceneSystemClass[] = [
   RemotePlayersSystem,
   LocalPlayerSystem,
   HotspotSystem,
+  BenchSystem,
   SpeechSystem,
   CameraSystem,
   PreloadSystem,

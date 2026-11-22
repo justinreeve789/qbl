@@ -146,6 +146,8 @@ class ScenarioCompiler
                 'team_only' => array_key_exists('team_only', self::json($sc['params'] ?? null)) && self::json($sc['params'] ?? null)['team_only'] !== null ? self::bool(self::json($sc['params'] ?? null)['team_only']) : null,
                 'items' => $layout['items'] ?? [],
                 'characters' => $layout['characters'] ?? [],
+                // A close-up bench: its substances, containers, tools, reactions, readouts, watches and graph.
+                'bench' => is_array($layout['bench'] ?? null) && $layout['bench'] ? $layout['bench'] : null,
                 // The scene's own background music, when it has one, is kept in params.
                 'music_media_id' => self::intOrNull(self::json($sc['params'] ?? null)['music_media_id'] ?? null),
                 'music_volume' => self::numOrNull(self::json($sc['params'] ?? null)['music_volume'] ?? null),

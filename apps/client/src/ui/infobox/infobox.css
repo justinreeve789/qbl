@@ -263,3 +263,9 @@ p .qbl-answer-box, li .qbl-answer-box, td .qbl-answer-box { display: inline-bloc
   .qbl-infobox, .qbl-backdrop, .qbl-page.qbl-enter > *, .qbl-infobox .qbl-infobox-actions > *, .qbl-word-card, .qbl-choice.is-right, .qbl-choice.is-wrong, .qbl-answer-box.qbl-missing, .qbl-when.appear, .qbl-wheel.landed .qbl-control-value { animation: none !important; }
   .qbl-flip-inner, .qbl-gallery-track, .qbl-dot, .qbl-step, .qbl-switch-knob, .qbl-meter-fill { transition: none !important; }
 }
+
+/* ---------- maths, worked-out values and graphs ---------- */
+.qbl-math { font-size: 1.05em; }
+.qbl-math.display { display: block; margin: 12px 0; text-align: center; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+.qbl-math:not(.qbl-math-set) { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: 0.95em; }
+.qbl-calc { font-variant-numeric: tabular-nums; white-space: nowrap; }
