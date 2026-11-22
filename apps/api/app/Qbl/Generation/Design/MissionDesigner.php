@@ -53,59 +53,76 @@ class MissionDesigner
      */
     public function design(string $prompt, array $alignment, array $options, ?callable $log = null, ?callable $progress = null): array
     {
+        if (($options['format'] ?? 'mission') === 'story') {
+            // A story to watch, not a mission to play: its own blueprint, checked by its own validator.
+            $progress && $progress(0.05, 'Writing the story and its scenes');
+
+            return $this->loop(StorySchema::schema($this->limits), $this->storySystem(), $this->storyBrief($prompt, $alignment, $options), 'story_blueprint',
+                fn (array $b) => StoryValidator::errors($b), fn (array $b) => self::tidyStory($b), 'story', $log, $progress);
+        }
         $progress && $progress(0.05, 'Writing the story, scenes and questions');
-        $schema = BlueprintSchema::schema($this->limits);
         $objectiveIds = array_column($alignment['learning_objectives'], 'id');
         // Whether this one may have a big tense moment is decided here, not by the model, so they stay rare.
         $pace = ['big_moment' => $this->pace($options)];
-        $brief = $this->brief($prompt, $alignment, $options, $pace);
-        $paced = fn (array $b) => ['pace' => $pace] + $b;
 
-        $blueprint = $paced(self::tidy($this->llm->structured($this->system(), [$brief], 'mission_blueprint', $schema, 32000)));
+        return $this->loop(BlueprintSchema::schema($this->limits), $this->system(), $this->brief($prompt, $alignment, $options, $pace), 'mission_blueprint',
+            fn (array $b) => BlueprintValidator::errors($b, $objectiveIds), fn (array $b) => ['pace' => $pace] + self::tidy($b), 'mission', $log, $progress);
+    }
+
+    /**
+     * Write a blueprint and have the model correct it until $errors finds nothing wrong: by changes
+     * (cheap), then, if those do not get there, by one whole rewrite.
+     *
+     * @param  callable(array): string[]  $errors
+     * @param  callable(array): array  $tidy
+     */
+    private function loop(array $schema, string $system, string $brief, string $name, callable $errors, callable $tidy, string $what, ?callable $log, ?callable $progress): array
+    {
+        $blueprint = $tidy($this->llm->structured($system, [$brief], $name, $schema, 32000));
         // The first draft is most of the work; each correction gets it closer (how many is not known ahead).
-        $progress && $progress(0.7, 'Checking the mission can be played from start to finish');
+        $progress && $progress(0.7, $what === 'story' ? 'Checking the story can be acted out from start to finish' : 'Checking the mission can be played from start to finish');
         $rewritten = false;
         $limit = $this->repairs;
         for ($round = 1; ; $round++) {
             try {
-                $errors = BlueprintValidator::errors($blueprint, $objectiveIds);
+                $problems = $errors($blueprint);
             } catch (\TypeError|\ErrorException|\ValueError $e) {
                 // Not even the right shape (the tool route is not enforced token by token).
-                $errors = ['The blueprint does not follow the schema: '.$e->getMessage().'. Give every field the type the schema says.'];
+                $problems = ['The blueprint does not follow the schema: '.$e->getMessage().'. Give every field the type the schema says.'];
             }
-            if (! $errors) {
-                $progress && $progress(1, 'The mission is designed');
+            if (! $problems) {
+                $progress && $progress(1, $what === 'story' ? 'The story is written' : 'The mission is designed');
 
                 return $blueprint;
             }
-            $progress && $progress(0.7 + 0.3 * (1 - 0.5 ** $round), 'Fixing '.count($errors).' problem'.(count($errors) === 1 ? '' : 's').' in the design (round '.$round.')');
+            $progress && $progress(0.7 + 0.3 * (1 - 0.5 ** $round), 'Fixing '.count($problems).' problem'.(count($problems) === 1 ? '' : 's').' in the design (round '.$round.')');
             if ($round > $limit) {
                 if ($rewritten) {
-                    throw new GenerationError("The mission blueprint still has problems after {$this->repairs} corrections and a rewrite:\n- ".implode("\n- ", $errors));
+                    throw new GenerationError("The $what blueprint still has problems after {$this->repairs} corrections and a rewrite:\n- ".implode("\n- ", $problems));
                 }
                 // Changes did not get there: one whole rewrite, as a last resort.
-                $log && $log('Rewriting the blueprint ('.count($errors).' problem'.(count($errors) === 1 ? '' : 's').' left): '.$errors[0]);
-                $blueprint = $paced(self::tidy($this->llm->structured($this->system(), [
+                $log && $log('Rewriting the blueprint ('.count($problems).' problem'.(count($problems) === 1 ? '' : 's').' left): '.$problems[0]);
+                $blueprint = $tidy($this->llm->structured($system, [
                     $brief, ['cache' => true],
                     "Here is the blueprint you wrote:\n".json_encode($blueprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                    "It cannot be built because of these problems. Give the whole corrected blueprint, changing only what is needed:\n- ".implode("\n- ", $errors),
-                ], 'mission_blueprint', $schema, 32000)));
+                    "It cannot be built because of these problems. Give the whole corrected blueprint, changing only what is needed:\n- ".implode("\n- ", $problems),
+                ], $name, $schema, 32000));
                 $rewritten = true;
                 $limit = $round; // checked once more, then no more corrections
 
                 continue;
             }
-            $log && $log('Correcting the blueprint ('.count($errors).' problem'.(count($errors) === 1 ? '' : 's').'): '.$errors[0]);
-            $answer = $this->llm->structured($this->system(), [
+            $log && $log('Correcting the blueprint ('.count($problems).' problem'.(count($problems) === 1 ? '' : 's').'): '.$problems[0]);
+            $answer = $this->llm->structured($system, [
                 $brief, ['cache' => true],
                 "Here is the blueprint you wrote:\n".json_encode($blueprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-                "It cannot be built because of these problems:\n- ".implode("\n- ", $errors)."\n\nAnswer with only the changes that fix them (not the whole blueprint), changing as little as possible. Keep everything else as it is.",
+                "It cannot be built because of these problems:\n- ".implode("\n- ", $problems)."\n\nAnswer with only the changes that fix them (not the whole blueprint), changing as little as possible. Keep everything else as it is.",
             ], 'blueprint_changes', self::CHANGES_SCHEMA, 6000);
-            [$changed, $problems] = self::applyChanges($blueprint, (array) ($answer['changes'] ?? []));
-            if ($problems) {
-                $log && $log('Some changes could not be made: '.$problems[0]);
+            [$changed, $failed] = self::applyChanges($blueprint, (array) ($answer['changes'] ?? []));
+            if ($failed) {
+                $log && $log('Some changes could not be made: '.$failed[0]);
             }
-            $blueprint = $paced(self::tidy($changed));
+            $blueprint = $tidy($changed);
         }
     }
 
@@ -235,6 +252,12 @@ class MissionDesigner
           embers rising, crystals and screens breathe slowly, a crashed ship's beacon still blinks; they shine
           fully in the dark and only a little by day. Something can be in the air (atmosphere): fireflies at
           dusk, leaves falling, snow, rain, dust floating in a sunbeam, bubbles under water.
+        - Weather and water. An outdoor scene can have weather the game draws, with its own sound (weather:
+          rain splashing on the ground, snow, a storm with lightning and thunder, a blizzard, fog). Water can
+          move (water): a river or stream flowing across the front or the back of the floor, a pond lying in
+          it, a waterfall pouring down at the back, the sea along the back; the banks are painted and the game
+          makes the water flow, with its sound. Vehicles can drive by in the background (ambient drives_by: a
+          tractor, a cart, a bus), with a sound (car, hooves). Use these only where the place has them.
         - Ways between scenes. Walk off an edge (left, right, top = towards the back, bottom = towards the viewer),
           or use a passage that stands in the scene: a door into a building, a gate, a cave mouth, a portal, a
           tunnel, a ladder or stairs up, or a hole, hatch or stairs down in the floor (students jump into a hole!).
@@ -723,96 +746,7 @@ class MissionDesigner
             $b['combinations'][$i]['items'] = array_values(array_filter((array) ($c['items'] ?? []), 'is_string'));
         }
         foreach ($b['scenes'] as &$s) {
-            if (! in_array($s['kind'] ?? null, Sizes::SCENE_KINDS, true)) {
-                $s['kind'] = ! empty($s['indoor']) ? 'indoor' : 'outdoor';
-            }
-            if (! in_array($s['width'] ?? null, BlueprintSchema::WIDTHS, true)) {
-                unset($s['width']);
-            }
-            foreach (['distance', 'foreground', 'floor', 'ambient', 'arrival', 'details', 'sky', 'lights', 'atmosphere'] as $k) {
-                if (isset($s[$k]) && ($s[$k] === '' || $s[$k] === [] || (is_array($s[$k]) && $k === 'foreground' && empty($s[$k]['look'])))) {
-                    unset($s[$k]);
-                }
-            }
-            if (isset($s['ambient'])) {
-                $s['ambient'] = array_values(array_filter((array) $s['ambient'], fn ($a) => is_array($a) && ! empty($a['look'])));
-                if (! $s['ambient']) {
-                    unset($s['ambient']);
-                }
-            }
-            if (isset($s['arrival'])) {
-                $s['arrival'] = array_filter([
-                    'title' => trim((string) ($s['arrival']['title'] ?? '')),
-                    'dialogue' => array_values(array_filter((array) ($s['arrival']['dialogue'] ?? []), fn ($l) => is_array($l) && trim((string) ($l['text'] ?? '')) !== '')),
-                    'cutscene' => self::beats($s['arrival']['cutscene'] ?? []),
-                ]);
-                if (! $s['arrival']) {
-                    unset($s['arrival']);
-                }
-            }
-            // A living sky only where there is a sky to see; lights and the air without what makes no sense.
-            if (isset($s['sky'])) {
-                $time = $s['sky']['time'] ?? null;
-                if (! in_array($time, BlueprintSchema::SKY_TIMES, true) || ! in_array(Sizes::sceneKind($s), ['outdoor', 'up_high'], true)) {
-                    unset($s['sky']);
-                } else {
-                    $s['sky'] = array_filter([
-                        'time' => $time,
-                        'until' => in_array($s['sky']['until'] ?? null, BlueprintSchema::SKY_TIMES, true) && $s['sky']['until'] !== $time ? $s['sky']['until'] : null,
-                        'clouds' => in_array($s['sky']['clouds'] ?? null, ['none', 'few', 'many'], true) ? $s['sky']['clouds'] : 'few',
-                    ]);
-                }
-            }
-            if (isset($s['lights'])) {
-                $lights = [];
-                foreach ((array) $s['lights'] as $l) {
-                    if (is_array($l) && isset(BlueprintSchema::LIGHTS[$l['kind'] ?? '']) && trim((string) ($l['look'] ?? '')) !== '' && is_numeric($l['x'] ?? null)) {
-                        $l['x'] = max(0.05, min(0.95, (float) $l['x']));
-                        if (! preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($l['color'] ?? ''))) {
-                            unset($l['color']);
-                        }
-                        if (! in_array($l['placement'] ?? '', ['ground', 'back', 'wall'], true)) {
-                            unset($l['placement']);
-                        }
-                        $lights[] = $l;
-                    }
-                }
-                $s['lights'] = array_slice($lights, 0, 4);
-                if (! $s['lights']) {
-                    unset($s['lights']);
-                }
-            }
-            if (isset($s['atmosphere'])) {
-                $air = [];
-                foreach ((array) $s['atmosphere'] as $a) {
-                    if (is_array($a) && in_array($a['kind'] ?? '', BlueprintSchema::ATMOSPHERES, true) && ! in_array($a['kind'], array_column($air, 'kind'), true)) {
-                        $air[] = array_filter(['kind' => $a['kind'], 'amount' => in_array($a['amount'] ?? null, ['few', 'some', 'many'], true) ? $a['amount'] : null]);
-                    }
-                }
-                $s['atmosphere'] = array_slice($air, 0, 2);
-                if (! $s['atmosphere']) {
-                    unset($s['atmosphere']);
-                }
-            }
-            if (isset($s['details'])) {
-                $details = [];
-                foreach ((array) $s['details'] as $d) {
-                    if (is_array($d) && trim((string) ($d['label'] ?? '')) !== '' && trim((string) ($d['text'] ?? '')) !== '' && is_numeric($d['x'] ?? null)) {
-                        $d['x'] = max(0.1, min(0.9, (float) $d['x']));
-                        if (! in_array($d['placement'] ?? 'back', ['back', 'ground'], true)) {
-                            unset($d['placement']);
-                        }
-                        $details[] = $d;
-                    }
-                }
-                $s['details'] = array_slice($details, 0, 5);
-                if (! $s['details']) {
-                    unset($s['details']);
-                }
-            }
-            if (isset($s['floor']['blocked'])) {
-                $s['floor']['blocked'] = array_values(array_filter((array) $s['floor']['blocked'], 'is_array'));
-            }
+            $s = self::tidyScene($s);
             $s['exits'] = array_values(array_filter($s['exits'] ?? [], 'is_array'));
             foreach ($s['exits'] as &$x) {
                 foreach (['requires', 'locked_message', 'label', 'look', 'back', 'via', 'edge'] as $k) {
@@ -830,6 +764,301 @@ class MissionDesigner
             unset($x);
         }
         unset($s);
+
+        return $b;
+    }
+
+    /**
+     * How a scene looks, tidied (for missions and stories alike): its kind and width, its far view and
+     * foreground, its life, sky, lights, air, weather and water, without what is empty or makes no sense.
+     */
+    public static function tidyScene(array $s): array
+    {
+        if (! in_array($s['kind'] ?? null, Sizes::SCENE_KINDS, true)) {
+            $s['kind'] = ! empty($s['indoor']) ? 'indoor' : 'outdoor';
+        }
+        if (! in_array($s['width'] ?? null, BlueprintSchema::WIDTHS, true)) {
+            unset($s['width']);
+        }
+        foreach (['distance', 'foreground', 'floor', 'ambient', 'arrival', 'details', 'sky', 'lights', 'atmosphere', 'weather', 'water'] as $k) {
+            if (isset($s[$k]) && ($s[$k] === '' || $s[$k] === [] || (is_array($s[$k]) && $k === 'foreground' && empty($s[$k]['look'])))) {
+                unset($s[$k]);
+            }
+        }
+        if (isset($s['ambient'])) {
+            $s['ambient'] = array_values(array_filter((array) $s['ambient'], fn ($a) => is_array($a) && ! empty($a['look'])));
+            if (! $s['ambient']) {
+                unset($s['ambient']);
+            }
+        }
+        if (isset($s['arrival'])) {
+            $s['arrival'] = array_filter([
+                'title' => trim((string) ($s['arrival']['title'] ?? '')),
+                'dialogue' => array_values(array_filter((array) ($s['arrival']['dialogue'] ?? []), fn ($l) => is_array($l) && trim((string) ($l['text'] ?? '')) !== '')),
+                'cutscene' => self::beats($s['arrival']['cutscene'] ?? []),
+            ]);
+            if (! $s['arrival']) {
+                unset($s['arrival']);
+            }
+        }
+        // A living sky only where there is a sky to see; lights and the air without what makes no sense.
+        if (isset($s['sky'])) {
+            $time = $s['sky']['time'] ?? null;
+            if (! in_array($time, BlueprintSchema::SKY_TIMES, true) || ! in_array(Sizes::sceneKind($s), ['outdoor', 'up_high'], true)) {
+                unset($s['sky']);
+            } else {
+                $s['sky'] = array_filter([
+                    'time' => $time,
+                    'until' => in_array($s['sky']['until'] ?? null, BlueprintSchema::SKY_TIMES, true) && $s['sky']['until'] !== $time ? $s['sky']['until'] : null,
+                    'clouds' => in_array($s['sky']['clouds'] ?? null, ['none', 'few', 'many'], true) ? $s['sky']['clouds'] : 'few',
+                ]);
+            }
+        }
+        if (isset($s['lights'])) {
+            $lights = [];
+            foreach ((array) $s['lights'] as $l) {
+                if (is_array($l) && isset(BlueprintSchema::LIGHTS[$l['kind'] ?? '']) && trim((string) ($l['look'] ?? '')) !== '' && is_numeric($l['x'] ?? null)) {
+                    $l['x'] = max(0.05, min(0.95, (float) $l['x']));
+                    if (! preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($l['color'] ?? ''))) {
+                        unset($l['color']);
+                    }
+                    if (! in_array($l['placement'] ?? '', ['ground', 'back', 'wall'], true)) {
+                        unset($l['placement']);
+                    }
+                    $lights[] = $l;
+                }
+            }
+            $s['lights'] = array_slice($lights, 0, 4);
+            if (! $s['lights']) {
+                unset($s['lights']);
+            }
+        }
+        if (isset($s['atmosphere'])) {
+            $air = [];
+            foreach ((array) $s['atmosphere'] as $a) {
+                if (is_array($a) && in_array($a['kind'] ?? '', BlueprintSchema::ATMOSPHERES, true) && ! in_array($a['kind'], array_column($air, 'kind'), true)) {
+                    $air[] = array_filter(['kind' => $a['kind'], 'amount' => in_array($a['amount'] ?? null, ['few', 'some', 'many'], true) ? $a['amount'] : null]);
+                }
+            }
+            $s['atmosphere'] = array_slice($air, 0, 2);
+            if (! $s['atmosphere']) {
+                unset($s['atmosphere']);
+            }
+        }
+        if (isset($s['details'])) {
+            $details = [];
+            foreach ((array) $s['details'] as $d) {
+                if (is_array($d) && trim((string) ($d['label'] ?? '')) !== '' && trim((string) ($d['text'] ?? '')) !== '' && is_numeric($d['x'] ?? null)) {
+                    $d['x'] = max(0.1, min(0.9, (float) $d['x']));
+                    if (! in_array($d['placement'] ?? 'back', ['back', 'ground'], true)) {
+                        unset($d['placement']);
+                    }
+                    $details[] = $d;
+                }
+            }
+            $s['details'] = array_slice($details, 0, 5);
+            if (! $s['details']) {
+                unset($s['details']);
+            }
+        }
+        if (isset($s['floor']['blocked'])) {
+            $s['floor']['blocked'] = array_values(array_filter((array) $s['floor']['blocked'], 'is_array'));
+        }
+        // The weather only where it falls; water only where it can lie in the floor.
+        if (isset($s['weather'])) {
+            $w = (array) $s['weather'];
+            if (! in_array($w['kind'] ?? '', BlueprintSchema::WEATHERS, true) || ! in_array(Sizes::sceneKind($s), BlueprintSchema::WEATHER_KINDS, true)) {
+                unset($s['weather']);
+            } else {
+                $s['weather'] = array_filter(['kind' => $w['kind'], 'intensity' => isset(BlueprintSchema::INTENSITY[$w['intensity'] ?? '']) ? $w['intensity'] : null]);
+            }
+        }
+        if (isset($s['water'])) {
+            $w = (array) $s['water'];
+            $kind = $w['kind'] ?? '';
+            if (! in_array($kind, BlueprintSchema::WATERS, true)) {
+                unset($s['water']);
+            } else {
+                $where = $kind === 'waterfall' ? 'back' : (in_array($w['where'] ?? '', BlueprintSchema::WATER_PLACES, true) ? $w['where'] : (in_array($kind, ['pond', 'lake'], true) ? 'middle' : 'front'));
+                if (in_array($kind, ['pond', 'lake'], true) && $where === 'front') {
+                    $where = 'middle';
+                }
+                $s['water'] = array_filter([
+                    'kind' => $kind, 'where' => $where,
+                    'x' => is_numeric($w['x'] ?? null) ? max(0.2, min(0.8, (float) $w['x'])) : (($where === 'middle' || $kind === 'waterfall') ? 0.5 : null),
+                    'width' => is_numeric($w['width'] ?? null) ? max(0.1, min(0.5, (float) $w['width'])) : null,
+                    'flows' => in_array($w['flows'] ?? '', ['left', 'right'], true) ? $w['flows'] : null,
+                    'look' => trim((string) ($w['look'] ?? '')) ?: 'its banks',
+                    'color' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($w['color'] ?? '')) ? $w['color'] : null,
+                ], fn ($v) => $v !== null);
+            }
+        }
+        foreach ($s['ambient'] ?? [] as $i => $a) {
+            if (isset($a['sound']) && ! in_array($a['sound'], BlueprintSchema::SOUNDS, true)) {
+                unset($s['ambient'][$i]['sound']);
+            }
+            if (isset($a['cue']) && ! $a['cue']) {
+                unset($s['ambient'][$i]['cue']);
+            }
+        }
+
+        return $s;
+    }
+
+    private function storySystem(): string
+    {
+        return <<<'TXT'
+        You write stories for Quest Lab, an educational 2D game for school students, that play like an
+        animated picture book: students watch and listen while it is acted out, scene after scene. Nobody
+        plays a character; there are no avatars, puzzles or questions during the story. A teacher asked
+        for a story to be told: tell it well, with learning at its heart.
+
+        What a story scene can do (and so all a story may use):
+        - Each scene is a side-on 2D place, like a stage set, painted in the house style: outdoor, indoor,
+          underground, up_high or underwater, normal or wide (a long place the view travels along). Behind
+          an outdoor scene a far view (distance) can drift for depth; something close (foreground) can stand
+          in front. The view follows whoever is acting.
+        - Characters act it out: they stand on the stage when it opens (cast), come on from the left or
+          right edge (enter), walk about (walk), say lines in speech bubbles (say, to someone, turning to
+          them), make gestures (wave, point, cheer, think, jump, spin, dance) and walk off (leave). Each is
+          drawn standing and walking at their real height (height_cm) and has a voice of their own; their
+          lines are read aloud.
+        - A narrator links the moments (narrate): short captions read aloud. Big words across the screen
+          (title) mark a change of time or place, sparingly.
+        - The place is alive and can change as the story goes: a living sky (sky: a time of day, slowly
+          becoming another: a sunset into a starry dusk), lights that flicker or glow (lights), things in
+          the air (atmosphere: fireflies, falling leaves, dust), weather with its own sound (weather: rain
+          splashing on the ground, snow, a storm with lightning and thunder, a blizzard, fog) that a beat
+          can start, change or stop (weather beat), water that flows (water: a river or stream, a pond, a
+          waterfall, the sea), creatures and vehicles that pass (ambient: birds that land and fly off, a
+          cat strolling by, fish, a cart or a bus driving by; with cue, only when a pass beat says), and
+          sound effects at the right moment (sound: thunder, a door, a knock, a bell, a car, a splash,
+          footsteps, a magic chime...).
+        - Each scene plays its script, then the story moves on to the next scene by itself. After the last
+          one comes "The End" and a few questions for the class to talk about.
+
+        How to write it:
+        - Show, don't only tell. Each scene is acted out: characters come and go, react, talk to each
+          other, gesture, and the place reacts (the rain starts as the argument begins, a bus splashes
+          through a puddle, the sun sets as they walk home). The narrator links moments and says what we
+          cannot see, in one or two short sentences at a time; most of the story is in what characters do
+          and say.
+        - The learning is in the story: a concept explained through what happens (the water cycle as a
+          raindrop's journey), a moment in history seen through people who were there, a feeling or a
+          choice students can talk about. Be accurate, and at the grade level: short sentences, concrete
+          words, vocabulary explained in context by what happens or what a character says.
+        - 3 to 6 scenes unless told otherwise, each with about 6 to 16 beats; a satisfying beginning,
+          middle and end, with something at stake. A little humour helps.
+        - Keep track of who is on the stage: only characters on stage speak, walk or gesture; bring others
+          on with enter first; someone who leaves a scene does not come back in it. Spread people across
+          the stage (x from 0.15 to 0.85), not all at one spot. Use meanwhile for things that happen at
+          once (one walks across while another speaks).
+        - Pick weather, water, light, life and sounds from the story and its places, where they help it:
+          not everywhere. Weather falls only outdoors (and up high); water lies only in outdoor and
+          underground floors.
+        - Everything has its real size beside 130 cm children: give characters height_cm, describe
+          backgrounds as seen from a few metres away, with no characters, people or animals in them.
+        - Character and item appearance say only what they look like; never an art style, medium or
+          rendering. No text, signs with words, logos or real brands in any picture. Keep everything
+          friendly for children: exciting moments, never frightening ones; nobody is hurt.
+        - Lines are warm and brief (one or two sentences), in character, and never talk down to students.
+        - Keys are lowercase with underscores, unique within their list.
+        TXT;
+    }
+
+    private function storyBrief(string $prompt, array $alignment, array $options): string
+    {
+        $lines = ["Teacher's request: $prompt", ''];
+        foreach (['grade' => 'Grade', 'subject' => 'Subject'] as $k => $label) {
+            if (! empty($options[$k])) {
+                $lines[] = "$label: {$options[$k]}";
+            }
+        }
+        if (! empty($options['scenes'])) {
+            $lines[] = "Number of scenes: exactly {$options['scenes']}.";
+        }
+        if (! empty($options['minutes'])) {
+            $lines[] = "Length: about {$options['minutes']} minutes to watch.";
+        }
+        if (! empty($options['notes'])) {
+            $lines[] = "Also: {$options['notes']}";
+        }
+        $lines[] = '';
+        if ($alignment['standards']) {
+            $lines[] = 'Standards the story serves:';
+            foreach ($alignment['standards'] as $s) {
+                $lines[] = "- {$s['code']} ({$s['alignment']}): {$s['description']}";
+            }
+        }
+        $lines[] = 'What students should take from it (the discussion at the end should let them show it):';
+        foreach ($alignment['learning_objectives'] as $lo) {
+            $lines[] = "- {$lo['id']}: {$lo['text']}";
+        }
+        if ($alignment['vocabulary']) {
+            $lines[] = 'Words to use and make clear in the story: '.implode('; ', array_map(fn ($v) => "{$v['term']} ({$v['definition']})", $alignment['vocabulary']));
+        }
+        if ($alignment['misconceptions']) {
+            $lines[] = 'Misconceptions the story can set right: '.implode('; ', $alignment['misconceptions']);
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /** A story blueprint as the builder expects it: lists as lists, scenes tidied as a mission's are, beats without empty fields. */
+    public static function tidyStory(array $b): array
+    {
+        $b['format'] = 'story';
+        foreach (['scenes', 'characters', 'items'] as $list) {
+            $b[$list] = array_values(array_filter($b[$list] ?? [], 'is_array'));
+        }
+        foreach ($b['characters'] as &$c) {
+            $c['height_cm'] = Sizes::characterCm($c);
+            if (isset($c['gestures'])) {
+                $c['gestures'] = array_values(array_intersect((array) $c['gestures'], BlueprintSchema::GESTURES));
+            }
+            unset($c['guide'], $c['scene'], $c['x'], $c['walks'], $c['wanders'], $c['chatter']);
+        }
+        unset($c);
+        foreach ($b['scenes'] as &$s) {
+            $s = self::tidyScene($s);
+            unset($s['exits'], $s['details'], $s['arrival']);
+            $s['cast'] = array_values(array_filter((array) ($s['cast'] ?? []), fn ($c) => is_array($c) && ! empty($c['who'])));
+            foreach ($s['cast'] as &$c) {
+                $c['x'] = max(0.1, min(0.9, (float) ($c['x'] ?? 0.5)));
+                if (! in_array($c['facing'] ?? '', ['left', 'right'], true)) {
+                    unset($c['facing']);
+                }
+            }
+            unset($c);
+            $script = [];
+            foreach ((array) ($s['script'] ?? []) as $beat) {
+                if (! is_array($beat) || empty($beat['do'])) {
+                    continue;
+                }
+                $beat = array_filter($beat, fn ($v) => $v !== '' && $v !== null && $v !== []);
+                foreach (['x' => [0.08, 0.92], 'seconds' => [0.5, 6]] as $k => [$lo, $hi]) {
+                    if (isset($beat[$k]) && is_numeric($beat[$k])) {
+                        $beat[$k] = max($lo, min($hi, (float) $beat[$k]));
+                    }
+                }
+                if (isset($beat['intensity']) && ! isset(BlueprintSchema::INTENSITY[$beat['intensity']])) {
+                    unset($beat['intensity']);
+                }
+                if (empty($beat['meanwhile'])) {
+                    unset($beat['meanwhile']);
+                }
+                $script[] = $beat;
+            }
+            $s['script'] = $script;
+        }
+        unset($s);
+        $b['ending'] = (array) ($b['ending'] ?? []);
+        $b['ending']['discussion'] = array_values(array_slice(array_filter((array) ($b['ending']['discussion'] ?? []), fn ($q) => is_string($q) && trim($q) !== ''), 0, 3));
+        if (trim((string) ($b['ending']['text'] ?? '')) === '') {
+            unset($b['ending']['text']);
+        }
+        // What the art and the builder share with missions, filled in: a story has no interactions, steps or twists.
+        $b['start_scene'] = $b['scenes'][0]['key'] ?? null;
 
         return $b;
     }

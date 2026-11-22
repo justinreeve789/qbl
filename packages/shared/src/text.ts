@@ -118,7 +118,10 @@ export function speechDuration(text: string, rate = 1): number {
   return Math.max(600, (words.length * 330 + text.length * 12 + pauses) / Math.max(0.3, rate));
 }
 
-/** Whether an action's text is read aloud: what the action says, or else the scenario's setting. */
-export function isNarrated(scenario: { narration?: 'off' | 'on' }, action: { narrate?: boolean }): boolean {
-  return action.narrate ?? scenario.narration === 'on';
+/**
+ * Whether an action's text is read aloud: what the action says, or else the scenario's setting. A
+ * narration action is the narrator speaking, so it is read aloud unless it says not to.
+ */
+export function isNarrated(scenario: { narration?: 'off' | 'on' }, action: { narrate?: boolean; type?: string }): boolean {
+  return action.narrate ?? (action.type === 'narration' || scenario.narration === 'on');
 }

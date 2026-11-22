@@ -200,6 +200,42 @@ final class ImageTools
         return $n ? $clear / $n : 0.0;
     }
 
+    /**
+     * The box the see-through pixels make within a region of a picture (a river cut out of a painted
+     * background), and what share of the region they fill. Null when the region has none.
+     *
+     * @return array{0: int, 1: int, 2: int, 3: int, 4: float}|null x, y, width, height, share
+     */
+    public static function clearBox(GdImage $im, int $x0, int $y0, int $x1, int $y1, int $step = 3): ?array
+    {
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $x0 = max(0, $x0);
+        $y0 = max(0, $y0);
+        $x1 = min($w - 1, $x1);
+        $y1 = min($h - 1, $y1);
+        $minX = $minY = PHP_INT_MAX;
+        $maxX = $maxY = -1;
+        $clear = $all = 0;
+        for ($y = $y0; $y <= $y1; $y += $step) {
+            for ($x = $x0; $x <= $x1; $x += $step) {
+                $all++;
+                if (((imagecolorat($im, $x, $y) >> 24) & 0x7F) >= 100) {
+                    $clear++;
+                    $minX = min($minX, $x);
+                    $maxX = max($maxX, $x);
+                    $minY = min($minY, $y);
+                    $maxY = max($maxY, $y);
+                }
+            }
+        }
+        if ($clear === 0) {
+            return null;
+        }
+
+        return [$minX, $minY, $maxX - $minX + $step, $maxY - $minY + $step, $clear / max(1, $all)];
+    }
+
     public static function crop(GdImage $im, int $x, int $y, int $w, int $h): GdImage
     {
         $out = self::blank($w, $h);

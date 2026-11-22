@@ -52,6 +52,18 @@ final class VoicePicker
         return $out;
     }
 
+    /** The same picker, weighing flair by `$flair` instead (0: by fit alone). */
+    public function withFlair(float $flair): self
+    {
+        return new self($this->catalog, $flair);
+    }
+
+    /** The default narrator's voice for a language (VoiceCatalog::narrator()). */
+    public function narrator(?string $lang): ?string
+    {
+        return $this->catalog->narrator($lang);
+    }
+
     /** How well a voice suits what is wanted. */
     public static function fit(array $want, array $voice): int
     {

@@ -137,7 +137,7 @@ export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement
       column(['start_scene_id', 'max_players', 'require_login', 'enable_save_session', 'allow_groups']),
       setting(['move_speed'])),
     part('💬 Talking and reading', 'var(--tone-character)', 'chat',
-      setting(['chat_mode', 'private_messages', 'narration'])),
+      setting(['chat_mode', 'private_messages', 'narration', 'narrator_voice'])),
     part('🔊 Music', 'var(--tone-audio)', 'music',
       setting(['music_media_id', 'music_volume'])),
     part('🧰 Advanced', 'var(--tone-other)', 'advanced',

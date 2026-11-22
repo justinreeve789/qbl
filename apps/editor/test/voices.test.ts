@@ -139,6 +139,36 @@ test('the Characters page records every line, and says when all are done', async
   assert.equal(asked.length, before, 'nothing up to date is recorded again');
 });
 
+test('the narrator: a narration is the default storyteller’s to record, and the scenario’s settings can change who narrates', async () => {
+  const bundle = await rest<{ events: Array<{ id: number }> }>('GET', '');
+  await rest('POST', '/rows/actions', { event_id: bundle.events[0]!.id, type: 'narration', params: { text: 'Long ago, the reactor slept.' } });
+  await page.reload();
+  await page.click('.tabs >> text=Settings');
+  const select = page.locator('[data-section=chat] [data-field=narrator_voice] select');
+  await page.waitForFunction(() => !document.querySelector<HTMLSelectElement>('[data-section=chat] [data-field=narrator_voice] select')?.disabled);
+  assert.equal(await select.locator('option:checked').innerText(), 'The default narrator: Storyteller');
+  assert.match(await page.locator('[data-field=narrator_voice] .voice-about').innerText(), /dramatic and charismatic/i);
+  const sample = page.waitForResponse((r) => r.url().endsWith('/voices/storyteller/sample'));
+  await page.locator('[data-field=narrator_voice] button:has-text("Listen")').click();
+  await sample;
+  assert.equal(asked.at(-1)?.voice, 'bm_fable(0.6667)+bm_lewis(0.3333)', 'the storyteller, as the catalog makes it on Kokoro (weights sent adding up to 1)');
+
+  await page.click('.tabs >> text=Characters');
+  await page.waitForSelector('.voice-tools .chip:has-text("1 of 2 lines recorded")');
+  await page.click('.voice-tools button:has-text("Record voices")');
+  await page.waitForSelector('.toast:has-text("Recorded 1 line")');
+  assert.deepEqual([asked.at(-1)?.input, asked.at(-1)?.voice], ['Long ago, the reactor slept.', 'bm_fable(0.6667)+bm_lewis(0.3333)'], 'the narration is recorded in the storyteller’s voice');
+
+  await page.click('.tabs >> text=Settings');
+  await page.waitForFunction(() => !document.querySelector<HTMLSelectElement>('[data-section=chat] [data-field=narrator_voice] select')?.disabled);
+  await select.selectOption('onyx');
+  await saved();
+  assert.equal((await rest<{ scenario: Scenario }>('GET', '/preview')).scenario.narrator_voice, 'onyx');
+  await select.selectOption('');
+  await saved();
+  assert.equal((await rest<{ scenario: Scenario }>('GET', '/preview')).scenario.narrator_voice, undefined, 'back to the default');
+});
+
 test('nothing went wrong in the browser along the way', () => {
   assert.deepEqual(errors, []);
 });

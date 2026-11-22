@@ -209,6 +209,10 @@ class AssetDirector
         foreach (array_values($b['scenes']) as $i => $scene) {
             $tick(sprintf('Painting %s (scene %d of %d)', $scene['title'] ?? $scene['key'], $i + 1, count($b['scenes'])));
             $assets["bg:{$scene['key']}"] = $this->background($scene, $layouts[$scene['key']] ?? [], $setting, $accents, $b['art_direction']['time_of_day'] ?? null);
+            // Where its water was cut out, for the game to draw the water there (also for a background drawn before).
+            if (($water = Sizes::water($scene)) && is_file($assets["bg:{$scene['key']}"]['path'] ?? '')) {
+                $assets["bg:{$scene['key']}"]['water'] = self::waterHole(ImageTools::load((string) file_get_contents($assets["bg:{$scene['key']}"]['path'])), $water);
+            }
             $done++;
             if (! empty($scene['distance'])) {
                 $tick(sprintf('Painting the far view behind %s', $scene['title'] ?? $scene['key']));
@@ -288,7 +292,7 @@ class AssetDirector
         // Ambient creatures: each pose a thing of its own, put together into a sprite sheet once drawn.
         foreach ($b['scenes'] as $scene) {
             foreach ($scene['ambient'] ?? [] as $a) {
-                $px = Sizes::pixels((int) max(5, min(150, (int) ($a['size_cm'] ?? 25))));
+                $px = Sizes::pixels((int) max(5, min(($a['motion'] ?? '') === 'drives_by' ? 900 : 150, (int) ($a['size_cm'] ?? 25))));
                 foreach (self::ambientPoses($a) as $pose => $how) {
                     $key = "ambient:{$scene['key']}:{$a['key']}:$pose";
                     $out[$key] = ['key' => $key, 'asset' => $key, 'kind' => 'item', 'subject' => rtrim($a['look'], '.').", seen from the side facing right, $how", 'label' => "{$a['key']} $pose", 'accents' => true, 'fit' => ['longest' => $px]];
@@ -919,6 +923,30 @@ class AssetDirector
         if (($scene['foreground']['where'] ?? null) === 'bottom') {
             $notes[] = 'The lowest part of the floor will be hidden behind something close to the viewer: paint the floor all the way to the bottom edge, plain';
         }
+        // Water the game makes flow: its surface is left flat, to be cut out, and the water is drawn behind.
+        $water = Sizes::water($scene);
+        if ($water) {
+            $across = fn (int $px) => round(100 * $px / $w).'%';
+            $look = rtrim((string) ($scene['water']['look'] ?? 'its banks'), '.');
+            $what = str_replace('_', ' ', $water['kind']);
+            $notes[] = match (true) {
+                $water['kind'] === 'waterfall' => "A $what pours down the back of the scene from ".$across($water['x0']).' to '.$across($water['x1']).' of the way across, from '.$down($water['y0']).' of the way down into a pool at the back of the floor ('.$look.')',
+                $water['where'] === 'middle' => "A $what lies in the middle of the floor, from ".$across($water['x0']).' to '.$across($water['x1']).' of the way across and from '.$down($water['y0']).' to '.$down($water['y1']).' of the way down, seen from the side as a low wide shape ('.$look.')',
+                $water['where'] === 'back' => "A $what runs across the whole width at the back of the floor, from ".$down($water['y0']).' to '.$down($water['y1']).' of the way down, between the floor and the scenery ('.$look.')',
+                default => "A $what runs across the whole width along the front of the picture, from ".$down($water['y0']).' of the way down to the bottom edge, nearest the viewer ('.$look.')',
+            };
+            $notes[] = "Paint the water's surface itself as a perfectly flat, solid {$this->style->bible()['chroma']} fill, right up to its banks and edges: no ripples, reflections, rocks, plants or anything on it (the moving water is added later). Do not use this colour anywhere else";
+        }
+        // The weather, so the light and the ground match it (the game draws the rain or snow itself).
+        $notes[] = match ($scene['weather']['kind'] ?? null) {
+            'rain' => 'The weather: a grey rainy day, soft overcast light, the ground wet and shining with puddles (do not paint the falling rain)',
+            'storm' => 'The weather: a dark stormy day, heavy grey light, the ground soaked with puddles, trees bending (do not paint the rain or lightning)',
+            'snow' => 'The weather: a snowy day, snow lying on the ground, roofs and branches, soft white light (do not paint falling snow)',
+            'blizzard' => 'The weather: a blizzard, deep snow lying everywhere, cold blue-white light (do not paint falling snow)',
+            'fog' => 'The weather: a misty day, soft pale light, far things fading into haze',
+            default => null,
+        };
+        $notes = array_values(array_filter($notes));
         // With a far view or a living sky behind it, the sky is left flat, to be cut out.
         $distance = ! empty($scene['distance']) || ! empty($scene['sky']);
         if ($distance) {
@@ -936,15 +964,21 @@ class AssetDirector
             $refs[] = $this->guide($scene);
         }
         $chroma = $this->style->chroma();
-        $result = $this->attempts($key, 'background', $subject, $aspect, $refs, [], $accents, $notes, ['kind' => 'background', 'label' => $scene['title'], 'ground_line' => ($ground + $cut) / $drawnH, 'sky_key' => $distance], function (string $raw) use ($w, $h, $distance, $chroma) {
+        // Where the water is in the picture as drawn, for the placeholder to paint it there.
+        $waterHint = $water ? [$water['x0'] / $w, ($water['y0'] + $cut) / $drawnH, $water['x1'] / $w, min($drawnH, $water['y1'] + $cut) / $drawnH] : null;
+        $result = $this->attempts($key, 'background', $subject, $aspect, $refs, [], $accents, $notes, ['kind' => 'background', 'label' => $scene['title'], 'ground_line' => ($ground + $cut) / $drawnH, 'sky_key' => $distance] + ($waterHint ? ['water' => $waterHint] : []), function (string $raw) use ($w, $h, $distance, $chroma, $water) {
             // A wide scene keeps its bottom (the floor and the scenery); a normal one is cut about its middle.
             $im = ImageTools::cover(ImageTools::load($raw), $w, $h, $w > 2400 ? 1.0 : 0.5);
             $problem = null;
-            if ($distance) {
-                // The flat sky goes, so the far view shows through; only what touches the edges.
-                $im = ImageTools::chromaKey($im, $chroma, 110, 0, anywhere: false);
-                if (ImageTools::clearShare($im) < 0.04) {
+            if ($distance || $water) {
+                // The flat sky goes, so the far view shows through; only what touches the edges. Water lying in
+                // the floor need not touch them: with water, every patch of the flat colour goes.
+                $im = ImageTools::chromaKey($im, $chroma, 110, $water ? 60 : 0, anywhere: (bool) $water);
+                if ($distance && ImageTools::clearShare($im) < 0.04) {
                     $problem = "The sky must be one flat solid {$this->style->bible()['chroma']} colour from the skyline to the top edge, with nothing in it";
+                }
+                if ($water && ! self::waterHole($im, $water)) {
+                    $problem = "The water's surface must be one flat solid {$this->style->bible()['chroma']} colour between its banks, where the requirements say, with nothing on it";
                 }
             }
             if (($strength = (float) $this->style->post('palette_pull', 0)) > 0) {
@@ -952,10 +986,28 @@ class AssetDirector
             }
 
             return [$im, $problem];
-        }, jpeg: ! $distance);
-        $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), $look, $distance ? 'image/png' : 'image/jpeg');
+        }, jpeg: ! $distance && ! $water);
+        $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), $look, ($distance || $water) ? 'image/png' : 'image/jpeg');
 
         return $result;
+    }
+
+    /**
+     * Where a background's water was cut out (Sizes::water): the see-through box in and around where it
+     * was asked for, in scene pixels, or null when too little of it is see-through (the water was not
+     * painted flat, or not there). The game draws the water there, behind the picture.
+     *
+     * @return array{x: int, y: int, width: int, height: int}|null
+     */
+    public static function waterHole(\GdImage $im, array $water): ?array
+    {
+        $pad = 60;
+        $box = ImageTools::clearBox($im, $water['x0'] - $pad, $water['y0'] - $pad, $water['x1'] + $pad, $water['y1'] + $pad);
+        if (! $box || $box[4] < 0.12) {
+            return null;
+        }
+
+        return ['x' => $box[0], 'y' => $box[1], 'width' => $box[2], 'height' => $box[3]];
     }
 
     /** The scale guide sent with a scene's background (see ImageTools::scaleGuide), at the shape it is drawn. */
@@ -1097,6 +1149,7 @@ class AssetDirector
             'lands' => ['rest' => 'standing on the ground, still', 'up' => 'flying, wings raised high', 'down' => 'flying, wings swept down'],
             'flies_by' => ['up' => 'flying, wings raised high', 'down' => 'flying, wings swept down'],
             'swims_by' => ['up' => 'swimming, tail curved up', 'down' => 'swimming, tail curved down'],
+            'drives_by' => ['up' => 'driving along, seen exactly side-on, its wheels on the ground', 'down' => 'the same, a moment later: its wheels turned a little and its body bouncing slightly up'],
             default => ['up' => 'walking, mid-stride with its legs apart', 'down' => 'walking, its legs passing under its body'],
         };
     }
@@ -1122,7 +1175,7 @@ class AssetDirector
             'path' => $path, 'width' => imagesx($sheet), 'height' => imagesy($sheet), 'frame_width' => $cw, 'frame_height' => $ch,
             'params' => ['sheet' => ['columns' => count($cells), 'rows' => 1], 'animations' => [
                 ['name' => 'idle', 'frames' => $idle, 'duration' => 600],
-                ['name' => 'move', 'frames' => $moveFrames, 'duration' => ($a['motion'] ?? '') === 'walks_by' ? 500 : 280, 'repeat' => true],
+                ['name' => 'move', 'frames' => $moveFrames, 'duration' => match ($a['motion'] ?? '') { 'walks_by' => 500, 'drives_by' => 220, default => 280 }, 'repeat' => true],
             ]],
         ];
     }

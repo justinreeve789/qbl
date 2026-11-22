@@ -11,6 +11,8 @@ import { placeholderVariables } from './text.js';
 import { BUTTON_MARKS, INFOBOX_SIZES, infoboxRefs } from './infobox.js';
 import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
+import { isBuiltInSound } from './sounds.js';
+import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
 import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES } from './variables.js';
 
 export interface Issue {
@@ -278,7 +280,8 @@ export function validateScenario(doc: unknown): ValidationResult {
     if (a.facing != null && a.facing !== 'left' && a.facing !== 'right') err(`${path}.facing`, 'facing is "left" or "right"');
     if (to === 'point') {
       if (typeof a.position_x !== 'number' || typeof a.position_y !== 'number') err(path, 'position_x and position_y are required');
-      else if (from?.width && from.height && !isWalkable(walkContext(from, { width: from.width, height: from.height }), a.position_x, a.position_y)) {
+      // Beyond the left or right edge is off stage: a character walks off out of sight.
+      else if (from?.width && from.height && a.position_x >= 0 && a.position_x <= from.width && !isWalkable(walkContext(from, { width: from.width, height: from.height }), a.position_x, a.position_y)) {
         warn(path, 'That spot is outside the walkable area: the walker stops at the nearest spot it can reach');
       }
     } else if (to === 'spawn') {
@@ -362,6 +365,13 @@ export function validateScenario(doc: unknown): ValidationResult {
     });
   };
 
+  /** The settings weather (a scene's or a weather action's) shares. */
+  const checkWeather = (w: { intensity?: number; wind?: number; lightning?: boolean }, path: string) => {
+    if (w.intensity != null && !(typeof w.intensity === 'number' && w.intensity >= 0 && w.intensity <= 1)) err(`${path}.intensity`, 'intensity is from 0 to 1');
+    if (w.wind != null && !(typeof w.wind === 'number' && w.wind >= -1 && w.wind <= 1)) err(`${path}.wind`, 'wind is from -1 (to the left) to 1 (to the right)');
+    if (w.lightning != null && typeof w.lightning !== 'boolean') err(`${path}.lightning`, 'lightning is true or false');
+  };
+
   const checkAction = (raw: Action, path: string, scene: Scene, inCta: boolean | 'choice' = false) => {
     const type = normalizeActionType(raw.type);
     if (!type) {
@@ -371,7 +381,12 @@ export function validateScenario(doc: unknown): ValidationResult {
     const a = { ...raw, type } as Action;
     checkConditions(a.conditions, path);
     const wanted = MEDIA_FOR_ACTION[type];
-    if (wanted) {
+    // A sound the game makes itself needs no recording.
+    const builtIn = type === 'audio' && (raw as { sound?: unknown }).sound != null;
+    if (builtIn) {
+      if (!isBuiltInSound((raw as { sound?: unknown }).sound)) err(`${path}.sound`, `"${String((raw as { sound?: unknown }).sound)}" is not one of the game's own sounds`);
+      if (a.media_id != null) warn(`${path}.media_id`, 'The action plays the game\'s own sound, so its media is not played');
+    } else if (wanted) {
       if (a.media_id == null) err(`${path}.media_id`, `${type} actions need a media_id`);
       else needMedia(a.media_id, `${path}.media_id`, wanted);
     }
@@ -431,6 +446,12 @@ export function validateScenario(doc: unknown): ValidationResult {
         } else if (a.speaker === 'character' && !canBeHere(a.character_id, scene)) {
           err(`${path}.character_id`, 'The speaking character is not placed in this scene');
         }
+        break;
+      case 'narration':
+        if (typeof a.text !== 'string' || a.text.trim() === '') err(`${path}.text`, 'text is required');
+        else checkText(a.text, `${path}.text`);
+        if (a.duration != null && (typeof a.duration !== 'number' || a.duration < 0)) err(`${path}.duration`, 'duration is a number of milliseconds, 0 or more');
+        checkRecording(a.narration_media_id, a.text, `${path}.narration_media_id`);
         break;
       case 'conversation':
         checkConversation(a, path, scene);
@@ -502,6 +523,7 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (typeof a.text !== 'string') err(`${path}.text`, 'text is required');
         else if (a.text.length > 256) warn(`${path}.text`, 'text is longer than 256 characters');
         checkText(a.text, `${path}.text`);
+        checkRecording(a.narration_media_id, a.text, `${path}.narration_media_id`);
         break;
       case 'infobox': {
         if (typeof a.content !== 'string') err(`${path}.content`, 'content is required');
@@ -544,6 +566,20 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'image_fixed':
         if (typeof a.position_x !== 'number' || typeof a.position_y !== 'number') err(path, 'position_x and position_y are required');
         break;
+      case 'weather':
+        if (a.kind !== 'clear' && !(WEATHER_KINDS as string[]).includes(a.kind)) err(`${path}.kind`, `kind is clear or one of ${WEATHER_KINDS.join(', ')}`);
+        checkWeather(a, path);
+        if (a.duration != null && !(typeof a.duration === 'number' && a.duration >= 0)) err(`${path}.duration`, 'duration is a number of milliseconds');
+        break;
+      case 'camera': {
+        const target = a.target ?? (a.character_id != null ? 'character' : a.position_x != null ? 'point' : 'player');
+        if (!['player', 'character', 'point', 'auto'].includes(target)) err(`${path}.target`, 'target is "player", "character", "point" or "auto"');
+        if (target === 'character' && !canBeHere(a.character_id, scene)) err(`${path}.character_id`, 'The character to follow is not placed in this scene');
+        if (target === 'point' && (typeof a.position_x !== 'number' || typeof a.position_y !== 'number')) err(path, 'position_x and position_y are required');
+        if (target === 'auto' && !scene.story) warn(`${path}.target`, 'Following whoever is acting is for story scenes; elsewhere the view follows the player');
+        if (a.duration != null && !(typeof a.duration === 'number' && a.duration >= 0)) err(`${path}.duration`, 'duration is a number of milliseconds');
+        break;
+      }
       case 'spritemap':
         if (!a.spritemap_tiles_horizontal || !a.spritemap_tiles_vertical) err(path, 'spritemap_tiles_horizontal and spritemap_tiles_vertical are required');
         break;
@@ -611,6 +647,26 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (a.amount != null && !['few', 'some', 'many'].includes(a.amount)) err(`${p}.amount`, 'amount is few, some or many');
       if (a.color != null && !COLOR.test(a.color)) err(`${p}.color`, 'color is #rrggbb');
     });
+    if (scene.weather) {
+      const p = `${sp}.weather`;
+      if (!(WEATHER_KINDS as string[]).includes(scene.weather.kind)) err(`${p}.kind`, `kind is one of ${WEATHER_KINDS.join(', ')}`);
+      checkWeather(scene.weather, p);
+      if (scene.weather.darken != null && !(scene.weather.darken >= 0 && scene.weather.darken <= 100)) err(`${p}.darken`, 'darken is a percentage from 0 to 100');
+    }
+    (scene.flows ?? []).forEach((f, i) => {
+      const p = `${sp}.flows[${i}]`;
+      if (typeof f.x !== 'number' || typeof f.y !== 'number' || !(f.width > 0) || !(f.height > 0)) err(p, 'Flowing water needs x, y, a width and a height');
+      if (f.kind != null && !(FLOW_KINDS as readonly string[]).includes(f.kind)) err(`${p}.kind`, `kind is one of ${FLOW_KINDS.join(', ')}`);
+      if (f.direction != null && !['left', 'right', 'down', 'up'].includes(f.direction)) err(`${p}.direction`, 'direction is left, right, down or up');
+      if (f.speed != null && !(typeof f.speed === 'number' && f.speed >= 0)) err(`${p}.speed`, 'speed is a number of pixels per second');
+      if (f.color != null && !COLOR.test(f.color)) err(`${p}.color`, 'color is #rrggbb');
+      if (f.layer != null && f.layer !== 'behind' && f.layer !== 'over') err(`${p}.layer`, 'layer is "behind" or "over"');
+      if ((f.layer ?? 'behind') === 'behind' && (scene.background_media ?? []).length === 0) warn(p, 'The water is drawn behind the scene\'s picture, but the scene has none');
+    });
+    if (scene.story) {
+      if (!(scene.start_events ?? []).some((e) => (e.actions ?? []).length > 0)) warn(sp, 'A story scene plays its start events, and this one has none: nothing will happen');
+      if ((scene.hotspots ?? []).some((h) => !h.activate_by_trigger && h.position_x != null)) warn(`${sp}.hotspots`, 'In a story scene the player does not walk, so a hotspot that is walked into never fires');
+    }
     if (scene.group_id != null && s.scene_groups && !s.scene_groups.some((g) => g.id === scene.group_id)) {
       warn(`${sp}.group_id`, `Scene group ${scene.group_id} does not exist`);
     }

@@ -20,6 +20,8 @@ export * from './infobox.js';
 export * from './bench.js';
 export * from './bench-sim.js';
 export * from './sky.js';
+export * from './sounds.js';
+export * from './weather.js';
 export * from './icons.js';
 export * from './site.js';
 export * from './roles.js';

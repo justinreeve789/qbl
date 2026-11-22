@@ -84,6 +84,48 @@ export function voiceSection(ctx: FormContext, row: Row): HTMLElement {
     note);
 }
 
+/**
+ * The narrator's voice, for the scenario's settings: the server's default narrator (left empty),
+ * one of its voices, or none (the browser reads the narration). ▶ Listen plays the one chosen.
+ */
+export function narratorPicker(ctx: FormContext, chosen: string, set: (key: string) => void): HTMLElement {
+  const select = h('select', { disabled: true, 'aria-label': 'The narrator’s voice' }, h('option', { value: chosen }, 'Loading…'));
+  const listen = h('button', { type: 'button', disabled: true, title: 'Hear this voice' }, '▶ Listen');
+  const about = h('p', { class: 'muted voice-about' });
+  void voiceStatus(ctx).then((s) => {
+    if (!s) {
+      select.replaceChildren(h('option', { value: '' }, 'Not available on this server: the browser reads the narration'));
+      return;
+    }
+    const voices = s.voices;
+    const fallback = voices.find((v) => v.key === s.narrator);
+    select.replaceChildren(
+      h('option', { value: '', selected: chosen === '' }, fallback ? `The default narrator: ${fallback.name}` : 'The default narrator (the browser reads it)'),
+      h('option', { value: 'none', selected: chosen === 'none' }, 'None: the browser reads the narration'),
+      ...groups(voices).map(([label, list]) => {
+        const group = h('optgroup', { label });
+        group.append(...list.map((v) => h('option', { value: v.key, selected: v.key === chosen, title: v.description }, `${v.label} · ${v.traits.slice(0, 3).join(', ')}`)));
+        return group;
+      }),
+    );
+    if (chosen && chosen !== 'none' && !voices.some((v) => v.key === chosen)) select.append(h('option', { value: chosen, selected: true }, `${chosen} (not on this server)`));
+    select.disabled = false;
+    const voice = () => (select.value === '' ? s.narrator ?? '' : select.value === 'none' ? '' : select.value);
+    const describe = () => {
+      const v = voices.find((x) => x.key === voice());
+      about.textContent = v ? v.description : 'The browser’s own voice reads it, and each word lights up as it is spoken.';
+      listen.disabled = !v || !s.engine;
+    };
+    describe();
+    select.onchange = () => {
+      describe();
+      set(select.value);
+    };
+    listen.onclick = () => void play(ctx, voice(), listen);
+  });
+  return h('div', { class: 'narrator-voice' }, select, about, h('div', { class: 'row-actions' }, listen));
+}
+
 /** "Record voices" for the Characters page: every character's lines, with how many are done. */
 export function recordAllButton(ctx: FormContext): HTMLElement {
   const chip = h('span', { class: 'chip', hidden: true });

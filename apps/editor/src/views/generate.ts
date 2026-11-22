@@ -181,6 +181,10 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
   const max = input('max_players', { type: 'number', min: 1, max: 8, value: 4 });
   const minutes = input('minutes', { type: 'number', min: 5, max: 120, placeholder: '30' });
   const notes = input('notes', { type: 'text', maxlength: 1000, placeholder: 'Vocabulary to use, a twist, what to avoid…' });
+  const format = h('select', { name: 'format' },
+    h('option', { value: '' }, 'Decide from what I write'),
+    h('option', { value: 'mission' }, '🎮 A mission students play'),
+    h('option', { value: 'story' }, '📖 A story students watch'));
   const submit = h('button', { type: 'submit', class: 'primary gen-go', 'data-action': 'generate' }, '✨ Generate');
   const note = h('span', { class: 'gen-note muted', 'data-note': '' });
   const more = h('details', { class: 'fold gen-more', 'data-fold': 'generate-options' },
@@ -203,6 +207,8 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
     h('label', { class: 'field' }, h('span', { class: 'field-label gen-ask' }, 'What is the mission about?',
       help('The topic, what students should learn, and the setting. The generator picks the standards, writes the story, the scenes, the characters and the questions, draws every picture in the house style and records the voices.')), prompt),
     h('div', { class: 'gen-under' }, examples, count),
+    h('label', { class: 'field gen-format' }, h('span', { class: 'field-label' }, 'Make',
+      help('A mission: students explore, solve puzzles and answer questions together. A story: it plays by itself like an animated picture book, scene after scene, with characters acting it out, a narrator, weather and sounds, and things to talk about at the end. “Tell the story of…” is read as a story.')), format),
     more,
     h('div', { class: 'row-actions gen-actions' }, submit, note));
 
@@ -229,6 +235,7 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
       await start({
         prompt: prompt.value.trim(), grade: text(grade), subject: text(subject),
         min_players: Number(min.value) || undefined, max_players: Number(max.value) || undefined, minutes: Number(minutes.value) || undefined, notes: text(notes),
+        format: format.value === 'mission' || format.value === 'story' ? format.value : undefined,
       });
       prompt.value = '';
     } catch (err) {
@@ -247,6 +254,7 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
     max.value = String(options.max_players ?? 4);
     minutes.value = options.minutes ? String(options.minutes) : '';
     notes.value = options.notes ?? '';
+    format.value = options.format ?? '';
     if (options.grade || options.subject || options.minutes || options.notes) more.open = true;
     counted();
     prompt.focus();

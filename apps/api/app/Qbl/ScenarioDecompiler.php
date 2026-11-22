@@ -94,7 +94,7 @@ class ScenarioDecompiler
         foreach (array_values($d['scenes']) as $index => $s) {
             $sceneId = $this->id($s);
             $params = (array) ($s['params'] ?? []);
-            foreach (['music_media_id', 'music_volume', 'team_only', 'sky', 'atmosphere'] as $key) {
+            foreach (['music_media_id', 'music_volume', 'team_only', 'sky', 'atmosphere', 'weather', 'story'] as $key) {
                 if (isset($s[$key])) {
                     $params[$key] = $s[$key];
                 }
@@ -106,7 +106,7 @@ class ScenarioDecompiler
                 'background_media' => $s['background_media'] ?? [], 'foreground_media' => $s['foreground_media'] ?? [],
                 'layout' => array_filter([
                     'walkable_areas' => $s['walkable_areas'] ?? [], 'blocked_areas' => $s['blocked_areas'] ?? [], 'spawn_points' => $s['spawn_points'] ?? [],
-                    'scale_areas' => $s['scale_areas'] ?? null, 'shadow_spots' => $s['shadow_spots'] ?? null, 'lights' => $s['lights'] ?? null, 'items' => $s['items'] ?? [], 'characters' => $s['characters'] ?? [],
+                    'scale_areas' => $s['scale_areas'] ?? null, 'shadow_spots' => $s['shadow_spots'] ?? null, 'lights' => $s['lights'] ?? null, 'flows' => $s['flows'] ?? null, 'items' => $s['items'] ?? [], 'characters' => $s['characters'] ?? [],
                     'bench' => is_array($s['bench'] ?? null) ? $s['bench'] : null,
                 ], fn ($v) => $v !== null),
                 'params' => $params ?: null,

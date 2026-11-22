@@ -1,7 +1,7 @@
 import type * as Phaser from 'phaser';
 import {
   resolvedHandle,
-  type Action, type ActionHandle, type ChoiceHandle, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
+  type Action, type ActionHandle, type CameraAction, type ChoiceHandle, type WeatherAction, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
 } from '@qbl/shared';
 import type { AnimateAction, AwardAction, BenchAction, GlossaryAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
@@ -9,6 +9,7 @@ import { deferred, type Presenter, type PresenterContext, type PresenterMap, typ
 import { stopMusic } from './presenters/audio';
 import { conversationLine } from './presenters/conversation';
 import { presenters as defaultPresenters } from './presenters';
+import type { Voice } from '../audio/synth';
 
 /**
  * The scene engine's window onto Phaser and the UI. It hands each action to
@@ -18,6 +19,7 @@ import { presenters as defaultPresenters } from './presenters';
 export class ActionHost implements EngineHost, PresenterContext {
   engine!: SceneEngine;
   readonly sounds = new Set<Phaser.Sound.BaseSound>();
+  readonly voices = new Set<Voice>();
   private targets = new Map<Id, Target>();
 
   constructor(
@@ -31,6 +33,7 @@ export class ActionHost implements EngineHost, PresenterContext {
 
   present(action: PresentedAction, engine: SceneEngine, actor?: string): ActionHandle {
     this.engine = engine;
+    if (action.type === 'dialogue' && action.speaker === 'character' && action.character_id != null) this.actingControl?.(action.character_id);
     const presenter = this.presenters[action.type] as Presenter<typeof action.type> | undefined;
     if (!presenter) {
       this.warn(`no presenter for action type "${action.type}"`);
@@ -81,6 +84,7 @@ export class ActionHost implements EngineHost, PresenterContext {
   animateControl: ((action: AnimateAction, actor?: string) => number | null) | null = null;
 
   animate(action: AnimateAction, actor?: string): ActionHandle | null {
+    if (action.target === 'character' && action.character_id != null) this.actingControl?.(action.character_id);
     const ms = action.target === 'action'
       ? (action.target_id != null ? (this.targets.get(action.target_id) as { figure?: { play(name: string): number } } | undefined)?.figure?.play(action.animation) : undefined) ?? null
       : (this.animateControl?.(action, actor) ?? null);
@@ -92,8 +96,28 @@ export class ActionHost implements EngineHost, PresenterContext {
   walkControl: ((action: WalkAction, actor?: string) => ActionHandle | null) | null = null;
 
   walk(action: WalkAction, actor?: string): ActionHandle | null {
+    if (action.target !== 'player' && action.character_id != null) this.actingControl?.(action.character_id);
     const handle = this.walkControl?.(action, actor) ?? null;
     if (!handle && !actor) this.warn(`walk ${action.id}: nobody to walk, or nowhere to go`);
+    return handle;
+  }
+
+  /** Set by the scene: a character speaks, walks or plays an animation (a story scene's view follows them). */
+  actingControl: ((characterId: Id) => void) | null = null;
+
+  /** Set by the scene: changes the weather. */
+  weatherControl: ((action: WeatherAction) => ActionHandle | null) | null = null;
+
+  weather(action: WeatherAction): ActionHandle | null {
+    return this.weatherControl?.(action) ?? null;
+  }
+
+  /** Set by the scene: points the player's view. */
+  cameraControl: ((action: CameraAction) => ActionHandle | null) | null = null;
+
+  camera(action: CameraAction): ActionHandle | null {
+    const handle = this.cameraControl?.(action) ?? null;
+    if (!handle) this.warn(`camera ${action.id}: nothing to look at`);
     return handle;
   }
 
@@ -195,6 +219,8 @@ export class ActionHost implements EngineHost, PresenterContext {
       sound.destroy();
     }
     this.sounds.clear();
+    for (const voice of this.voices) voice.stop(250);
+    this.voices.clear();
     this.targets.clear();
     this.ctx.ui.clearOverlays();
   }

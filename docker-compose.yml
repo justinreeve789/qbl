@@ -168,6 +168,8 @@ services:
       QL_TTS_OPENAI_URL: ${QL_TTS_OPENAI_URL:-${QBL_TTS_OPENAI_URL:-}}
       QL_TTS_OPENAI_KEY: ${QL_TTS_OPENAI_KEY:-${QBL_TTS_OPENAI_KEY:-}}
       QL_TTS_OPENAI_MODEL: ${QL_TTS_OPENAI_MODEL:-${QBL_TTS_OPENAI_MODEL:-}}
+      # The narrator's voice for scenarios that choose none (empty: "storyteller" in English).
+      QL_TTS_NARRATOR: ${QL_TTS_NARRATOR:-${QBL_TTS_NARRATOR:-}}
       # Lines already recorded, so recording again only asks for what changed.
       QL_TTS_CACHE_DIR: /data/speech
       # The client (the marketing page and the game) is built by Vite when app starts. true: it is

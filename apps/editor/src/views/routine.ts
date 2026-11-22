@@ -3,7 +3,8 @@ import { characterRoams, normalizeRoutine, ROUTINE_STEP_TYPES, startPlacement, t
 import type { Row } from '../api';
 import { actionSummary, params, sceneLabel, walkDestination } from '../describe';
 import { fold, h, help } from '../dom';
-import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
+import { form, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
+import { actionPicker } from '../actionPicker';
 import { ACTION_LOOK, ACTIONS, tidyWalk, WALK_FIELDS } from '../schema';
 import { inlineConditions, type ConditionValue } from './conditions';
 import { pickSpotInPopup } from './scene/spotPicker';
@@ -126,7 +127,7 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     setSteps(list);
   };
 
-  const add = select(ROUTINE_STEP_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${STEP_LABELS[t]}`] as const), '', (type) => {
+  const add = actionPicker(ROUTINE_STEP_TYPES, '', (type) => {
     add.value = '';
     if (!type) return;
     const list = steps();
@@ -134,7 +135,7 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     // A new animation step starts with one of the character's own animations.
     const values = { type, ...STEP_DEFAULTS[type as RoutineStepType] };
     setSteps([...list, (type === 'animate' ? tidyAnimate(values, { ...ctx, characterId: id }) : values) as RoutineStep]);
-  }, '+ Add step…');
+  }, { empty: '+ Add step…', add: true, label: (t) => STEP_LABELS[t as RoutineStepType] });
   add.classList.add('add-action');
 
   // The scene each step most likely happens in: where it starts, then wherever a walk to another

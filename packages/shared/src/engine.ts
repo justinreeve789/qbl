@@ -3,7 +3,7 @@ import { ScenarioIndex } from './scenario.js';
 import {
   SHOWN_TO_SCENE,
   type Action, type AnimateAction, type AwardAction, type BenchAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
-  type TranslateAction, type WalkAction,
+  type CameraAction, type TranslateAction, type WalkAction, type WeatherAction,
 } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
@@ -21,7 +21,7 @@ export interface ChoiceHandle {
 
 export type PresentedAction = Extract<
   Action,
-  { type: 'audio' | 'dialogue' | 'shop' | 'image_fixed' | 'image_overlay' | 'infobox' | 'spritemap' | 'text_overlay' | 'video' }
+  { type: 'audio' | 'dialogue' | 'narration' | 'shop' | 'image_fixed' | 'image_overlay' | 'infobox' | 'spritemap' | 'text_overlay' | 'video' }
 >;
 
 /**
@@ -52,6 +52,10 @@ export interface EngineHost {
    * another player's, shown here because their event's audience is the scene.
    */
   walk?(action: WalkAction, actor?: string): ActionHandle | null;
+  /** Change the scene's weather. The handle finishes when the change has. Null: there is no weather here. */
+  weather?(action: WeatherAction): ActionHandle | null;
+  /** Point the player's view. The handle finishes when the view gets there. Null: nothing to do. */
+  camera?(action: CameraAction): ActionHandle | null;
   /**
    * Say one line of a conversation and offer the player `choices` (already filtered by their
    * conditions; may be empty). `choice` settles with the index into `choices` of the one picked,
@@ -260,6 +264,7 @@ export class SceneEngine {
     if (action.type === 'translate') handle = this.actions.has(action.target_id) ? this.host.translate(action) : null;
     else if (action.type === 'animate') handle = this.host.animate?.(action, actor) ?? null;
     else if (action.type === 'walk') handle = this.host.walk?.(action, actor) ?? null;
+    else if (action.type === 'weather') handle = this.host.weather?.(action) ?? null;
     else handle = this.host.present(action as PresentedAction, this, actor);
     if (!handle) return;
     this.actions.get(action.id)?.cancel();
@@ -400,6 +405,15 @@ export class SceneEngine {
         }
         case 'walk': {
           const h = this.host.walk?.(action) ?? null;
+          if (h) {
+            this.track(run, action, h);
+            if (action.blocking !== false) await this.wait(run, h);
+          }
+          break;
+        }
+        case 'weather':
+        case 'camera': {
+          const h = (action.type === 'weather' ? this.host.weather?.(action) : this.host.camera?.(action)) ?? null;
           if (h) {
             this.track(run, action, h);
             if (action.blocking !== false) await this.wait(run, h);

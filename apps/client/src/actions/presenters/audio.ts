@@ -3,6 +3,7 @@ import { resolvedHandle, type Id } from '@qbl/shared';
 import { mediaKey } from '../../core/assets';
 import type { GameContext } from '../../core/GameContext';
 import { deferred, type Presenter } from '../Presenter';
+import { synthFor } from '../../audio/synth';
 
 /** Stop the background music, if any. */
 export function stopMusic(ctx: GameContext): void {
@@ -29,6 +30,13 @@ export function playSceneMusic(scene: Phaser.Scene, ctx: GameContext, mediaId: I
 }
 
 export const audio: Presenter<'audio'> = (action, pc) => {
+  // A sound the game makes itself: no file to load.
+  if (action.sound) {
+    const voice = synthFor(pc.scene).play(action.sound, { volume: action.volume ?? 1, loop: action.repeat === true });
+    pc.voices.add(voice);
+    void voice.done.then(() => pc.voices.delete(voice));
+    return { done: voice.done, cancel: () => voice.stop(250) };
+  }
   const key = action.media_id != null ? mediaKey(action.media_id) : '';
   if (!pc.scene.cache.audio.exists(key)) return pc.missing(action);
   const config = { volume: action.volume ?? 1, loop: action.repeat === true };

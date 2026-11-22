@@ -40,6 +40,7 @@ The game server only lets a player move to a scene listed in the current scene's
 scene_groups | array | | Groups of scenes, each `{id, name, team_only}`. A scene names its group with `group_id`. See [Teams in a scene](#teams-in-a-scene).
 glossary | array | | Words the mission teaches. See [Glossary](#glossary).
 narration | string | off | `on`: dialogue, infoboxes and text overlays are read aloud unless an action says otherwise. `off`: only actions marked `narrate`. See [Reading text aloud](#reading-text-aloud).
+narrator_voice | string | the default narrator | The narrator's voice: what no character says (`narration` actions, and the text overlays and infoboxes read aloud) is recorded in it. A key of the server's voice catalog. Absent: the server's default narrator for the scenario's language (in English, "storyteller": dramatic and charismatic). `none`: no narrator, so the browser reads them. See [The narrator](#the-narrator).
 private_messages | bool | false | Players may send typed messages to one other player. See [Messages](#messages).
 
 ### Objectives
@@ -177,6 +178,60 @@ With a `sky`, lights shine at a third of their strength in full daylight and ful
 
 For players whose system asks for reduced motion, nothing in the air is drawn and lights glow steadily.
 
+### Weather
+
+**`weather`** (kept in the scene's `params`): weather drawn over the scene by the game's weather plugin (`apps/client/src/plugins/weather`), in the part of the scene the player is looking at, with its own sound made by the game. Rain falls in slanting streaks, nearer drops longer, faster and brighter, and splashes on the floor (between the top and the bottom of the walkable areas); snow drifts and sways; a storm is heavy rain blown by the wind, the light going, and lightning now and then (a soft double flash and a bolt) with thunder a moment later; a blizzard is snow driven across the screen; fog is a haze, thicker near the ground, with banks drifting by. The wind gusts about its own strength.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+kind | string | | `rain`, `snow`, `storm`, `blizzard` or `fog`.
+intensity | decimal | 0.6 (0.85 for a storm or a blizzard) | How heavy, from 0 to 1.
+wind | decimal | by kind | From -1 (blowing hard to the left) to 1 (to the right). Rain 0.15, snow 0.1, a storm 0.6, a blizzard 0.8, fog 0.08.
+lightning | bool | only in a storm | Lightning now and then.
+darken | decimal | by kind | How much darker the scene is, 0 to 100: a storm 35, rain 15, a blizzard 18, snow and fog 5.
+sound | bool | true | Rain on the ground (heavier with a heavier rain), the wind in a storm or a blizzard.
+
+```json
+{ "weather": { "kind": "storm", "intensity": 0.9, "wind": -0.5 } }
+```
+
+Rain or snow listed in a scene's `atmosphere` is weather too, as `{ "kind": "rain", "intensity": 0.55 }` (few 0.3, some 0.55, many 0.85). The [`weather` action](#weather-action) changes it while the player is in the scene. For players whose system asks for reduced motion only the darkening (and the sound) is there: nothing falls, and nothing flashes.
+
+The plugin works in any Phaser scene, not only QBL's: `new Weather(scene, options)` and `weather.set({ kind: 'rain' })`, or as a scene plugin (`plugins: { scene: [{ key: 'WeatherPlugin', plugin: WeatherPlugin, mapping: 'weather' }] }`, then `this.weather.storm()`). See `apps/client/src/plugins/weather/README.md`.
+
+### Flowing water
+
+**`flows`** (kept in the scene's `layout`): water that moves, in a box of the scene. Rivers and streams are carried along in rows of ripples (far water, at the top of the box, slower and finer than near water), a waterfall pours down with foam at its foot, the sea and lakes lap to and fro; glints catch the light here and there; the water darkens as a living sky does. Each kind has its sound: a rushing river (and a waterfall), a babbling stream, waves on a shore.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+x, y, width, height | decimal | | The box.
+kind | string | river | `river`, `stream`, `waterfall`, `sea` or `lake`.
+direction | string | by kind | `right`, `left`, `down` or `up`: a river or stream right, a waterfall down; the sea and a lake lap.
+speed | decimal | by kind | Pixels per second at the front: a river 70, a stream 55, a waterfall 260.
+color | string | by kind | `#rrggbb`.
+layer | string | behind | `behind`: drawn behind the scene's own picture (its last background layer), showing wherever that picture is see-through. Paint the water's surface out of the picture and the river flows between its painted banks. `over`: only the ripples and glints, over water painted in the picture.
+sound | bool | true | Its sound.
+name | string | | For the editor.
+
+```json
+{ "flows": [{ "kind": "river", "x": 0, "y": 960, "width": 2250, "height": 240, "direction": "right" }] }
+```
+
+The generator paints a scene's water as a flat chroma colour, cuts it out and puts a `flows` box where the see-through part is, so the water always flows between the banks it painted.
+
+### Story scenes
+
+**`story: true`** (kept in the scene's `params`): the scene plays by itself, like a page of a picture book. What happens is in its start events: characters walk on and off, say lines, wave; a narrator's captions; the rain starts; a car goes by. They usually end with a `jump` to the next scene, so a story turns its own pages. In a story scene:
+
+- avatars are not shown (whatever `show_avatars` says), and the player does not walk (a freeze that is never released);
+- the view follows whoever is acting: the last character to speak, walk or play an animation while on the stage, and otherwise the middle of everyone on it (a [`camera` action](#camera) can say otherwise);
+- a bar at the foot of the screen offers **↺ Again** (the scene from its beginning) and **Skip ⏭** (to the scene its start events jump to, running its end events first), when there is somewhere to skip to.
+
+**Off stage.** A character placed beyond the left or right edge of a scene (`position_x` below 0, or past the scene's width) waits off stage, out of sight, until a walk brings it on: it walks straight in to the edge, then on to where the walk says. A walk to a point beyond an edge walks it off the stage and out of sight. This works in any scene, not only stories.
+
+**Captions.** A text overlay with `text_font_style: "caption"` is a story's narration: a soft panel of words, usually at `bottom center`. A text overlay read aloud stays until the voice has finished, as a speech bubble does. A scenario's `narrator_voice` (a key of the voice catalog) is the voice its read-aloud text overlays are recorded in (`qbl:voice`, the editor's "Record voices" and the generator record them). A story box for the narrator is the [`narration`](#the-narrator) action.
+
 ### Teams in a scene
 
 When a teacher puts students into teams (see [Classes, missions and teams](/docs/editor/classes/)), every team is its own instance of the scenario, with its own shared variables, items and save data. The teams of one assignment are nevertheless in **one room**, so that they can meet where the scenario wants them to. Each scene says which it is:
@@ -284,7 +339,7 @@ Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 audience | string | player | `player`: only the player who sets the event off sees it. `scene`: every player in the scene sees and hears it as it happens.
 
-Every kind of event can have an `audience`. With `scene`, these actions are shown to the other players in the scene at the moment they happen for the player who set the event off: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `translate` and `cancel`. In a shared dialogue, "the player" is the player who set it off: the bubble hangs over their avatar, and a story box shows their name and portrait.
+Every kind of event can have an `audience`. With `scene`, these actions are shown to the other players in the scene at the moment they happen for the player who set the event off: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `narration`, `translate` and `cancel`. In a shared dialogue, "the player" is the player who set it off: the bubble hangs over their avatar, and a story box shows their name and portrait.
 
 Everything an event *does* stays with the player who set it off, whatever the audience: `variable`, `award`, `jump`, `freeze`, `avatar`, `shop`, `infobox` and the timing actions. Nothing another player's event shows can change your variables, move you or open a box you must answer. (A variable that should change for everyone is a shared variable; see [Variables](#variables). An avatar being hidden is seen by everyone anyway.)
 
@@ -333,6 +388,23 @@ The bubble follows the speaker and keeps itself on screen. It sits above them wh
 ```
 
 A story conversation is normally the player's own (`audience: player`, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.
+
+### The narrator
+
+A new action type, `narration`, is the narrator speaking: the same story box as a portrait dialogue, with no close-up and no name, its words centred. It is for what no character says: setting the scene, what happens next, a word from the storyteller.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+text | string | | What the narrator says. May contain `{{variable}}` placeholders.
+duration | int | 0 | Milliseconds it stays. 0 or absent: until the player clicks, or presses Enter or Space, to continue (once to show the whole line, again to go on). With a duration it closes by itself, but not before the voice has finished.
+narrate | bool | true | A narration is read aloud whatever the scenario's `narration` setting, unless this is `false`.
+narration_media_id | int | | Its recording, made in the scenario's [narrator's voice](#reading-text-aloud) by "Record voices".
+
+```json
+{ "type": "narration", "text": "Long ago, beyond the edge of every map, there was a valley where the rivers ran uphill." }
+```
+
+Shown to the scene (`audience: scene`), the other players get the smaller box at the top of the screen that closes by itself, as with a story conversation.
 
 ### Conversations (dialogue trees)
 
@@ -404,9 +476,10 @@ Dialogue, infoboxes and text overlays can be read aloud, with **each word highli
 Parameter | Applies to | Default | Description
 --------- | ---------- | ------- | -----------
 narration | scenario | off | `on`: read everything unless an action says otherwise.
-narrate | dialogue, conversation, infobox, text_overlay | the scenario's | `true` or `false` for this action.
-narration_media_id | dialogue, infobox, text_overlay, a conversation's line | | An audio recording to play instead of the browser's voice. When the recording has word timings (`speech`, below), each word is lit as the recording says it; otherwise the words are paced evenly over its length.
+narrate | dialogue, narration, conversation, infobox, text_overlay | the scenario's (a narration's: `true`) | `true` or `false` for this action.
+narration_media_id | dialogue, narration, infobox, text_overlay, a conversation's line | | An audio recording to play instead of the browser's voice. When the recording has word timings (`speech`, below), each word is lit as the recording says it; otherwise the words are paced evenly over its length.
 speech | media (audio) | | The recording's words and when each is said: `{text, line?, voice?, engine?, words: [{w, s, e}], duration?}`, in milliseconds. Recordings made by the server's text-to-speech service have it. See [Characters' voices](/docs/developers/voices/).
+narrator_voice | scenario | the default narrator | The voice what no character says is recorded in: narrations, and the text overlays and infoboxes read aloud. `none`: the browser reads them. See [Characters' voices](/docs/developers/voices/#the-narrator).
 tts_voice | character | | The voice the character's lines are recorded in: a key of the server's voice catalog ("heart", "captain", "robot"). See [Characters' voices](/docs/developers/voices/).
 voice_pitch, voice_rate | character | 1 | How the browser's voice sounds reading the character's lines that have no recording: 0 to 2, and 0.5 to 2.
 voice_name | character | | For lines with no recording: part of the name of a browser voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
@@ -484,6 +557,46 @@ facing | string | | `left` or `right`: turn this way on arriving. Default: the w
 **Who sees it.** A character that [roams](#characters-that-walk-around-on-their-own) is walked by the game server, for everyone, and stays where it went. Any other character walks on the player's own screen (or, when the event's `audience` is `scene`, on everyone's in the scene), like any other thing an event shows; one that walks out through a door is gone from the scene until it is entered again. The player walks themselves through the room as usual (their position reaches everyone through the room state), even while [frozen](#freeze): a freeze and walks make a cutscene. A player walked `to` a scene goes through a door of this scene, running the door's actions as if they had walked in (or clicked it), so only a scene next to this one can be reached.
 
 With `blocking` (the default) the next action waits until the walker arrives, or stops trying: there is no way there, another walk took over, or (for the player) the player walked off elsewhere.
+
+**Off stage.** A walk to a point beyond the left or right edge of the scene goes to the edge and on out of sight; a character placed beyond an edge comes on from there. See [story scenes](#story-scenes).
+
+### Weather action
+
+A new action type, `weather`, changes the scene's [weather](#weather) while the player is there, slowly: the rain starts, a storm blows up, the snow stops. Everyone in the scene sees it when the event's audience is the scene.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+kind | string | | `clear` (it stops), `rain`, `snow`, `storm`, `blizzard` or `fog`. The same kind changes how heavy it is; another fades the old one out as the new one comes in.
+intensity, wind, lightning | | | As for the scene's weather.
+duration | int | 3000 | Milliseconds the change takes. With `blocking`, the next action waits for it.
+
+```json
+{ "type": "weather", "kind": "storm", "intensity": 0.9, "duration": 5000, "blocking": false }
+```
+
+It lasts until another weather action, or until the player leaves the scene, which has its own weather again next time.
+
+### Camera
+
+A new action type, `camera`, points the player's view.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+target | string | | `character`: follow a character placed in the scene as they move. `point`: glide to a spot and stay. `player`: follow the player again (as the view does outside story scenes). `auto`: follow whoever is acting, as a [story scene](#story-scenes) does. Default: `character` with a `character_id`, `point` with a position, else `player`.
+character_id | int | | For `character`.
+position_x, position_y | int | | For `point`: the middle of the view, kept inside the scene.
+duration | int | 1200 | Milliseconds the glide takes; with `blocking`, the next action waits for it.
+
+It lasts until another camera action, or the scene ends.
+
+### The game's own sounds
+
+An `audio` action can play a sound the game makes itself instead of a file: `{ "type": "audio", "sound": "thunder" }`. They are made with Web Audio as they play (`apps/client/src/audio/synth.ts`), through the game's master volume, so a scenario needs no sound files for its rain or a car going by. The list is `BUILT_IN_SOUNDS` in `packages/shared/src/sounds.ts`:
+
+- **Ones that go on** (loop them with `repeat`; without it they play for a few seconds): `rain`, `heavy_rain`, `wind`, `river`, `stream`, `waves`, `fire` (crackling), `birds` (singing), `crickets`.
+- **One-shots**: `thunder`, `car` (driving by, left to right, pitched up and then down as it passes), `horn`, `hooves` (going by), `bell`, `chime` (magic), `knock`, `door` (creaking shut), `footsteps`, `splash`, `whoosh`, `pop`, `tweet`.
+
+`volume` works as for any sound; a cancel action stops it.
 
 ### Freeze
 

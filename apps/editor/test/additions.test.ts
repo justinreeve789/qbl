@@ -124,7 +124,8 @@ test('a light is placed and edited; the scene gets a living sky and fireflies', 
   await page.click('.outline >> text=Scene settings');
   await page.locator('.inspector [data-field=time] select').selectOption('golden');
   await page.locator('.inspector [data-field=until] select').selectOption('dusk');
-  await page.locator('.inspector [data-field=kind] select').selectOption('fireflies');
+  // What is in the air comes first; the weather's kind is below it.
+  await page.locator('.inspector [data-field=kind] select').first().selectOption('fireflies');
   await page.waitForSelector('.stage .sky-preview');
   scene = (await draft()).scenes[0]!;
   assert.deepEqual([scene.sky, scene.atmosphere], [{ time: 'golden', until: 'dusk' }, [{ kind: 'fireflies' }]]);
@@ -132,6 +133,27 @@ test('a light is placed and edited; the scene gets a living sky and fireflies', 
   await page.locator('.inspector [data-field=time] select').selectOption('');
   await page.waitForFunction(() => !document.querySelector('.stage .sky-preview'));
   assert.equal((await draft()).scenes[0]!.sky, undefined);
+});
+
+test('flowing water is placed and edited; the scene gets weather and plays by itself as a story', async () => {
+  await page.locator('select:has(option[value=flows])').selectOption('flows');
+  await page.waitForSelector('svg .flow-area.selected');
+  await page.locator('.inspector [data-field=kind] select').selectOption('waterfall');
+  await page.locator('.inspector [data-field=layer] select').selectOption('over');
+  let scene = (await draft()).scenes[0]!;
+  assert.deepEqual([scene.flows![0]!.kind, scene.flows![0]!.layer, scene.flows![0]!.name], ['waterfall', 'over', 'river']);
+  assert.match(await page.innerText('.outline'), /Flowing water/);
+  await page.click('.outline >> text=Scene settings');
+  await page.locator('.inspector [data-field=kind] select').nth(1).selectOption('storm');
+  await type('.inspector [data-field=intensity] input[type=number]', '0.9');
+  await page.check('.inspector [data-field=story] input');
+  scene = (await draft()).scenes[0]!;
+  assert.deepEqual([scene.weather, scene.story], [{ kind: 'storm', intensity: 0.9 }, true]);
+  // No kind: no weather; and back to a scene players walk in.
+  await page.locator('.inspector [data-field=kind] select').nth(1).selectOption('');
+  await page.uncheck('.inspector [data-field=story] input');
+  scene = (await draft()).scenes[0]!;
+  assert.deepEqual([scene.weather, scene.story], [undefined, undefined]);
 });
 
 test('a hotspot label can be background, or a solid object players walk around', async () => {

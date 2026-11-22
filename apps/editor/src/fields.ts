@@ -5,6 +5,7 @@ import { actionLabel, eventLabel, EVENT_KINDS, mediaLabel, mediaUrl, params, sce
 import { h, help, toast } from './dom';
 import type { Store } from './store';
 import { richEditor } from './rich/editor';
+import { narratorPicker } from './views/voices';
 
 /**
  * Forms are described as lists of fields and drawn by `form()`. Adding an attribute to an
@@ -21,6 +22,8 @@ export type FieldKind =
   | 'tristate'
   /** One of the scenario's glossary entries, or one of its scene groups. */
   | 'glossary' | 'group'
+  /** A voice of the server's catalog, for the narrator: empty is the default narrator, "none" the browser's voice. */
+  | 'voice'
   /** One of the things of the scene's close-up bench, by its id: `bench` says which list. */
   | 'bench';
 
@@ -260,6 +263,9 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       const groups = (ctx.store.settings.scene_groups as Array<{ id: number; name?: string }> | undefined) ?? [];
       return wrap(idSelect(groups.map((g) => [g.id, String(g.name ?? `Group ${g.id}`)]), value, set, f.placeholder ?? 'None'));
     }
+    case 'voice':
+      // Not a <label>: its ▶ Listen button must not be pressed by a click on the label.
+      return h('div', { class: `field${wide ? ' wide' : ''}`, 'data-field': f.key }, h('span', { class: 'field-label' }, f.label, help(f.hint)), narratorPicker(ctx, value == null ? '' : String(value), (v) => set(v === '' ? null : v)));
     case 'scene':
       return wrap(idSelect(ctx.store.rows('scenes').map((r) => [r.id, sceneLabel(r)]), value, set, f.placeholder ?? 'Choose a scene'));
     case 'item':

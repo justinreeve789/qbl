@@ -1,7 +1,7 @@
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
-import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS } from '../../schema';
+import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, FLOW_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS, WEATHER_FIELDS } from '../../schema';
 import { eventPanel } from '../eventPanel';
 import { benchSettingsPanel, benchToolPanel, benchVesselPanel } from './benchPanels';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
@@ -49,6 +49,10 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
       return listPanel(model, ctx, 'lights', selection.index, 'Light',
         'A soft glow drawn over the scene: put it on a lantern, a campfire, a lit window or a beacon in the picture. It flickers, burns with embers rising, breathes slowly, blinks or twinkles. With a living sky it shines fully at night and only a little by day. Drag it to move it and its handle to change how far it reaches.',
         LIGHT_FIELDS, host);
+    case 'flow':
+      return listPanel(model, ctx, 'flows', selection.index, 'Flowing water',
+        'Water that moves: a river or stream carried along, a waterfall pouring down, the sea or a lake lapping. Behind the picture, it shows wherever the scene’s last background layer is see-through: cut the water out of the picture and it flows between the painted banks. Over the picture, only ripples and glints move. Drag the box to move it and its corners to resize it.',
+        FLOW_FIELDS, host);
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
     case 'bench':
@@ -124,6 +128,14 @@ function livingPanel(model: SceneModel, ctx: FormContext): HTMLElement {
     // A sky needs a time of day; without one there is no sky.
     save(withValue(current(), 'sky', next.time ? next : null), key === 'time');
   };
+  const weather = (current().weather as Bag | undefined) ?? {};
+  const setWeather = (key: string, value: unknown, field: Field) => {
+    const next = withValue({ ...((current().weather as Bag | undefined) ?? {}) }, key, value, field);
+    // Weather needs a kind; without one there is none.
+    save(withValue(current(), 'weather', next.kind ? next : null), key === 'kind');
+  };
+  const story = { story: current().story === true };
+  const setStory = (_key: string, value: unknown, field: Field) => save(withValue(current(), 'story', value === true ? true : null, field), true);
   const setAir = (key: string, value: unknown, field: Field) => {
     const first = withValue({ ...((((current().atmosphere as Bag[] | undefined) ?? [])[0]) ?? {}) }, key, value, field);
     const rest = ((current().atmosphere as Bag[] | undefined) ?? []).slice(1);
@@ -137,6 +149,10 @@ function livingPanel(model: SceneModel, ctx: FormContext): HTMLElement {
     form(SKY_FIELDS, sky, setSky, ctx),
     h('div', { class: 'sub-head' }, h('span', null, '🍃 In the air', help('Fireflies, falling leaves, snow, rain, dust in the light or bubbles, drawn over the scene wherever players look. Nothing moves for players whose system asks for reduced motion.'))),
     form(ATMOSPHERE_FIELDS, air, setAir, ctx),
+    h('div', { class: 'sub-head' }, h('span', null, '🌧️ Weather', help('Rain splashing on the floor, snow, a storm with lightning and thunder, a blizzard, fog drifting by: drawn over the scene with its own sound. A Weather action changes it while players are here.'))),
+    form(WEATHER_FIELDS, weather, setWeather, ctx),
+    h('div', { class: 'sub-head' }, h('span', null, '📖 Story', help('A story scene plays by itself, like a page of a picture book: put what happens in its start events (characters walk on, talk, the rain starts) and end them with a jump to the next scene. Avatars are hidden, players do not walk, the view follows whoever acts, and a bar offers to skip ahead or watch it again. Characters can wait off stage: place them beyond the left or right edge and walk them on.'))),
+    form([{ key: 'story', label: 'This scene plays by itself (a story)', kind: 'bool', wide: true }], story, setStory, ctx),
   );
 }
 
