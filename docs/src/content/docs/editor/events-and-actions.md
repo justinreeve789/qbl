@@ -67,7 +67,19 @@ Picture labels can be made **Solid**, so players walk around them. A solid label
 
 ## Actions
 
-Under 🎬 Actions, **+ Add action…** lists every type with a one-line description. A new action arrives with sensible starting values so it is valid straight away.
+Under 🎬 Actions, **+ Add action…** lists every type with a one-line description, in groups:
+
+| Group | Actions |
+|---|---|
+| 🗣️ Talking and storytelling | Dialogue, Narration, Conversation |
+| 📝 Boxes and words on screen | Infobox, Text overlay |
+| 🧑 Characters and the player | Walk, Play an animation, Freeze or release player, Show or hide avatar |
+| 🎞️ Pictures, video and sound | Image in scene, Image overlay, Spritemap, Video, Audio, Translate |
+| 🎥 Scenes, camera and weather | Jump, Camera, Weather |
+| ⏱️ Timing and flow | Wait, Run event, Repeat, Cancel |
+| 🏆 Rewards and progress | Award stars or XP, Add a glossary word, Variable, Open the marketplace |
+
+An action's card takes its group's colour. The Type picker on each card, a button's action and a choice's actions use the same groups. A new action arrives with sensible starting values so it is valid straight away.
 
 * Anything with an **X** and **Y** in the scene (**Walk** to a spot, **Translate**, **Image in scene**, **Spritemap**) has **📍 Pick on the scene** under them: press it, then click the scene to set both. While choosing, a click on a character or hotspot picks the spot under it instead of selecting it. These spots are drawn on the canvas while the event is selected, and can be dragged there.
 * Actions run **in the order listed**. **Drag the ⠿ grip** at the left of a card to move it; drop it on the upper or lower half of another card to put it before or after.
