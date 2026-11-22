@@ -4,6 +4,7 @@ import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
 import { confirmDelete, h, help } from '../dom';
 import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
+import { actionPicker } from '../actionPicker';
 import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, starterConversation, tidyWalk } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 import { conversationMap } from './conversation';
@@ -26,16 +27,14 @@ function choice(type: string, values: Record<string, unknown>): Record<string, s
   return {};
 }
 
-const typeOptions = ACTION_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${ACTIONS[t].label}`] as const);
-
 /** Actions that cannot be one of a button's or a choice's: a conversation is edited as a row of its own. */
-const nestedTypeOptions = typeOptions.filter(([t]) => t !== 'conversation');
+const nestedTypes = ACTION_TYPES.filter((t) => t !== 'conversation');
 
 /**
  * What a choice in a conversation can do. Not repeat (it belongs to an event), not an award
  * (awards are granted for an event's own actions: have the choice run an event that gives it).
  */
-const choiceTypeOptions = nestedTypeOptions.filter(([t]) => t !== 'repeat' && t !== 'award');
+const choiceTypes = nestedTypes.filter((t) => t !== 'repeat' && t !== 'award');
 
 /**
  * Starting values for a new action. A new conversation is spoken by the first character placed in
@@ -65,7 +64,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
   const { store } = ctx;
   const actions = sortedActions(ctx, eventId);
 
-  const add = select(ACTION_TYPES.map((t) => [t, `${ACTION_LOOK[t][0]} ${ACTIONS[t].label}: ${ACTIONS[t].about}`] as const), '', async (type) => {
+  const add = actionPicker(ACTION_TYPES, '', async (type) => {
     add.value = '';
     if (!type) return;
     const sequence = actions.reduce((max, a) => Math.max(max, Number(a.sequence)), 0) + 1;
@@ -74,7 +73,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
       open.add(row.id);
       store.emit();
     }
-  }, '+ Add action…');
+  }, { empty: '+ Add action…', about: true, add: true });
   add.classList.add('add-action');
 
   /** Put the actions in a new order by rewriting their sequence numbers. */
@@ -119,7 +118,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
           'label',
           { class: 'field wide' },
           h('span', { class: 'field-label' }, 'Type', help(def.about)),
-          select(typeOptions, type, (next) => void store.patch('actions', id, { type: next, media_id: null, params: startingParams(ctx, next as ActionType) }, true)),
+          actionPicker(ACTION_TYPES, type, (next) => void store.patch('actions', id, { type: next, media_id: null, params: startingParams(ctx, next as ActionType) }, true)),
         ),
       ),
       form(def.fields, { ...actionValues(action), ...choice(type, params(action)) }, commit, ctx),
@@ -237,10 +236,10 @@ function buttonsEditor(ctx: FormContext, read: () => Cta[], write: (list: Cta[],
         'div',
         { class: 'cta-head' },
         label,
-        select(nestedTypeOptions, type, (next) => {
+        actionPicker(nestedTypes, type ?? '', (next) => {
           const action = next ? { type: next, ...actionDefaults(next as ActionType) } : undefined;
           replace(index, withValue({ ...at(index) }, 'action', action) as Cta, true);
-        }, 'Just close the box'),
+        }, { empty: 'Just close the box' }),
         h('button', { type: 'button', class: 'icon', title: 'Remove button', onclick: () => write(read().filter((_, i) => i !== index), true) }, '×'),
       ),
       h('label', { class: 'field cta-mark', 'data-field': 'mark' },
@@ -305,7 +304,7 @@ export function inlineActions(
       h(
         'div',
         { class: 'cta-head' },
-        select(choiceTypeOptions, type, (next) => next && replace(index, { type: next, ...actionDefaults(next as ActionType) }, true)),
+        actionPicker(choiceTypes, type, (next) => next && replace(index, { type: next, ...actionDefaults(next as ActionType) }, true)),
         h('button', { type: 'button', class: 'icon', title: 'Remove', 'aria-label': 'Remove this action', onclick: () => write(read().filter((_, i) => i !== index), true) }, '×'),
       ),
       def ? form(def.fields, { ...action, ...choice(type, action) }, commit, ctx) : null,
@@ -319,10 +318,10 @@ export function inlineActions(
     );
   });
 
-  const add = select(choiceTypeOptions.map(([t, label]) => [t, `${label}: ${ACTIONS[t as ActionType].about}`] as const), '', (type) => {
+  const add = actionPicker(choiceTypes, '', (type) => {
     add.value = '';
     if (type) write([...read(), { type, ...actionDefaults(type as ActionType) }], true);
-  }, '+ Add an action…');
+  }, { empty: '+ Add an action…', about: true, add: true });
   add.classList.add('add-action');
 
   return h(

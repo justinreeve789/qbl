@@ -369,17 +369,40 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
 
 export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
 
-/** An icon and a colour for each action type, by what kind of thing it does. */
-const SAY = '#2f6fed', SHOW = '#8e5bd6', SOUND = '#0f9d8a', FLOW = '#c77b12', PLAYER = '#d6457a', STATE = '#3b8f4a';
-export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: string]> = {
-  infobox: ['📋', SAY], dialogue: ['💬', SAY], narration: ['📜', SAY], conversation: ['🔀', SAY], text_overlay: ['🔤', SAY],
-  image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
-  audio: ['🔊', SOUND],
-  jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
-  weather: ['🌧️', SHOW], camera: ['🎥', SHOW],
-  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], walk: ['🚶', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'], glossary: ['📖', STATE],
-  variable: ['🔢', STATE],
+/**
+ * The groups the action pickers show, in order, each with an icon and a colour. The colour also
+ * tints the action's card, so a card's group can be told at a glance.
+ */
+export type ActionGroup = { key: string; label: string; icon: string; tone: string; types: ActionType[] };
+export const ACTION_GROUPS: ActionGroup[] = [
+  { key: 'talk', label: 'Talking and storytelling', icon: '🗣️', tone: '#2f6fed', types: ['dialogue', 'narration', 'conversation'] },
+  { key: 'text', label: 'Boxes and words on screen', icon: '📝', tone: '#1b8bb4', types: ['infobox', 'text_overlay'] },
+  { key: 'people', label: 'Characters and the player', icon: '🧑', tone: '#d6457a', types: ['walk', 'animate', 'freeze', 'avatar'] },
+  { key: 'media', label: 'Pictures, video and sound', icon: '🎞️', tone: '#8e5bd6', types: ['image_fixed', 'image_overlay', 'spritemap', 'video', 'audio', 'translate'] },
+  { key: 'scene', label: 'Scenes, camera and weather', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'camera', 'weather'] },
+  { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel'] },
+  { key: 'progress', label: 'Rewards and progress', icon: '🏆', tone: '#3b8f4a', types: ['award', 'glossary', 'variable', 'shop'] },
+];
+
+/** The group an action type belongs to. */
+export function actionGroup(type: ActionType): ActionGroup | undefined {
+  return ACTION_GROUPS.find((g) => g.types.includes(type));
+}
+
+const ACTION_ICONS: Record<ActionType, string> = {
+  dialogue: '💬', narration: '📜', conversation: '🔀',
+  infobox: '📋', text_overlay: '🔤',
+  walk: '🚶', animate: '🤸', freeze: '✋', avatar: '👤',
+  image_fixed: '📌', image_overlay: '🖼️', spritemap: '🎞️', video: '🎬', audio: '🔊', translate: '↔️',
+  jump: '🚪', camera: '🎥', weather: '🌧️',
+  wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️',
+  award: '⭐', glossary: '📖', variable: '🔢', shop: '🛍️',
 };
+
+/** An icon and a colour (its group's) for each action type. */
+export const ACTION_LOOK = Object.fromEntries(
+  (Object.keys(ACTION_ICONS) as ActionType[]).map((t) => [t, [ACTION_ICONS[t], actionGroup(t)?.tone ?? '#5d626d'] as const]),
+) as Record<ActionType, readonly [icon: string, tone: string]>;
 
 /** Attributes every action row has. */
 export const ACTION_COMMON: Field[] = [
