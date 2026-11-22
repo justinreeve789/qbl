@@ -242,11 +242,16 @@ class ScenarioGenerator
 
         $lang = $blueprint['language'] ?? 'en';
         // A story's narrator reads its captions, in a voice of their own: a dramatic, charismatic storyteller unless the story asks otherwise.
+        // They read the whole story, so they are chosen by fit alone: flair would hand them a giant or a warrior. The characters then
+        // get theatrical voices as usual, other than the narrator's.
         if (($blueprint['format'] ?? 'mission') === 'story') {
             $v = (array) ($blueprint['narrator']['voice'] ?? []);
-            $wanted['__narrator'] = ['gender' => $v['gender'] ?? null, 'age' => $v['age'] ?? 'adult', 'accent' => $v['accent'] ?? null, 'describe' => trim(($v['sound'] ?? '').' dramatic charismatic engaging expressive storyteller narrator')];
+            $narrator = $picker->withFlair(0)->pick(['__narrator' => [
+                'gender' => $v['gender'] ?? null, 'age' => $v['age'] ?? 'adult', 'accent' => $v['accent'] ?? null,
+                'describe' => trim(($v['sound'] ?? '').' dramatic charismatic engaging expressive storyteller narrator'),
+            ]], $lang)['__narrator'] ?? null;
 
-            return $picker->pick($wanted, $lang);
+            return ($narrator !== null ? ['__narrator' => $narrator] : []) + $picker->pick($wanted, $lang, $narrator !== null ? [$narrator] : []);
         }
 
         // A mission is narrated by the default narrator (it sets no narrator_voice): its voice is kept for them.

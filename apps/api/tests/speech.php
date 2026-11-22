@@ -458,6 +458,17 @@ same([$override->narrator('en'), $override->narrator('es')], ['captain', 'alex-e
 same(VoiceCatalog::load($catalogPath, 'nobody')->narrator('en'), 'storyteller', 'and a voice the catalog does not have is ignored');
 same([$catalog->narratorFor([], 'en'), $catalog->narratorFor(['narrator_voice' => 'onyx'], 'en'), $catalog->narratorFor(['narrator_voice' => 'none'], 'en')], ['storyteller', 'onyx', null], 'a scenario may choose its own narrator, or none');
 
+// A story's narrator is chosen by fit, not flair (they read every caption); the characters still get theatrical voices.
+$story = fn (array $narrator) => ['format' => 'story', 'language' => 'en', 'narrator' => ['voice' => $narrator], 'characters' => [
+    ['key' => 'ogre', 'voice' => ['gender' => 'male', 'age' => 'adult', 'sound' => 'booming deep giant ogre']],
+]];
+$flairy = new VoicePicker($catalog, 3);
+$told = \App\Qbl\Generation\ScenarioGenerator::voicesFor($story([]), $flairy);
+same($told['__narrator'], 'storyteller', 'a story with no wishes for its narrator gets the storyteller');
+$told = \App\Qbl\Generation\ScenarioGenerator::voicesFor($story(['gender' => 'female', 'accent' => 'American', 'sound' => 'gentle warm']), $flairy);
+check((int) ($catalog->get($told['__narrator'])['flair'] ?? 0) < 2, 'a gentle female narrator is not handed a theatrical voice (got '.$told['__narrator'].')');
+check((int) ($catalog->get($told['ogre'])['flair'] ?? 0) === 2 && $told['ogre'] !== $told['__narrator'], 'while the ogre still gets a theatrical voice of its own (got '.$told['ogre'].')');
+
 same(Voicer::infoboxWords('<h2>The&nbsp;Water Cycle</h2><p>Water <b>goes</b> round.</p><ul><li>Rain</li><li>Snow</li></ul>'), 'The Water Cycle Water goes round. Rain Snow', 'an infobox is read as the player sees it, a word at each break');
 same(Voicer::infoboxWords('<p>One</p><hr data-qbl="page"><p>Two</p>'), null, 'but not a box of pages, each read on its own');
 same(Voicer::infoboxWords('<div data-qbl="flip"><p>Front</p><p data-unread>Back</p></div>'), null, 'nor one whose words depend on play');
