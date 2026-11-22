@@ -746,7 +746,7 @@ export const MEDIA_FIELDS: Field[] = [
 ];
 
 export const VARIABLE_FIELDS: Field[] = [
-  { key: 'variable_name', label: 'Name', kind: 'text', hint: 'Renaming does not update the conditions and actions that use it.' },
+  { key: 'variable_name', label: 'Name', kind: 'text', hint: 'Renaming it changes every condition, action and text that uses it to the new name.' },
   { key: 'default_value', label: 'Starting value', kind: 'value' },
   {
     key: 'scope', label: 'Whose it is', kind: 'select', structural: true,

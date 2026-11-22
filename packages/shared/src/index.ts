@@ -15,6 +15,7 @@ export * from './locate.js';
 export * from './protocol.js';
 export * from './world.js';
 export * from './text.js';
+export * from './rename.js';
 export * from './speech.js';
 export * from './infobox.js';
 export * from './bench.js';
