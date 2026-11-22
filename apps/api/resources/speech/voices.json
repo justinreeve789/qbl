@@ -1,5 +1,5 @@
 {
-  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\", a speed, and for the theatrical voices a blend that takes a voice away (\"am_santa(1.5)-am_michael(0.5)\": more Santa than Santa), a lang (the language code to read in, when the voice is borrowed from another language) and a volume; for openai a voice and instructions. flair says how much of a character a voice is: 0 or absent an everyday voice, 1 one with character, 2 a theatrical one (a giant, a pixie, a pantomime villain); voices with flair are chosen first (QL_TTS_FLAIR). A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md. narrators: the default narrator's voice for each language, for scenarios that do not choose one (Scenario.narrator_voice).",
+  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\", a speed, and for the theatrical voices a blend that takes a voice away (\"am_santa(1.5)-am_michael(0.5)\": more Santa than Santa), a lang (the language code to read in, when the voice is borrowed from another language) and a volume; for openai a voice and instructions; for chatterbox the clip it speaks in (a recording kept by the chatterbox container, made from this voice on kokoro the first time it is needed, from clip_lines), an exaggeration and a cfg_weight. flair says how much of a character a voice is: 0 or absent an everyday voice, 1 one with character, 2 a theatrical one (a giant, a pixie, a pantomime villain); voices with flair are chosen first (QL_TTS_FLAIR). A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md. narrators: the default narrator's voice for each language, for scenarios that do not choose one (Scenario.narrator_voice).",
   "stand_ins": {
     "en": "explorer",
     "es": "explorador",
@@ -19,6 +19,16 @@
     "hi": "नमस्ते, खोजकर्ता! तुम्हारा स्वागत है। चलो शुरू करें?",
     "ja": "こんにちは、探検家さん！さあ、始めましょう。",
     "zh": "你好，探险家！我们开始吧。"
+  },
+  "clip_lines": {
+    "en": "Hello there, explorer! Welcome to the lab. Today we're going to find out why the sky turns orange at sunset, and I could really use your help. Look closely at the light through this glass. Do you see how the colors spread apart? That's the secret! Now, shall we write down what we noticed?",
+    "es": "¡Hola, explorador! Bienvenido al laboratorio. Hoy vamos a descubrir por qué el cielo se vuelve naranja al atardecer, y de verdad necesito tu ayuda. Mira con atención la luz a través de este cristal. ¿Ves cómo se separan los colores? ¡Ese es el secreto! Ahora, ¿anotamos lo que hemos visto?",
+    "fr": "Bonjour, explorateur ! Bienvenue au laboratoire. Aujourd'hui, nous allons découvrir pourquoi le ciel devient orange au coucher du soleil, et j'ai vraiment besoin de ton aide. Regarde bien la lumière à travers ce verre. Tu vois comme les couleurs se séparent ? C'est ça, le secret ! Alors, on note ce qu'on a remarqué ?",
+    "it": "Ciao, esploratore! Benvenuto in laboratorio. Oggi scopriremo perché il cielo diventa arancione al tramonto, e mi serve proprio il tuo aiuto. Guarda bene la luce attraverso questo vetro. Vedi come si separano i colori? Ecco il segreto! Allora, scriviamo quello che abbiamo notato?",
+    "pt": "Olá, explorador! Bem-vindo ao laboratório. Hoje vamos descobrir por que o céu fica laranja no pôr do sol, e eu preciso muito da sua ajuda. Olhe com atenção para a luz através deste vidro. Está vendo como as cores se separam? Esse é o segredo! Agora, vamos anotar o que percebemos?",
+    "hi": "नमस्ते, खोजकर्ता! प्रयोगशाला में तुम्हारा स्वागत है। आज हम पता लगाएँगे कि सूरज ढलते समय आसमान नारंगी क्यों हो जाता है, और मुझे तुम्हारी मदद चाहिए। इस काँच से आती रोशनी को ध्यान से देखो। क्या तुम्हें रंग अलग होते दिख रहे हैं? यही तो राज़ है! चलो, जो देखा उसे लिख लेते हैं?",
+    "ja": "こんにちは、探検家さん！研究室へようこそ。今日は、夕焼けの空がなぜオレンジ色になるのかを調べます。ぜひ手伝ってください。このガラスを通る光をよく見てください。色が分かれていくのが見えますか？それが秘密なんです！では、気づいたことを書きとめましょうか？",
+    "zh": "你好，探险家！欢迎来到实验室。今天我们要弄明白，为什么日落的时候天空会变成橙色，我真的需要你的帮助。仔细看看穿过这块玻璃的光。你看到颜色是怎么分开的吗？这就是秘密！那么，我们把看到的记下来吧？"
   },
   "narrators": {
     "en": "storyteller",
@@ -52,6 +62,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "heart"
         }
       }
     },
@@ -77,6 +90,9 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Bright and enthusiastic."
+        },
+        "chatterbox": {
+          "clip": "bella"
         }
       }
     },
@@ -102,6 +118,9 @@
         "openai": {
           "voice": "coral",
           "instructions": "Upbeat and encouraging, like a favourite teacher."
+        },
+        "chatterbox": {
+          "clip": "mentor"
         }
       }
     },
@@ -130,6 +149,11 @@
         "openai": {
           "voice": "sage",
           "instructions": "Soft, calm and gentle, close to a whisper."
+        },
+        "chatterbox": {
+          "clip": "nicole",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -155,6 +179,9 @@
         "openai": {
           "voice": "nova",
           "instructions": "Light and curious."
+        },
+        "chatterbox": {
+          "clip": "sky"
         }
       }
     },
@@ -182,6 +209,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Speak like an excited, playful young girl."
+        },
+        "chatterbox": {
+          "clip": "pip",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -206,6 +238,9 @@
         },
         "openai": {
           "voice": "sage"
+        },
+        "chatterbox": {
+          "clip": "sarah"
         }
       }
     },
@@ -229,6 +264,9 @@
         },
         "openai": {
           "voice": "nova"
+        },
+        "chatterbox": {
+          "clip": "nova"
         }
       }
     },
@@ -256,6 +294,11 @@
         "openai": {
           "voice": "ballad",
           "instructions": "Smooth and thoughtful, like a storyteller."
+        },
+        "chatterbox": {
+          "clip": "aoede",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -281,6 +324,9 @@
         "openai": {
           "voice": "sage",
           "instructions": "Steady, serious and determined."
+        },
+        "chatterbox": {
+          "clip": "kore"
         }
       }
     },
@@ -306,6 +352,9 @@
         "openai": {
           "voice": "coral",
           "instructions": "Chatty and casual."
+        },
+        "chatterbox": {
+          "clip": "jessica"
         }
       }
     },
@@ -329,6 +378,9 @@
         "openai": {
           "voice": "nova",
           "instructions": "Relaxed and easygoing."
+        },
+        "chatterbox": {
+          "clip": "river"
         }
       }
     },
@@ -356,6 +408,11 @@
         "openai": {
           "voice": "sage",
           "instructions": "Speak like a kindly, unhurried grandmother."
+        },
+        "chatterbox": {
+          "clip": "grandma",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -381,6 +438,9 @@
         "openai": {
           "voice": "fable",
           "instructions": "Speak with a British accent, kind and well-spoken."
+        },
+        "chatterbox": {
+          "clip": "emma"
         }
       }
     },
@@ -405,6 +465,9 @@
         "openai": {
           "voice": "fable",
           "instructions": "Speak with a British accent, lively and warm."
+        },
+        "chatterbox": {
+          "clip": "isabella"
         }
       }
     },
@@ -429,6 +492,9 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Speak with a British accent, curious and quick."
+        },
+        "chatterbox": {
+          "clip": "alice"
         }
       }
     },
@@ -453,6 +519,9 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Speak with a British accent, gentle and a little shy."
+        },
+        "chatterbox": {
+          "clip": "lily"
         }
       }
     },
@@ -480,6 +549,11 @@
         "openai": {
           "voice": "fable",
           "instructions": "Speak with a British accent, like a calm, learned old professor."
+        },
+        "chatterbox": {
+          "clip": "professor-emma",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -504,6 +578,9 @@
         },
         "openai": {
           "voice": "ash"
+        },
+        "chatterbox": {
+          "clip": "michael"
         }
       }
     },
@@ -532,6 +609,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "Commanding but warm, like a ship's captain."
+        },
+        "chatterbox": {
+          "clip": "captain",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -559,6 +641,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "Deep, strong and bold."
+        },
+        "chatterbox": {
+          "clip": "fenrir",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -586,6 +673,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "Playful and a bit mischievous."
+        },
+        "chatterbox": {
+          "clip": "puck",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -613,6 +705,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "Speak like an excited, eager young boy."
+        },
+        "chatterbox": {
+          "clip": "scout",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -638,6 +735,9 @@
         "openai": {
           "voice": "ash",
           "instructions": "Friendly and eager to help."
+        },
+        "chatterbox": {
+          "clip": "liam"
         }
       }
     },
@@ -661,6 +761,9 @@
         },
         "openai": {
           "voice": "echo"
+        },
+        "chatterbox": {
+          "clip": "echo"
         }
       }
     },
@@ -685,6 +788,9 @@
         "openai": {
           "voice": "echo",
           "instructions": "Confident and brisk."
+        },
+        "chatterbox": {
+          "clip": "eric"
         }
       }
     },
@@ -712,6 +818,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "Deep, grave and serious."
+        },
+        "chatterbox": {
+          "clip": "onyx",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -739,6 +850,11 @@
         "openai": {
           "voice": "ballad",
           "instructions": "Speak like a jolly, kindly old grandfather."
+        },
+        "chatterbox": {
+          "clip": "grandpa",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -766,6 +882,11 @@
         "openai": {
           "voice": "fable",
           "instructions": "Speak with a British accent, like a wise old professor."
+        },
+        "chatterbox": {
+          "clip": "george",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -790,6 +911,11 @@
         },
         "openai": {
           "voice": "fable"
+        },
+        "chatterbox": {
+          "clip": "fable",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -816,6 +942,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "Speak with a British accent, deep and serious."
+        },
+        "chatterbox": {
+          "clip": "lewis",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -840,6 +971,9 @@
         "openai": {
           "voice": "echo",
           "instructions": "Speak with a British accent, calm and polite."
+        },
+        "chatterbox": {
+          "clip": "daniel"
         }
       }
     },
@@ -869,6 +1003,11 @@
         "openai": {
           "voice": "alloy",
           "instructions": "Speak like a friendly, precise robot: even and measured."
+        },
+        "chatterbox": {
+          "clip": "robot",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -892,6 +1031,9 @@
         },
         "openai": {
           "voice": "alloy"
+        },
+        "chatterbox": {
+          "clip": "alloy"
         }
       }
     },
@@ -921,6 +1063,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "Speak like a tiny, quick, mischievous creature."
+        },
+        "chatterbox": {
+          "clip": "sprite",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -955,6 +1102,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "A British giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        },
+        "chatterbox": {
+          "clip": "giant",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -988,6 +1140,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "A storybook dragon: very deep, growling and menacing, but fun, never truly frightening."
+        },
+        "chatterbox": {
+          "clip": "dragon",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1019,6 +1176,11 @@
         "openai": {
           "voice": "ballad",
           "instructions": "A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        },
+        "chatterbox": {
+          "clip": "gnome",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1051,6 +1213,11 @@
         "openai": {
           "voice": "ballad",
           "instructions": "A big jolly man: hearty, booming and laughing, like a merry king."
+        },
+        "chatterbox": {
+          "clip": "jolly",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1083,6 +1250,11 @@
         "openai": {
           "voice": "fable",
           "instructions": "A grand British stage actor: theatrical and flamboyant, savouring every word."
+        },
+        "chatterbox": {
+          "clip": "thespian",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1115,6 +1287,11 @@
         "openai": {
           "voice": "fable",
           "instructions": "An ancient British wizard: grand, slow and mystical, full of secrets."
+        },
+        "chatterbox": {
+          "clip": "wizard",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1147,6 +1324,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "A mischievous imp: quick, sly and cheeky, always up to something."
+        },
+        "chatterbox": {
+          "clip": "imp",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1178,6 +1360,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "A cartoon superhero: bold, booming and dashing, every line a proclamation."
+        },
+        "chatterbox": {
+          "clip": "hero",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1210,6 +1397,11 @@
         "openai": {
           "voice": "ash",
           "instructions": "A storybook pirate captain: gruff, hearty and swashbuckling."
+        },
+        "chatterbox": {
+          "clip": "pirate",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1242,6 +1434,11 @@
         "openai": {
           "voice": "echo",
           "instructions": "A zany, eccentric inventor: fast, high and excitable, bursting with ideas."
+        },
+        "chatterbox": {
+          "clip": "boffin",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1275,6 +1472,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "A British pantomime villain: slow, silky and scheming, enjoying every wicked word."
+        },
+        "chatterbox": {
+          "clip": "villain",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1308,6 +1510,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "A squeaky, bouncy cartoon boy, eager and excited."
+        },
+        "chatterbox": {
+          "clip": "sprout",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1341,6 +1548,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "A cheeky little goblin: quick, odd and sneaky, giggling at its own tricks."
+        },
+        "chatterbox": {
+          "clip": "goblin",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1374,6 +1586,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        },
+        "chatterbox": {
+          "clip": "pixie",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1407,6 +1624,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "A tiny, timid mouse: small, high and squeaky."
+        },
+        "chatterbox": {
+          "clip": "mouse",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1440,6 +1662,11 @@
         "openai": {
           "voice": "nova",
           "instructions": "A sly, clever fox: light, teasing and playful."
+        },
+        "chatterbox": {
+          "clip": "fox",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1472,6 +1699,11 @@
         "openai": {
           "voice": "sage",
           "instructions": "A friendly ghost: a breathy, drawn-out, eerie whisper. Spooky but gentle."
+        },
+        "chatterbox": {
+          "clip": "ghost",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1505,6 +1737,11 @@
         "openai": {
           "voice": "sage",
           "instructions": "A storybook witch: low, hushed and crafty, relishing her spells. Fun, never truly frightening."
+        },
+        "chatterbox": {
+          "clip": "witch",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1537,6 +1774,11 @@
         "openai": {
           "voice": "fable",
           "instructions": "A haughty British queen: slow, grand and imperious. She is not amused."
+        },
+        "chatterbox": {
+          "clip": "queen",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1570,6 +1812,11 @@
         "openai": {
           "voice": "coral",
           "instructions": "A fairy godmother: sweet, sing-song and twinkly, kindly and magical."
+        },
+        "chatterbox": {
+          "clip": "godmother",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1602,6 +1849,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "A bubbly cartoon girl: high, giddy and thrilled about everything."
+        },
+        "chatterbox": {
+          "clip": "bubbles",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1634,6 +1886,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "A prim, fussy British nanny: high, proper and easily flustered."
+        },
+        "chatterbox": {
+          "clip": "fusspot",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1666,6 +1923,11 @@
         "openai": {
           "voice": "sage",
           "instructions": "A fearless warrior: low, firm and bold, every line a rallying cry."
+        },
+        "chatterbox": {
+          "clip": "warrior",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1697,6 +1959,11 @@
         "openai": {
           "voice": "coral",
           "instructions": "A glamorous diva: bright, flamboyant and dramatic, always centre stage."
+        },
+        "chatterbox": {
+          "clip": "diva",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1729,6 +1996,11 @@
         "openai": {
           "voice": "alloy",
           "instructions": "A friendly alien: an odd, otherworldly lilt, curious about everything on Earth."
+        },
+        "chatterbox": {
+          "clip": "alien",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1762,6 +2034,11 @@
         "openai": {
           "voice": "alloy",
           "instructions": "A small, chirpy helper robot: bright, quick and cute."
+        },
+        "chatterbox": {
+          "clip": "gizmo",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1795,6 +2072,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "A colossal ancient machine: very deep, flat and slow."
+        },
+        "chatterbox": {
+          "clip": "colossus",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1822,6 +2104,9 @@
         "openai": {
           "voice": "fable",
           "instructions": "You are the narrator of an adventure for young explorers. Speak like a charismatic, dramatic storyteller: warm, rich and expressive, building suspense, with pauses for effect and a sense of wonder."
+        },
+        "chatterbox": {
+          "clip": "storyteller"
         }
       }
     },
@@ -1844,6 +2129,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "dora"
         }
       }
     },
@@ -1865,6 +2153,9 @@
         },
         "openai": {
           "voice": "ash"
+        },
+        "chatterbox": {
+          "clip": "alex-es"
         }
       }
     },
@@ -1888,6 +2179,11 @@
         },
         "openai": {
           "voice": "ballad"
+        },
+        "chatterbox": {
+          "clip": "santa-es",
+          "exaggeration": 0.6,
+          "cfg_weight": 0.45
         }
       }
     },
@@ -1922,6 +2218,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "Speak Spanish. A giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        },
+        "chatterbox": {
+          "clip": "gigante-es",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1956,6 +2257,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Speak Spanish. A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        },
+        "chatterbox": {
+          "clip": "hada-es",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -1988,6 +2294,11 @@
         "openai": {
           "voice": "ballad",
           "instructions": "Speak Spanish. A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        },
+        "chatterbox": {
+          "clip": "gnomo-es",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2021,6 +2332,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "Speak Spanish. A mischievous imp: quick, sly and cheeky, always up to something."
+        },
+        "chatterbox": {
+          "clip": "travieso-es",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2043,6 +2359,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "siwis"
         }
       }
     },
@@ -2077,6 +2396,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Speak French. A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        },
+        "chatterbox": {
+          "clip": "fee-fr",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2098,6 +2422,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "sara-it"
         }
       }
     },
@@ -2119,6 +2446,9 @@
         },
         "openai": {
           "voice": "ash"
+        },
+        "chatterbox": {
+          "clip": "nicola"
         }
       }
     },
@@ -2152,6 +2482,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "Speak Italian. A giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        },
+        "chatterbox": {
+          "clip": "gigante-it",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2187,6 +2522,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Speak Italian. A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        },
+        "chatterbox": {
+          "clip": "fatina-it",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2219,6 +2559,11 @@
         "openai": {
           "voice": "ballad",
           "instructions": "Speak Italian. A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        },
+        "chatterbox": {
+          "clip": "gnomo-it",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2252,6 +2597,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "Speak Italian. A mischievous imp: quick, sly and cheeky, always up to something."
+        },
+        "chatterbox": {
+          "clip": "birbante-it",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2273,6 +2623,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "dora-pt"
         }
       }
     },
@@ -2294,6 +2647,9 @@
         },
         "openai": {
           "voice": "ash"
+        },
+        "chatterbox": {
+          "clip": "alex-pt"
         }
       }
     },
@@ -2328,6 +2684,11 @@
         "openai": {
           "voice": "onyx",
           "instructions": "Speak Brazilian Portuguese. A giant: very deep, slow and rumbling, each word heavy. Larger than life."
+        },
+        "chatterbox": {
+          "clip": "gigante-pt",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2362,6 +2723,11 @@
         "openai": {
           "voice": "shimmer",
           "instructions": "Speak Brazilian Portuguese. A tiny pixie: very high, bright and tinkling, bubbling with magic."
+        },
+        "chatterbox": {
+          "clip": "fada-pt",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2394,6 +2760,11 @@
         "openai": {
           "voice": "ballad",
           "instructions": "Speak Brazilian Portuguese. A jolly little old gnome: high, merry and chuckling, full of twinkle."
+        },
+        "chatterbox": {
+          "clip": "gnomo-pt",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2427,6 +2798,11 @@
         "openai": {
           "voice": "verse",
           "instructions": "Speak Brazilian Portuguese. A mischievous imp: quick, sly and cheeky, always up to something."
+        },
+        "chatterbox": {
+          "clip": "travesso-pt",
+          "exaggeration": 0.8,
+          "cfg_weight": 0.35
         }
       }
     },
@@ -2448,6 +2824,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "alpha-hi"
         }
       }
     },
@@ -2469,6 +2848,9 @@
         },
         "openai": {
           "voice": "shimmer"
+        },
+        "chatterbox": {
+          "clip": "beta-hi"
         }
       }
     },
@@ -2490,6 +2872,9 @@
         },
         "openai": {
           "voice": "ash"
+        },
+        "chatterbox": {
+          "clip": "omega-hi"
         }
       }
     },
@@ -2511,6 +2896,9 @@
         },
         "openai": {
           "voice": "verse"
+        },
+        "chatterbox": {
+          "clip": "psi-hi"
         }
       }
     },
@@ -2532,6 +2920,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "alpha-ja"
         }
       }
     },
@@ -2553,6 +2944,9 @@
         },
         "openai": {
           "voice": "ash"
+        },
+        "chatterbox": {
+          "clip": "kumo"
         }
       }
     },
@@ -2574,6 +2968,9 @@
         },
         "openai": {
           "voice": "coral"
+        },
+        "chatterbox": {
+          "clip": "xiaoxiao"
         }
       }
     },
@@ -2595,6 +2992,9 @@
         },
         "openai": {
           "voice": "ash"
+        },
+        "chatterbox": {
+          "clip": "yunxi"
         }
       }
     }

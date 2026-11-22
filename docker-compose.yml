@@ -1,4 +1,4 @@
-# Eight containers:
+# Eight containers, and a ninth when asked for:
 #   edge      Caddy: ends HTTPS (Let's Encrypt or your own certificate) on staging and production
 #             only (the "https" profile); everything behind it speaks plain HTTP
 #   apache    web server and reverse proxy for the rest; http://localhost:8080 in development
@@ -9,6 +9,8 @@
 #   editor    the scenario editor (a static web application)
 #   docs      the documentation (a static site built with Astro Starlight)
 #   tts       text-to-speech (Kokoro): records what characters say, with the time of every word
+#   chatterbox  text-to-speech (Chatterbox), livelier and slower: only with COMPOSE_PROFILES=chatterbox
+#             and QL_TTS_DRIVER=chatterbox (see "Characters' voices" in .env.example)
 #
 #   docker compose up --build        ->  http://localhost:8080           the marketing page (development: plain HTTP, no certificate)
 #                                        http://localhost:8080/missions  the game: sign in, then the missions page
@@ -157,14 +159,18 @@ services:
       # Clever (district admin panel): QBL's Clever application. See "District admin panel" in the README.
       CLEVER_CLIENT_ID: ${CLEVER_CLIENT_ID:-}
       CLEVER_CLIENT_SECRET: ${CLEVER_CLIENT_SECRET:-}
-      # Characters' recorded voices (config/qbl_speech.php): kokoro (the tts container below), openai
-      # (any OpenAI-style /v1/audio/speech service; no word timings), or none (the browser reads).
+      # Characters' recorded voices (config/qbl_speech.php): kokoro (the tts container below),
+      # chatterbox (the chatterbox container below), openai (any OpenAI-style /v1/audio/speech
+      # service; no word timings), or none (the browser reads).
       QL_TTS_DRIVER: ${QL_TTS_DRIVER:-${QBL_TTS_DRIVER:-kokoro}}
       QL_TTS_URL: ${QL_TTS_URL:-${QBL_TTS_URL:-http://tts:8880}}
       QL_TTS_API_KEY: ${QL_TTS_API_KEY:-${QBL_TTS_API_KEY:-}}
       QL_TTS_TIMEOUT: ${QL_TTS_TIMEOUT:-${QBL_TTS_TIMEOUT:-}}
       # How strongly theatrical voices are chosen for characters: 3 by default, 0 for everyday voices.
       QL_TTS_FLAIR: ${QL_TTS_FLAIR:-${QBL_TTS_FLAIR:-}}
+      QL_TTS_CHATTERBOX_URL: ${QL_TTS_CHATTERBOX_URL:-}
+      QL_TTS_CHATTERBOX_TIMEOUT: ${QL_TTS_CHATTERBOX_TIMEOUT:-}
+      QL_TTS_CHATTERBOX_CLIPS_FROM: ${QL_TTS_CHATTERBOX_CLIPS_FROM:-}
       QL_TTS_OPENAI_URL: ${QL_TTS_OPENAI_URL:-${QBL_TTS_OPENAI_URL:-}}
       QL_TTS_OPENAI_KEY: ${QL_TTS_OPENAI_KEY:-${QBL_TTS_OPENAI_KEY:-}}
       QL_TTS_OPENAI_MODEL: ${QL_TTS_OPENAI_MODEL:-${QBL_TTS_OPENAI_MODEL:-}}
@@ -230,6 +236,47 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
+    restart: unless-stopped
+
+  chatterbox:
+    # Text-to-speech with Chatterbox (Resemble AI, MIT): livelier than Kokoro, with a dial for how much
+    # feeling goes into a line, and 23 languages. Used instead of Kokoro with QL_TTS_DRIVER=chatterbox;
+    # only started with COMPOSE_PROFILES=chatterbox (add it to any profiles already there:
+    # COMPOSE_PROFILES=https,chatterbox). Only reachable inside the Compose network.
+    #
+    # It speaks in the voice of a short reference clip. Each catalog voice's clip is recorded with
+    # Kokoro the first time a line is said in it, so keep the tts container running too (or make them
+    # all at once with php artisan qbl:chatterbox-clips, then stop it). Built from docker/chatterbox.
+    #
+    # Heavier than Kokoro: the first start downloads about 4 GB of models into chatterbox-models (so
+    # it takes a while to become healthy), it uses about 6 GB of memory, and on a CPU a line
+    # takes several times as long as it lasts. With an NVIDIA GPU, set
+    # QL_CHATTERBOX_TORCH=https://download.pytorch.org/whl/cu124, rebuild, and give it the GPU:
+    #   deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }] } } }
+    profiles: ["chatterbox"]
+    build:
+      context: docker/chatterbox
+      args:
+        TORCH_INDEX: ${QL_CHATTERBOX_TORCH:-https://download.pytorch.org/whl/cpu}
+    environment:
+      # multilingual (23 languages), english (the original model) or turbo (English only, faster,
+      # but without the exaggeration the theatrical voices use).
+      CHATTERBOX_MODEL: ${QL_CHATTERBOX_MODEL:-multilingual}
+      CHATTERBOX_DEVICE: ${QL_CHATTERBOX_DEVICE:-auto}
+      # The time of every word, so the game lights each as it is said. false saves about 1 GB of memory;
+      # the words are then lit at an even pace.
+      CHATTERBOX_WORD_TIMES: ${QL_CHATTERBOX_WORD_TIMES:-true}
+      CHATTERBOX_THREADS: ${QL_CHATTERBOX_THREADS:-0}
+    volumes:
+      - chatterbox-models:/models   # downloaded once, on the first start
+      - chatterbox-voices:/voices   # the reference clips
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      # The first start downloads the models.
+      start_period: 900s
     restart: unless-stopped
 
   db:
@@ -351,3 +398,5 @@ volumes:
   media:
   app-data:
   db-data:
+  chatterbox-models:
+  chatterbox-voices:

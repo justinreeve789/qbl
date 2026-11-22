@@ -23,6 +23,37 @@ By default the service is [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a
 
 Outside Docker, run it with `docker run -p 8880:8880 -e VOICE_WEIGHT_NORMALIZATION=false ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` and set `QL_TTS_URL=http://localhost:8880`.
 
+## Or: Chatterbox, in the `chatterbox` container
+
+[Chatterbox](https://github.com/resemble-ai/chatterbox) (Resemble AI, MIT) is the other service that runs on the server. It is livelier than Kokoro: it speaks in the voice of a short reference clip and has a dial for how much feeling goes into a line (`exaggeration`), which suits the theatrical voices. It is also much heavier and slower, so Kokoro stays the default. QuestLab runs it with a small server of its own (`docker/chatterbox`), which adds what Chatterbox lacks: the time of every word, found afterwards by forced alignment (torchaudio's MMS_FA), so words are lit as they are said, as with Kokoro.
+
+To use it, in `.env`:
+
+```sh
+QL_TTS_DRIVER=chatterbox
+COMPOSE_PROFILES=chatterbox        # or https,chatterbox on a server: the container only starts with this
+```
+
+then `docker compose up -d --build`. What to expect:
+
+- The first start downloads about 4 GB of models into the `chatterbox-models` volume (once), so the container takes a few minutes to become healthy. Later starts take under a minute.
+- It uses about 6 GB of memory (5 GB with `QL_CHATTERBOX_WORD_TIMES=false`, when words are lit at an even pace instead). Measured with the multilingual model on a 2-core CPU: a 4-second line took 35 to 50 seconds. A GPU (`QL_CHATTERBOX_TORCH=https://download.pytorch.org/whl/cu124`, rebuild, and give the container the GPU as `docker-compose.yml` shows) makes it much faster (not measured here). Recording a whole scenario on a CPU is a job to leave running.
+- `QL_CHATTERBOX_MODEL`: `multilingual` (default: 23 languages, including all the catalog's), `english` (the original model), or `turbo` (English only, smaller and faster, but it ignores `exaggeration`).
+- Every recording carries Resemble's Perth watermark, which cannot be heard but lets their detector tell the audio is synthetic. Kokoro adds none.
+
+**Voices are clips.** Each catalog voice has a Chatterbox entry such as `{"clip": "giant", "exaggeration": 0.8, "cfg_weight": 0.35}`. The clip is that voice's own Kokoro voice reading the catalog's `clip_lines` passage for its language (about 15 seconds), made the first time a line is recorded in it and kept in the `chatterbox-voices` volume. So characters keep the voices they have when you switch services (measured: the giant clone has a median pitch of 82 Hz against Kokoro's 71, the Spanish fairy 338 against 332), and the `tts` container must be running whenever a voice is used for the first time. Feeling goes with flair: everyday voices 0.5 (Chatterbox's default), voices with character 0.6, theatrical ones 0.8 with a lower `cfg_weight`, as Resemble suggests for expressive speech.
+
+```sh
+docker compose exec app php artisan qbl:chatterbox-clips             # make every voice's clip now (then the tts container can be stopped)
+docker compose exec app php artisan qbl:chatterbox-clips --list      # which clips the container has
+docker compose exec app php artisan qbl:chatterbox-clips giant --force                     # make one again (after its Kokoro voice changed)
+docker compose exec app php artisan qbl:chatterbox-clips narrator --file=ms-lee.wav        # a clip of your own: 10 to 20 s of one person speaking
+```
+
+To give a voice a clip of your own, upload it and set that voice's `engines.chatterbox.clip` to its name in `voices.json`. Lines already recorded keep the old voice until recorded again with `qbl:voice {code} --force`. Use only recordings of people who have agreed to it.
+
+The container also answers OpenAI's `POST /v1/audio/speech`, so other tools can use it; its own routes are listed at the top of `docker/chatterbox/server.py`.
+
 ## Giving characters voices and recording their lines
 
 **In the editor:** open a character on the Characters page. Under **🔊 Voice**, choose a voice (grouped as women, men, children, and robots and creatures), press **▶ Listen** to hear it, and **🎙️ Record its lines**. The Characters page has **🎙️ Record voices** for every character at once, **🎭 Give everyone a voice** to give a different voice to each character that has none, and shows how many lines are recorded. Publish afterwards so players get the recordings.
@@ -148,11 +179,12 @@ interface SpeechEngine
 }
 ```
 
-Two come with QuestLab:
+Three come with QuestLab:
 
 Driver | Class | Word timings
 ------ | ----- | ------------
 `kokoro` | `Engines\KokoroEngine`: Kokoro-FastAPI's `POST /dev/captioned_speech` | yes
+`chatterbox` | `Engines\ChatterboxEngine`: the `chatterbox` container's `POST /v1/speech`; a missing clip is made (`ChatterboxClips`) and uploaded, then asked for again | yes (aligned afterwards)
 `openai` | `Engines\OpenAiSpeechEngine`: any service with OpenAI's `POST /v1/audio/speech` (OpenAI itself, and the many servers that copy it) | no: words are paced evenly
 
 To add a service:
@@ -168,10 +200,18 @@ These were called `QBL_TTS_…` before (`QBL_TTS_DRIVER` and so on). An `.env` w
 
 Variable | Default | What
 -------- | ------- | ----
-`QL_TTS_DRIVER` | `kokoro` | `kokoro`, `openai`, or `none`.
+`QL_TTS_DRIVER` | `kokoro` | `kokoro`, `chatterbox`, `openai`, or `none`.
 `QL_TTS_URL` | `http://tts:8880` | Kokoro-FastAPI.
 `QL_TTS_API_KEY` | | Only for a Kokoro-FastAPI started with `API_KEYS`.
 `QL_TTS_IMAGE` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` | The `tts` container's image.
+`QL_TTS_CHATTERBOX_URL` | `http://chatterbox:8004` | The `chatterbox` container.
+`QL_TTS_CHATTERBOX_TIMEOUT` | 300 | Seconds to wait for one line on Chatterbox.
+`QL_TTS_CHATTERBOX_CLIPS_FROM` | `kokoro` | The service that records a voice's clip the first time it is used; `none`: only uploaded clips.
+`QL_CHATTERBOX_MODEL` | `multilingual` | `multilingual`, `english` or `turbo`.
+`QL_CHATTERBOX_DEVICE` | `auto` | `auto`, `cpu`, `cuda` or `mps`.
+`QL_CHATTERBOX_TORCH` | `https://download.pytorch.org/whl/cpu` | The PyTorch build the image is made with (`…/whl/cu124` for an NVIDIA GPU).
+`QL_CHATTERBOX_WORD_TIMES` | `true` | `false`: no word timings, about 1 GB less memory.
+`QL_CHATTERBOX_THREADS` | 0 | CPU threads; 0 lets PyTorch decide.
 `QL_TTS_OPENAI_URL`, `QL_TTS_OPENAI_KEY`, `QL_TTS_OPENAI_MODEL` | `https://api.openai.com`, `OPENAI_API_KEY`, `gpt-4o-mini-tts` | With `QL_TTS_DRIVER=openai`.
 `QL_TTS_TIMEOUT` | 120 | Seconds to wait for one line.
 `QL_TTS_CACHE_DIR` | `/data/speech` (Docker), `storage/app/speech` | Recordings already made.
@@ -190,4 +230,4 @@ Route | What
 
 ## Testing
 
-`npm run test:speech` tests the engines (with recorded responses), the catalog, choosing voices, recording a scenario and keeping it up to date, the editor's routes and the compiled document, with no network. With a Kokoro running, `KOKORO_URL=http://localhost:8880 npm run test:speech` also records lines with it and checks that every voice in the catalog exists there. `apps/editor/test/voices.test.ts` drives the editor against a stand-in Kokoro, and `apps/client/test/narrator.test.ts` checks that the highlight follows a recording's clock.
+`npm run test:speech` tests the engines (with recorded responses), the catalog, choosing voices, recording a scenario and keeping it up to date, the editor's routes and the compiled document, with no network. With a Kokoro running, `KOKORO_URL=http://localhost:8880 npm run test:speech` also records lines with it and checks that every voice in the catalog exists there. With the `chatterbox` container too, `CHATTERBOX_URL=http://localhost:8004 KOKORO_URL=http://localhost:8880 npm run test:speech` records an English, a theatrical and a Spanish line on it, making their clips with Kokoro if it has none (`CHATTERBOX_REMAKE_CLIPS=1` makes them again). `apps/editor/test/voices.test.ts` drives the editor against a stand-in Kokoro, and `apps/client/test/narrator.test.ts` checks that the highlight follows a recording's clock.

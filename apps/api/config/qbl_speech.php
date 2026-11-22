@@ -1,5 +1,6 @@
 <?php
 
+use App\Qbl\Speech\Engines\ChatterboxEngine;
 use App\Qbl\Speech\Engines\KokoroEngine;
 use App\Qbl\Speech\Engines\OpenAiSpeechEngine;
 
@@ -25,7 +26,8 @@ $env = function (string $key, mixed $default): mixed {
 };
 
 return [
-    // Which service records: kokoro (the "tts" container in docker-compose.yml), openai (any service
+    // Which service records: kokoro (the "tts" container in docker-compose.yml), chatterbox (the
+    // "chatterbox" container: livelier, slower, needs COMPOSE_PROFILES=chatterbox), openai (any service
     // that speaks OpenAI's /v1/audio/speech; no word timings, so words are lit at an even pace), or
     // none (nothing is recorded; the browser reads every line).
     'driver' => $env('QL_TTS_DRIVER', 'kokoro'),
@@ -40,6 +42,18 @@ return [
             // Only when the service is started with API_KEYS.
             'api_key' => (string) $env('QL_TTS_API_KEY', ''),
             'timeout' => (int) $env('QL_TTS_TIMEOUT', 120),
+        ],
+        'chatterbox' => [
+            'class' => ChatterboxEngine::class,
+            // docker/chatterbox. In Docker Compose, the chatterbox service (COMPOSE_PROFILES=chatterbox).
+            'url' => $env('QL_TTS_CHATTERBOX_URL', 'http://chatterbox:8004'),
+            // A line takes several times longer than on Kokoro on a CPU.
+            'timeout' => (int) $env('QL_TTS_CHATTERBOX_TIMEOUT', 300),
+            // Chatterbox speaks in the voice of a reference clip. The first time a catalog voice is
+            // used, its clip is recorded with this service (kokoro: the tts container must be running
+            // then) and kept by the chatterbox container. none: clips are only uploaded
+            // (php artisan qbl:chatterbox-clips).
+            'clips_from' => $env('QL_TTS_CHATTERBOX_CLIPS_FROM', 'kokoro'),
         ],
         'openai' => [
             'class' => OpenAiSpeechEngine::class,

@@ -101,8 +101,11 @@ class VoiceScenario extends Command
         $rows = [];
         foreach ($catalog->all() as $key => $v) {
             $on = $engine ? $catalog->specFor($key, $engine->name()) : null;
-            $spec = $on ? (string) ($on['spec']['voice'] ?? json_encode($on['spec'])) : '';
-            $missing = $has && $on ? array_filter(preg_split($engine->name() === 'kokoro' ? '/[+-]/' : '/\+/', $spec), fn ($part) => ! isset($has[preg_replace('/\(.*$/', '', trim($part))])) : [];
+            $clip = $on['spec']['clip'] ?? null;
+            $spec = ! $on ? '' : ($clip !== null
+                ? "clip $clip".(isset($on['spec']['exaggeration']) ? ', exaggeration '.$on['spec']['exaggeration'] : '').($has && ! isset($has[$clip]) ? ' (made when first used)' : '')
+                : (string) ($on['spec']['voice'] ?? json_encode($on['spec'])));
+            $missing = $has && $on && $clip === null ? array_filter(preg_split($engine->name() === 'kokoro' ? '/[+-]/' : '/\+/', $spec), fn ($part) => ! isset($has[preg_replace('/\(.*$/', '', trim($part))])) : [];
             $rows[] = [$key, VoiceCatalog::label($v).(($v['flair'] ?? 0) >= 2 ? ' 🎭' : ''), $v['lang'], implode(', ', array_slice((array) $v['traits'], 0, 4)),
                 $spec.($on && $on['borrowed'] ? " (from {$on['key']})" : '').($missing ? '  MISSING: '.implode(', ', $missing) : '')];
         }

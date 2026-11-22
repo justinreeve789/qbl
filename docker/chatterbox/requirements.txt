@@ -1,0 +1,23 @@
+# What chatterbox-tts 0.1.7 needs, less gradio (its demo page, never imported by the library).
+# torch and torchaudio come first, from the index the Dockerfile is given (CPU by default).
+# chatterbox-tts itself is installed with --no-deps so pip does not bring gradio back.
+numpy>=1.24.0,<2.0.0
+librosa==0.11.0
+s3tokenizer
+transformers==5.2.0
+diffusers==0.29.0
+resemble-perth>=1.0.0
+conformer==0.3.2
+safetensors==0.5.3
+spacy-pkuseg
+pykakasi==2.3.0
+pyloudnorm
+omegaconf
+huggingface_hub
+
+# The server.
+fastapi==0.165.0
+uvicorn==0.54.0
+# Word timings: digits spelt out before alignment, and other scripts written in Latin letters.
+num2words==0.5.14
+uroman==1.3.1.1

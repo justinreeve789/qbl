@@ -9,7 +9,8 @@
  * so the catalog, choosing voices, recording a scenario's lines, keeping them up to date, the
  * editor's routes and the compiled document all run for real.
  *
- * With KOKORO_URL=http://localhost:8880 it also records a few lines with a real Kokoro-FastAPI.
+ * With KOKORO_URL=http://localhost:8880 it also records a few lines with a real Kokoro-FastAPI, and
+ * with CHATTERBOX_URL=http://localhost:8004 (and KOKORO_URL, to make clips) with a real chatterbox container.
  */
 
 use App\Qbl\EditorApi;
@@ -18,6 +19,8 @@ use App\Qbl\Generation\Http\HttpResponse;
 use App\Qbl\ScenarioCompiler;
 use App\Qbl\ScenarioDecompiler;
 use App\Qbl\ScenarioStore;
+use App\Qbl\Speech\ChatterboxClips;
+use App\Qbl\Speech\Engines\ChatterboxEngine;
 use App\Qbl\Speech\Engines\KokoroEngine;
 use App\Qbl\Speech\Engines\OpenAiSpeechEngine;
 use App\Qbl\Speech\ScenarioVoicer;
@@ -165,6 +168,64 @@ throws(fn () => (new KokoroEngine($http))->synthesize('Hi', []), SpeechError::cl
 $http = new Recorded([new HttpResponse(200, json_encode(['voices' => [['id' => 'af_heart', 'name' => 'af_heart'], ['id' => 'am_puck']]]))]);
 same((new KokoroEngine($http))->voices(), ['af_heart', 'am_puck'], 'Kokoro lists its voices');
 
+// ------------------------------------------------------------------ Chatterbox
+$spoken = fn (string $audio = '', array $words = [], float $duration = 1.5) => new HttpResponse(200, json_encode(['audio' => base64_encode(mp3($audio)), 'format' => 'mp3', 'duration' => $duration, 'timestamps' => $words]));
+$http = new Recorded([$spoken('a', [['word' => 'Fee,', 'start_time' => 0.1, 'end_time' => 0.4], ['word' => 'fi!', 'start_time' => 0.5, 'end_time' => 0.9]], 1.25)]);
+$said = (new ChatterboxEngine($http, 'http://chatterbox:8004/'))->synthesize('Fee, fi!', ['clip' => 'giant', 'exaggeration' => 0.8, 'cfg_weight' => 0.35, 'speed' => 1.0], 'en-GB');
+same($http->sent[0]['url'], 'http://chatterbox:8004/v1/speech', 'Chatterbox is asked for speech with word timings');
+same($http->sent[0]['body'], ['input' => 'Fee, fi!', 'voice' => 'giant', 'language' => 'en-GB', 'exaggeration' => 0.8, 'cfg_weight' => 0.35, 'response_format' => 'mp3', 'return_timestamps' => true], 'in the clip, with the feeling the catalog gives, in the line\'s language (an even speed is not sent)');
+same([$said->audio, array_column($said->words, 'w'), $said->duration], [mp3('a'), ['Fee,', 'fi!'], 1250], 'the audio is decoded, the words timed, and the length is the recording\'s');
+$http = new Recorded([$spoken()]);
+(new ChatterboxEngine($http))->synthesize('Hi', ['clip' => 'pixie', 'exaggeration' => 9, 'speed' => 3, 'volume' => 1.4, 'seed' => 7]);
+same(array_intersect_key($http->sent[0]['body'], array_flip(['exaggeration', 'speed', 'volume', 'seed', 'language'])), ['language' => 'en', 'exaggeration' => 2.0, 'seed' => 7, 'speed' => 2.0, 'volume' => 1.4], 'values are kept within what it accepts');
+$http = new Recorded([new HttpResponse(404, json_encode(['detail' => 'There is no voice clip called "giant" in /voices.']))]);
+throws(fn () => (new ChatterboxEngine($http))->synthesize('Hi', ['clip' => 'giant']), SpeechError::class, 'no voice clip called "giant"', 'a missing clip, with nothing to make one, says so');
+$made = [];
+$http = new Recorded([new HttpResponse(404, json_encode(['detail' => 'There is no voice clip called "giant" in /voices.'])), new HttpResponse(200, json_encode(['voice' => 'giant', 'seconds' => 14.2])), $spoken('b')]);
+$said = (new ChatterboxEngine($http))->withClips(function (string $clip) use (&$made) {
+    $made[] = $clip;
+
+    return mp3('clip');
+})->synthesize('Hi', ['clip' => 'giant']);
+same([$made, $http->sent[1]['method'], $http->sent[1]['url'], $http->sent[1]['body'], $http->sent[1]['headers'], $said->audio], [['giant'], 'PUT', 'http://chatterbox:8004/v1/voices/giant', mp3('clip'), ['Content-Type' => 'application/octet-stream'], mp3('b')], 'a missing clip is made, uploaded, and the line asked for again');
+$http = new Recorded([new HttpResponse(503, json_encode(['detail' => 'The model is still loading (the first start downloads it).']))]);
+throws(fn () => (new ChatterboxEngine($http))->synthesize('Hi', ['clip' => 'heart']), SpeechError::class, 'still loading', 'a container still downloading its model says so');
+$http = new Recorded([new RuntimeException('Could not resolve host: chatterbox')]);
+throws(fn () => (new ChatterboxEngine($http))->synthesize('Hi', []), SpeechError::class, 'COMPOSE_PROFILES=chatterbox', 'a service that cannot be reached says how to start it');
+throws(fn () => (new ChatterboxEngine(new Recorded([])))->upload('../etc', 'x'), SpeechError::class, 'cannot be a clip', 'a clip name cannot be a path');
+$http = new Recorded([new HttpResponse(200, json_encode(['voices' => ['giant', 'heart']]))]);
+same((new ChatterboxEngine($http))->voices(), ['giant', 'heart'], 'Chatterbox lists its clips');
+
+// The clips are the catalog's voices, recorded on Kokoro.
+$source = new FakeEngine();
+$audio = (new ChatterboxClips($catalog, $source))->make('hada-es');
+same([$source->said[0][0], $source->said[0][1]], [$catalog->clipLine('es'), $catalog->get('hada-es')['engines']['kokoro']], 'a clip is the catalog\'s clip line in the voice\'s own language, in its Kokoro voice');
+check(str_starts_with($audio, 'ID3'), 'and is the audio Kokoro gives');
+check(mb_strlen($catalog->clipLine('en')) > 2.5 * mb_strlen($catalog->sample('en')), 'the clip line is long enough to clone a voice from');
+foreach (['en', 'es', 'fr', 'it', 'pt', 'hi', 'ja', 'zh'] as $l) {
+    check($catalog->clipLine($l) !== $catalog->clipLine($l === 'en' ? 'es' : 'en'), "there is a clip line in $l");
+}
+throws(fn () => (new ChatterboxClips($catalog, $source))->make('my-teacher'), SpeechError::class, '--file=', 'a clip that is not a catalog voice must be uploaded');
+throws(fn () => (new ChatterboxClips($catalog, null))->make('heart'), SpeechError::class, 'CLIPS_FROM=none', 'with making clips switched off, it says how to upload one');
+$source->down = true;
+throws(fn () => (new ChatterboxClips($catalog, $source))->make('heart'), SpeechError::class, 'made with kokoro', 'a clip that cannot be made says which service failed');
+
+$factory = new SpeechFactory(['driver' => 'chatterbox', 'voices' => $catalogPath, 'engines' => [
+    'chatterbox' => ['class' => ChatterboxEngine::class, 'url' => 'http://chatterbox:8004', 'clips_from' => 'kokoro'],
+    'kokoro' => ['class' => KokoroEngine::class, 'url' => 'http://tts:8880'],
+]], $http = new Recorded([
+    new HttpResponse(404, json_encode(['detail' => 'There is no voice clip called "captain" in /voices.'])),
+    new HttpResponse(200, json_encode(['audio' => base64_encode(mp3('kokoro clip')), 'timestamps' => []])),
+    new HttpResponse(200, json_encode(['voice' => 'captain', 'seconds' => 15.0])),
+    $spoken('line', [['word' => 'Aye!', 'start_time' => 0.1, 'end_time' => 0.5]]),
+]));
+$line = $factory->voicer()->record('Aye!', 'captain');
+same(array_column($http->sent, 'url'), ['http://chatterbox:8004/v1/speech', 'http://tts:8880/dev/captioned_speech', 'http://chatterbox:8004/v1/voices/captain', 'http://chatterbox:8004/v1/speech'], 'configured as chatterbox, a voice\'s first line makes its clip with Kokoro');
+same([$http->sent[1]['body']['input'], $http->sent[2]['body'], $line['params']['speech']['engine'], $line['params']['speech']['voice']], [$catalog->clipLine('en'), mp3('kokoro clip'), 'chatterbox', 'captain'], 'and the line is kept as a chatterbox recording of the catalog voice');
+check($factory->clips() instanceof ChatterboxClips, 'the factory gives what makes clips');
+$noClips = new SpeechFactory(['driver' => 'chatterbox', 'voices' => $catalogPath, 'engines' => ['chatterbox' => ['class' => ChatterboxEngine::class, 'clips_from' => 'none']]], new Recorded([]));
+throws(fn () => $noClips->clips()->make('heart'), SpeechError::class, 'CLIPS_FROM=none', 'clips_from none makes no clips');
+
 // ------------------------------------------------------------------ another service: the same interface
 $http = new Recorded([new HttpResponse(200, mp3(), ['content-type' => 'audio/mpeg'])]);
 $openai = new OpenAiSpeechEngine($http, 'sk-test', 'gpt-4o-mini-tts', 'https://api.openai.com');
@@ -176,6 +237,12 @@ same([$said->format, $said->words], ['mp3', []], 'and gives audio without timing
 $all = $catalog->all();
 check(count($all) >= 40, 'the catalog has a good many voices ('.count($all).')');
 same(count($all), count(array_unique(array_keys($all))), 'every voice has its own key');
+foreach ($all as $key => $v) {
+    $cb = $v['engines']['chatterbox'] ?? null;
+    check(is_array($cb) && ($cb['clip'] ?? null) === $key, "$key speaks on Chatterbox in its own clip");
+    $feeling = (float) ($cb['exaggeration'] ?? 0.5);
+    check(($v['flair'] ?? 0) >= 2 ? $feeling > 0.7 : $feeling <= 0.6, "$key has as much feeling on Chatterbox as its flair ($feeling)");
+}
 $kokoroVoices = ['af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'am_santa',
     'bf_alice', 'bf_emma', 'bf_isabella', 'bf_lily', 'bm_daniel', 'bm_fable', 'bm_george', 'bm_lewis', 'ef_dora', 'em_alex', 'em_santa', 'ff_siwis', 'hf_alpha', 'hf_beta', 'hm_omega', 'hm_psi', 'if_sara', 'im_nicola', 'jf_alpha', 'jf_gongitsune', 'jf_nezumi', 'jf_tebukuro', 'jm_kumo',
     'pf_dora', 'pm_alex', 'pm_santa', 'zf_xiaobei', 'zf_xiaoni', 'zf_xiaoxiao', 'zf_xiaoyi', 'zm_yunjian', 'zm_yunxi', 'zm_yunxia', 'zm_yunyang'];
@@ -532,6 +599,34 @@ if ($url = getenv('KOKORO_URL')) {
         return $t;
     })($times), 'in order');
     echo 'Live Kokoro: '.count($words).' words in '.round($real['params']['speech']['duration'] / 1000, 1)." s\n";
+}
+
+// ------------------------------------------------------------------ a real Chatterbox, when there is one
+if ($url = getenv('CHATTERBOX_URL')) {
+    $factory = new SpeechFactory(['driver' => 'chatterbox', 'voices' => $catalogPath, 'engines' => [
+        'chatterbox' => ['class' => ChatterboxEngine::class, 'url' => $url, 'clips_from' => getenv('KOKORO_URL') ? 'kokoro' : 'none'],
+        'kokoro' => ['class' => KokoroEngine::class, 'url' => getenv('KOKORO_URL') ?: 'http://tts:8880'],
+    ]]);
+    $live = $factory->engine();
+    // CHATTERBOX_REMAKE_CLIPS=1: make the three clips again with Kokoro (needs KOKORO_URL).
+    foreach (getenv('CHATTERBOX_REMAKE_CLIPS') ? array_intersect(['heart', 'giant', 'hada-es'], $live->voices()) : [] as $old) {
+        (new App\Qbl\Generation\Http\CurlHttpClient(0))->send('DELETE', rtrim($url, '/')."/v1/voices/$old");
+    }
+    foreach ([['heart', 'en-US', 'Welcome aboard, {{QL_PlayerName}}! The reactor is at 42 percent, and Dr. Ruiz needs help.'], ['giant', 'en-GB', 'Fee, fi, fo, fum! Who dares to climb my beanstalk?'], ['hada-es', 'es', '¡Hola, explorador! ¿Quieres ver cómo brillan las estrellas?']] as [$key, $lang, $text]) {
+        $started = microtime(true);
+        $real = (new Voicer($live, $catalog))->record($text, $key, $lang);
+        $words = array_column($real['params']['speech']['words'], 'w');
+        check(str_starts_with($real['speech']->audio, 'ID3') || str_starts_with(bin2hex(substr($real['speech']->audio, 0, 2)), 'fff'), "Chatterbox records an MP3 ($key)");
+        check(count($words) >= count(preg_split('/\s+/', $real['script'])) - 2, "with timed words ($key: ".implode(' ', $words).')');
+        $times = array_column($real['params']['speech']['words'], 's');
+        $sorted = $times;
+        sort($sorted);
+        check($times === $sorted, "in order ($key)");
+        check($real['params']['speech']['duration'] < end($real['params']['speech']['words'])['e'] + 700, "with nothing long after the last word ($key)");
+        echo "Live Chatterbox, $key: ".count($words).' words in '.round($real['params']['speech']['duration'] / 1000, 1).' s, recorded in '.round(microtime(true) - $started).' s'.PHP_EOL;
+        file_put_contents(sys_get_temp_dir()."/chatterbox-$key.mp3", $real['speech']->audio);
+    }
+    check(in_array('giant', $live->voices(), true), 'the clip made for a voice is kept by the container');
 }
 
 exec('rm -rf '.escapeshellarg($cache).' '.escapeshellarg($mediaDir).' '.escapeshellarg($work));
