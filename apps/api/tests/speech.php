@@ -139,9 +139,18 @@ $kokoro = new KokoroEngine($http, 'http://tts:8880/', 'secret');
 $said = $kokoro->synthesize('Hello, explorer', ['voice' => 'af_bella(2)+af_sky(1)', 'speed' => 1.1]);
 same($http->sent[0]['url'], 'http://tts:8880/dev/captioned_speech', 'Kokoro is asked for speech with word timings');
 same(array_intersect_key($http->sent[0]['body'], array_flip(['input', 'voice', 'speed', 'response_format', 'stream', 'return_timestamps'])), [
-    'input' => 'Hello, explorer', 'voice' => 'af_bella(2)+af_sky(1)', 'response_format' => 'mp3', 'speed' => 1.1, 'stream' => false, 'return_timestamps' => true,
-], 'in the voice (a blend) and speed the catalog gives, as one MP3');
+    'input' => 'Hello, explorer', 'voice' => 'af_bella(0.6667)+af_sky(0.3333)', 'response_format' => 'mp3', 'speed' => 1.1, 'stream' => false, 'return_timestamps' => true,
+], 'in the voice (a blend, its weights adding up to 1) and speed the catalog gives, as one MP3');
+same([isset($http->sent[0]['body']['lang_code']), isset($http->sent[0]['body']['volume_multiplier'])], [false, false], 'in the voice\'s own language and at its own volume unless the catalog says otherwise');
+same([KokoroEngine::blend('af_heart'), KokoroEngine::blend('af_heart(2)'), KokoroEngine::blend('af_sky(1)+af_bella(1)')], ['af_heart', 'af_heart', 'af_sky(0.5)+af_bella(0.5)'], 'a single voice is sent by its name, an even blend as halves');
+same([KokoroEngine::blend('am_santa(1.5)-am_michael(0.5)'), KokoroEngine::blend('am_santa(3)-am_michael(1)'), KokoroEngine::blend('am_santa(0.8)+am_onyx(0.7)-am_michael(0.5)')], ['am_santa(1.5)-am_michael(0.5)', 'am_santa(1.5)-am_michael(0.5)', 'am_santa(0.8)+am_onyx(0.7)-am_michael(0.5)'], 'a blend that takes a voice away (a caricature) still adds up to 1');
+same(KokoroEngine::parts('jf_tebukuro(0.5) + af_alloy(0.5)-am_onyx'), [['jf_tebukuro', 0.5], ['af_alloy', 0.5], ['am_onyx', -1.0]], 'a blend is read as its voices and their weights');
+throws(fn () => KokoroEngine::blend('af_heart-af_heart'), SpeechError::class, 'leaves no voice', 'a blend that takes away all it adds is refused');
+throws(fn () => KokoroEngine::blend('af_heart++af_sky'), SpeechError::class, 'not a Kokoro voice', 'and so is one that cannot be read');
 same($http->sent[0]['headers'], ['Authorization' => 'Bearer secret'], 'with the key, when there is one');
+$http = new Recorded([new HttpResponse(200, json_encode(['audio' => base64_encode(mp3('x')), 'timestamps' => [['word' => 'Fee', 'start_time' => 0.1, 'end_time' => 0.4]]]))]);
+(new KokoroEngine($http))->synthesize('Fee, fi, fo, fum!', ['voice' => 'jf_tebukuro(1.3)-am_onyx(0.3)', 'speed' => 0.85, 'lang' => 'a', 'volume' => 1.4]);
+same(array_intersect_key($http->sent[0]['body'], array_flip(['voice', 'speed', 'lang_code', 'volume_multiplier'])), ['voice' => 'jf_tebukuro(1.3)-am_onyx(0.3)', 'speed' => 0.85, 'lang_code' => 'a', 'volume_multiplier' => 1.4], 'a theatrical voice: an exaggerated blend, read as English whatever language the voices are from, louder when it is a quiet one');
 same([$said->audio, $said->format, array_column($said->words, 'w'), $said->duration], [mp3(), 'mp3', ['Hello', 'explorer'], 1350], 'the audio is decoded and the words timed');
 $http = new Recorded([
     new HttpResponse(200, json_encode(['audio' => base64_encode(mp3('a')), 'timestamps' => []])),
@@ -172,12 +181,25 @@ $kokoroVoices = ['af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', '
     'pf_dora', 'pm_alex', 'pm_santa', 'zf_xiaobei', 'zf_xiaoni', 'zf_xiaoxiao', 'zf_xiaoyi', 'zm_yunjian', 'zm_yunxi', 'zm_yunxia', 'zm_yunyang'];
 foreach ($all as $key => $v) {
     $spec = (string) ($v['engines']['kokoro']['voice'] ?? '');
-    $parts = array_map(fn ($p) => preg_replace('/\(\d+(\.\d+)?\)$/', '', trim($p)), explode('+', $spec));
-    check($spec !== '' && ! array_diff($parts, $kokoroVoices), "$key is made of Kokoro's own voices ($spec)");
+    $parts = $spec === '' ? [] : array_column(KokoroEngine::parts($spec), 0);
+    check($parts && ! array_diff($parts, $kokoroVoices) && KokoroEngine::blend($spec) !== '', "$key is made of Kokoro's own voices ($spec)");
+    // A voice borrowed from another language must say which language to read in, or it reads English as Japanese.
+    $reads = ['en' => ['a', 'b'], 'es' => ['e'], 'fr' => ['f'], 'it' => ['i'], 'pt' => ['p'], 'hi' => ['h'], 'ja' => ['j'], 'zh' => ['z']][VoiceCatalog::primary($v['lang'])];
+    check(isset($v['engines']['kokoro']['lang']) ? in_array($v['engines']['kokoro']['lang'], $reads, true) : ! array_filter($parts, fn ($p) => ! in_array($p[0], $reads, true)), "$key reads in its own language ($spec)");
+    check(in_array($v['flair'], [0, 1, 2], true), "$key says how much of a character it is");
     check(in_array($v['gender'], ['female', 'male', 'neutral'], true) && in_array($v['age'], ['child', 'young', 'adult', 'elder'], true) && $v['description'] !== '' && $v['traits'], "$key says who it is and how it sounds");
     check(isset($v['engines']['openai']['voice']), "$key also says what it is on an OpenAI-style service");
 }
 same(array_keys(array_filter($all, fn ($v) => $v['age'] === 'child')) !== [], true, 'there are voices for children');
+$theatrical = $catalog->matching(['lang' => 'en', 'flair' => 2]);
+check(count($theatrical) >= 20, 'there are plenty of theatrical English voices ('.count($theatrical).')');
+foreach ([['female', 'child'], ['female', 'young'], ['female', 'adult'], ['female', 'elder'], ['male', 'child'], ['male', 'young'], ['male', 'adult'], ['male', 'elder'], ['neutral', 'adult']] as [$gender, $age]) {
+    check((bool) $catalog->matching(['lang' => 'en', 'flair' => 2, 'gender' => $gender, 'age' => $age]), "there is a theatrical voice for a $gender $age");
+}
+same(count(array_unique(array_map(fn ($v) => json_encode($v['engines']['kokoro']), $theatrical))), count($theatrical), 'no two theatrical voices are the same voice');
+check((bool) $catalog->matching(['lang' => 'es', 'flair' => 2]) && (bool) $catalog->matching(['lang' => 'pt', 'flair' => 2]), 'Spanish and Portuguese have theatrical voices too');
+same([$catalog->get('heart')['flair'], $catalog->get('puck')['flair'], $catalog->get('giant')['flair']], [0, 1, 2], 'a voice is everyday, has character, or is theatrical');
+same(array_filter($catalog->matching(['max_flair' => 0]), fn ($v) => $v['flair'] > 0), [], 'the everyday voices can be asked for alone');
 same(array_values(array_unique(array_map(fn ($v) => VoiceCatalog::primary($v['lang']), $catalog->forLanguage('es')))), ['es'], 'a Spanish scenario is offered Spanish voices');
 same(array_values($catalog->forLanguage('en-GB'))[0]['lang'], 'en-GB', 'a British one, British voices first');
 same([$catalog->standIn('en-us'), $catalog->standIn('es'), $catalog->standIn('xx')], ['explorer', 'explorador', 'explorer'], 'the word said in the place of the player\'s name, by language');
@@ -218,6 +240,23 @@ same($picker->pick(['x' => ['gender' => 'female']], 'en', [$picked['guide']])['x
 same($catalog->get($picker->pick(['x' => ['gender' => 'male']], 'es')['x'])['lang'], 'es', 'a Spanish character gets a Spanish voice');
 $many = $picker->pick(array_fill_keys(range(1, 60), ['gender' => 'female']));
 same(count($many), 60, 'more characters than voices still all get one (shared)');
+// Larger than life: theatrical voices first, wherever nothing says otherwise.
+$cast = $picker->pick([
+    'troll' => ['gender' => 'male', 'age' => 'adult', 'describe' => 'a grumpy troll who guards the bridge, booming and slow'],
+    'fairy' => ['gender' => 'female', 'age' => 'child', 'describe' => 'tiny squeaky pixie'],
+    'mage' => ['gender' => 'male', 'age' => 'elder', 'accent' => 'British', 'describe' => 'an ancient wizard, grand and mysterious'],
+    'ruler' => ['gender' => 'female', 'age' => 'adult', 'describe' => 'the haughty queen of the hive, regal'],
+    'tinkerer' => ['gender' => 'male', 'age' => 'adult', 'describe' => 'a zany inventor, excitable'],
+    'someone' => ['gender' => 'male', 'age' => 'adult'],
+    'guide' => ['gender' => 'female', 'age' => 'adult', 'describe' => 'Ranger Ada, practical. warm friendly clear guide'],
+]);
+same([$cast['troll'], $cast['fairy'], $cast['mage'], $cast['ruler'], $cast['tinkerer']], ['giant', 'pixie', 'wizard', 'queen', 'boffin'], 'characters are cast in the theatrical voices that fit them');
+same($catalog->get($cast['someone'])['flair'], 2, 'a character nothing is said of gets a theatrical voice');
+same($catalog->get($cast['guide'])['flair'], 0, 'but a guide described as warm, friendly and clear keeps a clear, everyday voice');
+$plain = (new VoicePicker($catalog, 0))->pick(['someone' => ['gender' => 'male', 'age' => 'adult'], 'kid' => ['gender' => 'female', 'age' => 'child']]);
+same([$catalog->get($plain['someone'])['flair'], $plain['kid']], [0, 'pip'], 'with no taste for flair (QBL_TTS_FLAIR=0), voices are chosen by fit alone, as before');
+same((new SpeechFactory(['voices' => $catalogPath, 'flair' => 0]))->picker()->pick(['x' => ['gender' => 'male', 'age' => 'adult']]), ['x' => $plain['someone']], 'the setting reaches the picker');
+check($catalog->get($picker->pick(['x' => ['gender' => 'male', 'describe' => 'gigante']], 'es')['x'])['key'] === 'gigante-es', 'a Spanish giant gets the Spanish giant\'s voice');
 
 // ------------------------------------------------------------------ recording a line
 $cache = sys_get_temp_dir().'/qbl-speech-test-'.bin2hex(random_bytes(4));
@@ -358,7 +397,7 @@ $api = new EditorApi($store, speech: $factory);
 $teacher = ['id' => 1, 'name' => 'T', 'role' => 'admin'];
 [$status, $body] = $api->handle('GET', "scenarios/$sid/voices", [], $teacher);
 same([$status, $body['engine'], $body['lines']['to_record'] ?? null], [200, 'kokoro', 1], 'the editor gets the voices and how many lines are left to record');
-same(array_keys($body['voices'][0]), ['key', 'name', 'gender', 'age', 'lang', 'accent', 'traits', 'description', 'label'], 'each voice as a person picking one needs it, without the services\' details');
+same(array_keys($body['voices'][0]), ['key', 'name', 'gender', 'age', 'lang', 'accent', 'traits', 'description', 'flair', 'label'], 'each voice as a person picking one needs it, without the services\' details');
 [$status, $body] = $api->handle('POST', "scenarios/$sid/voices/record", ['limit' => 5], $teacher);
 same([$status, $body['recorded'], $body['remaining']], [200, 1, 0], 'and records them');
 [$status, $body] = $api->handle('GET', "scenarios/$sid/voices/heart/sample", [], $teacher);
@@ -411,8 +450,8 @@ if ($url = getenv('KOKORO_URL')) {
     $live = KokoroEngine::fromConfig(['url' => $url]);
     $voices = $live->voices();
     foreach ($all as $key => $v) {
-        foreach (explode('+', (string) $v['engines']['kokoro']['voice']) as $part) {
-            check(in_array(preg_replace('/\(.*$/', '', $part), $voices, true), "Kokoro has $part ($key)");
+        foreach (array_column(KokoroEngine::parts((string) $v['engines']['kokoro']['voice']), 0) as $part) {
+            check(in_array($part, $voices, true), "Kokoro has $part ($key)");
         }
     }
     $real = (new Voicer($live, $catalog))->record('Welcome aboard, {{QBLPlayerName}}! The reactor is at 42 percent, and Dr. Ruiz needs help.', 'captain');

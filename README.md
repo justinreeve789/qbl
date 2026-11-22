@@ -387,12 +387,12 @@ Set `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` (or `OPENAI_API_KEY`) in `.env`; ev
 Characters can be given a voice of their own: their lines are recorded once by the `tts` container (Kokoro, free, no watermark) and played in the game with each word lit as it is spoken. Lines without a recording are read by the browser's voice, as before. In the editor, open a character, choose a voice under **🔊 Voice** and press **🎙️ Record its lines** (or **🎙️ Record voices** on the Characters page). From the command line:
 
 ```sh
-docker compose exec app php artisan qbl:voice --list                 # about 50 voices, in 8 languages
+docker compose exec app php artisan qbl:voice --list                 # about 90 voices, in 8 languages
 docker compose exec app php artisan qbl:voice {code} --assign        # give each character a voice and record every line
-docker compose exec app php artisan qbl:tts "Hello there!"           # say any text in a random voice, saved as tts-<voice>.mp3
+docker compose exec app php artisan qbl:tts "Hello there!"           # say any text in a random theatrical voice, saved as tts-<voice>.mp3
 ```
 
-Generated missions are voiced as they are made. The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QBL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
+Generated missions are voiced as they are made, and cast like a cartoon: besides everyday voices there are theatrical ones (a booming giant, a squeaky pixie, a jolly gnome, a pantomime villain, a zany inventor), which are chosen first (`QBL_TTS_FLAIR`, 0 for everyday voices). The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QBL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
 
 ## The demo mission
 

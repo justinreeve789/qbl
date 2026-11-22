@@ -5,12 +5,19 @@ namespace App\Qbl\Speech;
 /**
  * Chooses catalog voices for characters: one that fits each (who they are, how they talk), and a
  * different one for every character while there are enough to go round.
+ *
+ * Between voices that fit, it reaches for the ones with character: a voice's `flair` (0 everyday,
+ * 1 with character, 2 theatrical) is worth $flair points a step. At the default of 3 a theatrical
+ * voice beats an everyday one that matches one more word of the description (5 points a word), but
+ * never one of the wrong gender or age, so the cast is larger than life wherever nothing says
+ * otherwise, and a guide described as warm, friendly and clear still gets a clear voice. 0 chooses
+ * as if every voice were an everyday one (QBL_TTS_FLAIR).
  */
 final class VoicePicker
 {
     private const AGES = ['child' => 0, 'young' => 1, 'adult' => 2, 'elder' => 3];
 
-    public function __construct(private VoiceCatalog $catalog) {}
+    public function __construct(private VoiceCatalog $catalog, private float $flair = 3.0) {}
 
     /**
      * @param  array<string, array{gender?: ?string, age?: ?string, accent?: ?string, describe?: ?string}>  $characters
@@ -31,7 +38,7 @@ final class VoicePicker
             $i = 0;
             foreach ($voices as $vk => $v) {
                 // A voice no one has yet is worth a lot; between equals, earlier in the catalog (which is in order of quality) wins.
-                $score = 100 * (self::fit($want, $v) - 25 * ($used[$vk] ?? 0)) - $i++;
+                $score = (int) round(100 * (self::fit($want, $v) + $this->flair * (int) ($v['flair'] ?? 0) - 25 * ($used[$vk] ?? 0))) - $i++;
                 if ($score > $bestScore) {
                     [$best, $bestScore] = [$vk, $score];
                 }

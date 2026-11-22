@@ -12,7 +12,8 @@ use Random\Randomizer;
 
 /**
  * Say any text in a voice picked at random from the catalog (resources/speech/voices.json), with
- * the text-to-speech service in use, and save it as an MP3. For trying voices out and for one-off
+ * the text-to-speech service in use, and save it as an MP3. The pick is from the theatrical voices
+ * (--style=dramatic) unless asked otherwise, or none of them fits. For trying voices out and for one-off
  * audio; recording a scenario's lines is qbl:voice. See docs/src/content/docs/developers/voices.md.
  */
 class TextToSpeech extends Command
@@ -24,7 +25,8 @@ class TextToSpeech extends Command
         {--lang=en : Pick from voices of this language: en, en-GB, es, fr, … (any: every language)}
         {--gender= : Pick from female, male or neutral voices}
         {--age= : Pick from child, young, adult or elder voices}
-        {--trait=* : Pick from voices that sound like this (repeatable: --trait=warm --trait=calm)}
+        {--trait=* : Pick from voices that sound like this (repeatable: --trait=jolly --trait=spooky)}
+        {--style=dramatic : Pick from dramatic voices (theatrical ones: giants, pixies, villains), natural ones (everyday voices) or any}
         {--count=1 : Say it in this many different random voices, one file each}
         {--seed= : Make the random pick repeatable}
         {--out= : Where to save it: a file, or a folder for several (default: tts-<voice>.mp3 here)}
@@ -130,8 +132,8 @@ class TextToSpeech extends Command
     }
 
     /**
-     * The voices to say it in: --voice, or $count different ones picked at random from those that
-     * fit the filters and have a voice of their own on the service (none borrowed, so every pick
+     * The voices to say it in: --voice, or $count different ones picked at random from those of the
+     * --style that fit the filters and have a voice of their own on the service (none borrowed, so every pick
      * really sounds different). Null, with the reason shown, when there are none.
      *
      * @return ?list<string>
@@ -164,9 +166,30 @@ class TextToSpeech extends Command
                 return null;
             }
         }
-        $fits = array_keys($catalog->matching($want));
+        $style = strtolower((string) ($this->option('style') ?? 'dramatic'));
+        if (! in_array($style, ['dramatic', 'natural', 'any'], true)) {
+            $this->error('--style must be one of: dramatic, natural, any.');
+
+            return null;
+        }
+        // Dramatic: the theatrical voices; when none of them fits what else is asked (a language with
+        // none, say), those with some character, and then any at all.
+        $fits = [];
+        foreach (match ($style) {
+            'dramatic' => [['flair' => 2], ['flair' => 1], []],
+            'natural' => [['max_flair' => 0]],
+            default => [[]],
+        } as $i => $flair) {
+            $fits = array_keys($catalog->matching($want + $flair));
+            if ($fits) {
+                if ($i > 0) {
+                    $this->warn($i === 1 ? 'No theatrical voice fits that, so the pick is from voices with some character.' : 'No voice with character fits that, so the pick is from every voice.');
+                }
+                break;
+            }
+        }
         if (! $fits) {
-            $asked = array_filter(['lang' => $want['lang'], 'gender' => $want['gender'], 'age' => $want['age'], 'trait' => implode('/', $want['traits'])]);
+            $asked = array_filter(['lang' => $want['lang'], 'gender' => $want['gender'], 'age' => $want['age'], 'trait' => implode('/', $want['traits']), 'style' => $style === 'natural' ? $style : null]);
             $this->error('No voice on '.$engine.' fits '.($asked ? implode(', ', array_map(fn ($k, $v) => "$k=$v", array_keys($asked), $asked)) : 'at all').'. See them all with: php artisan qbl:voice --list');
 
             return null;

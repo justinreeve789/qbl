@@ -246,11 +246,11 @@ final class BlueprintSchema
                         'appearance' => $text('Only what they look like: species or kind of being, body shape, height relative to a child, clothing, colours (name 3-4 main colours), one or two distinctive features. Full body. Friendly and appropriate for children. No text or logos on clothing.', 500),
                         'height_cm' => ['type' => 'integer', 'minimum' => 30, 'maximum' => 260, 'description' => 'How tall they are, beside 130 cm child explorers: an adult 165-185, a grandparent 160, a small robot 70, a dog 60, a tall alien 220. They are drawn to that size.'],
                         'personality' => $text('How they talk and behave, in a few words.', 200),
-                        'voice' => ['type' => 'object', 'description' => 'What they sound like, to choose the voice their lines are recorded in.', 'properties' => [
+                        'voice' => ['type' => 'object', 'description' => 'What they sound like, to choose the voice their lines are recorded in. Cast it like a cartoon: voices are theatrical and larger than life, and no two characters should sound alike.', 'properties' => [
                             'gender' => ['type' => 'string', 'enum' => ['female', 'male', 'neutral'], 'description' => 'neutral for a robot, a computer or a creature that is neither.'],
                             'age' => ['type' => 'string', 'enum' => ['child', 'young', 'adult', 'elder']],
                             'accent' => ['type' => 'string', 'enum' => ['American', 'British'], 'description' => 'Only when it matters to the character.'],
-                            'sound' => $text('A few words on how the voice sounds: warm, deep, squeaky, robotic, calm, excited.', 80),
+                            'sound' => $text('A few vivid words on how the voice sounds and what kind of voice it is: booming giant, squeaky pixie, jolly, mischievous imp, grand wizard, theatrical, regal and haughty, zany inventor, gruff pirate, spooky whisper, sly, bubbly, heroic, chirpy robot, otherworldly alien. Plain words (warm, calm, clear) only for a character who should sound ordinary.', 120),
                         ]],
                         'guide' => ['type' => 'boolean', 'description' => 'True for the one character who briefs the students and receives the final report.'],
                         'scene' => $key,
