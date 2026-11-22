@@ -1,6 +1,12 @@
 ---
 title: "Plans, credits and the AI generator"
+host:
+  who: riona
+  says: "Describe a mission in a sentence or two and I'll draft the whole thing, standards and all, in about ten minutes. Here's how plans and credits work."
+  side: right
 ---
+import Flow from '../../../components/diagrams/Flow.astro';
+
 
 QuestLab has three plans for individuals, and custom plans for schools and districts. The plans are on the **Plans** page (`/plans`, also in the account menu on the missions page); a teacher sees their own under **Plan** in the editor.
 
@@ -29,6 +35,15 @@ A teacher's plan also sets how many students they can add in Classes.
 ## The AI mission generator
 
 ![The Generate form: a description of the mission, with grade, subject and minutes](../../../assets/screenshots/generate-form.webp)
+
+<Flow steps={[
+  { who: 'riona', title: 'Standards', text: 'Picks the standards and writes objectives' },
+  { icon: '📜', title: 'Story', text: 'Scenes, characters, questions' },
+  { icon: '🎨', title: 'Pictures', text: 'Every picture, one house style' },
+  { icon: '🧱', title: 'Build', text: 'Events and actions' },
+  { icon: '🔊', title: 'Voices', text: 'Every line recorded' },
+  { icon: '💾', title: 'Save', text: 'A private draft for you' },
+]} caption="The steps the Generate page shows while your mission is made: about ten minutes in all." />
 
 **Generate** in the editor (Teacher Plus, school plans that include it, and administrators; anyone when billing is off): describe the mission (the topic, what students should learn, the setting), and optionally the grade, subject, number of players, minutes and any notes. The **Try** buttons fill in an example to start from. You can also get there from the Scenarios page: **✨ Generate with AI**, or **New scenario** → **Generate it with AI**, which starts the description with the title you typed.
 

@@ -1,7 +1,14 @@
 ---
 title: Events and actions
 description: How a hotspot or event is built from conditions and actions, with every action type explained.
+host:
+  who: mallory
+  says: "Events are the when, actions are the what happens. Get these two and you can build almost anything."
 ---
+import Host from '../../../components/Host.astro';
+
+import EventFlow from '../../../components/diagrams/EventFlow.astro';
+
 
 Everything that *happens* in a mission is an **event**, and every event is an ordered list of **actions**. A hotspot the student clicks is an event; so is the welcome message when they arrive, and so is a conversation.
 
@@ -20,6 +27,11 @@ A rock blocks the path. Students must pick up the key to unlock the gate.
 | `gate-locked` | Hotspot (walk into) | `has_key = 0` | 🔤 **Text overlay** "The gate is locked." |
 
 Three events, two conditions, one variable. Every mission, however big, is made of this.
+
+
+The same rules at work in a different mission, The Cloudy Pond from the [walkthrough](/docs/editor/walkthrough/schoolyard/#a-gate-that-needs-a-conversation): an exit that only lets students through once they have talked to Ms. Okafor.
+
+<EventFlow />
 
 ## The four kinds of event
 
@@ -44,6 +56,10 @@ You can change an event's **Kind** at any time under ⚙️ Settings.
 **Who sees it** is for moments that belong to the room, such as a rockfall: the other players in the scene see and hear its pictures, text, sounds, video and dialogue as they happen. What the event *does* stays with the player who set it off: variables, awards, jumps, freezing and questions. See [Who sees an event](/docs/developers/extensions/#who-sees-an-event).
 
 ## Conditions
+
+<Host who="sam" side="right">
+Conditions are yes-or-no questions about variables. All must be yes, or the event (or action) sits this one out.
+</Host>
 
 An event, an action, an objective and an infobox button can each have **conditions**. A condition compares a **variable** with a **value** using `=`, `!=`, `>`, `<`, `>=` or `<=`. Press **+ Add condition** and choose from the variables you have defined. **All** the conditions in a list must hold.
 

@@ -1,7 +1,12 @@
 ---
 title: "Recipes"
 description: "Copy-paste, tested code for the jobs people actually do with the API: a small client, a nightly roster sync, grades back into a gradebook, and a district dashboard feed."
+host:
+  who: gil
+  says: "Copy, paste, run. Tested code for the jobs people actually do with the API."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
 
@@ -170,6 +175,10 @@ Using it:
 </Tabs>
 
 ## Sync your roster every night
+
+<Host who="buck" side="right">
+Once a night, while everyone sleeps, I fetch the roster. Good dog.
+</Host>
 
 The job: make QuestLab's teachers, students and classes match your student information system, without sending a single name.
 

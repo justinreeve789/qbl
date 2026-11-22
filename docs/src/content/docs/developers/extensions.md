@@ -1,5 +1,9 @@
 ---
 title: "Runtime extensions (spec v2)"
+host:
+  who: asimov
+  says: "The full runtime spec, version 2. Grab a snack: this one is long."
+  side: right
 ---
 
 The original pages describe the JSON as first designed. The walk-around multiplayer runtime needs a few things those pages do not cover: where avatars can walk, where they appear, how scenes connect, where items and characters stand, and which state is shared between players.

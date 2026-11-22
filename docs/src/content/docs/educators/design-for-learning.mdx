@@ -1,7 +1,12 @@
 ---
 title: "Designing missions that teach"
 description: "How to build a mission so that the world carries the lesson: start from the debrief, write questions and wrong answers that teach, and use QuestLab's pieces on purpose."
+host:
+  who: sam
+  says: "Start from the conversation you want to have at the end, then build the world backwards. Let me show you how."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
@@ -62,6 +67,10 @@ Put a question *before* the information that answers it, whenever you can.
 The report records each student's **first answer**, so the question is also a way to learn what they already thought. This only works if the question text **does not give the answer away**.
 
 ## Write wrong answers that teach
+
+<Host who="lucy" side="right">
+Every wrong answer is a little detour with a signpost back. Make the signpost explain why, not just say “try again”.
+</Host>
 
 The most valuable part of a question is the wrong answers. Each should be something a reasonable student *might* believe, and each should lead to a response that *teaches*.
 
@@ -158,6 +167,10 @@ A gate (an exit that stays closed until something is done) makes a mission feel 
 </Steps>
 
 ## A pre-publish checklist
+
+<Host who="mallory" side="left">
+Before you launch, run through this list. It takes five minutes and saves a class period.
+</Host>
 
 - [ ] I can say, in one sentence, what students will be able to say or do at the end.
 - [ ] Every objective is an action, and something ticks it off.

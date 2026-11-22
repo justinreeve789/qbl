@@ -1,5 +1,8 @@
 ---
 title: "HTTP API contract"
+host:
+  who: asimov
+  says: "The internal contract between the browser, the editor and the game server."
 ---
 
 The player, the editor and the game server depend on a small set of endpoints. Two things implement the player's and the game server's:

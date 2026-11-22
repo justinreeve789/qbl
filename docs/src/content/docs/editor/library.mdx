@@ -1,7 +1,12 @@
 ---
 title: The library
 description: Media, variables, items, characters, objectives, the glossary, moves and the shop.
+host:
+  who: gil
+  says: "Everything a mission uses lives in the library: pictures, variables, items, characters, objectives and words."
 ---
+import Host from '../../../components/Host.astro';
+
 
 The tabs after **Scenes** hold the things a scenario defines once and uses in many places. Define them here, then pick them from lists in the scene editor and in actions.
 
@@ -27,6 +32,10 @@ Deleting media leaves anything that used it without a picture.
 :::
 
 ## Variables
+
+<Host who="sam" side="right">
+Variables are how a mission remembers. Name them well: you'll be reading those names for a long time.
+</Host>
 
 ![The Variables tab: one line per variable with its starting value, whose it is, and where it is used](../../../assets/screenshots/editor-variables.webp)
 
@@ -56,6 +65,10 @@ The panel has the item itself on the left: its name and picture, **Unique** (onl
 **+ Add to scenario** copies its sprite sheet into the scenario's media and makes a vehicle that is ready to ride: its `idle` and `walk` animations play by themselves, it is moved so the rider sits in the seat (on the driver's box, in the saddle, behind the wheel), the rider is cut off below the seat, and it goes faster than walking. In the cars with a roof the rider is seen through the windows. Horses can also `gallop` with a *Play an animation* action. Change any of it afterwards in the item's panel, and place it in a scene.
 
 ## Characters
+
+<Host who="pinta" side="left">
+Characters live here once and can be placed in any scene. Give them a walk, a portrait and a voice.
+</Host>
 
 ![The Characters tab: a card for each character, showing how it stands and its close-up portrait](../../../assets/screenshots/editor-characters.webp)
 
@@ -155,5 +168,9 @@ The words the mission teaches, each on a card with its picture (or its first let
 What players can do from buttons on their screen. Each card is drawn like the button players see, with its icon and text, the animation it plays, and who can use it. Click it or **✏️ Edit** to change the **Animation** (a built-in move or the name of one of the avatars' animations), the text **On the button**, the **Icon**, and the conditions under which it is offered.
 
 ## Shop
+
+<Host who="riona" side="right">
+Stars are for spending! Stock the marketplace with things students actually want to wear.
+</Host>
 
 What only this scenario sells in the marketplace: something to **wear**, a **pet**, **a way of standing**, a **move** or an **ability**, priced in stars. Each card shows the picture, the price and the kind; click it or **✏️ Edit** to open it in a panel, with what is for sale on the left and the settings for its kind (where it is worn and how big, the movement, the move or the ability key) on the right. Take an item off sale with **On sale** instead of deleting it, so players who bought it keep it. An ability sets the variable `QL_Ability_<key>` while it is equipped, which conditions can use to offer extras. See [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace).

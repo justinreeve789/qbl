@@ -1,7 +1,15 @@
 ---
 title: "Classes, missions and teams"
 description: "Add your students, assign a mission with a due date and a note, split the class into teams, and look in on a team's game while they play."
+host:
+  who: val
+  says: "Add your students, assign a mission, split them into teams, then look in on any team while they play."
+  side: right
 ---
+import Host from '../../../components/Host.astro';
+
+import TeamsLookIn from '../../../components/diagrams/TeamsLookIn.astro';
+
 
 import { Aside, Steps } from '@astrojs/starlight/components';
 
@@ -50,6 +58,8 @@ An assignment can be changed at any time with **Change**.
 
 Teams are optional. Add them in the assignment and put students into them, or use **Share students out evenly**.
 
+<TeamsLookIn />
+
 Each team plays in **its own copy of the world**: the team walks around together and shares what is shared (a boulder one of them knocked down stays down for the whole team, and only for that team). Other teams appear only in the scenes the scenario opens to everyone, such as a meeting room; everywhere else a team is on its own (see [Teams in a scene](/docs/developers/extensions/#teams-in-a-scene)).
 
 Without teams, everyone the mission was assigned to shares one copy. Students left in no team share the assignment's own copy.
@@ -61,6 +71,10 @@ Mix strengths and confidence. Rotate roles (navigator, recorder, tester, reporte
 </Aside>
 
 ## Look in on a team's game
+
+<Host who="lucy" side="right">
+When a teacher looks in, we see you walk into our world! Say hello, ask us a question, then step back out.
+</Host>
 
 **Look in** opens a team's copy of the mission **as yourself**. You are in that team's game as one of them: you see what the team sees (each team's world can differ: what has been picked up, which hotspots and events are active) and the team sees you. What you do there counts in their game.
 

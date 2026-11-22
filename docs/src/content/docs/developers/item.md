@@ -1,5 +1,8 @@
 ---
 title: "Items"
+host:
+  who: sam
+  says: "Things to pick up, wear and ride. Yes, ride."
 ---
 
 Items are any object in a scenario that isn't part of the background scene. The player may interact with items set around a scene. Some items may even cross scenes.

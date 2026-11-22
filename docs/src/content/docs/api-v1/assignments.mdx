@@ -1,7 +1,13 @@
 ---
 title: "Missions, assignments and teams"
 description: "Browse the mission catalogue, give a mission to a teacher's students with a due date and a note, and split them into teams that each play their own game."
+host:
+  who: gil
+  says: "Give a mission to a class with a due date and a note, and split it into teams, all from your own systems."
+  side: right
 ---
+import TeamsLookIn from '../../../components/diagrams/TeamsLookIn.astro';
+
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
@@ -113,6 +119,8 @@ A few things worth knowing:
 ## Teams
 
 Each team plays its **own copy** of the mission. That is not only a convenience. It means a team's discoveries, choices and shared progress belong to the team, and a teacher can [look in](/docs/editor/classes/#look-in-on-a-teams-game) on one team at a time to coach it.
+
+<TeamsLookIn caption="Teams made through the API behave exactly like teams made in the editor: each plays its own copy of the mission." />
 
 | Endpoint | Scope | Notes |
 | --- | --- | --- |

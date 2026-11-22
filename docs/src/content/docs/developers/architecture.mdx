@@ -1,21 +1,16 @@
 ---
 title: "Architecture"
+host:
+  who: asimov
+  says: "A handful of containers, one address. Let me show you around the machine."
+  side: right
 ---
+import Host from '../../../components/Host.astro';
 
-```
-                               browser
-                                  |  https
-                          edge: Caddy  (ports 80 and 443; ends TLS; staging and production only)
-                                  |  plain http from here on       (development: http://localhost:8080
-                          apache                                     goes straight to apache)
-      /            |              |               |              \
- game files     /media         /editor          /api/*          /game  (WebSocket)
- and /{code}    uploaded          |               |                |
- from the app   files         editor:         app: Laravel      colyseus
- container's    (volume)      static files    (PHP-FPM)            |
- public/ volume                                   |                |  /api/internal via apache:8081
-                                                  db  <------------+  (Docker network only)
-```
+import Architecture from '../../../components/diagrams/Architecture.astro';
+
+
+<Architecture />
 
 Docker runs seven containers: `edge` (Caddy, started on staging and production by `COMPOSE_PROFILES=https`: it ends HTTPS with a Let's Encrypt or your own certificate and passes everything on as plain HTTP; development leaves it out and uses Apache directly at http://localhost:8080), `apache`, `app` (Laravel, and Vite building the Phaser frontend and the marketing page; both are mounted from the checkout, not copied into the image), `db` (MariaDB, whose start script keeps the `qbl` account's password equal to `DB_PASSWORD`), `colyseus`, `editor` and `docs` (this documentation, built with Astro Starlight and served at `/docs`). `/` is the marketing page; every other path Apache has no file for loads the game. Vite builds the frontend into a shared volume next to Laravel's `public/` files; Apache serves that volume (and `scenarios/assets` as `/scenario-assets`) and forwards PHP requests to FPM. That fallback is how `/{code}` works: the game reads the scenario code from its address and asks the API for that scenario.
 
@@ -38,6 +33,10 @@ Path | What it is
 `tools` | `validate-scenario.ts`, `make-demo-audio.py`.
 
 ## Design decisions
+
+<Host who="asimov" side="right">
+Why is it built this way? Each decision below says what it buys, and what it would take to change it.
+</Host>
 
 **One engine, written once.** `SceneEngine` interprets events and actions (ordering, blocking, conditions, overridable, block_hotspots, repeat, run event, cancel, jump with end events) against a small `EngineHost` interface. The Phaser client implements the host; tests implement a fake with a manual clock. A server-side runner could reuse it if events ever need to be authoritative.
 

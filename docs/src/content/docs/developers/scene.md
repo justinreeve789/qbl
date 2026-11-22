@@ -1,5 +1,9 @@
 ---
 title: "Scenes"
+host:
+  who: mallory
+  says: "A scene is one place: its pictures, its walkable floor, and everything that can happen there."
+  side: right
 ---
 
 A scene consists of a single media item as the background, namely an image. A scenario is composed of multiple scenes, and scenes contain events which describe interactions within the scene.

@@ -1,7 +1,12 @@
 ---
 title: "Reading the reports"
 description: "What the mission report shows, how to read a student's first answers and tries, and how to use the evidence to teach."
+host:
+  who: val
+  says: "The score tells you who finished. The first answers tell you what they understood. Let's read both."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Aside } from '@astrojs/starlight/components';
 
@@ -44,6 +49,10 @@ Below the class panels is a table with one row per student. A **Finished** stude
 Use the filters (**All**, **Finished**, **In progress**, **Not started**) and **Sort by** to find who needs you first.
 
 ## One student in detail
+
+<Host who="val" side="right">
+First answer, then tries. A student who got there on the third try learned something different from one who guessed right first time.
+</Host>
 
 Click a name to open the student. This is the most useful part of the report.
 
@@ -91,6 +100,10 @@ The **first answer** per question is the most useful single number. To see chang
 Next to **Students** is a **Messages** tab. It is the audit log: **every message sent** in the assignment's games, in a scene or privately, with sender, recipient and time. It is there so that chat can be on without being a worry. If a mission needs no chat, switch it off in [Settings](/docs/editor/settings-and-publishing/#settings).
 
 ## What is recorded
+
+<Host who="buck" side="left">
+Only what happens in the mission, under a pseudonym. Nothing more.
+</Host>
 
 The report is read from two places: the save data (time spent, variables, objectives) and the **activity log**, which the game server writes as students play. One line each is logged for: joining and leaving, entering a scene, using a hotspot, choosing an answer in an infobox, completing an objective, getting a glossary word and earning an award. Lines carry the student, their game, the scene and the time.
 

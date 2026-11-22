@@ -1,0 +1,55 @@
+---
+// Where each piece of a player's progress is kept, from the most general to the most personal.
+import { Image } from 'astro:assets';
+import { CAST } from '../cast';
+
+interface Props { caption?: string }
+const { caption = "Lucy plays The Cloudy Pond with Team 1. Four layers make up what she sees; only the bottom two are her team's and her own." } = Astro.props;
+const layers = [
+  { icon: '📜', tone: 'amber', name: 'The scenario', who: 'Everyone', where: 'scenario JSON', what: 'Scenes, events, actions, starting values. Never changed by play.' },
+  { icon: '🏅', tone: 'cyan', name: 'Her account', who: 'Lucy, in every mission', where: 'users', what: 'Stars, XP, rank, her avatar, what she bought.' },
+  { icon: '🏠', tone: 'blue', name: "The team's instance", who: 'Team 1 (group key t7)', where: 'scenario_instances', what: 'Room-scoped variables, where unique items were left, where roaming characters are.' },
+  { icon: '🎒', tone: 'pink', name: 'Her save in that instance', who: 'Lucy, in Team 1 only', where: 'scenario_sessions', what: 'Her own variables, items, scene and position, one-shot flags, time spent.' },
+];
+---
+
+<figure class="qd qd-layers">
+  <div class="qd-layers-grid">
+    <ol class="qd-layers-list">
+      {layers.map((l, i) => (
+        <li class="qd-card qd-tone" style={`--tone: var(--qd-${l.tone})`}>
+          <div class="qd-layers-head">
+            <span aria-hidden="true">{l.icon}</span>
+            <span class="qd-title">{l.name}</span>
+            <span class="qd-chip" style={`--chip: var(--qd-${l.tone})`}>{l.who}</span>
+            <code class="qd-layers-table">{l.where}</code>
+          </div>
+          <div class="qd-muted">{l.what}</div>
+        </li>
+      ))}
+    </ol>
+    <div class="qd-layers-lucy" aria-hidden="true">
+      <Image src={CAST.lucy.picture} alt="" height={260} />
+    </div>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-layers { position: relative; }
+  .qd-layers-grid { padding-right: 8rem; }
+  .qd-layers-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.45rem; }
+  .qd-layers-list li { margin-top: 0; }
+  .qd-layers-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin-bottom: 0.2rem; }
+  .qd-layers-table { margin-left: auto; font-size: 0.75rem; }
+  .qd-layers-lucy :global(img) {
+    position: absolute; right: -1.25rem; bottom: -1.1rem;
+    height: 12rem; width: auto; max-width: none; margin: 0;
+    filter: drop-shadow(0 6px 6px rgb(0 0 0 / 0.25));
+  }
+  .qd-layers figcaption { padding-right: 8rem; }
+  @media (max-width: 44rem) {
+    .qd-layers-grid, .qd-layers figcaption { padding-right: 0; }
+    .qd-layers-lucy { display: none; }
+  }
+</style>

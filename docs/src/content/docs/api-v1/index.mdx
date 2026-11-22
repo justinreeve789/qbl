@@ -1,7 +1,12 @@
 ---
 title: "The public API (v1)"
 description: "Roster classes, assign missions, sign people in and pull grades and learning reports from your own systems, without ever sending QuestLab a student's name."
+host:
+  who: buck
+  says: "Roster classes, assign missions and pull grades from your own systems, without ever sending us a student's name."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Steps, Tabs, TabItem, Aside, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
@@ -37,6 +42,10 @@ The API lives at **`/api/v1`**. It is the one that is supported for schools, dis
 | Answer a parent's request to see or delete a child's data | `GET /students/{id}/export`, `DELETE /students/{id}` | [Activity, exports and the audit log](/docs/api-v1/activity-and-privacy-requests/#export-everything-kept-about-a-student) |
 
 ## Your first ten minutes
+
+<Host who="asimov" side="right">
+Ten minutes, three calls: get a token, list your schools, add a student. Let's go!
+</Host>
 
 You need an API client (an id and a secret): [Authentication](/docs/api-v1/authentication/) shows where your district admin makes one. In the examples, `$QuestLab` is your server's address, for example `https://qbl.example`, and `jq` is just for picking the token out of the answer.
 

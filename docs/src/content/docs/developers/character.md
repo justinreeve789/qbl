@@ -1,5 +1,9 @@
 ---
 title: "Characters"
+host:
+  who: pinta
+  says: "Characters in JSON: how a picture becomes someone you can talk to."
+  side: right
 ---
 
 Characters are NPCs associated with a scenario.

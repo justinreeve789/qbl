@@ -1,7 +1,13 @@
 ---
 title: "The scene map"
 description: "See how a mission's scenes connect on one canvas, drag scenes around, and draw the exits between them."
+host:
+  who: lucy
+  says: "Lost between scenes? The map shows every place in your mission and every path that joins them."
+  side: right
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Aside } from '@astrojs/starlight/components';
 
@@ -47,6 +53,10 @@ On a scenario's **Scenes** tab, use the **Cards | Map** switch at the top right.
 The side panel gives you an overview when nothing is selected: the counts, any **scenes nobody can reach**, any **exits that go nowhere**, and the instructions above. Click a scene for its details: edit, test, make it the start scene, set its group, and a list of its ways out and in.
 
 ## What a link really is
+
+<Host who="mallory" side="left">
+A line on the map is really an exit: a hotspot with a jump action. Draw one here and the editor builds it for you.
+</Host>
 
 A link made on the map is not special. It makes the same **walk-in edge hotspot** with one jump action that **Exit along the left, right, top or bottom edge** makes in the [scene editor](/docs/editor/scene-editor/#exits-to-other-scenes), on the edge facing the other box, and arrives at the target scene's spawn point nearest the opposite edge. If that edge is taken it uses the next free one; if all four are taken it makes a click hotspot in the middle of the scene.
 

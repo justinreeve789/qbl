@@ -1,5 +1,8 @@
 ---
 title: "Conditions"
+host:
+  who: sam
+  says: "Conditions decide what happens and when: compare a variable with a value, and the mission does the rest."
 ---
 
 Conditions are placed on events or actions, and describe a global variable-based requirement that must be met before the actions in the event, or the action itself can be executed. If an action, startEvent or endEvent contains a condition that cannot be met, it will be bypassed entirely. If a hotspot contains a condition that cannot be met, looking or clicking within its radius will not trigger, or show any indication the hotspot is active (no hover animation).

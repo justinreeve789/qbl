@@ -1,0 +1,93 @@
+---
+// A small branching conversation, drawn as the map the editor shows: lines, the player's choices,
+// a right answer, a loop back, and endings.
+import { getImage } from 'astro:assets';
+import { CAST } from '../cast';
+
+interface Props { caption?: string }
+const { caption = 'Pinta, the pond ranger, in conversation. The line with a ✓ choice counts as a question in the report: each student\'s first pick is recorded.' } = Astro.props;
+const face = (await getImage({ src: CAST.pinta.portrait, width: 96, height: 96 })).src;
+const W = 196;
+const lines = [
+  { id: 'l1', x: 10, y: 150, text: ['Hello! What would', 'you like to know?'], start: true },
+  { id: 'l2', x: 362, y: 40, text: ['Mud is washing in.', 'Where would you look?'], question: true },
+  { id: 'l3', x: 362, y: 205, text: ['I look after the', 'pond and its fish.'] },
+  { id: 'l4', x: 714, y: 0, text: ['Good thinking! Follow', 'the pipe in the bank.'] },
+  { id: 'l5', x: 714, y: 105, text: ['The mud starts', 'somewhere else.'] },
+];
+const H = 56;
+const at = (id: string) => lines.find((l) => l.id === id)!;
+const right = (id: string) => ({ x: at(id).x + W, y: at(id).y + H / 2 });
+const left = (id: string) => ({ x: at(id).x, y: at(id).y + H / 2 });
+const choices = [
+  { from: 'l1', to: 'l2', text: 'Why is it brown?' },
+  { from: 'l1', to: 'l3', text: 'Who are you?' },
+  { from: 'l2', to: 'l4', text: 'Where water comes in', ok: true },
+  { from: 'l2', to: 'l5', text: 'In the middle' },
+];
+const curve = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  `M${a.x},${a.y} C${a.x + 45},${a.y} ${b.x - 45},${b.y} ${b.x},${b.y}`;
+---
+
+<figure class="qd qd-convo">
+  <div class="qd-scroll">
+    <svg viewBox="0 0 920 330" role="img" aria-label="A branching conversation map" style="min-width: 540px">
+      <defs>
+        <marker id="qd-cv-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="qd-cv-head" /></marker>
+        <marker id="qd-cv-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="qd-cv-headback" /></marker>
+        {lines.map((l) => <clipPath id={`qd-cv-c-${l.id}`}><circle cx={l.x + 24} cy={l.y + H / 2} r="15" /></clipPath>)}
+      </defs>
+      {choices.map((c) => {
+        const a = right(c.from), b = left(c.to);
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        return (
+          <g>
+            <path d={curve(a, b)} class:list={['qd-cv-edge', { 'qd-cv-ok': c.ok }]} marker-end="url(#qd-cv-a)" />
+            <rect x={mx - 68} y={my - 12} width="136" height="24" rx="12" class:list={['qd-cv-choice', { 'qd-cv-choice-ok': c.ok }]} />
+            <text x={mx} y={my + 4.5} text-anchor="middle" class="qd-cv-ctext">🧑‍🎓 {c.text}{c.ok ? ' ✓' : ''}</text>
+          </g>
+        );
+      })}
+      <!-- loops back and endings -->
+      <path d={`M${at('l3').x + 100},${at('l3').y + H} C${at('l3').x + 100},${at('l3').y + H + 60} ${110},${at('l1').y + H + 70} ${110},${at('l1').y + H + 2}`} class="qd-cv-back" marker-end="url(#qd-cv-b)" />
+      <text x="250" y="300" text-anchor="middle" class="qd-cv-note">🔁 back to the greeting</text>
+      <path d={`M${at('l5').x + 100},${at('l5').y + H} C${at('l5').x + 100},${at('l5').y + H + 40} ${at('l2').x + 100},${at('l2').y + H + 60} ${at('l2').x + 100},${at('l2').y + H + 2}`} class="qd-cv-back" marker-end="url(#qd-cv-b)" />
+      <text x="790" y="212" text-anchor="middle" class="qd-cv-note">🔁 try again</text>
+      <text x="812" y="76" text-anchor="middle" class="qd-cv-note qd-cv-endnote">↓ 🚩 the end</text>
+      <path d={`M${at('l1').x + 100},${at('l1').y} L${at('l1').x + 100},${at('l1').y - 40}`} class="qd-cv-edge" marker-end="url(#qd-cv-a)" />
+      <rect x={at('l1').x + 40} y={at('l1').y - 66} width="120" height="24" rx="12" class="qd-cv-choice" />
+      <text x={at('l1').x + 100} y={at('l1').y - 49.5} text-anchor="middle" class="qd-cv-ctext">🧑‍🎓 Goodbye! → 🚩</text>
+      {lines.map((l) => (
+        <g>
+          <rect x={l.x} y={l.y} width={W} height={H} rx="12" class:list={['qd-cv-line', { 'qd-cv-q': l.question }]} />
+          <circle cx={l.x + 24} cy={l.y + H / 2} r="17" class="qd-cv-ring" />
+          <image href={face} x={l.x + 9} y={l.y + H / 2 - 15} width="30" height="30" clip-path={`url(#qd-cv-c-${l.id})`} />
+          <text x={l.x + 48} y={l.y + 24} class="qd-cv-text">{l.text[0]}</text>
+          <text x={l.x + 48} y={l.y + 41} class="qd-cv-text">{l.text[1]}</text>
+          {l.start && <text x={l.x + 4} y={l.y - 4} class="qd-cv-tag">▶ Starts here</text>}
+          {l.question && <text x={l.x + W - 4} y={l.y - 5} text-anchor="end" class="qd-cv-tag qd-cv-tag-q">❓ counts as a question</text>}
+        </g>
+      ))}
+    </svg>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-cv-line { fill: var(--qd-card); stroke: color-mix(in srgb, var(--qd-green) 60%, transparent); stroke-width: 2; }
+  .qd-cv-q { stroke: var(--qd-purple); stroke-width: 2.5; }
+  .qd-cv-ring { fill: var(--sl-color-gray-6); stroke: var(--qd-green); stroke-width: 2.5; }
+  .qd-cv-text { fill: var(--sl-color-white); font-size: 12.5px; }
+  .qd-cv-edge { fill: none; stroke: var(--qd-line); stroke-width: 2; }
+  .qd-cv-ok { stroke: var(--qd-green); stroke-width: 2.5; }
+  .qd-cv-head { fill: var(--qd-line); }
+  .qd-cv-headback { fill: var(--qd-amber); }
+  .qd-cv-back { fill: none; stroke: var(--qd-amber); stroke-width: 2; stroke-dasharray: 6 5; }
+  .qd-cv-choice { fill: color-mix(in srgb, var(--qd-blue) 16%, var(--sl-color-bg)); stroke: color-mix(in srgb, var(--qd-blue) 60%, transparent); }
+  .qd-cv-choice-ok { fill: color-mix(in srgb, var(--qd-green) 22%, var(--sl-color-bg)); stroke: var(--qd-green); }
+  .qd-cv-ctext { fill: var(--sl-color-white); font-size: 11.5px; font-weight: 600; }
+  .qd-cv-note { fill: var(--qd-amber); font-size: 11.5px; font-weight: 700; }
+  .qd-cv-tag { fill: var(--sl-color-gray-3); font-size: 11px; font-weight: 700; }
+  .qd-cv-tag-q { fill: var(--qd-purple); }
+  .qd-cv-endnote { fill: var(--sl-color-gray-3); }
+</style>

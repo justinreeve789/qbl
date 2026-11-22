@@ -1,0 +1,59 @@
+---
+// The nine hosts, standing in a row along the top of a card, each over what they look after.
+import { Image } from 'astro:assets';
+import { CAST, CAST_ORDER } from './cast';
+---
+
+<section class="qbl-cast" aria-label="Your guides">
+  <ul aria-hidden="true">
+    {CAST_ORDER.map((id, i) => {
+      const m = CAST[id];
+      // Everyone faces the middle of the row.
+      const flip = m.faces !== (i < CAST_ORDER.length / 2 ? 'right' : 'left');
+      return (
+        <li style={`--d: ${(i * 0.37) % 1.5}s`}>
+          <Image src={m.picture} alt="" height={260} class:list={['qbl-cast__pic', { 'qbl-cast__flip': flip }]} />
+        </li>
+      );
+    })}
+  </ul>
+  <div class="qbl-cast__words"><slot /></div>
+</section>
+
+<style>
+  .qbl-cast {
+    margin-block: 4.5rem 2rem;
+    border: 2px solid var(--sl-color-gray-5);
+    border-radius: 1.2rem;
+    background: linear-gradient(var(--sl-color-gray-6), var(--sl-color-bg));
+    padding: 0 0.75rem 1rem;
+  }
+  .qbl-cast ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+  .qbl-cast li { margin: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .qbl-cast :global(.qbl-cast__pic) {
+    height: 8rem;
+    width: auto;
+    max-width: none;
+    margin: -5rem 0 0;
+    filter: drop-shadow(0 6px 5px rgb(0 0 0 / 0.25));
+    animation: qbl-cast-bob 3.6s ease-in-out infinite;
+    animation-delay: var(--d);
+  }
+  .qbl-cast :global(.qbl-cast__flip) { scale: -1 1; }
+  .qbl-cast__words { text-align: center; margin-top: 0.6rem; color: var(--sl-color-gray-2); }
+  .qbl-cast__words :global(> *) { margin: 0; }
+  @keyframes qbl-cast-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  @media (prefers-reduced-motion: reduce) { .qbl-cast :global(.qbl-cast__pic) { animation: none; } }
+  @media (max-width: 50rem) {
+    .qbl-cast { margin-top: 4.5rem; }
+    .qbl-cast :global(.qbl-cast__pic) { height: 5rem; margin-top: -3rem; }
+    .qbl-cast { margin-top: 3.5rem; }
+  }
+</style>

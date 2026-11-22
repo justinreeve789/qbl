@@ -1,0 +1,12 @@
+---
+// Starlight's MarkdownContent, with the page's host (frontmatter `host:`) introducing it.
+import Default from '@astrojs/starlight/components/MarkdownContent.astro';
+import Host from './Host.astro';
+
+const host = Astro.locals.starlightRoute.entry.data.host;
+---
+
+<Default>
+  {host && <Host who={host.who} says={host.says} side={host.side} size="page" />}
+  <slot />
+</Default>

@@ -1,0 +1,80 @@
+---
+// One assignment, three teams, three copies of the mission, and a teacher who can look in on any of them.
+import { Image } from 'astro:assets';
+import { CAST, type CastName } from '../cast';
+
+interface Props { caption?: string }
+const { caption = 'Each team plays its own copy of the mission. What one team changes, only that team sees; you can step into any of them.' } = Astro.props;
+const teams: { name: string; who: CastName[]; scene: string; progress: number; note: string }[] = [
+  { name: 'Team 1', who: ['gil', 'lucy'], scene: 'At the pond', progress: 80, note: 'Answered the question' },
+  { name: 'Team 2', who: ['pinta', 'sam'], scene: 'In the schoolyard', progress: 30, note: 'Stuck at the gate 👀' },
+  { name: 'Team 3', who: ['buck', 'riona'], scene: 'At the pond', progress: 55, note: 'Talked to Ms. Okafor' },
+];
+---
+
+<figure class="qd qd-teams">
+  <div class="qd-teams-grid">
+    <div class="qd-teams-teacher">
+      <div class="qd-card qd-tone qd-teams-desk" style="--tone: var(--qd-green)">
+        <Image src={CAST.val.picture} alt="" height={300} class="qd-teams-val" />
+        <div class="qd-title">You, the teacher</div>
+        <div class="qd-muted">One assignment: <em>The Cloudy Pond</em>, due Friday</div>
+      </div>
+    </div>
+    <ul class="qd-teams-list">
+      {teams.map((t, i) => (
+        <li class="qd-card qd-tone" style={`--tone: var(--qd-${['blue', 'pink', 'purple'][i]})`}>
+          <div class="qd-teams-head">
+            <span class="qd-teams-faces">
+              {t.who.map((w) => <Image src={CAST[w].portrait} alt={CAST[w].name} width={64} height={64} />)}
+            </span>
+            <span class="qd-title">{t.name}</span>
+            <span class="qd-muted">{t.who.map((w) => CAST[w].name).join(' & ')}</span>
+            <span class="qd-chip qd-teams-look" style="--chip: var(--qd-green)">👀 Look in</span>
+          </div>
+          <div class="qd-teams-world">
+            <span class="qd-muted">🗺️ Their copy · {t.scene}</span>
+            <div class="qd-teams-bar"><i style={`width: ${t.progress}%`} /></div>
+            <span class="qd-muted">{t.note}</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-teams-grid { display: grid; grid-template-columns: 12rem 1fr; gap: 1.5rem; align-items: end; }
+  .qd-teams-teacher { text-align: center; }
+  .qd-teams-desk { position: relative; margin-top: 7.5rem; padding-top: 1.6rem; }
+  .qd-teams-teacher :global(.qd-teams-val) {
+    position: absolute; left: 50%; bottom: calc(100% - 1.5rem); translate: -50% 0;
+    height: 9.5rem; width: auto; max-width: none; margin: 0;
+    filter: drop-shadow(0 5px 5px rgb(0 0 0 / 0.25));
+  }
+  .qd-teams-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; position: relative; }
+  .qd-teams-list li { margin: 0; position: relative; }
+  .qd-teams-list li::before {
+    content: '';
+    position: absolute;
+    left: -1.5rem;
+    top: 50%;
+    width: 1.4rem;
+    border-top: 2px dashed var(--qd-line);
+  }
+  .qd-teams-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .qd-teams-faces { display: inline-flex; }
+  .qd-teams-faces :global(img) { width: 1.9rem; height: 1.9rem; border-radius: 50%; border: 2px solid var(--qd-card); margin: 0 0 0 -0.4rem; }
+  .qd-teams-faces :global(img:first-child) { margin-left: 0; }
+  .qd-teams-look { margin-left: auto; }
+  .qd-teams-world { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.6rem; margin-top: 0.4rem; }
+  .qd-teams-bar { height: 0.45rem; border-radius: 999px; background: var(--sl-color-gray-5); overflow: hidden; }
+  .qd-teams-bar i { display: block; height: 100%; background: var(--tone); border-radius: inherit; }
+  @media (max-width: 44rem) {
+    .qd-teams-grid { grid-template-columns: 1fr; }
+    .qd-teams-desk { margin-top: 7rem; }
+    .qd-teams-list li::before { display: none; }
+    .qd-teams-world { grid-template-columns: 1fr; gap: 0.3rem; }
+  }
+</style>
