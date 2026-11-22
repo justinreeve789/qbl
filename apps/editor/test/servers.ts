@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer, request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -31,7 +31,10 @@ export async function startSite(env: Record<string, string> = {}): Promise<TestS
     format: 'esm',
     target: 'es2022',
     outdir: dist,
-    alias: { '@qbl/shared': join(repo, 'packages/shared/src/index.ts') },
+    // Formulas are their own entry of the shared package (math.js is loaded only where it is used).
+    alias: { '@qbl/shared/formula': join(repo, 'packages/shared/src/formula.ts'), '@qbl/shared': join(repo, 'packages/shared/src/index.ts') },
+    // KaTeX's stylesheet names its fonts: they are put beside the bundle and served with it.
+    loader: { '.woff2': 'file', '.woff': 'file', '.ttf': 'file' },
     define: { 'import.meta.env': '{}' },
     logLevel: 'silent',
   });
@@ -41,12 +44,12 @@ export async function startSite(env: Record<string, string> = {}): Promise<TestS
   const php = spawn('php', ['-S', `127.0.0.1:${apiPort}`, join(repo, 'apps/api/dev/server.php')], { env: { ...process.env, QBL_DEV_DATA: join(data, 'api'), ...env }, stdio: 'ignore' });
   await waitFor(`http://127.0.0.1:${apiPort}/api/me`);
 
-  const types: Record<string, string> = { '.js': 'text/javascript', '.css': 'text/css' };
+  const types: Record<string, string> = { '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };
   const server = createServer((req, res) => {
     const path = (req.url ?? '/').split('?')[0]!;
     if (path === '/editor' || path === '/editor/') {
       res.writeHead(200, { 'Content-Type': 'text/html' }).end(page);
-    } else if (/^\/editor\/main\.(js|css)$/.test(path)) {
+    } else if (/^\/editor\/[\w.-]+\.(js|css|woff2|woff|ttf)$/.test(path) && existsSync(join(dist, path.slice('/editor/'.length)))) {
       res.writeHead(200, { 'Content-Type': types[extname(path)] }).end(readFileSync(join(dist, path.slice('/editor/'.length))));
     } else {
       // Everything else belongs to the API server.

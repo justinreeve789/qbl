@@ -7,6 +7,7 @@ import { deferred } from '../actions/Presenter';
 import { Pathfinder, walkSignature } from '../core/Pathfinder';
 import { Avatar } from '../entities/Avatar';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
+import { BenchSystem } from './BenchSystem';
 import { HotspotSystem } from './HotspotSystem';
 import { PropsSystem } from './PropsSystem';
 import { RemotePlayersSystem } from './RemotePlayersSystem';
@@ -202,7 +203,11 @@ export class LocalPlayerSystem implements SceneSystem {
   private onPointerDown(pointer: Phaser.Input.Pointer) {
     if (this.rt.ctx.ui.capturesInput || this.rt.leaving || this.rt.system(PropsSystem).hovering || this.rt.system(RemotePlayersSystem).hovering) return;
     const p = this.worldPoint(pointer);
+    // A close-up bench's containers and tools come first.
+    const bench = this.rt.system(BenchSystem);
+    if (bench.claims(p)) return;
     if (this.rt.system(HotspotSystem).click(p.x, p.y)) return;
+    if (bench.blocksWalking) return;
     // Otherwise walk there, Club Penguin style.
     this.walkTo(p);
   }

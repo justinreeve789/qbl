@@ -58,6 +58,7 @@ export default defineConfig({
             { label: 'The scene map', slug: 'editor/scene-map' },
             { label: 'Events and actions', slug: 'editor/events-and-actions' },
             { label: 'Infoboxes and questions', slug: 'editor/infoboxes' },
+            { label: 'Close-up experiments (the bench)', slug: 'editor/bench' },
             { label: 'Conversations', slug: 'editor/conversations' },
             { label: 'The library', slug: 'editor/library' },
             { label: 'Patterns that work', slug: 'editor/patterns' },

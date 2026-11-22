@@ -9,7 +9,10 @@ import { LocalPlayerSystem } from '../src/systems/LocalPlayerSystem';
 import { MovesFeature } from '../src/features/MovesFeature';
 import { BagFeature } from '../src/features/BagFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
-import type { BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow, ProfileView, ShopView, SpeakOptions, UiPort } from '../src/ui/UiPort';
+import type {
+  BagSlot, BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BenchPanelView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow,
+  ProfileView, ShopView, SpeakOptions, UiPort,
+} from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
 
 export interface OpenInfobox {
@@ -198,6 +201,12 @@ export class HeadlessUi implements UiPort {
   }
   objectives(list: ObjectiveStatus[]) { this.checklist = list; }
   toast(message: string) { this.toasts.push(message); }
+  /** The bench panel, when a scene has a close-up bench: what it offers, what it shows, and its buttons. */
+  bench: { spec: BenchPanelSpec; on: BenchPanelActions; view: BenchPanelView | null; open: boolean } | null = null;
+  benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle {
+    const panel = (this.bench = { spec, on, view: null as BenchPanelView | null, open: true });
+    return { update: (view) => (panel.view = view), close: () => (panel.open = false) };
+  }
   status(message: string | null) { this.statusText = message; }
 }
 

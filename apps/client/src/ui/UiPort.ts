@@ -150,6 +150,8 @@ export interface UiPort {
   /** Offer the read-aloud switch: the scenario has text that is read aloud. */
   narration(available: boolean): void;
   toast(message: string, ms?: number): void;
+  /** What stands beside a close-up bench: its readings, what is in the player's hand, its buttons and its graph. */
+  benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null): void;
 }
@@ -236,4 +238,36 @@ export interface ProfileView {
 export interface ShopView {
   stars: number;
   items: Array<{ id: number; name: string; description?: string; kind: string; slot?: string; price: number; image: string | null; mission: boolean; owned: boolean; equipped: boolean }>;
+}
+
+// ------------------------------------------------------------------ close-up bench
+
+/** What the bench panel offers, fixed for the scene. */
+export interface BenchPanelSpec {
+  readouts: Array<{ id: string; label: string }>;
+  reset: boolean;
+  /** A graph of one reading against another, as the player records it. */
+  graph: { title: string; xLabel: string; yLabel: string; button: boolean } | null;
+}
+
+/** How the bench stands, redrawn as it changes. */
+export interface BenchPanelView {
+  /** By readout id, as shown ("12.5 mL"). */
+  readings: Record<string, string>;
+  /** What is in the player's hand and what to do with it, or null. */
+  holding: string | null;
+  /** The points recorded for the graph so far. */
+  points: Array<[number, number]>;
+}
+
+export interface BenchPanelActions {
+  reset(): void;
+  putDown(): void;
+  record(): void;
+  clearGraph(): void;
+}
+
+export interface BenchPanelHandle {
+  update(view: BenchPanelView): void;
+  close(): void;
 }

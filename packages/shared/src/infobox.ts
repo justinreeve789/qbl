@@ -30,11 +30,35 @@
  *   <div data-qbl="when" data-when="v >= 4; battery = 1">   shown only while all of these hold, on
  *                                               the controls as they are now and on variables
  *
+ * Science and maths. Formulas are worked out with math.js (see formula.ts), typeset with KaTeX
+ * and drawn with JSXGraph; each is loaded only by a box that has one:
+ *
+ *   <span data-qbl="math" data-tex="E = mc^2">E = mc^2</span>   typeset maths in a line of text
+ *   <div data-qbl="math" data-tex="\ce{2H2 + O2 -> 2H2O}">…</div>   typeset on a line of its own;
+ *                                               \ce{…} sets chemistry. What is inside the tag is
+ *                                               what a reader without KaTeX shows.
+ *   <span data-qbl="calc" data-formula="mass / volume" data-digits="2" data-unit="g/mL"
+ *         data-var="density">                   a formula's value, from the controls as they are now
+ *                                               and from variables; with data-var it is saved there
+ *                                               when a button is chosen
+ *   <input data-qbl="answer" data-var="a" data-accept="9.8 m/s^2" data-tolerance="2%"
+ *          data-check="a_right">                an answer box that is checked: data-check is set to 1
+ *                                               (right) or 0 when a button is chosen. A quantity is
+ *                                               right in any unit of its kind (980 cm/s^2)
+ *   <div data-qbl="graph" data-fn="a*x^2; sin(x)" data-x="-5,5" data-y="-5,5"
+ *        data-points="px,py=1,2; qx,qy=3,1" data-join="line" data-snap="1"
+ *        data-series="log" data-xlabel="Time (s)" data-ylabel="Height (m)" data-label="Title">
+ *                                               axes with curves (formulas of x; other names are
+ *                                               controls and variables, so curves follow sliders),
+ *                                               points the player drags (each saved in its two
+ *                                               variables when a button is chosen), joined or not,
+ *                                               and recorded data kept in a variable as "x,y;x,y"
+ *
  * Everything here is free of the DOM, so the validator and the server-side tools can use it.
  */
 
 /** The `data-qbl` kinds the game knows. */
-export const INFOBOX_BLOCKS = ['page', 'gallery', 'flip', 'callout', 'answer', 'word', 'panel', 'slider', 'switch', 'wheel', 'value', 'meter', 'when'] as const;
+export const INFOBOX_BLOCKS = ['page', 'gallery', 'flip', 'callout', 'answer', 'word', 'panel', 'slider', 'switch', 'wheel', 'value', 'meter', 'when', 'math', 'calc', 'graph'] as const;
 
 /** The controls: what the player sets, each saved in its variable when a button is chosen. */
 export const INFOBOX_CONTROLS = ['slider', 'switch', 'wheel'] as const;
@@ -70,10 +94,16 @@ export interface InfoboxRefs {
   words: string[];
   /** Variables controls (sliders, switches, wheels) write to. */
   controls: string[];
-  /** Variables shown or tested (values, meters, `when` blocks). */
+  /** Variables shown or tested (values, meters, `when` blocks, formulas, curves, recorded data). */
   reads: string[];
+  /** Variables the box also saves to: dragged graph points, worked-out values, whether a checked answer was right. */
+  writes: string[];
   /** How many pages the box has. */
   pages: number;
+  /** Formulas (calc blocks, graph curves, answers to accept) that could not be read at a glance: unbalanced brackets, nothing in them. */
+  problems: string[];
+  /** Whether the box needs math.js, KaTeX or JSXGraph. */
+  uses: { formula: boolean; math: boolean; graph: boolean };
 }
 
 const MEDIA = /\{\{\s*media:(\d+)\s*\}\}/g;
@@ -97,10 +127,155 @@ export function infoboxRefs(html: string | null | undefined): InfoboxRefs {
   const answers = [...new Set(tagsOf(text, 'answer').map((t) => attr(t, 'data-var')?.trim() ?? '').filter(Boolean))];
   const words = [...new Set(tagsOf(text, 'word').map((t) => attr(t, 'data-word')?.trim() ?? '').filter(Boolean))];
   const varsOf = (kinds: InfoboxBlock[]) => kinds.flatMap((k) => tagsOf(text, k).map((t) => attr(t, 'data-var')?.trim() ?? '')).filter(Boolean);
+  const problems: string[] = [];
+  const names = (source: string | null, what: string, skip: string[] = []): string[] => {
+    const src = (source ?? '').trim();
+    if (!src) return [];
+    const problem = formulaGlance(src);
+    if (problem) problems.push(`${what} “${src}”: ${problem}`);
+    return formulaNames(src).filter((n) => !skip.includes(n));
+  };
+  const calcs = tagsOf(text, 'calc');
+  const graphs = tagsOf(text, 'graph').map((t) => graphSpec((name) => attr(t, name)));
+  const checked = tagsOf(text, 'answer').filter((t) => attr(t, 'data-accept') != null);
   const controls = [...new Set(varsOf([...INFOBOX_CONTROLS]))];
+  const writes = [...new Set([
+    ...varsOf(['calc']),
+    ...graphs.flatMap((g) => g.points.flatMap((p) => [p.xVar, p.yVar])),
+    ...checked.map((t) => attr(t, 'data-check')?.trim() ?? '').filter(Boolean),
+  ])];
+  for (const t of calcs) if (!(attr(t, 'data-formula') ?? '').trim()) problems.push('A calc block has no formula');
   const tested = tagsOf(text, 'when').flatMap((t) => parseWhen(attr(t, 'data-when') ?? '').map((c) => c.variable));
-  const reads = [...new Set([...varsOf(['value', 'meter']), ...tested])];
-  return { media, answers, words, controls, reads, pages: tagsOf(text, 'page').length + 1 };
+  const reads = [...new Set([
+    ...varsOf(['value', 'meter']), ...tested,
+    ...calcs.flatMap((t) => names(attr(t, 'data-formula'), 'The formula')),
+    ...graphs.flatMap((g) => [...g.functions.flatMap((f) => names(f, 'The curve', ['x'])), ...(g.series ? [g.series] : [])]),
+  ])];
+  const maths = tagsOf(text, 'math');
+  return {
+    media, answers, words, controls, reads, writes, pages: tagsOf(text, 'page').length + 1, problems,
+    uses: { formula: calcs.length > 0 || checked.length > 0 || graphs.some((g) => g.functions.length > 0), math: maths.length > 0, graph: graphs.length > 0 },
+  };
+}
+
+// ------------------------------------------------------------------ formulas, at a glance
+
+/** Words of a formula that are math.js's own, not names to look up. */
+const MATH_WORDS = new Set([
+  'pi', 'e', 'tau', 'phi', 'i', 'Infinity', 'NaN', 'true', 'false', 'null', 'and', 'or', 'not', 'xor', 'mod', 'to', 'in',
+  // Units an author is likely to write in a formula; any other unit only earns a warning.
+  'm', 'cm', 'mm', 'km', 'g', 'kg', 'mg', 's', 'min', 'h', 'ms', 'L', 'l', 'mL', 'ml', 'N', 'J', 'W', 'Pa', 'K', 'degC', 'degF', 'mol', 'V', 'A', 'ohm', 'Hz', 'deg', 'rad',
+]);
+
+/**
+ * The names a formula reads, found without math.js (which the validator does not load): every
+ * word that is not a function being called, a constant or a common unit.
+ */
+export function formulaNames(source: string): string[] {
+  const out = new Set<string>();
+  const text = source.replace(/"[^"]*"|'[^']*'/g, ' ');
+  for (const m of text.matchAll(/[A-Za-z_]\w*/g)) {
+    const after = text.slice(m.index + m[0].length).trimStart();
+    const before = text.slice(0, m.index);
+    // 1e5 is a number, not the name e5; a.b reads a, not b.
+    if (/\d\.?$/.test(before) && /^[eE]\d*$/.test(m[0])) continue;
+    if (before.endsWith('.')) continue;
+    if (after.startsWith('(') || MATH_WORDS.has(m[0])) continue;
+    out.add(m[0]);
+  }
+  return [...out];
+}
+
+/** What is plainly wrong with a formula, seen without math.js: brackets that do not match. Null when nothing is. */
+export function formulaGlance(source: string): string | null {
+  let depth = 0;
+  for (const ch of source.replace(/"[^"]*"|'[^']*'/g, '')) {
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth--;
+    if (depth < 0) return 'a bracket is closed that was never opened';
+  }
+  return depth > 0 ? 'a bracket is never closed' : null;
+}
+
+// ------------------------------------------------------------------ graphs
+
+/** How a graph's points are joined, in the order they are written. */
+export const GRAPH_JOINS = ['none', 'line', 'segment', 'polygon'] as const;
+export type GraphJoin = (typeof GRAPH_JOINS)[number];
+
+/** A point of a graph the player drags: saved in two variables. */
+export interface GraphPoint {
+  xVar: string;
+  yVar: string;
+  x: number;
+  y: number;
+}
+
+/** A graph block, read from its attributes. */
+export interface GraphSpec {
+  /** Formulas of x, one curve each. */
+  functions: string[];
+  x: [min: number, max: number];
+  y: [min: number, max: number];
+  points: GraphPoint[];
+  join: GraphJoin;
+  /** A variable holding recorded data as "x,y;x,y". */
+  series: string | null;
+  /** Dragged points land on multiples of this (0: anywhere). */
+  snap: number;
+  xLabel: string;
+  yLabel: string;
+  label: string;
+}
+
+function range(spec: string | null, fallback: [number, number]): [number, number] {
+  const [a, b] = (spec ?? '').split(',').map((v) => Number(v.trim()));
+  return a != null && b != null && Number.isFinite(a) && Number.isFinite(b) && a < b ? [a, b] : fallback;
+}
+
+/** A graph block's settings, from its attributes (`get('data-fn')` and so on). */
+export function graphSpec(get: (name: string) => string | null | undefined): GraphSpec {
+  const points: GraphPoint[] = [];
+  for (const part of (get('data-points') ?? '').split(';')) {
+    const m = /^\s*([A-Za-z_]\w*)\s*,\s*([A-Za-z_]\w*)\s*(?:=\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?))?\s*$/.exec(part);
+    if (m && m[1] !== m[2]) points.push({ xVar: m[1]!, yVar: m[2]!, x: Number(m[3] ?? 0), y: Number(m[4] ?? 0) });
+  }
+  const join = (get('data-join') ?? '').trim().toLowerCase();
+  const series = (get('data-series') ?? '').trim();
+  const snap = Number(get('data-snap') ?? 0);
+  return {
+    functions: (get('data-fn') ?? '').split(';').map((f) => f.trim()).filter(Boolean),
+    x: range(get('data-x') ?? null, [-10, 10]),
+    y: range(get('data-y') ?? null, [-10, 10]),
+    points,
+    join: (GRAPH_JOINS as readonly string[]).includes(join) ? (join as GraphJoin) : 'none',
+    series: /^[A-Za-z_]\w*$/.test(series) ? series : null,
+    snap: Number.isFinite(snap) && snap > 0 ? snap : 0,
+    xLabel: (get('data-xlabel') ?? '').trim(),
+    yLabel: (get('data-ylabel') ?? '').trim(),
+    label: (get('data-label') ?? '').trim(),
+  };
+}
+
+/** The most points a recorded series keeps: older ones make way. */
+export const SERIES_MAX = 300;
+
+/** Recorded data as it is kept in a variable: "x,y;x,y". What does not read as a pair of numbers is left out. */
+export function parseSeries(text: unknown): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (const part of String(text ?? '').split(';')) {
+    const [a, b, ...rest] = part.split(',');
+    const x = Number(a);
+    const y = Number(b);
+    if (rest.length === 0 && a?.trim() && b?.trim() && Number.isFinite(x) && Number.isFinite(y)) out.push([x, y]);
+  }
+  return out;
+}
+
+/** Recorded data as text for a variable, each number to three decimal places at most. */
+export function seriesText(points: Array<[number, number]>): string {
+  const n = (v: number) => String(Math.round(v * 1000) / 1000);
+  return points.slice(-SERIES_MAX).map(([x, y]) => `${n(x)},${n(y)}`).join(';');
 }
 
 /** A condition of a `when` block: `name op value`. */

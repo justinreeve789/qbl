@@ -5,3 +5,5 @@
 export { infoboxView, type BoxButton, type BoxView } from '../../../client/src/ui/infobox/view';
 export { sanitizeHtml } from '../../../client/src/ui/sanitize';
 import '../../../client/src/ui/infobox/infobox.css';
+/** Maths: KaTeX to typeset it, math.js to work it out. Each is loaded when something first asks. */
+export { loadFormulas, loadMath } from '../../../client/src/ui/science/load';

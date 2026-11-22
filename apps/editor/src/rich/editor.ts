@@ -8,6 +8,7 @@ import { openPanel } from '../panel';
 import { BLOCKS, editBlock, MEDIA_OF, newBlock, TONE_NAMES } from './blocks';
 import { blockHtml, blockOf, parse, serialize, words, type Block, type BlockKind } from './model';
 import { pickMedia, pickVariable, pickWord, upload, type MediaKind } from './pickers';
+import { loadMath } from './game';
 import { previewBox } from './preview';
 import './rich.css';
 
@@ -271,6 +272,24 @@ function build(start: RichOptions): Instance {
         return [h('div', { class: 'rt-answer-card' }, h('span', { class: 'rt-fake-input' }, b.placeholder || 'Type your answer'), b.variable ? h('span', { class: 'rt-saves' }, 'saved in ', h('code', null, `{{${b.variable}}}`)) : h('span', { class: 'rt-saves warn' }, '⚠ choose the variable it is saved in'))];
       case 'controls':
         return [h('div', { class: 'rt-controls-card' }, controlsSummary(b.html) || 'Controls')];
+      case 'math': {
+        const set = h('div', { class: 'rt-math-card' }, b.tex || 'Write a formula');
+        if (b.tex.trim()) void loadMath().then((k) => k.typeset(set, b.tex, true)).catch(() => {});
+        return [set];
+      }
+      case 'calc':
+        return [h('div', { class: 'rt-calc-card' }, b.label ? h('span', null, `${b.label} `) : null,
+          b.formula.trim() ? h('code', null, `= ${b.formula}`) : h('span', { class: 'rt-saves warn' }, '⚠ write the formula'), b.unit ? h('span', null, ` ${b.unit}`) : null,
+          b.variable ? h('span', { class: 'rt-saves' }, ' saved in ', h('code', null, `{{${b.variable}}}`)) : null)];
+      case 'graph': {
+        const count = (text: string) => text.split(/\n|;/).filter((t) => t.trim()).length;
+        const parts = [
+          count(b.functions) ? `${count(b.functions)} ${count(b.functions) === 1 ? 'curve' : 'curves'}: ${b.functions.split(/\n|;/).map((t) => t.trim()).filter(Boolean).join(', ')}` : '',
+          count(b.points) ? `${count(b.points)} ${count(b.points) === 1 ? 'point' : 'points'} to drag` : '',
+          b.series ? `data from {{${b.series}}}` : '',
+        ].filter(Boolean);
+        return [h('div', { class: 'rt-graph-card' }, emojiIcon('📈'), h('span', null, h('strong', null, b.label || 'Graph'), parts.length ? ` · ${parts.join(' · ')}` : ' · nothing on it yet'))];
+      }
       case 'page':
         return [h('span', { class: 'rt-page-label' }, 'Page 2 starts here')];
     }
@@ -451,7 +470,7 @@ function build(start: RichOptions): Instance {
     if (show) (palette.querySelector('button') as HTMLElement | null)?.focus();
   };
   const choices: Array<{ icon: string; name: string; about: string; run: () => void; kind?: string }> = [
-    ...(['picture', 'gallery', 'video', 'audio', 'callout', 'reveal', 'flip', 'answer', 'controls', 'page'] as BlockKind[]).map((kind) => ({ ...BLOCKS[kind], kind, run: () => void add(kind) })),
+    ...(['picture', 'gallery', 'video', 'audio', 'callout', 'reveal', 'flip', 'answer', 'controls', 'math', 'calc', 'graph', 'page'] as BlockKind[]).map((kind) => ({ ...BLOCKS[kind], kind, run: () => void add(kind) })),
     { icon: '📖', name: 'Glossary word', about: 'A word players can tap to see what it means. Select it in the text first.', kind: 'word', run: () => void addWord() },
     { icon: '🔢', name: 'Variable', about: 'Shows a variable’s value, such as a score or the player’s name.', kind: 'variable', run: () => void addVariable() },
   ];

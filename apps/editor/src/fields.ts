@@ -20,7 +20,9 @@ export type FieldKind =
   /** Yes, no, or left to something else to decide (the placeholder). `options` are the labels for yes and no. Stored as true, false or absent. */
   | 'tristate'
   /** One of the scenario's glossary entries, or one of its scene groups. */
-  | 'glossary' | 'group';
+  | 'glossary' | 'group'
+  /** One of the things of the scene's close-up bench, by its id: `bench` says which list. */
+  | 'bench';
 
 export interface Field {
   key: string;
@@ -39,6 +41,10 @@ export interface Field {
   sceneKey?: string;
   /** event: only list events of these kinds. */
   eventKinds?: string[];
+  /** event: only list events of the scene being edited. */
+  eventHere?: boolean;
+  /** bench: which of the bench's things to choose from. `axes`: its readouts, and time. */
+  bench?: 'vessels' | 'substances' | 'reactions' | 'readouts' | 'burners' | 'axes';
   /** bool, select: the value when the attribute is absent. */
   default?: boolean | string;
   min?: number;
@@ -235,6 +241,17 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       const current = value == null || value === '' ? '' : String(value === true || value === 'true' || value === 1);
       return wrap(select([['true', yes], ['false', no]], current, (v) => set(v === '' ? null : v === 'true'), f.placeholder));
     }
+    case 'bench': {
+      const scene = ctx.sceneId != null ? ctx.store.byId('scenes', ctx.sceneId) : undefined;
+      const bench = (params(scene ?? ({} as Row), 'layout').bench ?? {}) as Record<string, unknown>;
+      const list = (key: string) => (Array.isArray(bench[key]) ? (bench[key] as Array<Record<string, unknown>>) : []);
+      const which = f.bench ?? 'vessels';
+      const things = which === 'burners' ? list('tools').filter((t) => t.kind === 'burner') : which === 'axes' ? list('readouts') : list(which);
+      const name = (t: Record<string, unknown>) => String(t.name || t.label || t.id);
+      const options = things.map((t) => [String(t.id), name(t) === String(t.id) ? String(t.id) : `${name(t)} (${String(t.id)})`] as const);
+      if (which === 'axes') options.unshift(['time', 'Time (seconds since the start)']);
+      return wrap(select(options, value == null ? '' : String(value), (v) => set(v === '' ? null : v), f.placeholder ?? 'Choose'));
+    }
     case 'glossary': {
       const entries = (ctx.store.settings.glossary as Array<{ id: string | number; term?: string }> | undefined) ?? [];
       return wrap(select(entries.map((e) => [String(e.id), String(e.term ?? e.id)] as const), value == null ? '' : String(value), (v) => set(v === '' ? null : v), entries.length ? 'Choose a word' : 'Add words on the Glossary page first'));
@@ -259,7 +276,7 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       return wrap(select(points, current, (v) => set(v === '' ? null : v), f.placeholder ?? 'The default spawn point'));
     }
     case 'event': {
-      const events = ctx.store.rows('events').filter((e) => !f.eventKinds || f.eventKinds.includes(e.kind as string));
+      const events = ctx.store.rows('events').filter((e) => (!f.eventKinds || f.eventKinds.includes(e.kind as string)) && (!f.eventHere || e.scene_id === ctx.sceneId));
       const options = events.map((e) => {
         const sameScene = e.scene_id === ctx.sceneId;
         const scene = sameScene ? '' : `${sceneLabel(ctx.store.byId('scenes', e.scene_id as number))} › `;

@@ -1,4 +1,4 @@
-import type { ActionType } from '@qbl/shared';
+import { BENCH_OPS, type ActionType } from '@qbl/shared';
 import type { Field } from './fields';
 
 /**
@@ -322,6 +322,18 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'duration', label: 'Over (ms)', kind: 'number', min: 0 },
     ],
   },
+  bench: {
+    label: 'Bench',
+    about: 'Work the scene’s close-up bench: put it back as it started, add something to a container, empty or stir one, light a burner.',
+    fields: [
+      { key: 'op', label: 'Do', kind: 'select', default: 'reset', structural: true, options: BENCH_OPS },
+      { key: 'vessel_id', label: 'Container', kind: 'bench', bench: 'vessels', when: (v) => ['add', 'empty', 'stir'].includes(String(v.op ?? '')) },
+      { key: 'substance', label: 'What', kind: 'bench', bench: 'substances', when: (v) => v.op === 'add' },
+      { key: 'amount', label: 'How much (mL or g)', kind: 'number', min: 0.1, step: 0.5, when: (v) => v.op === 'add' },
+      { key: 'tool_id', label: 'Burner', kind: 'bench', bench: 'burners', when: (v) => v.op === 'burner' },
+      { key: 'on', label: 'It is', kind: 'tristate', placeholder: 'Changed over', options: [['true', 'Lit'], ['false', 'Put out']], when: (v) => v.op === 'burner' },
+    ],
+  },
 };
 
 export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
@@ -334,7 +346,7 @@ export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: strin
   audio: ['🔊', SOUND],
   jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
   avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], walk: ['🚶', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'], glossary: ['📖', STATE],
-  variable: ['🔢', STATE],
+  variable: ['🔢', STATE], bench: ['🧪', STATE],
 };
 
 /** Attributes every action row has. */
@@ -369,6 +381,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return starterConversation();
     case 'freeze':
       return { frozen: true };
+    case 'bench':
+      return { op: 'reset' };
     case 'animate':
       return { animation: 'jump' };
     case 'avatar':

@@ -106,9 +106,11 @@ Eight containers:
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
 
 ```sh
-docker compose exec app php artisan qbl:seed            # the marketplace catalogue and the Starship Explorer demo
+docker compose exec app php artisan qbl:seed            # the marketplace catalogue, the Starship Explorer demo and the Science Lab
 docker compose exec app php artisan qbl:seed --reset    # put the shipped demo back, replacing edits made to it
 ```
+
+The **Science Lab** (`/sciencelab`) shows the science features: a lab book with typeset maths and chemistry (KaTeX), values worked out from sliders and answers checked with their units (math.js), graphs (JSXGraph), and four close-up benches to pour, mix, heat and measure at. It was made by `node tools/make-science-lab.mjs` (after `npm run build -w @qbl/shared`); change it in the editor like any other scenario. All three libraries are MIT or Apache-2.0 licensed and are loaded only by a scene or a box that uses them.
 
 The first is safe to run again: a demo that is already there is left as it is, and so are prices changed in the catalogue. Until it has been run once there is no scenario to play. To play the demo, choose "Play as a guest instead" on the sign-in screen. Compose uses local-only default secrets; copy `.env.example` to `.env` and set real ones for anything shared.
 
@@ -301,7 +303,7 @@ npm run test:api-v1                        # the public API for schools (/api/v1
 npm run test:generation                    # the AI mission generator, with a stand-in model and placeholder pictures; then validates and plays the result
 npm run test:laravel                       # the same API through real Laravel (needs `composer install` in apps/api)
 npm run test:editor                        # the editor in a headless browser (needs PHP; once: npx playwright install chromium)
-npm run validate -- scenarios/starship.json    # check a scenario document
+npm run validate -- scenarios/starship.json    # check a scenario document (scenarios/science-lab.json is the other one shipped)
 npm run seed:export                        # regenerate scenarios/starship.json from the demo's ZIP (needs PHP with SQLite and zip)
 npm run typecheck
 npm run build

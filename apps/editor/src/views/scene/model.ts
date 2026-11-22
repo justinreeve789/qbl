@@ -1,3 +1,4 @@
+import type { SceneBench } from '@qbl/shared';
 import type { Row } from '../../api';
 import { mediaUrl, params } from '../../describe';
 import type { Store } from '../../store';
@@ -13,7 +14,11 @@ export type Selection =
   | { kind: 'area'; which: AreaList; index: number }
   | { kind: 'scale'; index: number }
   | { kind: 'shadow'; index: number }
-  | { kind: 'light'; index: number };
+  | { kind: 'light'; index: number }
+  /** The scene's close-up bench: its settings, substances, reactions, readouts, watches and graph. */
+  | { kind: 'bench' }
+  | { kind: 'bench-vessel'; index: number }
+  | { kind: 'bench-tool'; index: number };
 
 export type LayerList = 'background_media' | 'foreground_media';
 export type AreaList = 'walkable_areas' | 'blocked_areas';
@@ -58,6 +63,27 @@ export class SceneModel {
     return this.store.patch('scenes', this.sceneId, { layout: { ...params(this.row, 'layout'), [key]: list } }, structural);
   }
 
+  /** The scene's close-up bench as stored (switched on or not), or null when it has none. */
+  bench(): SceneBench | null {
+    const b = params(this.row, 'layout').bench;
+    return b && typeof b === 'object' && !Array.isArray(b) ? (b as SceneBench) : null;
+  }
+
+  setBench(bench: SceneBench | null, structural = false) {
+    const layout = { ...params(this.row, 'layout') };
+    if (bench) layout.bench = bench;
+    else delete layout.bench;
+    return this.store.patch('scenes', this.sceneId, { layout }, structural);
+  }
+
+  /** Replace one part of the bench (a list, its graph), switching the bench on if the scene had none. */
+  setBenchPart<K extends keyof SceneBench>(key: K, value: SceneBench[K], structural = false) {
+    const bench: SceneBench = { enabled: true, ...(this.bench() ?? {}) };
+    if (value == null) delete bench[key];
+    else bench[key] = value;
+    return this.setBench(bench, structural);
+  }
+
   events(kind?: string): Row[] {
     return this.store
       .where('events', 'scene_id', this.sceneId)
@@ -90,6 +116,10 @@ export class SceneModel {
         lights: this.layout('lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), ...(a.radius != null ? { radius: x(a.radius) } : {}) })),
         items: this.layout('items').map(moved),
         characters: this.layout('characters').map(moved),
+        // A bench's containers and tools move with the scene; their sizes stay: a beaker stays a beaker.
+        ...(this.bench()
+          ? { bench: { ...this.bench()!, vessels: this.bench()!.vessels?.map((v) => ({ ...v, x: x(v.x) as number, y: y(v.y) as number })), tools: this.bench()!.tools?.map((t) => ({ ...t, x: x(t.x) as number, y: y(t.y) as number })) } }
+          : {}),
       },
     }, true);
     for (const event of this.events('hotspot')) {

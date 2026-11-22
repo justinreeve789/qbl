@@ -6,6 +6,7 @@
  * multiplayer runtime; they are all optional and documented in
  * docs/src/content/docs/developers/extensions.md.
  */
+import type { BenchOp, SceneBench } from './bench.js';
 import type { MediaSpeech } from './speech.js';
 
 import type { ButtonMark, InfoboxSize } from './infobox.js';
@@ -234,7 +235,8 @@ export type ActionType =
   | 'variable'
   | 'video'
   | 'wait'
-  | 'walk';
+  | 'walk'
+  | 'bench';
 
 export type Alignment =
   | 'top left' | 'top center' | 'top right'
@@ -604,7 +606,25 @@ export interface WalkAction extends ActionBase {
 
 export type WalkDestination = 'point' | 'spawn' | 'scene';
 
+/**
+ * [ext] Work the scene's close-up bench from an event: put it back as it started, add something
+ * to a container, empty one, stir one, light a burner or put it out.
+ */
+export interface BenchAction extends ActionBase {
+  type: 'bench';
+  op: BenchOp;
+  /** add, empty, stir: the container. */
+  vessel_id?: string;
+  /** add: what, and how much (mL). */
+  substance?: string;
+  amount?: number;
+  /** burner: which, and whether it is lit (absent: it changes over). */
+  tool_id?: string;
+  on?: boolean;
+}
+
 export type Action =
+  | BenchAction
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
@@ -1190,6 +1210,8 @@ export interface Scene {
   team_only?: boolean | null;
   items?: ItemPlacement[];
   characters?: CharacterPlacement[];
+  /** [ext] A close-up bench in the scene: containers to pour between, and what happens when they mix. See bench.ts. */
+  bench?: SceneBench | null;
 }
 
 // ------------------------------------------------------------- scenario

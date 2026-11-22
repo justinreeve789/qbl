@@ -1,0 +1,8 @@
+/* A graph drawn with JSXGraph: in an infobox, or beside a close-up bench. */
+.qbl-graph { margin: 12px 0; }
+.qbl-graph-title { font-weight: 700; margin: 0 0 6px; text-align: center; }
+.qbl-graph-board { position: relative; overflow: hidden; width: 100% !important; height: auto !important; aspect-ratio: 3 / 2; max-height: min(44vh, 400px); background: #ffffff; border: 1px solid rgba(29, 35, 64, 0.2); border-radius: 12px; touch-action: none; }
+.qbl-graph-board svg text { cursor: default; user-select: none; -webkit-user-select: none; }
+.qbl-graph-board .JXGtext { font-family: inherit; color: #1d2340; background-color: transparent; padding: 0; margin: 0; }
+.qbl-graph-board .JXGinfobox { border: 0; }
+.qbl-graph-wait { display: grid; place-items: center; width: 100%; aspect-ratio: 3 / 2; max-height: min(44vh, 400px); border-radius: 12px; background: rgba(255, 255, 255, 0.12); color: inherit; opacity: 0.8; font-size: 0.9rem; }

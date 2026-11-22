@@ -3,7 +3,7 @@
   "compilerOptions": {
     "types": ["node"],
     "paths": {
-      "@qbl/shared": ["../../packages/shared/src/index.ts"],
+      "@qbl/shared": ["../../packages/shared/src/index.ts"], "@qbl/shared/formula": ["../../packages/shared/src/formula.ts"],
       "phaser": ["../client/test/fakePhaser.ts"],
       "@colyseus/sdk": ["../client/test/fakeColyseus.ts"]
     }
