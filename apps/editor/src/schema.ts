@@ -309,9 +309,17 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     fields: [],
   },
   cancel: {
-    label: 'Cancel',
+    label: 'Cancel action',
     about: 'Stop another action: remove an image, stop a sound.',
     fields: [{ key: 'action_id', label: 'Action to stop', kind: 'action', wide: true }],
+  },
+  cancel_event: {
+    label: 'Cancel event',
+    about: 'Stop an event that is running: it goes no further, and what it is showing or playing stops.',
+    fields: [{
+      key: 'target_event_id', label: 'Event to stop', kind: 'event', eventHere: true, wide: true,
+      hint: 'An event of this scene. If it is not running at the time, nothing happens, and it can still start later. It can be started again straight after, so Cancel event then Run event restarts it. Pick this event itself to end it here. Background music it started keeps playing; stop that with Cancel action.',
+    }],
   },
   walk: {
     label: 'Walk',
@@ -392,7 +400,7 @@ export const ACTION_GROUPS: ActionGroup[] = [
   { key: 'people', label: 'Characters and the player', icon: '🧑', tone: '#d6457a', types: ['walk', 'animate', 'freeze', 'avatar'] },
   { key: 'media', label: 'Pictures, video and sound', icon: '🎞️', tone: '#8e5bd6', types: ['image_fixed', 'image_overlay', 'spritemap', 'video', 'audio', 'translate'] },
   { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'camera', 'weather', 'bench'] },
-  { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel'] },
+  { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel', 'cancel_event'] },
   { key: 'progress', label: 'Rewards and progress', icon: '🏆', tone: '#3b8f4a', types: ['award', 'glossary', 'variable', 'shop'] },
 ];
 
@@ -407,7 +415,7 @@ const ACTION_ICONS: Record<ActionType, string> = {
   walk: '🚶', animate: '🤸', freeze: '✋', avatar: '👤',
   image_fixed: '📌', image_overlay: '🖼️', spritemap: '🎞️', video: '🎬', audio: '🔊', translate: '↔️',
   jump: '🚪', camera: '🎥', weather: '🌧️', bench: '🧪',
-  wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️',
+  wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️', cancel_event: '⏹️',
   award: '⭐', glossary: '📖', variable: '🔢', shop: '🛍️',
 };
 

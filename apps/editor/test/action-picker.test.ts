@@ -96,6 +96,24 @@ test('choosing narration adds a narration action, and its type picker is grouped
   await page.waitForFunction(() => document.querySelector('.inspector details.action summary .tag')?.textContent?.includes('Dialogue'));
 });
 
+test('Cancel event sits beside Cancel action and offers the events of this scene', async () => {
+  const flow = (await groupsOf('.inspector .add-action')).find((g) => g.group === 'flow')!;
+  assert.deepEqual(flow.types, ['wait', 'run_event', 'repeat', 'cancel', 'cancel_event']);
+  const text = await page.locator('.inspector .add-action option[value=cancel_event]').evaluate((o) => (o as HTMLOptionElement).text);
+  assert.match(text, /^⏹️ Cancel event: Stop an event that is running/);
+
+  await page.locator('.inspector .add-action').selectOption('cancel_event');
+  const card = page.locator('.inspector details.action[open]').filter({ has: page.locator('summary .tag', { hasText: 'Cancel event' }) });
+  await card.waitFor();
+  const pick = card.locator('[data-field=target_event_id] select');
+  const options = await pick.locator('option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value).filter(Boolean));
+  assert.equal(options.length, 1, 'only the event of this scene (the hotspot being edited)');
+  await pick.selectOption(options[0]!);
+  await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Stop /.test(s.textContent ?? '')));
+  await card.scrollIntoViewIfNeeded();
+  await shot('cancel-event-card');
+});
+
 test('no page errors', () => {
   assert.deepEqual(errors, []);
 });

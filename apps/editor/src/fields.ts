@@ -282,7 +282,7 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       return wrap(select(points, current, (v) => set(v === '' ? null : v), f.placeholder ?? 'The default spawn point'));
     }
     case 'event': {
-      const events = ctx.store.rows('events').filter((e) => (!f.eventKinds || f.eventKinds.includes(e.kind as string)) && (!f.eventHere || e.scene_id === ctx.sceneId));
+      const events = ctx.store.rows('events').filter((e) => (!f.eventKinds || f.eventKinds.includes(e.kind as string)) && (!f.eventHere || ctx.sceneId == null || e.scene_id === ctx.sceneId));
       const options = events.map((e) => {
         const sameScene = e.scene_id === ctx.sceneId;
         const scene = sameScene ? '' : `${sceneLabel(ctx.store.byId('scenes', e.scene_id as number))} › `;

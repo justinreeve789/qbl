@@ -339,7 +339,7 @@ Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 audience | string | player | `player`: only the player who sets the event off sees it. `scene`: every player in the scene sees and hears it as it happens.
 
-Every kind of event can have an `audience`. With `scene`, these actions are shown to the other players in the scene at the moment they happen for the player who set the event off: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `narration`, `translate` and `cancel`. In a shared dialogue, "the player" is the player who set it off: the bubble hangs over their avatar, and a story box shows their name and portrait.
+Every kind of event can have an `audience`. With `scene`, these actions are shown to the other players in the scene at the moment they happen for the player who set the event off: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `narration`, `translate`, `cancel` and `cancel_event`. In a shared dialogue, "the player" is the player who set it off: the bubble hangs over their avatar, and a story box shows their name and portrait.
 
 Everything an event *does* stays with the player who set it off, whatever the audience: `variable`, `award`, `jump`, `freeze`, `avatar`, `shop`, `infobox` and the timing actions. Nothing another player's event shows can change your variables, move you or open a box you must answer. (A variable that should change for everyone is a shared variable; see [Variables](#variables). An avatar being hidden is seen by everyone anyway.)
 
@@ -611,6 +611,26 @@ frozen | bool | `true`: the player cannot move. `false`: they can again.
 ```
 
 A freeze ends at a `freeze` action with `frozen: false`, **or when the event that froze the player finishes**, or on leaving the scene, whichever comes first, so a player can never be left stuck by a missing action. While frozen a player can still click hotspots and infobox buttons. The demo freezes the player while Captain Vega is speaking.
+
+### Cancel event
+
+A new action type, `cancel_event`, stops an event of the same scene that is running. `cancel` stops one action; this stops a whole event: a loop of a bird flying about, a countdown, a character's chatter once the player has solved the puzzle.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+target_event_id | int | The event to stop. Named like `run_event`'s, since `event_id` is the event the action belongs to. It must be in the same scene.
+
+```json
+{ "type": "cancel_event", "target_event_id": 42 }
+```
+
+* The event goes no further, and whatever its actions are showing or playing stops, as when an `overridable` event is interrupted. A `freeze` it made ends, and if it had `block_hotspots`, hotspots work again.
+* An event that is not running is left alone: nothing happens, and it can still start later. Use conditions to keep it from starting.
+* It counts as finished at once, so it can be started straight away: `cancel_event` followed by `run_event` for the same event restarts it.
+* An event may name itself, which ends it there.
+* Background music (persistent audio) it started keeps playing; a `cancel` naming the audio action stops it.
+* Events it started with `run_event` are their own and keep running.
+* In an event whose audience is the scene, the other players have what they are being shown of the stopped event taken away too.
 
 ### Avatar
 

@@ -408,6 +408,13 @@ export function validateScenario(doc: unknown): ValidationResult {
         else if (eventScene.get(target) !== scene.id) err(`${path}.target_event_id`, `Event ${target} belongs to another scene`);
         break;
       }
+      case 'cancel_event': {
+        const target = a.target_event_id;
+        if (target == null) err(`${path}.target_event_id`, 'No event is chosen to stop');
+        else if (!eventScene.has(target)) err(`${path}.target_event_id`, `Event ${target} does not exist (it may have been deleted)`);
+        else if (eventScene.get(target) !== scene.id) err(`${path}.target_event_id`, `Event ${target} belongs to another scene; only an event of this scene can be stopped`);
+        break;
+      }
       case 'cancel':
         if (a.action_id == null) err(`${path}.action_id`, 'No action is chosen to stop');
         else if (!actionScene.has(a.action_id)) err(`${path}.action_id`, `Action ${a.action_id} does not exist (it may have been deleted)`);

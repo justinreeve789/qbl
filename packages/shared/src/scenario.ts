@@ -5,7 +5,7 @@ import { characterMediaIds, normalizeNpc, scenarioAvatars } from './characters.j
 import { characterRoams, normalizeRoutine } from './walking.js';
 
 const ACTION_TYPES: ActionType[] = [
-  'animate', 'award', 'glossary', 'shop', 'dialogue', 'narration', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
+  'animate', 'award', 'glossary', 'shop', 'dialogue', 'narration', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'cancel_event', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
   'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk', 'weather', 'camera', 'bench',
 ];
 
