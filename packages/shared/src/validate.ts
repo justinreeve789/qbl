@@ -442,6 +442,12 @@ export function validateScenario(doc: unknown): ValidationResult {
           err(`${path}.character_id`, 'The speaking character is not placed in this scene');
         }
         break;
+      case 'narration':
+        if (typeof a.text !== 'string' || a.text.trim() === '') err(`${path}.text`, 'text is required');
+        else checkText(a.text, `${path}.text`);
+        if (a.duration != null && (typeof a.duration !== 'number' || a.duration < 0)) err(`${path}.duration`, 'duration is a number of milliseconds, 0 or more');
+        checkRecording(a.narration_media_id, a.text, `${path}.narration_media_id`);
+        break;
       case 'conversation':
         checkConversation(a, path, scene);
         break;
@@ -509,6 +515,7 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (typeof a.text !== 'string') err(`${path}.text`, 'text is required');
         else if (a.text.length > 256) warn(`${path}.text`, 'text is longer than 256 characters');
         checkText(a.text, `${path}.text`);
+        checkRecording(a.narration_media_id, a.text, `${path}.narration_media_id`);
         break;
       case 'infobox': {
         if (typeof a.content !== 'string') err(`${path}.content`, 'content is required');

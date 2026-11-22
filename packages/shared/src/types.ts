@@ -217,6 +217,7 @@ export type ActionType =
   | 'glossary'
   | 'shop'
   | 'dialogue'
+  | 'narration'
   | 'conversation'
   | 'avatar'
   | 'animate'
@@ -470,6 +471,21 @@ export interface DialogueAction extends ActionBase, Narrated {
 }
 
 /**
+ * [ext] The narrator speaks: the story box that a portrait dialogue uses, across the bottom of the
+ * screen, with no close-up and no name. It is for what no character says: setting the scene, what
+ * happens next, a word from the storyteller. It is read aloud unless `narrate` is false, in the
+ * scenario's narrator's voice once recorded (`Scenario.narrator_voice`), otherwise by the browser.
+ * It stays until the player clicks to continue, unless `duration` is set.
+ */
+export interface NarrationAction extends ActionBase, Narrated {
+  type: 'narration';
+  /** May contain {{variable}} placeholders. */
+  text: string;
+  /** How long it stays, in milliseconds. Absent or 0: until the player clicks to continue. */
+  duration?: number;
+}
+
+/**
  * [ext] A conversation the player takes part in: a dialogue tree. It is a set of lines, each said
  * by the player or a character. After a line the player picks what to say next from its choices,
  * and each choice leads to another line (or ends the conversation), so the talk branches and can
@@ -652,7 +668,7 @@ export interface CameraAction extends ActionBase {
   duration?: number;
 }
 export type Action =
-  | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
+  | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | NarrationAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
   | VariableAction | VideoAction | WaitAction | WalkAction | WeatherAction | CameraAction;
@@ -718,7 +734,7 @@ export interface GameEvent {
 export type EventAudience = 'player' | 'scene';
 
 /** The action types other players are shown when an event's audience is the scene. */
-export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'translate', 'cancel', 'animate', 'walk', 'weather'] as const;
+export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'narration', 'translate', 'cancel', 'animate', 'walk', 'weather'] as const;
 
 export interface Hotspot extends GameEvent {
   position_x?: number | null;
@@ -1398,8 +1414,10 @@ export interface Scenario {
    */
   narration?: 'off' | 'on';
   /**
-   * [ext] The voice a story's narration is recorded in (text overlays read aloud): a key of the server's
-   * voice catalog, as a character's `tts_voice` is. Absent: the browser reads it.
+   * [ext] The narrator's voice: what is read aloud that no character says (narration actions, and
+   * text overlays and infoboxes read aloud) is recorded in it. A key of the server's voice catalog,
+   * as a character's `tts_voice` is. Absent: the server's default narrator for the scenario's
+   * language (a dramatic storyteller in English). `"none"`: no narrator, so the browser reads them.
    */
   narrator_voice?: string;
   /** [ext] Players may send typed messages to one other player. They are filtered and logged like chat. */

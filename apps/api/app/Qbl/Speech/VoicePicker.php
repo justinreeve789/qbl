@@ -45,6 +45,12 @@ final class VoicePicker
         return $out;
     }
 
+    /** The default narrator's voice for a language (VoiceCatalog::narrator()). */
+    public function narrator(?string $lang): ?string
+    {
+        return $this->catalog->narrator($lang);
+    }
+
     /** How well a voice suits what is wanted. */
     public static function fit(array $want, array $voice): int
     {

@@ -67,6 +67,15 @@ The voiced line gets `narrate: true` and `narration_media_id`. The recording is 
 }
 ```
 
+## The narrator
+
+What no character says is read by the **narrator**: every [`narration`](/docs/developers/extensions/#the-narrator) action (unless it has `narrate: false`), and the text overlays and infoboxes that are read aloud (marked `narrate: true`, or all of them when the scenario's `narration` is `on`). "Record voices", `qbl:voice` and the generator record them in the narrator's voice, with `character_id` 0 in `Voicer::lines()`.
+
+- **Who narrates.** The scenario's `narrator_voice` (Settings, "Talking and reading", in the editor), or else the default narrator for its language: the catalog's `narrators` (`"en": "storyteller"`, `"es": "alex-es"`, …). `QBL_TTS_NARRATOR` names another catalog voice to use instead, for scenarios in that voice's language. `narrator_voice: "none"` means no narrator: their recordings are removed the next time voices are recorded, and the browser reads them.
+- **The storyteller** (`bm_fable(2)+bm_lewis(1)` at 0.94 on Kokoro; OpenAI's `fable`, told to be a dramatic storyteller) is the English default: expressive like Fable, with Lewis's weight beneath it.
+- **Infoboxes** are recorded only when they are plain text on one page. A box of pages (each read on its own) or one with the game's own blocks (cards, slideshows, answer boxes), whose words depend on play, is left to the browser.
+- **Characters** are given other voices while there are enough: "Give everyone a voice" and the generator keep the narrator's voice for the narrator. A story asks the voice picker for a dramatic, charismatic storyteller, so it is usually the storyteller unless the story describes its narrator otherwise.
+
 ## How the words are lit
 
 The game matches the words shown against the recorded words, in order. Capitals and punctuation are ignored, and a few words of difference are allowed. Words that do not match (the player's name where "explorer" was said, "42" where the service said "forty-two", "Dr." where it said "Doctor") take the time of what was said in their place. The highlight then follows the recording's own clock (`audio.currentTime`), so it stays with the voice even if the audio is slow to start or stutters. If fewer than half the words match (the line was changed and not recorded again), or the recording has no timings, the words are paced evenly over its length instead.
@@ -130,6 +139,7 @@ Variable | Default | What
 `QuestLab_TTS_TIMEOUT` | 120 | Seconds to wait for one line.
 `QuestLab_TTS_CACHE_DIR` | `/data/speech` (Docker), `storage/app/speech` | Recordings already made.
 `QuestLab_TTS_VOICES` | `resources/speech/voices.json` | The voice catalog.
+`QBL_TTS_NARRATOR` | | A catalog voice to narrate in, for scenarios in its language that choose no narrator. Empty: the catalog's `narrators` ("storyteller" in English).
 
 ## Editor API
 

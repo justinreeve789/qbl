@@ -84,12 +84,12 @@ export class HeadlessUi implements UiPort {
     return this.overlay(this.dialogues, `${o.name ?? 'player'}: ${text}`, o.duration);
   }
   /** Portrait boxes showing now. `next()` is the player clicking to continue. */
-  stories: Array<{ name?: string; text: string; portrait?: string; watching: boolean; next(): void }> = [];
-  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }) {
+  stories: Array<{ name?: string; text: string; portrait?: string; watching: boolean; narrator: boolean; next(): void }> = [];
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; narrator?: boolean; speak?: SpeakOptions }) {
     this.say(text, o.speak);
     let finish!: () => void;
     const done = new Promise<void>((r) => (finish = r));
-    const entry = { name: o.name, text, portrait: o.portrait?.url ?? undefined, watching: !!o.watching, next: () => end() };
+    const entry = { name: o.name, text, portrait: o.portrait?.url ?? undefined, watching: !!o.watching, narrator: !!o.narrator, next: () => end() };
     const end = () => {
       const i = this.stories.indexOf(entry);
       if (i >= 0) this.stories.splice(i, 1);

@@ -86,8 +86,9 @@ export interface UiPort {
    * A dialogue box across the bottom of the screen with the speaker's close-up portrait and name.
    * With `duration` 0 it stays until the player clicks or presses Enter or Space to continue.
    * `watching`: it comes from another player's event, so it never takes this player's input.
+   * `narrator`: the narrator speaks (a narration action): the same box, with no close-up and no name.
    */
-  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle;
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; narrator?: boolean; speak?: SpeakOptions }): ActionHandle;
   /**
    * One line of a conversation and the answers the player can give, for a dialogue tree. `portrait`:
    * a story box with the speaker's close-up and the answers listed under the line. `bubble`: the

@@ -52,7 +52,7 @@ final class ScenarioVoicer
         $deadline = isset($options['seconds']) ? microtime(true) + (float) $options['seconds'] : null;
         $out = ['lines' => 0, 'recorded' => 0, 'kept' => 0, 'removed' => 0, 'remaining' => 0, 'skipped' => []];
 
-        foreach (Voicer::lines($rows) as $line) {
+        foreach (Voicer::lines($rows, $this->voicer->catalog()) as $line) {
             $where = $line['action_id'].($line['line'] !== null ? ":{$line['line']}" : '');
             if (isset($options['character_id']) && $line['character_id'] !== (int) $options['character_id']) {
                 continue;
@@ -130,7 +130,10 @@ final class ScenarioVoicer
     public function assign(int $scenarioId, bool $all = false): array
     {
         $rows = $this->store->bundle($scenarioId);
-        $taken = [];
+        // The narrator's voice is the narrator's: characters are given others while there are enough.
+        $settings = (array) ($rows['scenario']['settings'] ?? []);
+        $narrator = $this->voicer->catalog()->narratorFor($settings, $rows['scenario']['default_language'] ?? 'en');
+        $taken = $narrator !== null ? [$narrator] : [];
         $wanted = [];
         foreach ($rows['characters'] as $c) {
             $voice = $c['settings']['tts_voice'] ?? null;

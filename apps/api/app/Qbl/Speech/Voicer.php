@@ -85,12 +85,18 @@ final class Voicer
      * The lines characters say, from a scenario's rows (decoded, as ScenarioStore::bundle() and
      * MissionBuilder give them): every `dialogue` action said by a character, and every character's
      * line of a `conversation` (`line` is then its place in the action's `lines`). `voice` is the
-     * character's, or null when it has none. With a narrator's voice (the scenario's `narrator_voice`,
-     * as a story has), the text overlays to be read aloud too, said by the narrator (character_id 0).
+     * character's, or null when it has none.
+     *
+     * And what the narrator says (character_id 0): every `narration` action not marked
+     * `narrate: false`, and the text overlays and infoboxes that are read aloud (marked `narrate`, or
+     * all of them when the scenario's `narration` is "on"). The narrator's voice is the scenario's
+     * `narrator_voice`, or else $catalog's default narrator for its language; with neither (or
+     * `narrator_voice: "none"`) their `voice` is null, and the browser reads them. An infobox is the
+     * narrator's only when it is plain text on one page: its words are what the player sees.
      *
      * @return list<array{index: int, action_id: int, line: ?int, character_id: int, voice: ?string, text: string, media_id: ?int, narrate: ?bool}>
      */
-    public static function lines(array $rows): array
+    public static function lines(array $rows, ?VoiceCatalog $catalog = null): array
     {
         $voices = [];
         foreach ($rows['characters'] ?? [] as $c) {
@@ -103,17 +109,27 @@ final class Voicer
             'text' => (string) ($p['text'] ?? ''), 'media_id' => isset($p['narration_media_id']) ? (int) $p['narration_media_id'] : null,
             'narrate' => isset($action['narrate']) ? (bool) $action['narrate'] : null,
         ];
-        // A story's narrator (the scenario's narrator_voice) reads its captions: text overlays marked to be read aloud.
+        // The narrator reads what no character says, in the scenario's narrator's voice.
         $settings = $rows['scenario']['settings'] ?? [];
         $settings = is_array($settings) ? $settings : (json_decode((string) $settings, true) ?: []);
-        $narrator = isset($settings['narrator_voice']) && $settings['narrator_voice'] !== '' ? (string) $settings['narrator_voice'] : null;
+        $narrator = VoiceCatalog::chosenNarrator($settings, fn () => $catalog?->narrator($rows['scenario']['default_language'] ?? 'en'));
+        $readAloud = ($settings['narration'] ?? null) === 'on';
         $out = [];
         foreach ($rows['actions'] ?? [] as $i => $a) {
             $p = is_array($a['params'] ?? null) ? $a['params'] : (json_decode((string) ($a['params'] ?? ''), true) ?: []);
-            if ($narrator && ($a['type'] ?? '') === 'text_overlay' && ($p['narrate'] ?? null) === true) {
+            $type = (string) ($a['type'] ?? '');
+            $narrate = isset($p['narrate']) ? (bool) $p['narrate'] : null;
+            $words = match ($type) {
+                'narration' => $narrate !== false ? (string) ($p['text'] ?? '') : null,
+                'text_overlay' => ($narrate ?? $readAloud) ? (string) ($p['text'] ?? '') : null,
+                'infobox' => ($narrate ?? $readAloud) ? self::infoboxWords((string) ($p['content'] ?? '')) : null,
+                default => null,
+            };
+            // With no narrator the line is still listed (with no voice), so an old recording of it is let go.
+            if ($words !== null && trim($words) !== '') {
                 $out[] = [
-                    'index' => $i, 'action_id' => (int) $a['id'], 'line' => null, 'character_id' => 0, 'voice' => $narrator, 'text' => (string) ($p['text'] ?? ''),
-                    'media_id' => isset($p['narration_media_id']) ? (int) $p['narration_media_id'] : null, 'narrate' => true,
+                    'index' => $i, 'action_id' => (int) $a['id'], 'line' => null, 'character_id' => 0, 'voice' => $narrator, 'text' => $words,
+                    'media_id' => isset($p['narration_media_id']) ? (int) $p['narration_media_id'] : null, 'narrate' => $narrate ?? true,
                 ];
             } elseif (($a['type'] ?? '') === 'dialogue' && $said($p)) {
                 $out[] = $entry($i, $a, null, $p, $p);
@@ -127,6 +143,26 @@ final class Voicer
         }
 
         return $out;
+    }
+
+    /**
+     * The words an infobox shows, as the game reads them aloud, or null when that cannot be known
+     * ahead of time: a box of more than one page (each page is read on its own), or one with the
+     * game's own blocks (cards to turn over, slideshows, answer boxes), whose words depend on play.
+     */
+    public static function infoboxWords(string $html): ?string
+    {
+        if (preg_match('/\bdata-(qbl|unread)\b/i', $html)) {
+            return null;
+        }
+        // What the player never sees is never read.
+        $html = (string) preg_replace('#<(script|style|template)\b[^>]*>.*?</\1>#is', ' ', $html);
+        // A new paragraph, line or cell is a new word even with no space written between them.
+        $html = (string) preg_replace('#<(br|/?(p|div|li|h[1-6]|tr|td|th|blockquote|section|figure|figcaption))\b[^>]*>#i', ' $0', $html);
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+
+        return $text !== '' ? $text : null;
     }
 
     /**
@@ -164,7 +200,7 @@ final class Voicer
     public function voiceBuilt(array $built, string $dir, ?string $lang = 'en', ?callable $log = null, ?callable $tick = null): array
     {
         $rows = &$built['rows'];
-        $lines = array_values(array_filter(self::lines($rows), fn ($l) => $l['voice'] !== null && $l['narrate'] !== false && $l['media_id'] === null));
+        $lines = array_values(array_filter(self::lines($rows, $this->catalog), fn ($l) => $l['voice'] !== null && $l['narrate'] !== false && $l['media_id'] === null));
         $nextId = max([0, ...array_map(fn ($m) => (int) $m['id'], $rows['media'] ?? [])]) + 1;
         $names = array_column($rows['characters'] ?? [], 'name', 'id') + [0 => 'narrator'];
         if (! is_dir($dir) && ! mkdir($dir, 0775, true) && ! is_dir($dir)) {
