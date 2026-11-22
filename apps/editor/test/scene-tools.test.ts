@@ -153,6 +153,42 @@ test('layers: a repeated, drifting sky behind and a foreground in front', async 
   assert.deepEqual(scene.foreground_media, []);
 });
 
+test('layers: drag a background layer to the top and it becomes the main picture', async () => {
+  const media = (l: unknown) => (l as { media_id?: number; id?: number }).media_id ?? (l as { id?: number }).id;
+  const sky = media((await draft()).scenes[0]!.background_media![0]);
+
+  await page.click('[title="Add: background layers"]');
+  await inspector('[data-field=media_id] select').selectOption({ label: 'guide.png' });
+  await saved();
+  const rows = '[data-section="Background layers"] li.layer-row';
+  await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 2, rows);
+  assert.match(await page.innerText(`${rows} >> nth=0`), /main picture/);
+  const before = (await draft()).scenes[0]!.background_media!.map(media);
+  const guide = before[1];
+  assert.equal(before.length, 2);
+  assert.equal(before[0], sky);
+  assert.notEqual(guide, sky);
+
+  // Drag the second layer (selected, as it was just added) onto the top half of the first.
+  await page.locator(`${rows} >> nth=1 >> .grip`).dragTo(page.locator(`${rows} >> nth=0`), { targetPosition: { x: 40, y: 2 } });
+  await page.waitForFunction((sel) => /guide/.test(document.querySelector(sel)?.textContent ?? ''), `${rows}:first-child`);
+  let scene = (await draft()).scenes[0]!;
+  assert.deepEqual(scene.background_media!.map(media), [guide, sky], 'guide.png is now drawn first');
+  assert.match(await page.innerText(`${rows} >> nth=0`), /guide\.png[\s\S]*main picture/);
+  assert.match(await page.innerText(`${rows} >> nth=0 >> .outline-item`), /guide/, 'the moved layer is still the one selected');
+  assert.ok(await page.locator(`${rows} >> nth=0 >> .outline-item.selected`).count(), 'its row is still selected');
+
+  // And back below, then remove it so the rest of the file sees one background.
+  await page.locator(`${rows} >> nth=0 >> .grip`).dragTo(page.locator(`${rows} >> nth=1`), { targetPosition: { x: 40, y: 18 } });
+  await page.waitForFunction((sel) => /sky/.test(document.querySelector(sel)?.textContent ?? ''), `${rows}:first-child`);
+  scene = (await draft()).scenes[0]!;
+  assert.deepEqual(scene.background_media!.map(media), [sky, guide]);
+  await page.click(`${rows} >> nth=1 >> .outline-item`);
+  await page.click('text=Delete layer');
+  scene = (await draft()).scenes[0]!;
+  assert.deepEqual(scene.background_media!.map(media), [sky]);
+});
+
 test('areas: move a corner, add one, remove one; add a blocked area', async () => {
   await page.click('.outline-item >> text=Area 1');
   await page.waitForSelector('.stage-overlay circle.handle');
