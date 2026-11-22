@@ -1,5 +1,9 @@
 ---
 title: "Spritemaps"
+host:
+  who: mallory
+  says: "Many frames in one picture, played back as an animation."
+  side: right
 ---
 
 A spritemap is an animation that can be used in a label or as an action. A PNG containing all the frames for an animation shown together, called a sprite sheet, is referenced by the spritemap to produce the animation.

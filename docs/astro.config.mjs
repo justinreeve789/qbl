@@ -29,6 +29,8 @@ export default defineConfig({
       // Fails the build on a broken link, as `mkdocs build --strict` did.
       plugins: [starlightLinksValidator({ errorOnLocalLinks: false })],
       customCss: ['./src/styles/qbl.css'],
+      // Each page's host (frontmatter `host:`) speaks first.
+      components: { MarkdownContent: './src/components/MarkdownContent.astro' },
       lastUpdated: false,
       sidebar: [
         {

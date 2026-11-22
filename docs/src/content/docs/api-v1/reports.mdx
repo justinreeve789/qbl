@@ -1,7 +1,12 @@
 ---
 title: "Reports, grades and learning evidence"
 description: "Pull assignment reports, a gradebook feed, student reports and district-wide engagement and standards reports, and understand exactly how each number is worked out."
+host:
+  who: val
+  says: "Grades for the gradebook, evidence for the teacher, trends for the district. Here's where every number comes from."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
@@ -316,6 +321,10 @@ The numbers for the top of a district dashboard.
 Two more endpoints give raw activity: `GET /assignments/{id}/activity` (what students did in one assignment, newest first) and the organization-wide [activity feed](/docs/api-v1/activity-and-privacy-requests/#the-activity-feed) for your data warehouse. The chat transcript of an assignment is `GET /assignments/{id}/messages`, with `messages:read`.
 
 ## How the numbers are worked out
+
+<Host who="sam" side="right">
+No black boxes. Here is every formula behind every number, so you can explain a grade to anyone.
+</Host>
 
 None of this is hidden. Everything below is how QuestLab computes the figures, so you can reproduce them or choose to ignore them.
 

@@ -1,13 +1,21 @@
 ---
 title: Instances, teams and save data
 description: How a team's copy of a mission is kept, what is saved per player, how avatars work and which tables hold it.
+host:
+  who: val
+  says: "Every team gets its own copy of the world. Here's how those copies, and the saves inside them, are kept."
+  side: right
 ---
+import SaveLayers from '../../../components/diagrams/SaveLayers.astro';
+
 
 This page is for developers and administrators. For how teachers use teams, see [Classes, missions and teams](/docs/editor/classes/).
 
 ## Instances and save data
 
 Every copy of a scenario's world is an **instance**, named by a group key. The address a player opens carries it: `/{code}?group=t7`.
+
+<SaveLayers />
 
 Group key | Instance
 --------- | --------

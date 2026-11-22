@@ -1,7 +1,15 @@
 ---
 title: "You are in the room: facilitating a mission"
 description: "A QuestLab mission works best with a teacher involved at every step. Here is what to do before, during and after, and what to say."
+host:
+  who: val
+  says: "A mission isn't a babysitter. The magic happens when you walk the room. Here's what to do before, during and after."
+  side: right
 ---
+import Host from '../../../components/Host.astro';
+
+import Flow from '../../../components/diagrams/Flow.astro';
+
 
 import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
@@ -12,6 +20,14 @@ Students who are left to roam do roam. Students whose teacher has set a purpose,
 <Aside type="tip" title="The one-line version">
 **Brief it, watch it, ask about it, debrief it.** Spend two minutes before, stay present during, ask questions instead of giving answers, and use the evidence afterwards.
 </Aside>
+
+
+<Flow steps={[
+  { icon: '📝', title: 'Before', text: 'Play it yourself, assign it, form the teams.' },
+  { icon: '📣', title: 'Launch', text: 'Two minutes: the problem, the goal, the roles.' },
+  { icon: '🚶', title: 'During', text: 'Circulate. Look in on each team.' },
+  { icon: '💬', title: 'After', text: 'Debrief from the report’s first answers.' },
+]} caption="Four moments where the teacher makes the mission work." />
 
 ## Before: set it up like a lesson
 
@@ -47,6 +63,10 @@ Resist the urge to explain the mission. Frame the problem instead and set the ru
 Then let them go in. The first five minutes should be theirs.
 
 ## During: circulate and look in
+
+<Host who="val" side="left">
+Psst… Team 2 has been at the gate for a while. Walk over before you look in: a question in person beats a hint on screen.
+</Host>
 
 Do not sit at your desk. Walk the room, and keep the **Classes → Report** open on your screen as a dashboard.
 
@@ -113,6 +133,10 @@ The best facilitation move is a question that sends a student back into the miss
 </Tabs>
 
 ## After: debrief from the evidence
+
+<Host who="sam" side="right">
+The best debrief starts with a wrong answer half the class chose. Put it on the board and ask why it was tempting.
+</Host>
 
 The best five minutes of the lesson come after the screens are closed. The report gives you what no worksheet can: *what each student thought before any feedback*.
 

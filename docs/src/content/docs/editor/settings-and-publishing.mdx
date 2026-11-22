@@ -1,7 +1,12 @@
 ---
 title: Settings, testing and publishing
 description: Scenario settings, testing a draft, publishing, and getting a mission to students.
+host:
+  who: mallory
+  says: "Play it like a student, fix what the checker finds, then publish. Your class is waiting!"
 ---
+import Flow from '../../../components/diagrams/Flow.astro';
+
 
 ## Settings
 
@@ -39,6 +44,13 @@ At the bottom of the page are **Export as a ZIP**, **Duplicate**, and **Delete t
 Test on the draft before publishing, and again after publishing as a student in another browser. Testing never touches what players have.
 
 ## Publishing
+
+<Flow loop="Change and publish again: players keep the last version until you do" steps={[
+  { icon: '✏️', title: 'Draft', text: 'Only you see your changes.' },
+  { icon: '▶️', title: 'Test', text: 'Play it as a student. Nothing is saved.' },
+  { icon: '🔍', title: 'Check', text: 'Errors stop the publish; Go there → takes you to each.' },
+  { icon: '🚀', title: 'Publish', text: 'Players get the new version.' },
+]} />
 
 ![The Publish tab with one error found: it says where the problem is and has a Go there button](../../../assets/screenshots/editor-publish-check.webp)
 

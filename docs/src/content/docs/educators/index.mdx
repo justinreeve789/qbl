@@ -1,7 +1,12 @@
 ---
 title: "Why teach with QuestLab"
 description: "Students walk into a lesson instead of watching one, and you stay at the centre of it: you choose the mission, brief the class, follow teams as they play, and read exactly what they understood."
+host:
+  who: val
+  says: "I've watched a class go quiet when a mission starts, then get loud in the best way. Here's why it works, and why you stay at the centre of it."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
@@ -48,6 +53,10 @@ That last point is what makes QuestLab more than a game. Every question records 
 
 ## You stay at the centre
 
+<Host who="val" side="right">
+You choose the mission, you brief the class, you walk the room, and you lead the debrief. The game is the place; you're the teacher.
+</Host>
+
 QuestLab is not a way to keep a class busy while you mark. It is designed so that a teacher is involved at **every step**, and so that the teacher's judgement is what turns time in the game into learning.
 
 | Moment | What you do | What QuestLab gives you |
@@ -74,6 +83,10 @@ You do not need to build anything first.
 - **Build your own** in the [editor](/docs/editor/). The [walkthrough](/docs/editor/walkthrough/set-up/) takes you from empty to published, with a conversation, a gate and a question, in one sitting.
 
 ## Safe by design
+
+<Host who="buck" side="left">
+Students play under a made-up name, and chat can be emotes only. I keep an eye on things.
+</Host>
 
 - **No personal data about students.** When your school connects QuestLab to its roster, students are known by your school's own opaque id and play under a made-up name such as *Brave Otter 417*. See [Privacy by design](/docs/api-v1/privacy/).
 - **Chat you control.** Per mission: off, emotes only, or typed messages (filtered). Every message is kept and you can read them in the report.

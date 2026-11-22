@@ -1,6 +1,10 @@
 ---
 title: Scenarios and scenes
 description: The scenarios list, creating and copying scenarios, and managing a scenario's scenes.
+host:
+  who: mallory
+  says: "A scenario is the whole mission; scenes are its places. Here's how to make them, copy them and keep them in order."
+  side: right
 ---
 
 ## The scenarios list

@@ -1,0 +1,85 @@
+---
+// How an event runs, worked through on The Cloudy Pond's gate (the schoolyard's right edge).
+interface Props { caption?: string }
+const { caption = "The schoolyard's exit, run twice: once before the student has met Ms. Okafor, once after." } = Astro.props;
+---
+
+<figure class="qd qd-eventflow">
+  <div class="qd-ef-grid">
+    <div class="qd-card qd-tone" style="--tone: var(--qd-blue)">
+      <div class="qd-title">1 · Something happens</div>
+      <div class="qd-muted">A click on a hotspot or character, walking into a walk-in hotspot, arriving in the scene, or another event running it.</div>
+      <div class="qd-ef-example">🚶 The student walks into <code>edge-right</code></div>
+    </div>
+    <div class="qd-card qd-tone" style="--tone: var(--qd-amber)">
+      <div class="qd-title">2 · The event's conditions</div>
+      <div class="qd-muted">All must be true, or nothing happens at all (and a hotspot is hidden).</div>
+      <div class="qd-ef-example">No conditions on this exit → <strong>go on</strong></div>
+    </div>
+    <div class="qd-card qd-tone" style="--tone: var(--qd-green)">
+      <div class="qd-title">3 · Actions, in order</div>
+      <div class="qd-muted">Each action checks its own <em>Only when</em>. One that fails is skipped; the rest still run.</div>
+    </div>
+  </div>
+
+  <div class="qd-ef-runs">
+    <div class="qd-card qd-ef-run">
+      <div class="qd-title">Before talking to Ms. Okafor <span class="qd-chip" style="--chip: var(--qd-pink)">mission_started = 0</span></div>
+      <ol>
+        <li class="qd-ef-ran">🔤 Text overlay “Talk to Ms. Okafor before you head to the pond.” <span class="qd-ef-tag">runs</span></li>
+        <li class="qd-ef-skip">➡️ Jump to <code>pond</code>, only when <code>mission_started = 1</code> <span class="qd-ef-tag">skipped</span></li>
+      </ol>
+    </div>
+    <div class="qd-card qd-ef-run">
+      <div class="qd-title">After <span class="qd-chip" style="--chip: var(--qd-green)">mission_started = 1</span></div>
+      <ol>
+        <li class="qd-ef-skip">🔤 Text overlay, only when <code>mission_started = 0</code> <span class="qd-ef-tag">skipped</span></li>
+        <li class="qd-ef-ran">➡️ Jump to <code>pond</code>, arrive at <code>west</code> <span class="qd-ef-tag">runs</span></li>
+      </ol>
+    </div>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-ef-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; }
+  .qd-ef-grid > div { position: relative; }
+  .qd-ef-grid > div + div::before {
+    content: '';
+    position: absolute;
+    left: -1.25rem;
+    top: 1rem;
+    width: 1.1rem;
+    height: 0.7rem;
+    background: var(--qd-line);
+    clip-path: polygon(0 35%, 60% 35%, 60% 0, 100% 50%, 60% 100%, 60% 65%, 0 65%);
+  }
+  .qd-ef-example {
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.4rem;
+    background: color-mix(in srgb, var(--tone) 14%, transparent);
+    font-size: var(--sl-text-xs);
+  }
+  .qd-ef-runs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 1rem; }
+  .qd-ef-run ol { margin: 0.5rem 0 0; padding-left: 1.3rem; }
+  .qd-ef-run li { margin: 0.25rem 0 0; }
+  .qd-ef-skip { opacity: 0.55; text-decoration: line-through; text-decoration-color: var(--sl-color-gray-3); }
+  .qd-ef-tag {
+    display: inline-block;
+    margin-left: 0.25rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+  }
+  .qd-ef-ran .qd-ef-tag { background: var(--qd-green); color: #fff; }
+  .qd-ef-skip .qd-ef-tag { background: var(--sl-color-gray-5); color: var(--sl-color-white); }
+  @media (max-width: 44rem) {
+    .qd-ef-grid, .qd-ef-runs { grid-template-columns: 1fr; }
+    .qd-ef-grid > div + div::before { left: 1rem; top: -1.2rem; width: 0.7rem; height: 1rem; clip-path: polygon(35% 0, 65% 0, 65% 60%, 100% 60%, 50% 100%, 0 60%, 35% 60%); }
+  }
+</style>

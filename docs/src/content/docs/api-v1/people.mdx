@@ -1,7 +1,12 @@
 ---
 title: "People and classes"
 description: "Create schools, teachers and students, keep them in step with your student information system in one batch call a night, and put students in teachers' classes."
+host:
+  who: buck
+  says: "Schools, teachers, students and who's in which class, kept in step with your student information system in one nightly call."
 ---
+import Host from '../../../components/Host.astro';
+
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
@@ -186,6 +191,10 @@ A **new pseudonym** is a one-line fix: `PATCH /students/{id}` with `{"regenerate
 </Aside>
 
 ## Enrollments
+
+<Host who="val" side="right">
+Enrollments are what put a student on a teacher's class list, and so on their missions page.
+</Host>
 
 An **enrollment** puts a student in a teacher's class. The teacher can then assign them missions and see their reports, both in the editor's [Classes page](/docs/editor/classes/) and through the API.
 

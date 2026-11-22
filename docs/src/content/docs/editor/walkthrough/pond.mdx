@@ -1,7 +1,12 @@
 ---
 title: "3. Build the pond"
 description: Build the second scene, a way back, and a question that rewards finding the source of the mud.
+host:
+  who: lucy
+  says: "Now the pond itself, and a question about a muddy pipe whose wrong answers still teach something."
 ---
+import Host from '../../../../components/Host.astro';
+
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
@@ -34,6 +39,10 @@ Go to the **Scenes** tab and open `pond`.
 Return to the schoolyard and check its exit's jump now offers **Arrive at**: `west`. If you left it empty earlier, set it.
 
 ## Write the three answers
+
+<Host who="sam" side="right">
+One right answer, two wrong ones that explain themselves. The wrong ones are where the teaching happens.
+</Host>
 
 The question is built from three indirect events, one per answer, and one hotspot that asks it. Build the answers first so the hotspot's buttons can point at them.
 

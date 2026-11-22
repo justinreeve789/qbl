@@ -1,7 +1,12 @@
 ---
 title: "Launch links (sign people in)"
 description: "Put an \"Open in QuestLab\" button in your portal or LMS. Your server asks for a one-time link and redirects the browser to it, with no second password for anyone to forget."
+host:
+  who: buck
+  says: "One click in your portal and they're in, signed in and in the right place. Let's build that button."
 ---
+import Sequence from '../../../components/diagrams/Sequence.astro';
+
 
 import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
@@ -10,6 +15,23 @@ Accounts made through the API have **no password**, because there is nothing abo
 A launch link needs the `launch` scope.
 
 ## The flow
+
+<Sequence
+  actors={[
+    { id: 'b', label: 'Browser', sub: 'a student', icon: '🧑‍🎓' },
+    { id: 's', label: 'Your server', sub: 'portal or LMS', icon: '🏫' },
+    { id: 'q', label: 'QuestLab', sub: '/api/v1', who: 'buck' },
+  ]}
+  steps={[
+    { from: 'b', to: 's', text: 'clicks Open in QuestLab' },
+    { from: 's', to: 'q', text: 'POST /students/{id}/launch' },
+    { from: 'q', to: 's', text: '{ url } (once, within five minutes)', reply: true },
+    { from: 's', to: 'b', text: 'redirect to url', reply: true },
+    { from: 'b', to: 'q', text: 'opens the url' },
+    { from: 'q', to: 'b', text: 'signed in, in the right mission', reply: true },
+  ]}
+  caption="The browser never sees your API credentials: only your server talks to the API."
+/>
 
 <Steps>
 

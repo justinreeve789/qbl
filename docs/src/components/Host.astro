@@ -1,0 +1,105 @@
+---
+// One of the cast introducing a page or a topic: the avatar stands at one end of a speech card,
+// breaking out over its top edge, turned towards what they are saying.
+//   <Host who="lucy">Let's find out why the pond went brown.</Host>
+//   <Host who="buck" side="right" says="Tokens last an hour." />
+// Pages get one at the top from their frontmatter (`host:`), see MarkdownContent.astro.
+import { Image } from 'astro:assets';
+import { CAST, type CastName } from './cast';
+
+interface Props {
+  who: CastName;
+  says?: string;
+  /** Which end of the card the character stands at. */
+  side?: 'left' | 'right';
+  /** `page` for the top of a page (bigger), `section` for a topic further down. */
+  size?: 'page' | 'section';
+}
+
+const { who, says, side = 'left', size = 'section' } = Astro.props;
+const member = CAST[who];
+if (!member) throw new Error(`Host: unknown cast member "${who}"`);
+// The character looks towards the words: on the left they face right, and the other way round.
+const flip = member.faces !== (side === 'left' ? 'right' : 'left');
+---
+
+<aside
+  class:list={['qbl-host', `qbl-host--${side}`, `qbl-host--${size}`, { 'qbl-host--flip': flip }]}
+  style={`--host-color: ${member.color}`}
+  aria-label={`${member.name} says`}
+>
+  <Image class="qbl-host__figure" src={member.picture} alt="" height={size === 'page' ? 360 : 280} loading="lazy" decoding="async" />
+  <div class="qbl-host__words">
+    {says ? <p>{says}</p> : <slot />}
+  </div>
+</aside>
+
+<style>
+  .qbl-host {
+    --fig-h: 8.25rem;
+    --fig-room: 6.5rem;
+    position: relative;
+    margin-block: 2.5rem 1.75rem;
+    min-height: 4.25rem;
+    display: flex;
+    align-items: center;
+    padding: 0.85rem 1.1rem 0.85rem var(--fig-room);
+    border: 2px solid var(--host-color);
+    border-radius: 1.1rem;
+    background:
+      radial-gradient(circle at calc(var(--fig-room) / 2) 115%, color-mix(in srgb, var(--host-color) 38%, transparent), transparent calc(var(--fig-room) * 0.9)),
+      linear-gradient(color-mix(in srgb, var(--host-color) 7%, var(--sl-color-bg)), color-mix(in srgb, var(--host-color) 7%, var(--sl-color-bg)));
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--host-color) 30%, transparent);
+    color: var(--sl-color-white);
+    line-height: 1.55;
+  }
+  .qbl-host--page {
+    --fig-h: 10.5rem;
+    --fig-room: 8rem;
+    margin-top: 1.25rem;
+    min-height: 5rem;
+    font-size: var(--sl-text-lg);
+  }
+  .qbl-host--right {
+    padding: 0.85rem var(--fig-room) 0.85rem 1.1rem;
+    background:
+      radial-gradient(circle at calc(100% - var(--fig-room) / 2) 115%, color-mix(in srgb, var(--host-color) 38%, transparent), transparent calc(var(--fig-room) * 0.9)),
+      linear-gradient(color-mix(in srgb, var(--host-color) 7%, var(--sl-color-bg)), color-mix(in srgb, var(--host-color) 7%, var(--sl-color-bg)));
+  }
+  /* The character: feet just over the bottom border, head well above the top one. */
+  .qbl-host :global(.qbl-host__figure) {
+    position: absolute;
+    bottom: -0.7rem;
+    left: calc(var(--fig-room) * 0.44);
+    translate: -50% 0;
+    height: var(--fig-h);
+    width: auto;
+    max-width: none;
+    margin: 0;
+    pointer-events: none;
+    filter: drop-shadow(0 5px 5px rgb(0 0 0 / 0.22));
+    animation: qbl-host-bob 4s ease-in-out infinite;
+  }
+  .qbl-host--right :global(.qbl-host__figure) { left: auto; right: calc(var(--fig-room) * 0.44); translate: 50% 0; }
+  .qbl-host--flip :global(.qbl-host__figure) { scale: -1 1; }
+  .qbl-host__words { animation: qbl-host-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  .qbl-host__words :global(> :first-child) { margin-top: 0; }
+  .qbl-host__words :global(> :last-child) { margin-bottom: 0; }
+  .qbl-host__words :global(p + p) { margin-top: 0.5rem; }
+
+  @keyframes qbl-host-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes qbl-host-pop {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .qbl-host :global(.qbl-host__figure), .qbl-host__words { animation: none; }
+  }
+  @media (max-width: 30rem) {
+    .qbl-host { --fig-h: 6.75rem; --fig-room: 5.25rem; font-size: var(--sl-text-sm); margin-top: 2.25rem; }
+    .qbl-host--page { --fig-h: 8rem; --fig-room: 6rem; font-size: var(--sl-text-base); margin-top: 1.5rem; }
+  }
+</style>

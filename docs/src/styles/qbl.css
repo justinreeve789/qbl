@@ -11,3 +11,60 @@
 }
 /* Settings and other things named in the interface. */
 .sl-markdown-content kbd { white-space: nowrap; }
+
+/* ---- Diagrams (src/components/diagrams/) -------------------------------------------------
+   Drawn in HTML and inline SVG so they follow the light and dark themes. */
+.qd {
+  --qd-line: var(--sl-color-gray-4);
+  --qd-card: var(--sl-color-gray-6);
+  --qd-border: var(--sl-color-gray-5);
+  --qd-blue: #339af0;
+  --qd-green: #2fb344;
+  --qd-purple: #8b5cf6;
+  --qd-amber: #f59f00;
+  --qd-pink: #e64980;
+  --qd-cyan: #15aabf;
+  margin-block: 1.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--qd-border);
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--sl-color-gray-4) 35%, transparent) 1px, transparent 0) 0 0 / 18px 18px,
+    var(--sl-color-bg);
+  font-size: var(--sl-text-sm);
+  line-height: 1.4;
+}
+:root[data-theme='light'] .qd { --qd-card: #fff; --qd-line: var(--sl-color-gray-3); }
+.qd figcaption {
+  margin-top: 1rem;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
+  text-align: center;
+}
+:root[data-theme='light'] .qd figcaption { color: var(--sl-color-gray-2); }
+.qd * { margin-top: 0; }
+.qd svg { display: block; width: 100%; height: auto; }
+.qd .qd-scroll { overflow-x: auto; }
+.qd .qd-card {
+  background: var(--qd-card);
+  border: 1.5px solid var(--qd-border);
+  border-radius: 0.65rem;
+  padding: 0.6rem 0.75rem;
+}
+.qd .qd-title { font-weight: 700; color: var(--sl-color-white); }
+.qd .qd-muted { color: var(--sl-color-gray-3); font-size: var(--sl-text-xs); }
+:root[data-theme='light'] .qd .qd-muted { color: var(--sl-color-gray-2); }
+.qd .qd-chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--chip, var(--qd-blue)) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip, var(--qd-blue)) 55%, transparent);
+  color: var(--sl-color-white);
+  white-space: nowrap;
+}
+.qd .qd-tone { border-color: color-mix(in srgb, var(--tone) 60%, transparent); background: color-mix(in srgb, var(--tone) 10%, var(--qd-card)); }
+.qd .qd-tone > .qd-title { color: color-mix(in srgb, var(--tone) 70%, var(--sl-color-white)); }
+.qd code { font-size: 0.85em; }

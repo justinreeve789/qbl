@@ -1,7 +1,13 @@
 ---
 title: "Authentication"
 description: "Get API credentials from the district admin panel, trade them for a one-hour token, and give each system only the scopes it needs."
+host:
+  who: buck
+  says: "Credentials in, a one-hour token out. Give each system only the keys it needs."
+  side: right
 ---
+import Sequence from '../../../components/diagrams/Sequence.astro';
+
 
 import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
@@ -30,6 +36,21 @@ The client secret is a password for your whole roster. Keep it in your secrets m
 </Aside>
 
 ## Get a token
+
+<Sequence
+  actors={[
+    { id: 's', label: 'Your server', sub: 'holds the secret', icon: '🏫' },
+    { id: 'q', label: 'QuestLab', sub: '/api/v1', who: 'buck' },
+  ]}
+  steps={[
+    { from: 's', to: 'q', text: 'POST /oauth/token (client id and secret)' },
+    { from: 'q', to: 's', text: 'access_token, good for an hour', reply: true },
+    { from: 's', to: 'q', text: 'GET /students  ·  Bearer token' },
+    { from: 'q', to: 's', text: 'data', reply: true },
+    { at: 'q', note: 'An hour later: 401. Ask for a new token.' },
+  ]}
+  caption="Client credentials: your server trades its id and secret for a short-lived token, and sends that with every call."
+/>
 
 ```http
 POST /api/v1/oauth/token

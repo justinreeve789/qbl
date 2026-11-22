@@ -1,0 +1,86 @@
+---
+// What a mission is made of, drawn from The Cloudy Pond: a scenario holds scenes, scenes hold
+// events, events hold actions, and the library holds what they all use.
+interface Props { caption?: string }
+const { caption = 'The Cloudy Pond, taken apart. Every mission has this shape, however big it gets.' } = Astro.props;
+
+const scenes = [
+  {
+    name: 'schoolyard',
+    note: 'Scene 1, where players start',
+    events: [
+      { icon: '🎬', kind: 'Start event', name: 'welcome', when: 'mission_started = 0', actions: ['🔤 Text overlay'] },
+      { icon: '🧑‍🏫', kind: 'Character', name: 'Ms. Okafor', when: 'click → okafor-talk', actions: ['✋ Freeze', '💬 Dialogue ×2', '🔢 mission_started = 1', '✋ Release'] },
+      { icon: '🚪', kind: 'Exit (walk-in hotspot)', name: 'edge-right', when: 'walk into the right edge', actions: ['🔤 Hint, only when mission_started = 0', '➡️ Jump to pond, only when = 1'] },
+    ],
+  },
+  {
+    name: 'pond',
+    note: 'Scene 2',
+    events: [
+      { icon: '🎯', kind: 'Hotspot', name: 'storm-drain', when: 'click, while found_source = 0', actions: ['📋 Infobox question, 3 buttons'] },
+      { icon: '✅', kind: 'Indirect event', name: 'answer-road', when: 'run by a button', actions: ['🔢 found_source = 1', '⭐ 5 stars, 20 XP, badge', '📖 Runoff'] },
+      { icon: '🚪', kind: 'Exit', name: 'edge-left', when: 'walk into the left edge', actions: ['➡️ Jump to schoolyard'] },
+    ],
+  },
+];
+const library = [
+  ['🖼️', 'Media', '4 pictures'],
+  ['🔢', 'Variables', 'mission_started, found_source'],
+  ['🧑', 'Characters', 'Ms. Okafor'],
+  ['✅', 'Objectives', '2, the second unlocks'],
+  ['📖', 'Glossary', 'Sediment, Runoff'],
+];
+---
+
+<figure class="qd qd-anatomy">
+  <div class="qd-card qd-tone qd-scenario" style="--tone: var(--qd-amber)">
+    <div class="qd-title">🧩 Scenario: The Cloudy Pond <span class="qd-muted">· settings, who can play, chat</span></div>
+    <div class="qd-scenes">
+      {scenes.map((s) => (
+        <div class="qd-card qd-tone qd-scene" style="--tone: var(--qd-blue)">
+          <div class="qd-title">🗺️ Scene <code>{s.name}</code></div>
+          <div class="qd-muted">{s.note}. Background, walkable area, spawn points.</div>
+          <ul class="qd-events">
+            {s.events.map((e) => (
+              <li class="qd-card qd-tone" style="--tone: var(--qd-purple)">
+                <div><span aria-hidden="true">{e.icon}</span> <strong>{e.kind}</strong> <code>{e.name}</code></div>
+                <div class="qd-muted">When: {e.when}</div>
+                <div class="qd-actions">
+                  {e.actions.map((a) => <span class="qd-chip" style="--chip: var(--qd-green)">{a}</span>)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+    <div class="qd-library">
+      <span class="qd-title">📚 Library</span>
+      {library.map(([icon, name, what]) => (
+        <span class="qd-chip" style="--chip: var(--qd-amber)" title={what}>{icon} {name}: <span class="qd-lib-what">{what}</span></span>
+      ))}
+    </div>
+  </div>
+  <div class="qd-legend qd-muted" aria-hidden="true">
+    <span><i style="--c: var(--qd-amber)"></i>Scenario</span>
+    <span><i style="--c: var(--qd-blue)"></i>Scene</span>
+    <span><i style="--c: var(--qd-purple)"></i>Event (hotspot, character, start, indirect)</span>
+    <span><i style="--c: var(--qd-green)"></i>Action</span>
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .qd-scenes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.8rem; margin-top: 0.7rem; }
+  .qd-events { list-style: none; padding: 0; margin: 0.6rem 0 0; display: grid; gap: 0.5rem; }
+  .qd-events li { margin: 0; padding: 0.45rem 0.6rem; min-width: 0; }
+  .qd-anatomy code { overflow-wrap: anywhere; }
+  .qd-chip { white-space: normal; }
+  .qd-actions { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }
+  .qd-library { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.8rem; }
+  .qd-lib-what { font-weight: 400; opacity: 0.85; }
+  .qd-legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.8rem; justify-content: center; }
+  .qd-legend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 3px; background: var(--c); margin-right: 0.3rem; vertical-align: -1px; }
+  @media (max-width: 44rem) { .qd-scenes { grid-template-columns: 1fr; } }
+</style>

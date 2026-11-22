@@ -1,7 +1,14 @@
 ---
 title: The editor at a glance
 description: What the QuestLab editor is, who can use it, and where everything is.
+host:
+  who: mallory
+  says: "Welcome to the workshop. This is where missions get built, one scene at a time."
 ---
+import Host from '../../../components/Host.astro';
+
+import MissionAnatomy from '../../../components/diagrams/MissionAnatomy.astro';
+
 
 The editor is where teachers and content creators build **scenarios**: whole missions made of scenes that students walk around, with the hotspots, characters, conversations, questions and rewards that happen in them. It is served at `/editor/`. After signing in, teachers and admins land on the missions page; the **Editor** link in its menu brings you here.
 
@@ -63,6 +70,10 @@ Explanations are tucked behind a small **?** beside the field, heading or page t
 
 ## Learn by building
 
+<Host who="lucy" side="right">
+Learn by doing! The Cloudy Pond walkthrough builds a whole small mission in five short pages.
+</Host>
+
 The quickest way in is to follow the [walkthrough](/docs/editor/walkthrough/set-up/), which builds a small two-scene mission, *The Cloudy Pond*, from an empty scenario to a published, assigned mission. The finished mission is also available as a [ZIP you can import](/docs/editor/walkthrough/publish/#the-finished-mission) to compare with your own.
 
 ## A mental model
@@ -72,5 +83,7 @@ The quickest way in is to follow the [walkthrough](/docs/editor/walkthrough/set-
 * A scene has **events**: *start* events run on arrival, *end* events on leaving, *hotspot* events when a player clicks or walks into a place, *indirect* events only when something else runs them.
 * An event is a list of **actions** that run in order: say something, show a picture, ask a question, change a variable, award stars, jump to another scene.
 * **Conditions** decide whether an event, an action or a button happens, by comparing **variables**. Variables are how the mission remembers what a player has done.
+
+<MissionAnatomy />
 
 Those five ideas are the whole system. The [JSON reference](/docs/developers/) describes the same things as data.

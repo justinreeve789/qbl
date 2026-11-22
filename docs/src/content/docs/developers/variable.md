@@ -1,5 +1,9 @@
 ---
 title: "Global Variables"
+host:
+  who: sam
+  says: "Variables are a mission's memory. Here's how to declare them, and the ones the game keeps for you."
+  side: right
 ---
 
 Custom global variables can be declared by a user, and can be used throughout the project by storing numbers and strings. They are particularly useful when defining conditions for events and actions. A certain number of global variables are reserved for system use. Reserved variables are used for reference by the user in their scripting; the system keeps their values, so actions cannot change them. They are all prefixed with “QL_”.

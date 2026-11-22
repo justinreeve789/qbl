@@ -1,7 +1,13 @@
 ---
 title: "Privacy by design"
 description: "QuestLab never holds personally identifiable information about a student. Here is how the API enforces that, and what it leaves for you to do."
+host:
+  who: buck
+  says: "I guard the data, and the best way to guard a child's name is never to have it. Here's how."
+  side: right
 ---
+import PrivacySplit from '../../../components/diagrams/PrivacySplit.astro';
+
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
@@ -10,6 +16,8 @@ Most education software asks for a roster with names and emails, then promises t
 This is enforced by the API, not left to good intentions.
 
 ## What QuestLab knows about a student
+
+<PrivacySplit />
 
 | QuestLab stores | QuestLab does **not** store |
 | --- | --- |

@@ -1,7 +1,15 @@
 ---
 title: "2. Build the schoolyard"
 description: Draw the first scene, place Ms. Okafor, write her conversation, and build a gate that opens only after it.
+host:
+  who: lucy
+  says: "First stop, the schoolyard. We'll meet Ms. Okafor and build a gate that stays shut until she's had her say."
+  side: right
 ---
+import SceneAnatomy from '../../../../components/diagrams/SceneAnatomy.astro';
+
+import Host from '../../../../components/Host.astro';
+
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
@@ -28,6 +36,8 @@ The gate will jump to the pond, so the pond has to exist before you build it. Go
 ![The finished schoolyard in the game: Ms. Okafor stands in the yard and the mission checklist shows the first objective](../../../../assets/screenshots/walkthrough-schoolyard.webp)
 
 *The schoolyard as a student sees it when the mission starts (with placeholder art: swap in your own).*
+
+<SceneAnatomy caption="The parts of a scene, on a schoolyard like yours. On this page you add the walkable area, two spawn points, Ms. Okafor, a welcome and the exit; the notice board is an extra." />
 
 <Steps>
 
@@ -110,6 +120,10 @@ A **start event** runs when a player arrives. This one greets a new student, and
 </Steps>
 
 ## A gate that needs a conversation
+
+<Host who="mallory" side="right">
+My favourite bit: a gate. Two actions with opposite conditions, so exactly one of them runs.
+</Host>
 
 The path to the pond should open only after Ms. Okafor has spoken. The right edge of the schoolyard is the exit, and a **conditioned action** does the locking.
 

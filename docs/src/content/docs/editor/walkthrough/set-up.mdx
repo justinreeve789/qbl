@@ -1,7 +1,12 @@
 ---
 title: "1. Set up the scenario"
 description: Create The Cloudy Pond, a two-scene water-quality mission, and define its media, variables and characters.
+host:
+  who: lucy
+  says: "The school pond has turned brown! Over five short pages we'll build a mission that sends your students to find out why."
 ---
+import MissionAnatomy from '../../../../components/diagrams/MissionAnatomy.astro';
+
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
@@ -26,6 +31,9 @@ It is small on purpose, but it uses almost everything a bigger mission does:
 | `pond.png` | Background for the second scene |
 | `okafor.png` | Ms. Okafor, standing, on a transparent background |
 | `okafor-portrait.png` | A close-up of Ms. Okafor for conversations |
+
+
+<MissionAnatomy caption="What you will have built by the end of page 3: two scenes, a conversation, a gate and a question." />
 
 ## Create the scenario
 
