@@ -47,9 +47,16 @@ test('a dialogue tree: the captain asks, a wrong answer comes back round, and th
   g.ui.stories[0]!.next();
   await g.wait(50);
 
+  // The question is a story box of its own: the answers wait until the captain has finished.
+  assert.equal(g.ui.stories.length, 1);
+  assert.equal(g.ui.stories[0]!.text, 'What do plants need to grow?');
+  assert.deepEqual(g.ui.asks, [], 'no answers under the captain’s line');
+  g.ui.stories[0]!.next();
+  await g.wait(50);
+  assert.deepEqual(g.ui.stories, []);
   assert.equal(g.ui.asks.length, 1);
-  assert.equal(g.ui.asks[0]!.text, 'What do plants need to grow?');
   assert.equal(g.ui.asks[0]!.style, 'portrait');
+  assert.equal(g.ui.asks[0]!.name, 'Tester', 'the answers are the player’s own box');
   assert.deepEqual(g.ui.asks[0]!.answers, ['Sunlight and water', 'Only soil']);
   // Waiting for an answer, the player cannot walk away.
   const at = g.position;
@@ -61,10 +68,14 @@ test('a dialogue tree: the captain asks, a wrong answer comes back round, and th
   assert.match(g.ui.stories[0]!.text, /Not quite/);
   g.ui.stories[0]!.next();
   await g.wait(50);
+  g.ui.stories[0]!.next();
+  await g.wait(50);
   await g.answer('Sunlight');
   assert.equal(Number(g.var('samples')), before + 1, 'the choice set its variable');
-  // The player's own line, in their own name.
-  assert.equal(g.ui.asks[0]!.name, 'Tester');
+  // The player's own line, in their own name, then their answer.
+  assert.equal(g.ui.stories[0]!.name, 'Tester');
+  g.ui.stories[0]!.next();
+  await g.wait(50);
   await g.answer('Off I go');
   assert.deepEqual(g.ui.asks, []);
   assert.deepEqual(g.ui.stories, []);
@@ -79,10 +90,15 @@ test('as bubbles, the lines hang over the speakers and the answers wait at the b
   assert.deepEqual(g.ui.stories, [], 'no story box');
   assert.deepEqual(g.ui.dialogues, ['Captain Vega: Ready for your briefing, Tester?']);
   // A bubble with nothing to choose stays long enough to read, then the talk goes on.
+  // The question is a bubble too; the answers come only once it has been read.
+  for (let i = 0; i < 400 && !g.ui.dialogues.some((d) => d.includes('What do plants')); i++) await g.wait(25);
+  assert.deepEqual(g.ui.dialogues, ['Captain Vega: What do plants need to grow?']);
+  assert.deepEqual(g.ui.asks, []);
   await g.wait(8000);
+  assert.deepEqual(g.ui.dialogues, []);
   assert.equal(g.ui.asks[0]?.style, 'bubble');
-  assert.equal(g.ui.asks[0]?.name, 'Captain Vega');
   await g.answer('Sunlight');
+  await g.wait(8000);
   await g.answer('Off I go');
   assert.deepEqual(g.ui.asks, []);
 });

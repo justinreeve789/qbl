@@ -267,13 +267,13 @@ export class Ui implements UiPort {
   }
 
   /**
-   * A line of a conversation and the answers the player can give. As a story box the answers are
-   * listed in the box under the line, once the line is all showing; as a bubble the line hangs over
-   * the speaker and the answers wait in a box across the bottom of the screen. The player clicks
-   * one, or presses its number. There is no closing it without answering: the game can, with
-   * `close`, and `choice` then settles with null.
+   * The player's answers to a line of a conversation, after the line has been said. As a story
+   * box it is the player's own: their close-up, their name, and the answers listed where a line
+   * would be; as a bubble the answers wait in a plain box across the bottom of the screen. The
+   * player clicks one, or presses its number. There is no closing it without answering: the game
+   * can, with `close`, and `choice` then settles with null.
    */
-  choose(text: string, answers: string[], o: { style: 'portrait' | 'bubble'; name?: string; portrait?: CharacterPicture; anchor?: () => BubbleAnchor | null; speak?: SpeakOptions }): InfoboxHandle {
+  choose(answers: string[], o: { style: 'portrait' | 'bubble'; name?: string; portrait?: CharacterPicture }): InfoboxHandle {
     const list = el('ol', 'qbl-answers');
     list.setAttribute('aria-label', 'What do you say?');
     const buttons = answers.map((label, i) => {
@@ -295,38 +295,23 @@ export class Ui implements UiPort {
     let settle!: (index: number | null) => void;
     const choice = new Promise<number | null>((r) => (settle = r));
     const previous = document.activeElement as HTMLElement | null;
-    let ready = false;
-    const offer = () => {
-      ready = true;
-      list.hidden = false;
-      buttons[0]?.focus({ preventScroll: true });
-    };
 
-    let story: ReturnType<Ui['storyBox']> | null = null;
-    let bubble: ReturnType<Ui['bubble']> | null = null;
-    let tray: HTMLElement | null = null;
-    let reading = { stop() {} };
-    if (o.style === 'bubble' && o.anchor) {
-      bubble = this.bubble(text, o.name, o.anchor);
-      bubble.node.classList.add('asking');
-      reading = this.read(bubble.words, o.speak);
-      tray = el('div', 'qbl-story answers-only');
-      tray.setAttribute('role', 'dialog');
-      tray.setAttribute('aria-label', o.name ? `Answer ${o.name}` : 'Answer');
-      tray.append(list);
-      this.root.append(tray);
-      offer();
+    const node = el('div', o.style === 'portrait' ? 'qbl-story answering' : 'qbl-story answers-only');
+    node.setAttribute('role', 'dialog');
+    node.setAttribute('aria-label', 'What do you say?');
+    if (o.style === 'portrait') {
+      const frame = el('div', 'qbl-story-portrait');
+      if (o.portrait?.url) frame.append(pictureNode(o.portrait, 'qbl-story-picture'));
+      else frame.append(el('span', '', (o.name ?? '?').slice(0, 1).toUpperCase()));
+      const body = el('div', 'qbl-story-body');
+      if (o.name) body.append(el('strong', 'qbl-story-name', o.name));
+      body.append(list);
+      node.append(frame, body);
     } else {
-      story = this.storyBox(text, o);
-      story.node.classList.add('choosing');
-      list.hidden = true;
-      story.body.append(list);
-      // A click on the line (not on an answer) shows the rest of it at once.
-      story.node.addEventListener('click', () => story!.revealAll());
-      void story.revealed.then(() => {
-        if (!finished) offer();
-      });
+      node.append(list);
     }
+    this.root.append(node);
+    buttons[0]?.focus({ preventScroll: true });
 
     this.modals++;
     let finished = false;
@@ -335,29 +320,19 @@ export class Ui implements UiPort {
       finished = true;
       this.modals--;
       window.removeEventListener('keydown', onKey, true);
-      story?.stop();
-      story?.node.remove();
-      reading.stop();
-      bubble?.remove();
-      tray?.remove();
+      node.remove();
       previous?.focus?.({ preventScroll: true });
       settle(result);
     };
     const pick = (i: number) => {
-      if (!ready || finished) return;
+      if (finished) return;
       result = i;
       finish();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (!ready && (e.key === 'Enter' || e.key === ' ')) {
-        e.preventDefault();
-        e.stopPropagation();
-        story?.revealAll();
-        return;
-      }
       const n = Number(e.key);
-      if (ready && Number.isInteger(n) && n >= 1 && n <= Math.min(9, answers.length)) {
+      if (Number.isInteger(n) && n >= 1 && n <= Math.min(9, answers.length)) {
         e.preventDefault();
         e.stopPropagation();
         pick(n - 1);

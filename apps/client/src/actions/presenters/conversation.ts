@@ -3,10 +3,11 @@ import type { PresenterContext } from '../Presenter';
 import { bubbleAnchor, speakerOf, speech } from './dialogue';
 
 /**
- * One line of a conversation (a dialogue tree), for the engine, which walks the tree. A line with
- * nothing to choose is shown as a dialogue action would show it: a story box the player clicks on
- * from, or a bubble that stays long enough to read. A line with choices waits for an answer, and
- * the answer goes in the activity log so the teacher's report can show what the student said.
+ * One line of a conversation (a dialogue tree), for the engine, which walks the tree. The line is
+ * shown as a dialogue action would show it: a story box the player clicks on from, or a bubble
+ * that stays long enough to read. When it has choices, the player's answers come after it, in a
+ * box of their own (the player's, with their name), once the speaker has finished: the answer
+ * goes in the activity log so the teacher's report can show what the student said.
  */
 export function conversationLine(action: ConversationAction, line: ConversationLine, choices: ConversationChoice[], pc: PresenterContext): ChoiceHandle {
   const { ctx } = pc;
@@ -22,18 +23,30 @@ export function conversationLine(action: ConversationAction, line: ConversationL
   }
   const name = who?.name ?? (byCharacter ? pc.locate({ character_id: characterId })?.name : undefined);
 
-  if (!choices.length) {
-    const shown = style === 'portrait'
-      ? ctx.ui.portraitDialogue(text, { name, portrait: who?.portrait, duration: 0, speak })
-      : ctx.ui.dialogue(text, { name, duration: dialogueDuration(line.text), anchor: anchor!, speak });
-    return { choice: shown.done.then(() => null), cancel: shown.cancel };
-  }
+  const shown = style === 'portrait'
+    ? ctx.ui.portraitDialogue(text, { name, portrait: who?.portrait, duration: 0, speak })
+    : ctx.ui.dialogue(text, { name, duration: dialogueDuration(line.text), anchor: anchor!, speak });
+  if (!choices.length) return { choice: shown.done.then(() => null), cancel: shown.cancel };
 
+  // The speaker has their say first; only then does the player answer.
+  let cancelled = false;
+  let box: ReturnType<typeof ctx.ui.choose> | null = null;
   const answers = choices.map((c) => ctx.text(c.text));
-  const box = ctx.ui.choose(text, answers, { style, name, portrait: who?.portrait, anchor, speak });
-  const choice = box.choice.then((index) => {
+  const choice = shown.done.then(() => {
+    if (cancelled) return null;
+    const player = speakerOf(pc, undefined, undefined);
+    box = ctx.ui.choose(answers, { style, name: player.name, portrait: style === 'portrait' ? player.portrait : undefined });
+    return box.choice;
+  }).then((index) => {
     if (index != null) ctx.track({ type: 'choice', ref: conversationRef(action.id, line.id), label: answers[index] ?? '', value: index });
     return index;
   });
-  return { choice, cancel: box.close };
+  return {
+    choice,
+    cancel: () => {
+      cancelled = true;
+      shown.cancel();
+      box?.close();
+    },
+  };
 }
