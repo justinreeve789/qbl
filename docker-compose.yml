@@ -223,6 +223,12 @@ services:
     # With an NVIDIA GPU: QL_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0 (and give the
     # container the GPU). Not wanted at all: QL_TTS_DRIVER=none, and docker compose stop tts.
     image: ${QL_TTS_IMAGE:-${QBL_TTS_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0}}
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 0.7G
     environment:
       # Its test page (/web) is not needed: nothing outside the network reaches it anyway.
       ENABLE_WEB_PLAYER: "false"
