@@ -6,7 +6,7 @@ import type { Store } from '../../store';
 import { SceneCanvas } from './canvas';
 import { freshBenchId } from './benchPanels';
 import { inspector, startBench } from './inspector';
-import { SceneModel, type Point, type Selection, type Side } from './model';
+import { SceneModel, type LayerList, type Point, type Selection, type Side } from './model';
 import { outline, type Addable } from './outline';
 
 const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
@@ -79,7 +79,19 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
   // The canvas loads images to learn their sizes; the scene panel asks it for them.
   const natural = (url: string): Point | null => canvas.natural(url);
 
-  const drawOutline = () => redraw(outlineHost, outline(model, { selection: () => selection, select: select_, add }));
+  /** Put a layer somewhere else in its list; a selected layer stays selected wherever it ends up. */
+  const moveLayer = (which: LayerList, from: number, to: number) => {
+    const layers = model.layers(which);
+    const order = layers.map((_, i) => i);
+    const [moved] = order.splice(from, 1);
+    if (moved == null) return;
+    order.splice(to, 0, moved);
+    const was = selection.kind === 'layer' && selection.which === which ? selection.index : null;
+    void model.setLayers(which, order.map((i) => layers[i]!), true).then(() => {
+      if (was != null) select_({ kind: 'layer', which, index: order.indexOf(was) });
+    });
+  };
+  const drawOutline = () => redraw(outlineHost, outline(model, { selection: () => selection, select: select_, add, moveLayer }));
   const drawInspector = () => {
     refreshers = [];
     redraw(inspectorHost, inspector(model, selection, { select: select_, natural, closed: leave, pickSpot: (request) => canvas.pick(request) }, refreshers));

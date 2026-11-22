@@ -2,12 +2,14 @@ import { BENCH_SHAPES, BENCH_TOOLS, vesselName } from '@qbl/shared';
 import { emojiIcon } from '../../icons';
 import { EVENT_KINDS, eventLabel, mediaLabel } from '../../describe';
 import { h } from '../../dom';
-import { sameSelection, type Point, type SceneModel, type Selection } from './model';
+import { sameSelection, type LayerList, type Point, type SceneModel, type Selection } from './model';
 
 export interface OutlineHost {
   selection(): Selection;
   select(selection: Selection): void;
   add(what: Addable): void;
+  /** Move a layer to another place in its own list (the order layers are drawn in). */
+  moveLayer(which: LayerList, from: number, to: number): void;
 }
 
 export type Addable =
@@ -28,6 +30,9 @@ const LOOK: Record<string, readonly [icon: string, tone: string]> = {
 
 /** Sections the author has folded away. Kept outside the view so a redraw does not open them again. */
 const folded = new Set<string>();
+
+/** The layer being dragged in the outline, if any. A layer only moves within its own list. */
+let dragging: { which: LayerList; index: number } | null = null;
 
 /** A to Z by what is shown, numbers in number order ("Area 2" before "Area 10"). */
 const byName = (a: { text: string }, b: { text: string }) => a.text.localeCompare(b.text, undefined, { numeric: true, sensitivity: 'base' });
@@ -70,8 +75,54 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     node.addEventListener('toggle', () => (node.open ? folded.delete(title) : folded.add(title)));
     return node;
   };
-  const layers = (which: 'background_media' | 'foreground_media') =>
-    model.layers(which).map((layer, index) => entry({ kind: 'layer', which, index }, layer.media_id ? mediaLabel(store.byId('media', layer.media_id as number)) : '(no image yet)'));
+  /**
+   * Layers in the order they are drawn, first at the back. Each has a grip to drag it to another
+   * place in its list; dropping on a row puts the layer before or after it, whichever half of the
+   * row the pointer is over. The first background is the scene's main picture (its size, the
+   * scene map's thumbnail), so it says so.
+   */
+  const layers = (which: LayerList) =>
+    model.layers(which).map((layer, index) => {
+      const item = entry({ kind: 'layer', which, index }, layer.media_id ? mediaLabel(store.byId('media', layer.media_id as number)) : '(no image yet)', which === 'background_media' && index === 0 ? 'main picture' : undefined);
+      const row = item.node;
+      row.classList.add('layer-row');
+      row.dataset.layer = String(index);
+      const grip = h('span', { class: 'grip', draggable: 'true', title: 'Drag to change the order', 'aria-hidden': 'true' }, '⠿');
+      row.prepend(grip);
+      grip.addEventListener('dragstart', (e) => {
+        dragging = { which, index };
+        e.dataTransfer?.setData('text/plain', `${which}:${index}`);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer?.setDragImage(row, 12, 12);
+        row.classList.add('dragging');
+      });
+      grip.addEventListener('dragend', () => {
+        dragging = null;
+        row.classList.remove('dragging');
+        for (const el of row.parentElement?.querySelectorAll('.drop-before, .drop-after') ?? []) el.classList.remove('drop-before', 'drop-after');
+      });
+      const half = (e: DragEvent) => (e.clientY < row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2 ? 'before' : 'after');
+      const mine = () => dragging != null && dragging.which === which && dragging.index !== index;
+      row.addEventListener('dragover', (e) => {
+        if (!mine()) return;
+        e.preventDefault();
+        row.classList.toggle('drop-before', half(e) === 'before');
+        row.classList.toggle('drop-after', half(e) === 'after');
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('drop-before', 'drop-after'));
+      row.addEventListener('drop', (e) => {
+        if (!mine()) return;
+        e.preventDefault();
+        const from = dragging!.index;
+        dragging = null;
+        // Where it lands once it has been taken out of the list.
+        const at = index + (half(e) === 'after' ? 1 : 0);
+        const to = at > from ? at - 1 : at;
+        if (to !== from) host.moveLayer(which, from, to);
+        else row.classList.remove('drop-before', 'drop-after');
+      });
+      return item;
+    });
   const events = (kind: keyof typeof EVENT_KINDS) =>
     model.events(kind).map((event) => {
       const actions = store.where('actions', 'event_id', event.id).length;
