@@ -159,17 +159,17 @@ services:
       CLEVER_CLIENT_SECRET: ${CLEVER_CLIENT_SECRET:-}
       # Characters' recorded voices (config/qbl_speech.php): kokoro (the tts container below), openai
       # (any OpenAI-style /v1/audio/speech service; no word timings), or none (the browser reads).
-      QBL_TTS_DRIVER: ${QBL_TTS_DRIVER:-kokoro}
-      QBL_TTS_URL: ${QBL_TTS_URL:-http://tts:8880}
-      QBL_TTS_API_KEY: ${QBL_TTS_API_KEY:-}
-      QBL_TTS_TIMEOUT: ${QBL_TTS_TIMEOUT:-}
+      QL_TTS_DRIVER: ${QL_TTS_DRIVER:-${QBL_TTS_DRIVER:-kokoro}}
+      QL_TTS_URL: ${QL_TTS_URL:-${QBL_TTS_URL:-http://tts:8880}}
+      QL_TTS_API_KEY: ${QL_TTS_API_KEY:-${QBL_TTS_API_KEY:-}}
+      QL_TTS_TIMEOUT: ${QL_TTS_TIMEOUT:-${QBL_TTS_TIMEOUT:-}}
       # How strongly theatrical voices are chosen for characters: 3 by default, 0 for everyday voices.
-      QBL_TTS_FLAIR: ${QBL_TTS_FLAIR:-}
-      QBL_TTS_OPENAI_URL: ${QBL_TTS_OPENAI_URL:-}
-      QBL_TTS_OPENAI_KEY: ${QBL_TTS_OPENAI_KEY:-}
-      QBL_TTS_OPENAI_MODEL: ${QBL_TTS_OPENAI_MODEL:-}
+      QL_TTS_FLAIR: ${QL_TTS_FLAIR:-${QBL_TTS_FLAIR:-}}
+      QL_TTS_OPENAI_URL: ${QL_TTS_OPENAI_URL:-${QBL_TTS_OPENAI_URL:-}}
+      QL_TTS_OPENAI_KEY: ${QL_TTS_OPENAI_KEY:-${QBL_TTS_OPENAI_KEY:-}}
+      QL_TTS_OPENAI_MODEL: ${QL_TTS_OPENAI_MODEL:-${QBL_TTS_OPENAI_MODEL:-}}
       # Lines already recorded, so recording again only asks for what changed.
-      QBL_TTS_CACHE_DIR: /data/speech
+      QL_TTS_CACHE_DIR: /data/speech
       # The client (the marketing page and the game) is built by Vite when app starts. true: it is
       # also rebuilt whenever apps/client or packages/shared changes. false: built once per start
       # (docker compose restart app after a change), which saves memory on a server.
@@ -212,9 +212,9 @@ services:
     # every word; players never talk to this. Only reachable inside the Compose network.
     #
     # The CPU image is about 5 GB on disk and uses about 1 GB of memory; a line takes a second or two.
-    # With an NVIDIA GPU: QBL_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0 (and give the
-    # container the GPU). Not wanted at all: QBL_TTS_DRIVER=none, and docker compose stop tts.
-    image: ${QBL_TTS_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0}
+    # With an NVIDIA GPU: QL_TTS_IMAGE=ghcr.io/remsky/kokoro-fastapi-gpu:v0.10.0 (and give the
+    # container the GPU). Not wanted at all: QL_TTS_DRIVER=none, and docker compose stop tts.
+    image: ${QL_TTS_IMAGE:-${QBL_TTS_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0}}
     environment:
       # Its test page (/web) is not needed: nothing outside the network reaches it anyway.
       ENABLE_WEB_PLAYER: "false"

@@ -1,33 +1,64 @@
 import type { Condition, VarValue, Variable, VariableOperator, VariableScope } from './types.js';
 
-export const RESERVED_PREFIX = 'QBL';
+/** Names a scenario's own variables may not start with: they belong to the system. */
+export const RESERVED_PREFIXES = ['QBL', 'QL_'] as const;
+
+/**
+ * The system variables authors use in dialogue, infoboxes, conditions and other actions, shown
+ * as `{{QL_PlayerName}}`. The game keeps their values; a variable action cannot change them.
+ * The editor offers them in this order, with these explanations.
+ */
+export const SYSTEM_VARIABLES = [
+  { name: 'QL_HotspotCoordinates', about: 'While a hotspot’s event is running: where the hotspot is, as "x,y".' },
+  { name: 'QL_ScenarioLanguage', about: 'The scenario’s language as a two-letter code, such as "en".' },
+  { name: 'QL_TimeElapsed', about: 'How many seconds the player has spent in this scenario.' },
+  { name: 'QL_VideoPlaying', about: '1 while the scene’s video is playing, 0 otherwise.' },
+  { name: 'QL_VideoTimeIndex', about: 'How many seconds into the scene’s video it is.' },
+  { name: 'QL_PlayerName', about: 'The player’s name.' },
+  { name: 'QL_TeacherName', about: 'The name of the player’s teacher in this game, if they have one; empty otherwise.' },
+  { name: 'QL_HasTeacher', about: '1 if the player has a teacher in this game (it was assigned to their class), 0 otherwise.' },
+  { name: 'QL_IsTeacher', about: '1 if the player is a teacher (or an administrator), 0 for students.' },
+  { name: 'QL_PhysicsEnabled', about: '1 if the current scene is a physics experiment, 0 otherwise.' },
+  { name: 'QL_PlayerStars', about: 'How many stars the player has.' },
+  { name: 'QL_PlayerXP', about: 'The player’s experience points (XP).' },
+  { name: 'QL_PlayerRank', about: 'The name of the player’s rank.' },
+  { name: 'QL_PlayerCount', about: 'How many players are playing together (the player’s team, when there are teams).' },
+  { name: 'QL_SceneId', about: 'The id of the scene the player is in.' },
+  { name: 'QL_Holding', about: 'The id of the thing the player is using from their bag (while they use it), 0 otherwise.' },
+] as const;
+export type SystemVariable = (typeof SYSTEM_VARIABLES)[number]['name'];
 
 /** Reserved variables. Values are supplied by the runtime through providers. */
-export const RESERVED_VARIABLES = [
-  'QBLHotspotCoordinates',
-  'QBLScenarioLanguage',
-  'QBLTimeElapsed',
-  'QBLVideoPlaying',
-  'QBLVideoTimeIndex',
-  // [ext]
-  'QBLSceneId',
-  'QBLPlayerName',
-  'QBLPlayerCount',
-  'QBLStars',
-  'QBLXp',
-  'QBLRank',
-  // The item the player is using from their bag: its id while they have picked it and click
-  // something with it, and while what that click started is still running. 0 otherwise.
-  'QBLHolding',
-] as const;
+export const RESERVED_VARIABLES = SYSTEM_VARIABLES.map((v) => v.name);
 /** The variable a hotspot or a character's event tests to take something from the player's bag. */
-export const HOLDING = 'QBLHolding';
-/** `QBLAbility_<key>` is 1 while the player has a marketplace ability with that key equipped, else 0. */
-export const ABILITY_PREFIX = 'QBLAbility_';
-export type ReservedVariable = (typeof RESERVED_VARIABLES)[number];
+export const HOLDING = 'QL_Holding';
+/** `QL_Ability_<key>` is 1 while the player has a marketplace ability with that key equipped, else 0. */
+export const ABILITY_PREFIX = 'QL_Ability_';
+export type ReservedVariable = SystemVariable;
+
+/**
+ * Names the system's variables had before they were called QL_…. Scenarios saved with them still
+ * play (the game reads them as the new names); the publish check asks for the new name.
+ */
+export const LEGACY_VARIABLES: Readonly<Record<string, SystemVariable>> = {
+  QBLPlayerName: 'QL_PlayerName',
+  QBLPlayerCount: 'QL_PlayerCount',
+  QBLStars: 'QL_PlayerStars',
+  QBLXp: 'QL_PlayerXP',
+  QBLRank: 'QL_PlayerRank',
+  QBLSceneId: 'QL_SceneId',
+  QBLHolding: 'QL_Holding',
+};
+const LEGACY_ABILITY_PREFIX = 'QBLAbility_';
+
+/** A variable's current name: an old system name (`QBLStars`, `QBLAbility_<key>`) as it is called now. */
+export function currentName(name: string): string {
+  if (name.startsWith(LEGACY_ABILITY_PREFIX)) return ABILITY_PREFIX + name.slice(LEGACY_ABILITY_PREFIX.length);
+  return LEGACY_VARIABLES[name] ?? name;
+}
 
 export function isReserved(name: string): boolean {
-  return name.startsWith(RESERVED_PREFIX);
+  return RESERVED_PREFIXES.some((prefix) => name.startsWith(prefix));
 }
 
 export function toNumber(value: unknown): number | null {
@@ -137,7 +168,8 @@ export class VariableStore {
     this.providers.set(name, fn);
   }
 
-  get = (name: string): VarValue | undefined => {
+  get = (asked: string): VarValue | undefined => {
+    const name = currentName(asked);
     const provider = this.providers.get(name);
     if (provider) return provider();
     // An ability nobody sells here is simply one the player does not have.

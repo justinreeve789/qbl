@@ -392,7 +392,7 @@ docker compose exec app php artisan qbl:voice {code} --assign        # give each
 docker compose exec app php artisan qbl:tts "Hello there!"           # say any text in a random theatrical voice, saved as tts-<voice>.mp3
 ```
 
-Generated missions are voiced as they are made, and cast like a cartoon: besides everyday voices there are theatrical ones (a booming giant, a squeaky pixie, a jolly gnome, a pantomime villain, a zany inventor), which are chosen first (`QBL_TTS_FLAIR`, 0 for everyday voices). The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QBL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
+Generated missions are voiced as they are made, and cast like a cartoon: besides everyday voices there are theatrical ones (a booming giant, a squeaky pixie, a jolly gnome, a pantomime villain, a zany inventor), which are chosen first (`QL_TTS_FLAIR`, 0 for everyday voices). The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
 
 ## The demo mission
 
@@ -433,7 +433,7 @@ See "Animations" in `docs/src/content/docs/developers/extensions.md`.
 - An award is given **once per student** unless the author marks it repeatable. An award can also take stars or XP away; totals stop at zero.
 - The **marketplace** sells things to wear (head, body, back, hand), pets that follow the avatar, ways for the avatar to move, and abilities. Players open it from their stars in the top-left corner of the game, or through a `shop` action, and choose what to have on under "My things". Other players see what they wear.
 - Every scenario sells the platform's catalogue (`apps/api/database/seeders/data/shop.php`; there is no screen for editing it yet). Authors add **mission-specific items** on the editor's Shop page.
-- **Abilities** are flags: while a player has one equipped, the variable `QBLAbility_<key>` is 1, and a scenario decides what that unlocks. They do not change walking speed or reveal distances.
+- **Abilities** are flags: while a player has one equipped, the variable `QL_Ability_<key>` is 1, and a scenario decides what that unlocks. They do not change walking speed or reveal distances.
 - The backend grants awards, checking each against the published scenario, and keeps a ledger of every change. See "Stars, XP and the marketplace" in `docs/src/content/docs/developers/extensions.md`.
 
 ## The editor

@@ -50,7 +50,7 @@ before(async () => {
     });
   });
   await new Promise<void>((resolve) => tts.listen(0, '127.0.0.1', resolve));
-  site = await startSite({ QBL_TTS_URL: `http://127.0.0.1:${(tts.address() as AddressInfo).port}` });
+  site = await startSite({ QL_TTS_URL: `http://127.0.0.1:${(tts.address() as AddressInfo).port}` });
   browser = await chromium.launch();
   page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
   page.on('dialog', (d) => void d.accept());
@@ -72,7 +72,7 @@ before(async () => {
   const bundle = await rest<{ scenes: Array<{ id: number }> }>('GET', '');
   const robo = (await rest<{ row: { id: number } }>('POST', '/rows/characters', { name: 'Robo' })).row.id;
   const event = (await rest<{ row: { id: number } }>('POST', '/rows/events', { scene_id: bundle.scenes[0]!.id, kind: 'hotspot', shortname: 'talk', position_x: 300, position_y: 300, radius: 60 })).row.id;
-  for (const text of ['Hello, {{QBLPlayerName}}! The reactor needs you.', 'You have {{score}} stars.']) {
+  for (const text of ['Hello, {{QL_PlayerName}}! The reactor needs you.', 'You have {{score}} stars.']) {
     await rest('POST', '/rows/actions', { event_id: event, type: 'dialogue', params: { style: 'portrait', speaker: 'character', character_id: robo, text } });
   }
   await page.reload();

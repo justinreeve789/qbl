@@ -190,7 +190,7 @@ A scene's `team_only` decides; if it does not say, its group's `team_only` does;
 { "id": 8, "shortname": "laboratory", "group_id": 1, "team_only": true }
 ```
 
-The demo does exactly this: the starship's rooms are shared except the laboratory, and the planet is each team's own. What is limited is what players **see and hear** of each other: avatars, emotes, chat, and events with `audience: scene`. A shared variable is always the team's own, in every scene: one team's rockfall never blocks another team's path, even in a scene where the teams can see each other. `QuestLabPlayerCount` counts the player's team. With no teams (the public instance, an assignment without teams) everyone is one team and the setting changes nothing.
+The demo does exactly this: the starship's rooms are shared except the laboratory, and the planet is each team's own. What is limited is what players **see and hear** of each other: avatars, emotes, chat, and events with `audience: scene`. A shared variable is always the team's own, in every scene: one team's rockfall never blocks another team's path, even in a scene where the teams can see each other. `QL_PlayerCount` counts the player's team. With no teams (the public instance, an assignment without teams) everyone is one team and the setting changes nothing.
 
 In the editor, groups are made on the **Scenes** page, where each scene's card has its group and shows who is seen there; a scene's own setting is in the scene editor ("Who players see here").
 
@@ -317,7 +317,7 @@ style | string | bubble | `bubble`: a speech bubble over the speaker. `portrait`
 duration | int | | Milliseconds on screen. Absent: a bubble stays long enough to read, and a story box stays until the player continues. A click closes either sooner.
 
 ```json
-{ "type": "dialogue", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QuestLabPlayerName}}!" }
+{ "type": "dialogue", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QL_PlayerName}}!" }
 ```
 
 The bubble follows the speaker and keeps itself on screen. It sits above them when there is room, below when they are near the top of the screen, and to the right or left when there is room neither above nor below; sideways it slides along to stay inside the screen while its tail keeps pointing at the speaker. A sequence of dialogue actions is a conversation; put a `freeze` before it to hold the player still. For one where the player chooses what to say, use a [conversation](#conversations-dialogue-trees).
@@ -325,7 +325,7 @@ The bubble follows the speaker and keeps itself on screen. It sits above them wh
 **The story box** (`style: "portrait"`) is for the characters and moments that carry the story. It is a panel across the bottom of the screen with the speaker's close-up portrait standing on its edge, their name, and the words appearing a few at a time. The player clicks, or presses Enter or Space, to continue: once to show the whole line, again to go on. The portrait is the speaker's `portrait` animation (or the character standing, if it has none): a character's, or for the player their avatar's.
 
 ```json
-{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QuestLabPlayerName}}! I am Captain Vega." }
+{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "text": "Welcome aboard, {{QL_PlayerName}}! I am Captain Vega." }
 ```
 
 A story conversation is normally the player's own (`audience: player`, the default), as the captain's greeting in the demo is. If its event is shown to the scene, the other players get a smaller version at the top of the screen that closes by itself and never takes their clicks or keys.
@@ -370,7 +370,7 @@ correct | bool | | For the teacher's report: a right answer. When any choice of 
 {
   "type": "conversation",
   "lines": [
-    { "id": "hello", "speaker": "character", "character_id": 1, "text": "Ready for your briefing, {{QuestLabPlayerName}}?", "next": "ask" },
+    { "id": "hello", "speaker": "character", "character_id": 1, "text": "Ready for your briefing, {{QL_PlayerName}}?", "next": "ask" },
     {
       "id": "ask", "speaker": "character", "character_id": 1, "text": "What do plants need to grow?",
       "choices": [
@@ -408,7 +408,7 @@ voice_pitch, voice_rate | character | 1 | How the browser's voice sounds reading
 voice_name | character | | For lines with no recording: part of the name of a browser voice to prefer ("female", "Daniel"). Devices differ; where none matches, the default voice reads.
 
 ```json
-{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "narrate": true, "text": "Welcome aboard, {{QuestLabPlayerName}}!" }
+{ "type": "dialogue", "style": "portrait", "speaker": "character", "character_id": 1, "narrate": true, "text": "Welcome aboard, {{QL_PlayerName}}!" }
 ```
 
 A speech bubble that is being read stays until the voice has finished. One thing is read at a time: a new line stops the one before. Players have a switch for reading aloud at the foot of the side panel (it is offered when the scenario has anything to read) and their choice is kept in their browser. In the demo the story's portrait dialogue is read.
@@ -702,9 +702,9 @@ Conditions and variable actions are written the same way for both; only the vari
 
 Both examples are in the demo: the rockfall above the spring meadow (`rockfall`, shared, cleared again by the repair drone in the engine room) and the critters in the hydroponics bay (`critters_met`, each player's own).
 
-`QBLHolding` is the id of the thing the player has picked in their bag to use (see [The bag](#the-bag-point-and-click-things)), and 0 otherwise.
+`QL_Holding` is the id of the thing the player has picked in their bag to use (see [The bag](#the-bag-point-and-click-things)), and 0 otherwise.
 
-Additional reserved variables: `QuestLabSceneId`, `QuestLabPlayerName`, `QuestLabPlayerCount`, and for the player's account `QuestLabStars`, `QuestLabXp`, `QuestLabRank` (the rank's name) and `QuestLabAbility_<key>` (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as `{{placeholders}}` like any other variable.
+The other reserved variables these extensions add are in [Reserved Variables](/docs/developers/variable/#reserved-variables): `QL_SceneId`, `QL_PlayerCount`, and for the player's account `QL_PlayerStars`, `QL_PlayerXP`, `QL_PlayerRank` (the rank's name) and `QL_Ability_<key>` (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as `{{placeholders}}` like any other variable.
 
 Additional condition operators: `>=` and `<=`.
 
@@ -739,13 +739,13 @@ Parameter | Type | Description
 carried_when | conditions | The item is in the player's bag while these hold. Absent: it is never carried.
 description | string | What the player reads when they point at it in their bag.
 
-Using a thing works through one reserved variable, `QBLHolding`. The player picks a thing in the bag (it is marked, with a line saying what to do), then:
+Using a thing works through one reserved variable, `QL_Holding`. The player picks a thing in the bag (it is marked, with a line saying what to do), then:
 
-* **clicks something in the scene.** Only hotspots that **take things** run: those whose conditions, or the conditions of one of their own actions or of an event they run, test `QBLHolding`. Give the hotspot that uses the rope the condition `QBLHolding = <the rope's id>` and it is there only while the rope is picked. Anything else clickable under the pointer says "That does not work there." Clicking empty floor walks there, still holding the thing.
-* **clicks a character.** Their click event runs if it takes things (tests `QBLHolding`), so it can thank them for the right thing and turn down anything else; otherwise the player is told the character does not need that.
+* **clicks something in the scene.** Only hotspots that **take things** run: those whose conditions, or the conditions of one of their own actions or of an event they run, test `QL_Holding`. Give the hotspot that uses the rope the condition `QL_Holding = <the rope's id>` and it is there only while the rope is picked. Anything else clickable under the pointer says "That does not work there." Clicking empty floor walks there, still holding the thing.
+* **clicks a character.** Their click event runs if it takes things (tests `QL_Holding`), so it can thank them for the right thing and turn down anything else; otherwise the player is told the character does not need that.
 * **picks a second thing.** If `combinations` has the pair, its actions are done; otherwise the player is told the two do not go together. Picking the same thing again, or pressing Escape, puts it back.
 
-`QBLHolding` keeps the thing's id until whatever the click started has finished, so every action of the event can test it; the bag lets go at once. What happens to the thing is up to the event: set its variable to 0 to use it up, or leave it to keep it.
+`QL_Holding` keeps the thing's id until whatever the click started has finished, so every action of the event can test it; the bag lets go at once. What happens to the thing is up to the event: set its variable to 0 to use it up, or leave it to keep it.
 
 ```json
 "combinations": [{
@@ -959,7 +959,7 @@ scale | decimal | Wearables and pets: height as a fraction of the avatar's heigh
 offset_x, offset_y | decimal | Wearables and pets: a nudge forward and down, in avatar heights.
 animation | string | Animations: `bounce`, `float`, `sway` or `pulse`. How the avatar moves while standing.
 move | string | Moves: the animation a button on the player's screen plays, in every scenario. See [Moves](#moves-what-players-can-do-themselves).
-ability | string | Abilities: a key. While equipped, `QuestLabAbility_<key>` is 1.
+ability | string | Abilities: a key. While equipped, `QL_Ability_<key>` is 1.
 
 ```json
 "shop_items": [
@@ -973,7 +973,7 @@ A player owns what they buy for good, and chooses what to have on: one wearable 
 **Abilities do nothing by themselves.** They are a flag scenarios can test, so what an ability unlocks is up to each author: a hotspot only its owners see, an extra line of dialogue, a shortcut. They never change walking speed or how far away a hotspot is revealed. In the demo, the survey map makes a map table appear at the landing site:
 
 ```json
-{ "shortname": "survey-map", "conditions": [{ "variable": "QuestLabAbility_stream_map", "operator": "=", "operand": 1 }], "...": "..." }
+{ "shortname": "survey-map", "conditions": [{ "variable": "QL_Ability_stream_map", "operator": "=", "operand": 1 }], "...": "..." }
 ```
 
 ### How it is kept honest

@@ -11,7 +11,7 @@ namespace App\Qbl\Speech;
  * voice beats an everyday one that matches one more word of the description (5 points a word), but
  * never one of the wrong gender or age, so the cast is larger than life wherever nothing says
  * otherwise, and a guide described as warm, friendly and clear still gets a clear voice. 0 chooses
- * as if every voice were an everyday one (QBL_TTS_FLAIR).
+ * as if every voice were an everyday one (QL_TTS_FLAIR).
  */
 final class VoicePicker
 {

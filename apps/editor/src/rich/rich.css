@@ -121,6 +121,7 @@
 .rt-pick-row { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: 12px; align-items: baseline; padding: 10px 12px; border-radius: 8px; text-align: left; white-space: normal; background: var(--surface); }
 .rt-pick-row:hover:not(:disabled) { background: #3a3f49; }
 .rt-pick-row.rt-new { grid-template-columns: 1fr; border-style: dashed; background: transparent; }
+.rt-pick-head { margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 
 /* A block's pop-up */
 .rt-block-form { display: grid; gap: 12px; }

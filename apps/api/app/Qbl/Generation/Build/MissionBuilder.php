@@ -19,7 +19,7 @@ use App\Qbl\Generation\GenerationError;
  *   talk        a character's click event runs a dispatcher that picks the conversation that applies
  *   collect     a click hotspot on the thing; it goes into the player's bag and disappears from the scene
  *   inspect     a click hotspot that opens an infobox
- *   use         a thing from the bag used on something: a hotspot that takes it (tests QBLHolding), with a
+ *   use         a thing from the bag used on something: a hotspot that takes it (tests QL_Holding), with a
  *               twin that says what is needed when clicked without it; or given to a character, through
  *               their dispatcher
  *   question    a non-dismissible infobox whose buttons run one answer event each; the first answer is
@@ -1072,7 +1072,7 @@ class MissionBuilder
                 }
                 $this->action($hot, 'variable', ['name' => "helped_$key", 'operator' => 'set', 'operand' => 1]);
                 $this->action($hot, 'variable', ['name' => "team_$key", 'operator' => '+', 'operand' => 1]);
-                $this->action($hot, 'text_overlay', ['text' => "{{QBLPlayerName}}: {$t['part']} ({{team_$key}}/$needed)", 'duration' => 3000]);
+                $this->action($hot, 'text_overlay', ['text' => "{{QL_PlayerName}}: {$t['part']} ({{team_$key}}/$needed)", 'duration' => 3000]);
                 if (! empty($it['award'])) {
                     $this->action($hot, 'award', $it['award'], blocking: false);
                 }
@@ -1099,7 +1099,7 @@ class MissionBuilder
      */
     private function useOnScene(int $sceneId, string $sceneKey, string $key, array $it, int $x, int $cy, int $radius, array $requires, \Closure $labels, bool $reveal, int $ground): void
     {
-        $holding = $this->cond('QBLHolding', '=', $this->carriedIds[$it['uses']] ?? 0);
+        $holding = $this->cond('QL_Holding', '=', $this->carriedIds[$it['uses']] ?? 0);
         $notDone = [$this->cond("done_$key", '=', 0)];
         $use = $this->hotspot($sceneId, "$key-use", [$x, $cy], $radius, click: true, conditions: [$holding, ...$requires, ...$notDone], block: true, reveal: $reveal);
         $this->action($use, 'freeze', ['frozen' => true]);
@@ -1522,7 +1522,7 @@ class MissionBuilder
 
         // Things given to them. Only a character who wants something takes things from the bag at all.
         $gives = array_filter($this->interactions, fn ($it) => $it['type'] === 'use' && ($it['character'] ?? null) === $c['key']);
-        $empty = $gives ? [$this->cond('QBLHolding', '=', 0)] : [];
+        $empty = $gives ? [$this->cond('QL_Holding', '=', 0)] : [];
         $pending = null;
         foreach ($gives as $key => $it) {
             $requires = [];
@@ -1534,13 +1534,13 @@ class MissionBuilder
             $this->action($give, 'variable', ['name' => 'talked', 'operator' => 'set', 'operand' => 1]);
             $this->action($give, 'freeze', ['frozen' => true]);
             $this->used($give, $sceneKey, $key, $it);
-            $this->action($dispatch, 'run_event', ['target_event_id' => $give], conditions: [$this->cond('QBLHolding', '=', $this->carriedIds[$it['uses']] ?? 0), ...$requires, $this->cond("done_$key", '=', 0), $this->cond('talked', '=', 0)]);
+            $this->action($dispatch, 'run_event', ['target_event_id' => $give], conditions: [$this->cond('QL_Holding', '=', $this->carriedIds[$it['uses']] ?? 0), ...$requires, $this->cond("done_$key", '=', 0), $this->cond('talked', '=', 0)]);
             $pending ??= [$key, $it, $requires];
         }
         if ($gives) {
             // Anything else from the bag: not what they need.
-            $this->dialogue($dispatch, ['speaker' => $c['key'], 'text' => 'Hmm, no thank you. That is not what I need.'], [$this->cond('QBLHolding', '!=', 0), $this->cond('talked', '=', 0)], style: 'bubble');
-            $this->action($dispatch, 'variable', ['name' => 'talked', 'operator' => 'set', 'operand' => 1], conditions: [$this->cond('QBLHolding', '!=', 0)]);
+            $this->dialogue($dispatch, ['speaker' => $c['key'], 'text' => 'Hmm, no thank you. That is not what I need.'], [$this->cond('QL_Holding', '!=', 0), $this->cond('talked', '=', 0)], style: 'bubble');
+            $this->action($dispatch, 'variable', ['name' => 'talked', 'operator' => 'set', 'operand' => 1], conditions: [$this->cond('QL_Holding', '!=', 0)]);
         }
 
         if ($c['key'] === $this->guide) {
@@ -1582,7 +1582,7 @@ class MissionBuilder
             $this->dialogue($dispatch, ['speaker' => $c['key'], 'text' => $it['hint'] ?? 'If only I had the right thing...'], [...$empty, ...$requires, $this->cond("done_$key", '=', 0), $this->cond('talked', '=', 0)], style: 'bubble');
             $this->action($dispatch, 'variable', ['name' => 'talked', 'operator' => 'set', 'operand' => 1], conditions: [...$empty, ...$requires, $this->cond("done_$key", '=', 0)]);
         }
-        $reminder = $c['key'] === $this->guide ? 'Check your mission checklist, {{QBLPlayerName}}. You can do this!' : 'Good luck with the mission, {{QBLPlayerName}}!';
+        $reminder = $c['key'] === $this->guide ? 'Check your mission checklist, {{QL_PlayerName}}. You can do this!' : 'Good luck with the mission, {{QL_PlayerName}}!';
         $this->dialogue($dispatch, ['speaker' => $c['key'], 'text' => $reminder], [...$empty, $this->cond('talked', '=', 0)], style: 'bubble');
 
         return $dispatch;

@@ -18,7 +18,7 @@ export interface TestSite {
 
 /**
  * Everything the editor needs, on one address, as in production (`env`: more for the dev API, such
- * as QBL_TTS_URL):
+ * as QL_TTS_URL):
  *   /editor/                 the editor, bundled from source
  *   /api, /media, ...        the dev API (apps/api/dev/server.php): the same PHP classes Laravel uses, over SQLite
  */

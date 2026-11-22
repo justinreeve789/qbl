@@ -695,7 +695,7 @@ export const SHOP_WEARABLE_FIELDS: Field[] = [
 export const SHOP_SLOT: Field = { key: 'slot', label: 'Worn on', kind: 'select', options: [['head', 'Head'], ['body', 'Body'], ['back', 'Back'], ['hand', 'Hand']], hint: 'One item per place can be worn at a time.' };
 export const SHOP_ANIMATION: Field = { key: 'animation', label: 'Movement', kind: 'select', options: [['bounce', 'Bounce'], ['float', 'Float'], ['sway', 'Sway'], ['pulse', 'Pulse']] };
 export const SHOP_MOVE: Field = { key: 'move', label: 'Animation', kind: 'animation', hint: 'What the button plays: a built-in move (jump, spin, crouch, wave, dance), or a name avatars’ sprite sheets define. Bought here, it is only sold in this scenario, but once owned it works in every scenario.' };
-export const SHOP_ABILITY: Field = { key: 'ability', label: 'Ability key', kind: 'text', placeholder: 'translator', hint: 'While a player has this ability equipped, the variable QBLAbility_<key> is 1. Use it in conditions to offer them something extra: a hidden hotspot, a translated sign, a shortcut.' };
+export const SHOP_ABILITY: Field = { key: 'ability', label: 'Ability key', kind: 'text', placeholder: 'translator', hint: 'While a player has this ability equipped, the variable QL_Ability_<key> is 1. Use it in conditions to offer them something extra: a hidden hotspot, a translated sign, a shortcut.' };
 
 export const CHARACTER_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text', wide: true },

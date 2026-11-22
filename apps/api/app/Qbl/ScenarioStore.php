@@ -916,8 +916,8 @@ class ScenarioStore
             }
         }
         if ($table === 'variables' && isset($row['variable_name'])) {
-            if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/', $row['variable_name']) || str_starts_with($row['variable_name'], 'QBL')) {
-                throw new StoreError(422, 'Variable names use letters, digits and underscores, and may not start with QBL.');
+            if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,63}$/', $row['variable_name']) || str_starts_with($row['variable_name'], 'QBL') || str_starts_with($row['variable_name'], 'QL_')) {
+                throw new StoreError(422, 'Variable names use letters, digits and underscores, and may not start with QBL or QL_ (those are the system\'s own).');
             }
         }
         $required = ['media' => 'type', 'variables' => 'variable_name', 'items' => 'name', 'characters' => 'name', 'events' => 'kind', 'actions' => 'type', 'labels' => 'type'];

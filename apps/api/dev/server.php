@@ -272,7 +272,7 @@ if (preg_match('#^/api/scenarios/([A-Za-z][A-Za-z0-9_-]*)/play$#', $path, $m)) {
         respond(403, ['message' => 'You are not in that team.']);
     }
     $access = $user ? (new App\Qbl\ClassStore($pdo))->access((int) $user['id'], (string) $user['role'], (int) $document['id'], $group) : ['party' => $group];
-    $instance = array_filter(['group' => $group, 'party' => $access['party'], 'team_name' => $access['team_name'] ?? null], fn ($v) => $v !== null);
+    $instance = array_filter(['group' => $group, 'party' => $access['party'], 'team_name' => $access['team_name'] ?? null, 'teacher_name' => $access['teacher_name'] ?? null], fn ($v) => $v !== null);
     respond(200, ['scenario' => App\Qbl\Avatars::inject($pdo, $document) + ['session' => null, 'instance' => $instance]]);
 }
 // Stars, XP and the marketplace, with the same rules as the Laravel app (App\Qbl\ProgressStore).
@@ -354,10 +354,10 @@ if (str_starts_with($path, '/api/editor/library') && preg_match('#^/api/editor/l
 }
 if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     $files = isset($_FILES['file']) ? ['file' => ['tmp_name' => $_FILES['file']['tmp_name'], 'name' => $_FILES['file']['name']]] : [];
-    // Voices: Kokoro on this machine (docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0), or QBL_TTS_DRIVER=none.
+    // Voices: Kokoro on this machine (docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0), or QL_TTS_DRIVER=none.
     $speech = new App\Qbl\Speech\SpeechFactory([
-        'driver' => getenv('QBL_TTS_DRIVER') ?: 'kokoro',
-        'engines' => ['kokoro' => ['class' => App\Qbl\Speech\Engines\KokoroEngine::class, 'url' => getenv('QBL_TTS_URL') ?: 'http://localhost:8880']],
+        'driver' => getenv('QL_TTS_DRIVER') ?: getenv('QBL_TTS_DRIVER') ?: 'kokoro',
+        'engines' => ['kokoro' => ['class' => App\Qbl\Speech\Engines\KokoroEngine::class, 'url' => getenv('QL_TTS_URL') ?: getenv('QBL_TTS_URL') ?: 'http://localhost:8880']],
         'voices' => __DIR__.'/../resources/speech/voices.json',
         'cache_dir' => "$dataDir/speech",
     ]);

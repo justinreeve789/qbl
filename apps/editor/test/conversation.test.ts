@@ -77,7 +77,7 @@ test('the panel: write a line, give the player choices, and lead one to a new li
   await page.click('.inspector .talk-map [data-line="l1"]');
   await page.waitForSelector('dialog[data-panel=conversation] .talk-line[data-line="l1"]');
   assert.equal(await panel('.talk-nav-item').count(), 2);
-  await fill(panel('[data-field=text] textarea'), 'Welcome to the bridge, {{QBLPlayerName}}. What do plants need to grow?');
+  await fill(panel('[data-field=text] textarea'), 'Welcome to the bridge, {{QL_PlayerName}}. What do plants need to grow?');
   assert.match(await panel('.talk-nav-item[data-line="l1"] .talk-nav-text').innerText(), /Welcome to the bridge/, 'the list follows the typing');
 
   // The first choice becomes the right answer, with a variable to remember it by.
@@ -119,7 +119,7 @@ test('the panel: write a line, give the player choices, and lead one to a new li
 
   const talk = conversationIn(await draft());
   const l1 = talk.lines.find((l) => l.id === 'l1')!;
-  assert.equal(l1.text, 'Welcome to the bridge, {{QBLPlayerName}}. What do plants need to grow?');
+  assert.equal(l1.text, 'Welcome to the bridge, {{QL_PlayerName}}. What do plants need to grow?');
   assert.deepEqual(l1.choices, [
     { text: 'Sunlight and water', correct: true, actions: [{ type: 'variable', name: 'samples', operator: '+', operand: 1 }] },
     { text: 'Goodbye!' },

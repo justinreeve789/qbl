@@ -57,7 +57,7 @@ test('the word being said at a moment', () => {
 test('the publish check warns when a line was changed after it was recorded', () => {
   const doc = (text: string): Scenario => ({
     id: 1, shortname: 'v', title: 'Voices', start_scene_id: 1,
-    assets: [{ id: 5, type: 'audio', filename: 'a.mp3', url: '/media/1/a.mp3', speech: { ...recorded, line: 'Welcome aboard, {{QBLPlayerName}}!' } }],
+    assets: [{ id: 5, type: 'audio', filename: 'a.mp3', url: '/media/1/a.mp3', speech: { ...recorded, line: 'Welcome aboard, {{QL_PlayerName}}!' } }],
     characters: [{ id: 2, name: 'Vega', tts_voice: 'captain' }],
     scenes: [{
       id: 1, shortname: 'deck', title: 'Deck', width: 1200, height: 600, start_events: [], indirect_events: [],
@@ -67,8 +67,8 @@ test('the publish check warns when a line was changed after it was recorded', ()
     }],
   }) as unknown as Scenario;
   const stale = (text: string) => validateScenario(normalizeScenario(doc(text))).warnings.filter((i) => i.path.endsWith('narration_media_id'));
-  assert.equal(stale('Welcome aboard, {{QBLPlayerName}}!').length, 0);
-  const issues = stale('Welcome back, {{QBLPlayerName}}!');
+  assert.equal(stale('Welcome aboard, {{QL_PlayerName}}!').length, 0);
+  const issues = stale('Welcome back, {{QL_PlayerName}}!');
   assert.equal(issues.length, 1);
   assert.equal(issues[0]!.level, 'warning');
   assert.match(issues[0]!.message, /Record the voices again/);
@@ -77,10 +77,10 @@ test('the publish check warns when a line was changed after it was recorded', ()
 test('and when a conversation\'s line was', () => {
   const doc = {
     id: 1, shortname: 'v', title: 'Voices', start_scene_id: 1,
-    assets: [{ id: 5, type: 'audio', filename: 'a.mp3', url: '/a.mp3', speech: { text: 'Ready, explorer?', line: 'Ready, {{QBLPlayerName}}?', engine: 'kokoro', words: [] } }],
+    assets: [{ id: 5, type: 'audio', filename: 'a.mp3', url: '/a.mp3', speech: { text: 'Ready, explorer?', line: 'Ready, {{QL_PlayerName}}?', engine: 'kokoro', words: [] } }],
     characters: [{ id: 2, name: 'Vega' }],
     scenes: [{ id: 1, shortname: 'deck', title: 'Deck', width: 1200, height: 600, start_events: [], indirect_events: [], hotspots: [{ id: 3, shortname: 'talk', position_x: 100, position_y: 100, radius: 50, actions: [
-      { id: 4, type: 'conversation', lines: [{ id: 'a', speaker: 'character', character_id: 2, text: 'Ready now, {{QBLPlayerName}}?', narration_media_id: 5 }] },
+      { id: 4, type: 'conversation', lines: [{ id: 'a', speaker: 'character', character_id: 2, text: 'Ready now, {{QL_PlayerName}}?', narration_media_id: 5 }] },
     ] }] }],
   } as unknown as Scenario;
   const issues = validateScenario(normalizeScenario(doc)).warnings.filter((i) => i.path.endsWith('narration_media_id'));

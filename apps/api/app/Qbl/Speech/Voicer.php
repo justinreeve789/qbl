@@ -5,7 +5,7 @@ namespace App\Qbl\Speech;
 /**
  * Records what characters say, in their catalog voices, with whichever service is set up.
  *
- * A line is recorded as it is written, except that the player's name ({{QBLPlayerName}}) is said
+ * A line is recorded as it is written, except that the player's name ({{QL_PlayerName}}, or the older {{QBLPlayerName}}) is said
  * as a stand-in word ("explorer"): the game shows the name and lights it while the stand-in is said.
  * A line with any other {{placeholder}} cannot be recorded (its words are only known in play) and
  * is left to the browser's voice.
@@ -35,7 +35,7 @@ final class Voicer
     public function script(string $text, ?string $lang = 'en'): ?string
     {
         $text = html_entity_decode(strip_tags(preg_replace('/<br\s*\/?>/i', ' ', $text) ?? $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = preg_replace('/\{\{\s*QBLPlayerName\s*\}\}/', $this->catalog->standIn($lang), $text) ?? $text;
+        $text = preg_replace('/\{\{\s*(?:QL_PlayerName|QBLPlayerName)\s*\}\}/', $this->catalog->standIn($lang), $text) ?? $text;
         if (str_contains($text, '{{')) {
             return null;
         }

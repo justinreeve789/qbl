@@ -92,7 +92,7 @@ return [
     ],
     'interactions' => [
         ['key' => 'talk_keeper', 'type' => 'talk', 'scene' => 'landing', 'label' => 'Talk to Keeper Ama', 'character' => 'keeper', 'dialogue' => [
-            ['speaker' => 'keeper', 'text' => 'Welcome, {{QBLPlayerName}}! Our trees are full of flowers, but no fruit is growing.'],
+            ['speaker' => 'keeper', 'text' => 'Welcome, {{QL_PlayerName}}! Our trees are full of flowers, but no fruit is growing.'],
             ['speaker' => 'keeper', 'text' => 'Look at the flowers in the orchard and collect pollen. Then come up to the hive.'],
             ['speaker' => 'player', 'text' => 'We are on it!'],
         ], 'award' => ['stars' => 1, 'xp' => 5, 'note' => 'Mission accepted']],

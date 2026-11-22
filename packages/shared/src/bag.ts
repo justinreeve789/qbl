@@ -1,10 +1,10 @@
 import type { Combination, Condition, GameEvent, Id, Item, Scenario, VarValue } from './types.js';
-import { HOLDING, testConditions } from './variables.js';
+import { currentName, HOLDING, testConditions } from './variables.js';
 
 /**
  * The player's bag, as in a point-and-click adventure: the things they carry (`Item.carried_when`),
  * which they pick to use on something in the scene or put together with another thing they carry
- * (`Scenario.combinations`). Using a thing works through the reserved variable `QBLHolding`: while
+ * (`Scenario.combinations`). Using a thing works through the reserved variable `QL_Holding`: while
  * the player has picked a thing, it holds that thing's id, and a hotspot (or a character's event)
  * that tests it takes the thing. Everything else about it is ordinary events and variables.
  */
@@ -22,12 +22,12 @@ export function carriedItems(scenario: Pick<Scenario, 'items'>, get: Get): Item[
 }
 
 function mentions(conditions: Condition[] | undefined): boolean {
-  return (conditions ?? []).some((c) => c.variable === HOLDING);
+  return (conditions ?? []).some((c) => currentName(c.variable) === HOLDING);
 }
 
 /**
  * Whether an event takes things from the bag: its conditions, or those of one of its own actions,
- * test `QBLHolding`, or (with `find`) an event it runs does. Clicked with a thing picked, only such
+ * test `QL_Holding`, or (with `find`) an event it runs does. Clicked with a thing picked, only such
  * events run; anything else under the pointer says the thing does not work there.
  */
 export function takesItems(event: Pick<GameEvent, 'conditions' | 'actions'>, find?: (id: Id) => Pick<GameEvent, 'conditions' | 'actions'> | undefined, depth = 2): boolean {

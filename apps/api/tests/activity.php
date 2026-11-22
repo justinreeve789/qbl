@@ -91,8 +91,8 @@ foreach ([11, 12, 13] as $student) {
 }
 $a = $classes->assign(1, $id, [11, 12, 13], null, null, [['name' => 'Comets', 'student_ids' => [11, 12]]]);
 $team = $a['teams'][0];
-same($classes->access(11, 'student', $id, $team['group']), ['allowed' => true, 'party' => $a['group'], 'team_name' => 'Comets'], "a team plays in its assignment's room, under its own name");
-same($classes->access(13, 'student', $id, $a['group']), ['allowed' => true, 'party' => $a['group']], 'so do the students in no team');
+same($classes->access(11, 'student', $id, $team['group']), ['allowed' => true, 'party' => $a['group'], 'team_name' => 'Comets', 'teacher_name' => 'Ms Tan'], "a team plays in its assignment's room, under its own name, and knows its teacher (QL_TeacherName)");
+same($classes->access(13, 'student', $id, $a['group']), ['allowed' => true, 'party' => $a['group'], 'teacher_name' => 'Ms Tan'], 'so do the students in no team');
 same($classes->access(13, 'student', $id, $team['group'])['allowed'], false, 'a student is still refused a team that is not theirs');
 same($classes->access(20, 'guest', $id, 'public'), ['allowed' => true, 'party' => 'public'], 'the public instance is a room of its own');
 same($classes->access(11, 'student', $id, 'lunch-club')['party'], 'lunch-club', 'and so is any open group');
@@ -164,7 +164,7 @@ same(count($api->handle('GET', "teach/assignments/{$a['id']}/messages", [], ['id
 same(count($api->handle('GET', "teach/assignments/{$a['id']}/activity/12", [], ['id' => 1, 'role' => 'teacher'])[1]['activity']), 1, "and read one student's activity");
 same($api->handle('GET', "teach/assignments/{$a['id']}/nonsense", [], ['id' => 1, 'role' => 'teacher'])[0], 404, 'an unknown report is not found');
 
-same([ActivityStore::plain('Collect samples ({{samples}}/3)'), ActivityStore::plain('Welcome {{QBLPlayerName}}, find the lab'), ActivityStore::plain('Plain')], ['Collect samples', 'Welcome, find the lab', 'Plain'], 'objective text is shown without its placeholders');
+same([ActivityStore::plain('Collect samples ({{samples}}/3)'), ActivityStore::plain('Welcome {{QL_PlayerName}}, find the lab'), ActivityStore::plain('Plain')], ['Collect samples', 'Welcome, find the lab', 'Plain'], 'objective text is shown without its placeholders');
 
 // ---- conditions are judged as the game judges them
 check(ActivityStore::holds([['variable' => 'a', 'operator' => '=', 'operand' => '2']], ['a' => 2]) && ActivityStore::holds([['variable' => 'm', 'operator' => '=', 'operand' => 'Flora']], ['m' => 'flora']), 'numbers compare as numbers and text without regard to case');

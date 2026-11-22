@@ -254,7 +254,7 @@ same([$cast['troll'], $cast['fairy'], $cast['mage'], $cast['ruler'], $cast['tink
 same($catalog->get($cast['someone'])['flair'], 2, 'a character nothing is said of gets a theatrical voice');
 same($catalog->get($cast['guide'])['flair'], 0, 'but a guide described as warm, friendly and clear keeps a clear, everyday voice');
 $plain = (new VoicePicker($catalog, 0))->pick(['someone' => ['gender' => 'male', 'age' => 'adult'], 'kid' => ['gender' => 'female', 'age' => 'child']]);
-same([$catalog->get($plain['someone'])['flair'], $plain['kid']], [0, 'pip'], 'with no taste for flair (QBL_TTS_FLAIR=0), voices are chosen by fit alone, as before');
+same([$catalog->get($plain['someone'])['flair'], $plain['kid']], [0, 'pip'], 'with no taste for flair (QL_TTS_FLAIR=0), voices are chosen by fit alone, as before');
 same((new SpeechFactory(['voices' => $catalogPath, 'flair' => 0]))->picker()->pick(['x' => ['gender' => 'male', 'age' => 'adult']]), ['x' => $plain['someone']], 'the setting reaches the picker');
 check($catalog->get($picker->pick(['x' => ['gender' => 'male', 'describe' => 'gigante']], 'es')['x'])['key'] === 'gigante-es', 'a Spanish giant gets the Spanish giant\'s voice');
 
@@ -262,18 +262,21 @@ check($catalog->get($picker->pick(['x' => ['gender' => 'male', 'describe' => 'gi
 $cache = sys_get_temp_dir().'/qbl-speech-test-'.bin2hex(random_bytes(4));
 $engine = new FakeEngine;
 $voicer = new Voicer($engine, $catalog, $cache);
-same($voicer->script('Welcome aboard, {{QBLPlayerName}}! <b>Ready?</b> &amp; go'), 'Welcome aboard, explorer! Ready? & go', 'the player\'s name is said as "explorer", and markup is not said');
-same($voicer->script('Hola, {{ QBLPlayerName }}.', 'es'), 'Hola, explorador.', 'in the scenario\'s language');
+same($voicer->script('Welcome aboard, {{QL_PlayerName}}! <b>Ready?</b> &amp; go'), 'Welcome aboard, explorer! Ready? & go', 'the player\'s name is said as "explorer", and markup is not said');
+same($voicer->script('Hola, {{ QL_PlayerName }}.', 'es'), 'Hola, explorador.', 'in the scenario\'s language');
+same($voicer->script('Ready, {{QL_PlayerName}}?'), 'Ready, explorer?', '{{QL_PlayerName}} is said the same way');
+same($voicer->script('Ready, {{QBLPlayerName}}?'), 'Ready, explorer?', 'and so is its old name');
+same($voicer->script('Ask {{QL_TeacherName}}.'), null, 'any other system variable is only known in play');
 same($voicer->script('You have {{score}} points.'), null, 'a line with another placeholder cannot be recorded ahead of play');
 same($voicer->script('…'), null, 'nor one with nothing to say');
-$line = $voicer->record('Hi there, {{QBLPlayerName}}!', 'pip');
+$line = $voicer->record('Hi there, {{QL_PlayerName}}!', 'pip');
 same($engine->said[0], ['Hi there, explorer!', ['voice' => 'af_sky(1)+af_bella(1)', 'speed' => 1.12]], 'a line is recorded in the voice the catalog says, on the service in use');
 same(array_keys($line['params']['speech']), ['text', 'line', 'voice', 'engine', 'words', 'duration'], 'it keeps what was said, the line it was recorded from, by whom, on which service, and when each word is');
-same($line['params']['speech']['line'], 'Hi there, {{QBLPlayerName}}!', 'the line as it was written');
+same($line['params']['speech']['line'], 'Hi there, {{QL_PlayerName}}!', 'the line as it was written');
 same([$line['params']['speech']['voice'], $line['params']['speech']['engine'], $line['params']['speech']['words'][2]], ['pip', 'kokoro', ['w' => 'explorer!', 's' => 600, 'e' => 850]], 'with the catalog\'s voice key, not the service\'s');
-$again = $voicer->record('Hi there, {{QBLPlayerName}}!', 'pip');
+$again = $voicer->record('Hi there, {{QL_PlayerName}}!', 'pip');
 same([count($engine->said), $again['speech']->audio], [1, $line['speech']->audio], 'the same line in the same voice comes from the cache');
-$voicer->record('Hi there, {{QBLPlayerName}}!', 'heart');
+$voicer->record('Hi there, {{QL_PlayerName}}!', 'heart');
 same(count($engine->said), 2, 'another voice is recorded afresh');
 same(strlen($voicer->sample('heart')->audio) > 0 && str_contains($engine->said[2][0], 'explorer'), true, 'a voice can be heard saying a sample line');
 
@@ -291,7 +294,7 @@ $ada = $store->createRow($sid, 'characters', ['name' => 'Ada', 'settings' => ['t
 $bolt = $store->createRow($sid, 'characters', ['name' => 'Bolt', 'settings' => ['scale' => 0.5]]);
 $event = $store->createRow($sid, 'events', ['scene_id' => $scene, 'kind' => 'hotspot', 'shortname' => 'talk']);
 $say = fn (array $c, string $text, array $extra = []) => $store->createRow($sid, 'actions', ['event_id' => $event['id'], 'type' => 'dialogue', 'params' => ['style' => 'portrait', 'text' => $text, 'speaker' => 'character', 'character_id' => $c['id']] + $extra]);
-$a1 = $say($ada, 'Welcome, {{QBLPlayerName}}! The reactor needs you.');
+$a1 = $say($ada, 'Welcome, {{QL_PlayerName}}! The reactor needs you.');
 $a2 = $say($ada, 'You have {{score}} points.');
 $a3 = $say($bolt, 'Beep boop.');
 $a4 = $say($ada, 'I said nothing.', ['narrate' => false]);
@@ -316,7 +319,7 @@ $actions = array_column($rows['actions'], null, 'id');
 $recording = array_values(array_filter($rows['media'], fn ($m) => ($m['params']['speech']['engine'] ?? null) === 'kokoro'))[0] ?? null;
 same([$recording['type'] ?? null, $recording['params']['speech']['text'] ?? null, $recording['params']['speech']['voice'] ?? null], ['audio', 'Welcome, explorer! The reactor needs you.', 'heart'], 'the recording is an audio media with what it says, in which voice');
 check(is_file($mediaDir.'/'.$recording['filepath']) && str_starts_with((string) file_get_contents($mediaDir.'/'.$recording['filepath']), 'ID3'), 'stored with the scenario\'s uploads');
-same([$actions[$a1['id']]['params']['narration_media_id'] ?? null, $actions[$a1['id']]['params']['narrate'] ?? null, $actions[$a1['id']]['params']['text']], [$recording['id'], true, 'Welcome, {{QBLPlayerName}}! The reactor needs you.'], 'the line plays it, and is read aloud');
+same([$actions[$a1['id']]['params']['narration_media_id'] ?? null, $actions[$a1['id']]['params']['narrate'] ?? null, $actions[$a1['id']]['params']['text']], [$recording['id'], true, 'Welcome, {{QL_PlayerName}}! The reactor needs you.'], 'the line plays it, and is read aloud');
 same([isset($actions[$a3['id']]['params']['narration_media_id']), $actions[$a4['id']]['params']['narrate'], $actions[$a5['id']]['params']['narration_media_id'], isset($actions[$player['id']]['params']['narration_media_id'])], [false, false, $upload['id'], false], 'nothing else changed');
 
 $doc = ScenarioCompiler::compile($store->rows($sid));
@@ -326,7 +329,7 @@ same(ScenarioDecompiler::rows($doc)['media'][array_search($recording['id'], arra
 
 $again = $scenarioVoicer->record($sid);
 same([$again['recorded'], $again['kept'], count($engine->said)], [0, 1, 1], 'recording again keeps what is up to date');
-$store->updateRow($sid, 'actions', $a1['id'], ['params' => ['text' => 'Welcome back, {{QBLPlayerName}}!'] + $actions[$a1['id']]['params']]);
+$store->updateRow($sid, 'actions', $a1['id'], ['params' => ['text' => 'Welcome back, {{QL_PlayerName}}!'] + $actions[$a1['id']]['params']]);
 $changed = $scenarioVoicer->record($sid);
 $rows = $store->bundle($sid);
 $now = array_column($rows['actions'], null, 'id')[$a1['id']]['params']['narration_media_id'];
@@ -359,7 +362,7 @@ $vega = $store->createRow($tid, 'characters', ['name' => 'Vega', 'settings' => [
 $pip = $store->createRow($tid, 'characters', ['name' => 'Pip']);
 $tevent = $store->createRow($tid, 'events', ['scene_id' => $tscene, 'kind' => 'hotspot', 'shortname' => 'talk']);
 $conversation = $store->createRow($tid, 'actions', ['event_id' => $tevent['id'], 'type' => 'conversation', 'params' => ['style' => 'portrait', 'lines' => [
-    ['id' => 'a', 'speaker' => 'character', 'character_id' => $vega['id'], 'text' => 'Ready, {{QBLPlayerName}}?', 'choices' => [['text' => 'Yes!', 'next' => 'b'], ['text' => 'Not yet', 'next' => 'c']]],
+    ['id' => 'a', 'speaker' => 'character', 'character_id' => $vega['id'], 'text' => 'Ready, {{QL_PlayerName}}?', 'choices' => [['text' => 'Yes!', 'next' => 'b'], ['text' => 'Not yet', 'next' => 'c']]],
     ['id' => 'b', 'speaker' => 'player', 'text' => 'Let us go.', 'next' => 'd'],
     ['id' => 'c', 'speaker' => 'character', 'character_id' => $pip['id'], 'text' => 'Beep. Take your time.'],
     ['id' => 'd', 'speaker' => 'character', 'character_id' => $vega['id'], 'text' => 'Then follow me.'],
@@ -373,7 +376,7 @@ same([isset($after['lines'][0]['narration_media_id']), isset($after['lines'][1][
 same([$after['lines'][0]['choices'][1]['next'], $after['lines'][2]['text'], $after['style']], ['c', 'Beep. Take your time.', 'portrait'], 'and nothing else about it changes');
 $doc = ScenarioCompiler::compile($store->rows($tid));
 $first = array_values(array_filter($doc['assets'], fn ($m) => $m['id'] === $after['lines'][0]['narration_media_id']))[0];
-same([$first['speech']['text'], $first['speech']['line']], ['Ready, explorer?', 'Ready, {{QBLPlayerName}}?'], 'the game gets each line\'s timings');
+same([$first['speech']['text'], $first['speech']['line']], ['Ready, explorer?', 'Ready, {{QL_PlayerName}}?'], 'the game gets each line\'s timings');
 $after['lines'][3]['text'] = 'Then follow me, quickly.';
 $store->updateRow($tid, 'actions', $conversation['id'], ['params' => $after]);
 $store->updateRow($tid, 'characters', $pip['id'], ['settings' => ['tts_voice' => 'sprite']]);
@@ -427,8 +430,8 @@ $built = ['rows' => [
     'media' => [['id' => 1, 'type' => 'image', 'filename' => 'a.png', 'url' => 'assets/a.png']],
     'characters' => [['id' => 1, 'name' => 'Keeper Ama', 'settings' => ['tts_voice' => 'heart']], ['id' => 2, 'name' => 'Pip', 'settings' => []]],
     'actions' => [
-        ['id' => 1, 'type' => 'dialogue', 'params' => ['text' => 'Hello, {{QBLPlayerName}}!', 'speaker' => 'character', 'character_id' => 1]],
-        ['id' => 2, 'type' => 'dialogue', 'params' => ['text' => 'Hello, {{QBLPlayerName}}!', 'speaker' => 'character', 'character_id' => 1]],
+        ['id' => 1, 'type' => 'dialogue', 'params' => ['text' => 'Hello, {{QL_PlayerName}}!', 'speaker' => 'character', 'character_id' => 1]],
+        ['id' => 2, 'type' => 'dialogue', 'params' => ['text' => 'Hello, {{QL_PlayerName}}!', 'speaker' => 'character', 'character_id' => 1]],
         ['id' => 3, 'type' => 'dialogue', 'params' => ['text' => 'Beep.', 'speaker' => 'character', 'character_id' => 2]],
         ['id' => 4, 'type' => 'dialogue', 'params' => ['text' => 'Score: {{score}}', 'speaker' => 'character', 'character_id' => 1]],
     ],
@@ -454,7 +457,7 @@ if ($url = getenv('KOKORO_URL')) {
             check(in_array($part, $voices, true), "Kokoro has $part ($key)");
         }
     }
-    $real = (new Voicer($live, $catalog))->record('Welcome aboard, {{QBLPlayerName}}! The reactor is at 42 percent, and Dr. Ruiz needs help.', 'captain');
+    $real = (new Voicer($live, $catalog))->record('Welcome aboard, {{QL_PlayerName}}! The reactor is at 42 percent, and Dr. Ruiz needs help.', 'captain');
     $words = array_column($real['params']['speech']['words'], 'w');
     check(str_starts_with($real['speech']->audio, 'ID3') || str_starts_with(bin2hex(substr($real['speech']->audio, 0, 2)), 'fff'), 'Kokoro records an MP3');
     check(in_array('explorer', $words, true) && ! in_array(',', $words, true), 'with timed words and no punctuation ('.implode(' ', $words).')');
