@@ -101,6 +101,7 @@ Eight containers:
 | `editor` | The scenario editor: a static web application served by its own small Apache. The image holds no code: `app` builds the editor from `apps/editor` (mounted) into a volume this container serves |
 | `docs` | The documentation in `docs/`, built with Astro Starlight into a static site |
 | `tts` | Text-to-speech: [Kokoro](https://github.com/remsky/Kokoro-FastAPI), an open-weight model on the server's own CPU (about 5 GB of image, 1 GB of memory). Records what characters say, with the time of every word, when asked by the editor, `qbl:voice` or the generator. Only reachable inside the Compose network |
+| `chatterbox` | Only with `COMPOSE_PROFILES=chatterbox` and `QL_TTS_DRIVER=chatterbox`: text-to-speech with [Chatterbox](https://github.com/resemble-ai/chatterbox), livelier than Kokoro but much heavier (about 6 GB of memory; several times slower than real time on a CPU). Built from `docker/chatterbox`, with word timings added by alignment. Only reachable inside the Compose network |
 | `apache` | Apache httpd: http://localhost:8080 in development; on a server, behind `edge` (its port stays on the server's loopback address). Serves the game's files, `scenarios/assets` (mounted, as `/scenario-assets`) and uploaded media, and passes `/api` to Laravel, `/game` (WebSocket) to Colyseus, `/editor` to the editor and `/docs` to the documentation |
 
 Starting the containers migrates the database and nothing else. **Seeding is done by hand:**
@@ -392,7 +393,7 @@ docker compose exec app php artisan qbl:voice {code} --assign        # give each
 docker compose exec app php artisan qbl:tts "Hello there!"           # say any text in a random theatrical voice, saved as tts-<voice>.mp3
 ```
 
-Generated missions are voiced as they are made, and cast like a cartoon: besides everyday voices there are theatrical ones (a booming giant, a squeaky pixie, a jolly gnome, a pantomime villain, a zany inventor), which are chosen first (`QL_TTS_FLAIR`, 0 for everyday voices). The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QL_TTS_DRIVER`; one for OpenAI-style services comes with it). See `docs/src/content/docs/developers/voices.md`.
+Generated missions are voiced as they are made, and cast like a cartoon: besides everyday voices there are theatrical ones (a booming giant, a squeaky pixie, a jolly gnome, a pantomime villain, a zany inventor), which are chosen first (`QL_TTS_FLAIR`, 0 for everyday voices). The voices are in `apps/api/resources/speech/voices.json`; another text-to-speech service can be used by adding one class (`QL_TTS_DRIVER`; one for OpenAI-style services comes with it). For livelier, more expressive voices, `QL_TTS_DRIVER=chatterbox` with `COMPOSE_PROFILES=chatterbox` uses the `chatterbox` container instead (see "Or: Chatterbox" in the voices guide). See `docs/src/content/docs/developers/voices.md`.
 
 ## The demo mission
 

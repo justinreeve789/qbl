@@ -43,7 +43,24 @@ class SpeechFactory
             throw new SpeechError("There is no text-to-speech service called \"$driver\" in config/qbl_speech.php (there are: $known, and none).");
         }
 
-        return $this->engines[$driver] = $class::fromConfig($settings, $this->http);
+        $engine = $class::fromConfig($settings, $this->http);
+        if (method_exists($engine, 'withClips')) {
+            $engine->withClips(fn (string $clip) => $this->clips($driver)->make($clip));
+        }
+
+        return $this->engines[$driver] = $engine;
+    }
+
+    /**
+     * What makes the reference clips of a service that speaks in a clip's voice (Chatterbox): the
+     * service in its clips_from setting (kokoro by default), or none.
+     */
+    public function clips(string $driver = 'chatterbox'): ChatterboxClips
+    {
+        $from = strtolower((string) ($this->config['engines'][$driver]['clips_from'] ?? 'kokoro'));
+        $source = in_array($from, ['', 'none', 'off', $driver], true) ? null : $this->engine($from);
+
+        return new ChatterboxClips($this->catalog(), $source);
     }
 
     public function catalog(): VoiceCatalog

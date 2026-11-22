@@ -23,6 +23,8 @@ final class VoiceCatalog
 
     private array $samples;
 
+    private array $clipLines;
+
     public function __construct(array $data)
     {
         foreach ((array) ($data['voices'] ?? []) as $v) {
@@ -32,6 +34,7 @@ final class VoiceCatalog
         }
         $this->standIns = (array) ($data['stand_ins'] ?? []) + ['en' => 'explorer'];
         $this->samples = (array) ($data['samples'] ?? []) + ['en' => 'Hello, explorer! Shall we get started?'];
+        $this->clipLines = (array) ($data['clip_lines'] ?? []);
     }
 
     public static function load(string $path): self
@@ -152,6 +155,15 @@ final class VoiceCatalog
     public function sample(?string $lang): string
     {
         return (string) ($this->samples[self::primary($lang)] ?? $this->samples['en']);
+    }
+
+    /**
+     * A longer passage to make a voice's reference clip from (Chatterbox clones a voice from about
+     * fifteen seconds of it), in a language: the catalog's clip_lines, else its sample line.
+     */
+    public function clipLine(?string $lang): string
+    {
+        return (string) ($this->clipLines[self::primary($lang)] ?? $this->clipLines['en'] ?? $this->sample($lang));
     }
 
     /** For the editor: what a person picking a voice needs, without the services' details. */
