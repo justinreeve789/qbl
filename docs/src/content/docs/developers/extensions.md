@@ -338,9 +338,9 @@ It is separate from `dialogue`, which says one line. The whole tree lives inside
 
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
-lines | array | | The lines, below. At least one.
+lines | array | | The lines, below. At least one. Their order is the author's (the editor lets it be changed); the conversation goes by `start`, `next` and the choices. Lines that run on with `next` and no choices are said one after another, each in its own box, before the player answers the last.
 start | string | the first line | The `id` of the line it starts with.
-style | string | portrait | `portrait`: each line in a story box with the speaker's close-up, the choices listed under it. `bubble`: each line in a bubble over its speaker, the choices in a box at the bottom of the screen.
+style | string | portrait | `portrait`: each line in a story box with the speaker's close-up. `bubble`: each line in a bubble over its speaker. Either way a line's choices come after it, once it has been said: as a story box of the player's own (their close-up and name), or for bubbles a plain box at the bottom of the screen.
 narrate | bool | the scenario's | Read the lines aloud, each in its speaker's voice. See [Reading text aloud](#reading-text-aloud).
 
 **A line**

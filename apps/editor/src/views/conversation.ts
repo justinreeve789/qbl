@@ -11,9 +11,12 @@ import { inlineConditions, type ConditionValue } from './conditions';
 /**
  * A conversation (a dialogue tree) is one action whose lines are kept inside it. The action's card
  * in the event shows the tree as a map you can follow from the start, branch by branch; any line
- * in it opens the conversation's panel at that line. The panel lists every line on the left and
- * edits one on the right: who says it, what they say, and what comes next, either the player's
- * choices (each leading to another line, or ending the talk) or simply the line after.
+ * in it opens the conversation's panel at that line. The panel lists every line on the left, in
+ * an order the author sets (drag, or ↑ ↓), and edits one on the right: who says it, what they say,
+ * and what comes next, either the player's choices (each leading to another line, or ending the
+ * talk) or simply the line after. Lines that follow one another with no choice between them are
+ * one part of the talk, several boxes said in a row before the player answers: "Add another box"
+ * makes one, and the panel shows the boxes of the part together.
  */
 
 interface Choice {
@@ -79,6 +82,35 @@ function arrivals(lines: Line[], id: string): Array<{ from: Line; choice?: Choic
     if (l.next === id) out.push({ from: l });
   }
   return out;
+}
+
+/**
+ * The boxes said in a row with the line `id`: the lines before it and after it that follow on with
+ * no choice between them, each reached only from the one before. The last one is where the
+ * player answers (or the talk goes on elsewhere, or ends).
+ */
+export function boxesWith(lines: Line[], id: string, start: string | undefined): Line[] {
+  const byId = new Map(lines.map((l) => [l.id, l]));
+  const only = (l: Line) => {
+    const from = arrivals(lines, l.id);
+    return l.id !== start && from.length === 1 && !from[0]!.choice ? from[0]!.from : undefined;
+  };
+  const here = byId.get(id);
+  if (!here) return [];
+  const run = [here];
+  const seen = new Set([id]);
+  for (let before = only(here); before && !before.choices?.length && !seen.has(before.id); before = only(before)) {
+    run.unshift(before);
+    seen.add(before.id);
+  }
+  for (let last = here; !last.choices?.length && last.next;) {
+    const after = byId.get(last.next);
+    if (!after || seen.has(after.id) || only(after) !== last) break;
+    run.push(after);
+    seen.add(after.id);
+    last = after;
+  }
+  return run;
 }
 
 // --------------------------------------------------------------- the map
@@ -228,20 +260,78 @@ function conversationBody(ctx: FormContext, actionId: number, draw: () => void):
     if (line.next) return h('span', { class: 'chip' }, '→ ', clip(talk.line(line.next)?.text || line.next, 18));
     return h('span', { class: 'chip end' }, emojiIcon('🚩'), ' Ends');
   };
-  const nav = h('section', { class: 'panel-section talk-nav', style: '--tone: var(--tone-talk)' },
-    h('h3', { class: 'section-head' }, emojiIcon('🗺️'), ' Lines', help('Every line of the conversation. It starts at the one marked Start and goes where the player’s choices lead. Lines marked “never said” have nothing leading to them yet.')),
-    h('label', { class: 'field wide talk-start-field' }, h('span', { class: 'field-label' }, 'Starts with'),
-      select(lines.map((l) => [l.id, `${speakerName(store, l)}: ${clip(l.text || l.id, 40)}`] as const), talk.start() ?? '', (v) => talk.save(withValue(talk.values(), 'start', v === lines[0]?.id ? null : v), true))),
-    h('ol', { class: 'talk-nav-list' }, ...lines.map((l) =>
-      h('li', null, h('button', {
+  /**
+   * The lines in a new order. The order is the author's (the game goes by the links, not by it),
+   * except that a conversation with no "Starts with" starts at the first line: the start is kept
+   * where it was.
+   */
+  const reorder = (order: Line[]) => {
+    const start = talk.start();
+    talk.save(withValue({ ...talk.values(), lines: order }, 'start', start === order[0]?.id ? null : start), true);
+  };
+  const moveLine = (lineId: string, to: number) => {
+    const order = talk.lines().filter((l) => l.id !== lineId);
+    const line = talk.line(lineId);
+    if (!line) return;
+    order.splice(Math.max(0, Math.min(order.length, to)), 0, line);
+    reorder(order);
+  };
+  let dragging: string | null = null;
+  const navRow = (l: Line, index: number) => {
+    const from = arrivals(lines, l.id);
+    // A box that follows straight on from the one above it is drawn as part of it.
+    const follows = index > 0 && from.length === 1 && !from[0]!.choice && from[0]!.from.id === lines[index - 1]!.id && !lines[index - 1]!.choices?.length && l.id !== talk.start();
+    const grip = h('span', { class: 'grip', draggable: 'true', title: 'Drag to change the order', 'aria-hidden': 'true' }, '⠿');
+    const row = h('li', { class: `talk-nav-row${follows ? ' follows' : ''}`, 'data-row': l.id },
+      grip,
+      h('button', {
         type: 'button', class: `talk-nav-item${l.id === current?.id ? ' current' : ''}${reached.has(l.id) ? '' : ' unreached'}`, 'data-line': l.id,
         'aria-current': l.id === current?.id ? 'true' : null, onclick: () => goTo(l.id),
       },
       whoBadge(store, l),
       h('span', { class: 'talk-nav-main' },
-        h('span', { class: 'talk-nav-name' }, speakerName(store, l), l.id === talk.start() ? h('span', { class: 'chip talk-start' }, emojiIcon('▶️'), ' Start') : null, reached.has(l.id) ? null : h('span', { class: 'chip warn' }, 'never said')),
+        h('span', { class: 'talk-nav-name' }, follows ? h('span', { class: 'talk-follows', title: 'Said straight after the line above' }, '↳') : null, speakerName(store, l), l.id === talk.start() ? h('span', { class: 'chip talk-start' }, emojiIcon('▶️'), ' Start') : null, reached.has(l.id) ? null : h('span', { class: 'chip warn' }, 'never said')),
         h('span', { class: 'talk-nav-text' }, clip(l.text?.trim() || '(nothing said yet)', 70))),
-      leads(l))))),
+      leads(l)),
+      h('span', { class: 'talk-nav-move' },
+        h('button', { type: 'button', class: 'icon', title: 'Move up', 'aria-label': 'Move this line up', disabled: index === 0, onclick: () => moveLine(l.id, index - 1) }, '↑'),
+        h('button', { type: 'button', class: 'icon', title: 'Move down', 'aria-label': 'Move this line down', disabled: index === lines.length - 1, onclick: () => moveLine(l.id, index + 1) }, '↓')));
+    grip.addEventListener('dragstart', (e) => {
+      dragging = l.id;
+      e.dataTransfer?.setData('text/plain', l.id);
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer?.setDragImage(row, 12, 12);
+      row.classList.add('dragging');
+    });
+    grip.addEventListener('dragend', () => {
+      dragging = null;
+      row.classList.remove('dragging');
+      for (const el of row.parentElement?.querySelectorAll('.drop-before, .drop-after') ?? []) el.classList.remove('drop-before', 'drop-after');
+    });
+    const half = (e: DragEvent) => (e.clientY < row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2 ? 'before' : 'after');
+    row.addEventListener('dragover', (e) => {
+      if (dragging == null || dragging === l.id) return;
+      e.preventDefault();
+      row.classList.toggle('drop-before', half(e) === 'before');
+      row.classList.toggle('drop-after', half(e) === 'after');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drop-before', 'drop-after'));
+    row.addEventListener('drop', (e) => {
+      if (dragging == null || dragging === l.id) return;
+      e.preventDefault();
+      const moved = dragging;
+      dragging = null;
+      const order = talk.lines().filter((x) => x.id !== moved);
+      moveLine(moved, order.findIndex((x) => x.id === l.id) + (half(e) === 'after' ? 1 : 0));
+    });
+    return row;
+  };
+
+  const nav = h('section', { class: 'panel-section talk-nav', style: '--tone: var(--tone-talk)' },
+    h('h3', { class: 'section-head' }, emojiIcon('🗺️'), ' Lines', help('Every line of the conversation, in the order you choose: drag a line by its ⠿, or use ↑ and ↓. The order only helps you find your way; the conversation starts at the line marked Start and goes where the player’s choices lead. ↳ marks a box said straight after the one above it. Lines marked “never said” have nothing leading to them yet.')),
+    h('label', { class: 'field wide talk-start-field' }, h('span', { class: 'field-label' }, 'Starts with'),
+      select(lines.map((l) => [l.id, `${speakerName(store, l)}: ${clip(l.text || l.id, 40)}`] as const), talk.start() ?? '', (v) => talk.save(withValue(talk.values(), 'start', v === lines[0]?.id ? null : v), true))),
+    h('ol', { class: 'talk-nav-list' }, ...lines.map((l, index) => navRow(l, index))),
     h('button', { type: 'button', class: 'talk-add-line', onclick: () => goTo(addLine(current)) }, emojiIcon('➕'), ' Add a line'));
 
   if (!current) return h('div', { class: 'talk-panel' }, nav, h('section', { class: 'panel-section talk-line' }, h('p', { class: 'muted' }, 'Add a line to begin.')));
@@ -307,8 +397,11 @@ function conversationBody(ctx: FormContext, actionId: number, draw: () => void):
     id !== talk.start() ? h('button', { type: 'button', onclick: () => talk.save(withValue(talk.values(), 'start', id === lines[0]?.id ? null : id), true) }, emojiIcon('▶️'), ' Start here') : null,
     h('button', { type: 'button', class: 'danger', onclick: () => {
       if (!confirmDelete('this line')) return;
-      // Choices and lines that led here now end the conversation instead.
-      const unlink = (v: string | null | undefined) => (v === id ? undefined : v);
+      // Choices and lines that led here go on to the line after it, when it simply runs on to
+      // one (a box in a row of boxes); otherwise they end the conversation instead.
+      const gone = talk.line(id);
+      const onTo = !gone?.choices?.length && gone?.next && gone.next !== id ? gone.next : undefined;
+      const unlink = (v: string | null | undefined) => (v === id ? onTo : v);
       const rest = talk.lines().filter((l) => l.id !== id).map((l) => {
         const out = { ...l, choices: l.choices?.map((c) => withValue({ ...c }, 'next', unlink(c.next)) as Choice) };
         return withValue(out as unknown as Values, 'next', unlink(l.next)) as unknown as Line;
@@ -332,6 +425,44 @@ function conversationBody(ctx: FormContext, actionId: number, draw: () => void):
     return h('span', { class: 'talk-target' }, pick,
       value && talk.line(value) ? h('button', { type: 'button', class: 'talk-go', title: 'Go to that line', onclick: () => goTo(value) }, 'Go →') : null);
   };
+
+  // ---- boxes said in a row, before the player answers
+  /** A new box straight after this one: what this line led to (its choices, or its next) moves on to the new box. */
+  const addBox = () => {
+    const here = talk.line(id);
+    if (!here) return;
+    const made = newLineId(talk.lines());
+    let box = { id: made, text: '' } as Values;
+    box = withValue(box, 'speaker', here.speaker);
+    box = withValue(box, 'character_id', here.character_id);
+    box = withValue(box, 'choices', here.choices?.length ? here.choices : null);
+    box = withValue(box, 'next', here.next);
+    const list = talk.lines().flatMap((l) => (l.id === id
+      ? [withValue(withValue(l as unknown as Values, 'choices', null), 'next', made) as unknown as Line, box as unknown as Line]
+      : [l]));
+    go(actionId, made);
+    talk.setLines(list, true);
+    draw();
+  };
+  const boxes = boxesWith(lines, id, talk.start());
+  const at = boxes.findIndex((b) => b.id === id);
+  const last = boxes.at(-1);
+  const strip = boxes.length > 1
+    ? h('nav', { class: 'talk-boxes', 'aria-label': 'Boxes said in a row' },
+      h('span', { class: 'field-label' }, `Box ${at + 1} of ${boxes.length}`, help('These lines are said one after another, each in its own box, before anything else happens. The player answers after the last one.')),
+      ...boxes.flatMap((b, i) => [
+        i ? h('span', { class: 'talk-boxes-arrow', 'aria-hidden': 'true' }, '→') : null,
+        h('button', { type: 'button', class: `chip talk-box${b.id === id ? ' current' : ''}`, 'data-box': b.id, 'aria-current': b.id === id ? 'true' : null, title: b.text || '(nothing said yet)', onclick: () => goTo(b.id) },
+          h('b', null, i + 1), ` ${speakerName(store, b)}: ${clip(b.text?.trim() || '…', 22)}`),
+      ]),
+      h('span', { class: 'talk-boxes-arrow', 'aria-hidden': 'true' }, '→'),
+      h('span', { class: 'chip' }, last?.choices?.length ? h('span', null, emojiIcon('❓'), ' The player answers') : last?.next ? '↪ Goes on' : h('span', null, emojiIcon('🚩'), ' Ends')))
+    : null;
+  const more = h('div', { class: 'talk-more' },
+    h('button', { type: 'button', class: 'talk-add-box', onclick: addBox }, emojiIcon('➕'), ' Add another box after this one'),
+    help(current.choices?.length
+      ? 'Another line said straight after this one, before the player answers: the choices move on to the new box.'
+      : 'Another line said straight after this one, before the conversation goes on.'));
 
   // ---- the player's choices
   const choices = current.choices ?? [];
@@ -364,8 +495,8 @@ function conversationBody(ctx: FormContext, actionId: number, draw: () => void):
   });
 
   const next = h('section', { class: 'talk-then' },
-    h('h4', null, emojiIcon('❓'), ' Then the player says…', help('The player picks one of these. Each can lead to another line, or end the conversation, and can do things too (set a variable, run an event). Choices whose conditions do not hold are not offered; when none is, the conversation goes on as if the line had no choices.')),
-    choiceCards.length ? h('div', { class: 'talk-choices' }, ...choiceCards) : h('p', { class: 'muted' }, 'No choices: the player clicks to go on.'),
+    h('h4', null, emojiIcon('❓'), ' Then the player says…', help('Once this line has been said, the player’s answers come up in a box of their own, and the player picks one. Each can lead to another line, or end the conversation, and can do things too (set a variable, run an event). Choices whose conditions do not hold are not offered; when none is, the conversation goes on as if the line had no choices.')),
+    choiceCards.length ? h('div', { class: 'talk-choices' }, ...choiceCards) : h('p', { class: 'muted' }, 'No choices: the player clicks to go on. To say more before the player answers, add another box above.'),
     h('button', { type: 'button', class: 'talk-add-choice', onclick: () => writeChoices([...readChoices(), { text: '' }]) }, emojiIcon('➕'), ' Add a choice'),
     h('div', { class: `talk-choice-row talk-next${choices.length ? ' quiet' : ''}` },
       h('span', { class: 'field-label' }, choices.length ? 'When none is offered, go on to' : 'Then go on to'),
@@ -373,8 +504,10 @@ function conversationBody(ctx: FormContext, actionId: number, draw: () => void):
 
   const said = h('section', { class: 'panel-section talk-line', 'data-line': id, style: '--tone: var(--tone-talk)' },
     head,
+    strip,
     fromList,
     lineForm,
+    more,
     inlineConditions(ctx, () => talk.line(id)?.conditions, (list, structural) => talk.change(id, (l) => withValue(l as unknown as Values, 'conditions', list.length ? list : null) as unknown as Line, structural), 'Said only when', 'Always said.'),
     current.conditions?.length ? h('p', { class: 'muted small' }, 'When these do not hold, the conversation passes over this line to its “Then go on to” line.') : null,
     next);

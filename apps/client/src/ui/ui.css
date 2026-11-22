@@ -200,10 +200,12 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-story.watching .qbl-story-portrait { left: 14px; bottom: 12px; width: 84px; height: 96px; font-size: 40px; }
 .qbl-story.watching .qbl-story-text { font-size: 15px; min-height: 0; }
 .qbl-story.watching .qbl-story-name { margin-top: -26px; font-size: 13px; }
-/* A conversation's answers: under the line in the story box, or alone in a box when the line is a bubble. */
-.qbl-story.choosing { cursor: default; }
+/* A conversation's answers, after the line: the player's own story box (their close-up and name), or a plain box when the lines are bubbles. */
+.qbl-story.answering { cursor: default; border-color: #7fc8ff; }
+.qbl-story.answering .qbl-story-portrait { border-color: #7fc8ff; }
+.qbl-story.answering .qbl-story-name { background: #7fc8ff; }
 .qbl-story.answers-only { padding: 14px 18px; min-height: 0; cursor: default; }
-.qbl-answers { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.qbl-answers { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
 .qbl-story.answers-only .qbl-answers { margin: 0; }
 .qbl-answers[hidden] { display: none; }
 .qbl-answers li { animation: qbl-answer-in 0.18s ease-out backwards; }
@@ -221,7 +223,6 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
   flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
   background: #e6c36a; color: #1b1f27; font-size: 14px; font-weight: 700;
 }
-.qbl-bubble.asking { cursor: default; }
 @media (max-width: 560px) {
   .qbl-story { padding-left: 118px; min-height: 110px; }
   .qbl-answer { font-size: 15px; padding: 9px 12px; }

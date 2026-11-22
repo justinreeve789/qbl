@@ -11,7 +11,7 @@ Conversations are how students *interview* people, *negotiate*, *ask for help* a
 
 ![A conversation in the game: Ms. Okafor says "Hello! What would you like to know?" with the choices "Who are you?" and "Goodbye!"](../../../assets/screenshots/game-conversation.webp)
 
-*In the game, the line appears in a box with the speaker's portrait and the choices listed under it. Players click a choice or press its number.*
+*In the game, the line appears in a box with the speaker's portrait. Once the player has read it and clicked on, their choices appear in a box of their own, with their name. Players click a choice or press its number.*
 
 ## Make a conversation
 
@@ -47,7 +47,7 @@ Click any line, or **Edit the conversation**, to open the panel.
 
 ![The conversation panel: the list of lines on the left, and on the right the selected line, who says it, what they say, and the choices that follow](../../../assets/screenshots/editor-conversation.webp)
 
-The panel lists every line on the left (▶ marks the start; *Starts with* changes it) and edits one line on the right:
+The panel lists every line on the left (▶ marks the start; *Starts with* changes it) and edits one line on the right. Put the lines in whatever order helps you: drag a line by its ⠿, or use its ↑ ↓. The order is only for you; the conversation follows its links, and the start stays the start. ↳ marks a line said straight after the one above it.
 
 | Field | What it does |
 | --- | --- |
@@ -57,9 +57,10 @@ The panel lists every line on the left (▶ marks the start; *Starts with* chang
 | **Said only when** | Makes a line conditional. When its conditions do not hold, the conversation skips it and goes on to its *Then go on to* line. That is how to greet a returning player differently |
 | **Reached from** | The lines and choices that lead here. Click one to go there. **← Back** returns to the line you were on |
 | **Then the player says…** | The choices (below) |
+| **Add another box after this one** | Another line said straight after this one, in its own box, before the player answers (below) |
 | **Then go on to** | For a line with no choices: the next line, or the end |
 | **Line id** | The line's name in the scenario file (`l1`, `l2`…). Renaming it keeps every choice that pointed at it |
-| **Delete line** | Turns choices that led to it into endings |
+| **Delete line** | A box in a row closes up: what led to it goes on to the box after it. Otherwise choices that led to it become endings |
 
 Each **choice** has:
 
@@ -70,14 +71,20 @@ Each **choice** has:
 - **Offered only when**: conditions that decide whether the choice appears at all.
 - ↑ ↓ to put the choices in order.
 
+### Several boxes before the player answers
+
+A character often has more to say than fits in one box. Press **➕ Add another box after this one**: a new line, said by the same speaker, comes straight after this one, and the line's choices move on to it, so the player answers after the last box. Do it again for a third box. The boxes of one part are shown together at the top of the line (*Box 2 of 3*); click one to edit it. Each box can have its own speaker, so the player can say something between two of a character's lines.
+
 Picking **➕ A new line…** creates the reply, said by whoever said the line it answers, and opens it, so you can write a branch from top to bottom and use **← Back** to return to the question.
 
 ## How it looks in the game
 
 The action's **Shown as** setting picks one of two looks:
 
-- **A story box** with the speaker's portrait and the choices listed under it (the default).
-- **A speech bubble** over the speaker, with the choices in a box at the bottom of the screen.
+- **A story box** with the speaker's portrait (the default). When the player clicks on, their choices appear in a story box of their own, with their portrait and name.
+- **A speech bubble** over the speaker. Once it has been read, the choices appear in a box at the bottom of the screen.
+
+Either way the player answers only after the speaker has finished.
 
 ![A story box in the game: Captain Vega's portrait beside her line of dialogue](../../../assets/screenshots/game-dialogue.webp)
 
