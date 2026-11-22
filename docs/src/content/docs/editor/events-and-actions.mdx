@@ -92,7 +92,7 @@ Under 🎬 Actions, **+ Add action…** lists every type with a one-line descrip
 | 🧑 Characters and the player | Walk, Play an animation, Freeze or release player, Show or hide avatar |
 | 🎞️ Pictures, video and sound | Image in scene, Image overlay, Spritemap, Video, Audio, Translate |
 | 🎥 Scenes, camera, weather and bench | Jump, Camera, Weather, Bench |
-| ⏱️ Timing and flow | Wait, Run event, Repeat, Cancel |
+| ⏱️ Timing and flow | Wait, Run event, Repeat, Cancel action, Cancel event |
 | 🏆 Rewards and progress | Award stars or XP, Add a glossary word, Variable, Open the marketplace |
 
 An action's card takes its group's colour. The Type picker on each card, a button's action and a choice's actions use the same groups. A new action arrives with sensible starting values so it is valid straight away.
@@ -140,7 +140,8 @@ An action's card takes its group's colour. The Type picker on each card, a butto
 | ⏳ **Wait** | Pause for a **Duration** in milliseconds |
 | ▶️ **Run event** | Run another event, usually an indirect one. An event that is already running is not started again |
 | 🔁 **Repeat** | Start this event again from its first action, usually with a condition so it can end |
-| ✖️ **Cancel** | Stop another action: remove a picture, stop a sound |
+| ✖️ **Cancel action** | Stop another action: remove a picture, stop a sound |
+| ⏹️ **Cancel event** | Stop an event of this scene that is running: it goes no further, and what it is showing or playing stops. An event that is not running is left alone, and can still start later. **Cancel event** then **Run event** restarts it; pick the event itself to end it there. Background music it started keeps playing (stop that with **Cancel action**) |
 
 **The player**
 

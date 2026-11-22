@@ -91,6 +91,8 @@ export function actionSummary(store: Store, type: string, values: Record<string,
         : values.target === 'auto' ? 'The view follows whoever is acting' : 'The view follows the player';
     case 'cancel':
       return `Cancel action ${values.action_id ?? '?'}`;
+    case 'cancel_event':
+      return `Stop ${eventLabel(store.byId('events', values.target_event_id as number | null))}`;
     case 'image_fixed':
       return `Show ${media()} in the scene`;
     case 'image_overlay':

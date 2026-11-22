@@ -744,3 +744,119 @@ test('sprite sheets: which animation a figure shows, what a sheet may say, and a
   assert.deepEqual(problems(doc(good, { animation: 'anything_at_all' })), [], 'avatars differ from player to player, so a move for the player is not checked against a sheet');
   assert.match(problems(doc(good, undefined, [{ animation: 'Moon Walk' }]))[0]!, /A move names an animation/);
 });
+
+// ------------------------------------------------------- cancel_event
+
+test('cancel_event stops a running event and what it shows; one not running is left alone', async () => {
+  const { engine, host, store } = setup({
+    indirect_events: [
+      ev(10, [
+        { id: 11, type: 'image_fixed', media_id: 1, position_x: 0, position_y: 0, duration: 0 },
+        { id: 12, type: 'wait', duration: 100 },
+        { id: 13, type: 'variable', name: 'n', operator: '+', operand: 1 },
+        { id: 14, type: 'repeat' },
+      ]),
+      ev(20, [{ id: 21, type: 'cancel_event', target_event_id: 10 }]),
+      ev(30, [{ id: 31, type: 'text_overlay', text: 'later', duration: 10 }]),
+      ev(40, [{ id: 41, type: 'cancel_event', target_event_id: 30 }]),
+    ],
+  }, [{ variable_name: 'n', default_value: 0 }]);
+  void engine.triggerById(10);
+  await host.advance(250);
+  assert.equal(store.get('n'), 2, 'the loop ran twice');
+  await engine.triggerById(20);
+  assert.ok(!engine.isRunning(10), 'stopped at once');
+  await host.advance(500);
+  assert.equal(store.get('n'), 2, 'and it goes no further');
+  assert.ok(host.log.includes('cancel:11'), 'the picture it was showing is taken away');
+
+  await engine.triggerById(40);
+  void engine.triggerById(30);
+  await host.advance(20);
+  assert.ok(host.log.includes('present:31'), 'an event that was not running can still start later');
+});
+
+test('cancel_event then run_event restarts an event, and its freeze is the new run\'s', async () => {
+  const { engine, host, store } = setup({
+    indirect_events: [
+      ev(10, [
+        { id: 11, type: 'freeze' },
+        { id: 12, type: 'variable', name: 'n', operator: '+', operand: 1 },
+        { id: 13, type: 'wait', duration: 1000 },
+      ]),
+      ev(20, [
+        { id: 21, type: 'cancel_event', target_event_id: 10 },
+        { id: 22, type: 'run_event', target_event_id: 10, blocking: false },
+      ]),
+    ],
+  }, [{ variable_name: 'n', default_value: 0 }]);
+  void engine.triggerById(10);
+  await host.advance(100);
+  await engine.triggerById(20);
+  await host.advance(100);
+  assert.equal(store.get('n'), 2, 'started again straight after being stopped');
+  assert.ok(engine.isRunning(10));
+  assert.equal(host.frozen, true, 'the stopped run winding down does not release the new run\'s freeze');
+  await host.advance(1000);
+  assert.ok(!engine.isRunning(10));
+  assert.equal(host.frozen, false, 'released when the new run ends');
+});
+
+test('cancel_event naming its own event ends it there; a stopped event frees the hotspots', async () => {
+  const { engine, host, store } = setup({
+    indirect_events: [
+      ev(10, [
+        { id: 11, type: 'variable', name: 'n', operator: '+', operand: 1 },
+        { id: 12, type: 'cancel_event', target_event_id: 10 },
+        { id: 13, type: 'variable', name: 'n', operator: '+', operand: 10 },
+      ]),
+      ev(20, [{ id: 21, type: 'wait', duration: 1000 }], { block_hotspots: true }),
+      ev(30, [{ id: 31, type: 'cancel_event', target_event_id: 20 }]),
+    ],
+  }, [{ variable_name: 'n', default_value: 0 }]);
+  await engine.triggerById(10);
+  assert.equal(store.get('n'), 1);
+  void engine.triggerById(20);
+  await host.advance(10);
+  assert.ok(engine.hotspotsBlocked);
+  await engine.triggerById(30);
+  assert.ok(!engine.hotspotsBlocked);
+});
+
+test('a shared cancel_event takes down only what the watcher is shown of that event', async () => {
+  const scene = {
+    indirect_events: [
+      ev(10, [{ id: 11, type: 'image_fixed', media_id: 1, position_x: 0, position_y: 0, duration: 0 }], { audience: 'scene' }),
+      ev(20, [{ id: 21, type: 'cancel_event', target_event_id: 10 }], { audience: 'scene' }),
+      ev(30, [{ id: 31, type: 'image_fixed', media_id: 1, position_x: 0, position_y: 0, duration: 0 }], { audience: 'scene' }),
+    ],
+  };
+  const actor = setup(scene);
+  void actor.engine.triggerById(10);
+  await actor.engine.triggerById(20);
+  assert.deepEqual(actor.host.shared, [11, 21], 'the cancel is passed on');
+
+  const watcher = setup(scene);
+  watcher.engine.watch(10, 11, 'ann');
+  watcher.engine.watch(30, 31, 'ann');
+  watcher.engine.watch(20, 21, 'ann');
+  assert.ok(watcher.host.log.includes('cancel:11'), 'what the watcher saw of the event is taken away');
+  assert.ok(!watcher.host.log.includes('cancel:31'), 'another event\'s picture stays');
+});
+
+test('cancel_event is validated like run_event', () => {
+  const doc = (target: unknown) => ({
+    id: 1, shortname: 't', title: 'T', start_scene_id: 1,
+    assets: [{ id: 1, type: 'image', url: 'a.png' }],
+    scenes: [
+      { id: 1, width: 100, height: 100, indirect_events: [{ id: 10, actions: [{ id: 11, type: 'cancelEvent', target_event_id: target }] }, { id: 12, actions: [] }] },
+      { id: 2, width: 100, height: 100, indirect_events: [{ id: 20, actions: [] }] },
+    ],
+  });
+  const errors = (target: unknown) => validateScenario(doc(target) as never).errors.map((e) => e.message).join('|');
+  assert.equal(errors(12), '');
+  assert.equal(errors(10), '', 'an event may stop itself');
+  assert.match(errors(null), /No event is chosen to stop/);
+  assert.match(errors(99), /Event 99 does not exist/);
+  assert.match(errors(20), /belongs to another scene/);
+});

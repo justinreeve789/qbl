@@ -225,6 +225,7 @@ export type ActionType =
   | 'freeze'
   | 'audio'
   | 'cancel'
+  | 'cancel_event'
   | 'image_fixed'
   | 'image_overlay'
   | 'infobox'
@@ -278,6 +279,16 @@ export interface AudioAction extends ActionBase {
 export interface CancelAction extends ActionBase {
   type: 'cancel';
   action_id: Id;
+}
+/**
+ * [ext] Stop an event of this scene that is running: it goes no further, and what it is showing or
+ * playing stops, as when an overridable event is interrupted. An event that is not running is left
+ * alone (it can still start later). The event may be this one: it stops here.
+ */
+export interface CancelEventAction extends ActionBase {
+  type: 'cancel_event';
+  /** The event to stop. Named like run_event's, since `event_id` is the event this action belongs to. */
+  target_event_id: Id;
 }
 /**
  * [ext] 'above' draws over avatars and foregrounds (default); 'sorted' depth-sorts with avatars by
@@ -689,7 +700,7 @@ export interface BenchAction extends ActionBase {
 
 export type Action =
   | BenchAction
-  | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | NarrationAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
+  | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | NarrationAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | CancelEventAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
   | VariableAction | VideoAction | WaitAction | WalkAction | WeatherAction | CameraAction;
@@ -755,7 +766,7 @@ export interface GameEvent {
 export type EventAudience = 'player' | 'scene';
 
 /** The action types other players are shown when an event's audience is the scene. */
-export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'narration', 'translate', 'cancel', 'animate', 'walk', 'weather'] as const;
+export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'narration', 'translate', 'cancel', 'cancel_event', 'animate', 'walk', 'weather'] as const;
 
 export interface Hotspot extends GameEvent {
   position_x?: number | null;

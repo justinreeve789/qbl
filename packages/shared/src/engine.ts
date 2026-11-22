@@ -219,6 +219,8 @@ export class SceneEngine {
       .catch((err) => this.host.warn?.(`event ${event.id} failed: ${String(err)}`))
       .finally(() => {
         if (this.runs.get(event.id) === run) this.runs.delete(event.id);
+        // Cancelled and started again before this one wound down: the freeze is the new run's now.
+        else if (this.runs.has(event.id)) return;
         // A freeze never outlives the event that asked for it, so nobody is left unable to move.
         if (this.frozenBy.delete(event.id) && this.frozenBy.size === 0) this.host.freeze?.(false);
       });
@@ -260,6 +262,17 @@ export class SceneEngine {
       this.cancelAction(action.action_id);
       return;
     }
+    if (action.type === 'cancel_event') {
+      // Take down what this player is being shown of that event. Their own runs are their own.
+      const target = this.index.events.get(action.target_event_id);
+      for (const a of target?.scene.id === this.scene.id ? target.event.actions : []) {
+        const h = this.actions.get(a.id);
+        if (!h || !this.watched.has(h)) continue;
+        h.cancel();
+        this.actions.delete(a.id);
+      }
+      return;
+    }
     let handle: ActionHandle | null;
     if (action.type === 'translate') handle = this.actions.has(action.target_id) ? this.host.translate(action) : null;
     else if (action.type === 'animate') handle = this.host.animate?.(action, actor) ?? null;
@@ -270,10 +283,15 @@ export class SceneEngine {
     this.actions.get(action.id)?.cancel();
     this.actions.set(action.id, handle);
     const h = handle;
+    this.watched.add(h);
     void h.done.finally(() => {
+      this.watched.delete(h);
       if (this.actions.get(action.id) === h) this.actions.delete(action.id);
     });
   }
+
+  /** What this player is being shown of other players' events (see watch()). */
+  private watched = new Set<ActionHandle>();
 
   /** Events that have frozen the player and are still running. */
   private frozenBy = new Set<Id>();
@@ -282,6 +300,18 @@ export class SceneEngine {
     this.actions.get(actionId)?.cancel();
     this.actions.delete(actionId);
     this.host.cancelPersistent?.(actionId);
+  }
+
+  /**
+   * Stop an event of this scene if it is running: it goes no further and what it is showing stops.
+   * It counts as finished at once, so it can be started again straight away (a hotspot clicked, a
+   * run_event right after the cancel). Background music it started plays on.
+   */
+  cancelEvent(eventId: Id): void {
+    const run = this.runs.get(eventId);
+    if (!run) return;
+    this.runs.delete(eventId);
+    this.cancelRun(run);
   }
 
   /** Run end events, then ask the host to change scene. */
@@ -373,6 +403,10 @@ export class SceneEngine {
         }
         case 'cancel': {
           this.cancelAction(action.action_id);
+          break;
+        }
+        case 'cancel_event': {
+          this.cancelEvent(action.target_event_id);
           break;
         }
         case 'variable': {
