@@ -27,6 +27,7 @@ const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['scale_areas', 'Scale area (depth)'],
   ['shadow_spots', 'Shadow spot (shade)'],
   ['lights', 'Light (a glow that flickers, breathes or blinks)'],
+  ['flows', 'Flowing water (a river, a waterfall, the sea)'],
   ['bench-vessel', 'Bench: a beaker to mix in'],
   ['bench-supply', 'Bench: a stock bottle to pour from'],
   ['bench-dropper', 'Bench: a dropper (a drop at a time)'],
@@ -124,7 +125,7 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
     toast(target ? `Players who walk off the ${side} edge go to “${sceneLabel(target)}”. Change the scene and arrival point in the jump action.` : 'Add another scene, then choose it in the jump action.');
   }
 
-  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights', entry: unknown, kind: Selection['kind']) {
+  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows', entry: unknown, kind: Selection['kind']) {
     const list = model.layout(key);
     await model.setLayout(key, [...list, entry], true);
     const index = list.length;
@@ -182,6 +183,11 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
         return void addToLayout('shadow_spots', { name: 'shade', x: Math.round(at.x), y: Math.round(at.y), radius: 160, radius_y: 70, strength: 60 }, 'shadow');
       case 'lights':
         return void addToLayout('lights', { name: 'lantern', x: Math.round(at.x), y: Math.round(at.y), radius: 90, kind: 'flicker', color: '#ffc46b', strength: 70 }, 'light');
+      case 'flows': {
+        // By default: a river across the bottom fifth of the scene.
+        const { width, height } = canvas.size();
+        return void addToLayout('flows', { name: 'river', kind: 'river', x: 0, y: Math.round(height * 0.8), width, height: Math.round(height * 0.2) }, 'flow');
+      }
       case 'background_media':
       case 'foreground_media': {
         const layers = model.layers(what);

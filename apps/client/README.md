@@ -36,6 +36,8 @@ src/
     ActionHost.ts      the scene engine's link to Phaser and the UI
     presenters/        one presenter per action type; index.ts is the registry
   entities/          display objects with behaviour (Avatar)
+  plugins/weather/   rain, snow, storms and fog for any Phaser scene (see its README)
+  audio/synth.ts     the game's own sounds, made with Web Audio (AudioAction.sound, the weather, rivers)
   features/          things that last the whole session: checklist, chat, saving
     index.ts           the list of features
   net/               the HTTP API and the room connection (online and offline)

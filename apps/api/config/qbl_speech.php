@@ -13,7 +13,7 @@ use App\Qbl\Speech\Engines\OpenAiSpeechEngine;
  * never wait on the service. A line with no recording is read by the browser's own voice, as before.
  *
  * Every value comes from the environment (.env); what is written here is only the fallback.
- * The settings are QL_TTS_*; their old names (QL_TTS_*) are still read when the new one is not set.
+ * The settings are QL_TTS_*; their old names (QBL_TTS_*) are still read when the new one is not set.
  */
 $env = function (string $key, mixed $default): mixed {
     foreach ([$key, str_replace('QL_TTS_', 'QBL_TTS_', $key)] as $name) {
@@ -73,6 +73,12 @@ return [
     // pantomime villain). 3 (the default): a larger-than-life cast wherever a character's description
     // does not say otherwise. 0: voices are chosen by fit alone. Higher: theatrical nearly always.
     'flair' => (float) $env('QL_TTS_FLAIR', 3),
+
+    // The narrator: the voice that reads what no character says (narration actions, and the text
+    // overlays and infoboxes read aloud) in scenarios that do not choose one in their settings. A key
+    // of the voice catalog, used for scenarios in its language; for other languages, and when this is
+    // empty, the catalog's own narrators (in English "storyteller", a dramatic, charismatic voice).
+    'narrator' => (string) $env('QL_TTS_NARRATOR', ''),
 
     // Recordings already made, by service, voice and text, so recording a scenario again (or a copy
     // of it) only records the lines that changed.

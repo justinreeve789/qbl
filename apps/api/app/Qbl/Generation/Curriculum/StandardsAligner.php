@@ -66,6 +66,11 @@ class StandardsAligner
         Then write measurable learning objectives ("Students will be able to ...", one observable verb each)
         that the mission must cover, each tied to the standards it serves; key vocabulary with kid-friendly
         definitions at the grade level; and common misconceptions the mission should surface and correct.
+        Also say what the teacher is asking for (format): "story" when they want a story told, which students
+        watch play out like an animated picture book (a retelling, a narrative, "tell the story of...", a
+        fable, a day in the life of...); "mission" (the usual) when students are to play it: explore, solve,
+        investigate, experiment. A story's learning objectives are what students take from watching it and
+        talking about it afterwards.
         TXT;
 
         $user = "Mission request: $prompt\n"
@@ -96,6 +101,7 @@ class StandardsAligner
                 ]],
                 'vocabulary' => ['type' => 'array', 'maxItems' => 10, 'items' => ['type' => 'object', 'required' => ['term', 'definition'], 'properties' => ['term' => ['type' => 'string'], 'definition' => ['type' => 'string']]]],
                 'misconceptions' => ['type' => 'array', 'maxItems' => 5, 'items' => ['type' => 'string']],
+                'format' => ['type' => 'string', 'enum' => ['mission', 'story'], 'description' => 'mission: students play it. story: students watch it told.'],
             ],
         ];
 
@@ -136,6 +142,8 @@ class StandardsAligner
             'learning_objectives' => $objectives,
             'vocabulary' => array_values($answer['vocabulary'] ?? []),
             'misconceptions' => array_values($answer['misconceptions'] ?? []),
+            // What the teacher asked for: a mission to play (the usual), or a story to watch.
+            'format' => ($answer['format'] ?? null) === 'story' ? 'story' : 'mission',
             'warnings' => $warnings,
         ];
     }

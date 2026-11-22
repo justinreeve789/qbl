@@ -65,7 +65,7 @@ class SpeechFactory
 
     public function catalog(): VoiceCatalog
     {
-        return $this->catalog ??= VoiceCatalog::load((string) ($this->config['voices'] ?? __DIR__.'/../../../resources/speech/voices.json'));
+        return $this->catalog ??= VoiceCatalog::load((string) ($this->config['voices'] ?? __DIR__.'/../../../resources/speech/voices.json'), isset($this->config['narrator']) ? (string) $this->config['narrator'] : null);
     }
 
     public function picker(): VoicePicker

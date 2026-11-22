@@ -200,6 +200,11 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-story.watching .qbl-story-portrait { left: 14px; bottom: 12px; width: 84px; height: 96px; font-size: 40px; }
 .qbl-story.watching .qbl-story-text { font-size: 15px; min-height: 0; }
 .qbl-story.watching .qbl-story-name { margin-top: -26px; font-size: 13px; }
+/* The narrator: the same box with no close-up, the words centred and a touch grander. */
+.qbl-story.narration { padding: 22px 34px 24px; min-height: 0; }
+.qbl-story.narration .qbl-story-text { min-height: 0; text-align: center; font-style: italic; font-size: 20px; }
+.qbl-story.narration.watching { padding: 14px 22px; }
+.qbl-story.narration.watching .qbl-story-text { font-size: 15px; }
 /* A conversation's answers, after the line: the player's own story box (their close-up and name), or a plain box when the lines are bubbles. */
 .qbl-story.answering { cursor: default; border-color: #7fc8ff; }
 .qbl-story.answering .qbl-story-portrait { border-color: #7fc8ff; }
@@ -225,6 +230,8 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 }
 @media (max-width: 560px) {
   .qbl-story { padding-left: 118px; min-height: 110px; }
+  .qbl-story.narration { padding: 16px 20px 20px; min-height: 0; }
+  .qbl-story.narration .qbl-story-text { font-size: 17px; }
   .qbl-answer { font-size: 15px; padding: 9px 12px; }
   .qbl-story-portrait { width: 86px; height: 104px; left: 14px; }
   .qbl-story-text { font-size: 16px; }
@@ -628,6 +635,15 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
 .qbl-mission.locked .qbl-mission-art { filter: grayscale(0.7) brightness(0.7); }
 .qbl-tag.locked { background: rgba(250, 204, 21, 0.18); color: #fde68a; }
 
+/* The bar beside a story scene: watch again, skip ahead. */
+.qbl-storybar { position: absolute; right: calc(var(--qbl-tab, 0px) + 16px); bottom: calc(16px + var(--safe-b, 0px)); z-index: 12; display: flex; gap: 8px; }
+.qbl-storybar[hidden] { display: none; }
+.qbl-storybar-button { padding: 8px 14px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 999px; background: rgba(12, 23, 78, 0.72); color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); transition: background-color 0.15s, transform 0.15s; }
+.qbl-storybar-button:hover, .qbl-storybar-button:focus-visible { background: rgba(32, 58, 160, 0.9); transform: translateY(-1px); }
+
+/* A story's narration (text_font_style "caption"): words on a soft panel at the foot of the screen. */
+.qbl-text.qbl-caption { max-width: min(860px, calc(100vw - 48px)); padding: 14px 22px; border-radius: 16px; background: rgba(12, 18, 48, 0.72); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35); line-height: 1.35; text-align: center; font-weight: 600; text-shadow: none; }
+.qbl-caption.align-bottom-center, .qbl-caption.align-top-center, .qbl-caption.align-center-center { justify-self: center; }
 /* ---------- close-up bench ---------- */
 .qbl-bench { position: absolute; inset: 0; pointer-events: none; z-index: 11; }
 .qbl-bench-side { position: absolute; top: calc(var(--qbl-edge) + var(--safe-t) + 96px); left: calc(var(--qbl-edge) + var(--safe-l)); width: min(300px, 40vw); display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; pointer-events: none; }

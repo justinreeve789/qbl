@@ -46,7 +46,7 @@ What the scenario remembers. The page is a table with one line per variable, edi
 
 **Used** counts the places that use the variable: conditions, Variable actions, and text that shows it. *Not used* means nothing tests it, changes it or shows it, which is often a leftover or a misspelling somewhere. Above the table, **Find a variable…** narrows the list by name, and **All**, **Each player's own** and **Shared** show one kind.
 
-Conditions and actions refer to variables by name, so renaming one does **not** update the conditions and actions that already use it. Text can show a variable's value with `{{variable_name}}`.
+Conditions and actions refer to variables by name. Renaming a variable changes everything in the scenario that uses it to the new name: conditions, Variable actions, `{{variable_name}}` in text, infobox answer boxes, controls and formulas, objectives and bench readings. A name another variable already has, or one starting with `QBL` or `QL_`, is refused. Players' saved values are kept under the name they were saved with, so a player who already has a value for the old name starts the renamed variable at its starting value. Text can show a variable's value with `{{variable_name}}`.
 
 The system's own variables are always there, such as `{{QL_PlayerName}}` (the player's name) and `{{QL_TeacherName}}`; they are listed as **built in**. See [Reserved Variables](/docs/developers/variable/#reserved-variables).
 

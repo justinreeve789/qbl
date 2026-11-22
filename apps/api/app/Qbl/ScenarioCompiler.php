@@ -142,6 +142,10 @@ class ScenarioCompiler
                 'sky' => is_array(self::json($sc['params'] ?? null)['sky'] ?? null) ? self::json($sc['params'] ?? null)['sky'] : null,
                 'lights' => ($layout['lights'] ?? []) ?: null,
                 'atmosphere' => (array) (self::json($sc['params'] ?? null)['atmosphere'] ?? []) ?: null,
+                // The weather and whether the scene plays by itself (a story) are settings too; its water is placed.
+                'weather' => is_array(self::json($sc['params'] ?? null)['weather'] ?? null) ? self::json($sc['params'] ?? null)['weather'] : null,
+                'flows' => ($layout['flows'] ?? []) ?: null,
+                'story' => ! empty(self::json($sc['params'] ?? null)['story']) ? true : null,
                 // Whether the scene shows a player only their own team. Absent: as its group says.
                 'team_only' => array_key_exists('team_only', self::json($sc['params'] ?? null)) && self::json($sc['params'] ?? null)['team_only'] !== null ? self::bool(self::json($sc['params'] ?? null)['team_only']) : null,
                 'items' => $layout['items'] ?? [],
@@ -151,7 +155,7 @@ class ScenarioCompiler
                 // The scene's own background music, when it has one, is kept in params.
                 'music_media_id' => self::intOrNull(self::json($sc['params'] ?? null)['music_media_id'] ?? null),
                 'music_volume' => self::numOrNull(self::json($sc['params'] ?? null)['music_volume'] ?? null),
-                'params' => array_diff_key(self::json($sc['params'] ?? null), ['music_media_id' => 1, 'music_volume' => 1, 'team_only' => 1, 'sky' => 1, 'atmosphere' => 1]) ?: null,
+                'params' => array_diff_key(self::json($sc['params'] ?? null), ['music_media_id' => 1, 'music_volume' => 1, 'team_only' => 1, 'sky' => 1, 'atmosphere' => 1, 'weather' => 1, 'story' => 1]) ?: null,
                 'start_events' => $events[$sceneId]['start_events'] ?? [],
                 'end_events' => $events[$sceneId]['end_events'] ?? [],
                 'hotspots' => $events[$sceneId]['hotspots'] ?? [],

@@ -219,11 +219,16 @@ export class LocalPlayerSystem implements SceneSystem {
    * else in the scene sees the same. The player can still walk and use hotspots while hidden.
    */
   /** True while a freeze action holds the player in place. */
-  frozen = false;
+  private held = false;
+
+  /** Held in place: by a freeze action, or always in a story scene, which plays by itself. */
+  get frozen(): boolean {
+    return this.held || this.rt.def.story === true;
+  }
 
   /** A freeze action: the player cannot walk until released. Hotspots can still be clicked. */
   setFrozen(frozen: boolean) {
-    this.frozen = frozen;
+    this.held = frozen;
     if (frozen) this.stop();
   }
 

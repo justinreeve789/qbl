@@ -76,6 +76,21 @@ export class PropsSystem implements SceneSystem {
 
   constructor(private rt: SceneRuntime) {}
 
+  /**
+   * Characters on the stage now: in this scene and not off it beyond an edge (waiting to come on, or
+   * gone), for a view that follows whoever is acting.
+   */
+  onStage(): Array<{ id: Id; x: number; y: number; height: number }> {
+    const out: Array<{ id: Id; x: number; y: number; height: number }> = [];
+    const w = this.rt.size.width;
+    for (const [id, c] of this.characters) {
+      if (c.leaving) continue;
+      const f = c.figure.feet;
+      if (f.x >= 0 && f.x <= w) out.push({ id, x: f.x, y: f.y, height: c.figure.sprite.displayHeight });
+    }
+    return out;
+  }
+
   /** Where a character in this scene stands (feet) and how tall it is drawn, for speech bubbles. */
   characterAt(characterId: Id): { x: number; y: number; height: number; name: string } | null {
     const c = this.characters.get(characterId);
@@ -190,8 +205,20 @@ export class PropsSystem implements SceneSystem {
     let door: Door | null = null;
     let facing = action.facing;
     const to = action.to ?? 'point';
+    // Beyond the left or right edge is off stage: a walk there goes to the edge and on out of sight,
+    // and one from there comes in from the edge.
+    const width = this.rt.size.width;
+    const off = (p: Point) => p.x < 0 || p.x > width;
+    const edge = (p: Point) => nearestWalkable(walk, { x: Math.max(2, Math.min(width - 2, p.x)), y: p.y }, 300, 10);
+    let beyond: Point | null = null;
     if (to === 'point' && action.position_x != null && action.position_y != null) {
-      goal = nearestWalkable(walk, { x: action.position_x, y: action.position_y }, 300, 10);
+      const spot = { x: action.position_x, y: action.position_y };
+      if (off(spot)) {
+        beyond = spot;
+        goal = edge(spot);
+      } else {
+        goal = nearestWalkable(walk, spot, 300, 10);
+      }
     } else if (to === 'spawn') {
       const spawn = (this.rt.def.spawn_points ?? []).find((p) => p.name === action.spawn_point);
       if (spawn) goal = nearestWalkable(walk, { x: spawn.position_x, y: spawn.position_y }, 300, 10);
@@ -207,7 +234,11 @@ export class PropsSystem implements SceneSystem {
     }
     c.walk?.finish();
     const d = deferred();
-    const path = this.pathfinder(walk).find(from, goal) ?? [goal];
+    // Coming on from off stage: straight in to the edge first.
+    const entry = off(from) ? edge(from) : null;
+    const start = entry ?? from;
+    const path = [...(entry ? [{ x: entry.x, y: from.y }, entry] : []), ...(this.pathfinder(walk).find(start, goal) ?? [goal])];
+    if (beyond) path.push({ x: beyond.x, y: path[path.length - 1]?.y ?? beyond.y });
     const local: LocalWalk = {
       path, speed: walkSpeed(ctx.scenario, npc, action), facing, door,
       finish: () => {

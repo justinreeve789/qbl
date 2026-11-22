@@ -30,8 +30,9 @@
     "test:library": "php apps/api/tests/library.php",
     "make:hub": "php tools/make-hub.php",
     "test:editor": "npm run test -w @qbl/editor",
-    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:billing && npm run test:district && npm run test:generation && npm run test:speech && npm run test:library && npm run test:editor",
-    "test:laravel": "cd apps/api && php artisan test"
+    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:billing && npm run test:district && npm run test:generation && npm run test:story-generation && npm run test:speech && npm run test:library && npm run test:editor",
+    "test:laravel": "cd apps/api && php artisan test",
+    "test:story-generation": "php -d memory_limit=2G apps/api/tests/story_generation.php"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",

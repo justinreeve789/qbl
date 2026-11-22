@@ -105,6 +105,15 @@ The voiced line gets `narrate: true` and `narration_media_id`. The recording is 
 }
 ```
 
+## The narrator
+
+What no character says is read by the **narrator**: every [`narration`](/docs/developers/extensions/#the-narrator) action (unless it has `narrate: false`), and the text overlays and infoboxes that are read aloud (marked `narrate: true`, or all of them when the scenario's `narration` is `on`). "Record voices", `qbl:voice` and the generator record them in the narrator's voice, with `character_id` 0 in `Voicer::lines()`.
+
+- **Who narrates.** The scenario's `narrator_voice` (Settings, "Talking and reading", in the editor), or else the default narrator for its language: the catalog's `narrators` (`"en": "storyteller"`, `"es": "alex-es"`, …). `QL_TTS_NARRATOR` names another catalog voice to use instead, for scenarios in that voice's language. `narrator_voice: "none"` means no narrator: their recordings are removed the next time voices are recorded, and the browser reads them.
+- **The storyteller** (`bm_fable(2)+bm_lewis(1)` at 0.94 on Kokoro; OpenAI's `fable`, told to be a dramatic storyteller) is the English default: expressive like Fable, with Lewis's weight beneath it.
+- **Infoboxes** are recorded only when they are plain text on one page. A box of pages (each read on its own) or one with the game's own blocks (cards, slideshows, answer boxes), whose words depend on play, is left to the browser.
+- **Characters** are given other voices while there are enough: "Give everyone a voice" and the generator keep the narrator's voice for the narrator. A story asks the voice picker for a dramatic, charismatic storyteller, so it is usually the storyteller unless the story describes its narrator otherwise.
+
 ## How the words are lit
 
 The game matches the words shown against the recorded words, in order. Capitals and punctuation are ignored, and a few words of difference are allowed. Words that do not match (the player's name where "explorer" was said, "42" where the service said "forty-two", "Dr." where it said "Doctor") take the time of what was said in their place. The highlight then follows the recording's own clock (`audio.currentTime`), so it stays with the voice even if the audio is slow to start or stutters. If fewer than half the words match (the line was changed and not recorded again), or the recording has no timings, the words are paced evenly over its length instead.
@@ -153,7 +162,7 @@ Kokoro's own voices are natural and even. It has no settings for emotion or pitc
 
 The English ones are Giant, Dragon, Gnome, Jolly, Thespian, Wizard, Imp, Hero, Pirate, Boffin, Villain, Sprout, Goblin, Pixie, Mouse, Fox, Ghost, Witch, Queen, Godmother, Bubbles, Fusspot, Warrior, Diva, Alien, Gizmo and Colossus. Spanish and Portuguese have a giant, a fairy, a gnome and a trickster each, Italian the same four, and French a fairy. Every one was recorded and transcribed back by a speech recogniser to check that it is still easy to understand, and every one returns word timings like any other voice.
 
-`flair` is how much of a character a voice is: 0 (or absent) an everyday voice, 1 one with character (the jolly Grandpa, Puck the trickster), 2 a theatrical one. When characters are given voices (the generator, **🎭 Give everyone a voice**, `qbl:voice --assign`), a voice must first fit the character's gender and age; after that each word of the description found among a voice's traits is worth 5 points and each step of flair `QL_TTS_FLAIR` points (3 by default). So a theatrical voice beats an everyday one that matches one more word, a character nothing is said of gets a theatrical voice, and a guide described as "warm, friendly, clear" keeps an everyday one. `QL_TTS_FLAIR=0` chooses by fit alone; a higher number makes the cast theatrical nearly always. In the editor's list the theatrical voices are grouped under **Larger than life**.
+`flair` is how much of a character a voice is: 0 (or absent) an everyday voice, 1 one with character (the jolly Grandpa, Puck the trickster), 2 a theatrical one. When characters are given voices (the generator, **🎭 Give everyone a voice**, `qbl:voice --assign`), a voice must first fit the character's gender and age; after that each word of the description found among a voice's traits is worth 5 points and each step of flair `QL_TTS_FLAIR` points (3 by default). So a theatrical voice beats an everyday one that matches one more word, a character nothing is said of gets a theatrical voice, and a guide described as "warm, friendly, clear" keeps an everyday one. A generated story's narrator is the exception: they read every caption, so they are chosen by fit alone, and the characters then get theatrical voices other than theirs. `QL_TTS_FLAIR=0` chooses by fit alone; a higher number makes the cast theatrical nearly always. In the editor's list the theatrical voices are grouped under **Larger than life**.
 
 A Kokoro-FastAPI that is not the `tts` container must be started with `VOICE_WEIGHT_NORMALIZATION=false`. Left at its default it halves a blend that takes a voice away: the line is still said clearly, but in a voice much closer to the ordinary one. Everything else works the same either way.
 
@@ -208,6 +217,7 @@ Variable | Default | What
 `QL_TTS_CACHE_DIR` | `/data/speech` (Docker), `storage/app/speech` | Recordings already made.
 `QL_TTS_VOICES` | `resources/speech/voices.json` | The voice catalog.
 `QL_TTS_FLAIR` | 3 | How strongly [theatrical voices](#theatrical-voices) are chosen for characters. 0: by fit alone.
+`QL_TTS_NARRATOR` | | A catalog voice to narrate in, for scenarios in its language that choose no narrator. Empty: the catalog's `narrators` ("storyteller" in English).
 
 ## Editor API
 

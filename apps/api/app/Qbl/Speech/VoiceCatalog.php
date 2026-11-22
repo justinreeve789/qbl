@@ -25,7 +25,11 @@ final class VoiceCatalog
 
     private array $clipLines;
 
-    public function __construct(array $data)
+    /** @var array<string, string> the default narrator's voice key, by language ("en" => "storyteller") */
+    private array $narrators;
+
+    /** $narrator: a voice to narrate in instead of the catalog's default, for scenarios in its language (QL_TTS_NARRATOR). */
+    public function __construct(array $data, private ?string $narrator = null)
     {
         foreach ((array) ($data['voices'] ?? []) as $v) {
             if (is_array($v) && isset($v['key'])) {
@@ -34,17 +38,18 @@ final class VoiceCatalog
         }
         $this->standIns = (array) ($data['stand_ins'] ?? []) + ['en' => 'explorer'];
         $this->samples = (array) ($data['samples'] ?? []) + ['en' => 'Hello, explorer! Shall we get started?'];
+        $this->narrators = array_map('strval', (array) ($data['narrators'] ?? []));
         $this->clipLines = (array) ($data['clip_lines'] ?? []);
     }
 
-    public static function load(string $path): self
+    public static function load(string $path, ?string $narrator = null): self
     {
         $data = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
         if (! is_array($data)) {
             throw new SpeechError("The voice catalog $path is missing or is not JSON.");
         }
 
-        return new self($data);
+        return new self($data, $narrator !== '' ? $narrator : null);
     }
 
     /** @return array<string, array> by key, in the catalog's order */
@@ -143,6 +148,42 @@ final class VoiceCatalog
         }
 
         return $best === null ? null : ['key' => $best, 'spec' => $this->voices[$best]['engines'][$engine], 'borrowed' => true];
+    }
+
+    /**
+     * The narrator's voice for a scenario that does not choose one: the configured narrator when it
+     * speaks the scenario's language, otherwise the catalog's for that language. Null when there is
+     * none, and the browser reads the narration.
+     */
+    public function narrator(?string $lang): ?string
+    {
+        $primary = self::primary($lang);
+        if ($this->narrator !== null && isset($this->voices[$this->narrator]) && self::primary($this->voices[$this->narrator]['lang']) === $primary) {
+            return $this->narrator;
+        }
+        $key = $this->narrators[$primary] ?? null;
+
+        return $key !== null && isset($this->voices[$key]) ? $key : null;
+    }
+
+    /**
+     * Who narrates a scenario, from its settings: its `narrator_voice`, or the default narrator for
+     * its language when it has none. `"none"`: nobody, so the browser reads the narration.
+     */
+    public function narratorFor(array $settings, ?string $lang): ?string
+    {
+        return self::chosenNarrator($settings, fn () => $this->narrator($lang));
+    }
+
+    /** @param  callable(): ?string  $default */
+    public static function chosenNarrator(array $settings, callable $default): ?string
+    {
+        $chosen = $settings['narrator_voice'] ?? null;
+        if ($chosen === 'none') {
+            return null;
+        }
+
+        return is_string($chosen) && $chosen !== '' ? $chosen : $default();
     }
 
     /** The word a recording says where the player's name is shown ("explorer"), in a language. */

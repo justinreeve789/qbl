@@ -122,6 +122,8 @@ export interface VoiceStatus {
   /** The service that records ("kokoro"), or null when recording is switched off. */
   engine: string | null;
   voices: VoiceChoice[];
+  /** The default narrator's voice for the scenario's language: who narrates when the scenario chooses no one. */
+  narrator?: string | null;
   /** Lines said by characters with a voice: how many have an up-to-date recording. */
   lines: { total: number; recorded: number; to_record: number } | null;
 }
@@ -277,7 +279,11 @@ export interface GenerationProgress {
   stage_started_at: string | null;
   updated_at?: string | null;
 }
-export interface GenerationOptions { grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string }
+export interface GenerationOptions {
+  grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string;
+  /** A mission students play, or a story they watch play out; absent: as the description reads. */
+  format?: 'mission' | 'story';
+}
 export interface Generation {
   id: number;
   prompt: string;

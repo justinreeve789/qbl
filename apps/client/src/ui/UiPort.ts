@@ -86,8 +86,9 @@ export interface UiPort {
    * A dialogue box across the bottom of the screen with the speaker's close-up portrait and name.
    * With `duration` 0 it stays until the player clicks or presses Enter or Space to continue.
    * `watching`: it comes from another player's event, so it never takes this player's input.
+   * `narrator`: the narrator speaks (a narration action): the same box, with no close-up and no name.
    */
-  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; speak?: SpeakOptions }): ActionHandle;
+  portraitDialogue(text: string, o: { name?: string; portrait?: CharacterPicture; duration: number; watching?: boolean; narrator?: boolean; speak?: SpeakOptions }): ActionHandle;
   /**
    * The player's answers to a line of a conversation, for a dialogue tree, shown once the line has
    * been said (in its own story box or bubble, which has closed by then). `portrait`: a box of the
@@ -122,6 +123,11 @@ export interface UiPort {
    * picked one (`selected`) marked, with a line saying what picking does. An empty list hides it.
    */
   bag(items: BagSlot[], selected: number | null, on: { pick(id: number): void; drop(): void }): void;
+  /**
+   * The bar beside a story scene, which plays by itself: skip ahead to the next scene, or watch this
+   * one again. Either may be left out. Null takes it away.
+   */
+  storyBar(bar: { skip?: () => void; again?: () => void } | null): void;
   objectives(list: ObjectiveStatus[]): void;
   /**
    * Who else is playing: the people in the scenario, with where they are. `on.profile` opens a

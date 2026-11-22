@@ -1,4 +1,4 @@
-import { BENCH_OPS, type ActionType } from '@qbl/shared';
+import { BENCH_OPS, BUILT_IN_SOUNDS, BUILT_IN_SOUND_NAMES, type ActionType } from '@qbl/shared';
 import type { Field } from './fields';
 
 /**
@@ -137,7 +137,12 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     label: 'Audio',
     about: 'Play a sound, or background music.',
     fields: [
-      { key: 'media_id', label: 'Sound', kind: 'media', mediaType: 'audio', wide: true },
+      { key: 'media_id', label: 'Sound', kind: 'media', mediaType: 'audio', wide: true, when: (v) => !v.sound },
+      {
+        key: 'sound', label: 'Or one of the game’s own sounds', kind: 'select', wide: true, structural: true, placeholder: 'None: play the sound file',
+        options: BUILT_IN_SOUND_NAMES.map((n) => [n, `${BUILT_IN_SOUNDS[n].icon} ${BUILT_IN_SOUNDS[n].label}${BUILT_IN_SOUNDS[n].loop ? ' (goes on: loop it)' : ''}`] as const),
+        hint: 'Made by the game as it plays, with no file: thunder, a car going by, a door, birds. Sounds that go on by themselves (rain, a river) play for a few seconds, or until stopped with Loop ticked.',
+      },
       { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1', slider: { min: 0, max: 1 } },
       { key: 'repeat', label: 'Loop', kind: 'bool' },
       { key: 'persist', label: 'Background music: keep playing across scenes', kind: 'bool', wide: true, hint: 'One music track plays at a time. Starting the same track again in the next scene does not restart it.' },
@@ -227,6 +232,19 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...narration,
     ],
   },
+  narration: {
+    label: 'Narration',
+    about: 'The narrator speaks: a story box with no portrait, read aloud in the narrator’s voice.',
+    fields: [
+      { key: 'text', label: 'What the narrator says', kind: 'textarea', wide: true, hint: 'For what no character says: setting the scene, what happens next. Use {{variable_name}} to show a variable.' },
+      { key: 'duration', label: 'Stays for (ms)', kind: 'number', min: 0, placeholder: 'Until the player continues', hint: 'With a time it closes by itself, but not before the voice has finished.' },
+      {
+        key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'Yes: the narrator reads it', options: [['true', 'Yes: read this aloud'], ['false', 'No: never read this aloud']],
+        hint: 'Read in the narrator’s voice (Settings, “Talking and reading”) once the voices are recorded (Characters, “Record voices”); until then the browser’s voice reads it. Players can switch reading aloud off for themselves.',
+      },
+      narration[1]!,
+    ],
+  },
   conversation: {
     label: 'Conversation',
     about: 'A dialogue tree: lines said by the player and characters, where the player picks what to say next.',
@@ -310,6 +328,31 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       ...WALK_FIELDS,
     ],
   },
+  weather: {
+    label: 'Weather',
+    about: 'Change the weather: the rain starts, a storm blows up, the snow stops.',
+    fields: [
+      { key: 'kind', label: 'To', kind: 'select', wide: true, options: [['clear', 'Clear: it stops'], ['rain', 'Rain'], ['storm', 'A storm'], ['snow', 'Snow'], ['blizzard', 'A blizzard'], ['fog', 'Fog']] },
+      { key: 'intensity', label: 'How heavy (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '0.6', slider: { min: 0, max: 1 } },
+      { key: 'wind', label: 'Wind (−1 left to 1 right)', kind: 'number', min: -1, max: 1, step: 0.05, placeholder: 'By kind', slider: { min: -1, max: 1 } },
+      { key: 'lightning', label: 'Lightning', kind: 'tristate', placeholder: 'Only in a storm', options: [['true', 'Yes'], ['false', 'No']] },
+      { key: 'duration', label: 'Over (ms)', kind: 'number', min: 0, placeholder: '3000', hint: 'How long the change takes. It lasts until another weather action, or until the player leaves the scene.' },
+    ],
+  },
+  camera: {
+    label: 'Camera',
+    about: 'Point the view: follow a character, glide to a spot, or back to the player.',
+    fields: [
+      {
+        key: 'target', label: 'Look at', kind: 'select', wide: true, structural: true, placeholder: 'The player (as usual)',
+        options: [['character', 'A character, following them'], ['point', 'A spot in the scene'], ['auto', 'Whoever is acting (story scenes)'], ['player', 'The player']],
+      },
+      { key: 'character_id', label: 'Character', kind: 'character', when: (v) => v.target === 'character' },
+      { key: 'position_x', label: 'X', kind: 'number', when: (v) => v.target === 'point', spot: { y: 'position_y', prompt: 'Click where the view should look.' } },
+      { key: 'position_y', label: 'Y', kind: 'number', when: (v) => v.target === 'point' },
+      { key: 'duration', label: 'Glide (ms)', kind: 'number', min: 0, placeholder: '1200' },
+    ],
+  },
   translate: {
     label: 'Translate',
     about: 'Move, resize or fade something another action is showing.',
@@ -338,16 +381,40 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
 
 export const ACTION_TYPES = Object.keys(ACTIONS) as ActionType[];
 
-/** An icon and a colour for each action type, by what kind of thing it does. */
-const SAY = '#2f6fed', SHOW = '#8e5bd6', SOUND = '#0f9d8a', FLOW = '#c77b12', PLAYER = '#d6457a', STATE = '#3b8f4a';
-export const ACTION_LOOK: Record<ActionType, readonly [icon: string, tone: string]> = {
-  infobox: ['📋', SAY], dialogue: ['💬', SAY], conversation: ['🔀', SAY], text_overlay: ['🔤', SAY],
-  image_overlay: ['🖼️', SHOW], image_fixed: ['📌', SHOW], spritemap: ['🎞️', SHOW], video: ['🎬', SHOW], translate: ['↔️', SHOW],
-  audio: ['🔊', SOUND],
-  jump: ['🚪', FLOW], wait: ['⏳', FLOW], run_event: ['▶️', FLOW], repeat: ['🔁', FLOW], cancel: ['✖️', FLOW],
-  avatar: ['👤', PLAYER], freeze: ['✋', PLAYER], animate: ['🤸', PLAYER], walk: ['🚶', PLAYER], award: ['⭐', '#b8860b'], shop: ['🛍️', '#b8860b'], glossary: ['📖', STATE],
-  variable: ['🔢', STATE], bench: ['🧪', STATE],
+/**
+ * The groups the action pickers show, in order, each with an icon and a colour. The colour also
+ * tints the action's card, so a card's group can be told at a glance.
+ */
+export type ActionGroup = { key: string; label: string; icon: string; tone: string; types: ActionType[] };
+export const ACTION_GROUPS: ActionGroup[] = [
+  { key: 'talk', label: 'Talking and storytelling', icon: '🗣️', tone: '#2f6fed', types: ['dialogue', 'narration', 'conversation'] },
+  { key: 'text', label: 'Boxes and words on screen', icon: '📝', tone: '#1b8bb4', types: ['infobox', 'text_overlay'] },
+  { key: 'people', label: 'Characters and the player', icon: '🧑', tone: '#d6457a', types: ['walk', 'animate', 'freeze', 'avatar'] },
+  { key: 'media', label: 'Pictures, video and sound', icon: '🎞️', tone: '#8e5bd6', types: ['image_fixed', 'image_overlay', 'spritemap', 'video', 'audio', 'translate'] },
+  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'camera', 'weather', 'bench'] },
+  { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel'] },
+  { key: 'progress', label: 'Rewards and progress', icon: '🏆', tone: '#3b8f4a', types: ['award', 'glossary', 'variable', 'shop'] },
+];
+
+/** The group an action type belongs to. */
+export function actionGroup(type: ActionType): ActionGroup | undefined {
+  return ACTION_GROUPS.find((g) => g.types.includes(type));
+}
+
+const ACTION_ICONS: Record<ActionType, string> = {
+  dialogue: '💬', narration: '📜', conversation: '🔀',
+  infobox: '📋', text_overlay: '🔤',
+  walk: '🚶', animate: '🤸', freeze: '✋', avatar: '👤',
+  image_fixed: '📌', image_overlay: '🖼️', spritemap: '🎞️', video: '🎬', audio: '🔊', translate: '↔️',
+  jump: '🚪', camera: '🎥', weather: '🌧️', bench: '🧪',
+  wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️',
+  award: '⭐', glossary: '📖', variable: '🔢', shop: '🛍️',
 };
+
+/** An icon and a colour (its group's) for each action type. */
+export const ACTION_LOOK = Object.fromEntries(
+  (Object.keys(ACTION_ICONS) as ActionType[]).map((t) => [t, [ACTION_ICONS[t], actionGroup(t)?.tone ?? '#5d626d'] as const]),
+) as Record<ActionType, readonly [icon: string, tone: string]>;
 
 /** Attributes every action row has. */
 export const ACTION_COMMON: Field[] = [
@@ -377,6 +444,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return {};
     case 'dialogue':
       return { text: 'Hello!' };
+    case 'narration':
+      return { text: 'And so our story begins…' };
     case 'conversation':
       return starterConversation();
     case 'freeze':
@@ -402,6 +471,10 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return { duration: 1000 };
     case 'walk':
       return { to: 'point', position_x: 400, position_y: 400 };
+    case 'weather':
+      return { kind: 'rain', duration: 3000 };
+    case 'camera':
+      return { target: 'player' };
     default:
       return {};
   }
@@ -449,6 +522,10 @@ export const SCENARIO_SETTINGS_FIELDS: Field[] = [
     key: 'narration', label: 'Read text aloud', kind: 'select', placeholder: 'Only where an action says so', options: [['on', 'Everything: dialogue, infoboxes and text overlays'], ['off', 'Only where an action says so']], wide: true,
     hint: 'The browser’s own voice reads the text and highlights each word as it is spoken. It needs no recordings. Any action can say otherwise for itself, and players can switch it off.',
   },
+  {
+    key: 'narrator_voice', label: 'The narrator’s voice', kind: 'voice', wide: true, placeholder: 'The default narrator',
+    hint: 'Reads what no character says: narration, and the text overlays and infoboxes that are read aloud. Recorded with the characters’ lines (Characters, “Record voices”). “None” leaves them to the browser’s voice.',
+  },
   { key: 'move_speed', label: 'Walking speed (px per second)', kind: 'number', min: 50, placeholder: '420', slider: { min: 50, max: 1000, step: 10 } },
   { key: 'asset_base_url', label: 'Base address for media', kind: 'text', wide: true, hint: 'Media whose address is not absolute is loaded from here. Uploaded files do not need it.' },
 ];
@@ -463,7 +540,7 @@ export const SCENE_FIELDS: Field[] = [
   { key: 'height', label: 'Height (px)', kind: 'number', min: 1, placeholder: 'Background height' },
   { key: 'zoom', label: 'Zoom', kind: 'number', min: 0.1, step: 0.05, placeholder: '1', slider: { min: 0.25, max: 3 } },
   { key: 'group_id', label: 'Group', kind: 'group', placeholder: 'None', hint: 'Scenes that belong together: the rooms of the starship, the places on a planet. Groups are made on the Scenes page.' },
-  { key: 'show_avatars', label: 'Show avatars', kind: 'bool', default: true },
+  { key: 'show_avatars', label: 'Show avatars', kind: 'bool', default: true, hint: 'A story scene never shows them.' },
   { key: 'is_intro_scene', label: 'Intro scene', kind: 'bool' },
 ];
 
@@ -530,6 +607,37 @@ export const ATMOSPHERE_FIELDS: Field[] = [
   },
   { key: 'amount', label: 'How much', kind: 'select', placeholder: 'Some', options: [['few', 'A few'], ['some', 'Some'], ['many', 'Lots']] },
   { key: 'color', label: 'Colour', kind: 'color', placeholder: 'Its own' },
+];
+
+/** The weather (params.weather): drawn by the weather plugin over the scene. */
+export const WEATHER_FIELDS: Field[] = [
+  {
+    key: 'kind', label: 'Weather', kind: 'select', placeholder: 'None', structural: true,
+    options: [['rain', 'Rain, splashing on the floor'], ['storm', 'A storm: heavy rain, wind, lightning and thunder'], ['snow', 'Snow'], ['blizzard', 'A blizzard'], ['fog', 'Fog drifting by']],
+  },
+  { key: 'intensity', label: 'How heavy (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '0.6', slider: { min: 0, max: 1 } },
+  { key: 'wind', label: 'Wind (−1 left to 1 right)', kind: 'number', min: -1, max: 1, step: 0.05, placeholder: 'By kind', slider: { min: -1, max: 1 } },
+  { key: 'darken', label: 'Darker by (%)', kind: 'number', min: 0, max: 100, placeholder: 'By kind', slider: { min: 0, max: 100 } },
+  { key: 'lightning', label: 'Lightning now and then', kind: 'tristate', placeholder: 'Only in a storm', options: [['true', 'Yes'], ['false', 'No']] },
+  { key: 'sound', label: 'Its sound (rain, wind)', kind: 'bool', default: true },
+];
+
+/** Water that flows (layout.flows): a box of the scene, drawn behind the picture or over it. */
+export const FLOW_FIELDS: Field[] = [
+  { key: 'name', label: 'Name', kind: 'text', wide: true },
+  { key: 'kind', label: 'Water', kind: 'select', placeholder: 'A river', options: [['river', 'A river'], ['stream', 'A stream'], ['waterfall', 'A waterfall'], ['sea', 'The sea'], ['lake', 'A lake or pond']] },
+  { key: 'direction', label: 'Flows', kind: 'select', placeholder: 'As its kind does', options: [['right', 'To the right'], ['left', 'To the left'], ['down', 'Down'], ['up', 'Up']] },
+  { key: 'speed', label: 'Speed (px per second)', kind: 'number', min: 0, placeholder: 'By kind', slider: { min: 0, max: 400 } },
+  { key: 'color', label: 'Colour', kind: 'color', placeholder: 'By kind' },
+  {
+    key: 'layer', label: 'Drawn', kind: 'select', placeholder: 'Behind the scene’s picture', wide: true, options: [['behind', 'Behind the scene’s picture'], ['over', 'Over it: only ripples and glints']],
+    hint: 'Behind: the water shows wherever the scene’s last background layer is see-through. Paint the river out of the picture (make its surface transparent) and it flows between the painted banks. Over: ripples and glints move over a river painted in the picture.',
+  },
+  { key: 'x', label: 'X', kind: 'number' },
+  { key: 'y', label: 'Y', kind: 'number' },
+  { key: 'width', label: 'Width (px)', kind: 'number', min: 1 },
+  { key: 'height', label: 'Height (px)', kind: 'number', min: 1 },
+  { key: 'sound', label: 'Its sound', kind: 'bool', default: true },
 ];
 
 /** A background or foreground layer (docs/src/content/docs/developers/extensions.md). */
@@ -638,7 +746,7 @@ export const MEDIA_FIELDS: Field[] = [
 ];
 
 export const VARIABLE_FIELDS: Field[] = [
-  { key: 'variable_name', label: 'Name', kind: 'text', hint: 'Renaming does not update the conditions and actions that use it.' },
+  { key: 'variable_name', label: 'Name', kind: 'text', hint: 'Renaming it changes every condition, action and text that uses it to the new name.' },
   { key: 'default_value', label: 'Starting value', kind: 'value' },
   {
     key: 'scope', label: 'Whose it is', kind: 'select', structural: true,

@@ -60,6 +60,11 @@ class PlaceholderImageGenerator implements ImageGenerator
             }
             imagefilledrectangle($im, 0, $ground, $w, $h, $colour(7));
             imageline($im, 0, $ground, $w, $ground, $outline);
+            // Water the game makes flow: its surface left flat in the chroma colour, as asked.
+            if (is_array($hints['water'] ?? null)) {
+                [$x0, $y0, $x1, $y1] = $hints['water'];
+                imagefilledrectangle($im, (int) ($x0 * $w), (int) ($y0 * $h), (int) ($x1 * $w), (int) ($y1 * $h), imagecolorallocate($im, ...$this->chroma));
+            }
             $this->text($im, $hints['label'] ?? 'background', (int) ($w / 2), (int) ($ground / 3), $outline);
 
             return $this->png($im);
