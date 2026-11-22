@@ -58,7 +58,7 @@ class TextToSpeechTest extends TestCase
     public function test_text_is_said_in_a_random_english_voice_and_saved(): void
     {
         $out = "{$this->work}/hello.mp3";
-        $this->artisan('qbl:tts', ['text' => 'Hello, {{QBLPlayerName}}!', '--out' => $out, '--timings' => true])
+        $this->artisan('qbl:tts', ['text' => 'Hello, {{QL_PlayerName}}!', '--out' => $out, '--timings' => true])
             ->expectsOutputToContain("Saved $out: ")
             ->assertSuccessful();
 

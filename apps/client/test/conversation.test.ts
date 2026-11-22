@@ -10,7 +10,7 @@ function captainTalk(style: 'portrait' | 'bubble'): ConversationAction {
   return {
     id: 9001, type: 'conversation', style,
     lines: [
-      { id: 'hello', speaker: 'character', character_id: 1, text: 'Ready for your briefing, {{QBLPlayerName}}?', next: 'ask' },
+      { id: 'hello', speaker: 'character', character_id: 1, text: 'Ready for your briefing, {{QL_PlayerName}}?', next: 'ask' },
       {
         id: 'ask', speaker: 'character', character_id: 1, text: 'What do plants need to grow?',
         choices: [

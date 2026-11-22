@@ -11,7 +11,7 @@ import { placeholderVariables } from './text.js';
 import { BUTTON_MARKS, INFOBOX_SIZES, infoboxRefs } from './infobox.js';
 import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
-import { ABILITY_PREFIX, isReserved, RESERVED_VARIABLES } from './variables.js';
+import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES } from './variables.js';
 
 export interface Issue {
   level: 'error' | 'warning';
@@ -94,7 +94,7 @@ export function validateScenario(doc: unknown): ValidationResult {
   (s.global_variables ?? []).forEach((v, i) => {
     const path = `global_variables[${i}]`;
     if (!v.variable_name) err(path, 'variable_name is required');
-    else if (isReserved(v.variable_name)) err(path, `"${v.variable_name}" uses the reserved QBL prefix`);
+    else if (isReserved(v.variable_name)) err(path, `"${v.variable_name}" starts with QBL or QL_, which are kept for the system's own variables`);
     else if (variables.has(v.variable_name)) err(path, `Duplicate variable "${v.variable_name}"`);
     variables.add(v.variable_name);
     if (v.scope && !['player', 'room'].includes(v.scope)) err(`${path}.scope`, 'scope must be "player" or "room"');
@@ -207,17 +207,21 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (!CONDITION_OPS.includes(c.operator)) err(p, `Unknown operator "${c.operator}"`);
       if (!c.variable) err(p, 'variable is required');
       else if (isReserved(c.variable)) {
-        // QBLAbility_<key> is 1 while the player has a marketplace ability with that key equipped.
-        if (c.variable.startsWith(ABILITY_PREFIX)) {
-          if (!abilities.has(c.variable.slice(ABILITY_PREFIX.length))) warn(p, `No item in this scenario's shop gives the ability "${c.variable.slice(ABILITY_PREFIX.length)}"; it must come from the platform's catalogue`);
-        } else if (!(RESERVED_VARIABLES as readonly string[]).includes(c.variable)) warn(p, `Unknown reserved variable "${c.variable}"`);
+        const name = currentName(c.variable);
+        if (name !== c.variable) warn(p, renamed(c.variable, name));
+        // QL_Ability_<key> is 1 while the player has a marketplace ability with that key equipped.
+        if (name.startsWith(ABILITY_PREFIX)) {
+          if (!abilities.has(name.slice(ABILITY_PREFIX.length))) warn(p, `No item in this scenario's shop gives the ability "${name.slice(ABILITY_PREFIX.length)}"; it must come from the platform's catalogue`);
+        } else if (!(RESERVED_VARIABLES as readonly string[]).includes(name)) warn(p, `Unknown reserved variable "${c.variable}"`);
       } else if (!variables.has(c.variable)) err(p, `Variable "${c.variable}" is not declared in global_variables`);
     });
   };
 
   const checkText = (text: string | undefined, path: string) => {
     for (const name of placeholderVariables(text ?? '')) {
-      if (!variables.has(name) && !(RESERVED_VARIABLES as readonly string[]).includes(name)) {
+      const now = currentName(name);
+      if (now !== name) warn(path, renamed(`{{${name}}}`, `{{${now}}}`));
+      else if (!variables.has(name) && !(RESERVED_VARIABLES as readonly string[]).includes(name) && !name.startsWith(ABILITY_PREFIX)) {
         warn(path, `Placeholder {{${name}}} does not match a declared variable`);
       }
     }
@@ -761,4 +765,9 @@ export function validateScenario(doc: unknown): ValidationResult {
   });
 
   return done();
+}
+
+/** The publish check's note on a system variable's old name (it still works). */
+function renamed(old: string, now: string): string {
+  return `${old} is now called ${now}; the old name still works for now, but please change it`;
 }

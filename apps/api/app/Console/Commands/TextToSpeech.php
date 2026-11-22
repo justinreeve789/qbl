@@ -46,7 +46,7 @@ class TextToSpeech extends Command
             return self::FAILURE;
         }
         if (! $voicer) {
-            $this->error('Text-to-speech is switched off (QBL_TTS_DRIVER=none). Try --driver=kokoro.');
+            $this->error('Text-to-speech is switched off (QL_TTS_DRIVER=none). Try --driver=kokoro.');
 
             return self::FAILURE;
         }
@@ -88,7 +88,7 @@ class TextToSpeech extends Command
                 continue;
             }
             if ($said === null) {
-                $this->error('That cannot be said: it has no words, or a {{…}} placeholder other than {{QBLPlayerName}}.');
+                $this->error('That cannot be said: it has no words, or a {{…}} placeholder other than {{QL_PlayerName}}.');
 
                 return self::FAILURE;
             }

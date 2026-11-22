@@ -172,9 +172,13 @@ export class SceneEngine {
   triggerHotspot(h: Hotspot): boolean {
     if (this.hotspotsBlocked || !this.hotspotAvailable(h) || this.runs.has(h.id)) return false;
     if (h.once) this.flags.add(`hotspot:${h.id}`);
-    this.hotspotCoordinates = `${h.position_x ?? ''},${h.position_y ?? ''}`;
+    // QL_HotspotCoordinates: this hotspot's, while its event runs (or until another hotspot starts).
+    const coordinates = `${h.position_x ?? ''},${h.position_y ?? ''}`;
+    this.hotspotCoordinates = coordinates;
     this.host.started?.(h, true);
-    void this.trigger(h);
+    void this.trigger(h).finally(() => {
+      if (this.hotspotCoordinates === coordinates) this.hotspotCoordinates = '';
+    });
     return true;
   }
 

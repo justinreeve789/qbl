@@ -48,7 +48,7 @@ class VoiceScenario extends Command
             }
             $voicer = $speech->scenarioVoicer($store, $this->option('driver'));
             if (! $voicer) {
-                $this->error('Recording voices is switched off (QBL_TTS_DRIVER=none).');
+                $this->error('Recording voices is switched off (QL_TTS_DRIVER=none).');
 
                 return self::FAILURE;
             }
@@ -107,7 +107,7 @@ class VoiceScenario extends Command
                 $spec.($on && $on['borrowed'] ? " (from {$on['key']})" : '').($missing ? '  MISSING: '.implode(', ', $missing) : '')];
         }
         $this->table(['Key', 'Voice', 'Language', 'Sounds', $engine ? 'On '.$engine->name() : 'Service'], $rows);
-        $this->line($engine ? count($rows).' voices (🎭 theatrical). Hear one: php artisan qbl:voice --sample=giant' : 'Recording is switched off (QBL_TTS_DRIVER=none).');
+        $this->line($engine ? count($rows).' voices (🎭 theatrical). Hear one: php artisan qbl:voice --sample=giant' : 'Recording is switched off (QL_TTS_DRIVER=none).');
 
         return self::SUCCESS;
     }
@@ -121,7 +121,7 @@ class VoiceScenario extends Command
         }
         $voicer = $speech->voicer($this->option('driver'));
         if (! $voicer) {
-            $this->error('Recording voices is switched off (QBL_TTS_DRIVER=none).');
+            $this->error('Recording voices is switched off (QL_TTS_DRIVER=none).');
 
             return self::FAILURE;
         }

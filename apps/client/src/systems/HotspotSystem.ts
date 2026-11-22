@@ -166,7 +166,7 @@ export class HotspotSystem implements SceneSystem {
 
   /**
    * Fire every click hotspot under the point. Returns true if any fired. With a thing picked in the
-   * bag, only hotspots that take things (they test `QBLHolding`) fire, and the thing is used; when
+   * bag, only hotspots that take things (they test `QL_Holding`) fire, and the thing is used; when
    * there is something else to click there, the player is told the thing does not work there.
    */
   click(x: number, y: number): boolean {

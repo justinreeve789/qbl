@@ -1,3 +1,4 @@
+import { SYSTEM_VARIABLES } from '@qbl/shared';
 import type { Row } from '../api';
 import { mediaLabel, mediaUrl } from '../describe';
 import { h, toast } from '../dom';
@@ -166,6 +167,10 @@ export function pickVariable(ctx: FormContext, title = 'Choose a variable'): Pro
         return h('div', { class: 'rt-pick-list' },
           ...rows.map((v) => h('button', { type: 'button', class: 'rt-pick-row', 'data-variable-pick': v.variable_name, onclick: () => finish(String(v.variable_name)) },
             h('code', null, `{{${v.variable_name}}}`), h('span', { class: 'muted' }, v.default_value == null || v.default_value === '' ? '' : `starts at ${v.default_value}`))),
+          // The system's own variables: always there, kept up to date by the game.
+          h('p', { class: 'rt-pick-head muted' }, 'Built in'),
+          ...SYSTEM_VARIABLES.map((v) => h('button', { type: 'button', class: 'rt-pick-row', 'data-variable-pick': v.name, onclick: () => finish(v.name) },
+            h('code', null, `{{${v.name}}}`), h('span', { class: 'muted' }, v.about))),
           h('button', {
             type: 'button', class: 'rt-pick-row rt-new',
             onclick: async () => {

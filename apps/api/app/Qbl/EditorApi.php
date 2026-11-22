@@ -229,7 +229,7 @@ class EditorApi
                 ]];
             }
             if (! $engine) {
-                throw new StoreError(503, 'Recording voices is switched off on this server (QBL_TTS_DRIVER=none). Lines are read by the browser\'s voice.');
+                throw new StoreError(503, 'Recording voices is switched off on this server (QL_TTS_DRIVER=none). Lines are read by the browser\'s voice.');
             }
             if (count($rest) === 2 && $rest[1] === 'sample' && $method === 'GET') {
                 $voice = $catalog->get($rest[0]) ?? throw new StoreError(404, 'There is no such voice.');

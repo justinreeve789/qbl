@@ -78,7 +78,7 @@ $extraMedia = [
 ];
 $crew = [
     // name, avatar picture used as a stand-in, scene, x, y, facing, lines
-    ['Chief Engineer Okoro', 3, 'engine-room', 760, 980, 'right', ['Mind the coolant pipes, {{QBLPlayerName}}. Orange is hot.', 'If a light on that wall starts blinking, it only means the reactor is thinking. Probably.']],
+    ['Chief Engineer Okoro', 3, 'engine-room', 760, 980, 'right', ['Mind the coolant pipes, {{QL_PlayerName}}. Orange is hot.', 'If a light on that wall starts blinking, it only means the reactor is thinking. Probably.']],
     ['Botanist Lin', 5, 'hydroponics', 1500, 980, 'left', ['Everything green in here ends up on someone\'s plate, or in their lungs as fresh air.', 'Have a look at the racks. The plants will not mind.']],
     ['Quartermaster Pax', 7, 'marketplace', 520, 990, 'right', ['Welcome to the marketplace. Stars you earn on missions are spent here.', 'The stalls are for new things; the wardrobe is for changing what you already own.']],
 ];

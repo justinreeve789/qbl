@@ -771,7 +771,7 @@ export interface ShopItem {
   /** Animations: how the avatar moves when this is equipped. */
   animation?: AvatarAnimation;
   /**
-   * Abilities: a key scenarios can test. While equipped, the variable `QBLAbility_<key>` is 1,
+   * Abilities: a key scenarios can test. While equipped, the variable `QL_Ability_<key>` is 1,
    * so a condition can offer a shortcut, a translation or a hidden hotspot to players who have it.
    */
   ability?: string;
@@ -873,7 +873,7 @@ export interface Item {
    * [ext] A thing the player can carry, as in a point-and-click adventure: it is in their bag (the
    * item bar on their screen) while these hold, usually a variable of their own an event sets to 1
    * when they pick it up and back to 0 when it is used up. From the bag the player picks it to use
-   * it on something in the scene (see `QBLHolding`) or puts it with another thing they carry
+   * it on something in the scene (see `QL_Holding`) or puts it with another thing they carry
    * (`combinations`). Absent: never carried.
    */
   carried_when?: Condition[];
@@ -1320,7 +1320,8 @@ export interface Scenario {
   session?: Session | null;
   /**
    * The instance the requesting player is about to join, added when the document is served:
-   * its group key, the room it belongs to and, for a team, the team's name.
+   * its group key, the room it belongs to, for a team the team's name and, in an assigned game,
+   * the name of the teacher who assigned it (`QL_TeacherName`).
    */
-  instance?: { group: string; party: string; team_name?: string } | null;
+  instance?: { group: string; party: string; team_name?: string; teacher_name?: string } | null;
 }

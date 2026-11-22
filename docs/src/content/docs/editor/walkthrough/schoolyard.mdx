@@ -74,12 +74,12 @@ A conversation is an **indirect event**: it does nothing until a click on the ch
    | # | Action | Settings |
    | - | ------ | -------- |
    | 1 | ✋ **Freeze or release player** | **The player**: *Cannot move* |
-   | 2 | 💬 **Dialogue** | **Shown as**: *A story box with the speaker's portrait*. **Who speaks**: *A character*, **Character**: Ms. Okafor. **What they say**: `The pond used to be so clear. Now it looks like chocolate milk! Can you find out why, {{QuestLabPlayerName}}?` |
+   | 2 | 💬 **Dialogue** | **Shown as**: *A story box with the speaker's portrait*. **Who speaks**: *A character*, **Character**: Ms. Okafor. **What they say**: `The pond used to be so clear. Now it looks like chocolate milk! Can you find out why, {{QL_PlayerName}}?` |
    | 3 | 💬 **Dialogue** | Same settings. **What they say**: `Head east to the pond. Look for anything that does not belong.` |
    | 4 | 🔢 **Variable** | **Variable**: `mission_started`. **Change**: *Set to*. **Value**: `1` |
    | 5 | ✋ **Freeze or release player** | **The player**: *Can move again* |
 
-   `{{QuestLabPlayerName}}` is replaced with the student's name when the line is shown.
+   `{{QL_PlayerName}}` is replaced with the student's name when the line is shown.
 
    <Aside>
    The freeze keeps the student from wandering off while Ms. Okafor talks. A freeze always ends when its event finishes, so even if you forgot action 5 nobody would be stuck, but release explicitly when you can.

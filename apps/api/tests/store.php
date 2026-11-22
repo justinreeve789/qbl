@@ -207,6 +207,7 @@ same([$status, $body['row']['width'], $body['row']['background_media'][1]['scrol
 [, $body] = $call('POST', "scenarios/$sid/rows/variables", ['variable_name' => 'found_frog', 'default_value' => 0]);
 same($body['row']['scope'], 'player', 'variables default to player scope');
 same($call('POST', "scenarios/$sid/rows/variables", ['variable_name' => 'QBLTime'])[0], 422, 'reserved variable names are refused');
+same($call('POST', "scenarios/$sid/rows/variables", ['variable_name' => 'QL_PlayerName'])[0], 422, 'so are the system variables\' QL_ names');
 [$status, $body] = $call('POST', "scenarios/$sid/rows/events", ['scene_id' => $scene['id'], 'kind' => 'hotspot', 'shortname' => 'frog', 'position_x' => 1500, 'position_y' => 800]);
 $hotspot = $body['row'];
 same([$status, $hotspot['radius'], $hotspot['activate_by_trigger'], $hotspot['sequence']], [201, 100, true, 1], 'a hotspot gets sensible defaults');

@@ -60,11 +60,21 @@ export class GameContext {
     this.vars.remote = (name, operator, operand) => connection.variable({ name, operator, operand });
     this.vars.onChange(() => (this.dirty = true));
 
-    this.vars.provide('QBLTimeElapsed', () => this.timeElapsed);
-    this.vars.provide('QBLScenarioLanguage', () => (scenario.default_language ?? 'en-us').slice(0, 2));
-    this.vars.provide('QBLPlayerName', () => user.name);
+    // The system's variables (SYSTEM_VARIABLES). QL_HotspotCoordinates and QL_PhysicsEnabled
+    // belong to the scene being played: PlayScene supplies them.
+    this.vars.provide('QL_TimeElapsed', () => this.timeElapsed);
+    this.vars.provide('QL_ScenarioLanguage', () => (scenario.default_language ?? 'en-us').slice(0, 2));
+    this.vars.provide('QL_VideoPlaying', () => (ui.videoPlaying ? 1 : 0));
+    this.vars.provide('QL_VideoTimeIndex', () => ui.videoTime);
+    this.vars.provide('QL_PlayerName', () => user.name);
+    // A teacher is the one who assigned this game to the player's class. Teachers and admins
+    // have none of their own, even in a game they look in on.
+    const teacher = isStaff(user.role) ? '' : (scenario.instance?.teacher_name ?? '');
+    this.vars.provide('QL_TeacherName', () => teacher);
+    this.vars.provide('QL_HasTeacher', () => (teacher ? 1 : 0));
+    this.vars.provide('QL_IsTeacher', () => (isStaff(user.role) ? 1 : 0));
     // "Everyone playing together" is the player's own instance: their team, when the room holds several.
-    this.vars.provide('QBLPlayerCount', () => {
+    this.vars.provide('QL_PlayerCount', () => {
       let n = 0;
       const mine = connection.me?.team ?? '';
       connection.state.players.forEach((p) => {
@@ -72,12 +82,10 @@ export class GameContext {
       });
       return n;
     });
-    this.vars.provide('QBLVideoPlaying', () => (ui.videoPlaying ? 1 : 0));
-    this.vars.provide('QBLVideoTimeIndex', () => ui.videoTime);
 
     this.bag = new Bag(scenario, this.vars.get);
     this.bag.say = (text) => ui.toast(text, 2600);
-    this.vars.provide('QBLHolding', () => this.bag.holding);
+    this.vars.provide('QL_Holding', () => this.bag.holding);
   }
 
   // ------------------------------------------------------------- other players

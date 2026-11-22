@@ -74,7 +74,7 @@ final class BlueprintSchema
         $text = fn (string $d, int $max = 400) => ['type' => 'string', 'description' => $d, 'maxLength' => $max];
         $line = ['type' => 'object', 'required' => ['speaker', 'text'], 'properties' => [
             'speaker' => ['type' => 'string', 'description' => 'A character key, or "player" for the student\'s own reply.'],
-            'text' => $text('What is said. At most 200 characters. {{QBLPlayerName}} is the student\'s name.', 200),
+            'text' => $text('What is said. At most 200 characters. {{QL_PlayerName}} is the student\'s name.', 200),
         ]];
         $award = ['type' => 'object', 'required' => ['stars', 'xp', 'note'], 'properties' => [
             'stars' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 10],

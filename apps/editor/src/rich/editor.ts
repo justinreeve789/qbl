@@ -1,4 +1,4 @@
-import { CALLOUT_TONES } from '@qbl/shared';
+import { CALLOUT_TONES, isReserved } from '@qbl/shared';
 import type { Row } from '../api';
 import { mediaLabel, mediaUrl } from '../describe';
 import { h, help, toast } from '../dom';
@@ -202,7 +202,7 @@ function build(start: RichOptions): Instance {
   // ------------------------------------------------------------ chips and blocks
 
   function chip(name: string): HTMLElement {
-    const known = store().rows('variables').some((v) => v.variable_name === name) || name.startsWith('QBL');
+    const known = store().rows('variables').some((v) => v.variable_name === name) || isReserved(name);
     return h('span', { class: `rt-var${known ? '' : ' unknown'}`, contenteditable: 'false', 'data-var-chip': name, title: known ? `Shows the value of ${name}` : `${name} is not a variable of this scenario` }, name);
   }
 

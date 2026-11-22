@@ -1,3 +1,4 @@
+import { isReserved, SYSTEM_VARIABLES } from '@qbl/shared';
 import type { Row } from '../api';
 import { h } from '../dom';
 import { parseValue, select, type FormContext } from '../fields';
@@ -23,9 +24,13 @@ interface ConditionSource {
  */
 export function conditionList(source: ConditionSource, ctx: FormContext, title = 'Conditions', empty = 'Always.'): HTMLElement {
   const names = ctx.store.rows('variables').map((v) => String(v.variable_name));
+  // The scenario's own variables, then the system's (QL_…), which the game keeps up to date.
+  const system = SYSTEM_VARIABLES.map((v) => [v.name, `${v.name} (built in)`] as const);
+  const known = new Set([...names, ...system.map(([n]) => n)]);
   const rows = source.list.map((c, i) => {
     const current = String(c.variable ?? '');
-    const options = names.map((n) => [n, n] as const).concat(current && !names.includes(current) ? [[current, `${current} (not defined)`]] : []);
+    const options = [...names.map((n) => [n, n] as const), ...system]
+      .concat(current && !known.has(current) ? [[current, isReserved(current) ? `${current} (built in)` : `${current} (not defined)`]] : []);
     const operand = h('input', { type: 'text', value: c.operand ?? '', 'aria-label': 'Value', onchange: () => source.change(i, { operand: parseValue(operand.value) }) });
     return h(
       'div',
