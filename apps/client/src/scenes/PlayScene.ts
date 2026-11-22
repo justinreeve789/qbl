@@ -13,6 +13,8 @@ import { HotspotSystem } from '../systems/HotspotSystem';
 import { LocalPlayerSystem } from '../systems/LocalPlayerSystem';
 import { PropsSystem } from '../systems/PropsSystem';
 import { RemotePlayersSystem } from '../systems/RemotePlayersSystem';
+import { CameraSystem } from '../systems/CameraSystem';
+import { WeatherSystem } from '../systems/WeatherSystem';
 
 export type { PlaySceneData };
 
@@ -97,6 +99,9 @@ export class PlayScene extends Phaser.Scene {
       if (actor && actor !== ctx.connection.sessionId) return null;
       return this.runtime.system(LocalPlayerSystem).walkScripted(action);
     };
+    this.host.weatherControl = (action) => this.byClass.has(WeatherSystem) ? this.runtime.system(WeatherSystem).change(action) : null;
+    this.host.cameraControl = (action) => this.byClass.has(CameraSystem) ? this.runtime.system(CameraSystem).point(action) : null;
+    this.host.actingControl = (id) => (this.byClass.get(CameraSystem) as CameraSystem | undefined)?.acting(id);
     this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);
     this.engine = new SceneEngine(this.def, ctx.index, ctx.vars, this.host, ctx.flags);

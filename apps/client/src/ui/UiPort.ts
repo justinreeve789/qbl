@@ -122,6 +122,11 @@ export interface UiPort {
    * picked one (`selected`) marked, with a line saying what picking does. An empty list hides it.
    */
   bag(items: BagSlot[], selected: number | null, on: { pick(id: number): void; drop(): void }): void;
+  /**
+   * The bar beside a story scene, which plays by itself: skip ahead to the next scene, or watch this
+   * one again. Either may be left out. Null takes it away.
+   */
+  storyBar(bar: { skip?: () => void; again?: () => void } | null): void;
   objectives(list: ObjectiveStatus[]): void;
   /**
    * Who else is playing: the people in the scenario, with where they are. `on.profile` opens a

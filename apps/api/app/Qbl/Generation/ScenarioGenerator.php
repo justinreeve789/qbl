@@ -4,11 +4,14 @@ namespace App\Qbl\Generation;
 
 use App\Qbl\Generation\Art\AssetDirector;
 use App\Qbl\Generation\Build\MissionBuilder;
+use App\Qbl\Generation\Build\StoryBuilder;
 use App\Qbl\Generation\Curriculum\StandardsAligner;
 use App\Qbl\Generation\Curriculum\StandardsStore;
 use App\Qbl\Generation\Design\BlueprintValidator;
 use App\Qbl\Generation\Design\Connections;
 use App\Qbl\Generation\Design\MissionDesigner;
+use App\Qbl\Generation\Design\StoryPlan;
+use App\Qbl\Generation\Design\StoryValidator;
 use App\Qbl\ScenarioArchive;
 use App\Qbl\ScenarioStore;
 use App\Qbl\Speech\VoicePicker;
@@ -117,18 +120,34 @@ class ScenarioGenerator
                 $this->say("  {$s['code']} ({$s['alignment']})");
             }
 
+            // A mission to play, or a story to watch: as asked, or else as the aligner read the request.
+            $format = in_array($options['format'] ?? null, ['mission', 'story'], true) ? $options['format'] : ($alignment['format'] ?? 'mission');
+            if (($options['format'] ?? null) !== $format) {
+                $options['format'] = $format;
+                $this->runs->update($id, ['options' => $options]);
+            }
+            $story = $format === 'story';
+            if ($story) {
+                $this->say('Telling it as a story: it plays by itself, scene after scene');
+            }
+
             // ------------------------------------------------------------ 2. design
             $blueprint = $run['blueprint'];
-            if (! $blueprint || BlueprintValidator::errors($blueprint, array_column($alignment['learning_objectives'], 'id'))) {
+            if ($blueprint && (($blueprint['format'] ?? 'mission') === 'story') !== $story) {
+                $blueprint = null; // designed as the other kind: design it again
+            }
+            if (! $blueprint || ($story ? StoryValidator::errors($blueprint) : BlueprintValidator::errors($blueprint, array_column($alignment['learning_objectives'], 'id')))) {
                 $this->status($id, 'designing');
                 $this->say('Designing the mission');
                 $blueprint = $this->designer->design($prompt, $alignment, $options, $this->log, fn (float $f, string $detail) => $progress->fraction($f, $detail));
                 $this->runs->update($id, ['blueprint' => $blueprint]);
             }
             file_put_contents("$dir/blueprint.json", json_encode($blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-            $this->say(sprintf('"%s": %d scenes, %d characters, %d items, %d interactions (%d with the bag), %d combinations, %d twists', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions']), count(array_filter($blueprint['interactions'], fn ($it) => ($it['type'] ?? '') === 'use')), count($blueprint['combinations'] ?? []), count($blueprint['twists'] ?? [])));
+            $this->say($story ? StoryPlan::describe($blueprint) : sprintf('"%s": %d scenes, %d characters, %d items, %d interactions (%d with the bag), %d combinations, %d twists', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions']), count(array_filter($blueprint['interactions'], fn ($it) => ($it['type'] ?? '') === 'use')), count($blueprint['combinations'] ?? []), count($blueprint['twists'] ?? [])));
             $director = ($this->director)($dir);
-            $estimate = $director->estimate($blueprint);
+            // A story's pictures are drawn as a mission's are, from the same blueprint seen as the art director reads one.
+            $art = $story ? StoryPlan::forArt($blueprint) : $blueprint;
+            $estimate = $director->estimate($art);
             $this->events?->record($id, ['type' => 'estimate', 'stage' => 'designing', 'step' => 'drawing estimate', 'usd' => round((float) $estimate['usd'], 5), 'detail' => ['pictures' => $estimate['pictures']]]);
             $this->say(sprintf('Drawing it will take about %d pictures, about $%.2f%s.', $estimate['pictures'], $estimate['usd'], $this->spend ? sprintf(' (spent so far: $%.2f%s)', $this->spend->total(), $this->spend->budget() > 0 ? sprintf(' of a $%.2f budget', $this->spend->budget()) : '') : ''));
             if ($this->spend && $this->spend->budget() > 0 && $this->spend->total() + $estimate['usd'] > $this->spend->budget()) {
@@ -143,7 +162,7 @@ class ScenarioGenerator
             // ------------------------------------------------------------ 3. draw
             $this->status($id, 'drawing');
             $director->onProgress(fn (int $done, int $total, string $detail) => $progress->count($done, $total, $detail));
-            $assets = $director->drawMission($blueprint, self::layouts($blueprint));
+            $assets = $director->drawMission($art, self::layouts($art));
             $manifest = $director->manifest();
             $this->runs->update($id, ['manifest' => $manifest]);
             foreach ($manifest as $m) {
@@ -155,7 +174,7 @@ class ScenarioGenerator
             // ------------------------------------------------------------ 4, 5. build and package
             $this->status($id, 'building');
             $voices = $this->voices ? self::voicesFor($blueprint, $this->voices['picker']) : [];
-            $built = (new MissionBuilder)->build($blueprint, $alignment, $assets, $options + ['generation_id' => $id, 'voices' => $voices]);
+            $built = ($story ? new StoryBuilder : new MissionBuilder)->build($blueprint, $alignment, $assets, $options + ['generation_id' => $id, 'voices' => $voices]);
             if ($this->voices && $voices) {
                 $this->status($id, 'voicing');
                 $this->say('Recording the characters\' lines ('.$this->voices['voicer']->engine()->name().')');
@@ -219,6 +238,12 @@ class ScenarioGenerator
                 'gender' => $v['gender'] ?? null, 'age' => $v['age'] ?? null, 'accent' => $v['accent'] ?? null,
                 'describe' => implode(' ', array_filter([$v['sound'] ?? null, $c['personality'] ?? null, $c['role'] ?? null, $c['appearance'] ?? null, ! empty($c['guide']) ? 'warm friendly clear guide' : null])),
             ];
+        }
+
+        // A story's narrator reads its captions, in a voice of their own.
+        if (($blueprint['format'] ?? 'mission') === 'story') {
+            $v = (array) ($blueprint['narrator']['voice'] ?? []);
+            $wanted['__narrator'] = ['gender' => $v['gender'] ?? null, 'age' => $v['age'] ?? 'adult', 'accent' => $v['accent'] ?? null, 'describe' => trim(($v['sound'] ?? '').' warm clear storyteller narrator')];
         }
 
         return $picker->pick($wanted, $blueprint['language'] ?? 'en');

@@ -192,6 +192,9 @@ export class HeadlessUi implements UiPort {
   bagSlots: BagSlot[] = [];
   bagPicked: number | null = null;
   bagOn: { pick(id: number): void; drop(): void } | null = null;
+  /** The story bar, while a story scene shows it. */
+  story: { skip?: () => void; again?: () => void } | null = null;
+  storyBar(bar: { skip?: () => void; again?: () => void } | null) { this.story = bar; }
   bag(items: BagSlot[], selected: number | null, on: { pick(id: number): void; drop(): void }) {
     this.bagSlots = items;
     this.bagPicked = selected;

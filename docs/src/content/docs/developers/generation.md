@@ -44,6 +44,7 @@ Option | Effect
 `--players=2-6` | How many students play together. Team tasks never need more students than the minimum.
 `--minutes=` | Rough playing time.
 `--notes=` | Anything else for the designer ("set it in ancient Egypt", "no reading above grade 2").
+`--format=` | `mission` (students play it) or `story` (it plays by itself, for students to watch; see [Stories](#stories)). Default: as the prompt reads, decided while aligning.
 `--owner=` | The teacher who owns the draft.
 `--style=` | The art style (a folder in `resources/art-styles`). Default `QuestLab_GEN_STYLE`, `qbl-adventure`.
 `--images=` | `gemini`, `openai`, `scenario` or `placeholder`.
@@ -148,6 +149,29 @@ Also built: exits that stay closed until something is done (with a message), spa
 The validator also checks the new parts: passages have a place and a look and keep apart, two scenes connect once, there are one to three debrief questions and none is part of a step, every twist that blocks a way has something that sets it right, reachable without going through that way, what the bag holds comes from somewhere and lasts as long as it is needed, cutscenes only use characters who are there, an instrument's goal can be reached with its controls' ranges and options (and is not met before students change anything) and what it shows and its misses read controls it has, everyone who falls is rescued, every thing in the bag is used, a far view is only behind an outdoor scene, a foreground along the bottom never walls off a way out towards the viewer, and the floor reaches every edge students leave by and is clear in front of passages.
 
 **Variables** a teacher report can read: `done_<interaction or combination>` (1 once done; for a question, once answered correctly), `q_<question>_first` (the first answer chosen, 1-based), `q_<question>_answer` (its text, predictions included), `q_<question>_tries`, `score` (questions right first time), `team_<task>` (shared), `has_<item>` (1 while it is in the student's bag), `twist_<key>`, `away_<character>` (shared), `saved_<rescue>` (shared), `arrival_<scene>` (shared), `c_<experiment>_<control>` (what each control of an instrument was left at), `mission_complete`. `curriculum.evidence` lists, for each objective, its questions (debrief ones marked), predictions and experiments; `curriculum.scored_questions` is there too.
+
+## Stories
+
+When the teacher asks for a story to be told rather than a mission to be played ("Tell the story of a raindrop's trip round the water cycle", "a fable about sharing", "a day in the life of a Roman child"), the generator makes a **story**: an animated picture book that plays by itself, scene after scene, for students to watch and then talk about. The aligner decides which was asked for (`format` in the alignment; `--format=` or the Generate page's **Make** choice decide it instead), and the run keeps it in its options.
+
+A story's blueprint (`StorySchema`, checked by `StoryValidator`) has characters, a narrator's voice, a few props, and scenes, each with the same look as a mission's scene (kind, background, width, far view, foreground, floor, living sky, lights, the air, creatures, and the weather and water below) plus:
+
+- **`cast`**: who is on stage when the scene opens, and where they stand;
+- **`script`**: what happens, in order. A beat is `narrate` (a caption, read aloud by the narrator), `say` (a line in a speech bubble, `to` someone, who they turn to face), `walk`, `enter` (from the left or right edge), `leave` (off an edge), `gesture`, `wait`, `sound` (one of [the game's own sounds](/docs/developers/extensions/#the-games-own-sounds)), `weather` (the rain starts, a storm blows up, it clears), `pass` (one of the scene's creatures or vehicles goes by now) or `title` (words across the screen). `meanwhile` starts the next beat at once (someone walks across while another speaks).
+
+And an `ending`: a closing line and one to three questions to talk about.
+
+The validator follows each script with who is on the stage, so nobody speaks, walks or gestures before coming on, nobody comes back on after leaving the scene, every character appears somewhere, every scene has something said, and weather and water are only where they make sense. Corrections are made by changes, as for missions.
+
+`StoryPlan::forArt` shows the art director the story as it reads a mission (each character in the first scene they are in, the gestures the script asks for as a cutscene's), so every picture is drawn by the same code, in the same style. **StoryBuilder** (a MissionBuilder, with its helpers) makes every scene a [story scene](/docs/developers/extensions/#story-scenes) and its script one start event that acts it out: characters wait off stage beyond the edge they will come on from, walk on, about and off, turn to whoever they speak to, speak in bubbles; the narrator's captions are read aloud in the narrator's voice (`narrator_voice`, recorded with the characters' lines); the weather changes; a creature or vehicle the script cues (`cue`) passes once when it says. The first scene opens with the title; each ends by jumping to the next; the last ends with "The End", an award, and a box with the questions to talk about and **Watch it again**. Its checklist is one line, "Watch the story to the end" (`mission_complete`). The README lists the scenes and the questions.
+
+## Weather, water and vehicles
+
+Missions and stories alike can use them, where the place has them:
+
+- **`weather`** on an outdoor or up-high scene: `rain`, `snow`, `storm`, `blizzard` or `fog`, `light`, `steady` or `heavy`, drawn by the game with its sound ([Weather](/docs/developers/extensions/#weather)). The background is painted in the weather's light (wet ground and puddles, snow lying), never with the rain itself.
+- **`water`** in an outdoor or underground scene: a `river` or `stream` across the `front` or the `back` of the floor (which way it `flows`), a `pond` or `lake` in its `middle`, a `waterfall` at the back, the `sea` along the back. The background is asked to paint the water's surface as a flat chroma colour between its banks; it is cut out (`AssetDirector::waterHole` finds where), and the game's [flowing water](/docs/developers/extensions/#flowing-water) is drawn behind it there. If no hole is found after the last attempt, the water is drawn as glints over the picture instead. Nobody walks in it: the floor stops at a river along the front or starts after one along the back, and a pond is blocked off. The validator keeps water clear of passages and of exits it would cut off.
+- **`drives_by`** for an ambient thing: a car, a cart, a bus, a tractor driving across the back of the floor (up to 900 cm long), outdoors. Any ambient thing can have a `sound` it makes as it passes (`car`, `hooves`, `tweet`...).
 
 ## Curriculum standards
 
@@ -256,7 +280,7 @@ Generated content is a first draft from a language model: check facts, reading l
 
 ## Not done yet
 
-- Music and sound effects (scenes have none; add them in the editor).
+- Music (scenes have none; add it in the editor). Sound effects are the game's own: the weather's, the water's, things going by, and a story's `sound` beats.
 - Starting a generated mission from a copy of the starship hub, with a console that launches it.
 - Regenerating one picture or one scene of an imported mission from the editor.
 - Regenerating from where a failed editor run stopped (the editor starts afresh; `qbl:generate --resume` can carry on).

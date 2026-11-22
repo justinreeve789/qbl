@@ -85,7 +85,8 @@ final class Voicer
      * The lines characters say, from a scenario's rows (decoded, as ScenarioStore::bundle() and
      * MissionBuilder give them): every `dialogue` action said by a character, and every character's
      * line of a `conversation` (`line` is then its place in the action's `lines`). `voice` is the
-     * character's, or null when it has none.
+     * character's, or null when it has none. With a narrator's voice (the scenario's `narrator_voice`,
+     * as a story has), the text overlays to be read aloud too, said by the narrator (character_id 0).
      *
      * @return list<array{index: int, action_id: int, line: ?int, character_id: int, voice: ?string, text: string, media_id: ?int, narrate: ?bool}>
      */
@@ -102,10 +103,19 @@ final class Voicer
             'text' => (string) ($p['text'] ?? ''), 'media_id' => isset($p['narration_media_id']) ? (int) $p['narration_media_id'] : null,
             'narrate' => isset($action['narrate']) ? (bool) $action['narrate'] : null,
         ];
+        // A story's narrator (the scenario's narrator_voice) reads its captions: text overlays marked to be read aloud.
+        $settings = $rows['scenario']['settings'] ?? [];
+        $settings = is_array($settings) ? $settings : (json_decode((string) $settings, true) ?: []);
+        $narrator = isset($settings['narrator_voice']) && $settings['narrator_voice'] !== '' ? (string) $settings['narrator_voice'] : null;
         $out = [];
         foreach ($rows['actions'] ?? [] as $i => $a) {
             $p = is_array($a['params'] ?? null) ? $a['params'] : (json_decode((string) ($a['params'] ?? ''), true) ?: []);
-            if (($a['type'] ?? '') === 'dialogue' && $said($p)) {
+            if ($narrator && ($a['type'] ?? '') === 'text_overlay' && ($p['narrate'] ?? null) === true) {
+                $out[] = [
+                    'index' => $i, 'action_id' => (int) $a['id'], 'line' => null, 'character_id' => 0, 'voice' => $narrator, 'text' => (string) ($p['text'] ?? ''),
+                    'media_id' => isset($p['narration_media_id']) ? (int) $p['narration_media_id'] : null, 'narrate' => true,
+                ];
+            } elseif (($a['type'] ?? '') === 'dialogue' && $said($p)) {
                 $out[] = $entry($i, $a, null, $p, $p);
             } elseif (($a['type'] ?? '') === 'conversation') {
                 foreach (array_values((array) ($p['lines'] ?? [])) as $k => $line) {
@@ -156,7 +166,7 @@ final class Voicer
         $rows = &$built['rows'];
         $lines = array_values(array_filter(self::lines($rows), fn ($l) => $l['voice'] !== null && $l['narrate'] !== false && $l['media_id'] === null));
         $nextId = max([0, ...array_map(fn ($m) => (int) $m['id'], $rows['media'] ?? [])]) + 1;
-        $names = array_column($rows['characters'] ?? [], 'name', 'id');
+        $names = array_column($rows['characters'] ?? [], 'name', 'id') + [0 => 'narrator'];
         if (! is_dir($dir) && ! mkdir($dir, 0775, true) && ! is_dir($dir)) {
             throw new SpeechError("Cannot create $dir.");
         }

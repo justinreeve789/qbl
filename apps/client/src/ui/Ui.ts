@@ -45,6 +45,7 @@ export class Ui implements UiPort {
   readonly narrator = new Narrator();
   private toasts = el('div', 'qbl-toasts');
   private bagBar = el('div', 'qbl-bagbar');
+  private story = el('div', 'qbl-storybar');
   private banner = el('div', 'qbl-banner');
   private modals = 0;
   private video: HTMLVideoElement | null = null;
@@ -53,9 +54,12 @@ export class Ui implements UiPort {
     this.root = el('div', 'qbl-ui');
     this.banner.hidden = true;
     this.bagBar.hidden = true;
+    this.story.hidden = true;
+    this.story.setAttribute('role', 'toolbar');
+    this.story.setAttribute('aria-label', 'Story');
     this.bagBar.setAttribute('role', 'toolbar');
     this.bagBar.setAttribute('aria-label', 'Things you carry');
-    this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.bagBar, this.toasts, this.banner);
+    this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.bagBar, this.story, this.toasts, this.banner);
     parent.appendChild(this.root);
     this.followKeyboard();
   }
@@ -119,8 +123,13 @@ export class Ui implements UiPort {
     node.style.fontSize = `${o.size ?? 24}px`;
     node.style.color = o.color || 'white';
     if (o.style === 'italic') node.style.fontStyle = 'italic';
-    const h = this.overlay(node, o.duration);
+    // A story's narration: a caption on a panel, as in a picture book.
+    if (o.style === 'caption') node.classList.add('qbl-caption');
+    // Read aloud, it stays until the voice has finished, as a bubble does.
+    const voice: { over?: Promise<void> } = {};
+    const h = this.overlay(node, o.duration, voice);
     const reading = this.read(node, o.speak);
+    if (reading.active) voice.over = reading.over;
     void h.done.then(reading.stop);
     return h;
   }
@@ -395,14 +404,15 @@ export class Ui implements UiPort {
     return h;
   }
 
-  private overlay(node: HTMLElement, duration?: number): OverlayHandle {
+  /** `voice`: when it is being read aloud, what settles when the reading ends: it stays at least until then. */
+  private overlay(node: HTMLElement, duration?: number, voice?: { over?: Promise<void> }): OverlayHandle {
     this.overlays.appendChild(node);
     let timer: number | undefined;
     const h = handle(() => {
       window.clearTimeout(timer);
       node.remove();
     });
-    if (duration && duration > 0) timer = window.setTimeout(h.finish, duration);
+    if (duration && duration > 0) timer = window.setTimeout(() => (voice?.over ? void voice.over.then(h.finish) : h.finish()), duration);
     return {
       done: h.done,
       cancel: h.cancel,
@@ -627,6 +637,24 @@ export class Ui implements UiPort {
    * click where to use it, or another thing to put them together); click it again, or press Escape,
    * to put it back.
    */
+  storyBar(bar: { skip?: () => void; again?: () => void } | null) {
+    this.story.hidden = !bar || (!bar.skip && !bar.again);
+    const buttons: HTMLButtonElement[] = [];
+    const add = (label: string, text: string, fn: () => void) => {
+      const b = el('button', 'qbl-storybar-button', text);
+      b.type = 'button';
+      b.setAttribute('aria-label', label);
+      b.title = label;
+      // The canvas must not see the click.
+      b.addEventListener('pointerdown', (e) => e.stopPropagation());
+      b.addEventListener('click', fn);
+      buttons.push(b);
+    };
+    if (bar?.again) add('Watch this part again', '↺ Again', bar.again);
+    if (bar?.skip) add('Skip to the next part', 'Skip ⏭', bar.skip);
+    this.story.replaceChildren(...buttons);
+  }
+
   bag(items: BagSlot[], selected: number | null, on: { pick(id: number): void; drop(): void }) {
     const key = JSON.stringify([items, selected]);
     if (key === this.bagKey) return;

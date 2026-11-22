@@ -9,6 +9,7 @@
 import type { MediaSpeech } from './speech.js';
 
 import type { ButtonMark, InfoboxSize } from './infobox.js';
+import type { BuiltInSound } from './sounds.js';
 
 export type Id = number;
 export type VarValue = string | number;
@@ -234,7 +235,9 @@ export type ActionType =
   | 'variable'
   | 'video'
   | 'wait'
-  | 'walk';
+  | 'walk'
+  | 'weather'
+  | 'camera';
 
 export type Alignment =
   | 'top left' | 'top center' | 'top right'
@@ -256,6 +259,12 @@ export interface AudioAction extends ActionBase {
   type: 'audio';
   volume?: number;
   repeat?: boolean;
+  /**
+   * [ext] A sound the game makes itself, with no recording: thunder, a car going by, a door, birds
+   * (see BUILT_IN_SOUNDS in sounds.ts). Used instead of `media_id`. The ones that go on by themselves
+   * (rain, a river, wind) loop with `repeat`.
+   */
+  sound?: BuiltInSound;
   /**
    * Keep playing across jumps: this is how background music is done. Only one
    * persistent track plays at a time. Starting another replaces it, unless it
@@ -577,6 +586,10 @@ export interface ShopAction extends ActionBase {
  *   player would; through several rooms if no door leads there directly. With `spawn_point` it
  *   then walks on to that spawn point of the scene it arrives in.
  *
+ * [ext] A walk of a character to a point beyond the left or right edge of the scene walks it off stage:
+ * to the edge and on out of sight, and it is gone until the scene is entered again. One waiting off
+ * stage (placed beyond an edge) walks on the same way.
+ *
  * Only a character that roams (`Npc.roams`) can really leave a scene: it lives in the world, so
  * everyone sees it go and finds it where it went. Any other character walks on the player's own
  * screen (or the whole scene's, for an event whose audience is the scene), and one that walks out
@@ -604,11 +617,45 @@ export interface WalkAction extends ActionBase {
 
 export type WalkDestination = 'point' | 'spawn' | 'scene';
 
+/**
+ * [ext] Change the weather in the scene (see Scene.weather), slowly over `duration`: the rain starts,
+ * a storm blows up, the snow stops (`kind: "clear"`). It lasts until another weather action, or
+ * until the player leaves the scene, which then has its own weather again.
+ */
+export interface WeatherAction extends ActionBase {
+  type: 'weather';
+  kind: WeatherKind | 'clear';
+  /** How heavy, from 0 to 1. Default 0.6. */
+  intensity?: number;
+  /** -1 (blowing hard to the left) to 1 (hard to the right). Default 0.15. */
+  wind?: number;
+  /** Lightning now and then. Default: only in a storm. */
+  lightning?: boolean;
+  /** Milliseconds the change takes. Default 3000. The action waits for it. */
+  duration?: number;
+}
+
+/**
+ * [ext] Where the player's view looks. `character`: it follows a character placed in the scene as
+ * they move; `point`: it glides to a spot and stays there; `player`: it follows the player again
+ * (as it always does, outside story scenes); `auto`: in a story scene, it follows whoever is
+ * acting (as a story scene does by itself). It lasts until another camera action, or the scene ends.
+ */
+export interface CameraAction extends ActionBase {
+  type: 'camera';
+  /** Default: `character` with a character_id, `point` with a position, else `player`. */
+  target?: 'player' | 'character' | 'point' | 'auto';
+  character_id?: Id;
+  position_x?: number;
+  position_y?: number;
+  /** Milliseconds the glide takes. Default 1200. The action waits for it. */
+  duration?: number;
+}
 export type Action =
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
-  | VariableAction | VideoAction | WaitAction | WalkAction;
+  | VariableAction | VideoAction | WaitAction | WalkAction | WeatherAction | CameraAction;
 
 // --------------------------------------------------------------- labels
 
@@ -671,7 +718,7 @@ export interface GameEvent {
 export type EventAudience = 'player' | 'scene';
 
 /** The action types other players are shown when an event's audience is the scene. */
-export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'translate', 'cancel', 'animate', 'walk'] as const;
+export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'translate', 'cancel', 'animate', 'walk', 'weather'] as const;
 
 export interface Hotspot extends GameEvent {
   position_x?: number | null;
@@ -1036,6 +1083,10 @@ export interface ItemPlacement {
   position_y: number;
 }
 
+/**
+ * A character placed in a scene. [ext] One placed beyond the left or right edge (position_x below 0,
+ * or past the scene's width) waits off stage, out of sight, until a walk brings it on.
+ */
 export interface CharacterPlacement {
   character_id: Id;
   position_x: number;
@@ -1120,6 +1171,54 @@ export interface SceneAtmosphere {
   color?: string;
 }
 
+/** [ext] The kinds of weather (Scene.weather). */
+export type WeatherKind = 'rain' | 'snow' | 'storm' | 'blizzard' | 'fog';
+
+/**
+ * [ext] The weather in a scene, drawn over it by the game (the weather plugin, see
+ * apps/client/src/plugins/weather): rain with splashes on the floor, snow, a storm (heavy rain blown by
+ * the wind, the sky darkening, lightning and thunder), a blizzard, fog drifting by. It has its own
+ * sound unless `sound` is false. A `weather` action changes it while players are there.
+ */
+export interface SceneWeather {
+  kind: WeatherKind;
+  /** How heavy, from 0 to 1. Default 0.6. */
+  intensity?: number;
+  /** -1 (blowing hard to the left) to 1 (hard to the right). Default 0.15. */
+  wind?: number;
+  /** Lightning now and then. Default: only in a storm. */
+  lightning?: boolean;
+  /** How much darker the scene is, from 0 to 100. Default: by kind (a storm 35, rain 15, snow and fog 5). */
+  darken?: number;
+  /** Its sound (rain on the ground, the wind). Default true. */
+  sound?: boolean;
+}
+
+/**
+ * [ext] Water that flows: a river, a stream, a waterfall, the sea, a lake. A box of the scene filled with
+ * moving water. `behind` (the default) draws it behind the scene's own picture (its last background
+ * layer), so it shows wherever that picture is see-through: paint the water's surface out of the
+ * picture and the river flows there, between its painted banks. `over` draws only glints and ripples
+ * moving over a river already painted in the picture. It has its own sound unless `sound` is false.
+ */
+export interface SceneFlow {
+  name?: string;
+  kind?: 'river' | 'stream' | 'waterfall' | 'sea' | 'lake';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Which way it flows. Default: right; a waterfall down; the sea and a lake lap to and fro. */
+  direction?: 'left' | 'right' | 'down' | 'up';
+  /** Pixels per second at the front (nearer water moves faster than far water). Default by kind. */
+  speed?: number;
+  /** The water's colour, #rrggbb. Default by kind. */
+  color?: string;
+  layer?: 'behind' | 'over';
+  /** Its sound (rushing, babbling, waves). Default true. */
+  sound?: boolean;
+}
+
 /**
  * [ext] Scenes that belong together: the rooms of the starship, the places on one planet. A group
  * can say that its scenes show a player only their own team, which a scene may still override.
@@ -1183,6 +1282,17 @@ export interface Scene {
   lights?: SceneLight[] | null;
   /** [ext] What is in the air: fireflies, leaves, snow, rain, dust, bubbles. */
   atmosphere?: SceneAtmosphere[] | null;
+  /** [ext] The weather: rain, snow, a storm, a blizzard, fog (see SceneWeather). */
+  weather?: SceneWeather | null;
+  /** [ext] Rivers, streams, waterfalls and the sea, flowing (see SceneFlow). */
+  flows?: SceneFlow[] | null;
+  /**
+   * [ext] The scene plays by itself, like a page of a picture book: what happens is in its start
+   * events (characters walk, talk, the rain starts), and it usually ends by jumping to the next scene.
+   * Avatars are not shown and the player does not walk; the view follows whoever is acting; and a bar
+   * offers to skip ahead (to where its start events jump) or to watch it again.
+   */
+  story?: boolean;
   /**
    * [ext] Show a player only the members of their own team in this scene. Absent: as the scene's
    * group says (`scene_groups`), and failing that everyone playing is shown.
@@ -1287,6 +1397,11 @@ export interface Scenario {
    * marked `narrate`. A player can always switch reading aloud off for themselves.
    */
   narration?: 'off' | 'on';
+  /**
+   * [ext] The voice a story's narration is recorded in (text overlays read aloud): a key of the server's
+   * voice catalog, as a character's `tts_voice` is. Absent: the browser reads it.
+   */
+  narrator_voice?: string;
   /** [ext] Players may send typed messages to one other player. They are filtered and logged like chat. */
   private_messages?: boolean;
   /** [ext] Spec version this document was written against. */

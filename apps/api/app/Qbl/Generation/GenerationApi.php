@@ -19,7 +19,7 @@ use Throwable;
  * subscription, an organization's license, an administrator, or billing switched off).
  *
  *   GET   editor/generations              my generations, newest first, what one costs, my plan and credits
- *   POST  editor/generations              {prompt, grade?, subject?, min_players?, max_players?, minutes?, notes?} -> 202
+ *   POST  editor/generations              {prompt, grade?, subject?, min_players?, max_players?, minutes?, notes?, format?} -> 202
  *   GET   editor/generations/active       the one being made now (or null): what the editor's progress chip asks
  *   GET   editor/generations/all          administrators: everyone's latest, with who asked and what each spent
  *   GET   editor/generations/{id}         one generation: its status and progress, and the scenario once it is done
@@ -278,6 +278,8 @@ class GenerationApi
             'max_players' => $max,
             'minutes' => isset($body['minutes']) && is_numeric($body['minutes']) ? max(5, min(120, (int) $body['minutes'])) : null,
             'notes' => $text('notes', 1000),
+            // A mission to play or a story to watch; absent: as the request reads.
+            'format' => in_array($body['format'] ?? null, ['mission', 'story'], true) ? $body['format'] : null,
         ], fn ($v) => $v !== null);
     }
 

@@ -58,7 +58,27 @@ final class BlueprintSchema
     public const CUTSCENE_GESTURES = ['wave', 'point', 'cheer', 'think', 'jump', 'spin', 'dance'];
 
     /** How a creature that is only there for life moves through a scene. */
-    public const AMBIENT_MOTIONS = ['lands', 'walks_by', 'flies_by', 'swims_by'];
+    public const AMBIENT_MOTIONS = ['lands', 'walks_by', 'flies_by', 'swims_by', 'drives_by'];
+
+    /** The sounds the game makes itself (packages/shared/src/sounds.ts): no recording needed. */
+    public const SOUNDS = ['rain', 'heavy_rain', 'wind', 'river', 'stream', 'waves', 'fire', 'birds', 'crickets', 'thunder', 'car', 'horn', 'hooves', 'bell', 'chime', 'knock', 'door', 'footsteps', 'splash', 'whoosh', 'pop', 'tweet'];
+
+    /** The weather a scene can have, drawn by the game (packages/shared/src/weather.ts). */
+    public const WEATHERS = ['rain', 'snow', 'storm', 'blizzard', 'fog'];
+
+    /** How heavy weather is, as the game's intensity (0 to 1). */
+    public const INTENSITY = ['light' => 0.35, 'steady' => 0.6, 'heavy' => 0.9];
+
+    /** Water that flows in a scene, drawn by the game behind the painted banks. */
+    public const WATERS = ['river', 'stream', 'waterfall', 'sea', 'lake', 'pond'];
+
+    /** Where a scene's water lies: across the front of the floor, across its back, in its middle (a pond, a lake). */
+    public const WATER_PLACES = ['front', 'back', 'middle'];
+
+    /** Scene kinds that weather falls on, and that can have water in their floor. */
+    public const WEATHER_KINDS = ['outdoor', 'up_high'];
+
+    public const WATER_KINDS = ['outdoor', 'underground'];
 
     public const FOREGROUND_PLACES = ['bottom', 'left', 'right'];
 
@@ -67,6 +87,34 @@ final class BlueprintSchema
     public const ITEM_KINDS = ['collectible', 'tool', 'evidence', 'prop', 'vehicle'];
 
     public const EDGES = ['left', 'right', 'top', 'bottom'];
+
+    /** A scene's weather: drawn by the game over the scene, with its own sound. */
+    public static function weatherSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['kind'], 'description' => 'Optional, for outdoor and up_high scenes: the weather, drawn by the game over the scene, with its own sound: rain splashing on the ground, snow, a storm (heavy rain blown by the wind, the light going, lightning and thunder), a blizzard, fog drifting by. Only where the story calls for it; most scenes have none.', 'properties' => [
+            'kind' => ['type' => 'string', 'enum' => self::WEATHERS],
+            'intensity' => ['type' => 'string', 'enum' => array_keys(self::INTENSITY)],
+        ]];
+    }
+
+    /** Water that flows in a scene: painted out of the background and animated by the game. */
+    public static function waterSchema(): array
+    {
+        return ['type' => 'object', 'required' => ['kind', 'where', 'look'], 'description' => 'Optional, for outdoor (and underground) scenes: water that moves, drawn by the game: a river or stream flowing across the front or the back of the floor, a pond or lake lying in its middle, a waterfall pouring down at the back into a pool, the sea along the back. The background is painted around it (its banks, its shore), and the game makes the water itself flow, ripple and glint, with its sound. Nobody walks on it.', 'properties' => [
+            'kind' => ['type' => 'string', 'enum' => self::WATERS],
+            'where' => ['type' => 'string', 'enum' => self::WATER_PLACES, 'description' => 'front: across the front of the floor, nearest the viewer (characters stand behind it). back: across the back of the floor, between it and the scenery (the sea, a river beyond the path). middle: lying in the floor where x says (a pond, a lake). A waterfall is always at the back, where x says.'],
+            'x' => ['type' => 'number', 'minimum' => 0.2, 'maximum' => 0.8, 'description' => 'middle and waterfall: where its middle is, across the scene.'],
+            'width' => ['type' => 'number', 'minimum' => 0.1, 'maximum' => 0.5, 'description' => 'middle and waterfall: how wide it is, as a share of the scene.'],
+            'flows' => ['type' => 'string', 'enum' => ['left', 'right'], 'description' => 'A river or stream: which way it flows. Default right.'],
+            'look' => self::text('Its banks or shore and what is around the water: "low grassy banks with reeds and a few flat stepping stones", "a rocky cliff with ferns, the water falling into a round pool".', 200),
+            'color' => ['type' => 'string', 'pattern' => '^#[0-9a-fA-F]{6}$', 'description' => 'Optional: the water\'s colour, if not a clear blue (a muddy brown river, a green pond).'],
+        ]];
+    }
+
+    private static function text(string $d, int $max = 400): array
+    {
+        return ['type' => 'string', 'description' => $d, 'maxLength' => $max];
+    }
 
     public static function schema(array $limits): array
     {
@@ -184,8 +232,9 @@ final class BlueprintSchema
                             'properties' => [
                                 'key' => $key,
                                 'look' => $text('What it looks like: "a small round blue bird with an orange beak".', 160),
-                                'motion' => ['type' => 'string', 'enum' => self::AMBIENT_MOTIONS, 'description' => 'lands: flies in, lands on the floor, hops and pecks, flies off. walks_by: walks across the floor. flies_by: flies across the sky. swims_by: swims across (underwater).'],
-                                'size_cm' => ['type' => 'integer', 'minimum' => 5, 'maximum' => 150],
+                                'motion' => ['type' => 'string', 'enum' => self::AMBIENT_MOTIONS, 'description' => 'lands: flies in, lands on the floor, hops and pecks, flies off. walks_by: walks across the floor. flies_by: flies across the sky. swims_by: swims across (underwater). drives_by: a vehicle (a car, a cart, a bus, a tractor, a horse and cart) drives across the back of the floor, outdoors.'],
+                                'size_cm' => ['type' => 'integer', 'minimum' => 5, 'maximum' => 900, 'description' => 'Its real longest side: a sparrow 15, a cat 45, a car 420, a bus 900.'],
+                                'sound' => ['type' => 'string', 'enum' => self::SOUNDS, 'description' => 'Optional: the sound it makes as it passes (car, hooves, tweet...).'],
                             ],
                         ]],
                         'sky' => ['type' => 'object', 'required' => ['time'], 'description' => 'Outdoor and up_high scenes: a living sky behind the scene, drawn by the game, with the sun or the moon and stars, and clouds drifting by. It can change slowly while students are there: a sunset passing through gold, orange, pink and purple into a starry dusk; a dawn. Most outdoor scenes have one; choose the time from the story.', 'properties' => [
@@ -211,6 +260,8 @@ final class BlueprintSchema
                                 'amount' => ['type' => 'string', 'enum' => ['few', 'some', 'many']],
                             ],
                         ]],
+                        'weather' => self::weatherSchema(),
+                        'water' => self::waterSchema(),
                         'indoor' => ['type' => 'boolean', 'description' => 'Older field: the same as kind "indoor".'],
                         'exits' => ['type' => 'array', 'maxItems' => 4, 'items' => [
                             'type' => 'object', 'required' => ['to'],

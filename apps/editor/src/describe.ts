@@ -1,4 +1,4 @@
-import { infoboxRefs, resolveMediaUrl, type Media } from '@qbl/shared';
+import { BUILT_IN_SOUNDS, isBuiltInSound, infoboxRefs, resolveMediaUrl, type Media } from '@qbl/shared';
 import type { Row } from './api';
 import type { Store } from './store';
 
@@ -71,7 +71,14 @@ export function actionSummary(store: Store, type: string, values: Record<string,
     case 'avatar':
       return values.visible === false ? 'Hide the player’s avatar' : 'Show the player’s avatar';
     case 'audio':
+      if (isBuiltInSound(values.sound)) return `Play ${BUILT_IN_SOUNDS[values.sound].icon} ${BUILT_IN_SOUNDS[values.sound].label.toLowerCase()}${values.repeat ? ', looping' : ''}`;
       return `Play ${media()}${values.persist ? ' as music' : ''}`;
+    case 'weather':
+      return values.kind === 'clear' || !values.kind ? 'The weather clears' : `The weather turns to ${String(values.kind)}`;
+    case 'camera':
+      return values.target === 'character' ? `The view follows ${String(store.byId('characters', values.character_id as number | null)?.name ?? 'a character')}`
+        : values.target === 'point' ? `The view glides to ${values.position_x ?? '?'}, ${values.position_y ?? '?'}`
+        : values.target === 'auto' ? 'The view follows whoever is acting' : 'The view follows the player';
     case 'cancel':
       return `Cancel action ${values.action_id ?? '?'}`;
     case 'image_fixed':

@@ -11,6 +11,9 @@ import { PropsSystem } from './PropsSystem';
 import { RemotePlayersSystem } from './RemotePlayersSystem';
 import { SkySystem } from './SkySystem';
 import { SpeechSystem } from './SpeechSystem';
+import { WeatherSystem } from './WeatherSystem';
+import { FlowSystem } from './FlowSystem';
+import { StorySystem } from './StorySystem';
 
 /**
  * The systems that make up a playing scene, in the order they are created
@@ -21,15 +24,18 @@ import { SpeechSystem } from './SpeechSystem';
  */
 export const sceneSystems: SceneSystemClass[] = [
   LayerSystem,
+  FlowSystem,
   SkySystem,
   LightSystem,
   AtmosphereSystem,
+  WeatherSystem,
   PropsSystem,
   RemotePlayersSystem,
   LocalPlayerSystem,
   HotspotSystem,
   SpeechSystem,
   CameraSystem,
+  StorySystem,
   PreloadSystem,
   DebugSystem,
 ];

@@ -1,4 +1,4 @@
-import { pictureScale, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneLight, type SceneSky, type ShadowSpot } from '@qbl/shared';
+import { flowSettings, pictureScale, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneSky, type ShadowSpot } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -227,6 +227,7 @@ export class SceneCanvas {
     const top: SVGElement[] = []; // handles of the selected thing, drawn over everything else
 
     this.drawScaleAreas(selected, u, shapes, top);
+    this.drawFlows(selected, u, shapes, top);
     this.drawShadowSpots(selected, u, shapes, top);
     this.drawLights(selected, u, shapes, top);
     this.drawAreas('walkable_areas', selected, u, shapes, top);
@@ -445,6 +446,40 @@ export class SceneCanvas {
       const corners: Array<[number, number, (to: Point) => void]> = [
         [area.x, area.y, (to) => Object.assign(area, { x: Math.min(to.x, start.x + start.width - 20), y: Math.min(to.y, start.y + start.height - 20), width: Math.max(20, start.x + start.width - to.x), height: Math.max(20, start.y + start.height - to.y) })],
         [area.x + area.width, area.y + area.height, (to) => Object.assign(area, { width: Math.max(20, to.x - start.x), height: Math.max(20, to.y - start.y) })],
+      ];
+      for (const [hx, hy, resize] of corners) {
+        top.push(s('rect', {
+          class: 'handle', x: hx - 6 * u, y: hy - 6 * u, width: 12 * u, height: 12 * u,
+          onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => resize(to), end: commit }),
+        }, s('title', null, 'Drag to resize')));
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------- flowing water
+
+  /** Boxes of moving water: shown as blue boxes with an arrow the way the water flows. */
+  private drawFlows(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
+    const flows = this.model.layout<SceneFlow>('flows');
+    flows.forEach((flow, index) => {
+      const selection: Selection = { kind: 'flow', index };
+      const isSelected = sameSelection(selection, selected);
+      const commit = () => void this.model.setLayout('flows', flows);
+      const start = { x: flow.x, y: flow.y, width: flow.width, height: flow.height };
+      const s0 = flowSettings(flow);
+      shapes.push(
+        s('rect', {
+          class: `flow-area${isSelected ? ' selected' : ''}`, x: flow.x, y: flow.y, width: flow.width, height: flow.height, style: `--flow: ${s0.color}`,
+          onpointerdown: (e: PointerEvent) =>
+            this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(flow, { x: start.x + to.x - from.x, y: start.y + to.y - from.y }), end: commit } : undefined),
+        }),
+      );
+      const arrow = { right: '→', left: '←', down: '↓', up: '↑', still: '〰' }[s0.direction];
+      shapes.push(s('text', { class: 'shape-name', x: flow.x + 8 * u, y: flow.y + 16 * u, 'font-size': 12 * u }, `${arrow} ${flow.name || s0.kind}${s0.layer === 'over' ? ' (over)' : ''}`));
+      if (!isSelected) return;
+      const corners: Array<[number, number, (to: Point) => void]> = [
+        [flow.x, flow.y, (to) => Object.assign(flow, { x: Math.min(to.x, start.x + start.width - 20), y: Math.min(to.y, start.y + start.height - 20), width: Math.max(20, start.x + start.width - to.x), height: Math.max(20, start.y + start.height - to.y) })],
+        [flow.x + flow.width, flow.y + flow.height, (to) => Object.assign(flow, { width: Math.max(20, to.x - start.x), height: Math.max(20, to.y - start.y) })],
       ];
       for (const [hx, hy, resize] of corners) {
         top.push(s('rect', {

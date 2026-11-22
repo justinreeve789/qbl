@@ -22,6 +22,7 @@ Parameter | Type | Default | Description
 volume | decimal | 1.0 | Volume range from 0.0 to 1.0.
 repeat | bool | false | If true, play the audio file on an infinite loop once it reaches the end, until a jump or cancel action stops the file.
 persist | bool | false | If true, do not stop playing the audio file after a jump action. Audio actions are the only action types that can persist across scenes.
+sound | string | | [ext] One of the game's own sounds instead of a file: `thunder`, `car`, `rain`, `river`, `bell`... See [the game's own sounds](/docs/developers/extensions/#the-games-own-sounds).
 
 ##  Cancel
 Cancel an action that’s currently executing.

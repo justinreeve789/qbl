@@ -3,6 +3,7 @@ import type { ActionHandle, Id, PresentedAction, SceneEngine } from '@qbl/shared
 import type { GameContext } from '../core/GameContext';
 import type { OverlayHandle } from '../ui/UiPort';
 import type { Figure } from '../entities/Figure';
+import type { Voice } from '../audio/synth';
 
 /** Something a running action put on screen, kept so a translate action can animate it. */
 export type Target =
@@ -18,6 +19,8 @@ export interface PresenterContext {
   track(actionId: Id, target: Target, handle: ActionHandle): void;
   /** Sounds registered here are stopped when the scene ends. */
   readonly sounds: Set<Phaser.Sound.BaseSound>;
+  /** The game's own sounds (AudioAction.sound) playing: stopped when the scene ends too. */
+  readonly voices: Set<Voice>;
   /** Report media that is missing or not loaded; returns a handle that is already finished. */
   missing(action: PresentedAction): ActionHandle;
   /**

@@ -6,7 +6,7 @@ import { characterRoams, normalizeRoutine } from './walking.js';
 
 const ACTION_TYPES: ActionType[] = [
   'animate', 'award', 'glossary', 'shop', 'dialogue', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat',
-  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk',
+  'run_event', 'spritemap', 'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk', 'weather', 'camera',
 ];
 
 /** "Image Fixed", "imageFixed" and "image_fixed" all become "image_fixed". */
@@ -55,7 +55,8 @@ export function normalizeScenario(input: Scenario): Scenario {
   const scenes = bySequence(input.scenes ?? []).map((scene): Scene => ({
     ...scene,
     zoom: scene.zoom ?? 1,
-    show_avatars: scene.show_avatars ?? true,
+    // A story scene plays by itself: no avatars.
+    show_avatars: scene.story ? false : scene.show_avatars ?? true,
     background_media: scene.background_media ?? [],
     foreground_media: scene.foreground_media ?? [],
     start_events: (scene.start_events ?? []).map(normalizeEvent),
@@ -343,4 +344,20 @@ export function sceneMusic(
 /** How long a line of dialogue stays up when its action gives no duration: time to read it. */
 export function dialogueDuration(text: string): number {
   return Math.min(12_000, 1800 + text.length * 55);
+}
+
+/**
+ * Where a story scene goes next: the scene its start events jump to (the first jump among their
+ * actions), for its "Skip" button. Null when it jumps nowhere (the story's last scene).
+ */
+export function storyNext(scene: Pick<Scene, 'start_events'>): { scene_id: Id; spawn_point?: string } | null {
+  for (const e of scene.start_events ?? []) {
+    for (const a of e.actions ?? []) {
+      if (normalizeActionType(a.type) === 'jump' && (a as { scene_id?: Id }).scene_id != null) {
+        const jump = a as { scene_id: Id; spawn_point?: string };
+        return { scene_id: jump.scene_id, spawn_point: jump.spawn_point };
+      }
+    }
+  }
+  return null;
 }

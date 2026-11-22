@@ -83,7 +83,7 @@ class ScenarioStore
         'conditions.operator' => ['=', '!=', '>', '<', '>=', '<='],
         'actions.type' => [
             'animate', 'award', 'glossary', 'shop', 'dialogue', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat', 'run_event', 'spritemap',
-            'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk',
+            'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk', 'weather', 'camera',
         ],
     ];
 

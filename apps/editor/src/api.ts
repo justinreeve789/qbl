@@ -275,7 +275,11 @@ export interface GenerationProgress {
   stage_started_at: string | null;
   updated_at?: string | null;
 }
-export interface GenerationOptions { grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string }
+export interface GenerationOptions {
+  grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string;
+  /** A mission students play, or a story they watch play out; absent: as the description reads. */
+  format?: 'mission' | 'story';
+}
 export interface Generation {
   id: number;
   prompt: string;

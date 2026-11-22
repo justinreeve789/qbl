@@ -18,6 +18,8 @@ export * from './text.js';
 export * from './speech.js';
 export * from './infobox.js';
 export * from './sky.js';
+export * from './sounds.js';
+export * from './weather.js';
 export * from './icons.js';
 export * from './site.js';
 export * from './roles.js';

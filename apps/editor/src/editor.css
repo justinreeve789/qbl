@@ -226,6 +226,8 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .light-spot { fill: transparent; stroke: #ffd36b; stroke-width: 1.5; stroke-dasharray: 3 4; cursor: pointer; }
 .light-spot.selected { stroke-width: 3; stroke-dasharray: none; cursor: move; }
 .sky-preview { position: absolute; pointer-events: none; }
+.flow-area { fill: color-mix(in srgb, var(--flow, #3f86c4) 22%, transparent); stroke: var(--flow, #3f86c4); stroke-width: 1.5; stroke-dasharray: 6 4; cursor: pointer; }
+.flow-area.selected { stroke-width: 3; cursor: move; fill: color-mix(in srgb, var(--flow, #3f86c4) 32%, transparent); }
 .scale-area.selected { stroke-width: 3; stroke-dasharray: 8 5; cursor: move; fill: rgba(255, 210, 74, 0.12); }
 .scale-figure { pointer-events: none; }
 .scale-figure rect, .scale-figure circle { fill: rgba(255, 210, 74, 0.55); stroke: #1a1a1a; stroke-width: 1; }
@@ -1437,3 +1439,5 @@ button.questlab-open:hover:not(:disabled) { background: color-mix(in srgb, var(-
 .library-admin .questlab-tools .questlab-search { width: 260px; flex: 0 0 auto; }
 .library-tile .tile-thumb img { image-rendering: pixelated; }
 .library-upload input[list] { width: 110px; }
+
+.gen-format { max-width: 320px; }

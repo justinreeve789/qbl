@@ -13,11 +13,12 @@ export type Selection =
   | { kind: 'area'; which: AreaList; index: number }
   | { kind: 'scale'; index: number }
   | { kind: 'shadow'; index: number }
-  | { kind: 'light'; index: number };
+  | { kind: 'light'; index: number }
+  | { kind: 'flow'; index: number };
 
 export type LayerList = 'background_media' | 'foreground_media';
 export type AreaList = 'walkable_areas' | 'blocked_areas';
-export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | 'lights' | AreaList;
+export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | AreaList;
 
 export interface Point { x: number; y: number }
 export type Side = 'left' | 'right' | 'top' | 'bottom';
@@ -88,6 +89,7 @@ export class SceneModel {
         scale_areas: this.layout('scale_areas').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
         shadow_spots: this.layout('shadow_spots').map((a) => ({ ...a, x: x(a.x), y: y(a.y), radius: x(a.radius), ...(a.radius_y != null ? { radius_y: y(a.radius_y) } : {}) })),
         lights: this.layout('lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), ...(a.radius != null ? { radius: x(a.radius) } : {}) })),
+        flows: this.layout('flows').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
         items: this.layout('items').map(moved),
         characters: this.layout('characters').map(moved),
       },

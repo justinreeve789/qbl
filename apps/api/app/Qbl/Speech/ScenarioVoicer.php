@@ -98,7 +98,8 @@ final class ScenarioVoicer
             $tmp = tempnam(sys_get_temp_dir(), 'qbl-voice');
             try {
                 file_put_contents($tmp, $made['speech']->audio);
-                $name = $rows['characters'][array_search($line['character_id'], array_column($rows['characters'], 'id'), true)]['name'] ?? 'character';
+                $index = array_search($line['character_id'], array_column($rows['characters'], 'id'), true);
+                $name = $line['character_id'] === 0 ? 'Narrator' : ($index !== false ? ($rows['characters'][$index]['name'] ?? 'character') : 'character');
                 $row = $this->store->addMediaFile($scenarioId, $tmp, sprintf('%s line %d.%s', $name, $line['action_id'], $made['speech']->format));
             } finally {
                 @unlink($tmp);

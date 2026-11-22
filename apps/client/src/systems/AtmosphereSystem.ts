@@ -45,6 +45,8 @@ export class AtmosphereSystem implements SceneSystem {
     const defs = this.rt.def.atmosphere ?? [];
     if (!defs.length || !moving()) return;
     for (const def of defs) {
+      // Rain and snow are weather: the weather plugin draws them (WeatherSystem), with splashes and wind.
+      if (def.kind === 'rain' || def.kind === 'snow') continue;
       const n = Math.round(COUNT[def.kind] * AMOUNT[def.amount ?? 'some']);
       const palette = def.color ? [colorNumber(def.color)] : COLORS[def.kind] ?? [0xffffff];
       const motes = Array.from({ length: n }, () => this.spawn(def.kind, palette, Math.random()));

@@ -74,9 +74,33 @@ final class ScenePreview
                     imageline($im, 0, $y, $w, $y, imagecolorallocate($im, ...$c));
                 }
             }
-            foreach ($scene['background_media'] as $l) {
+            // Flowing water is drawn behind the scene's own picture (its last layer), showing where it was cut out.
+            $water = function (bool $behind) use ($im, $scene) {
+                foreach ($scene['flows'] ?? [] as $f) {
+                    if ((($f['layer'] ?? 'behind') === 'behind') !== $behind) {
+                        continue;
+                    }
+                    [$r, $g, $b] = sscanf($f['color'] ?? '#3f86c4', '#%02x%02x%02x');
+                    if ($behind) {
+                        imagefilledrectangle($im, (int) $f['x'], (int) $f['y'], (int) ($f['x'] + $f['width']), (int) ($f['y'] + $f['height']), imagecolorallocate($im, $r, $g, $b));
+                    }
+                    // Its ripples, lighter.
+                    $light = imagecolorallocatealpha($im, min(255, $r + 90), min(255, $g + 90), min(255, $b + 90), 50);
+                    for ($y = (int) $f['y'] + 10; $y < $f['y'] + $f['height']; $y += 22) {
+                        for ($x = (int) $f['x'] + (($y / 22) % 2) * 40; $x < $f['x'] + $f['width']; $x += 110) {
+                            imagefilledrectangle($im, $x, $y, $x + 46, $y + 3, $light);
+                        }
+                    }
+                }
+            };
+            $layers = array_values($scene['background_media']);
+            foreach ($layers as $i => $l) {
+                if ($i === count($layers) - 1) {
+                    $water(true);
+                }
                 $layer($l);
             }
+            $water(false);
             // Figures and things on the floor are a little smaller at the back of it (the scene's scale area).
             $depth = function (float $y) use ($scene): float {
                 foreach ($scene['scale_areas'] ?? [] as $a) {

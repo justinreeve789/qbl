@@ -49,6 +49,44 @@ final class Sizes
     /** How tall characters are when the blueprint does not say. */
     public const CHARACTER_CM = 150;
 
+    /**
+     * Where a scene's water lies (BlueprintSchema::waterSchema), in scene pixels: across the front of the
+     * floor, across its back (or from just above it, for the sea), in its middle (a pond), or pouring
+     * down at the back (a waterfall, into its pool). The background is painted with this left out and
+     * the game's water drawn behind it; the floor is kept off it. Null without water.
+     *
+     * @return array{x0: int, y0: int, x1: int, y1: int, kind: string, where: string}|null
+     */
+    public static function water(array $scene): ?array
+    {
+        $w = $scene['water'] ?? null;
+        if (! is_array($w) || empty($w['kind'])) {
+            return null;
+        }
+        $W = self::sceneWidth($scene);
+        $H = self::SCENE_HEIGHT;
+        $G = (int) round($H * max(0.5, min(0.85, (float) ($scene['ground_line'] ?? 0.7))));
+        $F = $H - $G;
+        $x = (float) ($w['x'] ?? 0.5);
+        $kind = (string) $w['kind'];
+        $where = $kind === 'waterfall' ? 'back' : (string) ($w['where'] ?? 'front');
+        if ($kind === 'waterfall') {
+            $half = (float) ($w['width'] ?? 0.14) / 2;
+
+            return ['x0' => (int) round(($x - $half) * $W), 'y0' => (int) round($G * 0.25), 'x1' => (int) round(($x + $half) * $W), 'y1' => $G + (int) round($F * 0.12), 'kind' => $kind, 'where' => $where];
+        }
+
+        return match ($where) {
+            'middle' => (function () use ($w, $x, $W, $G, $F, $kind, $where) {
+                $half = (float) ($w['width'] ?? 0.3) / 2;
+
+                return ['x0' => (int) round(max(0.05, $x - $half) * $W), 'y0' => $G + (int) round($F * 0.3), 'x1' => (int) round(min(0.95, $x + $half) * $W), 'y1' => $G + (int) round($F * 0.78), 'kind' => $kind, 'where' => $where];
+            })(),
+            'back' => ['x0' => 0, 'y0' => $G - (int) round($F * ($kind === 'sea' ? 0.14 : 0.04)), 'x1' => $W, 'y1' => $G + (int) round($F * 0.22), 'kind' => $kind, 'where' => $where],
+            default => ['x0' => 0, 'y0' => $G + (int) round($F * 0.68), 'x1' => $W, 'y1' => $H, 'kind' => $kind, 'where' => 'front'],
+        };
+    }
+
     /** The longest side of an item, in centimetres. */
     public static function cm(array $item): int
     {

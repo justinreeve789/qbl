@@ -25,6 +25,7 @@ class GenerateScenario extends Command
         {--players=2-6 : How many students play together, "min-max"}
         {--minutes= : Rough playing time}
         {--notes= : Anything else the designer should know}
+        {--format= : mission (students play it) or story (it plays by itself, for students to watch); default: as the prompt reads}
         {--owner= : Email of the teacher who will own the draft}
         {--style= : Art style (a folder in resources/art-styles); default from config}
         {--images= : Image driver: gemini, openai, scenario or placeholder}
@@ -82,6 +83,7 @@ class GenerateScenario extends Command
                 'max_players' => $this->option('resume') && $this->option('players') === '2-6' ? null : max($min, $max),
                 'minutes' => $this->option('minutes') ? (int) $this->option('minutes') : null,
                 'notes' => $this->option('notes'),
+                'format' => in_array($this->option('format'), ['mission', 'story'], true) ? $this->option('format') : null,
                 'style' => $this->option('style'),
                 'stop_after' => $this->option('design-only') ? 'design' : null,
                 'import' => $this->option('no-import') ? false : null,

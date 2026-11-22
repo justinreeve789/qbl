@@ -85,11 +85,34 @@ final class ScenarioPackage
         return ['zip' => $zipPath, 'json' => "$dir/scenario.json", 'document' => $document];
     }
 
+    /** A story: what happens in each scene, and the questions it ends with. */
+    private static function forTheStoryteller(array $b): array
+    {
+        $out = ['', 'A story: it plays by itself, scene after scene, with no avatars; students watch and listen.'];
+        $out[] = 'What it is about: '.($b['story']['premise'] ?? '');
+        $out[] = 'What students should take from it: '.($b['story']['takeaway'] ?? '');
+        $out[] = '';
+        $out[] = 'Scenes:';
+        foreach ($b['scenes'] as $i => $s) {
+            $out[] = sprintf('  %d. %s (%d beats)%s', $i + 1, $s['title'], count($s['script'] ?? []), ! empty($s['description']) ? ": {$s['description']}" : '');
+        }
+        $out[] = '';
+        $out[] = 'To talk about at the end:';
+        foreach ($b['ending']['discussion'] ?? [] as $q) {
+            $out[] = "  - $q";
+        }
+
+        return $out;
+    }
+
     /** What a teacher should know before running it: the puzzles and their answers, the twists, how students are assessed. */
     private static function forTheTeacher(array $b): array
     {
         if (! $b) {
             return [];
+        }
+        if (($b['format'] ?? 'mission') === 'story') {
+            return self::forTheStoryteller($b);
         }
         $out = [];
         $labels = array_column($b['interactions'] ?? [], 'label', 'key');

@@ -819,7 +819,7 @@ final class BlueprintValidator
     }
 
     /** What a scene says about its size, its floor, its far view, its foreground and its creatures. */
-    private static function sceneProblems(string $key, array $scene, array $ends): array
+    public static function sceneProblems(string $key, array $scene, array $ends): array
     {
         $e = [];
         $p = "scenes.$key";
@@ -876,6 +876,63 @@ final class BlueprintValidator
                 $e[] = "$p.ambient[$i]: only underwater things swim by.";
             } elseif ($kind === 'underwater' && in_array($motion, ['lands', 'flies_by'], true)) {
                 $e[] = "$p.ambient[$i]: nothing flies underwater; use swims_by or walks_by.";
+            } elseif ($motion === 'drives_by' && $kind !== 'outdoor') {
+                $e[] = "$p.ambient[$i]: vehicles drive by only outdoors.";
+            }
+            if ((int) ($a['size_cm'] ?? 0) > 150 && $motion !== 'drives_by') {
+                $e[] = "$p.ambient[$i].size_cm: a creature passing by is at most 150 cm; only a vehicle that drives_by is bigger.";
+            }
+            if (isset($a['sound']) && ! in_array($a['sound'], BlueprintSchema::SOUNDS, true)) {
+                $e[] = "$p.ambient[$i].sound: one of ".implode(', ', BlueprintSchema::SOUNDS).'.';
+            }
+        }
+        // The weather and water the game draws: only where they make sense.
+        if (! empty($scene['weather'])) {
+            $w = $scene['weather'];
+            if (! in_array($w['kind'] ?? '', BlueprintSchema::WEATHERS, true)) {
+                $e[] = "$p.weather.kind: one of ".implode(', ', BlueprintSchema::WEATHERS).'.';
+            } elseif (! in_array($kind, BlueprintSchema::WEATHER_KINDS, true)) {
+                $e[] = "$p.weather: weather falls only on outdoor and up_high scenes; remove it.";
+            }
+            if (isset($w['intensity']) && ! isset(BlueprintSchema::INTENSITY[$w['intensity']])) {
+                $e[] = "$p.weather.intensity: one of ".implode(', ', array_keys(BlueprintSchema::INTENSITY)).'.';
+            }
+        }
+        if (! empty($scene['water'])) {
+            $water = $scene['water'];
+            $where = $water['where'] ?? '';
+            if (! in_array($water['kind'] ?? '', BlueprintSchema::WATERS, true)) {
+                $e[] = "$p.water.kind: one of ".implode(', ', BlueprintSchema::WATERS).'.';
+            }
+            if (! in_array($where, BlueprintSchema::WATER_PLACES, true)) {
+                $e[] = "$p.water.where: one of ".implode(', ', BlueprintSchema::WATER_PLACES).'.';
+            }
+            if (! in_array($kind, BlueprintSchema::WATER_KINDS, true)) {
+                $e[] = "$p.water: only an outdoor or underground scene has water in its floor; remove it.";
+            }
+            if (($water['kind'] ?? '') === 'waterfall' && $where !== 'back') {
+                $e[] = "$p.water: a waterfall pours down at the back (where back).";
+            }
+            if (in_array($water['kind'] ?? '', ['pond', 'lake'], true) && $where === 'front') {
+                $e[] = "$p.water: a pond or lake lies in the middle of the floor, or at the back (where middle or back).";
+            }
+            if ((($water['kind'] ?? '') === 'waterfall' || $where === 'middle') && ! is_numeric($water['x'] ?? null)) {
+                $e[] = "$p.water.x: say where it is across the scene.";
+            }
+            if ($where === 'front' && in_array('bottom', $edges, true)) {
+                $e[] = "$p.water: students leave this scene towards the viewer, which water across the front would cut off. Put it at the back or in the middle.";
+            }
+            if ($where === 'back' && ($water['kind'] ?? '') !== 'waterfall' && in_array('top', $edges, true)) {
+                $e[] = "$p.water: students leave this scene at the back, which water across the back would cut off. Put it at the front or in the middle.";
+            }
+            if ($where === 'middle' || ($water['kind'] ?? '') === 'waterfall') {
+                $x = (float) ($water['x'] ?? 0.5);
+                $half = (float) ($water['width'] ?? 0.25) / 2;
+                foreach ($ends as $end) {
+                    if ($end['via'] !== 'edge' && abs($end['x'] - $x) < $half + 0.06) {
+                        $e[] = "$p.water: it is in the way of the passage to \"{$end['to']}\" (x {$end['x']}); move one of them.";
+                    }
+                }
             }
         }
         // A living sky, lights and the air: only what makes sense for the kind of place.
@@ -910,7 +967,7 @@ final class BlueprintValidator
         return $e;
     }
 
-    private static function index(array $list, string $what, array &$e): array
+    public static function index(array $list, string $what, array &$e): array
     {
         $out = [];
         foreach ($list as $i => $row) {
