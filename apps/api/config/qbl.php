@@ -47,6 +47,15 @@ return [
     'library_dir' => env('QBL_LIBRARY_DIR', is_dir(base_path('../../scenarios/assets/library')) ? realpath(base_path('../../scenarios/assets/library')) : '/repo/scenarios/assets/library'),
     'library_url' => env('QBL_LIBRARY_URL', '/scenario-assets/library'),
 
+    // The shipped pictures (scenarios/assets, served as /scenario-assets/), which `php artisan qbl:walk`
+    // reads standing pictures from. In the containers it is mounted at /repo/scenarios/assets.
+    'assets_dir' => env('QBL_ASSETS_DIR', is_dir(base_path('../../scenarios/assets')) ? realpath(base_path('../../scenarios/assets')) : '/repo/scenarios/assets'),
+
+    // `php artisan qbl:walk` draws walks with Node (packages/shared/bin/walk.ts, mounted at /repo in the
+    // containers). Node 22.18 or later runs the TypeScript as it is; for an older one, QBL_NODE="node --import tsx".
+    'node' => env('QBL_NODE', 'node'),
+    'walk_script' => env('QBL_WALK_SCRIPT', is_file(base_path('../../packages/shared/bin/walk.ts')) ? realpath(base_path('../../packages/shared/bin/walk.ts')) : '/repo/packages/shared/bin/walk.ts'),
+
     // Requests per minute each access token may make to /api/v1 (the public API for schools).
     'api_rate_limit' => (int) env('QBL_API_RATE_LIMIT', 600),
 ];

@@ -4,7 +4,7 @@ import {
 } from '@qbl/shared';
 import type { Row } from '../api';
 import { animationPreview, characterOf, framePosition, framesOf, mediaOf, parseFrames, storedAnimations } from '../characters';
-import { checkFeet, mirror, sheetOf, walkCycle, WALK_DURATION, WALK_FRAMES, type Bitmap } from '../walkCycle';
+import { checkFeet, mirror, sheetOf, walkCycle, WALK_DURATION, WALK_FRAMES, type Bitmap } from '@qbl/shared';
 import { mediaLabel, mediaUrl, params } from '../describe';
 import { confirmDelete, h, help, toast } from '../dom';
 import { form, withValue, type FormContext } from '../fields';

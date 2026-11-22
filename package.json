@@ -28,9 +28,10 @@
     "test:generation": "php -d memory_limit=2G apps/api/tests/generation.php",
     "test:speech": "php apps/api/tests/speech.php",
     "test:library": "php apps/api/tests/library.php",
+    "test:walk": "php apps/api/tests/walk.php",
     "make:hub": "php tools/make-hub.php",
     "test:editor": "npm run test -w @qbl/editor",
-    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:billing && npm run test:district && npm run test:generation && npm run test:story-generation && npm run test:speech && npm run test:library && npm run test:editor",
+    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:billing && npm run test:district && npm run test:generation && npm run test:story-generation && npm run test:speech && npm run test:library && npm run test:walk && npm run test:editor",
     "test:laravel": "cd apps/api && php artisan test",
     "test:story-generation": "php -d memory_limit=2G apps/api/tests/story_generation.php"
   },

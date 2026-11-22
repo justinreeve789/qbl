@@ -11,6 +11,7 @@ use App\Qbl\Billing\Entitlements;
 use App\Qbl\Billing\Plans;
 use App\Qbl\Billing\Stripe;
 use App\Qbl\Billing\Subscriptions;
+use App\Qbl\Characters\WalkMaker;
 use App\Qbl\ClassApi;
 use App\Qbl\ClassStore;
 use App\Qbl\District\CleverClient;
@@ -44,6 +45,10 @@ class AppServiceProvider extends ServiceProvider
             DB::connection()->getPdo(),
             config('qbl.media_dir'),
             config('qbl.media_url'),
+        ));
+        // Walks made from standing pictures (php artisan qbl:walk), drawn by Node with packages/shared's walkCycle.ts.
+        $this->app->singleton(WalkMaker::class, fn () => new WalkMaker(
+            (string) config('qbl.walk_script'), (string) config('qbl.node'), config('qbl.media_dir'), (string) config('qbl.media_url'), config('qbl.assets_dir'),
         ));
         // The asset library: ready-made characters, vehicles and more (App\Qbl\Library), and its API.
         $this->app->singleton(AssetLibrary::class, fn () => new AssetLibrary(

@@ -102,6 +102,19 @@ The feet are placed first and the legs follow them:
 
 A character drawn from the side gets one leg drawn twice, the far one darker; one drawn from the front or three-quarters walks on its own two legs. A standing picture facing left (or shown mirrored) is turned to face right first. When no legs can be found (a long dress, wheels, a boat) the character bobs along instead, and the message says so. The message after making a walk says where the feet are; look at the frames in the panel that opens, and draw your own if the picture's legs are hidden by something (a hand hanging beside them, a long coat). Making it again asks before replacing the walk.
 
+**From the command line** (on the server, or `docker compose exec app …`), `php artisan qbl:walk` makes the same walk for the platform's **avatars**, which have no page in the editor, and for a scenario's characters:
+
+```sh
+php artisan qbl:walk --list                       # the avatars, and which already walk
+php artisan qbl:walk                              # every avatar that has no walk yet
+php artisan qbl:walk asimov val --force           # these two, replacing the walks they have
+php artisan qbl:walk --dry-run --preview=walks/   # make them, save nothing, write the sheets to walks/ to look at
+php artisan qbl:walk --scenario=starshipexplorer  # a scenario's characters (its code or shortname); name some to make only those
+php artisan qbl:walk sam --stride=0.6             # shorter steps (a share of the leg's length; 0.72 by default)
+```
+
+For each one it says whether it walks or bobs and where the feet come together and apart, and points out anything the feet checks did not like. An avatar's walk is saved in the media folder (`platform/`) and is its *Walking, facing right* in every game at once; a character's is added to the scenario's media, as the button does, and players get it once the scenario is published again. Making a walk again with `--force` removes the one made before it (one you drew yourself is kept). Characters with no standing picture are skipped. The command runs the walk with Node (22.18 or later; for an older one set `QBL_NODE="node --import tsx"`), which the app container has.
+
 Each animation in the list shows a preview, its **Picture** (choose one there to draw a pose) and a summary: frames, speed, whether it loops, mirrored. **⚙️ Frames & timing** (or clicking its preview) opens the animation in a panel of its own, over the character's, with a large preview and:
 
 * **Picture**. Sheets and animated PNGs are marked in the list.

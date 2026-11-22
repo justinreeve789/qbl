@@ -26,3 +26,4 @@ export * from './weather.js';
 export * from './icons.js';
 export * from './site.js';
 export * from './roles.js';
+export * from './walkCycle.js';

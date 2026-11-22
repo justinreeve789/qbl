@@ -40,8 +40,8 @@ $dataDir = getenv('QBL_DEV_DATA') ?: dirname(__DIR__, 3).'/.data/dev-api';
 $path = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Uploaded media (and the files given to library assets, under library/).
-if (preg_match('#^/media/((?:library/)?\d+/[a-f0-9]{24}\.[a-z0-9]{2,4})$#', $path, $m) && is_file("$dataDir/media/$m[1]")) {
+// Uploaded media (and the files given to library assets, under library/, and the platform's own, under platform/: walks qbl:walk made).
+if (preg_match('#^/media/((?:library/)?\d+/[a-f0-9]{24}\.[a-z0-9]{2,4}|platform/[a-f0-9]{24}\.png)$#', $path, $m) && is_file("$dataDir/media/$m[1]")) {
     header('Content-Type: '.(mime_content_type("$dataDir/media/$m[1]") ?: 'application/octet-stream'));
     header('X-Content-Type-Options: nosniff');
     readfile("$dataDir/media/$m[1]");
