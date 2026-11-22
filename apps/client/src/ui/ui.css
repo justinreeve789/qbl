@@ -636,5 +636,3 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
 /* A story's narration (text_font_style "caption"): words on a soft panel at the foot of the screen. */
 .qbl-text.qbl-caption { max-width: min(860px, calc(100vw - 48px)); padding: 14px 22px; border-radius: 16px; background: rgba(12, 18, 48, 0.72); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35); line-height: 1.35; text-align: center; font-weight: 600; text-shadow: none; }
 .qbl-caption.align-bottom-center, .qbl-caption.align-top-center, .qbl-caption.align-center-center { justify-self: center; }
-/* An empty bag shows nothing (its display: flex would otherwise win over [hidden]). */
-.qbl-bagbar[hidden] { display: none; }
