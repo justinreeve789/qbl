@@ -173,7 +173,7 @@ export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement
       h('button', {
         type: 'button', class: 'danger',
         onclick: async () => {
-          if (window.prompt(`Type the scenario’s title to delete it: ${store.scenario.title}`) !== store.scenario.title) return;
+          if (!confirmDelete(`the scenario “${store.scenario.title}”, its scenes and every player’s saved progress in it`)) return;
           await store.settled();
           await store.api.deleteScenario(store.scenarioId).then(deleted, (err: Error) => toast(err.message, 'error'));
         },

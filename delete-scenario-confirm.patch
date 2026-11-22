@@ -1,0 +1,26 @@
+diff --git a/apps/editor/src/views/pages.ts b/apps/editor/src/views/pages.ts
+index b339751..16716b2 100644
+--- a/apps/editor/src/views/pages.ts
++++ b/apps/editor/src/views/pages.ts
+@@ -173,7 +173,7 @@ export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement
+       h('button', {
+         type: 'button', class: 'danger',
+         onclick: async () => {
+-          if (window.prompt(`Type the scenario’s title to delete it: ${store.scenario.title}`) !== store.scenario.title) return;
++          if (!confirmDelete(`the scenario “${store.scenario.title}”, its scenes and every player’s saved progress in it`)) return;
+           await store.settled();
+           await store.api.deleteScenario(store.scenarioId).then(deleted, (err: Error) => toast(err.message, 'error'));
+         },
+diff --git a/docs/src/content/docs/editor/settings-and-publishing.mdx b/docs/src/content/docs/editor/settings-and-publishing.mdx
+index 7e9f767..d944b7f 100644
+--- a/docs/src/content/docs/editor/settings-and-publishing.mdx
++++ b/docs/src/content/docs/editor/settings-and-publishing.mdx
+@@ -31,7 +31,7 @@ The **Settings** tab holds what applies to the whole scenario, in sections: **Ab
+ 
+ **Who can play it** applies as soon as you change it, without publishing. A *private* mission appears only for the students it was assigned to, and only its owner can assign it; see [Classes, missions and teams](/docs/editor/classes/).
+ 
+-At the bottom of the page are **Export as a ZIP**, **Duplicate**, and **Delete this scenario**, which asks you to type its title and removes its scenes and every player's saved progress in it. See [Backups, copies and the starship hub](/docs/editor/backups-and-copies/).
++At the bottom of the page are **Export as a ZIP**, **Duplicate**, and **Delete this scenario**, which asks you to confirm and then removes its scenes and every player's saved progress in it. See [Backups, copies and the starship hub](/docs/editor/backups-and-copies/).
+ 
+ ## Testing
+ 
