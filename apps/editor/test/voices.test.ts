@@ -192,6 +192,32 @@ test('a recording that outlasts the proxy (504) is not the end: the editor waits
   await page.waitForSelector('.voice-tools .chip:has-text("All 3 lines recorded")');
 });
 
+test('the count stays on the button while recording, on whichever page the editor is showing', async () => {
+  const bundle = await rest<{ events: Array<{ id: number }> }>('GET', '');
+  await rest('POST', '/rows/actions', { event_id: bundle.events[0]!.id, type: 'narration', params: { text: 'And the reactor hummed.' } });
+  await page.reload();
+  await page.click('.tabs >> text=Characters');
+  await page.waitForSelector('.voice-tools .chip:has-text("3 of 4 lines recorded")');
+  // The recording takes a while: long enough to go to another page and back.
+  let release = () => {};
+  const held = new Promise<void>((done) => (release = done));
+  await page.route('**/voices/record', async (route) => {
+    if (!(route.request().postDataJSON() as { dry?: boolean }).dry) await held;
+    await route.continue();
+  });
+  await page.click('.workspace-head button.record-voices');
+  await page.waitForSelector('.workspace-head button.record-voices:has-text("Recording… 0 of 1")');
+  await page.click('.tabs >> text=Media');
+  await page.waitForSelector('.workspace-head button.record-voices:has-text("Recording… 0 of 1")');
+  assert.equal(await page.locator('.workspace-head button.record-voices').isDisabled(), true, 'and it can’t be started twice');
+  await page.click('.tabs >> text=Characters');
+  await page.waitForSelector('.workspace-head button.record-voices:has-text("Recording… 0 of 1")');
+  release();
+  await page.waitForSelector('.toast:has-text("Recorded 1 line")');
+  await page.unroute('**/voices/record');
+  await page.waitForSelector('.workspace-head button.record-voices:has-text("Record voices"):not([disabled])');
+});
+
 test('nothing went wrong in the browser along the way', () => {
   assert.deepEqual(errors, []);
 });
