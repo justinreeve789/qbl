@@ -108,6 +108,31 @@ export function fold(key: string, title: Child, openByDefault: boolean, ...child
 }
 
 /**
+ * Keep one card of a list open at a time: opening `card` closes any other open card beside it.
+ * `remember` holds the key of the open card so a redraw opens the same one; it never holds more
+ * than one.
+ */
+export function openOneAtATime<K>(card: HTMLDetailsElement, key: K, remember: Set<K>) {
+  card.addEventListener('toggle', () => {
+    if (!card.open) {
+      remember.delete(key);
+      return;
+    }
+    remember.clear();
+    remember.add(key);
+    for (const other of card.parentElement?.children ?? []) {
+      if (other !== card && other instanceof HTMLDetailsElement && other.open) other.open = false;
+    }
+  });
+}
+
+/** Note `key` as the one open card of its list (for the next time the list is drawn). */
+export function rememberOpen<K>(remember: Set<K>, key: K) {
+  remember.clear();
+  remember.add(key);
+}
+
+/**
  * The help button's question mark, drawn as a small SVG rather than a "?" character: a typed
  * glyph sat wherever the font and the button's flex layout put it (off to one side, clipped by
  * the circle), which read as a broken icon. The circle is the button's own border.

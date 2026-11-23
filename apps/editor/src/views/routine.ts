@@ -2,7 +2,7 @@ import { emojiIcon } from '../icons';
 import { characterRoams, normalizeRoutine, ROUTINE_STEP_TYPES, startPlacement, type Routine, type RoutineStep, type RoutineStepType, type Scenario } from '@qbl/shared';
 import type { Row } from '../api';
 import { actionSummary, params, sceneLabel, walkDestination } from '../describe';
-import { fold, h, help } from '../dom';
+import { fold, h, help, openOneAtATime, rememberOpen } from '../dom';
 import { form, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
 import { actionPicker } from '../actionPicker';
 import { ACTION_LOOK, ACTIONS, tidyWalk, WALK_FIELDS } from '../schema';
@@ -131,7 +131,7 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     add.value = '';
     if (!type) return;
     const list = steps();
-    open.add(`${id}:${list.length}`);
+    rememberOpen(open, `${id}:${list.length}`);
     // A new animation step starts with one of the character's own animations.
     const values = { type, ...STEP_DEFAULTS[type as RoutineStepType] };
     setSteps([...list, (type === 'animate' ? tidyAnimate(values, { ...ctx, characterId: id }) : values) as RoutineStep]);
@@ -182,7 +182,7 @@ function routineEditor(ctx: FormContext, id: number, routine: Routine, steps: ()
     const card = h('details', { class: 'card action routine-step', 'data-step': index, open: open.has(key), style: `--tone:${ACTION_LOOK[type][1]}` },
       h('summary', null, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, emojiIcon(ACTION_LOOK[type][0]), ` ${STEP_LABELS[type]}`), h('span', { class: 'summary-text' }, stepSummary(ctx, step))),
       body);
-    card.addEventListener('toggle', () => (card.open ? open.add(key) : open.delete(key)));
+    openOneAtATime(card, key, open);
     return card;
   });
 
