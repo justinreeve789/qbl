@@ -61,7 +61,7 @@ You can change an event's **Kind** at any time under ⚙️ Settings.
 Conditions are yes-or-no questions about variables. All must be yes, or the event (or action) sits this one out.
 </Host>
 
-An event, an action, an objective and an infobox button can each have **conditions**. A condition compares a **variable** with a **value** using `=`, `!=`, `>`, `<`, `>=` or `<=`. Press **+ Add condition** and choose from the variables you have defined. **All** the conditions in a list must hold.
+An event, an action, an objective and an infobox button can each have **conditions**. A condition compares a **variable** with a **value** using `=`, `!=`, `>`, `<`, `>=` or `<=`, or **`%` (is a multiple of)** and **`!%` (is not a multiple of)**: `turns` `%` `2` holds on even turns and `turns` `!%` `2` on odd ones; `visits` `%` `3` holds on every third visit. Press **+ Add condition** and choose from the variables you have defined. **All** the conditions in a list must hold.
 
 * On an **event**, conditions decide whether it runs. A hotspot whose conditions fail is not there at all: its labels disappear and it cannot be clicked. That is how a collected object vanishes (the hotspot is conditioned on `collected = 0`).
 * On an **action**, the box is headed **Only when**, and a failing action is skipped while the rest run.

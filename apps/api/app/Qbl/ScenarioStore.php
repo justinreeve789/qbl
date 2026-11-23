@@ -80,7 +80,7 @@ class ScenarioStore
         'labels.type' => ['text', 'image', 'spritemap'],
         'shop_items.kind' => ProgressStore::KINDS,
         'shop_items.slot' => ProgressStore::SLOTS,
-        'conditions.operator' => ['=', '!=', '>', '<', '>=', '<='],
+        'conditions.operator' => ['=', '!=', '>', '<', '>=', '<=', '%', '!%'],
         'actions.type' => [
             'animate', 'award', 'glossary', 'shop', 'dialogue', 'narration', 'conversation', 'avatar', 'freeze', 'audio', 'cancel', 'cancel_event', 'image_fixed', 'image_overlay', 'infobox', 'jump', 'repeat', 'run_event', 'spritemap',
             'text_overlay', 'translate', 'variable', 'video', 'wait', 'walk', 'weather', 'camera', 'bench',

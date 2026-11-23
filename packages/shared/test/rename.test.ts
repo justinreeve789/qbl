@@ -62,6 +62,7 @@ test("an infobox's rich blocks follow a renamed variable", () => {
     '<input data-var="mass">',
     '<p>mass is {{weight}}</p>',
   ].join('\n'));
+  assert.equal(renameVariableInText('<div data-qbl="when" data-when="mass % 2; a !% 3">x</div>', 'mass', 'weight'), '<div data-qbl="when" data-when="weight % 2; a !% 3">x</div>');
   // In a curve, x is the axis.
   assert.equal(renameVariableInText('<div data-qbl="graph" data-fn="a*x" data-points="x,y=1,1"></div>', 'x', 'u'), '<div data-qbl="graph" data-fn="a*x" data-points="u,y=1,1"></div>');
 });

@@ -99,6 +99,17 @@ export function applyOperator(
   }
 }
 
+/**
+ * Whether `a` divides by `b` with no remainder. False when `b` is 0. A tiny tolerance lets
+ * decimals that should divide (0.3 by 0.1) do so.
+ */
+export function isMultiple(a: number, b: number): boolean {
+  if (b === 0) return false;
+  const r = Math.abs(a % b);
+  const eps = 1e-9 * Math.max(1, Math.abs(b));
+  return r < eps || Math.abs(b) - r < eps;
+}
+
 /** Evaluate one condition against a value lookup. */
 export function testCondition(cond: Condition, get: (name: string) => VarValue | undefined): boolean {
   const value = get(cond.variable);
@@ -114,6 +125,8 @@ export function testCondition(cond: Condition, get: (name: string) => VarValue |
     case '<': return bothNumeric && a < b;
     case '>=': return bothNumeric && a >= b;
     case '<=': return bothNumeric && a <= b;
+    case '%': return bothNumeric && isMultiple(a, b);
+    case '!%': return bothNumeric && b !== 0 && !isMultiple(a, b);
     default: return false;
   }
 }

@@ -57,6 +57,8 @@
  * Everything here is free of the DOM, so the validator and the server-side tools can use it.
  */
 
+import { isMultiple } from './variables.js';
+
 /** The `data-qbl` kinds the game knows. */
 export const INFOBOX_BLOCKS = ['page', 'gallery', 'flip', 'callout', 'answer', 'word', 'panel', 'slider', 'switch', 'wheel', 'value', 'meter', 'when', 'math', 'calc', 'graph'] as const;
 
@@ -281,19 +283,19 @@ export function seriesText(points: Array<[number, number]>): string {
 /** A condition of a `when` block: `name op value`. */
 export interface WhenCondition {
   variable: string;
-  operator: '=' | '!=' | '<' | '>' | '<=' | '>=';
+  operator: '=' | '!=' | '<' | '>' | '<=' | '>=' | '%' | '!%';
   operand: string | number;
 }
 
 /**
  * A `when` block's conditions, from `data-when`: separated by `;` (or `,`), each `name op value`
- * with op one of = != < > <= >=. A value that reads as a number is one. Parts that do not read are
+ * with op one of = != < > <= >= % !% (`%`: a whole multiple of the value; `!%`: not one). A value that reads as a number is one. Parts that do not read are
  * left out.
  */
 export function parseWhen(spec: string): WhenCondition[] {
   const out: WhenCondition[] = [];
   for (const part of spec.split(/[;,]/)) {
-    const m = /^\s*([A-Za-z_]\w*)\s*(!=|<=|>=|=|<|>)\s*(.*?)\s*$/.exec(part);
+    const m = /^\s*([A-Za-z_]\w*)\s*(!%|!=|<=|>=|=|<|>|%)\s*(.*?)\s*$/.exec(part);
     if (!m) continue;
     out.push({ variable: m[1]!, operator: m[2] as WhenCondition['operator'], operand: answerValue(m[3]!.replace(/^["']|["']$/g, '')) });
   }
@@ -312,6 +314,8 @@ export function testWhen(conditions: WhenCondition[], get: (name: string) => unk
     const x = Number(a);
     const y = Number(b);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+    if (c.operator === '%') return isMultiple(x, y);
+    if (c.operator === '!%') return y !== 0 && !isMultiple(x, y);
     return c.operator === '<' ? x < y : c.operator === '>' ? x > y : c.operator === '<=' ? x <= y : x >= y;
   });
 }

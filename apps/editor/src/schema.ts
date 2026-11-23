@@ -488,7 +488,11 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
   }
 }
 
-export const OPERATORS = (['=', '!=', '>', '<', '>=', '<='] as const).map((o) => [o, o] as const);
+export const OPERATORS: ReadonlyArray<readonly [string, string]> = [
+  ...(['=', '!=', '>', '<', '>=', '<='] as const).map((o) => [o, o] as const),
+  ['%', '% (is a multiple of)'],
+  ['!%', '!% (is not a multiple of)'],
+];
 
 // ------------------------------------------------------------------ scenario
 

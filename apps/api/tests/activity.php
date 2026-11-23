@@ -212,6 +212,9 @@ same([ActivityStore::plain('Collect samples ({{samples}}/3)'), ActivityStore::pl
 // ---- conditions are judged as the game judges them
 check(ActivityStore::holds([['variable' => 'a', 'operator' => '=', 'operand' => '2']], ['a' => 2]) && ActivityStore::holds([['variable' => 'm', 'operator' => '=', 'operand' => 'Flora']], ['m' => 'flora']), 'numbers compare as numbers and text without regard to case');
 check(! ActivityStore::holds([['variable' => 'm', 'operator' => '>', 'operand' => 1]], ['m' => 'flora']) && ! ActivityStore::holds([['variable' => 'missing', 'operator' => '>=', 'operand' => 0]], []), 'ordering needs numbers on both sides');
+check(ActivityStore::holds([['variable' => 't', 'operator' => '%', 'operand' => 3]], ['t' => '9']) && ActivityStore::holds([['variable' => 't', 'operator' => '!%', 'operand' => 2]], ['t' => 7])
+    && ! ActivityStore::holds([['variable' => 't', 'operator' => '%', 'operand' => 2]], ['t' => 7]) && ActivityStore::holds([['variable' => 't', 'operator' => '%', 'operand' => 0.3]], ['t' => 0.9]), '% is a whole multiple, !% is not, as in the game');
+check(! ActivityStore::holds([['variable' => 't', 'operator' => '%', 'operand' => 0]], ['t' => 4]) && ! ActivityStore::holds([['variable' => 't', 'operator' => '!%', 'operand' => 0]], ['t' => 4]), 'dividing by 0 never holds');
 
 echo "$checks checks, $failures failed\n";
 exit($failures ? 1 : 0);

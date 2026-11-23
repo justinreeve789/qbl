@@ -734,7 +734,7 @@ Markup | What players get
 `<div data-qbl="wheel" data-var="wind" data-options="Calm\|Breezy\|Calm" data-label="Wind"></div>` | A wheel of chance. Spin turns it for a couple of seconds and it lands on one of its options at random; repeat an option to make it likelier. `data-spins` limits how often it can be spun in one showing; `data-value` shows where it last landed (kept unless spun again). Nothing is saved until it has landed.
 `<span data-qbl="value" data-var="rope"></span>` | A control's value as it is now (or any variable's).
 `<div data-qbl="meter" data-var="rope" data-min="0" data-max="20" data-label="Rope out"></div>` | A bar showing a value between its ends.
-`<div data-qbl="when" data-when="rope >= 12; brake = 1">…</div>` | Shown only while every condition holds (`=`, `!=`, `<`, `>`, `<=`, `>=`, separated by `;` or `,`), on the controls as they are set now and on variables. It appears with a little lift, and a screen reader hears it.
+`<div data-qbl="when" data-when="rope >= 12; brake = 1">…</div>` | Shown only while every condition holds (`=`, `!=`, `<`, `>`, `<=`, `>=`, `%`, `!%`, separated by `;` or `,`), on the controls as they are set now and on variables. It appears with a little lift, and a screen reader hears it.
 
 **Maths, worked-out values and graphs.** Formulas are worked out with math.js (`@qbl/shared/formula`, an entry of its own so that only a box with a formula loads it), typeset with KaTeX and drawn with JSXGraph. Each is loaded the first time a box needs it.
 
@@ -844,7 +844,7 @@ Both examples are in the demo: the rockfall above the spring meadow (`rockfall`,
 
 The other reserved variables these extensions add are in [Reserved Variables](/docs/developers/variable/#reserved-variables): `QL_SceneId`, `QL_PlayerCount`, and for the player's account `QL_PlayerStars`, `QL_PlayerXP`, `QL_PlayerRank` (the rank's name) and `QL_Ability_<key>` (1 while the player has a marketplace ability with that key equipped, otherwise 0). They can be used in conditions and as `{{placeholders}}` like any other variable.
 
-Additional condition operators: `>=` and `<=`.
+Additional condition operators: `>=`, `<=`, and the modulus pair `%` (the variable is a whole multiple of the operand, e.g. `turns % 2` on even turns) and `!%` (it is not one, e.g. `turns !% 2` on odd turns). See [Conditions](/docs/developers/condition/).
 
 ## Items
 

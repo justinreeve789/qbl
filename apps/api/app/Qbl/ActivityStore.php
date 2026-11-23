@@ -358,6 +358,8 @@ class ActivityStore
                 '<' => $both && $a < $b,
                 '>=' => $both && $a >= $b,
                 '<=' => $both && $a <= $b,
+                '%' => $both && self::multiple($a, $b),
+                '!%' => $both && $b != 0 && ! self::multiple($a, $b),
                 default => false,
             };
             if (! $ok) {
@@ -366,6 +368,18 @@ class ActivityStore
         }
 
         return true;
+    }
+
+    /** Whether $a divides by $b with no remainder, as isMultiple() in variables.ts. False when $b is 0. */
+    private static function multiple(int|float $a, int|float $b): bool
+    {
+        if ($b == 0) {
+            return false;
+        }
+        $r = abs(fmod($a, $b));
+        $eps = 1e-9 * max(1, abs($b));
+
+        return $r < $eps || abs($b) - $r < $eps;
     }
 
     /**
