@@ -299,9 +299,8 @@ function areaPanel(model: SceneModel, which: 'walkable_areas' | 'blocked_areas',
   return h(
     'div',
     { class: 'panel' },
-    h('div', { class: 'panel-head' }, h('h2', null, walkable ? 'Walkable area' : 'Blocked area', help(`${walkable
-      ? 'Avatars can only stand inside walkable areas. With none, the whole scene is walkable.'
-      : 'A part of a walkable area that avatars cannot enter: a rock, a table, a pond.'} Drag a corner to move it. Drag the small dot on a side to add a corner. Double-click a corner to remove it.`))),
+    h('div', { class: 'panel-head' }, h('h2', null, walkable ? 'Walkable area' : 'Blocked area', walkable ? null : help(
+      'A part of a walkable area that avatars cannot enter: a rock, a table, a pond. Drag a corner to move it. Drag the small dot on a side to add a corner. Double-click a corner to remove it.'))),
     h('p', { class: 'muted' }, `${area.length} corners.`),
     h(
       'div',
