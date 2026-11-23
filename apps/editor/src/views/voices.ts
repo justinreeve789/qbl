@@ -126,14 +126,28 @@ export function narratorPicker(ctx: FormContext, chosen: string, set: (key: stri
   return h('div', { class: 'narrator-voice' }, select, about, h('div', { class: 'row-actions' }, listen));
 }
 
-/** "Record voices" for the Characters page: every character's lines, with how many are done. */
+/**
+ * "Record voices" for the editor header: records every character's lines. It shows only when the server
+ * has a text-to-speech service and the scenario has characters. `refresh` re-checks after the rows change.
+ */
+export function recordVoicesButton(ctx: FormContext): { button: HTMLButtonElement; refresh(): void } {
+  const button = h('button', { type: 'button', class: 'record-voices', hidden: true, title: 'Record what characters with a voice say' }, '🎙️ Record voices');
+  const refresh = () => {
+    void voiceStatus(ctx).then((s) => {
+      button.hidden = !s?.engine || ctx.store.rows('characters').length === 0;
+    });
+  };
+  button.onclick = () => void recordVoices(ctx, {}, button);
+  refresh();
+  return { button, refresh };
+}
+
+/** The Characters page's voice tools: how many lines are recorded, and a voice for each character that has none. (Recording itself is in the header.) */
 export function recordAllButton(ctx: FormContext): HTMLElement {
   const chip = h('span', { class: 'chip', hidden: true });
-  const button = h('button', { type: 'button', disabled: true, title: 'Record what characters with a voice say' }, '🎙️ Record voices');
   const assign = h('button', { type: 'button', hidden: true, title: 'Give a different voice to each character that has none' }, '🎭 Give everyone a voice');
   void voiceStatus(ctx).then((s) => {
     if (!s?.engine) return;
-    button.disabled = false;
     const voiceless = ctx.store.rows('characters').filter((c) => !params(c, 'settings').tts_voice).length;
     assign.hidden = voiceless === 0;
     if (s.lines && s.lines.total) {
@@ -142,12 +156,11 @@ export function recordAllButton(ctx: FormContext): HTMLElement {
       chip.textContent = s.lines.to_record ? `🎙️ ${s.lines.recorded} of ${s.lines.total} lines recorded` : `🎙️ All ${s.lines.total} lines recorded`;
     }
   });
-  button.onclick = () => void recordVoices(ctx, {}, button);
   assign.onclick = async () => {
     assign.disabled = true;
     try {
       const given = await ctx.store.api.assignVoices(ctx.store.scenarioId);
-      toast(`Gave ${Object.keys(given).length} character${Object.keys(given).length === 1 ? '' : 's'} a voice. Press “Record voices” to record their lines.`);
+      toast(`Gave ${Object.keys(given).length} character${Object.keys(given).length === 1 ? '' : 's'} a voice. Press “Record voices” in the header to record their lines.`);
       status.delete(ctx.store.scenarioId);
       await ctx.store.load();
     } catch (e) {
@@ -156,7 +169,7 @@ export function recordAllButton(ctx: FormContext): HTMLElement {
       assign.disabled = false;
     }
   };
-  return h('span', { class: 'voice-tools' }, chip, assign, button);
+  return h('span', { class: 'voice-tools' }, chip, assign);
 }
 
 /** Record lines a few at a time until none are left, then load the scenario again to show them. */

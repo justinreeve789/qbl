@@ -134,7 +134,7 @@ test('the Characters page records every line, and says when all are done', async
   await page.keyboard.press('Escape');
   await page.waitForSelector('.voice-tools .chip:has-text("All 1 lines recorded")');
   const before = asked.length;
-  await page.click('.voice-tools button:has-text("Record voices")');
+  await page.click('.workspace-head button.record-voices');
   await page.waitForSelector('.toast:has-text("Every line was already recorded")');
   assert.equal(asked.length, before, 'nothing up to date is recorded again');
 });
@@ -155,7 +155,7 @@ test('the narrator: a narration is the default storyteller’s to record, and th
 
   await page.click('.tabs >> text=Characters');
   await page.waitForSelector('.voice-tools .chip:has-text("1 of 2 lines recorded")');
-  await page.click('.voice-tools button:has-text("Record voices")');
+  await page.click('.workspace-head button.record-voices');
   await page.waitForSelector('.toast:has-text("Recorded 1 line")');
   assert.deepEqual([asked.at(-1)?.input, asked.at(-1)?.voice], ['Long ago, the reactor slept.', 'bm_fable(0.6667)+bm_lewis(0.3333)'], 'the narration is recorded in the storyteller’s voice');
 
