@@ -386,6 +386,14 @@ function frameGrid(ctx: FormContext, characterId: number, name: string, animatio
 
 // ------------------------------------------------------------- making a walk
 
+
+/** What the walk does with the arms, for the message after making it. */
+function armsSay(arms: number): string {
+  if (arms === 2) return 'Both arms swing.';
+  if (arms === 1) return 'One arm swings; the other stays as drawn (against the body).';
+  return 'The arms stay as drawn: they are not apart from the body (on the hips, folded or against it).';
+}
+
 function makeWalkButton(ctx: FormContext, id: number, label: string): HTMLButtonElement {
   const button = h('button', {
     type: 'button', class: 'make-walk', 'data-make-walk': id,
@@ -458,7 +466,7 @@ async function makeWalk(ctx: FormContext, id: number): Promise<void> {
     const share = Math.round(feet.stepShare * 100);
     const frames = (list: number[]) => list.map((f) => f + 1).join(' and ');
     toast(feet.ok
-      ? `Made a ${WALK_FRAMES}-frame walk. The feet land a step apart (${share}% of ${row.name}’s height) in frames ${frames(feet.apart)} and pass side by side in frames ${frames(feet.together)}.`
+      ? `Made a ${WALK_FRAMES}-frame walk. The feet land a step apart (${share}% of ${row.name}’s height) in frames ${frames(feet.apart)} and pass side by side in frames ${frames(feet.together)}. ${armsSay(cycle.rig?.arms.length ?? 0)}`
       : `Made a ${WALK_FRAMES}-frame walk, but have a look at it: ${feet.problems[0]}`, feet.ok ? undefined : 'error');
   }
   openAnimation(ctx, id, 'walk_right');

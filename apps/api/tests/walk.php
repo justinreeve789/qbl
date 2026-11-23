@@ -56,6 +56,7 @@ $dry = $walks->forAvatar($pdo, $asimov, ['dry' => true, 'preview' => "$mediaDir/
 same($dry['mode'], 'legs', 'Asimov has legs to walk with');
 same($dry['feet']['ok'] ?? null, true, 'his feet pass the checks');
 same($dry['feet']['together'], [3, 6], 'his feet come together at passing');
+same($dry['arms'], 2, 'both his arms swing');
 check(! isset($dry['saved']), 'a dry run saves nothing');
 check(is_file("$mediaDir/preview/asimov-walk.png"), 'the preview sheet is written');
 same(json_decode($avatarRow('Asimov')['settings'], true)['animations']['walk_right'] ?? null, null, 'and the avatar is unchanged');

@@ -86,7 +86,7 @@ You need not fill them all. A pose left empty says what it uses instead (*Uses S
 
 ### Making a walk from the standing picture
 
-**🚶 Make walk** (on the character's card, and **✨ Make a walk from the standing picture** under 🚶 Walking in its panel) makes walking frames for a character that only has a standing picture. The legs are cut out of the picture and stepped, a thigh, a shin and a foot each, with the body riding on top; nothing is sent anywhere and it takes a moment. The result is a sprite sheet of six frames in a row, added to Media (`<name>-walk.png`, at the standing picture's scale) and made the character's **Walking, facing right**; walking left uses it mirrored unless you draw one.
+**🚶 Make walk** (on the character's card, and **✨ Make a walk from the standing picture** under 🚶 Walking in its panel) makes walking frames for a character that only has a standing picture. The legs are found in the picture and stepped, a thigh, a shin and a foot each, with the body riding on top, and arms that hang free swing; nothing is sent anywhere and it takes a moment. The result is a sprite sheet of six frames in a row, added to Media (`<name>-walk.png`, at the standing picture's scale) and made the character's **Walking, facing right**; walking left uses it mirrored unless you draw one.
 
 The feet are placed first and the legs follow them:
 
@@ -100,7 +100,12 @@ The feet are placed first and the legs follow them:
 * A planted foot is always on the ground and moves back the same distance each frame, so it does not slide. The body dips as the knee takes the weight and is highest as the feet pass, never higher than standing.
 * The frames are as tall as the standing picture, with it in their middle, so the character keeps its size and place when it starts and stops walking. A soft shadow under the feet stays where it is.
 
-A character drawn from the side gets one leg drawn twice, the far one darker; one drawn from the front or three-quarters walks on its own two legs. A standing picture facing left (or shown mirrored) is turned to face right first. When no legs can be found (a long dress, wheels, a boat) the character bobs along instead, and the message says so. The message after making a walk says where the feet are; look at the frames in the panel that opens, and draw your own if the picture's legs are hidden by something (a hand hanging beside them, a long coat). Making it again asks before replacing the walk.
+* Nothing is cut on a hard line. Each bit of a leg moves with the bones either side of its joint, blended, so a knee bends instead of breaking and the tops of the thighs melt into the hips. The foot is the exception: it moves stiffly, as a puppet's would, and the shin covers its top, because a boot bent at the ankle would smear.
+* A foot off the ground hangs from its shin, and a foot pushing off peels up from its toe. A shoe drawn facing the viewer rocks less from heel to toe than one drawn from the side.
+* **Arms** swing against the legs: an arm hanging apart from the body (with a gap between it and the chest, down to the hand) turns about its shoulder, forwards as the leg on its side goes back. Fingers resting on a leg go with the hand. Arms on the hips, folded, holding something up, or drawn against the body stay as they are: there is nothing to cut them out along.
+* A **tail** (or a bag, or a hand) that touches a leg stays with the body. A leg **held up** in the picture (a kick, a skip) is left out, and the standing leg walks for both.
+
+A character drawn from the side gets one leg drawn twice, the far one darker; one drawn from the front or three-quarters walks on its own two legs. A standing picture facing left (or shown mirrored) is turned to face right first. When no legs can be found (a long dress, wheels, a boat) the character bobs along instead, and the message says so. The message after making a walk says where the feet are and whether the arms swing; look at the frames in the panel that opens, and draw your own if the picture's legs are hidden by something (a long coat). Making it again asks before replacing the walk.
 
 **From the command line** (on the server, or `docker compose exec app …`), `php artisan qbl:walk` makes the same walk for the platform's **avatars**, which have no page in the editor, and for a scenario's characters:
 
@@ -113,7 +118,7 @@ php artisan qbl:walk --scenario=starshipexplorer  # a scenario's characters (its
 php artisan qbl:walk sam --stride=0.6             # shorter steps (a share of the leg's length; 0.72 by default)
 ```
 
-For each one it says whether it walks or bobs and where the feet come together and apart, and points out anything the feet checks did not like. An avatar's walk is saved in the media folder (`platform/`) and is its *Walking, facing right* in every game at once; a character's is added to the scenario's media, as the button does, and players get it once the scenario is published again. Making a walk again with `--force` removes the one made before it (one you drew yourself is kept). Characters with no standing picture are skipped. The command runs the walk with Node (22.18 or later; for an older one set `QBL_NODE="node --import tsx"`), which the app container has.
+For each one it says whether it walks or bobs, where the feet come together and apart and whether the arms swing, and points out anything the feet checks did not like. An avatar's walk is saved in the media folder (`platform/`) and is its *Walking, facing right* in every game at once; a character's is added to the scenario's media, as the button does, and players get it once the scenario is published again. Making a walk again with `--force` removes the one made before it (one you drew yourself is kept). Characters with no standing picture are skipped. The command runs the walk with Node (22.18 or later; for an older one set `QBL_NODE="node --import tsx"`), which the app container has.
 
 Each animation in the list shows a preview, its **Picture** (choose one there to draw a pose) and a summary: frames, speed, whether it loops, mirrored. **⚙️ Frames & timing** (or clicking its preview) opens the animation in a panel of its own, over the character's, with a large preview and:
 

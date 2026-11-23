@@ -316,7 +316,7 @@ final class WalkMaker
     {
         return [
             'name' => $name, 'mode' => $made['mode'], 'why' => $made['why'] ?? null,
-            'frame' => [$made['width'], $made['height']], 'feet' => $made['feet'] ?? null,
+            'frame' => [$made['width'], $made['height']], 'feet' => $made['feet'] ?? null, 'arms' => (int) ($made['arms'] ?? 0),
         ];
     }
 
