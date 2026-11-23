@@ -145,7 +145,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       },
       { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1', slider: { min: 0, max: 1 } },
       { key: 'repeat', label: 'Loop', kind: 'bool' },
-      { key: 'persist', label: 'Background music: keep playing across scenes', kind: 'bool', wide: true, hint: 'One music track plays at a time. Starting the same track again in the next scene does not restart it.' },
+      { key: 'persist', label: 'Replace existing background music with this audio and persist it across scenes', kind: 'bool', wide: true, hint: 'One music track plays at a time. Starting the same track again in the next scene does not restart it.' },
     ],
   },
   text_overlay: {
