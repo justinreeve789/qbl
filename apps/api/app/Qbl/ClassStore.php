@@ -353,17 +353,48 @@ class ClassStore
         if (! $student) {
             throw new StoreError(404, 'That student is not in this assignment.');
         }
-        $by = (string) ($this->one('SELECT name FROM users WHERE id = ?', [$teacherId])['name'] ?? '');
+        $done = $this->reset($on['scenario_id'], $studentId, $student['group'], $teacherId);
+
+        return ['student_id' => $studentId] + $done;
+    }
+
+    /**
+     * A teacher or admin starts their own game in a mission again: their save in that instance
+     * (`public`, an assignment's or a team's, one they may join) is deleted, as resetProgress does
+     * for a student. Students cannot: what they saved is what their teacher's report reads.
+     *
+     * @return array{group: string, reset_at: string, reset_by: string}
+     */
+    public function resetOwnProgress(int $userId, string $role, int $scenarioId, string $group): array
+    {
+        if (! Roles::isStaff($role)) {
+            throw new StoreError(403, 'Only teachers can start a mission again. Ask your teacher.');
+        }
+        $group = substr(trim($group), 0, 64) ?: 'public';
+        if (! $this->one('SELECT id FROM scenarios WHERE id = ?', [$scenarioId])) {
+            throw new StoreError(404, 'No such mission.');
+        }
+        if (! $this->mayJoin($userId, $role, $scenarioId, $group)) {
+            throw new StoreError(403, 'You do not play in that game.');
+        }
+
+        return $this->reset($scenarioId, $userId, $group, $userId);
+    }
+
+    /** Delete one player's save in one instance and leave a reset line in the activity log (see ActivityStore::RESET). */
+    private function reset(int $scenarioId, int $userId, string $group, int $byId): array
+    {
+        $by = (string) ($this->one('SELECT name FROM users WHERE id = ?', [$byId])['name'] ?? '');
         $at = $this->now();
         $own = ! $this->pdo->inTransaction();
         if ($own) {
             $this->pdo->beginTransaction();
         }
         try {
-            $this->run('DELETE FROM scenario_sessions WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$on['scenario_id'], $studentId, $student['group']]);
+            $this->run('DELETE FROM scenario_sessions WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$scenarioId, $userId, $group]);
             $this->run(
                 'INSERT INTO activity_log (scenario_id, user_id, group_key, scene_id, type, ref, label, value, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, NULL, ?)',
-                [$on['scenario_id'], $studentId, $student['group'], ActivityStore::RESET, (string) $teacherId, mb_substr($by, 0, 200) ?: null, $at],
+                [$scenarioId, $userId, $group, ActivityStore::RESET, (string) $byId, mb_substr($by, 0, 200) ?: null, $at],
             );
             if ($own) {
                 $this->pdo->commit();
@@ -375,7 +406,7 @@ class ClassStore
             throw $e;
         }
 
-        return ['student_id' => $studentId, 'group' => $student['group'], 'reset_at' => gmdate('Y-m-d\TH:i:sP', strtotime($at.' UTC')), 'reset_by' => $by];
+        return ['group' => $group, 'reset_at' => gmdate('Y-m-d\TH:i:sP', strtotime($at.' UTC')), 'reset_by' => $by];
     }
 
     public static function sqliteSchema(): array

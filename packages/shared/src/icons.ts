@@ -13,7 +13,7 @@ export const ICONS = {
   // the game's side panel
   mission: '🎯', bag: '🎒', moves: '🤸', emotes: '😀', players: '👥', messages: '💬', glossary: '📖', narration: '🔊', 'narration-off': '🔇',
   // the heads-up display
-  star: '⭐', account: '👤', badge: '🏅', rank: '🎖️', shop: '🛍️', close: '❌', send: '📨', check: '✔️', team: '🛡️', profile: '📇', lock: '🔒',
+  star: '⭐', account: '👤', restart: '🔄', badge: '🏅', rank: '🎖️', shop: '🛍️', close: '❌', send: '📨', check: '✔️', team: '🛡️', profile: '📇', lock: '🔒',
   // built-in moves
   jump: '⤴️', spin: '🌀', crouch: '⤵️', wave: '👋', dance: '💃', sparkle: '✨',
   // the editor's pages

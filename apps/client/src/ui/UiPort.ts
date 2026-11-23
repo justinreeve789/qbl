@@ -180,6 +180,8 @@ export interface AccountActions {
   leave?(href: string): void;
   /** Open the player's own profile card. */
   profile?(): void;
+  /** For teachers and admins: start this mission again from the beginning (asks first). Absent: not offered. */
+  restart?(): void;
 }
 
 /** One line of the players list. `id` is the player's session id. */

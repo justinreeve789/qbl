@@ -12,6 +12,8 @@ use PDO;
  *   GET    missions                      what the signed-in player can play: public missions and those assigned to them
  *   GET    avatars                       the platform's avatars, and which one is the player's
  *   PUT    me/avatar                     {avatar_media_id}: choose an avatar, kept for every scenario
+ *   POST   me/progress/reset             {scenario_id, group?}: for teachers and admins, start their own game
+ *                                        in that instance again (ClassStore::resetOwnProgress)
  *
  *   For teachers and admins:
  *   GET    teach/students                my students
@@ -74,6 +76,10 @@ class ClassApi
             $this->pdo->prepare('UPDATE users SET avatar_media_id = ? WHERE id = ?')->execute([$id, $me]);
 
             return [200, ['avatar_media_id' => $id]];
+        }
+
+        if ($parts === ['me', 'progress', 'reset'] && $method === 'POST') {
+            return [200, ['reset' => $this->classes->resetOwnProgress($me, $role, (int) ($body['scenario_id'] ?? 0), (string) ($body['group'] ?? 'public'))]];
         }
 
         if (count($parts) === 3 && $parts[0] === 'players' && ctype_digit($parts[1]) && $parts[2] === 'profile' && $method === 'GET') {

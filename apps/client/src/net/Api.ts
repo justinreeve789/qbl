@@ -264,6 +264,12 @@ export class Api {
   promotion = async (code: string) => (await this.call<{ promotion: { code: string; description: string } }>('POST', '/billing/promotion', { code })).promotion;
   quote = async (request: QuoteRequest) => (await this.call<{ message: string }>('POST', '/billing/quote', request)).message;
 
+  /**
+   * For teachers and admins: start their own game in a mission again. Their save in that instance
+   * (`public`, an assignment's or a team's) is deleted; the next visit begins at the start.
+   */
+  resetOwnProgress = (scenarioId: number, group = 'public') => this.call<{ reset: { group: string; reset_at: string } }>('POST', '/me/progress/reset', { scenario_id: scenarioId, group });
+
   async missions(): Promise<Mission[] | null> {
     try {
       return (await this.call<{ missions: Mission[] }>('GET', '/missions')).missions;
