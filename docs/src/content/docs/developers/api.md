@@ -145,6 +145,7 @@ Endpoint | Returns
 `GET /api/teach/assignments/{id}/activity/{studentId}` | The same, for one student
 `GET /api/teach/assignments/{id}/messages` | `{ "messages": [...] }`: every message sent in the assignment's instances, newest first
 `POST /api/teach/assignments/{id}/students/{student}/reset` | `{ "reset": { "student_id", "group", "reset_at", "reset_by" } }`: deletes the student's save in the instance they play in for that assignment, so they start again. The logs, stars, XP, badges and the team's shared world are kept; the report counts from the reset (its students carry `reset_at` and `reset_by`). 404 if the student is not in the assignment
+`POST /api/me/progress/reset` | `{ "reset": { "group", "reset_at", "reset_by" } }`: body `{ scenario_id, group? }`. For teachers and admins: deletes their **own** save in that instance (`public` if no group), one they may join, the same way as a student's reset (a `reset` line, the save token). 403 for students and for an instance the teacher may not join
 
 Only the assignment's teacher (or an admin) may read them.
 

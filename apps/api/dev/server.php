@@ -254,7 +254,7 @@ if ($path === '/api/me') {
     respond(200, ['user' => array_filter(['name' => $row['name'] ?? $user['name']] + $user + ['avatar_media_id' => (int) ($row['avatar_media_id'] ?? 0) ?: null] + $own, fn ($v) => $v !== null)]);
 }
 // Missions, avatars and the teacher's classes, with the same rules as the Laravel app (App\Qbl\ClassApi).
-if (preg_match('#^/api/(missions|avatars|me/avatar|players/\d+/profile|teach(/.*)?)$#', $path, $m)) {
+if (preg_match('#^/api/(missions|avatars|me/avatar|me/progress/reset|players/\d+/profile|teach(/.*)?)$#', $path, $m)) {
     if ($user && $user['role'] === 'guest') {
         // Guests are not rows here until they need to be.
         $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `role`) VALUES (?, ?, ?)')->execute([$user['id'], $user['name'], 'guest']);

@@ -92,6 +92,11 @@ class ReportsTest extends TestCase
         $this->putJson("$base/sessions/{$ann->id}?group=$team&reset=$fresh", ['session' => ['scene_id' => 7, 'time_elapsed' => 5]], $internal)->assertNoContent();
         $row = $this->as($teacher)->getJson("/api/teach/assignments/{$assignment['id']}/report")->assertOk()->json('report.students.0');
         $this->assertSame([true, 5, 0, 'Teacher'], [$row['started'], $row['time_spent'], $row['visits'], $row['reset_by']]);
+        // A teacher starts their own game in the team's world again; a student cannot.
+        $this->putJson("$base/sessions/{$teacher->id}?group=$team", ['session' => ['scene_id' => 7]], $internal)->assertNoContent();
+        $this->as($teacher)->postJson('/api/me/progress/reset', ['scenario_id' => $scenarioId, 'group' => $team])->assertOk()->assertJsonPath('reset.group', $team);
+        $this->getJson("$base/sessions/{$teacher->id}?group=$team", $internal)->assertJsonPath('session', null);
+        $this->as($ann)->postJson('/api/me/progress/reset', ['scenario_id' => $scenarioId, 'group' => $team])->assertForbidden();
     }
 
     public function test_an_award_can_give_a_badge_which_shows_on_the_players_profile(): void
