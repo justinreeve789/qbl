@@ -432,14 +432,28 @@ class ClassStore
         return ($settings['visibility'] ?? 'public') === 'private' ? 'private' : 'public';
     }
 
-    /** What a mission looks like in a list: its name, what it is about, and a picture (its first scene's background). */
+    /** A scene's main picture: the background layer marked `main`, else its first (mainLayerIndex in packages/shared). */
+    private static function mainLayer(array $scene): ?array
+    {
+        $layers = array_values(is_array($scene['background_media'] ?? null) ? $scene['background_media'] : []);
+        foreach ($layers as $layer) {
+            if (is_array($layer) && ($layer['main'] ?? false) === true) {
+                return $layer;
+            }
+        }
+
+        return is_array($layers[0] ?? null) ? $layers[0] : null;
+    }
+
+    /** What a mission looks like in a list: its name, what it is about, and a picture (its start scene's main background). */
     private static function card(array $s): array
     {
         $doc = is_string($s['document'] ?? null) ? (json_decode($s['document'], true) ?: []) : ($s['document'] ?? []);
         $image = null;
         foreach ($doc['scenes'] ?? [] as $scene) {
             if (($scene['id'] ?? null) == ($doc['start_scene_id'] ?? null) || $image === null) {
-                $mediaId = $scene['background_media'][0]['media_id'] ?? null;
+                $main = self::mainLayer($scene);
+                $mediaId = $main['media_id'] ?? $main['id'] ?? null;
                 foreach ($doc['assets'] ?? [] as $m) {
                     if (($m['id'] ?? null) == $mediaId && ! empty($m['url'])) {
                         $image = preg_match('#^(https?:)?//|^/|^data:#', $m['url']) ? $m['url'] : rtrim((string) ($doc['asset_base_url'] ?? ''), '/').'/'.ltrim($m['url'], '/');

@@ -1116,6 +1116,12 @@ export interface SceneLayer {
    * sky's light as it changes (golden at sunset, blue at night).
    */
   sky?: boolean;
+  /**
+   * [ext] Background layers only: this layer is the scene's main picture, shown for the scene in
+   * lists (the scenario list's card when it is the start scene, the editor's scene cards and scene
+   * map). At most one per scene; with none, the first background layer is the main picture.
+   */
+  main?: boolean;
 }
 
 export interface SpawnPoint {

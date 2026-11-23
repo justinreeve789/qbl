@@ -1,4 +1,4 @@
-import { BENCH_SHAPES, BENCH_TOOLS, vesselName } from '@qbl/shared';
+import { BENCH_SHAPES, BENCH_TOOLS, mainLayerIndex, vesselName } from '@qbl/shared';
 import { emojiIcon } from '../../icons';
 import { EVENT_KINDS, eventLabel, mediaLabel } from '../../describe';
 import { h } from '../../dom';
@@ -78,12 +78,14 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
   /**
    * Layers in the order they are drawn, first at the back. Each has a grip to drag it to another
    * place in its list; dropping on a row puts the layer before or after it, whichever half of the
-   * row the pointer is over. The first background is the scene's main picture (its size, the
-   * scene map's thumbnail), so it says so.
+   * row the pointer is over. The background marked `main` (else the first) is the scene's main
+   * picture, shown for it in lists (the scenario list's card, scene cards, the scene map), so it
+   * says so. The first background still sets the scene's size when it has none of its own.
    */
-  const layers = (which: LayerList) =>
-    model.layers(which).map((layer, index) => {
-      const item = entry({ kind: 'layer', which, index }, layer.media_id ? mediaLabel(store.byId('media', layer.media_id as number)) : '(no image yet)', which === 'background_media' && index === 0 ? 'main picture' : undefined);
+  const layers = (which: LayerList) => {
+    const main = which === 'background_media' ? mainLayerIndex(model.layers(which)) : -1;
+    return model.layers(which).map((layer, index) => {
+      const item = entry({ kind: 'layer', which, index }, layer.media_id ? mediaLabel(store.byId('media', layer.media_id as number)) : '(no image yet)', index === main ? 'main picture' : undefined);
       const row = item.node;
       row.classList.add('layer-row');
       row.dataset.layer = String(index);
@@ -123,7 +125,8 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
       });
       return item;
     });
-  const events = (kind: keyof typeof EVENT_KINDS) =>
+  };
+  const events =(kind: keyof typeof EVENT_KINDS) =>
     model.events(kind).map((event) => {
       const actions = store.where('actions', 'event_id', event.id).length;
       const how = kind === 'hotspot' ? (event.activate_by_trigger ? 'click · ' : 'walk-in · ') : '';

@@ -1,4 +1,4 @@
-import { codeProblem, editsAllScenarios, normalizeCode, SCENARIO_CODE_MAX, validateScenario } from '@qbl/shared';
+import { codeProblem, editsAllScenarios, mainLayerIndex, normalizeCode, SCENARIO_CODE_MAX, validateScenario } from '@qbl/shared';
 import { session } from '../session';
 import { issueItem } from './issues';
 import { playUrl, previewUrl } from '../config';
@@ -33,7 +33,8 @@ export function scenesPage(ctx: FormContext, open: (sceneId: number) => void): H
 
   const groups = (store.settings.scene_groups as Array<{ id: number; name?: string }> | undefined) ?? [];
   const cards = scenes.map((scene, index) => {
-    const first = (scene.background_media as Array<Record<string, unknown>> | null)?.[0];
+    const layers = scene.background_media as Array<Record<string, unknown>> | null;
+    const first = layers?.[mainLayerIndex(layers)];
     const url = first ? mediaUrl(store, store.byId('media', (first.media_id ?? first.id) as number | null)) : null;
     const events = store.where('events', 'scene_id', scene.id);
     const hotspots = events.filter((e) => e.kind === 'hotspot').length;

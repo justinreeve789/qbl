@@ -48,6 +48,16 @@ export function layerMediaId(layer: SceneLayer | Media): Id {
 }
 
 /**
+ * Which of a scene's background layers is its main picture (shown for the scene in lists): the one
+ * marked `main`, else the first. -1 when there are no layers.
+ */
+export function mainLayerIndex(layers: ReadonlyArray<{ main?: unknown }> | null | undefined): number {
+  if (!layers?.length) return -1;
+  const marked = layers.findIndex((l) => !!l && typeof l === 'object' && l.main === true);
+  return marked >= 0 ? marked : 0;
+}
+
+/**
  * Fill in documented defaults, order scenes and actions by sequence and
  * canonicalise action type names. Returns a new object; the input is untouched.
  */
