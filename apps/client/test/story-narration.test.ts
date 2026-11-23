@@ -132,3 +132,61 @@ test('the narrator’s story box has no close-up and no name, and its words ligh
   h.finish();
   assert.equal(box.isConnected, false);
 });
+
+/** A press and a click on `target`, as a mouse or a finger makes them. */
+function clickOn(target: EventTarget) {
+  target.dispatchEvent(new win.Event('pointerdown', { bubbles: true }) as unknown as Event);
+  target.dispatchEvent(new win.MouseEvent('click', { bubbles: true }) as unknown as Event);
+}
+
+test('a click anywhere on the screen moves a story box on, not only a click on the box', async () => {
+  const ui = new Ui(document.body as unknown as HTMLElement);
+  const scene = document.createElement('canvas');
+  document.body.append(scene);
+  const h = ui.portraitDialogue('The reactor needs you.', { name: 'Captain', duration: 0 });
+  let over = false;
+  void h.done.then(() => (over = true));
+  const line = () => [...document.querySelectorAll('.qbl-story-text')].at(-1)!;
+  clickOn(scene);
+  assert.equal(line().textContent, 'The reactor needs you.', 'the first click shows the whole line');
+  assert.equal(over, false);
+  clickOn(scene);
+  await tick();
+  assert.equal(over, true, 'the next one continues');
+  scene.remove();
+});
+
+test('the click that started a story does not skip its first line', async () => {
+  const ui = new Ui(document.body as unknown as HTMLElement);
+  // The press lands on a character, which starts the story; its click arrives after the box is up.
+  window.dispatchEvent(new win.Event('pointerdown') as unknown as Event);
+  const h = ui.portraitDialogue('The reactor needs you.', { name: 'Captain', duration: 0 });
+  document.body.dispatchEvent(new win.MouseEvent('click', { bubbles: true }) as unknown as Event);
+  assert.equal([...document.querySelectorAll('.qbl-story-text')].at(-1)!.textContent, '', 'still arriving a few letters at a time');
+  h.finish();
+});
+
+test('a button elsewhere on screen does its own thing and leaves the story box be', async () => {
+  const ui = new Ui(document.body as unknown as HTMLElement);
+  const button = document.createElement('button');
+  const glyph = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  button.append(glyph);
+  document.body.append(button);
+  const h = ui.portraitDialogue('The reactor needs you.', { name: 'Captain', duration: 0 });
+  clickOn(button);
+  clickOn(glyph);
+  assert.equal([...document.querySelectorAll('.qbl-story-text')].at(-1)!.textContent, '');
+  h.finish();
+  button.remove();
+});
+
+test('someone else’s story, shown while you play, moves on only from a click on its box', async () => {
+  const ui = new Ui(document.body as unknown as HTMLElement);
+  const h = ui.portraitDialogue('The reactor needs you.', { name: 'Captain', duration: 0, watching: true });
+  clickOn(document.body);
+  const box = [...document.querySelectorAll('.qbl-story.watching')].at(-1)!;
+  assert.equal(box.querySelector('.qbl-story-text')!.textContent, '', 'a click on the scene is a walk, not a skip');
+  clickOn(box);
+  assert.equal(box.querySelector('.qbl-story-text')!.textContent, 'The reactor needs you.');
+  h.finish();
+});

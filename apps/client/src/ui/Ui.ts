@@ -264,6 +264,8 @@ export class Ui implements UiPort {
       window.clearTimeout(timer);
       story.stop();
       window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointerdown', onPress, true);
+      window.removeEventListener('click', onClick, true);
       if (modal) this.modals--;
       story.node.remove();
     });
@@ -275,8 +277,28 @@ export class Ui implements UiPort {
       e.stopPropagation();
       next();
     };
-    story.node.addEventListener('click', next);
-    if (modal) window.addEventListener('keydown', onKey, true);
+    // While the box holds the story up, a click anywhere moves it on, not only one on the box. Only a
+    // click whose press came after the box opened counts: the click that started the story (on a
+    // character, say) must not skip its first line. Buttons and fields elsewhere (the side panel, the
+    // story bar's Skip, an open infobox) still do their own thing.
+    let pressed = false;
+    const onPress = () => (pressed = true);
+    const onClick = (e: MouseEvent) => {
+      if (!pressed) return;
+      pressed = false;
+      // An Element (an icon's <svg> inside a button counts), not just an HTMLElement.
+      const target = e.target && typeof (e.target as Element).closest === 'function' ? (e.target as Element) : null;
+      if (target && !story.node.contains(target) && target.closest('button, a, input, select, textarea, label, summary, [role="button"], [role="dialog"], [contenteditable="true"]')) return;
+      next();
+    };
+    if (modal) {
+      window.addEventListener('keydown', onKey, true);
+      window.addEventListener('pointerdown', onPress, true);
+      window.addEventListener('click', onClick, true);
+    } else {
+      // Someone else's story, shown while you play: only a click on the box itself closes it.
+      story.node.addEventListener('click', next);
+    }
     if (o.duration > 0) timer = window.setTimeout(() => void story.reading.over.then(h.finish), o.duration);
     return h;
   }
