@@ -3,7 +3,7 @@ import { ScenarioIndex } from './scenario.js';
 import {
   SHOWN_TO_SCENE,
   type Action, type AnimateAction, type AwardAction, type BenchAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
-  type CameraAction, type TranslateAction, type WalkAction, type WeatherAction,
+  type CameraAction, type TranslateAction, type TravelAction, type WalkAction, type WeatherAction,
 } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
@@ -75,6 +75,12 @@ export interface EngineHost {
   delay(ms: number): ActionHandle;
   /** Leave the current scene. Called after end events have finished. */
   jump(sceneId: Id, spawnPoint?: string): void;
+  /**
+   * A travel action: where it would take the player, as a function that takes them there (called
+   * once this scene's end events have finished), or null when there is nowhere to go (no mission
+   * launched for them), in which case the event carries on.
+   */
+  travel?(action: TravelAction): (() => void) | null;
   /** A cancel action named something this scene's engine did not start (persistent audio from an earlier scene). */
   cancelPersistent?(actionId: Id): void;
   warn?(message: string): void;
@@ -315,12 +321,17 @@ export class SceneEngine {
   }
 
   /** Run end events, then ask the host to change scene. */
-  async leave(sceneId: Id, spawnPoint?: string): Promise<void> {
+  leave(sceneId: Id, spawnPoint?: string): Promise<void> {
+    return this.depart(() => this.host.jump(sceneId, spawnPoint));
+  }
+
+  /** Run end events, stop everything, then `go`: to another scene, or out of the scenario. */
+  private async depart(go: () => void): Promise<void> {
     if (this.leaving || this.stopped) return;
     this.leaving = true;
     await Promise.all((this.scene.end_events ?? []).map((e) => this.trigger(e)));
     this.stop();
-    this.host.jump(sceneId, spawnPoint);
+    go();
   }
 
   /** Cancel everything. The host decides what survives (persistent audio). */
@@ -392,6 +403,13 @@ export class SceneEngine {
         case 'jump': {
           // End events of this scene run inside leave(); this sequence ends here.
           void this.leave(action.scene_id, action.spawn_point);
+          return;
+        }
+        case 'travel': {
+          // Like a jump, out of the scenario: the end events run, and this sequence ends here.
+          const go = this.host.travel?.(action) ?? null;
+          if (!go) break;
+          void this.depart(go);
           return;
         }
         case 'run_event': {

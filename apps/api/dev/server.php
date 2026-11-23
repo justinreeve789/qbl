@@ -67,7 +67,7 @@ foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqlit
     App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema(), App\Qbl\Generation\GenerationEvents::sqliteSchema(), App\Qbl\Library\AssetLibrary::sqliteSchema()) as $sql) {
     $pdo->exec($sql);
 }
-foreach (['organizations' => ['integrations_enabled_at', 'license'], 'users' => ['self_registered_at', 'email_verified_at']] as $table => $columns) {
+foreach (['organizations' => ['integrations_enabled_at', 'license'], 'users' => ['self_registered_at', 'email_verified_at'], 'assignments' => ['launched_at']] as $table => $columns) {
     foreach ($columns as $column) {
         try {
             $pdo->exec("ALTER TABLE `$table` ADD COLUMN `$column`");

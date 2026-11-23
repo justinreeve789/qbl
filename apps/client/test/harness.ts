@@ -10,7 +10,7 @@ import { MovesFeature } from '../src/features/MovesFeature';
 import { BagFeature } from '../src/features/BagFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
 import type {
-  BagSlot, BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BenchPanelView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, TeamRow,
+  BagSlot, BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BenchPanelView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, LaunchChoice, LaunchView, OverlayHandle, PlayerRow, TeamRow,
   ProfileView, ShopView, SpeakOptions, UiPort,
 } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
@@ -166,6 +166,13 @@ export class HeadlessUi implements UiPort {
   teams(list: TeamRow[] | null, onFollow: (group: string) => void) {
     this.teamList = list;
     this.onFollow = onFollow;
+  }
+  /** The launch tab as last drawn (null: not offered), and what launching does. */
+  launchTab: LaunchView | null = null;
+  onLaunch: (choice: LaunchChoice) => void = () => {};
+  launches(view: LaunchView | null, launch: (choice: LaunchChoice) => void) {
+    this.launchTab = view;
+    this.onLaunch = launch;
   }
   /** The messages panel: how it is set up, every line shown, and which conversation was opened. */
   messagingSetup: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;

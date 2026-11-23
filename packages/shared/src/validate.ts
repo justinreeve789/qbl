@@ -404,6 +404,9 @@ export function validateScenario(doc: unknown): ValidationResult {
           }
         }
         break;
+      case 'travel':
+        if (a.to != null && a.to !== 'launched') err(`${path}.to`, `"${String(a.to)}" is not somewhere a travel action can go (only "launched", the mission the teacher launched)`);
+        break;
       case 'run_event': {
         const target = a.target_event_id ?? (inCta ? a.event_id : a.event_id);
         if (target == null) err(`${path}.target_event_id`, 'No event is chosen to run');

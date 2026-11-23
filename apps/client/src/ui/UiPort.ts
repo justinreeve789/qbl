@@ -137,6 +137,12 @@ export interface UiPort {
   /** For a teacher: the teams they can follow, to switch to another. Null: none to offer. */
   teams(list: TeamRow[] | null, onFollow: (group: string) => void): void;
   /**
+   * For a teacher: launching one of their missions for the players here, and the scenes of this
+   * mission they can go through on the way. Null: not offered. `launch` is called once the teacher
+   * has confirmed.
+   */
+  launches(view: LaunchView | null, launch: (choice: LaunchChoice) => void): void;
+  /**
    * The messages panel: whether what is said in the scene can be typed there, and whether
    * players can be written to privately. `send` gets the thread (`scene`, or a player's
    * session id) and the text. Null: there is no messages panel.
@@ -210,6 +216,32 @@ export interface TeamRow {
   /** How many of its players are in the game right now, and where most of them are. */
   online: number;
   where?: string;
+}
+
+/** What the teacher's launch tab offers. */
+export interface LaunchView {
+  /** Their assignments of other missions, soonest due first. */
+  missions: LaunchRow[];
+  /** Scenes of this mission with a travel action: a departure players can be sent through first. */
+  departures: Array<{ sceneId: number; name: string }>;
+}
+
+/** One mission the teacher can launch. */
+export interface LaunchRow {
+  assignmentId: number;
+  title: string;
+  /** It waits for the teacher: its students do not see it until it is launched. */
+  waiting: boolean;
+  /** How many of its students are in this game now, of how many. */
+  here: number;
+  students: number;
+}
+
+/** What the teacher chose: the mission, the scene to go through first (if any), and whether they stay behind. */
+export interface LaunchChoice {
+  assignmentId: number;
+  sceneId?: number;
+  stay: boolean;
 }
 
 export interface ChatLine {

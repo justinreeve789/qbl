@@ -116,6 +116,8 @@ export class PlayScene extends Phaser.Scene {
     ctx.vars.provide('QL_PhysicsEnabled', () => physics);
     // Two things from the bag put together: what that does happens in the scene being played.
     ctx.bag.run = (actions) => engine.runActions(actions);
+    // So does a teacher's launch: the jump to the departure scene, or the travel straight there.
+    ctx.inScene = (actions) => engine.runActions(actions);
 
     const self = this;
     this.runtime = {
@@ -227,6 +229,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private shutdown() {
+    this.ctx.inScene = null;
     this.stopWatching();
     this.engine.stop();
     this.host.teardown();

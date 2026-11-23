@@ -92,6 +92,12 @@ interface Meta {
   animations: number;
   /** When this player's event last sent a character walking. */
   lastWalk: number;
+  /**
+   * Where the player was when a teacher's launch took them to a departure scene. While they are
+   * still there, they are saved as if they had not gone: coming back to this scenario another day
+   * does not put them in the middle of a countdown.
+   */
+  launchedFrom?: { via: Id; scene_id: Id; x: number; y: number };
 }
 
 /**
@@ -249,10 +255,12 @@ export class World {
     const p = this.deps.state.players.get(sessionId);
     const m = this.meta.get(sessionId);
     if (!p || !m) return null;
+    // Still in a departure scene a launch took them to: saved where they were before it.
+    const away = m.launchedFrom?.via === p.scene_id ? m.launchedFrom : undefined;
     return {
-      scene_id: p.scene_id,
-      position_x: Math.round(p.x),
-      position_y: Math.round(p.y),
+      scene_id: away?.scene_id ?? p.scene_id,
+      position_x: away?.x ?? Math.round(p.x),
+      position_y: away?.y ?? Math.round(p.y),
       variables: m.progress.variables,
       flags: m.progress.flags,
       attachments: parseIds(p.attachments).filter((id) => !this.index.items.get(id)?.unique),
@@ -290,7 +298,30 @@ export class World {
     const target = this.index.scene(Number(msg?.scene_id));
     if (!p || !m || !target) return false;
     if (target.id !== p.scene_id && !this.index.jumpTargets(p.scene_id).includes(target.id)) return false;
-    const spawn = this.spawnPosition(target, typeof msg.spawn_point === 'string' ? msg.spawn_point : undefined);
+    // Gone on from a departure scene: they are saved where they are from now on.
+    if (m.launchedFrom && target.id !== m.launchedFrom.via) delete m.launchedFrom;
+    this.place(p, m, target, typeof msg.spawn_point === 'string' ? msg.spawn_point : undefined);
+    return true;
+  }
+
+  /**
+   * A teacher launched a mission and chose a departure scene: the game server takes the player
+   * there itself, from wherever they are (no door needed). Until they leave it, they are saved
+   * where they were before (see Meta.launchedFrom). False: no such player or scene.
+   */
+  sendToScene(sessionId: string, sceneId: Id): boolean {
+    const p = this.deps.state.players.get(sessionId);
+    const m = this.meta.get(sessionId);
+    const target = this.index.scene(Number(sceneId));
+    if (!p || !m || !target) return false;
+    const from = m.launchedFrom && m.launchedFrom.via === p.scene_id ? m.launchedFrom : { scene_id: p.scene_id, x: Math.round(p.x), y: Math.round(p.y) };
+    this.place(p, m, target);
+    m.launchedFrom = { via: target.id, scene_id: from.scene_id, x: from.x, y: from.y };
+    return true;
+  }
+
+  private place(p: PlayerRec, m: Meta, target: Scene, spawnPoint?: string) {
+    const spawn = this.spawnPosition(target, spawnPoint);
     const pos = nearestWalkable(this.ctx(target.id), spawn) ?? spawn;
     p.scene_id = target.id;
     p.x = pos.x;
@@ -299,7 +330,6 @@ export class World {
     p.hidden = false;
     p.anim = '';
     m.budget.reset(this.deps.now());
-    return true;
   }
 
   /** The player changed what they wear. `look` comes from the backend, never from the client. */

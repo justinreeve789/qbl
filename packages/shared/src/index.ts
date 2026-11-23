@@ -14,6 +14,7 @@ export * from './validate.js';
 export * from './locate.js';
 export * from './protocol.js';
 export * from './world.js';
+export * from './launch.js';
 export * from './text.js';
 export * from './rename.js';
 export * from './speech.js';

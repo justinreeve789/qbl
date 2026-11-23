@@ -95,6 +95,11 @@ export class FileBackend implements Backend {
     return '';
   }
 
+  /** Launches are of teachers' assignments, which need the Laravel API. */
+  async launch(): Promise<{ ok: false; message: string }> {
+    return { ok: false, message: 'Launching a mission needs classes and assignments, which come with the QBL API.' };
+  }
+
   private async read<T>(name: string): Promise<T | null> {
     try {
       return JSON.parse(await readFile(path.join(this.saveDir, `${name}.json`), 'utf8')) as T;

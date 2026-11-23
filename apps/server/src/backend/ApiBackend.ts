@@ -1,5 +1,5 @@
 import type { ActivityEntry, Id, MessageEntry, Scenario, Session, RewardMessage } from '@qbl/shared';
-import { ProgressResetError, type Access, type Backend, type InstanceData, type User } from './Backend.js';
+import { ProgressResetError, type Access, type Backend, type InstanceData, type LaunchPlan, type User } from './Backend.js';
 
 /**
  * Talks to the QBL Laravel API's internal endpoints. Every request carries
@@ -86,6 +86,19 @@ export class ApiBackend implements Backend {
     // Refusals (a guest, an action that is not an award) are answers, not failures.
     const data = await this.call<{ progress: RewardMessage }>('POST', `/scenarios/${scenarioId}/awards`, { user_id: Number(userId), action_id: actionId }).catch(() => null);
     return data?.progress ?? null;
+  }
+
+  async launch(teacherId: string, assignmentId: number): Promise<{ ok: true; plan: LaunchPlan } | { ok: false; message: string }> {
+    // The API's refusals carry a reason for the teacher ("No such assignment."), so the body is read whatever the status.
+    const res = await fetch(`${this.baseUrl}/api/internal/assignments/${encodeURIComponent(String(assignmentId))}/launch`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-QBL-Service-Key': this.serviceKey },
+      body: JSON.stringify({ user_id: Number(teacherId) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const body = (await res.json().catch(() => null)) as { launch?: LaunchPlan; message?: string } | null;
+    if (res.ok && body?.launch) return { ok: true, plan: body.launch };
+    return { ok: false, message: body?.message ?? `The mission could not be launched (${res.status}).` };
   }
 
   async look(userId: string): Promise<string> {

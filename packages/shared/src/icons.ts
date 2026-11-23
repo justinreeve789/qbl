@@ -23,6 +23,8 @@ export const ICONS = {
   editor: '✏️', classes: '🏫', docs: '📚', 'sign-out': '🚪', chat: '💬', install: '📲',
   // the teacher's missions page
   new: '➕', 'look-in': '👀', scenarios: '🧩', students: '🧑‍🎓', due: '📅',
+  // launching a mission for the class, in the game
+  launch: '🚀', waiting: '⏳',
   // plans and billing, the generator, the district admin panel
   plan: '💳', generate: '✨', district: '🏛️',
 } as const;

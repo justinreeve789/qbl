@@ -99,6 +99,42 @@ class ClassesTest extends TestCase
         $this->flushHeaders()->getJson('/api/scenarios/starshipexplorer/play')->assertUnauthorized();
     }
 
+    public function test_a_mission_that_waits_is_launched_by_its_teacher_from_the_game(): void
+    {
+        $this->seed(ShippedScenarioSeeder::class);
+        config(['qbl.service_key' => 'k']);
+        $internal = ['X-QBL-Service-Key' => 'k'];
+        $scenario = Scenario::where('code', 'starshipexplorer')->firstOrFail();
+        $scenario->update(['settings' => ['wait_for_launch' => true] + $scenario->settings]);
+        $teacher = $this->user('Teacher', 'teacher');
+        $other = $this->user('Other', 'teacher');
+        $ann = $this->user('Ann', 'student');
+        // What Ann's missions page lists of this mission (other shipped missions are public and always there).
+        $listed = fn () => array_column(array_filter($this->as($ann)->getJson('/api/missions')->json('missions'), fn ($m) => $m['code'] === 'starshipexplorer'), 'group');
+        $this->as($teacher)->postJson('/api/teach/students', ['email' => 'ann@example.test'])->assertCreated();
+        $assignment = $this->as($teacher)->postJson('/api/teach/assignments', ['scenario_id' => $scenario->id, 'student_ids' => [$ann->id]])->assertCreated()->json('assignment');
+        $this->assertTrue($assignment['waiting']);
+
+        // Until it is launched, Ann does not see it and cannot open it; the game says why.
+        $this->assertSame([], $listed());
+        $this->as($ann)->getJson("/api/scenarios/starshipexplorer/play?group={$assignment['group']}")->assertForbidden()
+            ->assertJsonPath('waiting_for_launch', true)->assertJsonPath('message', 'This mission starts when your teacher launches it.');
+
+        // The game server launches it for the teacher, and is told where to send the students.
+        $this->withHeaders($internal)->postJson("/api/internal/assignments/{$assignment['id']}/launch", ['user_id' => $ann->id])->assertForbidden();
+        $this->withHeaders($internal)->postJson("/api/internal/assignments/{$assignment['id']}/launch", ['user_id' => $other->id])->assertNotFound();
+        $this->withHeaders($internal)->postJson("/api/internal/assignments/{$assignment['id']}/launch", ['user_id' => $teacher->id])->assertOk()
+            ->assertJsonPath('launch.code', 'starshipexplorer')
+            ->assertJsonPath('launch.students', [['id' => $ann->id, 'group' => $assignment['group']]]);
+        $this->assertSame([$assignment['group']], $listed());
+        $this->as($ann)->getJson("/api/scenarios/starshipexplorer/play?group={$assignment['group']}")->assertOk();
+
+        // Hidden again from the Classes page.
+        $this->as($teacher)->deleteJson("/api/teach/assignments/{$assignment['id']}/launch")->assertOk()->assertJsonPath('assignment.waiting', true);
+        $this->assertSame([], $listed());
+        $this->as($teacher)->postJson("/api/teach/assignments/{$assignment['id']}/launch")->assertOk()->assertJsonPath('assignment.waiting', false);
+    }
+
     public function test_avatars_are_the_platforms_and_follow_the_player_into_every_scenario(): void
     {
         $this->seed(ShippedScenarioSeeder::class);

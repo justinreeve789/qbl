@@ -114,6 +114,15 @@ test('Cancel event sits beside Cancel action and offers the events of this scene
   await shot('cancel-event-card');
 });
 
+test('Go to the launched mission sits with the jumps, and needs nothing filled in', async () => {
+  const group = (await groupsOf('.inspector .add-action')).find((g) => g.group === 'scene')!;
+  assert.deepEqual(group.types, ['jump', 'travel', 'camera', 'weather', 'bench']);
+  const text = await page.locator('.inspector .add-action option[value=travel]').evaluate((o) => (o as HTMLOptionElement).text);
+  assert.match(text, /^🚀 Go to the launched mission: Leave for the mission the teacher launched/);
+  await page.locator('.inspector .add-action').selectOption('travel');
+  await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Go to the mission the teacher launched/.test(s.textContent ?? '')));
+});
+
 test('no page errors', () => {
   assert.deepEqual(errors, []);
 });

@@ -28,6 +28,7 @@ test("an assignment's labels give the due date, students and teams", () => {
   const a = { ...base, due_at: '2026-11-18 15:00:00', students: [{ id: 9, name: 'Ada', team_id: 7 }], teams: [{ id: 7, name: 'Comets', group: 't7', student_ids: [9] }] };
   assert.deepEqual(assignmentTags(a, now, 'en-GB'), [{ text: 'Due tomorrow', tone: 'due' }, { text: '1 student', tone: 'plain' }, { text: '1 team', tone: 'team' }]);
   assert.deepEqual(assignmentTags({ ...base, due_at: '2026-11-01 15:00:00' }, now, 'en-GB'), [{ text: 'Was due 1 Nov', tone: 'late' }, { text: '0 students', tone: 'plain' }]);
+  assert.deepEqual(assignmentTags({ ...base, waiting: true }, now, 'en-GB')[0], { text: 'Waiting for you to launch it', tone: 'waiting' }, 'a mission that waits for its teacher says so first');
 });
 
 test('coming assignments are listed soonest first, then undated, then past ones', () => {

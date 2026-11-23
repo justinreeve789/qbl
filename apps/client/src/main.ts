@@ -503,6 +503,17 @@ async function start() {
       window.location.assign(`/${encodeURIComponent(String(key))}?${query}`);
     };
   }
+  // A teacher's launch sends the players into another mission: leaving saves first, like any way out.
+  if (!config.offline && config.preview == null) {
+    ctx.goToMission = (launch) => {
+      ctx.saveProgress(true);
+      connection.leave();
+      ui.status(`🚀 Off to ${launch.title}…`);
+      window.location.assign(`/${encodeURIComponent(launch.code)}?${new URLSearchParams({ group: launch.group })}`);
+    };
+    // Teachers launch their missions for the class from here.
+    if (isStaff(user.role)) ctx.fetchLaunchable = () => api.launchable();
+  }
   // The player's own button, top right: their profile, the wardrobe, the site's other places
   // (for a teacher: Editor, Classes, Docs), and signing out. Leaving saves first. A preview
   // shares its sign-in with the editor it was opened from, so it offers no signing out or places.

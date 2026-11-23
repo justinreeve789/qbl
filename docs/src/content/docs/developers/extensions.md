@@ -42,6 +42,7 @@ glossary | array | | Words the mission teaches. See [Glossary](#glossary).
 narration | string | off | `on`: dialogue, infoboxes and text overlays are read aloud unless an action says otherwise. `off`: only actions marked `narrate`. See [Reading text aloud](#reading-text-aloud).
 narrator_voice | string | the default narrator | The narrator's voice: what no character says (`narration` actions, and the text overlays and infoboxes read aloud) is recorded in it. A key of the server's voice catalog. Absent: the server's default narrator for the scenario's language (in English, "storyteller": dramatic and charismatic). `none`: no narrator, so the browser reads them. See [The narrator](#the-narrator).
 private_messages | bool | false | Players may send typed messages to one other player. See [Messages](#messages).
+wait_for_launch | bool | false | Kept in the scenario's `settings`. Students see the mission, and can join it, only once their teacher launches their assignment of it (`assignments.launched_at`): from the game (the `launch` message, see [Travel](#travel)) or from the Classes page (`POST`/`DELETE /api/teach/assignments/{id}/launch`). Not listed to students as a public mission, and its public instance is closed to them. Applies at once, without publishing.
 
 ### Objectives
 
@@ -632,6 +633,24 @@ target_event_id | int | The event to stop. Named like `run_event`'s, since `even
 * Background music (persistent audio) it started keeps playing; a `cancel` naming the audio action stops it.
 * Events it started with `run_event` are their own and keep running.
 * In an event whose audience is the scene, the other players have what they are being shown of the stopped event taken away too.
+
+### Travel
+
+A new action type, `travel`, takes the player out of this scenario to the mission their teacher has just launched. It is how a **departure scene** ends: a teacher, playing with the class, launches one of their assignments from the game's 🚀 tab and may choose a scene of the current scenario for everyone to go through first (into the time portal, aboard the shuttle). The game server puts every student of that assignment who is in the room into that scene, door or no door; its events play; their `travel` action takes each student into their own instance of the launched mission (`/{code}?group=…`). Launched with no departure scene, the client runs a `travel` in whatever scene the player is in.
+
+Parameter | Type | Description
+--------- | ---- | -----------
+to | string | Where to. `launched` (the default, and the only value so far): the mission the teacher launched for the player.
+
+```json
+{ "type": "travel" }
+```
+
+* Like `jump`, it ends the event, and the scene's end events run before the player goes. It works on infobox buttons and conversation choices too.
+* With nothing launched for the player (they walked into the departure scene another day) nothing happens and the event carries on with its next action. The system variable `QL_NextMission` tells the cases apart: the title of the launched mission while one is waiting for the player to go, and empty otherwise (test it with `!=` and an empty value).
+* A teacher is offered as departure scenes only the scenes with a `travel` action somewhere in their events (`departureScenes`).
+* While a player is still in the departure scene a launch put them in, they are saved where they were before it, so coming back to the scenario another day does not start them mid-countdown.
+* In a preview there is no launch: a toast says where players would go, and the event carries on.
 
 ### Avatar
 

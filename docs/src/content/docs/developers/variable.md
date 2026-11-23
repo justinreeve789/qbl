@@ -39,6 +39,7 @@ QL_PlayerRank | The name of the player's rank.
 QL_PlayerCount | How many players are playing together: the player's team, when there are teams.
 QL_SceneId | The id of the scene the player is in.
 QL_Holding | The id of the thing the player is using from their bag, while they use it; 0 otherwise. A hotspot or a character's event whose conditions test it takes things from the bag. See [The bag](/docs/developers/extensions/#the-bag-point-and-click-things).
+QL_NextMission | The title of the mission the player's teacher has just launched for them in this game, until they go to it; empty otherwise. A departure scene tests `QL_NextMission != ""` (an empty value). See [Travel](/docs/developers/extensions/#travel).
 `QL_Ability_<key>` | 1 while the player has a marketplace ability with that key equipped, otherwise 0.
 
 ### Older names
