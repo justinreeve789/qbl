@@ -259,6 +259,26 @@ same($call('DELETE', "scenarios/$sid/rows/events/{$hotspot['id']}")[0], 204, 'de
 [, $bundle] = $call('GET', "scenarios/$sid");
 same([count($bundle['events']), count($bundle['actions']), count($bundle['conditions']), count($bundle['labels'])], [0, 0, 0, 0], 'removes its actions, conditions and labels');
 
+// Undo and redo: what was deleted is put back under its own ids, all at once.
+$restore = fn (array $steps) => $call('POST', "scenarios/$sid/restore", ['steps' => $steps]);
+[$status, $body] = $restore([
+    ['op' => 'insert', 'table' => 'events', 'row' => $hotspot],
+    ['op' => 'insert', 'table' => 'actions', 'row' => $action],
+    ['op' => 'insert', 'table' => 'labels', 'row' => $label],
+]);
+same([$status, array_column($body['events'], 'id'), array_column($body['actions'], 'id'), $body['labels'][0]['text'] ?? null], [200, [$hotspot['id']], [$action['id']], 'Look here'], 'undo puts deleted rows back under their ids and answers with the scenario');
+same($restore([['op' => 'insert', 'table' => 'events', 'row' => $hotspot]])[0], 409, 'a row whose id is taken is not put back');
+[$status, $body] = $restore([['op' => 'update', 'table' => 'events', 'id' => $hotspot['id'], 'attrs' => ['shortname' => 'toad']], ['op' => 'insert', 'table' => 'actions', 'row' => ['id' => $action['id'] + 1000, 'event_id' => $starshipScene, 'type' => 'wait']]]);
+same([$status, $store->bundle($sid)['events'][0]['shortname']], [422, 'frog'], 'a step that is refused changes nothing, steps before it included');
+same($restore([['op' => 'insert', 'table' => 'scenes', 'row' => ['id' => 99999, 'scenario_id' => 1, 'shortname' => 'stolen']]])[1]['scenes'][1]['scenario_id'] ?? null, $sid, 'a row put back belongs to this scenario, whatever it says');
+$restore([['op' => 'delete', 'table' => 'scenes', 'id' => 99999]]);
+same($restore([['op' => 'delete', 'table' => 'scenes', 'id' => $starshipScene]])[0], 404, 'another scenario\'s rows cannot be deleted through it');
+same($restore([['op' => 'explode']])[0], 422, 'unknown steps are refused');
+[, $body] = $restore([['op' => 'scenario', 'attrs' => ['title' => 'Undone', 'code' => 'zzzzzzzzzzzzzzzz']]]);
+same([$body['scenario']['title'], $body['scenario']['code']], ['Undone', $mine['code']], 'the scenario\'s columns can be put back, but not its code');
+[, $body] = $restore([['op' => 'delete', 'table' => 'labels', 'id' => $label['id']], ['op' => 'delete', 'table' => 'actions', 'id' => $action['id']], ['op' => 'delete', 'table' => 'events', 'id' => $hotspot['id']]]);
+same([count($body['events']), count($body['actions']), count($body['labels'])], [0, 0, 0], 'redo deletes them again');
+
 // Uploads: the type comes from the file's content.
 $png = sys_get_temp_dir().'/qbl-test.png';
 file_put_contents($png, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAYAAAC56t6BAAAAEklEQVR42mNk+M9QzwAEjDAGACCDAv8cI7IoAAAAAElFTkSuQmCC'));

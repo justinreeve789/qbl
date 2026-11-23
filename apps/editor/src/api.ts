@@ -78,6 +78,13 @@ export interface Bundle extends Record<Table, Row[]> {
   scenario: Row;
 }
 
+/** One step of an undo or a redo (see ScenarioStore::restore). */
+export type RestoreStep =
+  | { op: 'insert'; table: Table; row: Row }
+  | { op: 'update'; table: Table; id: number; attrs: Record<string, unknown> }
+  | { op: 'delete'; table: Table; id: number }
+  | { op: 'scenario'; attrs: Record<string, unknown> };
+
 export interface User {
   id: number;
   name: string;
@@ -498,6 +505,8 @@ export class Api {
   updateRow = async (id: number, table: Table, rowId: number, attrs: object) =>
     (await this.call<{ row: Row }>('PATCH', `/editor/scenarios/${id}/rows/${table}/${rowId}`, attrs)).row;
   deleteRow = (id: number, table: Table, rowId: number) => this.call<void>('DELETE', `/editor/scenarios/${id}/rows/${table}/${rowId}`);
+  /** Undo or redo: put rows back as they were, all at once. Answers with the whole scenario. */
+  restore = (id: number, steps: RestoreStep[]) => this.call<Bundle>('POST', `/editor/scenarios/${id}/restore`, { steps });
   preview = async (id: number) => (await this.call<{ scenario: Scenario }>('GET', `/editor/scenarios/${id}/preview`)).scenario;
   /** Give the scenario a new player code; the old one stops working. Refused with a message when the code is not allowed or is taken. */
   changeCode = async (id: number, code: string) => (await this.call<{ scenario: Row }>('PUT', `/editor/scenarios/${id}/code`, { code })).scenario;

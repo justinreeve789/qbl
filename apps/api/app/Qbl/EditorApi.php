@@ -152,6 +152,18 @@ class EditorApi
 
             return [200, ['scenario' => $this->store->scenario($id)]];
         }
+        // Undo and redo: rows put back as they were (see ScenarioStore::restore). Answers with the whole scenario.
+        if ($rest === ['restore'] && $method === 'POST') {
+            $steps = array_map(
+                fn ($step) => is_array($step) && ($step['op'] ?? '') === 'scenario' && is_array($step['attrs'] ?? null)
+                    ? ['attrs' => $this->keepTier($scenario, $step['attrs'], $user)] + $step
+                    : $step,
+                is_array($body['steps'] ?? null) ? array_values($body['steps']) : [],
+            );
+            $this->store->restore($id, $steps);
+
+            return [200, $this->store->bundle($id)];
+        }
         if (($rest[0] ?? '') === 'voices') {
             return $this->voices($id, $method, array_slice($rest, 1), $body);
         }

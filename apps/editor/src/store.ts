@@ -1,5 +1,6 @@
 import { Api, ApiError, type Bundle, type LibraryAdded, type Row, type Table } from './api';
 import { toast } from './dom';
+import { clone, diff, History, type Change } from './history';
 
 /**
  * The scenario being edited, held in memory.
@@ -15,11 +16,30 @@ export class Store {
 
   constructor(readonly api: Api, readonly scenarioId: number) {}
 
+  /** Undo and redo (Ctrl+Z, Ctrl+Y): see history.ts. */
+  readonly history = new History();
+  /**
+   * The rows as they were last saved, copied: what a patch changes them from. Kept apart from the
+   * bundle because the forms may change a row's lists and objects in place before patching it.
+   */
+  private saved = new Map<string, Record<string, unknown>>();
+  /** Undoes and redoes, one after another. */
+  private turning: Promise<unknown> = Promise.resolve();
+
   /** True when the scenario has changes that players do not have yet. */
   unpublished = true;
 
   async load() {
-    this.bundle = await this.api.bundle(this.scenarioId);
+    this.hold(await this.api.bundle(this.scenarioId));
+  }
+
+  /** Hold a copy of the scenario as the API sent it. */
+  private hold(bundle: Bundle) {
+    this.bundle = bundle;
+    this.saved = new Map([['scenario', clone(bundle.scenario)]]);
+    for (const table of Object.keys(bundle) as Array<Table | 'scenario'>) {
+      if (table !== 'scenario') for (const row of bundle[table]) this.saved.set(`${table}:${row.id}`, clone(row));
+    }
     const { published_at: published, updated_at: updated } = this.bundle.scenario as { published_at?: string | null; updated_at?: string | null };
     this.unpublished = !published || (updated != null && updated > published);
     this.emit();
@@ -91,8 +111,14 @@ export class Store {
   }
 
   async add(table: Table, attrs: object): Promise<Row | undefined> {
-    const row = await this.send(() => this.api.createRow(this.scenarioId, table, attrs));
+    const step = this.history.take();
+    const row = await this.send(async () => {
+      const made = await this.api.createRow(this.scenarioId, table, attrs);
+      this.history.record(step, { rows: [{ table, id: made.id, before: null, after: made }] });
+      return made;
+    });
     if (row) {
+      this.saved.set(`${table}:${row.id}`, clone(row));
       this.bundle[table].push(row);
       this.emit();
     }
@@ -104,10 +130,26 @@ export class Store {
    * and makes its character or item; both are taken in here.
    */
   async addFromLibrary(asset: number | string, name?: string): Promise<LibraryAdded | undefined> {
-    const added = await this.send(() => this.api.addLibraryAsset(asset, this.scenarioId, name));
+    const step = this.history.take();
+    const added = await this.send(async () => {
+      const made = await this.api.addLibraryAsset(asset, this.scenarioId, name);
+      // Undone, the new rows go (the files stay on disk), so a redo can put them back.
+      const fresh = made.media.filter((m) => !this.byId('media', m.id));
+      const change: Change = { rows: fresh.map((m) => ({ table: 'media' as const, id: m.id, before: null, after: m })) };
+      if (made.created) change.rows.push({ table: made.created.table, id: made.created.row.id, before: null, after: made.created.row });
+      this.history.record(step, change);
+      return made;
+    });
     if (added) {
-      for (const media of added.media) if (!this.byId('media', media.id)) this.bundle.media.push(media);
-      if (added.created) this.bundle[added.created.table].push(added.created.row);
+      for (const media of added.media) {
+        if (this.byId('media', media.id)) continue;
+        this.bundle.media.push(media);
+        this.saved.set(`media:${media.id}`, clone(media));
+      }
+      if (added.created) {
+        this.bundle[added.created.table].push(added.created.row);
+        this.saved.set(`${added.created.table}:${added.created.row.id}`, clone(added.created.row));
+      }
       this.emit(true);
     }
     return added;
@@ -120,11 +162,25 @@ export class Store {
    */
   async patch(table: Table, id: number, attrs: object, structural = false): Promise<Row | undefined> {
     const local = this.byId(table, id);
+    const change = this.noted(`${table}:${id}`, local, attrs);
     if (local) Object.assign(local, attrs);
     this.emit(structural);
+    const step = this.history.take(change.typing);
     const row = await this.coalesced(`${table}:${id}`, attrs, (merged) => this.api.updateRow(this.scenarioId, table, id, merged));
     if (!row) await this.load();
+    else this.history.record(step, { rows: [{ table, id, before: change.before, after: change.after }] });
     return row;
+  }
+
+  /** What a patch changes, from the copy of the row as it was saved; the copy then takes the new values. */
+  private noted(key: string, local: Record<string, unknown> | undefined, attrs: object) {
+    const saved = this.saved.get(key) ?? clone(local ?? {});
+    const after = clone(attrs) as Record<string, unknown>;
+    const before: Record<string, unknown> = {};
+    for (const k of Object.keys(after)) before[k] = clone(saved[k] ?? null);
+    Object.assign(saved, clone(after));
+    this.saved.set(key, saved);
+    return { before, after, typing: `${key}:${Object.keys(after).sort().join(',')}` };
   }
 
   /** Queue a patch, or fold it into the same row's patch if that is the last one queued and has not been sent yet. */
@@ -151,19 +207,61 @@ export class Store {
 
   /** Delete a row. The API also removes what depended on it, so everything is loaded again afterwards. */
   async remove(table: Table, id: number): Promise<boolean> {
+    const step = this.history.take();
+    let before: Bundle | null = null;
     const ok = await this.send(async () => {
+      before = clone(this.bundle);
       await this.api.deleteRow(this.scenarioId, table, id);
       return true;
     });
     await this.load();
+    // Deleting a file removes it from disk: that cannot be undone, and neither can what came before it.
+    if (ok && table === 'media') this.history.clear();
+    else if (ok && before) this.history.record(step, diff(before, this.bundle));
     return ok === true;
   }
 
+  /**
+   * Undo the last step (or redo the last one undone). Waits for the changes before it to be saved;
+   * answers whether there was anything to do.
+   */
+  undo(): Promise<boolean> {
+    return this.turn('undo');
+  }
+
+  redo(): Promise<boolean> {
+    return this.turn('redo');
+  }
+
+  private turn(which: 'undo' | 'redo'): Promise<boolean> {
+    const result = this.turning.then(async () => {
+      await this.settled();
+      const pending = which === 'undo' ? this.history.undo() : this.history.redo();
+      if (!pending) return false;
+      const bundle = await this.send(() => this.api.restore(this.scenarioId, pending.steps));
+      if (bundle) {
+        pending.done();
+        this.hold(bundle);
+        this.unpublished = true;
+      } else {
+        // Refused (something it needs is gone): that step is dropped, and the screen shows what is saved.
+        await this.load().catch(() => undefined);
+      }
+      this.emit(true);
+      return bundle !== undefined;
+    });
+    this.turning = result.catch(() => undefined);
+    return result;
+  }
+
   async patchScenario(attrs: object, structural = false): Promise<void> {
+    const change = this.noted('scenario', this.bundle.scenario, attrs);
     Object.assign(this.bundle.scenario, attrs);
     this.emit(structural);
+    const step = this.history.take(change.typing);
     const row = await this.coalesced('scenario', attrs, (merged) => this.api.patchScenario(this.scenarioId, merged));
     if (!row) await this.load();
+    else this.history.record(step, { rows: [], scenario: { before: change.before, after: change.after } });
   }
 
   /**

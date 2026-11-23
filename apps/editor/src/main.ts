@@ -7,6 +7,7 @@ import { clear, h, toast } from './dom';
 import '../../../packages/shared/assets/twemoji-awesome.css';
 import './editor.css';
 import { Store } from './store';
+import { undoKey } from './history';
 import { classesView } from './views/classes';
 import { districtView } from './views/district';
 import { generateView, prefillGenerator } from './views/generate';
@@ -264,6 +265,46 @@ async function route() {
 }
 
 window.addEventListener('hashchange', () => void route());
+
+/**
+ * Ctrl+Z undoes the last edit to the open scenario and Ctrl+Y (or Ctrl+Shift+Z) redoes it, up to 50
+ * steps (Cmd on a Mac). In a text field that has been typed in since it was focused, the keys are
+ * the field's own, as everywhere: they undo the typing. Once the field holds what it held when
+ * focused, they undo edits to the scenario again.
+ */
+let focused: { node: HTMLElement; was: string; typed: boolean } | null = null;
+const textOf = (node: HTMLElement) => (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement ? node.value : node.innerHTML);
+const typesText = (node: Element | null): node is HTMLElement =>
+  node instanceof HTMLTextAreaElement
+  || (node instanceof HTMLInputElement && ['text', 'search', 'url', 'email', 'number', 'tel', 'password', ''].includes(node.type))
+  || (node instanceof HTMLElement && node.isContentEditable);
+document.addEventListener('focusin', (e) => {
+  const node = e.target as Element;
+  focused = typesText(node) ? { node, was: textOf(node), typed: false } : null;
+});
+document.addEventListener('input', (e) => {
+  if (focused && (e.target === focused.node || focused.node.contains(e.target as Node))) focused.typed = true;
+}, true);
+
+let hideTurned = 0;
+window.addEventListener('keydown', (e) => {
+  const which = undoKey(e);
+  if (!which || !store || !/^#\/s\/\d+/.test(window.location.hash)) return;
+  const active = document.activeElement;
+  if (typesText(active) && focused?.node === active) {
+    const changed = textOf(active) !== focused.was;
+    if (which === 'undo' ? changed : focused.typed) return;
+  }
+  e.preventDefault();
+  // A field with an edit not yet saved (a picker, a colour) saves it first, so that is what is undone.
+  if (active instanceof HTMLElement && active !== document.body && view.contains(active)) active.blur();
+  const turning = store;
+  void (which === 'undo' ? turning.undo() : turning.redo()).then((did) => {
+    window.clearTimeout(hideTurned);
+    saving.textContent = did ? (which === 'undo' ? 'Undone' : 'Redone') : which === 'undo' ? 'Nothing to undo' : 'Nothing to redo';
+    hideTurned = window.setTimeout(() => (saving.textContent = ''), 1500);
+  });
+});
 
 api.me().then(
   (me) => {
