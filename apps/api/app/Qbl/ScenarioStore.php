@@ -501,6 +501,69 @@ class ScenarioStore
         $this->touch($scenarioId);
     }
 
+    /**
+     * Put rows back as they were before or after an edit: the editor's undo and redo. The steps are
+     * applied in order, all or none:
+     *   ['op' => 'insert', 'table' => ..., 'row' => [...]]   a row that was deleted, under its own id
+     *   ['op' => 'update', 'table' => ..., 'id' => n, 'attrs' => [...]]
+     *   ['op' => 'delete', 'table' => ..., 'id' => n]       only that row: the steps name everything that goes with it
+     *   ['op' => 'scenario', 'attrs' => [...]]
+     * Unlike deleteRow, a delete here leaves a media row's file on disk, so a redo can bring it back.
+     * A row is inserted under its id only if no row has that id: if one has, nothing is changed (409).
+     */
+    public function restore(int $scenarioId, array $steps): void
+    {
+        $this->transaction(function () use ($scenarioId, $steps) {
+            foreach ($steps as $step) {
+                $op = is_array($step) ? ($step['op'] ?? '') : '';
+                $table = (string) ($step['table'] ?? '');
+                switch ($op) {
+                    case 'insert':
+                        $this->assertContentTable($table);
+                        $attrs = is_array($step['row'] ?? null) ? $step['row'] : [];
+                        $rowId = (int) ($attrs['id'] ?? 0);
+                        if ($rowId <= 0) {
+                            throw new StoreError(422, 'A row to put back needs its id.');
+                        }
+                        if ($this->one("SELECT `id` FROM `$table` WHERE `id` = ?", [$rowId])) {
+                            throw new StoreError(409, 'That can no longer be undone: something else has taken its place.');
+                        }
+                        if (isset(self::SCHEMA[$table]['scenario_id'])) {
+                            $attrs['scenario_id'] = $scenarioId;
+                        }
+                        $row = $this->encode($table, $this->cleanCharacter($scenarioId, $table, $attrs));
+                        $this->assertValid($scenarioId, $table, $row, true);
+                        $now = self::now();
+                        $this->insert($table, ['id' => $rowId] + $row + ['created_at' => $now, 'updated_at' => $now]);
+                        break;
+                    case 'update':
+                        $rowId = (int) ($step['id'] ?? 0);
+                        $this->assertOwned($scenarioId, $table, $rowId);
+                        $attrs = is_array($step['attrs'] ?? null) ? $step['attrs'] : [];
+                        unset($attrs['scenario_id'], $attrs['id']);
+                        $row = $this->encode($table, $this->cleanCharacter($scenarioId, $table, $attrs));
+                        $this->assertValid($scenarioId, $table, $row, false);
+                        $this->update($table, $rowId, $row);
+                        break;
+                    case 'delete':
+                        $rowId = (int) ($step['id'] ?? 0);
+                        $this->assertOwned($scenarioId, $table, $rowId);
+                        if ($table === 'scenes') {
+                            $this->run('UPDATE `scenarios` SET `start_scene_id` = NULL WHERE `id` = ? AND `start_scene_id` = ?', [$scenarioId, $rowId]);
+                        }
+                        $this->run("DELETE FROM `$table` WHERE `id` = ?", [$rowId]);
+                        break;
+                    case 'scenario':
+                        $this->updateScenario($scenarioId, array_diff_key(is_array($step['attrs'] ?? null) ? $step['attrs'] : [], ['id' => 1, 'code' => 1]));
+                        break;
+                    default:
+                        throw new StoreError(422, 'Unknown step.');
+                }
+            }
+        });
+        $this->touch($scenarioId);
+    }
+
     /** Store an uploaded file and create its media row. The type is taken from the file's content, not its name. */
     public function addMediaFile(int $scenarioId, string $tmpPath, string $originalName): array
     {
