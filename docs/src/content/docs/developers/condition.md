@@ -14,7 +14,7 @@ id | int |  | condition id
 event_id | int |  | The event id the condition is associated with.
 type | string | variable | The type of condition. Currently, only “variable” is supported, and this refers to a global variable that has been defined at the scenario level.
 variable | string |  | Either a custom global variable the user has been defined at the scenario level, or any of the reserved variables.
-operator | string |  | One of five operators to perform on the variable, to test if the condition is true or false: =, !=, >, <
+operator | string |  | The operator that tests the variable against the operand: =, !=, >, <, and the [extensions](/docs/developers/extensions/) >=, <=, % and !%
 operand | multiple |  | A number (integer or decimal), or a string for which the variable is being evaluated.
 
 ## Variable Operators
@@ -24,3 +24,9 @@ Operator | Description
 != | Test if variable does not equal operand; If operand is a string, tests are case-insensitive.
 > | Test if variable is greater than operand. If operand is not numeric, the test will always return false.
 < | Test if variable is less than operand. If operand is not numeric, the test will always return false.
+>= | [ext] Test if variable is greater than or equal to operand. Numbers only.
+<= | [ext] Test if variable is less than or equal to operand. Numbers only.
+% | [ext] Test if variable is a whole multiple of operand: it divides by the operand with nothing left over (modulus 0). `turns % 2` holds on even turns, `visits % 3` on every third visit. 0 counts as a multiple. Numbers only; an operand of 0 never holds (the validator reports it).
+!% | [ext] Test if variable is **not** a whole multiple of operand: `turns !% 2` holds on odd turns. Numbers only; an operand of 0 never holds.
+
+Decimals work: `0.9 % 0.3` holds. Negative numbers too: `-6 % 3` holds.

@@ -121,6 +121,28 @@ test('conditions: case-insensitive strings, numeric ordering', () => {
   assert.ok(testCondition({ variable: 'score', operator: '<=', operand: 10 }, get));
 });
 
+test('conditions: % is a whole multiple, !% is not', () => {
+  const at = (value: unknown, operator: '%' | '!%', operand: string | number) =>
+    testCondition({ variable: 'v', operator, operand }, () => value as string | number);
+  assert.ok(at(10, '%', 5) && at('12', '%', '3') && at(0, '%', 4), 'multiples, numbers typed as text too');
+  assert.ok(!at(7, '%', 2) && at(7, '!%', 2) && !at(8, '!%', 2), 'odd and even');
+  assert.ok(at(-6, '%', 3) && at(-7, '!%', 3), 'negative numbers');
+  assert.ok(at(0.9, '%', 0.3) && at(1, '!%', 0.3), 'decimals, with no rounding surprises');
+  assert.ok(!at(5, '%', 0) && !at(5, '!%', 0), 'dividing by 0 never holds');
+  assert.ok(!at('seven', '%', 2) && !at('seven', '!%', 2) && !at(4, '%', 'two'), 'text never holds');
+});
+
+test('the validator refuses % by 0', () => {
+  const issues = validateScenario({
+    id: 1, shortname: 't', title: 't', start_scene_id: 1, global_variables: [{ variable_name: 'n', default_value: 0 }],
+    scenes: [{ id: 1, width: 100, height: 100 }],
+    objectives: [{ id: 'o', text: 'Even', complete_when: [{ variable: 'n', operator: '%', operand: 0 }, { variable: 'n', operator: '!%', operand: 2 }] }],
+  } as never);
+  const said = issues.errors.map((i) => i.path + ': ' + i.message);
+  assert.ok(said.some((m) => /conditions\[0\].*"%" needs a number other than 0/.test(m)), said.join('\n'));
+  assert.ok(!said.some((m) => /conditions\[1\]/.test(m)), said.join('\n'));
+});
+
 test('store: saved values, scopes, remote forwarding, snapshot', () => {
   const defs = [
     { variable_name: 'coins', default_value: 0 },

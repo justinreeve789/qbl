@@ -81,6 +81,9 @@ test('controls: sliders, switches and wheels write variables; values, meters and
   assert.equal(at({ rope: 9, brake: 1, weather: 'Rain' }), false);
   assert.equal(at({ rope: 9, brake: 1 }), true, 'a wheel not spun yet is no option');
   assert.equal(testWhen(parseWhen('x > 2'), () => 'abc'), false, 'text is never more than a number');
+  assert.deepEqual(parseWhen('turn % 2; step !% 3'), [{ variable: 'turn', operator: '%', operand: 2 }, { variable: 'step', operator: '!%', operand: 3 }]);
+  assert.equal(testWhen(parseWhen('turn % 2; step !% 3'), (n) => ({ turn: 4, step: 5 })[n]), true);
+  assert.equal(testWhen(parseWhen('turn % 2'), () => '7'), false);
   assert.deepEqual(wheelOptions(' Sun | Rain||Wind '), ['Sun', 'Rain', 'Wind']);
 });
 

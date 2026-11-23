@@ -183,7 +183,8 @@ export interface Spritemap {
 
 // ----------------------------------------------------------- conditions
 
-export type ConditionOperator = '=' | '!=' | '>' | '<' | '>=' | '<=';
+/** `%` holds when the variable is a whole multiple of the operand (divides with no remainder); `!%` when it is not. */
+export type ConditionOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | '%' | '!%';
 
 export interface Condition {
   id?: Id;

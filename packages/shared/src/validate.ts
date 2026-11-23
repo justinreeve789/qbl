@@ -13,7 +13,7 @@ import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
 import { isBuiltInSound } from './sounds.js';
 import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
-import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES } from './variables.js';
+import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES, toNumber } from './variables.js';
 
 export interface Issue {
   level: 'error' | 'warning';
@@ -27,7 +27,7 @@ export interface ValidationResult {
   warnings: Issue[];
 }
 
-const CONDITION_OPS = ['=', '!=', '>', '<', '>=', '<='];
+const CONDITION_OPS = ['=', '!=', '>', '<', '>=', '<=', '%', '!%'];
 const VARIABLE_OPS = ['set', '+', '-', '*', '/', '%', 'random'];
 const MEDIA_FOR_ACTION: Record<string, Media['type'] | undefined> = {
   audio: 'audio',
@@ -207,6 +207,9 @@ export function validateScenario(doc: unknown): ValidationResult {
       const p = `${path}.conditions[${i}]`;
       if (c.type && c.type !== 'variable') err(p, `Unsupported condition type "${c.type}"`);
       if (!CONDITION_OPS.includes(c.operator)) err(p, `Unknown operator "${c.operator}"`);
+      else if ((c.operator === '%' || c.operator === '!%') && !(toNumber(c.operand) ?? 0)) {
+        err(p, `"${c.operator}" needs a number other than 0 to divide by`);
+      }
       if (!c.variable) err(p, 'variable is required');
       else if (isReserved(c.variable)) {
         const name = currentName(c.variable);

@@ -33,7 +33,7 @@ function inFormula(source: string, from: string, to: string): string {
 
 /** A `when` block's conditions: `v >= 4; battery = 1`. Only the names on the left are variables. */
 function inWhen(spec: string, from: string, to: string): string {
-  return spec.replace(new RegExp(`(^|[;,])(\\s*)${escapeRegex(from)}(?=\\s*(?:!=|<=|>=|=|<|>))`, 'g'), `$1$2${to}`);
+  return spec.replace(new RegExp(`(^|[;,])(\\s*)${escapeRegex(from)}(?=\\s*(?:!%|!=|<=|>=|=|<|>|%))`, 'g'), `$1$2${to}`);
 }
 
 function inAttribute(name: string, value: string, from: string, to: string): string {
