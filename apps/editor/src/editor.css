@@ -776,6 +776,8 @@ dialog.modal .field { margin-bottom: 14px; }
 .report-facts li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 13px; color: var(--r-soft); }
 .report-facts li b { color: var(--text); }
 .report-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px 36px; }
+.report-detail-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--r-hair); }
+.report-detail-foot p { margin: 0; }
 .report-checklist { display: grid; gap: 9px; font-size: 13.5px; }
 .report-checklist li { display: flex; align-items: flex-start; gap: 10px; color: var(--r-soft); }
 .report-checklist li.done { color: var(--text); }

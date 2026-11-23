@@ -18,6 +18,10 @@ export interface Backend {
   mayJoin(scenarioId: Id, user: User, group: string, party?: string): Promise<Access>;
   /** A player's save belongs to one instance: their team's game is not their public one. */
   loadSession(scenarioId: Id, userId: string, group: string): Promise<Session | null>;
+  /**
+   * Throws ProgressResetError when a teacher reset the player's progress after this save was
+   * loaded: the save is stale and must not be written.
+   */
   saveSession(scenarioId: Id, userId: string, group: string, session: Session): Promise<void>;
   loadInstance(scenarioId: Id, group: string): Promise<InstanceData | null>;
   saveInstance(scenarioId: Id, group: string, data: InstanceData): Promise<void>;
@@ -33,6 +37,14 @@ export interface Backend {
   logActivity(scenarioId: Id, entries: ActivityEntry[]): Promise<void>;
   /** Keep every message sent, in a scene or privately, so it can be audited later. */
   logMessages(scenarioId: Id, entries: MessageEntry[]): Promise<void>;
+}
+
+/** A save refused because a teacher reset the player's progress in that instance since it was loaded. */
+export class ProgressResetError extends Error {
+  constructor() {
+    super('The player\'s progress was reset since the save was loaded.');
+    this.name = 'ProgressResetError';
+  }
 }
 
 /** The answer to "may this player join this instance?". */

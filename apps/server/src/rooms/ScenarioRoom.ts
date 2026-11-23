@@ -5,7 +5,7 @@ import {
   type MessageEntry, type MoveMessage, type NoticeMessage, type ProgressMessage, type Scenario, type SceneMessage, type ShowBroadcast, type ShowMessage,
   type SnapMessage, type TrackMessage, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
 } from '@qbl/shared';
-import type { Backend, User } from '../backend/Backend.js';
+import { ProgressResetError, type Backend, type User } from '../backend/Backend.js';
 import { config } from '../config.js';
 import { ChatFilter } from './chat.js';
 import { ItemState, NpcState, Player, RoomState } from './state.js';
@@ -53,6 +53,8 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   private teamNames = new Map<string, string>();
   private lastChat = new Map<string, number>();
   private tracked = new Map<string, { second: number; count: number }>();
+  /** Players whose progress a teacher reset while they played: their game here is stale and is not saved again. */
+  private stale = new Set<string>();
   private activityLog: ActivityEntry[] = [];
   private messageLog: MessageEntry[] = [];
 
@@ -253,17 +255,21 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   override onReconnect(client: Client) {
     const p = this.state.players.get(client.sessionId);
     if (p) p.connected = true;
+    // Their progress was reset while the connection was down: they come back to the fresh start, not to the old game.
+    if (this.stale.has(client.sessionId)) client.leave(CloseCodes.ProgressReset);
   }
 
   override async onLeave(client: Client) {
     this.lastChat.delete(client.sessionId);
     this.tracked.delete(client.sessionId);
     const team = this.teamOf.get(client.sessionId);
-    if (team == null) return;
-    const elapsed = this.ready.get(team)?.sessionOf(client.sessionId)?.time_elapsed;
-    this.log(client, { type: 'leave', value: elapsed });
-    await this.persist(client.sessionId);
-    this.remove(client.sessionId, team);
+    if (team != null) {
+      const elapsed = this.ready.get(team)?.sessionOf(client.sessionId)?.time_elapsed;
+      this.log(client, { type: 'leave', value: elapsed });
+      await this.persist(client.sessionId);
+      this.remove(client.sessionId, team);
+    }
+    this.stale.delete(client.sessionId);
   }
 
   override async onDispose() {
@@ -385,7 +391,7 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
 
   /** Save one player's progress, in the instance they are playing. Guests are saved too, keyed by their guest id. */
   private async persist(sessionId: string) {
-    if (this.scenario.enable_save_session === false) return;
+    if (this.scenario.enable_save_session === false || this.stale.has(sessionId)) return;
     const team = this.teamOf.get(sessionId);
     const world = team == null ? undefined : this.ready.get(team);
     const user = world?.userOf(sessionId);
@@ -394,6 +400,13 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     try {
       await services.backend.saveSession(this.scenario.id, user.id, team, session);
     } catch (err) {
+      if (err instanceof ProgressResetError) {
+        // A teacher started this player's game again. What they have here is the old game: it is
+        // dropped, and they are sent off so that rejoining loads the fresh start.
+        this.stale.add(sessionId);
+        this.clients.find((c: Client) => c.sessionId === sessionId)?.leave(CloseCodes.ProgressReset);
+        return;
+      }
       console.error(`[${this.roomId}] could not save session for ${user.id}:`, err);
     }
   }

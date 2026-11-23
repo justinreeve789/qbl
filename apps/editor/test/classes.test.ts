@@ -12,6 +12,7 @@ let site: TestSite;
 let browser: Browser;
 let page: Page;
 const errors: string[] = [];
+const dialogs: string[] = [];
 const tokens: Record<string, string> = {};
 
 interface Mission { title: string; kind: string; group: string; team?: string | null; teacher?: string; due_at?: string | null; note?: string | null }
@@ -32,7 +33,10 @@ before(async () => {
   site = await startSite();
   browser = await chromium.launch();
   page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
-  page.on('dialog', (d) => void d.accept());
+  page.on('dialog', (d) => {
+    dialogs.push(d.message());
+    void d.accept();
+  });
   page.on('pageerror', (e) => errors.push(e.message));
   // A refused request is reported on the page; the browser's own note of the 4xx is not a fault.
   page.on('console', (m) => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errors.push(m.text()));
@@ -116,6 +120,22 @@ test('change an assignment: a student moves team, and the teams keep their insta
   assert.match(await page.innerText('[data-assignment]'), /No due date/);
   const cy = (await missions('student.cy@example.test'))[0]!;
   assert.deepEqual([cy.team, cy.group, cy.due_at], ['Quasars', before, null]);
+});
+
+test("from the report, a teacher resets a student's progress", async () => {
+  await page.click('[data-assignment] [data-action=report]');
+  await page.waitForSelector('.report-table tr[data-student]');
+  await page.click('.report-table tr[data-student] >> text=Student.ann');
+  await page.click('[data-action=reset-progress]');
+  await page.waitForSelector('[data-reset-at]');
+  const asked = dialogs.at(-1) ?? '';
+  assert.match(asked, /Reset Student.ann’s progress in Starship Explorer\?/);
+  assert.match(asked, /what Comets did together/, 'a student in a team is told the team’s shared world stays');
+  assert.match(await page.innerText('[data-reset-at]'), /Progress reset .* by Teacher/);
+  await page.waitForSelector('.toast:not(.error) >> text=/Student.ann will start Starship Explorer again/');
+  assert.equal(await page.locator('.report-table tr[data-student] .report-status').first().innerText(), 'Not started');
+  await page.click('button:has-text("Back to classes")');
+  await page.waitForSelector('[data-assignment]');
 });
 
 test('removing a student and deleting the assignment take the mission away again', async () => {

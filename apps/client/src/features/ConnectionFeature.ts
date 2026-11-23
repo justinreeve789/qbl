@@ -14,7 +14,9 @@ export class ConnectionFeature implements GameFeature {
         ui.status(
           code === CloseCodes.ReplacedByNewSession
             ? 'You opened this scenario in another tab. This one has been disconnected.'
-            : 'Disconnected from the game. Reload the page to rejoin.',
+            : code === CloseCodes.ProgressReset
+              ? 'Your teacher has reset your progress in this mission. Reload the page to start again.'
+              : 'Disconnected from the game. Reload the page to rejoin.',
         );
       }),
     ];

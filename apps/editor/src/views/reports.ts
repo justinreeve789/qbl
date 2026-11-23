@@ -1,5 +1,6 @@
 import type { ActivityLine, Api, Assignment, MessageLine, Report, StudentReport } from '../api';
-import { clear, h, help } from '../dom';
+import { ApiError } from '../api';
+import { clear, h, help, toast } from '../dom';
 import { emojiIcon } from '../icons';
 
 /** "1 h 5 min", "12 min", "40 s". */
@@ -54,7 +55,24 @@ function download(name: string, text: string) {
 const ACTIVITY: Record<string, [string, string]> = {
   join: ['Came in', '👋'], leave: ['Left', '🚪'], scene: ['Went to', '🧭'], hotspot: ['Used', '👆'], choice: ['Answered', '💬'],
   objective: ['Completed', '✅'], glossary: ['Learned the word', '📖'], award: ['Earned', '🏅'], narration: ['Listened to', '🔊'],
+  reset: ['Progress reset by', '↺'],
 };
+
+/** What the teacher is asked before resetting a student's progress: what goes, and what stays. */
+export function resetQuestion(student: Pick<StudentReport, 'name' | 'team'>, mission: string): string {
+  return [
+    `Reset ${student.name}’s progress in ${mission}?`,
+    '',
+    'Their saved game in this assignment is deleted: next time they play, they start again from the beginning. If they are playing now, they are sent back to the start within a minute.',
+    '',
+    'What stays:',
+    '• the step-by-step log and their messages (the report counts again from the reset),',
+    '• the stars, XP and badges they earned (awards they already had are not given twice),',
+    ...(student.team ? [`• what ${student.team} did together: the team’s world is shared, so a path they cleared stays cleared.`] : []),
+    '',
+    'This cannot be undone.',
+  ].join('\n');
+}
 
 type Status = 'finished' | 'progress' | 'idle';
 const STATUS: Record<Status, string> = { finished: 'Finished', progress: 'In progress', idle: 'Not started' };
@@ -239,8 +257,28 @@ export function reportView(api: Api, assignment: Assignment, back: () => void): 
             ? h('ul', { class: 'report-trail' }, ...s.scenes_visited.map((name) => h('li', { class: name === s.scene ? 'here' : null, title: name === s.scene ? 'Last seen here' : null }, name)))
             : h('p', { class: 'muted' }, 'Nowhere yet'),
           s.badges.length ? h('ul', { class: 'report-badges' }, ...s.badges.map((b) => h('li', null, emojiIcon('🏅'), b))) : null,
-          h('p', { class: 'muted small' }, s.first_seen ? `First played ${when(s.first_seen)}. Last seen ${when(s.last_seen)}${s.scene ? ` in ${s.scene}` : ''}.` : 'Has not played yet.')),
-        h('section', { class: 'report-steps' }, h('h3', null, 'Step by step'), steps)));
+          h('p', { class: 'muted small' }, s.first_seen ? `First played ${when(s.first_seen)}. Last seen ${when(s.last_seen)}${s.scene ? ` in ${s.scene}` : ''}.` : s.reset_at ? 'Has not played since the reset.' : 'Has not played yet.')),
+        h('section', { class: 'report-steps' }, h('h3', null, 'Step by step'), steps)),
+      h('div', { class: 'report-detail-foot' },
+        s.reset_at ? h('p', { class: 'muted small', 'data-reset-at': s.reset_at }, `↺ Progress reset ${when(s.reset_at)}${s.reset_by ? ` by ${s.reset_by}` : ''}. The report counts from then.`) : h('span'),
+        h('button', {
+          type: 'button', class: 'danger', 'data-action': 'reset-progress',
+          title: 'Delete this student’s saved game in this assignment, so they start the mission again',
+          onclick: async (e: Event) => {
+            if (!window.confirm(resetQuestion(s, title))) return;
+            const button = e.currentTarget as HTMLButtonElement;
+            button.disabled = true;
+            try {
+              await api.resetProgress(assignment.id, s.id);
+              logs.delete(s.id);
+              toast(`${s.name} will start ${title} again from the beginning.`);
+              await reload();
+            } catch (err) {
+              button.disabled = false;
+              toast(err instanceof ApiError || err instanceof Error ? err.message : 'Could not reset the progress.', 'error');
+            }
+          },
+        }, '↺ Reset progress')));
   };
 
   // ------------------------------------------------------------ the students
@@ -352,10 +390,15 @@ export function reportView(api: Api, assignment: Assignment, back: () => void): 
     draw();
   }
 
-  void api.report(assignment.id).then((r) => {
-    report = r;
-    draw();
-  }, (err) => clear(body, h('p', { class: 'issue error' }, err instanceof Error ? err.message : 'Could not load the report.')));
+  async function reload() {
+    try {
+      report = await api.report(assignment.id);
+      draw();
+    } catch (err) {
+      clear(body, h('p', { class: 'issue error' }, err instanceof Error ? err.message : 'Could not load the report.'));
+    }
+  }
+  void reload();
 
   const due = assignment.due_at ? new Date(`${assignment.due_at.replace(' ', 'T')}Z`) : null;
   const card = h('div', { class: 'card report', 'data-card': 'report' },

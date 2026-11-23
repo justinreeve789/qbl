@@ -26,6 +26,8 @@ use PDO;
  *   GET    teach/assignments/{id}/activity            what they did, newest first
  *   GET    teach/assignments/{id}/activity/{student}  ... one student
  *   GET    teach/assignments/{id}/messages            every message sent in the assignment's instances, for auditing
+ *   POST   teach/assignments/{id}/students/{student}/reset
+ *                                        start the student's game in the assignment again (ClassStore::resetProgress)
  *
  *   For any signed-in player:
  *   GET    players/{id}/profile          what others may see of a player: avatar, look, rank, stars, XP, badges
@@ -87,6 +89,9 @@ class ClassApi
         $admin = $role === 'admin';
         $what = $parts[1] ?? '';
         $id = isset($parts[2]) && ctype_digit($parts[2]) ? (int) $parts[2] : null;
+        if ($what === 'assignments' && $id !== null && count($parts) === 6 && $parts[3] === 'students' && ctype_digit($parts[4]) && $parts[5] === 'reset' && $method === 'POST') {
+            return [200, ['reset' => $this->classes->resetProgress($me, $id, (int) $parts[4], $admin)]];
+        }
         if ($what === 'assignments' && $id !== null && isset($parts[3]) && $method === 'GET') {
             return $this->report($me, $admin, $id, $parts[3], $parts[4] ?? null, count($parts));
         }

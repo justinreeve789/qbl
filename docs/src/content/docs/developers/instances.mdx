@@ -27,6 +27,7 @@ Save data belongs to the instance, not to the scenario:
 
 - What is **shared** (variables with scope `room`, where unique items were left) is kept once per instance, in `scenario_instances`.
 - What is **the player's own** (their variables, inventory, position, objectives) is kept once per player *per instance*, in `scenario_sessions`. A student's team game and the same student's casual game in the public instance are two saves.
+- A teacher can **reset** a student's own save in one of their assignment's instances (`POST /api/teach/assignments/{id}/students/{student}/reset`). The `scenario_sessions` row is deleted and a `reset` line is written to `activity_log`; its id is the save's token, which keeps a game server that loaded the old save from writing it back. What the instance shares, the logs, and the account's stars, XP and badges are kept.
 - Stars, XP, rank, the avatar and what was bought in the marketplace belong to the **account** and are the same everywhere.
 
 The game server refuses a player who asks for an instance they do not belong to. A teacher may join any instance of their own assignments, and an admin any instance.

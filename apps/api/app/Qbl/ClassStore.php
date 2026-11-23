@@ -327,6 +327,57 @@ class ClassStore
         return ['assignment' => $assignment, 'scenario_id' => (int) $a['scenario_id'], 'students' => $students, 'groups' => array_values(array_unique(array_merge(['a'.$a['id']], array_map(fn ($t) => 't'.$t['id'], $assignment['teams']))))];
     }
 
+    /**
+     * Start a student's game in an assignment again: their save in the instance they play in
+     * (their team's, or the assignment's) is deleted, so the next visit begins at the start.
+     * For the assignment's teacher, or an admin.
+     *
+     * What is kept: the activity and message logs (a `reset` line marks the moment, and the
+     * report counts from it), stars, XP and badges (awards already given are not given again),
+     * and what the student's team shares (the team's world is everyone's, not one student's).
+     *
+     * A game server that loaded the old save cannot write it back: the `reset` line's id is the
+     * token it must present when saving (see ActivityStore::resetToken).
+     *
+     * @return array{student_id: int, group: string, reset_at: string, reset_by: string}
+     */
+    public function resetProgress(int $teacherId, int $assignmentId, int $studentId, bool $admin = false): array
+    {
+        $on = $this->reportOn($teacherId, $assignmentId, $admin);
+        $student = null;
+        foreach ($on['students'] as $s) {
+            if ((int) $s['id'] === $studentId) {
+                $student = $s;
+            }
+        }
+        if (! $student) {
+            throw new StoreError(404, 'That student is not in this assignment.');
+        }
+        $by = (string) ($this->one('SELECT name FROM users WHERE id = ?', [$teacherId])['name'] ?? '');
+        $at = $this->now();
+        $own = ! $this->pdo->inTransaction();
+        if ($own) {
+            $this->pdo->beginTransaction();
+        }
+        try {
+            $this->run('DELETE FROM scenario_sessions WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$on['scenario_id'], $studentId, $student['group']]);
+            $this->run(
+                'INSERT INTO activity_log (scenario_id, user_id, group_key, scene_id, type, ref, label, value, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, NULL, ?)',
+                [$on['scenario_id'], $studentId, $student['group'], ActivityStore::RESET, (string) $teacherId, mb_substr($by, 0, 200) ?: null, $at],
+            );
+            if ($own) {
+                $this->pdo->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($own) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        return ['student_id' => $studentId, 'group' => $student['group'], 'reset_at' => gmdate('Y-m-d\TH:i:sP', strtotime($at.' UTC')), 'reset_by' => $by];
+    }
+
     public static function sqliteSchema(): array
     {
         return [

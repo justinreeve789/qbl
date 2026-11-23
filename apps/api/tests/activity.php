@@ -164,6 +164,31 @@ same(count($api->handle('GET', "teach/assignments/{$a['id']}/messages", [], ['id
 same(count($api->handle('GET', "teach/assignments/{$a['id']}/activity/12", [], ['id' => 1, 'role' => 'teacher'])[1]['activity']), 1, "and read one student's activity");
 same($api->handle('GET', "teach/assignments/{$a['id']}/nonsense", [], ['id' => 1, 'role' => 'teacher'])[0], 404, 'an unknown report is not found');
 
+// ---- a teacher resets a student's progress
+same([$activity->resetToken($id, 11, $t), $activity->resetToken($id, 12, $t)], [0, 0], 'a save has no reset token until a teacher resets it');
+same($activity->logActivity($id, [['user_id' => '11', 'group' => $t, 'type' => 'reset']]), 0, 'the game server cannot write a reset line');
+same($api->handle('POST', "teach/assignments/{$a['id']}/students/11/reset", [], ['id' => 2, 'role' => 'teacher'])[0], 404, "another teacher cannot reset a student's progress");
+same($api->handle('POST', "teach/assignments/{$a['id']}/students/11/reset", [], ['id' => 11, 'role' => 'student'])[0], 403, 'nor can a student');
+same($api->handle('POST', "teach/assignments/{$a['id']}/students/14/reset", [], ['id' => 1, 'role' => 'teacher'])[0], 404, 'only students in the assignment can be reset');
+same($api->handle('GET', "teach/assignments/{$a['id']}/students/11/reset", [], ['id' => 1, 'role' => 'teacher'])[0], 404, 'a reset is a POST');
+[$status, $body] = $api->handle('POST', "teach/assignments/{$a['id']}/students/11/reset", [], ['id' => 1, 'role' => 'teacher']);
+same([$status, $body['reset']['student_id'], $body['reset']['group'], $body['reset']['reset_by']], [200, 11, $t, 'Ms Tan'], "the teacher resets Ann's progress in her team's game");
+$saved = $pdo->prepare('SELECT COUNT(*) FROM scenario_sessions WHERE scenario_id = ? AND user_id = 11 AND group_key = ?');
+$saved->execute([$id, $t]);
+same((int) $saved->fetchColumn(), 0, 'her save there is deleted');
+check($activity->resetToken($id, 11, $t) > 0 && $activity->resetToken($id, 12, $t) === 0, "the reset gives Ann's save a new token, and nobody else's");
+$r = $api->handle('GET', "teach/assignments/{$a['id']}/report", [], ['id' => 1, 'role' => 'teacher'])[1]['report'];
+$ann = $r['students'][0];
+same([$ann['started'], $ann['visits'], $ann['time_spent'], $ann['answers'], $ann['questions'], $ann['scenes_visited'], $ann['first_seen']], [false, 0, 0, 0, [], [], null], 'the report counts her again from the reset');
+same([$ann['reset_by'], $ann['reset_at'] !== null], ['Ms Tan', true], 'and says who reset it, and when');
+same([$ann['objectives_done'], $ann['stars_earned'], $ann['badges'], $ann['messages']], [1, 5, ['Stream Saver'], 2], "what her team shares, her stars, badges and messages stay");
+same([$r['students'][1]['started'], $r['students'][1]['visits'], $r['students'][1]['reset_at']], [true, 1, null], "Ben's game is untouched");
+same(array_column($activity->activity($id, [$t], 11), 'type')[0], 'reset', 'the reset is a line in her step-by-step log');
+$activity->logActivity($id, [['user_id' => '11', 'group' => $t, 'scene_id' => $scene['id'], 'type' => 'join', 'ref' => (string) $scene['id']]]);
+same($api->handle('GET', "teach/assignments/{$a['id']}/report", [], ['id' => 1, 'role' => 'teacher'])[1]['report']['students'][0]['visits'], 1, 'playing again counts from the reset');
+$pdo->exec("INSERT INTO users (id, name, email, role) VALUES (30, 'Root', 'root@school.test', 'admin')");
+same($api->handle('POST', "teach/assignments/{$a['id']}/students/11/reset", [], ['id' => 30, 'role' => 'admin'])[1]['reset']['reset_by'], 'Root', 'an admin can reset progress too');
+
 same([ActivityStore::plain('Collect samples ({{samples}}/3)'), ActivityStore::plain('Welcome {{QL_PlayerName}}, find the lab'), ActivityStore::plain('Plain')], ['Collect samples', 'Welcome, find the lab', 'Plain'], 'objective text is shown without its placeholders');
 
 // ---- conditions are judged as the game judges them

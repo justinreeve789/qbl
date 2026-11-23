@@ -38,7 +38,7 @@ class ReportsTest extends TestCase
         $ben = $this->user('Ben', 'student');
         $this->as($teacher)->postJson('/api/teach/students', ['email' => 'ann@example.test'])->assertCreated();
         $this->as($teacher)->postJson('/api/teach/students', ['email' => 'ben@example.test'])->assertCreated();
-        $scenarioId = $this->as($teacher)->getJson('/api/teach/scenarios')->assertOk()->json('scenarios.0.id');
+        $scenarioId = collect($this->as($teacher)->getJson('/api/teach/scenarios')->assertOk()->json('scenarios'))->firstWhere('code', 'starshipexplorer')['id'];
         $assignment = $this->as($teacher)->postJson('/api/teach/assignments', [
             'scenario_id' => $scenarioId, 'student_ids' => [$ann->id, $ben->id], 'teams' => [['name' => 'Comets', 'student_ids' => [$ann->id]]],
         ])->assertCreated()->json('assignment');
@@ -46,10 +46,10 @@ class ReportsTest extends TestCase
         $base = "/api/internal/scenarios/$scenarioId";
 
         // A team plays in its assignment's room, and the play document says so.
-        $this->getJson("$base/access/{$ann->id}?group=$team", $internal)->assertOk()->assertExactJson(['allowed' => true, 'party' => $assignment['group'], 'team_name' => 'Comets']);
+        $this->getJson("$base/access/{$ann->id}?group=$team", $internal)->assertOk()->assertExactJson(['allowed' => true, 'party' => $assignment['group'], 'team_name' => 'Comets', 'teacher_name' => 'Teacher']);
         $this->getJson("$base/access/{$ben->id}?group=$team", $internal)->assertOk()->assertJsonPath('allowed', false);
         $this->as($ann)->getJson("/api/scenarios/starshipexplorer/play?group=$team")->assertOk()
-            ->assertJsonPath('scenario.instance', ['group' => $team, 'party' => $assignment['group'], 'team_name' => 'Comets']);
+            ->assertJsonPath('scenario.instance', ['group' => $team, 'party' => $assignment['group'], 'team_name' => 'Comets', 'teacher_name' => 'Teacher']);
 
         // The game server hands over what happened, in batches. Without the service key nobody can.
         $this->postJson("$base/activity", ['entries' => []])->assertForbidden();
@@ -78,6 +78,20 @@ class ReportsTest extends TestCase
         $this->as($teacher)->getJson("/api/teach/assignments/{$assignment['id']}/messages")->assertOk()
             ->assertJsonPath('messages.0.text', 'found one!')->assertJsonPath('messages.0.kind', 'private')->assertJsonPath('messages.0.to_name', 'Ben');
         $this->as($teacher)->getJson("/api/teach/assignments/{$assignment['id']}/activity/{$ann->id}")->assertOk()->assertJsonCount(3, 'activity');
+
+        // The teacher resets Ann's progress while a game server still has her old save loaded.
+        $this->getJson("$base/sessions/{$ann->id}?group=$team", $internal)->assertOk()->assertJsonPath('reset', 0)->assertJsonPath('session.time_elapsed', 420);
+        $this->as($ann)->postJson("/api/teach/assignments/{$assignment['id']}/students/{$ann->id}/reset")->assertForbidden();
+        $reset = $this->as($teacher)->postJson("/api/teach/assignments/{$assignment['id']}/students/{$ann->id}/reset")->assertOk()->json('reset');
+        $this->assertSame([$team, 'Teacher'], [$reset['group'], $reset['reset_by']]);
+        $fresh = $this->getJson("$base/sessions/{$ann->id}?group=$team", $internal)->assertOk()->assertJsonPath('session', null)->json('reset');
+        $this->assertGreaterThan(0, $fresh);
+        // The stale save is refused; one loaded after the reset is written.
+        $this->putJson("$base/sessions/{$ann->id}?group=$team&reset=0", ['session' => ['scene_id' => 7, 'time_elapsed' => 500]], $internal)->assertStatus(409)->assertJsonPath('reset', true);
+        $this->getJson("$base/sessions/{$ann->id}?group=$team", $internal)->assertJsonPath('session', null);
+        $this->putJson("$base/sessions/{$ann->id}?group=$team&reset=$fresh", ['session' => ['scene_id' => 7, 'time_elapsed' => 5]], $internal)->assertNoContent();
+        $row = $this->as($teacher)->getJson("/api/teach/assignments/{$assignment['id']}/report")->assertOk()->json('report.students.0');
+        $this->assertSame([true, 5, 0, 'Teacher'], [$row['started'], $row['time_spent'], $row['visits'], $row['reset_by']]);
     }
 
     public function test_an_award_can_give_a_badge_which_shows_on_the_players_profile(): void
