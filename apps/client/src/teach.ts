@@ -20,6 +20,8 @@ export interface TeachAssignment {
   group: string;
   students: Array<{ id: number; name: string; team_id: number | null }>;
   teams: Array<{ id: number; name: string; group?: string; student_ids: number[] }>;
+  /** The mission waits for its teacher and has not been launched: its students do not see it yet. */
+  waiting?: boolean;
 }
 
 /** A scenario the teacher can edit, as `GET /api/editor/scenarios` lists it. */
@@ -66,8 +68,10 @@ export function lookInLinks(a: TeachAssignment): Array<{ label: string; href: st
 }
 
 /** The short labels under an assignment's title: due date, how many students, how many teams. */
-export function assignmentTags(a: TeachAssignment, now: Date, locale?: string): Array<{ text: string; tone: 'plain' | 'team' | 'due' | 'late' }> {
-  const tags: Array<{ text: string; tone: 'plain' | 'team' | 'due' | 'late' }> = [];
+export function assignmentTags(a: TeachAssignment, now: Date, locale?: string): Array<{ text: string; tone: 'plain' | 'team' | 'due' | 'late' | 'waiting' }> {
+  const tags: Array<{ text: string; tone: 'plain' | 'team' | 'due' | 'late' | 'waiting' }> = [];
+  // Students do not see it yet: the teacher launches it from the game, or shows it on the Classes page.
+  if (a.waiting) tags.push({ text: 'Waiting for you to launch it', tone: 'waiting' });
   if (a.due_at) {
     const due = dueLabel(a.due_at, now, locale);
     tags.push({ text: due.text, tone: due.late ? 'late' : 'due' });

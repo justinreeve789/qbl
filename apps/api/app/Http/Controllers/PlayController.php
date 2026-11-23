@@ -41,6 +41,10 @@ class PlayController extends Controller
                 : response()->json(['message' => 'Unauthenticated.'], 401);
         }
         if ($user && ! $classes->mayJoin($user->id, $user->role, $scenario->id, $group)) {
+            if ($classes->waitingForLaunch($user->role, $scenario->id, $group)) {
+                return response()->json(['message' => 'This mission starts when your teacher launches it.', 'waiting_for_launch' => true], 403);
+            }
+
             return response()->json(['message' => $private && $group === 'public' ? 'This mission is for classes it has been assigned to.' : 'You are not in that team.'], 403);
         }
 

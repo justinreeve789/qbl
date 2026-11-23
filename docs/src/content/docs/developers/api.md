@@ -145,6 +145,8 @@ Endpoint | Returns
 `GET /api/teach/assignments/{id}/activity/{studentId}` | The same, for one student
 `GET /api/teach/assignments/{id}/messages` | `{ "messages": [...] }`: every message sent in the assignment's instances, newest first
 `POST /api/teach/assignments/{id}/students/{student}/reset` | `{ "reset": { "student_id", "group", "reset_at", "reset_by" } }`: deletes the student's save in the instance they play in for that assignment, so they start again. The logs, stars, XP, badges and the team's shared world are kept; the report counts from the reset (its students carry `reset_at` and `reset_by`). 404 if the student is not in the assignment
+`POST /api/teach/assignments/{id}/launch` | `{ "launch": { "assignment_id", "scenario_id", "code", "title", "launched_at", "party", "students": [{ "id", "group" }] }, "assignment": ... }`: opens the assignment to its students (a mission whose settings say `wait_for_launch` is hidden from them until then). Launching again keeps the first time. From the game, the game server calls the internal route below and also sends the students there into it
+`DELETE /api/teach/assignments/{id}/launch` | `{ "assignment": ... }`: hides it again until it is launched. An assignment carries `launched_at` and `waiting` (it waits for its teacher and has not been launched); its `scenario` carries `waits_for_launch`
 `POST /api/me/progress/reset` | `{ "reset": { "group", "reset_at", "reset_by" } }`: body `{ scenario_id, group? }`. For teachers and admins: deletes their **own** save in that instance (`public` if no group), one they may join, the same way as a student's reset (a `reset` line, the save token). 403 for students and for an instance the teacher may not join
 
 Only the assignment's teacher (or an admin) may read them.
@@ -192,6 +194,7 @@ Endpoint | Body | Returns
 `GET /scenarios/{id}/instances/{group}` | | `{ "instance": InstanceData or null }`
 `PUT /scenarios/{id}/instances/{group}` | `{ "instance": InstanceData }` | 204
 `POST /scenarios/{id}/awards` | `{ "user_id": 12, "action_id": 72090 }` | `Progress` plus `delta_stars`, `delta_xp`, `note`, `rank_up`. The action must be an `award` in the published document; a once-only award already given changes nothing. 403 for a guest
+`POST /assignments/{id}/launch` | `{ "user_id": 3 }` | `{ "launch": ... }` as `POST /api/teach/assignments/{id}/launch`, for that teacher (or admin): a teacher launched it from the game. 403 for anyone else, 404 if it is not theirs, 422 if the mission is no longer published, each with a `message` the game shows the teacher
 `GET /users/{id}/look` | | `{ "look": "1,102" }`: the ids of what the player has on, for other players to see
 `POST /scenarios/{id}/activity` | `{ "entries": [ActivityEntry] }` | `{ "kept": 12 }`. Lines for the activity log: `{user_id, group, scene_id, type, ref?, label?, value?, at}`
 `POST /scenarios/{id}/messages` | `{ "entries": [MessageEntry] }` | `{ "kept": 3 }`. Messages sent: `{user_id, name, group, scene_id, kind, to_user_id?, to_name?, text, at}`

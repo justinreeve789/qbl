@@ -451,6 +451,7 @@ test('the system variables: QL_ names, reserved, usable in conditions and placeh
     'QL_HotspotCoordinates', 'QL_ScenarioLanguage', 'QL_TimeElapsed', 'QL_VideoPlaying', 'QL_VideoTimeIndex',
     'QL_PlayerName', 'QL_TeacherName', 'QL_HasTeacher', 'QL_IsTeacher', 'QL_PhysicsEnabled',
     'QL_PlayerStars', 'QL_PlayerXP', 'QL_PlayerRank', 'QL_PlayerCount', 'QL_SceneId', 'QL_Holding',
+    'QL_NextMission',
   ]);
   assert.ok(RESERVED_VARIABLES.every((n) => n.startsWith('QL_')), 'every system variable is QL_');
   for (const old of ['QBLHotspotCoordinates', 'QBLScenarioLanguage', 'QBLTimeElapsed', 'QBLVideoPlaying', 'QBLVideoTimeIndex']) {

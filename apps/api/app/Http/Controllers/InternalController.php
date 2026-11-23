@@ -11,6 +11,7 @@ use App\Qbl\ClassStore;
 use App\Qbl\Library\AssetLibrary;
 use App\Qbl\ScenarioStore;
 use App\Qbl\ProgressStore;
+use App\Qbl\Roles;
 use App\Qbl\StoreError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -71,6 +72,24 @@ class InternalController extends Controller
     {
         // Besides yes or no: the room the instance belongs to (teams of an assignment share one) and the team's name.
         return response()->json($classes->access($user->id, $user->role, $scenario->id, self::group($request)));
+    }
+
+    /**
+     * A teacher launched one of their assignments from the game they are playing with their class
+     * ({user_id}: the teacher). The game server then sends the students who are there into it:
+     * the answer says where (the mission's code) and in which instance each student plays.
+     */
+    public function launch(Request $request, int $assignment, ClassStore $classes): JsonResponse
+    {
+        $user = User::find((int) $request->input('user_id'));
+        if (! $user || ! Roles::isStaff($user->role)) {
+            return response()->json(['message' => 'Only teachers can launch missions.'], 403);
+        }
+        try {
+            return response()->json(['launch' => $classes->launch($user->id, $assignment, $user->role === 'admin')]);
+        } catch (StoreError $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
     }
 
     /** Lines for the activity log, from which teachers' reports are made. */

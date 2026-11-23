@@ -1,7 +1,7 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
-  C2S, CloseCodes, isStaff, normalizeScenario, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
-  type ActivityEntry, type ChatBroadcast, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
+  C2S, CloseCodes, isStaff, normalizeScenario, planLaunch, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
+  type ActivityEntry, type ChatBroadcast, type LaunchBroadcast, type LaunchMessage, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
   type MessageEntry, type MoveMessage, type NoticeMessage, type ProgressMessage, type Scenario, type SceneMessage, type ShowBroadcast, type ShowMessage,
   type SnapMessage, type TrackMessage, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
 } from '@qbl/shared';
@@ -184,6 +184,9 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       });
     });
 
+    // A teacher launches one of their assignments: its students here go into it (see launch()).
+    this.onMessage(C2S.Launch, (client: Client, msg: LaunchMessage) => void this.launch(client, msg));
+
     // Characters that roam keep walking whether or not anyone is in their scene.
     this.clock.setInterval(() => {
       for (const world of this.ready.values()) world.tick();
@@ -275,6 +278,48 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   override async onDispose() {
     await Promise.all([...this.ready.keys()].map((team) => this.saveInstance(team, true)));
     await this.flushLogs();
+  }
+
+  // ---------------------------------------------------------------- launches
+
+  /**
+   * A teacher launched a mission from this game. The API opens the assignment to its students and
+   * says which instance each plays in; the students of it who are here are sent there (planLaunch),
+   * with the teacher unless they stay. With a departure scene, everyone sent is first put in that
+   * scene of this scenario, from wherever they are: their game follows them there, and the scene's
+   * travel action takes them on. Without one, their game takes them straight there.
+   */
+  private async launch(client: Client, msg: LaunchMessage) {
+    const world = this.world(client);
+    const teacher = world?.userOf(client.sessionId);
+    if (!world || !teacher || !isStaff(teacher.role)) return;
+    const assignmentId = Number(msg?.assignment_id);
+    if (!Number.isInteger(assignmentId) || assignmentId <= 0) return;
+    const via = msg.scene_id == null ? undefined : Number(msg.scene_id);
+    if (via !== undefined && !world.index.scene(via)) return this.notice(client, 'launch_failed', 'That scene is not in this mission.');
+    const answer = await services.backend.launch(teacher.id, assignmentId).catch((err: unknown) => ({ ok: false as const, message: `The mission could not be launched: ${String(err)}` }));
+    if (!answer.ok) return this.notice(client, 'launch_failed', answer.message);
+    const { plan } = answer;
+    if (Number(plan.scenario_id) === Number(this.scenario.id)) return this.notice(client, 'launch_failed', `Everyone here is already in ${plan.title}. It is open to its students now.`);
+
+    const seats = [];
+    for (const c of this.clients) {
+      const user = this.ready.get(this.teamOf.get(c.sessionId) ?? '')?.userOf(c.sessionId);
+      if (user) seats.push({ sessionId: c.sessionId, userId: user.id, role: user.role });
+    }
+    const { go, report } = planLaunch(plan, seats, client.sessionId, msg.stay === true);
+    this.notice(client, 'launched', report);
+    for (const { sessionId, group } of go) {
+      const c = this.clients.find((x: Client) => x.sessionId === sessionId);
+      const w = this.ready.get(this.teamOf.get(sessionId) ?? '');
+      if (!c || !w) continue;
+      const out: LaunchBroadcast = { code: plan.code, title: plan.title, group, by: teacher.name };
+      if (via !== undefined && w.sendToScene(sessionId, via)) {
+        out.scene_id = via;
+        this.log(c, { type: 'scene', ref: String(via), label: w.index.scene(via)?.shortname });
+      }
+      c.send(S2C.Launch, out);
+    }
   }
 
   // -------------------------------------------------------------- instances

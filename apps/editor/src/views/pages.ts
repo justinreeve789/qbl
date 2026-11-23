@@ -131,7 +131,7 @@ export function settingsPage(ctx: FormContext, deleted: () => void): HTMLElement
     part('📝 About the mission', 'var(--tone-all)', 'about',
       column(['title', 'subtitle', 'description', 'shortname', 'default_language', 'intro_media_landscape_id', 'intro_media_portrait_id'])),
     part('🎮 Who plays, and how', 'var(--ok)', 'playing',
-      setting(['visibility']),
+      setting(['visibility', 'wait_for_launch']),
       editsAllScenarios(session.role)
         ? setting(['tier'])
         : store.settings.tier === 'curricular' ? h('p', { class: 'muted', 'data-tier': 'curricular' }, '🔒 A curricular mission: teachers need a teacher plan to play and assign it.') : null,

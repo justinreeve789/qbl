@@ -8,7 +8,7 @@ import { Sidebar } from './Sidebar';
 import { infoboxView, type BoxView } from './infobox/view';
 import { benchPanel } from './benchPanel';
 import type { BenchPanelActions, BenchPanelHandle, BenchPanelSpec } from './UiPort';
-import type { AccountActions, AccountView, BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
+import type { AccountActions, AccountView, BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, LaunchChoice, LaunchView, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -715,6 +715,10 @@ export class Ui implements UiPort {
 
   teams(list: TeamRow[] | null, onFollow: (group: string) => void) {
     this.sidebar.setTeams(list, onFollow);
+  }
+
+  launches(view: LaunchView | null, launch: (choice: LaunchChoice) => void) {
+    this.sidebar.setLaunches(view, launch);
   }
 
   messaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) {

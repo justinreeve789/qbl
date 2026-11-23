@@ -2,6 +2,7 @@ import type { PlayerProfile, Progress, Scenario, ShopItem, User } from '@qbl/sha
 import { config } from '../config';
 import type { AvatarChoice, Mission } from '../home';
 import type { TeachAssignment, TeachScenario, TeacherDesk } from '../teach';
+import type { LaunchableAssignment } from '../core/GameContext';
 
 /** What someone creating an account says they are. */
 export type SignUpRole = 'student' | 'teacher';
@@ -234,6 +235,18 @@ export class Api {
       const out = a.teams.filter((t) => t.group).map((t) => ({ group: t.group!, name: t.name }));
       if (a.students.some((s) => s.team_id == null)) out.push({ group: a.group, name: 'No team' });
       return out;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * For a teacher in a game: their assignments, to launch one for the players there (LaunchFeature
+   * leaves out those of the mission being played). Empty when there is no API to ask.
+   */
+  async launchable(): Promise<LaunchableAssignment[]> {
+    try {
+      return (await this.call<{ assignments: LaunchableAssignment[] }>('GET', '/teach/assignments')).assignments;
     } catch {
       return [];
     }

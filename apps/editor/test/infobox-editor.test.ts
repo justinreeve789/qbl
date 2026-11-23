@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { infoboxRefs, validateScenario, type InfoboxAction, type Scenario } from '@qbl/shared';
+import { infoboxRefs, SYSTEM_VARIABLES, validateScenario, type InfoboxAction, type Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
 import { png, startSite, type TestSite } from './servers';
 
@@ -210,7 +210,7 @@ test('the HTML view shows the HTML, and HTML typed there comes back as blocks', 
 test('the 🔢 Variable block offers the system variables (QL_…) after the scenario\'s own', async () => {
   await insert('variable');
   await page.waitForSelector('[data-panel=variable-pick] [data-variable-pick=QL_PlayerName]');
-  assert.equal(await page.locator('[data-panel=variable-pick] [data-variable-pick^="QL_"]').count(), 16);
+  assert.equal(await page.locator('[data-panel=variable-pick] [data-variable-pick^="QL_"]').count(), SYSTEM_VARIABLES.length, 'every one of them');
   await page.click('[data-panel=variable-pick] [data-variable-pick=QL_TeacherName]');
   await page.waitForSelector('.inspector [data-var-chip=QL_TeacherName]:not(.unknown)');
   assert.match((await box()).content, /\{\{QL_TeacherName\}\}/);

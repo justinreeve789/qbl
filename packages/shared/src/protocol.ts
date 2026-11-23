@@ -51,6 +51,7 @@ export const C2S = {
   Whisper: 'whisper',
   Track: 'track',
   Walk: 'walk',
+  Launch: 'launch',
 } as const;
 
 export const S2C = {
@@ -62,6 +63,7 @@ export const S2C = {
   Progress: 'progress',
   Show: 'show',
   Whisper: 'whisper',
+  Launch: 'launch',
 } as const;
 
 export interface MoveMessage { x: number; y: number; facing: 'left' | 'right' }
@@ -91,6 +93,20 @@ export interface AnimateMessage { name: string }
 export interface WalkMessage extends Pick<WalkAction, 'character_id' | 'to' | 'position_x' | 'position_y' | 'spawn_point' | 'scene_id' | 'speed' | 'facing'> {
   ticket: string;
 }
+/**
+ * A teacher (or admin) launches one of their assignments for the players in this room: the
+ * students of that assignment who are here go into it, as does the teacher unless `stay`. With
+ * `scene_id`, a scene of this scenario they are first taken to, which plays their departure and
+ * ends with a travel action; without, they go straight there.
+ */
+export interface LaunchMessage { assignment_id: number; scene_id?: Id; stay?: boolean }
+/**
+ * To each player the launch sends: where they are going (the mission's code, its title, the instance
+ * they play in), who sent them, and the departure scene, if any. The game server has already put
+ * them in that scene; the player's game follows, and a travel action there takes them on.
+ */
+export interface LaunchBroadcast { code: string; title: string; group: string; by: string; scene_id?: Id }
+
 /** Show or hide the sender's avatar for everyone in their scene. */
 export interface AvatarMessage { visible: boolean }
 /** Sent periodically so the server can save player-scoped progress. */

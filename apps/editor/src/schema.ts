@@ -145,7 +145,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       },
       { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1', slider: { min: 0, max: 1 } },
       { key: 'repeat', label: 'Loop', kind: 'bool' },
-      { key: 'persist', label: 'Background music: keep playing across scenes', kind: 'bool', wide: true, hint: 'One music track plays at a time. Starting the same track again in the next scene does not restart it.' },
+      { key: 'persist', label: 'Replace existing background music with this audio and persist it across scenes', kind: 'bool', wide: true, hint: 'One music track plays at a time. Starting the same track again in the next scene does not restart it.' },
     ],
   },
   text_overlay: {
@@ -211,6 +211,11 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'entry_id', label: 'Word', kind: 'glossary', wide: true, hint: 'Words are defined on the Glossary page. A word marked “from the start” needs no action. A player gets each word once.' },
       { key: 'quiet', label: 'Add it without telling the player', kind: 'bool', wide: true },
     ],
+  },
+  travel: {
+    label: 'Go to the launched mission',
+    about: 'Leave for the mission the teacher launched: the last step of a departure scene (into the portal, aboard the shuttle).',
+    fields: [],
   },
   shop: {
     label: 'Open the marketplace',
@@ -399,7 +404,7 @@ export const ACTION_GROUPS: ActionGroup[] = [
   { key: 'text', label: 'Boxes and words on screen', icon: '📝', tone: '#1b8bb4', types: ['infobox', 'text_overlay'] },
   { key: 'people', label: 'Characters and the player', icon: '🧑', tone: '#d6457a', types: ['walk', 'animate', 'freeze', 'avatar'] },
   { key: 'media', label: 'Pictures, video and sound', icon: '🎞️', tone: '#8e5bd6', types: ['image_fixed', 'image_overlay', 'spritemap', 'video', 'audio', 'translate'] },
-  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'camera', 'weather', 'bench'] },
+  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'travel', 'camera', 'weather', 'bench'] },
   { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel', 'cancel_event'] },
   { key: 'progress', label: 'Rewards and progress', icon: '🏆', tone: '#3b8f4a', types: ['award', 'glossary', 'variable', 'shop'] },
 ];
@@ -414,7 +419,7 @@ const ACTION_ICONS: Record<ActionType, string> = {
   infobox: '📋', text_overlay: '🔤',
   walk: '🚶', animate: '🤸', freeze: '✋', avatar: '👤',
   image_fixed: '📌', image_overlay: '🖼️', spritemap: '🎞️', video: '🎬', audio: '🔊', translate: '↔️',
-  jump: '🚪', camera: '🎥', weather: '🌧️', bench: '🧪',
+  jump: '🚪', travel: '🚀', camera: '🎥', weather: '🌧️', bench: '🧪',
   wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️', cancel_event: '⏹️',
   award: '⭐', glossary: '📖', variable: '🔢', shop: '🛍️',
 };
@@ -519,6 +524,10 @@ export const SCENARIO_SETTINGS_FIELDS: Field[] = [
     key: 'visibility', label: 'Who can play it', kind: 'select', placeholder: 'Everyone: it is on every player’s missions page', wide: true,
     options: [['public', 'Everyone: it is on every player’s missions page'], ['private', 'Only students it is assigned to']],
     hint: 'A private mission is run by a teacher: it appears only for the students it was assigned to on the Classes page, and only its owner can assign it. This applies as soon as it is changed, without publishing.',
+  },
+  {
+    key: 'wait_for_launch', label: 'Wait for the teacher to launch it', kind: 'bool', wide: true,
+    hint: 'Students see this mission on their missions page, and can open it, only once their teacher launches it: from the game they are playing together (the 🚀 Launch a mission tab), which also sends the students there into it, or with “Show to students” on the Classes page. Until then the teacher can introduce it. This applies as soon as it is changed, without publishing.',
   },
   {
     key: 'tier', label: 'Free or curricular', kind: 'select', placeholder: 'Free: anyone can play it', wide: true,

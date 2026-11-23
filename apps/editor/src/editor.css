@@ -1555,3 +1555,8 @@ select.type-picker.add:hover { border-style: solid; background: color-mix(in srg
 .rt-math-card { padding: 8px; text-align: center; overflow-x: auto; }
 .rt-calc-card, .rt-graph-card { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; }
 .rt-calc-card code { font-weight: 600; }
+
+/* Classes: whether a mission that waits for its teacher has been launched. */
+.launch-state { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: rgba(86, 196, 160, 0.12); font-size: 13px; }
+.launch-state.waiting { background: rgba(251, 191, 36, 0.15); }
+.launch-state button.link { padding: 0; font-size: inherit; }

@@ -10,11 +10,12 @@ import { ProgressFeature } from './ProgressFeature';
 import { MovesFeature } from './MovesFeature';
 import { RewardsFeature } from './RewardsFeature';
 import { TeamsFeature } from './TeamsFeature';
+import { LaunchFeature } from './LaunchFeature';
 
 /**
  * Features that run for the whole play session, across scene changes.
  * To add one, write a GameFeature and add it here.
  */
 export function gameFeatures(): GameFeature[] {
-  return [new ConnectionFeature(), new ChatFeature(), new ObjectivesFeature(), new AttachmentsFeature(), new BagFeature(), new ProgressFeature(), new RewardsFeature(), new MovesFeature(), new PlayersFeature(), new TeamsFeature(), new GlossaryFeature()];
+  return [new ConnectionFeature(), new ChatFeature(), new ObjectivesFeature(), new AttachmentsFeature(), new BagFeature(), new ProgressFeature(), new RewardsFeature(), new MovesFeature(), new PlayersFeature(), new TeamsFeature(), new LaunchFeature(), new GlossaryFeature()];
 }

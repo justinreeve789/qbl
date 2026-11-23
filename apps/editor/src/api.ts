@@ -165,6 +165,8 @@ export interface MissionSummary {
   tier?: 'free' | 'curricular';
   /** The teacher's plan does not include it (a curricular mission without a plan). */
   locked?: boolean;
+  /** Students see it only once their teacher launches it (settings.wait_for_launch). */
+  waits_for_launch?: boolean;
 }
 
 export interface Team {
@@ -184,6 +186,10 @@ export interface Assignment {
   group: string;
   students: Array<Student & { team_id: number | null }>;
   teams: Team[];
+  /** When it was launched (or shown to the students), UTC; null if not yet. */
+  launched_at?: string | null;
+  /** The mission waits for its teacher and has not been launched: its students do not see it yet. */
+  waiting?: boolean;
 }
 
 /** How one student did in a mission, as the report gives it (App\Qbl\ActivityStore::report). */
@@ -521,6 +527,8 @@ export class Api {
   assign = async (attrs: AssignmentDraft & { scenario_id: number }) => (await this.call<{ assignment: Assignment }>('POST', '/teach/assignments', attrs)).assignment;
   updateAssignment = async (id: number, attrs: Partial<AssignmentDraft>) => (await this.call<{ assignment: Assignment }>('PUT', `/teach/assignments/${id}`, attrs)).assignment;
   unassign = (id: number) => this.call<void>('DELETE', `/teach/assignments/${id}`);
+  /** Show a mission that waits for its teacher to its students (`on`), or hide it again until it is launched. */
+  showToStudents = async (id: number, on: boolean) => (await this.call<{ assignment: Assignment }>(on ? 'POST' : 'DELETE', `/teach/assignments/${id}/launch`)).assignment;
   // Reports: how students did, what they did, and what they wrote to each other.
   report = async (id: number) => (await this.call<{ report: Report }>('GET', `/teach/assignments/${id}/report`)).report;
   activity = async (id: number, studentId?: number) => (await this.call<{ activity: ActivityLine[] }>('GET', `/teach/assignments/${id}/activity${studentId != null ? `/${studentId}` : ''}`)).activity;

@@ -1,8 +1,8 @@
 import { CHAT_MAX_LENGTH, type IconName, type ObjectiveStatus } from '@qbl/shared';
 import { emojiIcon, icon } from './icons';
-import type { ChatLine, GlossaryRow, PlayerRow, TeamRow } from './UiPort';
+import type { ChatLine, GlossaryRow, LaunchChoice, LaunchView, PlayerRow, TeamRow } from './UiPort';
 
-export type SidebarTab = 'mission' | 'bag' | 'moves' | 'players' | 'teams' | 'messages' | 'glossary';
+export type SidebarTab = 'mission' | 'bag' | 'moves' | 'players' | 'teams' | 'launch' | 'messages' | 'glossary';
 
 const TABS: Array<{ key: SidebarTab; label: string; icon: IconName }> = [
   { key: 'mission', label: 'Mission', icon: 'mission' },
@@ -10,6 +10,7 @@ const TABS: Array<{ key: SidebarTab; label: string; icon: IconName }> = [
   { key: 'moves', label: 'Moves and emotes', icon: 'moves' },
   { key: 'players', label: 'Players', icon: 'players' },
   { key: 'teams', label: 'Team you are following', icon: 'team' },
+  { key: 'launch', label: 'Launch a mission', icon: 'launch' },
   { key: 'messages', label: 'Messages', icon: 'messages' },
   { key: 'glossary', label: 'Glossary', icon: 'glossary' },
 ];
@@ -67,6 +68,12 @@ export class Sidebar {
   private playerRows: PlayerRow[] = [];
   private teamRows: TeamRow[] = [];
   private onFollow: (group: string) => void = () => {};
+  private launchView: LaunchView | null = null;
+  private onLaunch: (choice: LaunchChoice) => void = () => {};
+  /** The teacher's choices on the launch tab, kept across redraws: the way there, staying behind, the mission being confirmed. */
+  private launchVia = '';
+  private launchStay = false;
+  private launchArmed: number | null = null;
   private onPlayer: { profile(id: string): void; message?(id: string): void } = { profile() {} };
   private messaging: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null = null;
   private threads = new Map<string, Thread>();
@@ -215,6 +222,18 @@ export class Sidebar {
     this.draw('teams');
   }
 
+  /**
+   * For a teacher: their missions, to launch one for the players here, and the scenes they can be
+   * sent through first. Null: not offered.
+   */
+  setLaunches(view: LaunchView | null, launch: (choice: LaunchChoice) => void) {
+    this.launchView = view;
+    this.onLaunch = launch;
+    if (view && this.launchVia && !view.departures.some((d) => String(d.sceneId) === this.launchVia)) this.launchVia = '';
+    this.offer('launch', view != null);
+    this.draw('launch');
+  }
+
   setMessaging(o: { scene: boolean; private: boolean; send(thread: string, text: string): void } | null) {
     this.messaging = o;
     this.offer('messages', o != null && (o.scene || o.private));
@@ -323,6 +342,8 @@ export class Sidebar {
         return [this.players()];
       case 'teams':
         return this.teams();
+      case 'launch':
+        return this.launches();
       case 'messages':
         return this.messages();
       case 'glossary':
@@ -452,6 +473,84 @@ export class Sidebar {
       list.append(li);
     }
     return [intro, list];
+  }
+
+  private launches(): HTMLElement[] {
+    const view = this.launchView;
+    if (!view) return [];
+    const intro = el('p', 'qbl-sidebar-note', 'Send the students here into one of your missions. A mission that waits for you appears on their missions page once you launch it.');
+    const out: HTMLElement[] = [intro];
+
+    // The way there: straight into the mission, or through a scene of this one that plays the departure.
+    if (view.departures.length) {
+      const label = el('label', 'qbl-launch-field');
+      const via = el('select');
+      via.name = 'launch-via';
+      const straight = el('option', '', 'Straight there');
+      straight.value = '';
+      via.append(straight);
+      for (const d of view.departures) {
+        const option = el('option', '', `Through ${d.name}`);
+        option.value = String(d.sceneId);
+        via.append(option);
+      }
+      via.value = this.launchVia;
+      via.addEventListener('change', () => (this.launchVia = via.value));
+      label.append(el('span', '', 'On the way'), via);
+      out.push(label);
+    }
+    const stay = el('label', 'qbl-launch-check');
+    const box = el('input');
+    box.type = 'checkbox';
+    box.name = 'launch-go';
+    box.checked = !this.launchStay;
+    box.addEventListener('change', () => (this.launchStay = !box.checked));
+    stay.append(box, el('span', '', 'Go with them'));
+    out.push(stay);
+
+    if (!view.missions.length) {
+      out.push(el('p', 'qbl-sidebar-empty', 'You have no other missions assigned. Assign one on the Classes page, then launch it from here.'));
+      return out;
+    }
+    const list = el('ul', 'qbl-launches');
+    for (const m of view.missions) {
+      const li = el('li', m.waiting ? 'waiting' : '');
+      li.dataset.assignment = String(m.assignmentId);
+      const what = el('span', 'qbl-launch-text');
+      const state = el('small', '');
+      if (m.waiting) state.append(icon('waiting', { size: 14 }), document.createTextNode(' Waiting for you · '));
+      state.append(document.createTextNode(m.here ? `${m.here} of ${m.students} here` : `${m.students === 1 ? '1 student' : `${m.students} students`}, none here`));
+      what.append(el('strong', '', m.title), state);
+      const armed = this.launchArmed === m.assignmentId;
+      const go = el('button', `qbl-button${armed ? ' primary' : ''}`);
+      go.type = 'button';
+      go.dataset.launch = String(m.assignmentId);
+      go.append(icon('launch', { size: 18 }), el('span', '', armed ? 'Launch now' : 'Launch'));
+      go.setAttribute('aria-label', armed ? `Launch ${m.title} now` : `Launch ${m.title}`);
+      // Two presses: the first asks, the second launches. A launch moves the whole class.
+      go.addEventListener('click', () => {
+        if (this.launchArmed !== m.assignmentId) {
+          this.launchArmed = m.assignmentId;
+          this.draw('launch');
+          return;
+        }
+        this.launchArmed = null;
+        this.onLaunch({ assignmentId: m.assignmentId, sceneId: this.launchVia ? Number(this.launchVia) : undefined, stay: this.launchStay });
+        this.draw('launch');
+      });
+      li.append(what, go);
+      if (armed) {
+        const where = view.departures.find((d) => String(d.sceneId) === this.launchVia);
+        const way = where ? `through ${where.name}` : 'straight there';
+        const plan = m.here
+          ? `${m.here === 1 ? 'Its 1 student here goes' : `Its ${m.here} students here go`} ${way}${this.launchStay ? '; you stay here' : ', and you go with them'}.`
+          : `Nobody here is in it: it opens on its students’ missions page${this.launchStay ? '' : ', and you go to it'}.`;
+        li.append(el('p', 'qbl-launch-confirm', `${plan} Press again to launch.`));
+      }
+      list.append(li);
+    }
+    out.push(list);
+    return out;
   }
 
   private messages(): HTMLElement[] {

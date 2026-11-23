@@ -13,6 +13,9 @@ use PDO;
  *   - An assignment may put its students into teams. Each team plays in its own instance of the
  *     scenario; without teams, the assigned students share one instance.
  *   - A player's missions are the public scenarios plus everything assigned to them.
+ *   - A mission can wait for its teacher (`settings.wait_for_launch`): students do not see it, and
+ *     cannot join it, until the teacher launches the assignment from the game they are playing
+ *     together, or shows it to them from the Classes page (`assignments.launched_at`).
  *
  * An instance is named by a group key, which is what the game server's rooms and the save tables
  * are keyed by: "public", "a12" (assignment 12, no teams) or "t7" (team 7).
@@ -156,7 +159,7 @@ class ClassStore
             $started[$s['scenario_id'].'/'.$s['group_key']] = $s['updated_at'];
         }
         $rows = $this->all(
-            'SELECT a.id AS assignment_id, a.due_at, a.note, a.scenario_id, t.name AS teacher, s.team_id, tm.name AS team
+            'SELECT a.id AS assignment_id, a.due_at, a.note, a.scenario_id, a.launched_at, t.name AS teacher, s.team_id, tm.name AS team
              FROM assignment_student s JOIN assignments a ON a.id = s.assignment_id JOIN users t ON t.id = a.teacher_id LEFT JOIN teams tm ON tm.id = s.team_id
              WHERE s.student_id = ? ORDER BY CASE WHEN a.due_at IS NULL THEN 1 ELSE 0 END, a.due_at, a.id', [$userId],
         );
@@ -170,6 +173,9 @@ class ClassStore
             $scenario = $scenarios[(int) $r['scenario_id']] ?? null;
             if (! $scenario) {
                 continue; // unpublished or deleted since it was assigned
+            }
+            if (self::waitsForLaunch($scenario) && $r['launched_at'] === null) {
+                continue; // the teacher has not launched it yet
             }
             $group = $r['team_id'] ? 't'.$r['team_id'] : 'a'.$r['assignment_id'];
             // An assigned curricular mission is open while the teacher's plan includes it.
@@ -185,6 +191,10 @@ class ClassStore
         $staff = Roles::isStaff($this->one('SELECT role FROM users WHERE id = ?', [$userId])['role'] ?? null);
         foreach ($scenarios as $scenario) {
             if (self::visibility($scenario) !== 'public') {
+                continue;
+            }
+            // A mission that waits for a teacher reaches students only through a launched assignment.
+            if (self::waitsForLaunch($scenario) && ! $staff) {
                 continue;
             }
             $locked = ! $mine && self::isCurricular($scenario);
@@ -229,14 +239,106 @@ class ClassStore
             if ((int) $assignment['teacher_id'] === $userId) {
                 return true;
             }
+            // Its students wait until their teacher launches it (or shows it to them).
+            if (self::waitsForLaunch($scenario) && ($assignment['launched_at'] ?? null) === null) {
+                return false;
+            }
             $place = $this->one('SELECT team_id FROM assignment_student WHERE assignment_id = ? AND student_id = ?', [$assignment['id'], $userId]);
 
             // In the assignment, and in exactly this instance of it: a team's, or the one for those in no team.
             return $place !== null && ($m[1] === 't' ? (int) $place['team_id'] === (int) $m[2] : $place['team_id'] === null);
         }
 
-        // Any other name is an open group of a public scenario, as before.
-        return self::visibility($scenario) === 'public';
+        // Any other name is an open group of a public scenario, as before. One that waits for a
+        // teacher is open to teachers (to try it out) but not to students: they come through an assignment.
+        return self::visibility($scenario) === 'public' && (! self::waitsForLaunch($scenario) || Roles::isStaff($role));
+    }
+
+    /**
+     * Whether what keeps this player out of this instance is that the mission waits for its teacher:
+     * a student, in a mission marked to wait, whose assignment has not been launched (or in its public
+     * instance, which such a mission does not open to students). For the message the game shows.
+     */
+    public function waitingForLaunch(string $role, int $scenarioId, string $group): bool
+    {
+        $scenario = $this->one('SELECT id, settings FROM scenarios WHERE id = ?', [$scenarioId]);
+        if (! $scenario || ! self::waitsForLaunch($scenario) || Roles::isStaff($role)) {
+            return false;
+        }
+        $assignment = $this->assignmentOf($group);
+
+        return $assignment === null ? ! preg_match('/^[at]\d+$/', $group) : (int) $assignment['scenario_id'] === $scenarioId && $assignment['launched_at'] === null;
+    }
+
+    // ------------------------------------------------------------------ launches
+
+    /**
+     * Launch an assignment: its students see it on their missions page from now on, and may join it.
+     * The game server calls this when a teacher launches the mission from the game they are playing
+     * with their class, and then sends the students who are there into it: hence what it returns,
+     * the mission's address and which instance (group) each student plays in. Launching again is
+     * allowed (it sends whoever is there now) and keeps the first time. For the assignment's
+     * teacher, or an admin.
+     *
+     * @return array{assignment_id: int, scenario_id: int, code: string, title: string, launched_at: string, party: string, students: list<array{id: int, group: string}>}
+     */
+    public function launch(int $teacherId, int $assignmentId, bool $admin = false): array
+    {
+        $a = $admin ? $this->one('SELECT * FROM assignments WHERE id = ?', [$assignmentId]) : $this->owned($teacherId, $assignmentId);
+        if (! $a) {
+            throw new StoreError(404, 'No such assignment.');
+        }
+        $scenario = $this->one('SELECT id, code, title FROM scenarios WHERE id = ? AND published_at IS NOT NULL', [$a['scenario_id']]);
+        if (! $scenario) {
+            throw new StoreError(422, 'That mission is not published any more, so it cannot be launched.');
+        }
+        if ($a['launched_at'] === null) {
+            $this->run('UPDATE assignments SET launched_at = ?, updated_at = ? WHERE id = ?', [$this->now(), $this->now(), $assignmentId]);
+        }
+        $launchedAt = $this->one('SELECT launched_at FROM assignments WHERE id = ?', [$assignmentId])['launched_at'];
+        $students = array_map(fn ($s) => ['id' => (int) $s['student_id'], 'group' => $s['team_id'] === null ? 'a'.$assignmentId : 't'.$s['team_id']],
+            $this->all('SELECT student_id, team_id FROM assignment_student WHERE assignment_id = ? ORDER BY student_id', [$assignmentId]));
+
+        return [
+            'assignment_id' => $assignmentId, 'scenario_id' => (int) $scenario['id'], 'code' => (string) $scenario['code'], 'title' => (string) $scenario['title'],
+            'launched_at' => $launchedAt, 'party' => 'a'.$assignmentId, 'students' => $students,
+        ];
+    }
+
+    /**
+     * Take back a launch: a mission that waits for its teacher leaves the students' missions page
+     * again (for one launched by mistake). Students already playing it are not sent away, but cannot
+     * come back to it until it is launched again. For the assignment's teacher, or an admin.
+     */
+    public function unlaunch(int $teacherId, int $assignmentId, bool $admin = false): array
+    {
+        $a = $admin ? $this->one('SELECT * FROM assignments WHERE id = ?', [$assignmentId]) : $this->owned($teacherId, $assignmentId);
+        if (! $a) {
+            throw new StoreError(404, 'No such assignment.');
+        }
+        $this->run('UPDATE assignments SET launched_at = NULL, updated_at = ? WHERE id = ?', [$this->now(), $assignmentId]);
+
+        return $this->assignment($this->one('SELECT * FROM assignments WHERE id = ?', [$assignmentId]));
+    }
+
+    /** An assignment as the teacher's list shows it, by its id. Null when there is none. */
+    public function shown(int $assignmentId): ?array
+    {
+        $a = $this->one('SELECT * FROM assignments WHERE id = ?', [$assignmentId]);
+
+        return $a ? $this->assignment($a) : null;
+    }
+
+    /** The assignment an instance belongs to: a team's (`t7`) or an assignment's own (`a12`). Null for any other group. */
+    private function assignmentOf(string $group): ?array
+    {
+        if (! preg_match('/^([at])(\d+)$/', $group, $m)) {
+            return null;
+        }
+
+        return $m[1] === 't'
+            ? $this->one('SELECT a.* FROM teams t JOIN assignments a ON a.id = t.assignment_id WHERE t.id = ?', [(int) $m[2]])
+            : $this->one('SELECT * FROM assignments WHERE id = ?', [(int) $m[2]]);
     }
 
     /**
@@ -413,7 +515,7 @@ class ClassStore
     {
         return [
             'CREATE TABLE IF NOT EXISTS `teacher_student` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `teacher_id` INTEGER, `student_id` INTEGER, `created_at`, `updated_at`, UNIQUE (`teacher_id`, `student_id`))',
-            'CREATE TABLE IF NOT EXISTS `assignments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `teacher_id` INTEGER, `scenario_id` INTEGER, `due_at`, `note`, `external_id`, `created_at`, `updated_at`)',
+            'CREATE TABLE IF NOT EXISTS `assignments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `teacher_id` INTEGER, `scenario_id` INTEGER, `due_at`, `note`, `external_id`, `launched_at`, `created_at`, `updated_at`)',
             'CREATE TABLE IF NOT EXISTS `teams` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `assignment_id` INTEGER, `name`, `created_at`, `updated_at`)',
             'CREATE TABLE IF NOT EXISTS `assignment_student` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `assignment_id` INTEGER, `student_id` INTEGER, `team_id` INTEGER, `created_at`, `updated_at`, UNIQUE (`assignment_id`, `student_id`))',
         ];
@@ -483,8 +585,12 @@ class ClassStore
         }
         $scenario = $this->one('SELECT id, code, title, subtitle, description, user_id, settings, document FROM scenarios WHERE id = ?', [$a['scenario_id']]);
 
+        $card = $scenario ? self::card($scenario) : null;
+
         return [
-            'id' => (int) $a['id'], 'scenario' => $scenario ? self::card($scenario) : null, 'due_at' => $a['due_at'], 'note' => $a['note'], 'group' => 'a'.$a['id'],
+            'id' => (int) $a['id'], 'scenario' => $card, 'due_at' => $a['due_at'], 'note' => $a['note'], 'group' => 'a'.$a['id'],
+            // A mission that waits for its teacher: when it was launched, and whether its students are still waiting.
+            'launched_at' => $a['launched_at'] ?? null, 'waiting' => ($card['waits_for_launch'] ?? false) && ($a['launched_at'] ?? null) === null,
             'students' => array_map(fn ($s) => ['id' => (int) $s['id'], 'name' => $s['name'], 'email' => self::shownEmail($s['email']), 'team_id' => $s['team_id'] === null ? null : (int) $s['team_id']], $students),
             'teams' => $teams,
         ];
@@ -505,6 +611,17 @@ class ClassStore
         $settings = is_string($scenario['settings'] ?? null) ? (json_decode($scenario['settings'], true) ?: []) : ($scenario['settings'] ?? []);
 
         return ($settings['tier'] ?? 'free') === 'curricular';
+    }
+
+    /**
+     * Whether a mission waits for its teacher (settings.wait_for_launch): students see it, and can
+     * join it, only through an assignment the teacher has launched.
+     */
+    public static function waitsForLaunch(array $scenario): bool
+    {
+        $settings = is_string($scenario['settings'] ?? null) ? (json_decode($scenario['settings'], true) ?: []) : ($scenario['settings'] ?? []);
+
+        return ($settings['wait_for_launch'] ?? false) === true;
     }
 
     private static function visibility(array $scenario): string
@@ -547,7 +664,7 @@ class ClassStore
             }
         }
 
-        return ['id' => (int) $s['id'], 'code' => $s['code'], 'title' => $s['title'], 'subtitle' => $s['subtitle'] ?? null, 'description' => $s['description'] ?? null, 'image' => $image, 'visibility' => self::visibility($s), 'tier' => self::isCurricular($s) ? 'curricular' : 'free'];
+        return ['id' => (int) $s['id'], 'code' => $s['code'], 'title' => $s['title'], 'subtitle' => $s['subtitle'] ?? null, 'description' => $s['description'] ?? null, 'image' => $image, 'visibility' => self::visibility($s), 'tier' => self::isCurricular($s) ? 'curricular' : 'free', 'waits_for_launch' => self::waitsForLaunch($s)];
     }
 
     private static function date(mixed $value): ?string

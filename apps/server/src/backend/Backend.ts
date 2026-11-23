@@ -1,6 +1,6 @@
-import type { ActivityEntry, Id, InstanceData, MessageEntry, RewardMessage, Scenario, Session, User } from '@qbl/shared';
+import type { ActivityEntry, Id, InstanceData, LaunchPlan, MessageEntry, RewardMessage, Scenario, Session, User } from '@qbl/shared';
 
-export type { InstanceData, User };
+export type { InstanceData, LaunchPlan, User };
 
 /**
  * Where scenarios, identities and save data come from. The room code only
@@ -37,6 +37,12 @@ export interface Backend {
   logActivity(scenarioId: Id, entries: ActivityEntry[]): Promise<void>;
   /** Keep every message sent, in a scene or privately, so it can be audited later. */
   logMessages(scenarioId: Id, entries: MessageEntry[]): Promise<void>;
+  /**
+   * A teacher launches one of their assignments from the game: it is open to its students from
+   * now on, and the answer says where each of them plays it. Refused (with the reason, for the
+   * teacher) when it is not theirs, or not published, or this backend has no classes.
+   */
+  launch(teacherId: string, assignmentId: number): Promise<{ ok: true; plan: LaunchPlan } | { ok: false; message: string }>;
 }
 
 /** A save refused because a teacher reset the player's progress in that instance since it was loaded. */

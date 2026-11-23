@@ -242,7 +242,8 @@ export type ActionType =
   | 'walk'
   | 'weather'
   | 'camera'
-  | 'bench';
+  | 'bench'
+  | 'travel';
 
 export type Alignment =
   | 'top left' | 'top center' | 'top right'
@@ -699,8 +700,26 @@ export interface BenchAction extends ActionBase {
   on?: boolean;
 }
 
+/**
+ * [ext] Leave this scenario for the mission the player's teacher has just launched. A teacher
+ * launches one of their assignments from the game they are playing with their class (the 🚀 tab):
+ * the students there either go straight into it, or are first taken to a scene of this scenario
+ * that the teacher chooses, a departure scene (into the time portal, aboard the shuttle, through
+ * the library's magic door), whose events play it out and end with this action.
+ *
+ * Like a jump, it ends the event, and this scene's end events run before the player goes. With no
+ * mission launched for the player (they walked into the departure scene some other day), nothing
+ * happens and the event goes on to its next action: `QL_NextMission` (the launched mission's title, empty when there is none) tells the two apart.
+ * A teacher chooses as departure scenes only those with a travel action in their events.
+ */
+export interface TravelAction extends ActionBase {
+  type: 'travel';
+  /** Where to. `launched` (the default, and the only one so far): the mission the teacher launched. */
+  to?: 'launched';
+}
+
 export type Action =
-  | BenchAction
+  | BenchAction | TravelAction
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | NarrationAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | CancelEventAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction

@@ -85,6 +85,8 @@ Route::prefix('internal')->middleware(ServiceKey::class)->group(function () {
     Route::put('/scenarios/{scenario}/sessions/{user}', [InternalController::class, 'saveSession'])->whereNumber(['scenario', 'user']);
     Route::post('/scenarios/{scenario}/awards', [InternalController::class, 'award'])->whereNumber('scenario');
     Route::get('/users/{user}/look', [InternalController::class, 'look'])->whereNumber('user');
+    // A teacher launched an assignment from the game: the students there are sent into it.
+    Route::post('/assignments/{assignment}/launch', [InternalController::class, 'launch'])->whereNumber('assignment');
     // What players did and said, written in batches by the game server.
     Route::post('/scenarios/{scenario}/activity', [InternalController::class, 'logActivity'])->whereNumber('scenario');
     Route::post('/scenarios/{scenario}/messages', [InternalController::class, 'logMessages'])->whereNumber('scenario');

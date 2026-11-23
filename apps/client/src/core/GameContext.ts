@@ -3,13 +3,26 @@ import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
   canSee, escapeHtml, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
-  type GlossaryEntry, type Id, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
+  type GlossaryEntry, type Id, type LaunchBroadcast, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
 } from '@qbl/shared';
-import type { AwardAction } from '@qbl/shared';
+import type { Action, AwardAction } from '@qbl/shared';
 import type { GameConnection } from '../net/Connection';
 
 /** A team a teacher can follow: its instance key (`t7`, or `a12` for students in no team) and name. */
 export interface TeamChoice { group: string; name: string }
+
+/** An action of any type with no id of its own, to run outside the scene's events. */
+export type LooseAction = Action extends infer A ? (A extends Action ? Omit<A, 'id'> : never) : never;
+
+/** One of a teacher's assignments they could launch from here, as the API lists it. */
+export interface LaunchableAssignment {
+  id: number;
+  scenario: { id: number; title: string } | null;
+  due_at: string | null;
+  /** The mission waits for its teacher, and has not been launched yet. */
+  waiting?: boolean;
+  students: Array<{ id: number }>;
+}
 import type { UiPort } from '../ui/UiPort';
 
 export interface GameOptions {
@@ -83,6 +96,9 @@ export class GameContext {
       return n;
     });
 
+    // A teacher's launch: whether one is waiting for this player to go, and where to.
+    this.vars.provide('QL_NextMission', () => this.launched?.title ?? '');
+
     this.bag = new Bag(scenario, this.vars.get);
     this.bag.say = (text) => ui.toast(text, 2600);
     this.vars.provide('QL_Holding', () => this.bag.holding);
@@ -118,6 +134,36 @@ export class GameContext {
 
   /** Set at start-up: leave this game and join the same scenario as a member of another team. */
   followTeam: ((group: string, sceneId?: Id) => void) | null = null;
+
+  // ------------------------------------------------------------------- launches
+
+  /**
+   * The mission a teacher has just launched for this player (LaunchFeature), until they go to it:
+   * where a travel action takes them.
+   */
+  launched: LaunchBroadcast | null = null;
+
+  /** Set at start-up when there is somewhere to go: leave this game for the launched mission. */
+  goToMission: ((launch: LaunchBroadcast) => void) | null = null;
+
+  /** The launch this player has left for, once they have. */
+  departed: LaunchBroadcast | null = null;
+
+  /** Go to a launched mission, once. */
+  leaveFor(launch: LaunchBroadcast): void {
+    if (this.departed) return;
+    this.departed = launch;
+    this.goToMission?.(launch);
+  }
+
+  /**
+   * Set by the scene being played: run actions there, in order, as an event of its own would (a
+   * launch's jump to the departure scene, or its travel). Null between scenes.
+   */
+  inScene: ((actions: LooseAction[]) => Promise<void>) | null = null;
+
+  /** Set at start-up for a teacher when there is an API to ask: their assignments, to launch one from here. */
+  fetchLaunchable: (() => Promise<LaunchableAssignment[]>) | null = null;
 
   /** Set by the players feature: open the profile of the player with this session id. */
   showProfile: ((sessionId: string) => void) | null = null;

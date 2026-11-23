@@ -147,6 +147,35 @@ test('removing a student and deleting the assignment take the mission away again
   assert.deepEqual((await missions('student.ben@example.test')).map((m) => m.kind), ['public']);
 });
 
+test('a mission that waits for its teacher: hidden from students until shown (or launched from the game)', async () => {
+  await page.click('.top-nav [data-place=editor]');
+  await page.click('[data-scenario="1"] >> text=Edit');
+  await page.click('.tabs >> text=Settings');
+  await page.locator('[data-field=wait_for_launch] input[type=checkbox]').check();
+  await saved();
+  await page.click('.top-nav >> text=Classes');
+  await page.click('button:has-text("Assign a mission")');
+  const form = page.locator('[data-form=new-assignment]');
+  const option = await form.locator('select[aria-label=Mission] option').filter({ hasText: 'Starship Explorer' }).innerText();
+  assert.match(option, /waits for you to launch it/, 'the list of missions says so');
+  await form.locator('select[aria-label=Mission]').selectOption({ label: option });
+  await form.locator('button[type=submit]').click();
+  await page.waitForSelector('[data-assignment] [data-launch=waiting]');
+  assert.match(await page.innerText('[data-assignment] [data-launch]'), /Waiting for you: students do not see it yet/);
+  assert.deepEqual(await missions('student.ben@example.test'), [], 'not even as a public mission');
+
+  await page.click('[data-assignment] [data-action=show-to-students]');
+  await page.waitForSelector('[data-assignment] [data-launch=launched]');
+  assert.match(await page.innerText('[data-assignment] [data-launch]'), /Launched .*: students see it/);
+  assert.deepEqual((await missions('student.ben@example.test')).map((m) => m.kind), ['assigned']);
+
+  await page.click('[data-assignment] [data-action=hide-from-students]');
+  await page.waitForSelector('[data-assignment] [data-launch=waiting]');
+  assert.deepEqual(await missions('student.ben@example.test'), []);
+  await page.click('[data-assignment] >> text=Delete');
+  await page.waitForSelector('[data-assignment]', { state: 'detached' });
+});
+
 test('a scenario can be made private in its settings', async () => {
   await page.click('.top-nav [data-place=editor]');
   await page.click('[data-scenario="1"] >> text=Edit');

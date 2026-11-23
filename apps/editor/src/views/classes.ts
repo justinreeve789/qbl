@@ -76,7 +76,7 @@ export function classesView(api: Api): HTMLElement {
     let teams: Team[] = existing ? existing.teams.map((t) => ({ ...t, student_ids: [...t.student_ids] })) : [];
     // Curricular missions the teacher's plan does not include are listed, but cannot be chosen.
     const scenario = h('select', { 'aria-label': 'Mission' }, ...scenarios.map((s) => h('option', { value: s.id, disabled: s.locked, title: s.locked ? 'Comes with a teacher plan' : null },
-      `${s.title}${s.visibility === 'private' ? ' (private)' : ''}${s.locked ? ' 🔒 teacher plan' : ''}`)));
+      `${s.title}${s.visibility === 'private' ? ' (private)' : ''}${s.waits_for_launch ? ' (waits for you to launch it)' : ''}${s.locked ? ' 🔒 teacher plan' : ''}`)));
     const due = h('input', { type: 'datetime-local', value: toLocalInput(existing?.due_at ?? null), 'aria-label': 'Due' });
     const note = h('input', { type: 'text', maxlength: 255, value: existing?.note ?? '', placeholder: 'Optional: shown on the student’s mission card', 'aria-label': 'Note' });
     const people = h('div', { class: 'assign-people' });
@@ -181,6 +181,25 @@ export function classesView(api: Api): HTMLElement {
     return form;
   };
 
+  /**
+   * For a mission that waits for its teacher: whether its students can see it yet, and the way to
+   * show it to them (or hide it again). Launching it from the game does the same and sends the
+   * students there into it.
+   */
+  const launchLine = (a: Assignment) => {
+    if (!a.scenario?.waits_for_launch) return null;
+    const flip = (on: boolean) => async () => {
+      await api.showToStudents(a.id, on).then(load, (err) => fail(err, 'Could not change it.'));
+    };
+    return a.waiting
+      ? h('p', { class: 'launch-state waiting', 'data-launch': 'waiting' },
+          h('span', null, '⏳ Waiting for you: students do not see it yet. Launch it from the game you are playing with them (🚀 tab), or '),
+          h('button', { type: 'button', class: 'link', 'data-action': 'show-to-students', onclick: flip(true) }, 'show it to them now'), '.')
+      : h('p', { class: 'launch-state', 'data-launch': 'launched' },
+          h('span', null, `🚀 Launched${a.launched_at ? ` ${new Date(`${a.launched_at.replace(' ', 'T')}Z`).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}` : ''}: students see it. `),
+          h('button', { type: 'button', class: 'link', 'data-action': 'hide-from-students', onclick: flip(false) }, 'Hide it again'));
+  };
+
   const assignmentCard = (a: Assignment) => {
     const card = h('div', { class: 'card', 'data-assignment': a.id });
     const show = () => {
@@ -193,6 +212,7 @@ export function classesView(api: Api): HTMLElement {
         h('div', { class: 'card-title' }, h('strong', null, a.scenario?.title ?? 'A scenario that is no longer published'),
           due ? h('span', { class: `badge ${due.getTime() < Date.now() ? 'late' : ''}` }, `Due ${due.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`) : h('span', { class: 'muted' }, 'No due date')),
         a.note ? h('p', { class: 'muted' }, a.note) : null,
+        launchLine(a),
         a.teams.length
           ? h('ul', { class: 'people' },
               ...a.teams.map((t) => h('li', { 'data-team': t.id }, h('span', null, h('strong', null, t.name), ': ', names(t.student_ids)), link(t.group!))),

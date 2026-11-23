@@ -1,7 +1,7 @@
 import type * as Phaser from 'phaser';
 import {
   resolvedHandle,
-  type Action, type ActionHandle, type CameraAction, type ChoiceHandle, type WeatherAction, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
+  type Action, type ActionHandle, type CameraAction, type ChoiceHandle, type TravelAction, type WeatherAction, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
 } from '@qbl/shared';
 import type { AnimateAction, AwardAction, BenchAction, GlossaryAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
@@ -185,6 +185,20 @@ export class ActionHost implements EngineHost, PresenterContext {
 
   jump(sceneId: Id, spawnPoint?: string) {
     this.onJump(sceneId, spawnPoint);
+  }
+
+  /**
+   * A travel action: to the mission a teacher launched for this player, if there is one. In a
+   * preview there never is, so the author is told what would happen.
+   */
+  travel(_action: TravelAction): (() => void) | null {
+    const launch = this.ctx.launched;
+    if (!launch || !this.ctx.goToMission) {
+      if (!this.ctx.connection.online) this.ctx.ui.toast('Here players go on to the mission their teacher launched. Nothing is launched in a preview, so the event carries on.', 5000);
+      else this.warn('travel: no mission has been launched for this player');
+      return null;
+    }
+    return () => this.ctx.leaveFor(launch);
   }
 
   /** A cancel action named something this scene did not start: the background music from an earlier scene. */

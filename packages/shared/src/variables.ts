@@ -25,6 +25,7 @@ export const SYSTEM_VARIABLES = [
   { name: 'QL_PlayerCount', about: 'How many players are playing together (the player’s team, when there are teams).' },
   { name: 'QL_SceneId', about: 'The id of the scene the player is in.' },
   { name: 'QL_Holding', about: 'The id of the thing the player is using from their bag (while they use it), 0 otherwise.' },
+  { name: 'QL_NextMission', about: 'The title of the mission the player’s teacher has just launched for them, until they go to it; empty otherwise. A departure scene plays only when it is not empty.' },
 ] as const;
 export type SystemVariable = (typeof SYSTEM_VARIABLES)[number]['name'];
 

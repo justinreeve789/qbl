@@ -200,6 +200,54 @@ same($api->handle('PUT', 'me/avatar', ['avatar_media_id' => 6], $ann)[0], 422, "
 same($api->handle('PUT', 'me/avatar', ['avatar_media_id' => 900001], $ann)[1], ['avatar_media_id' => 900001], 'PUT me/avatar chooses one');
 same($api->handle('GET', 'avatars', [], $ann)[1]['avatar_media_id'], 900001, 'and it is remembered');
 
+// ---- missions that wait for their teacher to launch them (settings.wait_for_launch)
+$portal = $scenarios->createScenario(['title' => 'Time Portal'], 1);
+$scenarios->updateScenario((int) $portal['id'], ['settings' => ['wait_for_launch' => true] + ($portal['settings'] ?? [])]);
+$scenarios->publish((int) $portal['id']);
+$portalId = (int) $portal['id'];
+$titles = fn (int $user) => array_column($classes->missions($user), 'title');
+same(in_array('Time Portal', $titles(13), true), false, 'a public mission that waits for a teacher is not on a student’s page by itself');
+same(in_array('Time Portal', $titles(1), true), true, 'but teachers see it, to try it and assign it');
+same($classes->mayJoin(13, 'student', $portalId, 'public'), false, 'and students cannot join its public game');
+same($classes->waitingForLaunch('student', $portalId, 'public'), true, 'which is put down to it waiting for a teacher');
+same($classes->mayJoin(1, 'teacher', $portalId, 'public'), true, 'teachers can');
+$trip = $classes->assign(1, $portalId, [12, 13], null, null, [['name' => 'Red', 'student_ids' => [13]]]);
+[$tripId, $redGroup] = [$trip['id'], $trip['teams'][0]['group']];
+same([$trip['waiting'], $trip['launched_at'], $trip['scenario']['waits_for_launch']], [true, null, true], 'assigned, it waits for its teacher to launch it');
+same(in_array('Time Portal', $titles(12), true), false, 'its students do not see it yet');
+same([$classes->mayJoin(12, 'student', $portalId, "a$tripId"), $classes->mayJoin(13, 'student', $portalId, $redGroup)], [false, false], 'nor can they join it');
+same([$classes->waitingForLaunch('student', $portalId, "a$tripId"), $classes->waitingForLaunch('student', $portalId, $redGroup)], [true, true], 'because it has not been launched');
+same($classes->mayJoin(1, 'teacher', $portalId, $redGroup), true, 'its teacher can go in first');
+refused(fn () => $classes->launch(2, $tripId), 404, 'only its own teacher launches it');
+$launch = $classes->launch(1, $tripId);
+same([$launch['code'], $launch['title'], $launch['party'], $launch['students']], [$portal['code'], 'Time Portal', "a$tripId", [['id' => 12, 'group' => "a$tripId"], ['id' => 13, 'group' => $redGroup]]],
+    'launching says where it is and which game each student plays in');
+check($launch['launched_at'] !== null, 'and when it was launched');
+same(in_array('Time Portal', $titles(12), true) && in_array('Time Portal', $titles(13), true), true, 'launched, it is on its students’ pages');
+same([$classes->mayJoin(12, 'student', $portalId, "a$tripId"), $classes->mayJoin(13, 'student', $portalId, $redGroup)], [true, true], 'and they can join it');
+same($classes->mayJoin(13, 'student', $portalId, "a$tripId"), false, 'in their own team’s game only, as before');
+same($classes->waitingForLaunch('student', $portalId, $redGroup), false, 'nothing waits any more');
+$pdo->exec("UPDATE assignments SET launched_at = '2026-01-01 00:00:00' WHERE id = $tripId");
+same($classes->launch(1, $tripId)['launched_at'], '2026-01-01 00:00:00', 'launching again sends whoever is there, and keeps the first time');
+same(in_array('Time Portal', $titles(14), true), false, 'students it was not assigned to still do not see it');
+same([$classes->unlaunch(1, $tripId)['waiting'], in_array('Time Portal', $titles(12), true)], [true, false], 'hidden again, it waits once more');
+same($classes->launch(30, $tripId, true)['assignment_id'], $tripId, 'an admin can launch any assignment');
+$plain = $classes->assign(1, $openId, [12]);
+same([$plain['waiting'], $classes->launch(1, $plain['id'])['code']], [false, $open['code']], 'a mission that does not wait is never waiting, and can still be launched (to send the students there)');
+$scenarios->updateScenario($portalId, ['settings' => ['wait_for_launch' => false]]);
+$classes->unlaunch(1, $tripId);
+same(in_array('Time Portal', $titles(12), true), true, 'the setting applies at once: switched off, it shows without a launch');
+$scenarios->updateScenario($portalId, ['settings' => ['wait_for_launch' => true]]);
+// The same over HTTP.
+same($api->handle('POST', "teach/assignments/$tripId/launch", [], $ann)[0], 403, 'students cannot launch');
+[$status, $body] = $api->handle('POST', "teach/assignments/$tripId/launch", [], $tan);
+same([$status, $body['launch']['assignment_id'], $body['assignment']['waiting']], [200, $tripId, false], 'POST teach/assignments/{id}/launch launches it');
+[$status, $body] = $api->handle('DELETE', "teach/assignments/$tripId/launch", [], $tan);
+same([$status, $body['assignment']['waiting']], [200, true], 'DELETE …/launch hides it again');
+same($api->handle('POST', "teach/assignments/$tripId/launch", [], ['id' => 2, 'role' => 'teacher'])[0], 404, 'only for its own teacher');
+$pdo->exec("UPDATE scenarios SET published_at = NULL WHERE id = $portalId");
+refused(fn () => $classes->launch(1, $tripId), 422, 'an unpublished mission cannot be launched');
+
 // ---- the picture on a mission's card: its start scene's main background layer
 $card = new ReflectionMethod(ClassStore::class, 'card');
 $cardDoc = fn (array $layers) => ['id' => 1, 'code' => 'x', 'title' => 'T', 'document' => [

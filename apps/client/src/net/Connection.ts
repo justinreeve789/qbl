@@ -1,7 +1,7 @@
 import { Client, type Room } from '@colyseus/sdk';
 import {
   C2S, ROOM_NAME, S2C, scopedMap, World,
-  type ChatBroadcast, type EmoteBroadcast, type Id, type ItemMessage, type ItemRec, type JoinOptions,
+  type ChatBroadcast, type EmoteBroadcast, type Id, type ItemMessage, type ItemRec, type JoinOptions, type LaunchBroadcast, type LaunchMessage,
   type MoveMessage, type NoticeMessage, type NpcRec, type PlayerRec, type ProgressMessage, type RewardMessage, type Scenario, type SceneMessage,
   type ShowBroadcast, type ShowMessage, type SnapMessage, type TrackMessage, type User, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WorldState,
 } from '@qbl/shared';
@@ -17,6 +17,8 @@ export interface ConnectionEvents {
   show: ShowBroadcast;
   /** A private message, to this player or from them. */
   whisper: WhisperBroadcast;
+  /** A teacher launched a mission this player is in: where they are going, and the scene they go through first. */
+  launch: LaunchBroadcast;
   /** Connection lost; the SDK is retrying. */
   drop: void;
   reconnect: void;
@@ -40,7 +42,7 @@ export abstract class GameConnection {
   abstract leave(): void;
 
   private handlers: Handlers = {
-    chat: new Set(), emote: new Set(), snap: new Set(), notice: new Set(), reward: new Set(), show: new Set(), whisper: new Set(),
+    chat: new Set(), emote: new Set(), snap: new Set(), notice: new Set(), reward: new Set(), show: new Set(), whisper: new Set(), launch: new Set(),
     drop: new Set(), reconnect: new Set(), leave: new Set(),
   };
 
@@ -88,6 +90,8 @@ export abstract class GameConnection {
   track(msg: TrackMessage) { this.send(C2S.Track, msg); }
   /** A walk action for a character that roams: the server walks it, for everyone. */
   walk(msg: WalkMessage) { this.send(C2S.Walk, msg); }
+  /** For a teacher: launch one of their assignments for the players in this room. */
+  launch(msg: LaunchMessage) { this.send(C2S.Launch, msg); }
 }
 
 /** A Colyseus room on the game server. */
@@ -103,6 +107,7 @@ export class OnlineConnection extends GameConnection {
     room.onMessage(S2C.Progress, (m: RewardMessage) => this.emit('reward', m));
     room.onMessage(S2C.Show, (m: ShowBroadcast) => this.emit('show', m));
     room.onMessage(S2C.Whisper, (m: WhisperBroadcast) => this.emit('whisper', m));
+    room.onMessage(S2C.Launch, (m: LaunchBroadcast) => this.emit('launch', m));
     room.onDrop(() => this.emit('drop', undefined));
     room.onReconnect(() => this.emit('reconnect', undefined));
     room.onLeave((code: number) => this.emit('leave', code));
@@ -249,6 +254,10 @@ export class OfflineConnection extends GameConnection {
       case C2S.Walk:
         this.world.walk(id, payload as WalkMessage);
         break;
+      case C2S.Launch:
+        // Launches are of a teacher's assignments, which need the game server and the API.
+        this.emit('notice', { code: 'launch_failed', message: 'Missions are launched in a class’s game, not in a preview.' });
+        break;
       default:
     }
   }
@@ -278,6 +287,15 @@ export class OfflineConnection extends GameConnection {
   /** Another player's shown action arriving, as the server would deliver it. */
   deliver(show: ShowBroadcast) {
     this.emit('show', show);
+  }
+
+  /**
+   * A teacher's launch reaching this player, as the server would deliver it: with a departure
+   * scene, the server has put them there first (here, in the offline world). For tests.
+   */
+  launched(launch: LaunchBroadcast) {
+    if (launch.scene_id != null) this.world.sendToScene(this.sessionId, launch.scene_id);
+    this.emit('launch', launch);
   }
 
   leave() {}
