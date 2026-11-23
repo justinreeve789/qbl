@@ -74,6 +74,11 @@ function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
+/** What a teacher is asked before starting a mission of their own again. */
+export function restartQuestion(title: string): string {
+  return `Start ${title} again from the beginning?\n\nYour saved game here is deleted. Stars, XP and badges stay. This cannot be undone.`;
+}
+
 export function missionCard(mission: Mission, now: Date, locale?: string): MissionCard {
   const tags: MissionCard['tags'] = [];
   if (mission.kind === 'assigned') {
@@ -133,6 +138,11 @@ export interface HomeOptions {
   desk?: Promise<TeacherDesk>;
   /** The account is run by a school or district (rostered, or signed in through it): its plan is the school's. */
   managed?: boolean;
+  /**
+   * For teachers and admins: start a mission they have played again (their save in its instance
+   * is deleted). Offered on the cards of missions they have started. Absent: not offered.
+   */
+  onRestart?(mission: Mission): Promise<void>;
 }
 
 
@@ -302,9 +312,36 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
         body.appendChild(tags);
       }
       if (mission.note) body.appendChild(el('p', 'qbl-mission-note', mission.note));
-      body.appendChild(el('span', 'qbl-mission-go', card.action));
+      const go = el('span', 'qbl-mission-go', card.action);
+      body.appendChild(go);
       a.append(art, body);
-      cards.appendChild(a);
+      const onRestart = options.onRestart;
+      if (!staff || !onRestart || !mission.started_at || mission.locked) {
+        cards.appendChild(a);
+        continue;
+      }
+      // A button cannot sit inside the card's link, so the card and its "Start again" share a frame.
+      const frame = el('div', 'qbl-mission-frame');
+      const again = el('button', 'qbl-mission-restart');
+      again.type = 'button';
+      again.title = 'Delete your saved game in this mission, so it starts from the beginning';
+      again.dataset.action = 'restart';
+      again.append(icon('restart', { size: 16 }), el('span', undefined, 'Start again'));
+      again.addEventListener('click', async () => {
+        if (!window.confirm(restartQuestion(mission.title))) return;
+        again.disabled = true;
+        try {
+          await onRestart(mission);
+          mission.started_at = null;
+          go.textContent = missionCard(mission, now).action;
+          again.remove();
+        } catch (err) {
+          again.disabled = false;
+          window.alert(err instanceof Error ? err.message : 'Could not start the mission again.');
+        }
+      });
+      frame.append(a, again);
+      cards.appendChild(frame);
     }
     wrap.appendChild(cards);
     page.appendChild(wrap);

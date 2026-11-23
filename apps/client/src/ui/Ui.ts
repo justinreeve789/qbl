@@ -910,6 +910,8 @@ export class Ui implements UiPort {
     if (profile) actions.push({ key: 'profile', label: 'My profile and badges', icon: 'profile', run: profile });
     const shop = this.onShop;
     if (shop) actions.push({ key: 'shop', label: 'Wardrobe and marketplace', icon: 'shop', run: shop });
+    const restart = this.meActions.restart;
+    if (restart) actions.push({ key: 'restart', label: 'Start this mission again', icon: 'restart', run: restart });
     this.me.setActions(actions);
   }
 

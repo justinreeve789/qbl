@@ -1,7 +1,7 @@
 process.env.TZ = 'UTC';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { dueLabel, missionCard, whoNotice, type Mission } from '../src/home';
+import { dueLabel, missionCard, restartQuestion, whoNotice, type Mission } from '../src/home';
 
 const base: Mission = { id: 1, code: 'starshipexplorer', title: 'Starship Explorer', kind: 'public', group: 'public' };
 const now = new Date('2026-11-17T10:00:00Z');
@@ -35,3 +35,11 @@ test('the missions page tells a guest why no assigned missions are listed', () =
   assert.equal(whoNotice('admin'), null);
 });
 
+
+test('a teacher starting a mission again is told what goes and what stays', () => {
+  const q = restartQuestion('Starship Explorer');
+  assert.match(q, /^Start Starship Explorer again from the beginning\?/);
+  assert.match(q, /saved game here is deleted/);
+  assert.match(q, /Stars, XP and badges stay/);
+  assert.equal(missionCard({ ...base, started_at: null }, now).action, 'Start', 'once reset, the card says Start again rather than Continue');
+});

@@ -42,7 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Missions, avatars and the teacher's classes. One controller hands these to App\Qbl\ClassApi, which lists the routes.
-Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|me/avatar|players/[0-9]+/profile|teach(/.*)?')->middleware('auth:sanctum');
+Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|me/avatar|me/progress/reset|players/[0-9]+/profile|teach(/.*)?')->middleware('auth:sanctum');
 
 // Auth is optional here: scenarios with require_login=false can be played without a token.
 Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');

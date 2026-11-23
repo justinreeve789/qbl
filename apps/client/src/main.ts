@@ -4,7 +4,7 @@ import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { gameFeatures } from './features';
-import { buildHome } from './home';
+import { buildHome, restartQuestion } from './home';
 import { Api, ApiError, takeSignInProblem, type SignUpRole } from './net/Api';
 import { AFTER_SIGN_IN_KEY, showPlans } from './plans';
 import { OfflineConnection, OnlineConnection, type GameConnection } from './net/Connection';
@@ -392,6 +392,7 @@ async function showHome(user: User): Promise<boolean> {
       });
     },
     desk: isStaff(user.role) ? api.teacherDesk() : undefined,
+    onRestart: isStaff(user.role) ? async (m) => void (await api.resetOwnProgress(m.id, m.group)) : undefined,
     // A school-run account has a placeholder address, so no address and no password of its own.
     managed: user.role !== 'guest' && !user.email && user.has_password === false,
   }));
@@ -525,6 +526,15 @@ async function start() {
   }, {
     leave,
     profile: () => ctx.showProfile?.(connection.sessionId),
+    // A teacher trying a mission out can start it again. Their save here is deleted first, so the
+    // game is left without saving (the server refuses the old save) and the page loads afresh.
+    restart: preview || config.offline || !isStaff(user.role) || scenario.enable_save_session === false ? undefined : () => {
+      if (!window.confirm(restartQuestion(scenario.title))) return;
+      api.resetOwnProgress(Number(scenario.id), scenario.instance?.group ?? config.group ?? 'public').then(() => {
+        connection.leave();
+        window.location.reload();
+      }, (err) => ui.toast(err instanceof Error ? err.message : 'Could not start the mission again.'));
+    },
     // Signing out leaves the game and comes back to the sign-in screen.
     signOut: preview ? null : () => {
       ctx.saveProgress(true);

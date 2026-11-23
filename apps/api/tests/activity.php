@@ -189,6 +189,24 @@ same($api->handle('GET', "teach/assignments/{$a['id']}/report", [], ['id' => 1, 
 $pdo->exec("INSERT INTO users (id, name, email, role) VALUES (30, 'Root', 'root@school.test', 'admin')");
 same($api->handle('POST', "teach/assignments/{$a['id']}/students/11/reset", [], ['id' => 30, 'role' => 'admin'])[1]['reset']['reset_by'], 'Root', 'an admin can reset progress too');
 
+// ---- a teacher starts their own game again
+$pdo->prepare('INSERT INTO scenario_sessions (scenario_id, user_id, group_key, data, updated_at) VALUES (?, 1, ?, ?, ?), (?, 1, ?, ?, ?)')
+    ->execute([$id, $t, '{"scene_id":1}', '2026-11-18 11:00:00', $id, 'public', '{"scene_id":2}', '2026-11-18 11:00:00']);
+[$status, $body] = $api->handle('POST', 'me/progress/reset', ['scenario_id' => $id, 'group' => $t], ['id' => 1, 'role' => 'teacher']);
+same([$status, $body['reset']['group'], $body['reset']['reset_by']], [200, $t, 'Ms Tan'], 'a teacher resets their own game in a team they look in on');
+$mine = $pdo->prepare('SELECT group_key FROM scenario_sessions WHERE scenario_id = ? AND user_id = 1');
+$mine->execute([$id]);
+same($mine->fetchAll(PDO::FETCH_COLUMN), ['public'], 'only that save goes; their public game stays');
+check($activity->resetToken($id, 1, $t) > 0 && $activity->resetToken($id, 1, 'public') === 0, 'and only that save gets a new token');
+same($api->handle('POST', 'me/progress/reset', ['scenario_id' => $id], ['id' => 1, 'role' => 'teacher'])[1]['reset']['group'], 'public', 'without a group it is the public game');
+$mine->execute([$id]);
+same($mine->fetchAll(PDO::FETCH_COLUMN), [], 'which is then gone too');
+same($api->handle('POST', 'me/progress/reset', ['scenario_id' => $id, 'group' => $t], ['id' => 11, 'role' => 'student'])[0], 403, 'a student cannot reset their own progress');
+same($api->handle('POST', 'me/progress/reset', ['scenario_id' => $id, 'group' => $t], ['id' => 2, 'role' => 'teacher'])[0], 403, "nor can a teacher in a game they may not join");
+same($api->handle('POST', 'me/progress/reset', ['scenario_id' => 999999], ['id' => 1, 'role' => 'teacher'])[0], 404, 'an unknown mission is not found');
+same($api->handle('GET', 'me/progress/reset', [], ['id' => 1, 'role' => 'teacher'])[0], 404, 'a reset is a POST');
+same(array_column($api->handle('GET', "teach/assignments/{$a['id']}/report", [], ['id' => 1, 'role' => 'teacher'])[1]['report']['students'], 'name'), ['Ann', 'Ben', 'Cy'], "the teacher's own game is not in the report");
+
 same([ActivityStore::plain('Collect samples ({{samples}}/3)'), ActivityStore::plain('Welcome {{QL_PlayerName}}, find the lab'), ActivityStore::plain('Plain')], ['Collect samples', 'Welcome, find the lab', 'Plain'], 'objective text is shown without its placeholders');
 
 // ---- conditions are judged as the game judges them
