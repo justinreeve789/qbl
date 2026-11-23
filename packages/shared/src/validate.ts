@@ -599,6 +599,11 @@ export function validateScenario(doc: unknown): ValidationResult {
     for (const key of ['background_media', 'foreground_media'] as const) {
       (scene[key] ?? []).forEach((l, li) => needMedia(layerMediaId(l), `${sp}.${key}[${li}]`, 'image'));
     }
+    const mains = (scene.background_media ?? []).map((l, li) => ('main' in l && l.main === true ? li : -1)).filter((li) => li >= 0);
+    if (mains.length > 1) warn(`${sp}.background_media[${mains[1]}]`, 'More than one background layer is marked as the main picture; the first of them is used');
+    (scene.foreground_media ?? []).forEach((l, li) => {
+      if ('main' in l && l.main === true) warn(`${sp}.foreground_media[${li}]`, 'Only a background layer can be the main picture');
+    });
     if ((scene.background_media ?? []).length === 0 && !(scene.width && scene.height)) {
       err(sp, 'A scene needs a background image or an explicit width and height');
     }

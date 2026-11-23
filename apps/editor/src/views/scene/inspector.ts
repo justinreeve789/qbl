@@ -1,3 +1,4 @@
+import { mainLayerIndex } from '@qbl/shared';
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
@@ -199,8 +200,32 @@ function layerList(model: SceneModel, which: LayerList, title: string, about: st
     layers.length
       ? h('ul', { class: 'pick-list' }, ...layers.map((layer, index) =>
           h('li', null, h('button', { type: 'button', class: 'link', onclick: () => host.select({ kind: 'layer', which, index }) },
-            `${index + 1}. ${layer.media_id ? mediaLabel(model.store.byId('media', layer.media_id as number)) : '(no image yet)'}${layer.tile ? ' · repeated' : ''}`))))
+            `${index + 1}. ${layer.media_id ? mediaLabel(model.store.byId('media', layer.media_id as number)) : '(no image yet)'}${layer.tile ? ' · repeated' : ''}${which === 'background_media' && index === mainLayerIndex(layers) ? ' · main picture' : ''}`))))
       : h('p', { class: 'muted' }, 'None yet.'),
+  );
+}
+
+/**
+ * "Main picture" for a background layer: the picture shown for the scene in lists (the scenario
+ * list's card when this is the start scene, the scene cards and the scene map). Only one layer can
+ * be main, so ticking it unticks any other; unticking leaves none marked, and the first layer is
+ * the main picture again.
+ */
+function mainToggle(layers: Bag[], index: number, write: (next: Bag[]) => void): HTMLElement {
+  const marked = layers[index]?.main === true;
+  const isMain = mainLayerIndex(layers) === index;
+  const box = h('input', { type: 'checkbox', checked: isMain, disabled: isMain && !marked }) as HTMLInputElement;
+  box.addEventListener('change', () =>
+    write(layers.map((l, i) => {
+      const { main: _drop, ...rest } = l;
+      return i === index && box.checked ? { ...rest, main: true } : rest;
+    })));
+  return h(
+    'div',
+    { class: 'form' },
+    h('label', { class: 'field check wide', 'data-field': 'main' }, box, h('span', null, 'Main picture: show this layer for the scene in lists'),
+      help('The picture shown for this scene on its card in the scenario list (when this is the start scene), on the scene cards and on the scene map. With no layer ticked, the first background layer is used.')),
+    isMain && !marked ? h('p', { class: 'muted wide' }, 'No layer is ticked, so the first one is the main picture. Tick another layer to use it instead.') : null,
   );
 }
 
@@ -223,6 +248,7 @@ function layerPanel(model: SceneModel, ctx: FormContext, which: LayerList, index
     { class: 'panel' },
     h('div', { class: 'panel-head' }, h('h2', null, which === 'background_media' ? 'Background layer' : 'Foreground layer', help('An image the size of the scene by default. Make the scene larger than the screen and it scrolls as players walk; repeat an image and give it a drift for moving clouds or water; lower the parallax for distant scenery.'))),
     form(LAYER_FIELDS, layer, commit, ctx),
+    which === 'background_media' ? mainToggle(layers(), index, (next) => void write(next, true)) : null,
     h(
       'div',
       { class: 'row-actions' },

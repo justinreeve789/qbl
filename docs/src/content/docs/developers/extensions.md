@@ -266,6 +266,7 @@ tile | bool | false | Repeat the image to fill the display size.
 scroll_speed_x, scroll_speed_y | decimal | 0 | For tiled layers: pixels per second the texture drifts.
 parallax | decimal | 1 | How far the layer moves as the view moves along the scene. 1 moves with the world, 0 stays fixed on screen, between drifts slower as if far away (more than 1, faster, for something close). At the scene's left edge the layer's left edge shows, whatever the screen size, so a far layer needs to be only as wide as the widest view plus `parallax` times the rest of the scene.
 sky | bool | false | Part of the sky (a band of clouds, a far view): with a scene `sky`, it takes on the sky's light as it changes.
+main | bool | false | Background layers only: this layer is the scene's main picture, shown for the scene in lists (the scenario's card in the scenario list when this is the start scene, the editor's scene cards and scene map). At most one per scene; with none marked, the first background layer is the main picture. It does not change the drawing order or the scene's size, which still comes from the first background layer when the scene has no `width` and `height`.
 
 Backgrounds draw in order behind everything; foregrounds draw in order in front of avatars.
 

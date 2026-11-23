@@ -200,5 +200,15 @@ same($api->handle('PUT', 'me/avatar', ['avatar_media_id' => 6], $ann)[0], 422, "
 same($api->handle('PUT', 'me/avatar', ['avatar_media_id' => 900001], $ann)[1], ['avatar_media_id' => 900001], 'PUT me/avatar chooses one');
 same($api->handle('GET', 'avatars', [], $ann)[1]['avatar_media_id'], 900001, 'and it is remembered');
 
+// ---- the picture on a mission's card: its start scene's main background layer
+$card = new ReflectionMethod(ClassStore::class, 'card');
+$cardDoc = fn (array $layers) => ['id' => 1, 'code' => 'x', 'title' => 'T', 'document' => [
+    'start_scene_id' => 2, 'asset_base_url' => '/m',
+    'assets' => [['id' => 7, 'type' => 'image', 'url' => 'sky.png'], ['id' => 8, 'type' => 'image', 'url' => 'deck.png'], ['id' => 9, 'type' => 'image', 'url' => 'other.png']],
+    'scenes' => [['id' => 1, 'background_media' => [['media_id' => 9]]], ['id' => 2, 'background_media' => $layers]],
+]];
+same($card->invoke(null, $cardDoc([['media_id' => 7], ['media_id' => 8]]))['image'], '/m/sky.png', "with no layer marked main, the start scene's first background is the card's picture");
+same($card->invoke(null, $cardDoc([['media_id' => 7], ['media_id' => 8, 'main' => true]]))['image'], '/m/deck.png', 'a background layer marked main is the picture instead');
+
 echo $failures ? "$failures of $checks checks FAILED\n" : "classes: all $checks checks passed\n";
 exit($failures ? 1 : 0);

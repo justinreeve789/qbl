@@ -189,6 +189,44 @@ test('layers: drag a background layer to the top and it becomes the main picture
   assert.deepEqual(scene.background_media!.map(media), [sky]);
 });
 
+test('layers: tick a background layer as the main picture, for the scene in lists', async () => {
+  const media = (l: unknown) => (l as { media_id?: number; id?: number }).media_id ?? (l as { id?: number }).id;
+  const rows = '[data-section="Background layers"] li.layer-row';
+  await page.click('[title="Add: background layers"]');
+  await inspector('[data-field=media_id] select').selectOption({ label: 'guide.png' });
+  await saved();
+  await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 2, rows);
+  const mains = () => draft().then((d) => d.scenes[0]!.background_media!.map((l) => (l as { main?: boolean }).main === true));
+
+  // The new (second) layer is selected: tick it.
+  await inspector('[data-field=main] input').check();
+  await saved();
+  await page.waitForFunction((sel) => /main picture/.test(document.querySelectorAll(sel)[1]?.textContent ?? ''), rows);
+  assert.deepEqual(await mains(), [false, true], 'the second layer is marked main in the JSON');
+  assert.doesNotMatch(await page.innerText(`${rows} >> nth=0`), /main picture/, 'and the first no longer says so');
+
+  // The first layer: ticking it moves the mark, so only one layer is ever main.
+  await page.click(`${rows} >> nth=0 >> .outline-item`);
+  assert.equal(await inspector('[data-field=main] input').isChecked(), false);
+  await inspector('[data-field=main] input').check();
+  await saved();
+  assert.deepEqual(await mains(), [true, false]);
+
+  // Unticking leaves none marked: the first is the main picture again, and its box can't be unticked.
+  // (A click, not uncheck(): the box shows ticked again at once, as the first layer is now main by default.)
+  await inspector('[data-field=main] input').click();
+  await saved();
+  assert.deepEqual(await mains(), [false, false]);
+  assert.equal(await inspector('[data-field=main] input').isChecked(), true);
+  assert.equal(await inspector('[data-field=main] input').isDisabled(), true);
+  assert.match(await page.innerText(`${rows} >> nth=0`), /main picture/);
+
+  // Tidy up: remove the added layer, so the rest of the file sees one background.
+  await page.click(`${rows} >> nth=1 >> .outline-item`);
+  await page.click('text=Delete layer');
+  assert.equal((await draft()).scenes[0]!.background_media!.map(media).length, 1);
+});
+
 test('areas: move a corner, add one, remove one; add a blocked area', async () => {
   await page.click('.outline-item >> text=Area 1');
   await page.waitForSelector('.stage-overlay circle.handle');

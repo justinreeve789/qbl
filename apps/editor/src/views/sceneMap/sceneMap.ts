@@ -1,3 +1,4 @@
+import { mainLayerIndex } from '@qbl/shared';
 import type { Row } from '../../api';
 import { previewUrl } from '../../config';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
@@ -102,9 +103,10 @@ function linkKind(link: Link): ExitKind {
   return link.exits[0]!.kind;
 }
 
-/** The first background picture of a scene, to show on its box. */
+/** The main background picture of a scene (marked `main`, else the first), to show on its box. */
 function thumbnail(ctx: FormContext, scene: Row): string | null {
-  const first = (scene.background_media as Array<Record<string, unknown>> | null)?.[0];
+  const layers = scene.background_media as Array<Record<string, unknown>> | null;
+  const first = layers?.[mainLayerIndex(layers)];
   return first ? mediaUrl(ctx.store, ctx.store.byId('media', (first.media_id ?? first.id) as number | null)) : null;
 }
 
