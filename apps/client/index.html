@@ -27,32 +27,44 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-pink-500 selection:text-white overflow-x-hidden font-sans">
 
-    <!-- Header / Navbar -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-indigo-900/50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+    <!-- Header / Navbar: full width; below the xl breakpoint the links fold into a menu (site.ts opens it). -->
+    <header id="site-header" class="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-indigo-900/50">
+        <div class="w-full px-4 sm:px-6 lg:px-10 h-20 flex items-center justify-between gap-4">
             <a href="/" class="flex items-center space-x-3 shrink-0" aria-label="QuestLab home">
                 <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-pink-500/30 transform hover:scale-105 transition-transform">
                     <span class="font-heading text-2xl font-bold text-white">QL</span>
                 </div>
                 <span class="font-heading text-2xl sm:text-3xl font-bold tracking-wide bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 bg-clip-text text-transparent">QuestLab</span>
             </a>
-            <nav class="hidden lg:flex items-center space-x-8 text-sm font-medium text-slate-300">
+            <nav aria-label="Main" class="hidden xl:flex items-center gap-7 2xl:gap-8 text-sm whitespace-nowrap font-medium text-slate-300">
                 <a href="#ai-builder" class="hover:text-pink-400 transition-colors">AI Mission Builder</a>
                 <a href="#missions" class="hover:text-pink-400 transition-colors">Curriculum Quests</a>
                 <a href="#assessment" class="hover:text-pink-400 transition-colors">Assessment & Analytics</a>
                 <a href="#features" class="hover:text-pink-400 transition-colors">School Features</a>
                 <a href="#pricing" class="hover:text-pink-400 transition-colors">Pricing</a>
+                <a href="/docs/" class="hover:text-pink-400 transition-colors">Docs</a>
             </nav>
-            <div class="flex items-center space-x-3">
-                <a href="/missions" class="px-5 py-2.5 rounded-2xl border border-cyan-400/60 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-200 hover:text-white font-heading font-semibold text-sm transition-all flex items-center space-x-2">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="/missions" class="px-4 sm:px-5 py-2.5 rounded-2xl border border-cyan-400/60 bg-cyan-400/10 hover:bg-cyan-400/20 text-cyan-200 hover:text-white font-heading font-semibold text-sm transition-all flex items-center space-x-2 whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14M5 20H4a1 1 0 01-1-1V5a1 1 0 011-1h1"></path></svg>
                     <span data-login-label="My missions">Log in</span>
                 </a>
-                <a href="#demo" class="hidden sm:inline-block px-6 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-heading font-semibold text-sm shadow-lg shadow-pink-600/30 transition-all transform hover:-translate-y-0.5">
-                    Request Pilot
-                </a>
+                <button type="button" id="nav-toggle" class="xl:hidden w-11 h-11 rounded-2xl border border-indigo-800/70 bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 flex items-center justify-center transition-colors" aria-controls="mobile-nav" aria-expanded="false" aria-label="Open menu">
+                    <svg class="w-6 h-6" data-icon="open" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                    <svg class="w-6 h-6 hidden" data-icon="close" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-width="2" d="M6 6l12 12M18 6L6 18"></path></svg>
+                </button>
             </div>
         </div>
+        <nav id="mobile-nav" aria-label="Main" hidden class="xl:hidden border-t border-indigo-900/50 bg-slate-900/95 max-h-[calc(100dvh-5rem)] overflow-y-auto">
+            <ul class="px-4 sm:px-6 py-3 flex flex-col font-heading font-semibold text-base text-slate-200">
+                <li><a href="#ai-builder" class="block px-3 py-3 rounded-xl hover:bg-slate-800 hover:text-pink-400 transition-colors">AI Mission Builder</a></li>
+                <li><a href="#missions" class="block px-3 py-3 rounded-xl hover:bg-slate-800 hover:text-pink-400 transition-colors">Curriculum Quests</a></li>
+                <li><a href="#assessment" class="block px-3 py-3 rounded-xl hover:bg-slate-800 hover:text-pink-400 transition-colors">Assessment & Analytics</a></li>
+                <li><a href="#features" class="block px-3 py-3 rounded-xl hover:bg-slate-800 hover:text-pink-400 transition-colors">School Features</a></li>
+                <li><a href="#pricing" class="block px-3 py-3 rounded-xl hover:bg-slate-800 hover:text-pink-400 transition-colors">Pricing</a></li>
+                <li><a href="/docs/" class="block px-3 py-3 rounded-xl hover:bg-slate-800 hover:text-pink-400 transition-colors">Docs</a></li>
+            </ul>
+        </nav>
     </header>
 
     <main>

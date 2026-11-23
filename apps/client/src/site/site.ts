@@ -8,6 +8,45 @@ import { setUpApp } from '../pwa';
 // No account menu here to offer installing from: the browser's own offer stays.
 setUpApp({ menu: false });
 
+setUpMobileNav();
+
+/**
+ * Below the xl breakpoint (1280px) the header's links live in a drop-down menu. It closes when a link is
+ * chosen, on Escape, on a click outside the header, and when the window grows wide enough for the
+ * links to show in the bar again.
+ */
+function setUpMobileNav() {
+  const toggle = document.getElementById('nav-toggle');
+  const menu = document.getElementById('mobile-nav');
+  const header = document.getElementById('site-header');
+  if (!toggle || !menu || !header) return;
+  let isOpen = false;
+  const setOpen = (open: boolean) => {
+    isOpen = open;
+    menu.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    toggle.querySelector('[data-icon="open"]')?.classList.toggle('hidden', open);
+    toggle.querySelector('[data-icon="close"]')?.classList.toggle('hidden', !open);
+  };
+  toggle.addEventListener('click', () => setOpen(!isOpen));
+  menu.addEventListener('click', (e) => {
+    if ((e.target as Element).closest('a')) setOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen) {
+      setOpen(false);
+      toggle.focus();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (isOpen && !header.contains(e.target as Node)) setOpen(false);
+  });
+  window.matchMedia('(min-width: 80rem)').addEventListener('change', (e) => {
+    if (e.matches) setOpen(false);
+  });
+}
+
 // Bubbles pop and peeking characters rise as their part of the page scrolls into view.
 const reveal = document.querySelectorAll<HTMLElement>('[data-reveal]');
 if ('IntersectionObserver' in window) {
