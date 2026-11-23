@@ -22,6 +22,14 @@
  * - The body bobs from the legs: lowest just after contact (the knee takes the weight), highest at
  *   passing, never above where it stands.
  *
+ * - The arms swing against the legs: an arm hanging free of the body (a gap between it and the
+ *   chest, down to the hand) turns about its shoulder, forwards as the leg on its side goes back.
+ *   Hands on hips, arms folded or held up stay as they are.
+ *
+ * Nothing is cut on a hard line: each part of a leg or arm is drawn by blending the movements of
+ * the bones either side of a joint (skinning), so a knee bends rather than breaks, and the tops of
+ * the thighs and the shoulders blend into the body.
+ *
  * A picture whose legs cannot be found (a long dress, a blob) gets a gentle bob instead.
  */
 
@@ -52,6 +60,26 @@ export interface LegRig {
   /** Pixels across the leg's picture, for the bounds of its segments. */
   minX: number;
   maxX: number;
+  /**
+   * How much the foot rocks heel to toe, 0 to 1: all of it for a foot drawn from the side (its toe
+   * well in front of the ankle), little for one pointing at the viewer, which would look broken.
+   */
+  footTilt: number;
+  /** Half the leg's width just above the ankle: the foot beyond it goes with the foot, not the shin. */
+  shinHalf: number;
+}
+
+/** An arm hanging free of the body, which swings about its shoulder. */
+export interface ArmRig {
+  /** Where the arm's pixels are marked in `armOf`. */
+  id: number;
+  /** Which side of the body it hangs on, in the picture: -1 left (with the far leg), 1 right (the near one). */
+  side: -1 | 1;
+  /** What it turns about. */
+  shoulder: Point;
+  /** The row where it parts from the body (its armpit): above it the arm blends into the shoulder. */
+  armpit: number;
+  hand: Point;
 }
 
 export interface WalkRig {
@@ -72,6 +100,16 @@ export interface WalkRig {
   figureHeight: number;
   /** For each pixel, the leg it belongs to (0: the body). */
   legOf: Int8Array;
+  /** The rows above the cut whose pixels blend from the body into the thighs, so the hips have no seam. */
+  band: number;
+  /** For each pixel of those rows over the legs, the leg it blends into (0: none). */
+  bandOf: Int8Array;
+  /** The arms that swing (none when they are folded, on the hips or not apart from the body). */
+  arms: ArmRig[];
+  /** For each pixel, the arm it belongs to (0: none). */
+  armOf: Int8Array;
+  /** A leg held up in the picture (a kick, a skip) while the other stands: not drawn, the standing one walks for both. */
+  raised: Uint8Array | null;
   /** A soft shadow on the ground under the feet, which stays where it is. */
   shadow: Uint8Array | null;
   /** The shadow as drawn in every frame: with the part the standing feet hid filled in. */
@@ -93,6 +131,8 @@ export interface WalkFrame {
   drop: number;
   /** Far foot first, then near. Empty when the walk is a bob. */
   feet: FootPlace[];
+  /** Each arm's swing, degrees from hanging (above 0 the hand is in front), in the order of `rig.arms`. */
+  arms: number[];
 }
 
 export interface WalkCycle {
@@ -178,14 +218,14 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
     }
     if (shadow && shadow.some(Boolean)) shadowFill = fillShadow(src, shadow);
   }
-  const solid = (x: number, y: number) => alpha(x, y) > ALPHA && !shadow?.[y * w + x];
+  const figure = (x: number, y: number) => alpha(x, y) > ALPHA && !shadow?.[y * w + x];
   if (shadow) {
     bottom = -1;
-    for (let y = h - 1; y >= 0 && bottom < 0; y--) for (let x = 0; x < w; x++) if (solid(x, y)) (bottom = y);
+    for (let y = h - 1; y >= 0 && bottom < 0; y--) for (let x = 0; x < w; x++) if (figure(x, y)) (bottom = y);
   }
   const height = bottom - top + 1;
 
-  const runsOf = (y: number): Array<[number, number]> => {
+  const runsWhere = (y: number, solid: (x: number, y: number) => boolean): Array<[number, number]> => {
     const runs: Array<[number, number]> = [];
     let start = -1;
     let gap = 0;
@@ -197,7 +237,8 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
       } else if (start >= 0) {
         // A one-pixel gap (an outline, antialiasing) does not split a leg.
         if (x < w && ++gap <= 1) continue;
-        runs.push([start, x - gap]);
+        // The last pixel that was on (at the picture's right edge, x is already past it).
+        runs.push([start, x - gap - (x === w ? 1 : 0)]);
         start = -1;
         gap = 0;
       }
@@ -205,15 +246,24 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
     return runs;
   };
 
+  // The arms first, so a hand hanging beside a leg is not taken for part of it.
+  const { arms, armOf } = findArms(src, top, bottom, (y) => runsWhere(y, figure), figure);
+  const solid = (x: number, y: number) => figure(x, y) && !armOf[y * w + x];
+  const runsOf = (y: number) => runsWhere(y, solid);
+
   const legOf = new Int8Array(w * h);
   // Feet start near the bottom; one may stand a little higher than the other.
   const footBand = Math.max(3, Math.round(height * 0.1));
-  const ceiling = bottom - Math.round(height * 0.62);
+  // Legs end below the hips, which are below the armpits.
+  // (Taken from a pair of arms, the higher armpit: one part hanging from the body may be a leg held up.)
+  const ceiling = Math.max(bottom - Math.round(height * 0.62), arms.length === 2 ? Math.min(...arms.map((a) => a.armpit)) + Math.round(height * 0.08) : 0);
   let previous: Array<{ x0: number; x1: number; leg: number }> = [];
   let legs = 0;
   const widths: number[] = [];
   let cut = top;
   let lastWidth = 0;
+  // Each leg's edges, row by row going up.
+  const edges = new Map<number, Array<[number, number]>>();
   for (let y = bottom; y >= top; y--) {
     const inBand = y > bottom - footBand;
     const here: Array<{ x0: number; x1: number; leg: number }> = [];
@@ -227,7 +277,24 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
         for (const p of [...previous, ...here]) if (touching.includes(p.leg)) p.leg = into;
         here.push({ x0, x1, leg: into });
       } else if (touching.length > 1) merged = true;
-      else if (touching.length === 1) here.push({ x0, x1, leg: touching[0]! });
+      else if (touching.length === 1) {
+        // Something joining the leg from one side (a tail, a hand) widens it at once on that side:
+        // the leg carries on within its own edges, and what joined stays with the body. (Widening on
+        // both sides is the leg itself, or the hips.)
+        // Compared with the leg a few rows down, as a tail can join it over a few rows.
+        const leg = touching[0]!;
+        const seen = edges.get(leg) ?? [];
+        const [a, b] = seen[Math.max(0, seen.length - 6)] ?? [x0, x1];
+        const allow = Math.max(height * 0.02, (b - a + 1) * 0.35);
+        const give = Math.max(2, Math.round((b - a + 1) * 0.08));
+        // (A leaning leg moves both edges the same way; something joining it widens it on one side.)
+        let [from, to] = [x0, x1];
+        const grown = x1 - x0 - (b - a) > allow;
+        const [left, right] = [a - x0, x1 - b];
+        if (!inBand && grown && left > allow && left > 2.5 * Math.max(1, right)) from = a - give;
+        if (!inBand && grown && right > allow && right > 2.5 * Math.max(1, left)) to = b + give;
+        here.push({ x0: from, x1: to, leg });
+      }
       else if (inBand && legs < 4) here.push({ x0, x1, leg: ++legs });
     }
     if (!here.length && inBand && !merged) {
@@ -236,6 +303,7 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
       previous = [];
       legs = 0;
       widths.length = 0;
+      edges.clear();
       continue;
     }
     const width = here.reduce((n, r) => n + r.x1 - r.x0 + 1, 0) / Math.max(1, new Set(here.map((r) => r.leg)).size);
@@ -248,6 +316,12 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
       break;
     }
     for (const r of here) for (let x = r.x0; x <= r.x1; x++) legOf[y * w + x] = r.leg;
+    for (const id of new Set(here.map((r) => r.leg))) {
+      const own = here.filter((r) => r.leg === id);
+      const list = edges.get(id) ?? [];
+      list.push([Math.min(...own.map((r) => r.x0)), Math.max(...own.map((r) => r.x1))]);
+      edges.set(id, list);
+    }
     if (!inBand) widths.push(width);
     lastWidth = width;
     previous = here;
@@ -280,6 +354,12 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
 
   const ground = bottom + 1;
   if (!kept.length || ground - cut < height * 0.14) return { problem: 'No legs could be found at the bottom of the picture.' };
+  // An "arm" leaving the body at the hips is a leg (held up), not an arm.
+  for (const arm of arms.filter((a) => a.armpit >= cut - height * 0.05)) {
+    for (let i = 0; i < armOf.length; i++) if (armOf[i] === arm.id) armOf[i] = 0;
+    arms.splice(arms.indexOf(arm), 1);
+  }
+  const raised = kept.length === 1 ? raisedLeg(src, cut, bottom, solid, runsOf, legOf, kept[0]!) : null;
   const sortedWidths = [...widths].sort((a, b) => a - b);
   const legWidth = sortedWidths[Math.floor(sortedWidths.length / 2)] ?? 0;
   if (kept.length === 1 && legWidth > height * 0.16) {
@@ -337,14 +417,293 @@ export function findRig(src: Bitmap): WalkRig | { problem: string } {
     const ankleX = centre(id, ankleY - Math.max(2, footHeight * 0.5), ankleY) ?? kneeX;
     const foot: Array<[number, number]> = [];
     for (let y = ankleY; y < sole; y++) for (let x = minX; x <= maxX; x++) if (legOf[y * w + x] === id) foot.push([x + 0.5 - ankleX, y + 0.5 - ankleY]);
-    return { id, hip: { x: hipX, y: pivot }, knee: { x: kneeX, y: kneeY }, ankle: { x: ankleX, y: ankleY }, sole, footHeight, foot, minX, maxX };
+    // A foot drawn from the side sticks out in front of its ankle; one facing the viewer sticks out both ways.
+    const ahead = Math.max(0, ...foot.map(([dx]) => dx));
+    const behind = Math.max(0, ...foot.map(([dx]) => -dx));
+    const footTilt = 0.6 + 0.4 * Math.min(1, Math.max(0, ((ahead - behind) / Math.max(1, ahead + behind) - 0.1) / 0.35));
+    const shin = span(id, Math.max(cut, Math.round(ankleY - footHeight * 0.5)));
+    const shinHalf = shin ? Math.max(ankleX - shin[0], shin[1] - ankleX) + 1 : footHeight;
+    return { id, hip: { x: hipX, y: pivot }, knee: { x: kneeX, y: kneeY }, ankle: { x: ankleX, y: ankleY }, sole, footHeight, foot, minX, maxX, footTilt, shinHalf };
   });
   // Far leg first: the one further back (left, facing right).
   legRigs.sort((a, b) => a.hip.x - b.hip.x);
   const hipX = legRigs.reduce((n, l) => n + l.hip.x, 0) / legRigs.length;
   const ankle = ground - legRigs.reduce((n, l) => n + l.footHeight, 0) / legRigs.length;
+  const reach = ankle - pivot;
 
-  return { ground, cut, pivot, ankle, reach: ankle - pivot, hipX, legs: legRigs, figureHeight: height, legOf, shadow, shadowFill };
+  // The hips: the rows just above the cut, over the tops of the legs, blend into the thighs. Each
+  // pixel goes with the leg nearer to it (the near one, when one leg is drawn twice).
+  const band = Math.max(2, Math.round(reach * 0.14));
+  const bandOf = new Int8Array(w * h);
+  const tops = legRigs.map((l): [number, number] => span(l.id, cut) ?? [l.minX, l.maxX]);
+  const from = Math.min(...tops.map((t) => t[0]));
+  const to = Math.max(...tops.map((t) => t[1]));
+  for (let y = Math.max(top, cut - band); y < cut; y++) {
+    for (let x = from; x <= to; x++) {
+      if (!solid(x, y)) continue;
+      let best = legRigs[legRigs.length - 1]!;
+      if (legRigs.length > 1) for (const l of legRigs) if (Math.abs(x - l.hip.x) < Math.abs(x - best.hip.x)) best = l;
+      bandOf[y * w + x] = best.id;
+    }
+  }
+
+  return { ground, cut, pivot, ankle, reach, hipX, legs: legRigs, figureHeight: height, legOf, band, bandOf, arms, armOf, raised, shadow, shadowFill };
+}
+
+/**
+ * With only one leg on the ground, the other may be held up beside it (a kick, a skip): a big piece
+ * of the picture below the hips that is not the standing leg and does not reach the ground. It
+ * would otherwise hang there while the standing leg walks for both.
+ */
+function raisedLeg(src: Bitmap, cut: number, bottom: number, solid: (x: number, y: number) => boolean, runsOf: (y: number) => Array<[number, number]>, legOf: Int8Array, leg: number): Uint8Array | null {
+  const w = src.width;
+  const legRows = bottom + 1 - cut;
+  let legArea = 0;
+  for (let y = cut; y <= bottom; y++) for (let x = 0; x < w; x++) if (legOf[y * w + x] === leg) legArea++;
+  // The pieces of the picture in the legs' rows that are not the standing leg.
+  const seen = new Uint8Array(w * (bottom + 1));
+  const pieces: Array<{ pixels: number[]; high: number; low: number; left: number; right: number }> = [];
+  for (let y0 = cut; y0 <= bottom; y0++) {
+    for (let x0 = 0; x0 < w; x0++) {
+      const start = y0 * w + x0;
+      if (seen[start] || legOf[start] || !solid(x0, y0)) continue;
+      const piece = { pixels: [] as number[], high: y0, low: y0, left: x0, right: x0 };
+      const queue = [start];
+      seen[start] = 1;
+      while (queue.length) {
+        const at = queue.pop()!;
+        piece.pixels.push(at);
+        const x = at % w;
+        const y = (at - x) / w;
+        piece.low = Math.max(piece.low, y);
+        piece.left = Math.min(piece.left, x);
+        piece.right = Math.max(piece.right, x);
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || nx >= w || ny < cut || ny > bottom) continue;
+            const n = ny * w + nx;
+            if (!seen[n] && !legOf[n] && solid(nx, ny)) (seen[n] = 1), queue.push(n);
+          }
+        }
+      }
+      pieces.push(piece);
+    }
+  }
+  const leg2 = pieces.find((p) => p.pixels.length >= legArea * 0.35 && p.low - p.high >= legRows * 0.25 && p.low < bottom - legRows * 0.08);
+  if (!leg2) return null;
+  const raised = new Uint8Array(legOf.length);
+  // It, and crumbs of it (a lace, the edge of a sole) that came apart from it.
+  const margin = (leg2.right - leg2.left) * 0.15;
+  for (const p of pieces) {
+    if (p === leg2 || (p.pixels.length < legArea * 0.05 && p.left >= leg2.left - margin && p.right <= leg2.right + margin && p.low <= leg2.low + 2)) {
+      for (const at of p.pixels) raised[at] = 1;
+    }
+  }
+  // Rows above the legs' that rest only on it (the top of a boot just over the line) are it too.
+  for (let y = cut - 1; y >= Math.max(0, cut - legRows * 0.15); y--) {
+    let more = false;
+    for (const [x0, x1] of runsOf(y)) {
+      let on = false;
+      let other = false;
+      for (let x = Math.max(0, x0 - 1); x <= Math.min(w - 1, x1 + 1); x++) {
+        const below = (y + 1) * w + x;
+        if (raised[below]) on = true;
+        else if (solid(x, y + 1)) other = true;
+      }
+      if (on && !other) {
+        for (let x = x0; x <= x1; x++) raised[y * w + x] = 1;
+        more = true;
+      }
+    }
+    if (!more) break;
+  }
+  // The leg carries on up into the body (under a coat, into the hips). Up each column, as far as it
+  // looks like the leg's top (its colour, a few odd pixels aside); smoothed across, so the hem it
+  // leaves is a curve rather than a comb.
+  const topRows = leg2.pixels.filter((at) => at < (cut + Math.max(4, legRows * 0.06)) * w);
+  const colour = [0, 1, 2].map((c) => topRows.reduce((n, at) => n + src.data[at * 4 + c]!, 0) / Math.max(1, topRows.length));
+  const left = Math.min(...topRows.map((at) => at % w));
+  const right = Math.max(...topRows.map((at) => at % w));
+  const most = Math.round(legRows * 0.3);
+  const depth: number[] = [];
+  for (let x = left; x <= right; x++) {
+    let d = 0;
+    let odd = 0;
+    for (let up = 1; up <= most; up++) {
+      const y = cut - up;
+      const at = y * w + x;
+      if (y < 0 || !solid(x, y) || legOf[at]) break;
+      const far = Math.hypot(...[0, 1, 2].map((c) => src.data[at * 4 + c]! - colour[c]!)) > 80;
+      if (far && ++odd > 3) break;
+      if (!far) (odd = 0), (d = up);
+    }
+    depth.push(d);
+  }
+  const reach = Math.max(2, Math.round((right - left) * 0.08));
+  depth.forEach((_, i) => {
+    const near = depth.slice(Math.max(0, i - reach), i + reach + 1).sort((a, b) => a - b);
+    const d = near[Math.floor(near.length / 2)]!;
+    const x = left + i;
+    for (let up = 1; up <= d; up++) if (!legOf[(cut - up) * w + x]) raised[(cut - up) * w + x] = 1;
+  });
+  return raised;
+}
+
+/**
+ * The arms that can swing: below the shoulders, a part of the picture beside the body with a gap
+ * between them, which leaves the body at its top (the armpit) and ends in a hand, without touching
+ * the body again (a hand on a hip) or reaching the ground (a leg, a tail on the floor). Above the
+ * armpit, the outside of the shoulder goes with the arm, blending into the body.
+ */
+function findArms(src: Bitmap, top: number, bottom: number, runsAt: (y: number) => Array<[number, number]>, solid: (x: number, y: number) => boolean): { arms: ArmRig[]; armOf: Int8Array } {
+  const { width: w, height: h, data } = src;
+  const height = bottom - top + 1;
+  const armOf = new Int8Array(w * h);
+  // The middle of the body, across: half way through the figure's pixels, row by row, over its middle.
+  const middles: number[] = [];
+  for (let y = Math.round(top + height * 0.3); y <= top + height * 0.7; y++) {
+    let sum = 0;
+    let n = 0;
+    for (let x = 0; x < w; x++) if (solid(x, y)) (sum += x), n++;
+    if (n) middles.push(sum / n);
+  }
+  if (!middles.length) return { arms: [], armOf };
+  const torsoX = middles.sort((a, b) => a - b)[Math.floor(middles.length / 2)]!;
+  const bodyRun = (runs: Array<[number, number]>) => {
+    let best = -1;
+    let distance = Infinity;
+    runs.forEach(([x0, x1], i) => {
+      const d = torsoX < x0 ? x0 - torsoX : torsoX > x1 ? torsoX - x1 : 0;
+      if (d < distance) (distance = d), (best = i);
+    });
+    return best;
+  };
+
+  interface Part { side: -1 | 1; spans: Map<number, [number, number]>; top: number; last: number; fromBody: boolean; ends: 'open' | 'free' | 'body' | 'joined' }
+  const parts: Part[] = [];
+  let previous: Array<{ x0: number; x1: number; part: Part }> = [];
+  let previousBody: [number, number] | null = null;
+  const near = (a: [number, number] | null, x0: number, x1: number) => !!a && a[0] <= x1 + 2 && a[1] >= x0 - 2;
+  const from = Math.round(top + height * 0.2);
+  const until = Math.round(bottom - height * 0.04);
+  for (let y = from; y <= until; y++) {
+    const runs = runsAt(y);
+    const b = bodyRun(runs);
+    const body = b >= 0 ? runs[b]! : null;
+    const here: typeof previous = [];
+    runs.forEach(([x0, x1], i) => {
+      if (i === b) return;
+      const touching = [...new Set(previous.filter((p) => p.x0 <= x1 + 1 && p.x1 >= x0 - 1).map((p) => p.part))];
+      let part: Part;
+      if (touching.length === 1) part = touching[0]!;
+      else {
+        part = { side: (x0 + x1) / 2 < torsoX ? -1 : 1, spans: new Map(), top: y, last: y, fromBody: y > from && near(previousBody, x0, x1), ends: 'open' };
+        parts.push(part);
+        for (const t of touching) t.ends = 'joined'; // two parts meeting: not a plain arm
+        if (touching.length > 1) part.ends = 'joined';
+      }
+      const had = part.spans.get(y);
+      part.spans.set(y, had ? [Math.min(had[0], x0), Math.max(had[1], x1)] : [x0, x1]);
+      part.last = y;
+      here.push({ x0, x1, part });
+    });
+    // Parts that stopped: did they run back into the body (a hand on the hip), or end in a hand?
+    for (const p of new Set(previous.map((q) => q.part))) {
+      if (p.ends !== 'open' || here.some((q) => q.part === p)) continue;
+      const last = p.spans.get(p.last)!;
+      p.ends = near(body, last[0], last[1]) ? 'body' : 'free';
+    }
+    previous = here;
+    previousBody = body;
+  }
+
+  const arms: ArmRig[] = [];
+  for (const p of parts) {
+    const long = p.last - p.top + 1;
+    // It hangs from the body, ends in a hand below the middle of the figure (not a plait beside the
+    // face), and does not reach the ground.
+    if (!p.fromBody || p.ends !== 'free' || long < height * 0.07 || p.top < top + height * 0.15 || p.last < top + height * 0.5 || p.last > bottom - height * 0.1) continue;
+    // Not too wide for an arm (a wing, a cape, a big bag).
+    const widths = [...p.spans.values()].map(([a, b]) => b - a + 1).sort((a, b) => a - b);
+    const width = widths[Math.floor(widths.length / 2)]!;
+    if (width > height * 0.16 || width > long * 1.2) continue;
+    const id = arms.length + 1;
+    if (id > 2) break;
+    const first = p.spans.get(p.top)!;
+    const armWidth = Math.max(...[...p.spans.entries()].filter(([y]) => y < p.top + Math.max(3, long * 0.2)).map(([, [a, b]]) => b - a + 1));
+    const shoulder = { x: (first[0] + first[1]) / 2 + p.side * armWidth * 0.1, y: Math.max(top + height * 0.12, p.top - Math.round(armWidth * 0.9)) };
+    for (const [y, [x0, x1]] of p.spans) for (let x = x0; x <= x1; x++) if (solid(x, y)) armOf[y * w + x] = id;
+    // The outside of the shoulder, above the armpit: beyond the arm's inner edge.
+    const inner = p.side < 0 ? first[1] : first[0];
+    for (let y = Math.ceil(shoulder.y); y < p.top; y++) {
+      for (let x = 0; x < w; x++) {
+        const outside = p.side < 0 ? x <= inner && x >= first[0] - armWidth : x >= inner && x <= first[1] + armWidth;
+        if (outside && solid(x, y)) armOf[y * w + x] = id;
+      }
+    }
+    // Fingers touching something else (a leg, a pocket) carry on past where the arm stood apart:
+    // from the lower arm, outwards into what touches it and looks like the hand, not far.
+    const end = p.spans.get(p.last)!;
+    const palm = [...p.spans.entries()].filter(([y]) => y > p.last - Math.max(3, long * 0.15));
+    const colours: number[][] = [];
+    for (const [y, [x0, x1]] of palm) for (let x = x0; x <= x1; x++) if (solid(x, y)) colours.push([0, 1, 2].map((c) => data[(y * w + x) * 4 + c]!));
+    const colour = [0, 1, 2].map((c) => colours.reduce((n, k) => n + k[c]!, 0) / Math.max(1, colours.length));
+    const reach = Math.max(3, height * 0.04);
+    // What the hand touches, for comparison: the rest of the figure around the hand.
+    const around: number[][] = [];
+    for (let y = Math.round(p.top + long / 2); y <= Math.min(bottom, p.last + reach); y++) {
+      for (let x = Math.max(0, Math.round(end[0] - reach)); x <= Math.min(w - 1, end[1] + reach); x++) if (solid(x, y) && !armOf[y * w + x]) around.push([0, 1, 2].map((c) => data[(y * w + x) * 4 + c]!));
+    }
+    const other = [0, 1, 2].map((c) => around.reduce((n, k) => n + k[c]!, 0) / Math.max(1, around.length));
+    const handLike = (at: number) => {
+      const d = (k: number[]) => Math.hypot(...[0, 1, 2].map((c) => data[at * 4 + c]! - k[c]!));
+      return around.length ? d(colour) < d(other) && d(colour) < 160 : d(colour) < 60;
+    };
+    const queue: number[] = [];
+    for (const [y, [x0, x1]] of p.spans) if (y > p.top + long / 2) for (let x = x0; x <= x1; x++) if (armOf[y * w + x] === id) queue.push(y * w + x);
+    let last = p.last;
+    while (queue.length) {
+      const at = queue.pop()!;
+      const x = at % w;
+      const y = (at - x) / w;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= w || ny < p.top || ny > bottom || armOf[ny * w + nx] || !solid(nx, ny)) continue;
+        if (nx < end[0] - reach || nx > end[1] + reach || ny > p.last + reach) continue;
+        if (!handLike(ny * w + nx)) continue;
+        armOf[ny * w + nx] = id;
+        last = Math.max(last, ny);
+        queue.push(ny * w + nx);
+      }
+    }
+    // And the hand's outline there: dark pixels lying mostly against the hand.
+    const dark = (at: number) => data[at * 4]! + data[at * 4 + 1]! + data[at * 4 + 2]! < 240;
+    for (let pass = 0; pass < 2; pass++) {
+      const taken: number[] = [];
+      for (let y = Math.round(p.top + long / 2); y <= Math.min(bottom, last + 2); y++) {
+        for (let x = Math.max(1, Math.round(end[0] - reach)); x <= Math.min(w - 2, end[1] + reach); x++) {
+          const at = y * w + x;
+          if (armOf[at] || !solid(x, y) || !dark(at)) continue;
+          let arm = 0;
+          let rest = 0;
+          for (let j = -1; j <= 1; j++) {
+            for (let i = -1; i <= 1; i++) {
+              const n = (y + j) * w + x + i;
+              if (armOf[n] === id) arm++;
+              else if (solid(x + i, y + j) && !dark(n)) rest++;
+            }
+          }
+          if (arm >= 2 && rest <= 1) taken.push(at);
+        }
+      }
+      for (const at of taken) armOf[at] = id;
+    }
+    arms.push({ id, side: p.side, shoulder, armpit: p.top, hand: { x: (end[0] + end[1]) / 2, y: last } });
+  }
+  return { arms, armOf };
 }
 
 /** The shadow by itself, each row's gaps (where the feet stood on it) filled with that row's shade. */
@@ -408,16 +767,15 @@ export function walkCycle(src: Bitmap, options: { stride?: number } = {}): WalkC
     const place = (i: number): FootPlace => {
       const plan = PLAN[phases[i]!]!;
       const leg = legs[i]!;
-      const tilt = (plan.tilt * Math.PI) / 180;
+      const degrees = plan.tilt * leg.footTilt;
       // The foot turned with its tilt: its lowest pixel is what touches the ground (the heel when
       // landing, the toe when pushing off), so the ankle goes that far above the ground.
-      let low = 0;
-      for (const [dx, dy] of leg.foot) low = Math.max(low, dx * Math.sin(tilt) + dy * Math.cos(tilt) + 0.5);
+      const low = footLow(leg, degrees);
       // Each foot keeps to its own ground: in a three-quarter view the far foot stands a little higher.
       const onGround = leg.sole - low;
       const y = plan.planted ? onGround : Math.min(onGround, leg.sole - leg.footHeight - plan.lift * R);
       // Both feet step along one line under the middle of the hips, so they meet when passing.
-      return { ankle: { x: margin + rig.hipX + plan.x * step, y }, sole: y + low, planted: plan.planted, tilt: plan.tilt };
+      return { ankle: { x: margin + rig.hipX + plan.x * step, y }, sole: y + low, planted: plan.planted, tilt: degrees };
     };
     const feet = [place(0), place(1)];
     let hipY = rig.ankle - heights[f % 3]! * R;
@@ -437,19 +795,83 @@ export function walkCycle(src: Bitmap, options: { stride?: number } = {}): WalkC
       const fill = rig.shadowFill;
       for (let y = 0; y < fill.height; y++) for (let x = 0; x < fill.width; x++) over(out, (y * W + x + margin) * 4, fill.data, (y * fill.width + x) * 4, 1);
     }
+    const body: Bone = { from: { x: 0, y: 0 }, to: { x: margin, y: drop }, turn: 0 };
+    const skin = new Skin(src, W, H);
+
+    // The arms swing against the legs on their side: forwards as that leg goes back.
+    const swings = rig.arms.map((arm) => {
+      const phase = phases[arm.side < 0 ? 0 : 1]!;
+      return -ARM_SWING * Math.cos((2 * Math.PI * phase) / WALK_FRAMES);
+    });
+    // The shoulders as they stand, under the arms: an arm swinging away shows its sleeve, not a notch.
+    skin.draw(out, (x, y) => !!rig.armOf[y * src.width + x] && y < rig.arms.find((a) => a.id === rig.armOf[y * src.width + x])!.armpit, () => [[body, 1]], 1);
+    const drawArm = (k: number) => {
+      const arm = rig.arms[k]!;
+      const bone: Bone = { from: arm.shoulder, to: { x: arm.shoulder.x + margin, y: arm.shoulder.y + drop }, turn: (swings[k]! * Math.PI) / 180 };
+      const blend = Math.max(3, arm.armpit - arm.shoulder.y);
+      skin.draw(out, (x, y) => rig.armOf[y * src.width + x] === arm.id, (_x, y) => {
+        const t = smooth((y - arm.shoulder.y) / blend);
+        return t >= 1 ? [[bone, 1]] : [[body, 1 - t], [bone, t]];
+      }, 1);
+    };
+    // The far arm (on the left) behind everything, the near one in front.
+    rig.arms.forEach((arm, k) => arm.side < 0 && drawArm(k));
+    // The hips as they stand, under the legs: where a thigh's top moves aside, it shows the hips
+    // rather than a hole.
+    skin.draw(out, (x, y) => !!rig.bandOf[y * src.width + x], () => [[body, 1]], 1);
+
     legs.forEach((leg, i) => {
       const hip = { x: hipsX[i]!, y: hipY };
       const [l1, l2] = lengths[i]!;
       const foot = feet[i]!;
-      const { knee, ankle } = solve(hip, foot.ankle, l1, l2);
-      const thigh = angleOf(knee.x - hip.x, knee.y - hip.y) - angleOf(leg.knee.x - leg.hip.x, leg.knee.y - leg.hip.y);
-      const shin = angleOf(ankle.x - knee.x, ankle.y - knee.y) - angleOf(leg.ankle.x - leg.knee.x, leg.ankle.y - leg.knee.y);
+      let { knee, ankle } = solve(hip, foot.ankle, l1, l2);
+      const shinOf = (k: Point, a: Point) => angleOf(a.x - k.x, a.y - k.y) - angleOf(leg.ankle.x - leg.knee.x, leg.ankle.y - leg.knee.y);
+      // A foot off the ground hangs from the shin, and one pushing off peels up from its toe as the
+      // shin leans back: it turns part of the way with the shin (an ankle bent far would look broken).
+      // Then the leg is solved again for where that puts the ankle: a planted foot still touches the
+      // ground, a lifted one still clears it.
+      const pushing = foot.planted && foot.tilt > 0;
+      if (!foot.planted || pushing) {
+        const follow = foot.planted ? 0.35 : 0.5;
+        const turn = (1 - follow) * ((-foot.tilt * Math.PI) / 180) + follow * shinOf(knee, ankle);
+        const degrees = (-turn * 180) / Math.PI;
+        if (!pushing || degrees > foot.tilt) {
+          const low = footLow(leg, degrees);
+          const y = foot.planted ? leg.sole - low : Math.min(foot.ankle.y, leg.sole - low - Math.max(2, R * 0.03));
+          foot.tilt = degrees;
+          foot.ankle = { x: foot.ankle.x, y };
+          foot.sole = y + low;
+          ({ knee, ankle } = solve(hip, foot.ankle, l1, l2));
+        }
+      }
+      const thighTurn = angleOf(knee.x - hip.x, knee.y - hip.y) - angleOf(leg.knee.x - leg.hip.x, leg.knee.y - leg.hip.y);
+      const shinTurn = shinOf(knee, ankle);
+      const thigh: Bone = { from: leg.hip, to: hip, turn: thighTurn };
+      const shin: Bone = { from: leg.knee, to: knee, turn: shinTurn };
+      const sole: Bone = { from: leg.ankle, to: ankle, turn: (-foot.tilt * Math.PI) / 180 };
+      // Where one bone gives way to the next: the hips (from the body), the knee, the ankle.
+      const hips = [rig.cut - rig.band, rig.cut + rig.band * 0.5];
+      const kneeBlend = Math.max(2, R * 0.09);
+      // One leg drawn twice: the near copy has the hips; the far one starts at the cut, behind them.
+      const withHips = !single || i === 1;
       const k = i === 0 ? shade : 1;
-      const overlap = Math.max(1, Math.round(R * 0.04));
-      // Foot, then shin over it, then thigh over that: the upper part of a leg covers the joint below it.
-      segment(src, out, W, H, rig, leg, { from: leg.ankle.y - overlap, to: leg.sole - 1 }, leg.ankle, ankle, (-foot.tilt * Math.PI) / 180, k);
-      segment(src, out, W, H, rig, leg, { from: leg.knee.y - overlap, to: leg.ankle.y + overlap }, leg.knee, knee, shin, k);
-      segment(src, out, W, H, rig, leg, { from: rig.pivot, to: leg.knee.y + overlap }, leg.hip, hip, thigh, k);
+      const mine = (x: number, y: number) => rig.legOf[y * src.width + x] === leg.id || (withHips && rig.bandOf[y * src.width + x] === leg.id);
+      // The foot first, stiff, as a puppet's would be: an ankle can bend further than a blend could
+      // follow without smearing a boot. The shin is drawn over its top, which hides the joint.
+      const ankleOverlap = Math.max(2, R * 0.05);
+      skin.draw(out, (x, y) => y >= leg.ankle.y && mine(x, y), () => [[sole, 1]], k, rig.ground);
+      skin.draw(out, (x, y) => mine(x, y) && (y < leg.ankle.y || (y < leg.ankle.y + ankleOverlap && Math.abs(x + 0.5 - leg.ankle.x) <= leg.shinHalf)), (_x, y) => {
+        if (y < hips[1]!) {
+          const t = smooth((y - hips[0]!) / (hips[1]! - hips[0]!));
+          return [[body, 1 - t], [thigh, t]];
+        }
+        if (y < leg.knee.y - kneeBlend) return [[thigh, 1]];
+        if (y < leg.knee.y + kneeBlend) {
+          const t = smooth((y - leg.knee.y + kneeBlend) / (2 * kneeBlend));
+          return [[thigh, 1 - t], [shin, t]];
+        }
+        return [[shin, 1]];
+      }, k, rig.ground);
       // Keep the planned ankle as drawn (the same unless a leg could not reach).
       foot.ankle = ankle;
     });
@@ -459,13 +881,23 @@ export function walkCycle(src: Bitmap, options: { stride?: number } = {}): WalkC
       if (ty >= H) break;
       for (let x = 0; x < src.width; x++) {
         const s = (y * src.width + x) * 4;
-        if (src.data[s + 3]! === 0 || rig.legOf[y * src.width + x] || rig.shadow?.[y * src.width + x]) continue;
+        const at = y * src.width + x;
+        if (src.data[s + 3]! === 0 || rig.legOf[at] || rig.bandOf[at] || rig.armOf[at] || rig.raised?.[at] || rig.shadow?.[at]) continue;
         over(out, (ty * W + x + margin) * 4, src.data, s, 1);
       }
     }
-    frames.push({ bitmap: { width: W, height: H, data: out }, drop, feet });
+    rig.arms.forEach((arm, k) => arm.side > 0 && drawArm(k));
+    frames.push({ bitmap: { width: W, height: H, data: out }, drop, feet, arms: swings });
   }
   return trim({ mode: 'legs', width: W, height: H, frames, rig, step, ground: rig.ground, left: margin }, src.width);
+}
+
+/** How far below the ankle a foot reaches, turned by `degrees` (above 0, heel up): what touches the ground. */
+function footLow(leg: LegRig, degrees: number): number {
+  const tilt = (degrees * Math.PI) / 180;
+  let low = 0;
+  for (const [dx, dy] of leg.foot) low = Math.max(low, dx * Math.sin(tilt) + dy * Math.cos(tilt) + 0.5);
+  return low;
 }
 
 /** Angle of a direction, measured from straight down towards the front (+x). */
@@ -490,37 +922,118 @@ function solve(hip: Point, target: Point, l1: number, l2: number): { knee: Point
   return { knee, ankle: { x: knee.x + l2 * Math.sin(s), y: knee.y + l2 * Math.cos(s) } };
 }
 
+/** A bone's movement: the picture's point `from` lands on `to`, the part turned by `turn` (radians, from down towards the front). */
+interface Bone {
+  from: Point;
+  to: Point;
+  turn: number;
+}
+
+/** How far each arm swings either way at its most, degrees. */
+const ARM_SWING = 15;
+
+/** 0 to 1, easing in and out. */
+function smooth(t: number): number {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+}
+
+/** Subsamples a pixel is split into each way: enough that a stretched joint has no holes. */
+const SUB = 3;
+
 /**
- * Draws one part of a leg, turned by `turn` (radians, from down towards the front) about its joint:
- * `from` (the joint in the picture) lands on `to`. Every pixel of the frame it can cover is looked
- * up in the picture, so a turned part has no holes. Rows above the cut (the top of the thigh, inside
- * the body) repeat the leg's first row, so a thigh swung forwards stays joined to the hips.
+ * Draws parts of the picture that move with blended bones (skinning). Every pixel of a part is cut
+ * into SUB × SUB samples, each moved by the bones' movements weighted for where it is, and laid
+ * where it lands (spread over the four pixels around it); what a frame pixel gets is averaged. A sample half way along a knee
+ * moves half with the thigh and half with the shin, so the leg bends smoothly instead of breaking.
  */
-function segment(src: Bitmap, out: Uint8ClampedArray, W: number, H: number, rig: WalkRig, leg: LegRig, rows: { from: number; to: number }, from: Point, to: Point, turn: number, shade: number) {
-  const cos = Math.cos(turn);
-  const sin = Math.sin(turn);
-  // Corners of the part in the picture, turned into the frame, for the area to fill.
-  const corners = [[leg.minX - 1, rows.from], [leg.maxX + 1, rows.from], [leg.minX - 1, rows.to + 1], [leg.maxX + 1, rows.to + 1]].map(([x, y]) => {
-    const dx = x! - from.x;
-    const dy = y! - from.y;
-    return { x: to.x + dx * cos + dy * sin, y: to.y - dx * sin + dy * cos };
-  });
-  const x0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.x))) - 1);
-  const x1 = Math.min(W - 1, Math.ceil(Math.max(...corners.map((c) => c.x))) + 1);
-  const y0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.y))) - 1);
-  const y1 = Math.min(H - 1, Math.ceil(Math.max(...corners.map((c) => c.y))) + 1);
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
-      // Back into the picture: turned the other way about the joint.
-      const dx = x + 0.5 - to.x;
-      const dy = y + 0.5 - to.y;
-      const sx = Math.floor(from.x + dx * cos - dy * sin);
-      const sy = Math.floor(from.y + dx * sin + dy * cos);
-      if (sy < rows.from || sy > rows.to || sx < 0 || sx >= src.width) continue;
-      const ly = Math.max(sy, rig.cut);
-      if (ly >= src.height || rig.legOf[ly * src.width + sx] !== leg.id) continue;
-      over(out, (y * W + x) * 4, src.data, (ly * src.width + sx) * 4, shade);
+class Skin {
+  private readonly src: Bitmap;
+  private readonly W: number;
+  private readonly H: number;
+  private readonly sum: Float32Array;
+  private readonly weight: Float32Array;
+  private readonly touched: number[] = [];
+
+  // (No parameter properties: this file also runs in Node with its types stripped, packages/shared/bin/walk.ts.)
+  constructor(src: Bitmap, W: number, H: number) {
+    this.src = src;
+    this.W = W;
+    this.H = H;
+    this.sum = new Float32Array(W * H * 4);
+    this.weight = new Float32Array(W * H);
+  }
+
+  /**
+   * Draws the pixels `part` picks, moved by `bones` (for a point of the picture), over `out`,
+   * darkened by `shade`, and nothing on or below the row `floor` (the ground).
+   */
+  draw(out: Uint8ClampedArray, part: (x: number, y: number) => boolean, bones: (x: number, y: number) => Array<[Bone, number]>, shade: number, floor = Infinity) {
+    const { src, W, H, sum, weight, touched } = this;
+    const moves = new Map<Bone, [number, number]>();
+    for (let y = 0; y < src.height; y++) {
+      for (let x = 0; x < src.width; x++) {
+        const s = (y * src.width + x) * 4;
+        const a = src.data[s + 3]!;
+        if (a === 0 || !part(x, y)) continue;
+        for (let j = 0; j < SUB; j++) {
+          const py = y + (j + 0.5) / SUB;
+          const weights = bones(x, py);
+          for (let i = 0; i < SUB; i++) {
+            const px = x + (i + 0.5) / SUB;
+            let tx = 0;
+            let ty = 0;
+            for (const [bone, weight] of weights) {
+              let cs = moves.get(bone);
+              if (!cs) moves.set(bone, (cs = [Math.cos(bone.turn), Math.sin(bone.turn)]));
+              const dx = px - bone.from.x;
+              const dy = py - bone.from.y;
+              tx += weight * (bone.to.x + dx * cs[0] + dy * cs[1]);
+              ty += weight * (bone.to.y - dx * cs[1] + dy * cs[0]);
+            }
+            // Spread over the four pixels around where it lands (bilinear), so samples pulled apart
+            // at a joint still meet.
+            const fx = tx - 0.5;
+            const fy = ty - 0.5;
+            const ox = Math.floor(fx);
+            const oy = Math.floor(fy);
+            const u = fx - ox;
+            const v = fy - oy;
+            const f = a / 255;
+            for (let q = 0; q < 4; q++) {
+              const px2 = ox + (q & 1);
+              const py2 = oy + (q >> 1);
+              if (px2 < 0 || py2 < 0 || px2 >= W || py2 >= H || py2 >= floor) continue;
+              const k = (q & 1 ? u : 1 - u) * (q >> 1 ? v : 1 - v);
+              if (k <= 0) continue;
+              const o = py2 * W + px2;
+              if (!weight[o]) touched.push(o);
+              weight[o]! += k;
+              sum[o * 4]! += src.data[s]! * f * k;
+              sum[o * 4 + 1]! += src.data[s + 1]! * f * k;
+              sum[o * 4 + 2]! += src.data[s + 2]! * f * k;
+              sum[o * 4 + 3]! += f * k;
+            }
+          }
+        }
+      }
     }
+    // Lay what landed over the frame: a pixel that got only a few samples is at the part's edge.
+    const pixel = new Uint8ClampedArray(4);
+    for (const o of touched) {
+      const n = weight[o]!;
+      const alpha = sum[o * 4 + 3]!;
+      if (alpha > 0) {
+        pixel[0] = sum[o * 4]! / alpha;
+        pixel[1] = sum[o * 4 + 1]! / alpha;
+        pixel[2] = sum[o * 4 + 2]! / alpha;
+        pixel[3] = Math.round((alpha / n) * Math.min(1, n / (SUB * SUB * 0.3)) * 255);
+        over(out, o * 4, pixel, 0, shade);
+      }
+      weight[o] = 0;
+      sum.fill(0, o * 4, o * 4 + 4);
+    }
+    touched.length = 0;
   }
 }
 
@@ -584,7 +1097,7 @@ function bob(src: Bitmap, why: string): WalkCycle {
       const dx = Math.round(lean * sway * share);
       for (let x = 0; x < w; x++) over(out, (ty * W + x + margin + dx) * 4, data, (y * w + x) * 4, 1);
     }
-    frames.push({ bitmap: { width: W, height: h, data: out }, drop, feet: [] });
+    frames.push({ bitmap: { width: W, height: h, data: out }, drop, feet: [], arms: [] });
   }
   return { mode: 'bob', why, width: W, height: h, frames, rig: null, step: 0, ground: bottom + 1, left: margin };
 }

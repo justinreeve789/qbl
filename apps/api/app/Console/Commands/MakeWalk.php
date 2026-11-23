@@ -158,8 +158,9 @@ class MakeWalk extends Command
             if ($r['mode'] === 'legs') {
                 $walking++;
                 $feet = $r['feet'];
-                $this->info(sprintf('  %s: walks. Six %d × %d frames, a step of %d%% of the height; feet together in frames %s, a step apart in %s.',
-                    $r['name'], $w, $h, round($feet['step_share'] * 100), implode(', ', $feet['together']), implode(', ', $feet['apart'])));
+                $this->info(sprintf('  %s: walks. Six %d × %d frames, a step of %d%% of the height; feet together in frames %s, a step apart in %s; %s.',
+                    $r['name'], $w, $h, round($feet['step_share'] * 100), implode(', ', $feet['together']), implode(', ', $feet['apart']),
+                    [0 => 'the arms stay as drawn (not apart from the body)', 1 => 'one arm swings', 2 => 'both arms swing'][$r['arms'] ?? 0] ?? 'the arms swing'));
                 foreach ($feet['problems'] as $p) {
                     $this->warn("    Look at the frames: $p");
                 }

@@ -105,5 +105,6 @@ process.stdout.write(`${JSON.stringify({
   width: cycle.width,
   height: cycle.height,
   left: cycle.left,
+  arms: cycle.rig?.arms.length ?? 0,
   feet: cycle.mode === 'legs' ? { ok: feet.ok, problems: feet.problems, step_share: Math.round(feet.stepShare * 1000) / 1000, together: feet.together.map((f) => f + 1), apart: feet.apart.map((f) => f + 1) } : null,
 })}\n`);
