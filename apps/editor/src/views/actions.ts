@@ -2,14 +2,14 @@ import { emojiIcon } from '../icons';
 import type { ActionType } from '@qbl/shared';
 import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
-import { confirmDelete, h, help } from '../dom';
+import { confirmDelete, h, help, openOneAtATime, rememberOpen } from '../dom';
 import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
 import { actionPicker } from '../actionPicker';
 import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, starterConversation, tidyWalk } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 import { conversationMap } from './conversation';
 
-/** Which action cards are open. Kept outside the view so a redraw does not close them. */
+/** The action card that is open (at most one). Kept outside the view so a redraw does not close it. */
 const open = new Set<number>();
 
 /** The action being dragged to a new place in its event, if any. */
@@ -49,7 +49,7 @@ function startingParams(ctx: FormContext, type: ActionType): Record<string, unkn
 
 /** Have this action's card open the next time its event is drawn. */
 export function revealAction(id: number) {
-  open.add(id);
+  rememberOpen(open, id);
 }
 
 export function sortedActions(ctx: FormContext, eventId: number): Row[] {
@@ -70,7 +70,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     const sequence = actions.reduce((max, a) => Math.max(max, Number(a.sequence)), 0) + 1;
     const row = await store.add('actions', { event_id: eventId, type, sequence, blocking: true, params: startingParams(ctx, type as ActionType) });
     if (row) {
-      open.add(row.id);
+      rememberOpen(open, row.id);
       store.emit();
     }
   }, { empty: '+ Add action…', about: true, add: true });
@@ -140,7 +140,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
           type: 'button',
           onclick: async () => {
             const copy = await store.add('actions', { event_id: eventId, type, sequence: actions.length + 1, blocking: action.blocking, media_id: action.media_id, params: params(current()) });
-            if (copy) open.add(copy.id);
+            if (copy) rememberOpen(open, copy.id);
             store.emit();
           },
         }, 'Duplicate'),
@@ -152,7 +152,7 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     // before or after it, whichever half of that card the pointer is over.
     const grip = h('span', { class: 'grip', draggable: 'true', title: 'Drag to change the order', 'aria-hidden': 'true' }, '⠿');
     const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, emojiIcon(ACTION_LOOK[type][0]), ` ${def.label}`), summary), body);
-    card.addEventListener('toggle', () => (card.open ? open.add(id) : open.delete(id)));
+    openOneAtATime(card, id, open);
     grip.addEventListener('click', (e) => e.preventDefault());
     grip.addEventListener('dragstart', (e) => {
       dragging = id;

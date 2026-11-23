@@ -129,7 +129,13 @@ test('a routine: walk to the other room and on to the bench, say something, come
   await step(2).locator('[data-field=scene_id] select').selectOption({ label: 'hall' });
   await saved();
 
+  // Only the newest step is open; the others folded away as it was added.
+  assert.equal(await card().locator('.routine-step[open]').count(), 1);
+  assert.equal(await step(2).getAttribute('open'), '');
+
   // The line goes first, then back again: the up arrow.
+  await step(1).locator('summary').click();
+  await page.waitForFunction(() => document.querySelector('.routine-step[data-step="1"]')?.hasAttribute('open') && !document.querySelector('.routine-step[data-step="2"]')?.hasAttribute('open'));
   await step(1).locator('button[aria-label="Move step up"]').click();
   await saved();
   await page.waitForFunction(() => document.querySelector('.routine-step[data-step="0"] .summary-text')?.textContent?.startsWith('Say'));
