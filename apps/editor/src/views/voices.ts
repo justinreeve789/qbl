@@ -59,7 +59,7 @@ export function voiceSection(ctx: FormContext, row: Row): HTMLElement {
       const v = voices.find((x) => x.key === select.value);
       about.textContent = v ? v.description : '';
       listen.disabled = !v || !s.engine;
-      record.disabled = !v || !s.engine;
+      record.disabled = !v || !s.engine || underway(ctx, { character_id: id });
     };
     describe();
     select.onchange = () => {
@@ -75,6 +75,7 @@ export function voiceSection(ctx: FormContext, row: Row): HTMLElement {
 
   listen.onclick = () => void play(ctx, select.value, listen);
   record.onclick = () => void recordVoices(ctx, { character_id: id }, record);
+  follow(ctx, record, { character_id: id });
 
   return h('section', { class: 'panel-section voice-section', style: '--tone: var(--tone-character)' },
     h('h4', null, '🔊 Voice', help(ABOUT)),
@@ -138,6 +139,7 @@ export function recordVoicesButton(ctx: FormContext): { button: HTMLButtonElemen
     });
   };
   button.onclick = () => void recordVoices(ctx, {}, button);
+  follow(ctx, button, {});
   refresh();
   return { button, refresh };
 }
@@ -181,8 +183,11 @@ export function recordAllButton(ctx: FormContext): HTMLElement {
  */
 async function recordVoices(ctx: FormContext, attrs: { character_id?: number; force?: boolean }, button: HTMLButtonElement) {
   const { store } = ctx;
-  const label = button.textContent;
-  button.disabled = true;
+  const key = recordingKey(ctx, attrs);
+  if (recordings.has(key)) return;
+  const run: Recording = { text: '🎙️ Recording…', buttons: new Set([button]) };
+  recordings.set(key, run);
+  paint(run);
   let removed = 0;
   let total = 0;
   let changed = false;
@@ -204,7 +209,8 @@ async function recordVoices(ctx: FormContext, attrs: { character_id?: number; fo
     }
   };
   const show = (remaining: number) => {
-    if (total) button.textContent = `🎙️ Recording… ${Math.max(0, total - remaining)} of ${total}`;
+    if (total) run.text = `🎙️ Recording… ${Math.max(0, total - remaining)} of ${total}`;
+    paint(run);
   };
   try {
     await store.settled();
@@ -236,11 +242,52 @@ async function recordVoices(ctx: FormContext, attrs: { character_id?: number; fo
   } catch (e) {
     toast(e instanceof Error ? e.message : String(e), 'error');
   } finally {
-    button.textContent = label;
-    button.disabled = false;
+    recordings.delete(key);
+    for (const b of run.buttons) {
+      b.textContent = b.dataset.label ?? b.textContent;
+      b.disabled = false;
+    }
     status.delete(store.scenarioId);
     if (changed) await store.load();
   }
+}
+
+/**
+ * Recordings under way, by scenario and whose lines. The editor draws its buttons again when the
+ * page changes, but a recording carries on: each button drawn for it joins and shows its count.
+ */
+interface Recording {
+  text: string;
+  buttons: Set<HTMLButtonElement>;
+}
+const recordings = new Map<string, Recording>();
+
+function recordingKey(ctx: FormContext, attrs: { character_id?: number }): string {
+  return `${ctx.store.scenarioId}:${attrs.character_id ?? 'all'}`;
+}
+
+function underway(ctx: FormContext, attrs: { character_id?: number }): boolean {
+  return recordings.has(recordingKey(ctx, attrs));
+}
+
+/** Show a recording's progress on each of its buttons still on the page (and forget the others). */
+function paint(run: Recording) {
+  for (const b of run.buttons) {
+    b.dataset.label ??= b.textContent ?? '';
+    b.textContent = run.text;
+    b.disabled = true;
+  }
+}
+
+/** A newly drawn button for these lines: if they are being recorded, it shows how far it has got. */
+function follow(ctx: FormContext, button: HTMLButtonElement, attrs: { character_id?: number }) {
+  button.dataset.label = button.textContent ?? '';
+  const run = recordings.get(recordingKey(ctx, attrs));
+  if (!run) return;
+  // The ones drawn before this are gone from the page.
+  for (const b of run.buttons) if (!b.isConnected) run.buttons.delete(b);
+  run.buttons.add(button);
+  paint(run);
 }
 
 /** A failure that means "no answer in time", not "no": the proxy gave up, or the connection dropped. */
