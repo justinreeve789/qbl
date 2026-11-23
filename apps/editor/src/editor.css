@@ -255,6 +255,8 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .placement .outline.missing { fill: rgba(255, 255, 255, 0.2); stroke: #fff; stroke-dasharray: 4 3; }
 .placement:hover .outline { stroke: rgba(255, 255, 255, 0.6); }
 .placement.selected .outline { stroke: #ffd24a; }
+.placement .sort-line-on-scene { fill: none; stroke: #ffb020; stroke-width: 2; stroke-dasharray: 8 5; vector-effect: non-scaling-stroke; opacity: 0.55; pointer-events: none; }
+.placement.selected .sort-line-on-scene { opacity: 1; }
 .handle { fill: #fff; stroke: #1a1a1a; stroke-width: 1.5; cursor: grab; }
 .handle.add { fill: #1a1a1a; stroke: #fff; opacity: 0.8; cursor: copy; }
 .action-marker { cursor: move; }
@@ -499,6 +501,14 @@ dialog.modal.panel .panel-title { margin: 0; flex: 1; min-width: 0; font-size: 1
 .section-head::after { content: ''; flex: 1; height: 2px; margin-left: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--tone), transparent); }
 .preview.large { max-height: 280px; }
 .preview.checker { background: var(--checker); border: 1px solid var(--edge); padding: 4px; }
+/* An item's sort line: its picture with the line along its base. */
+.sort-line { display: grid; gap: 6px; margin-top: 10px; }
+.sort-line-picture { display: block; width: 100%; height: 220px; background: var(--checker); border: 1px solid var(--edge); border-radius: var(--radius); cursor: crosshair; touch-action: none; }
+.sort-line-line { fill: none; stroke: #ffb020; stroke-linejoin: round; vector-effect: non-scaling-stroke; stroke-width: 3px; }
+.sort-line-line.unset { stroke-dasharray: 6 5; opacity: 0.7; }
+.sort-line-front { fill: rgba(255, 176, 32, 0.16); pointer-events: none; }
+.sort-line-point { fill: #ffb020; stroke: #1c172e; stroke-width: 2px; vector-effect: non-scaling-stroke; cursor: grab; }
+.sort-line-status { margin: 0; font-size: 12px; }
 
 .media-panel { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; }
 .media-panel.single { grid-template-columns: minmax(0, 600px); justify-content: center; }

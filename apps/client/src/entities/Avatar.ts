@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { parseIds, shadeTint, type Id, type PlayerRec, type ShopItem } from '@qbl/shared';
 import { mediaKey, shopTexture } from '../core/assets';
 import { Depth } from '../core/depth';
+import { figureDepth } from '../core/sorting';
 import type { GameContext } from '../core/GameContext';
 import { CharacterFigure } from './CharacterFigure';
 import { Figure } from './Figure';
@@ -283,8 +284,10 @@ export class Avatar extends CharacterFigure {
     const pulse = style === 'pulse' ? 1 + Math.sin(t / 400) * 0.04 : 1;
     // A built-in move (a hop, a turn, a duck) bends the picture itself.
     this.sprite.setScale(this.baseScale * k * sx * pulse * pose.scaleX, this.baseScale * k * sy * pulse * pose.scaleY);
-    this.sprite.setPosition(this.x, this.y - lift).setDepth(this.y).setRotation(lean);
-    this.layoutWorn(h, lift, delta);
+    // Drawn by where its feet are; in front of or behind a counter by which side of its sort line it stands.
+    const depth = figureDepth(this.scene, this.x, this.y, Math.abs(this.sprite.displayWidth) / 2);
+    this.sprite.setPosition(this.x, this.y - lift).setDepth(depth).setRotation(lean);
+    this.layoutWorn(h, lift, delta, depth);
     const dir = this.facing === 'left' ? -1 : 1;
     // The highest line, in scene coordinates, below which something ridden or worn hides the avatar.
     let cut = Infinity;
@@ -297,7 +300,7 @@ export class Avatar extends CharacterFigure {
       img.setFlipX(figure.auto(this.moving, this.facing, item.art_faces ?? 'right'));
       img.setScale(size * bend.scaleX, size * bend.scaleY);
       img.setPosition(this.x + (item.attach_offset_x ?? 0) * dir * this.zoom * k, this.y + (item.attach_offset_y ?? 0) * this.zoom * k - bend.lift * img.displayHeight);
-      img.setRotation(bend.lean).setDepth(this.y + (item.attach_layer === 'behind' ? -0.5 : 0.5));
+      img.setRotation(bend.lean).setDepth(depth + (item.attach_layer === 'behind' ? -0.5 : 0.5));
       const below = item.hide_rider_below;
       if (typeof below === 'number' && Number.isFinite(below)) {
         const top = img.y - img.originY * img.displayHeight;
@@ -348,7 +351,7 @@ export class Avatar extends CharacterFigure {
     head: { x: 0, y: 1, size: 0.28 }, body: { x: 0, y: 0.5, size: 0.34 }, back: { x: -0.2, y: 0.56, size: 0.4, behind: true }, hand: { x: 0.3, y: 0.42, size: 0.24 },
   };
 
-  private layoutWorn(h: number, lift: number, delta: number) {
+  private layoutWorn(h: number, lift: number, delta: number, depth: number) {
     const dir = this.facing === 'left' ? -1 : 1;
     for (const { item, image } of this.worn.values()) {
       const size = (item.scale ?? (item.kind === 'pet' ? 0.3 : Avatar.SLOTS[item.slot ?? 'body']!.size)) * h;
@@ -359,12 +362,12 @@ export class Avatar extends CharacterFigure {
         const k = this.petAt && delta > 0 ? 1 - Math.exp(-delta / 220) : 1;
         const far = this.petAt && Math.hypot(home.x - this.petAt.x, home.y - this.petAt.y) > 6 * h;
         this.petAt = !this.petAt || far ? home : { x: this.petAt.x + (home.x - this.petAt.x) * k, y: this.petAt.y + (home.y - this.petAt.y) * k };
-        image.setPosition(this.petAt.x, this.petAt.y).setDepth(this.petAt.y).setFlipX(this.petAt.x > this.x);
+        image.setPosition(this.petAt.x, this.petAt.y).setDepth(figureDepth(this.scene, this.petAt.x, this.petAt.y, image.displayWidth / 2)).setFlipX(this.petAt.x > this.x);
         continue;
       }
       const slot = Avatar.SLOTS[item.slot ?? 'body']!;
       image.setPosition(this.x + (slot.x + (item.offset_x ?? 0)) * h * dir, this.y - lift - (slot.y - (item.offset_y ?? 0)) * h);
-      image.setFlipX(dir < 0).setDepth(this.y + (slot.behind ? -0.6 : 0.6));
+      image.setFlipX(dir < 0).setDepth(depth + (slot.behind ? -0.6 : 0.6));
     }
   }
 

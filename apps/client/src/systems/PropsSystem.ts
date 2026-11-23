@@ -1,12 +1,13 @@
 import * as Phaser from 'phaser';
 import {
   blockingRadius, characterRoams, doorPoint, doorsOf, nearestWalkable, parseIds, Pathfinder, scaleAt, shadeAt, shadeTint, speedFactorAt,
-  stepToward, takesItems, testConditions, walkSignature, walkSpeed,
+  placeSortLine, sortLineOf, stepToward, takesItems, testConditions, walkSignature, walkSpeed,
   type ActionHandle, type Circle, type DialogueAction, type Door, type Id, type Item, type Npc, type NpcRec, type Point, type WalkAction,
 } from '@qbl/shared';
 import { deferred } from '../actions/Presenter';
 import { mediaKey } from '../core/assets';
 import { Depth } from '../core/depth';
+import { setSortLine } from '../core/sorting';
 import { Figure } from '../entities/Figure';
 import { NpcFigure } from '../entities/NpcFigure';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
@@ -459,7 +460,26 @@ export class PropsSystem implements SceneSystem {
         if (p.image.input) p.image.input.enabled = visible;
         if (!visible) this.pointerOver = 0;
       }
+      this.sortLine(p);
     }
+  }
+
+  /**
+   * An item with a sort line (a counter running into the room) is drawn at the line's lowest point,
+   * and tells the figures around it where the line is, so they are drawn in front of it or behind it
+   * by where they stand across it. Only while it is drawn, as an object, where it lies.
+   */
+  private sortLine(p: PlacedItem) {
+    const line = p.item.placement === 'background' ? null : sortLineOf(p.item);
+    if (!line || !p.image.visible) {
+      setSortLine(this.rt.scene, p, null);
+      return;
+    }
+    const placed = placeSortLine(line, {
+      x: p.image.x, y: p.feet, width: p.image.width * p.size, height: p.image.height * p.size, flipped: p.image.flipX,
+    });
+    setSortLine(this.rt.scene, p, placed);
+    p.image.setDepth(placed.depth);
   }
 
   /** Advance a figure's animation and bend it as a built-in move asks. `feet` is where it stands. */
@@ -488,7 +508,10 @@ export class PropsSystem implements SceneSystem {
   }
 
   destroy() {
-    for (const p of this.items.values()) p.image.destroy();
+    for (const p of this.items.values()) {
+      setSortLine(this.rt.scene, p, null);
+      p.image.destroy();
+    }
     for (const o of this.objects) o.destroy();
     for (const c of this.characters.values()) {
       c.walk?.finish();

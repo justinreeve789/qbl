@@ -5,6 +5,7 @@ import { form, withValue, type Field, type FormContext } from '../fields';
 import { openPanel } from '../panel';
 import { ITEM_FIELDS, ITEM_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
+import { sortLineEditor } from './sortLine';
 import { keepInLibraryButton, openQuestLab } from './questlab';
 import { chip, emptyState, listPage, pick, removeRow, section, thumbButton, tileActions, tileTitle } from './kit';
 
@@ -60,7 +61,7 @@ function itemCard(ctx: FormContext, row: Row): HTMLElement {
 }
 
 /** The item's settings, in groups; a group shows only when it applies (the worn or ridden offsets for something worn or ridden). */
-const IN_SCENE = pick(ITEM_SETTINGS_FIELDS, ['scale', 'placement']).map((f) => (f.key === 'placement' ? { ...f, wide: true } : f));
+const IN_SCENE = pick(ITEM_SETTINGS_FIELDS, ['scale', 'placement']).map((f) => (f.key === 'placement' ? { ...f, wide: true, structural: true } : f));
 const BLOCKING = pick(ITEM_SETTINGS_FIELDS, ['blocking_radius']);
 const CARRIED = pick(ITEM_SETTINGS_FIELDS, ['attach_offset_x', 'attach_offset_y', 'attach_layer', 'art_faces', 'hide_rider_below'], { attach_offset_x: 'Offset X', attach_offset_y: 'Offset Y' });
 const VEHICLE = pick(ITEM_SETTINGS_FIELDS, ['speed_multiplier'], { speed_multiplier: 'Speed multiplier' });
@@ -107,7 +108,9 @@ function itemBody(ctx: FormContext, row: Row): HTMLElement {
     h('div', { class: 'row-actions' }, keepInLibraryButton(ctx, 'items', row), h('button', { type: 'button', class: 'danger', onclick: removeRow(ctx, 'items', row, `the item “${row.name}”`) }, 'Delete item')));
 
   const behaviour = h('div', { class: 'panel-column' },
-    section('📍 In the scene', 'var(--tone-background)', 'scene', settingsForm(row.blocking ? [...IN_SCENE, ...BLOCKING] : IN_SCENE)),
+    section('📍 In the scene', 'var(--tone-background)', 'scene', settingsForm(row.blocking ? [...IN_SCENE, ...BLOCKING] : IN_SCENE),
+      // Something standing among the players: where its base is, so they go in front of it or behind it properly.
+      params(row, 'settings').placement !== 'background' ? sortLineEditor(ctx, row) : null),
     row.wearable || row.vehicle ? section(row.vehicle && !row.wearable ? '🧍 Ridden' : row.wearable && !row.vehicle ? '🧍 Worn' : '🧍 Worn or ridden', 'var(--tone-character)', 'carried', settingsForm(CARRIED)) : null,
     row.vehicle ? section('🚙 Vehicle', 'var(--tone-vehicle)', 'vehicle', settingsForm(VEHICLE)) : null,
     carriedWhen(row) ? section('🎒 In the bag', 'var(--tone-item)', 'bag', h('p', { class: 'muted' }, `Players carry it while ${carriedWhen(row)}.`), settingsForm(IN_BAG)) : null,

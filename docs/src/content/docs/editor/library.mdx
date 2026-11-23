@@ -58,6 +58,18 @@ Things players can pick up, wear or ride. Each card shows the item's picture and
 
 The panel has the item itself on the left: its name and picture, **Unique** (only one player can hold it), **Physical**, **Blocking** (avatars walk around it), **Wearable** and **Vehicle**. A vehicle is always a single object: it goes where it is driven and stays where it is left. On the right are its settings, in groups that appear only when they apply: **In the scene** (scale, where it stands, and the blocking radius for a blocking item), **Worn** or **Ridden** (offsets, in front of or behind the avatar, which way the artwork faces, and **Hide the avatar below**: how far down the item's picture the avatar stops being drawn, 0 at the top and 1 at the bottom, so a rider sits in a UFO or a car instead of their legs showing beneath it), **Vehicle** (speed multiplier), **In the bag** for something players carry (when they have it, and the description they read in their bag), and **When it is there** (conditions). Place items in scenes from the scene editor.
 
+### Where it meets the floor
+
+Players and characters are drawn in front of an item when their feet are lower on the screen than the bottom of its picture, and behind it when they are higher. That suits a crate or a tree. It does not suit something that runs into the room at an angle, such as a counter, a bench seen from the side or a curved wall: the bottom of its picture is only where its nearest end meets the floor, so a player standing in front of its far end is drawn behind it.
+
+For an item that stands among the players, **In the scene** shows its picture with **Where it meets the floor**: a line along its base. Players below the line (the shaded side) are drawn in front of the item, and anyone above it, such as a character serving behind a counter, is drawn behind it, wherever they stand across it.
+
+- **✨ Find it from the picture** traces the base from the picture's see-through background: the lowest solid point of each column, made into a few points. Thin bits that stick out, such as a tray or the lip of a counter top, are left out.
+- Drag a point to move it, click the picture to add one, and double-click a point to take it away (at least two stay).
+- **Use the bottom edge** takes the line away again.
+
+In the scene editor, a placed item with a line shows it as a dashed orange line. To keep players from walking into the item itself, draw a blocked area over its footprint.
+
 ### QuestLab Assets: ready-made vehicles
 
 **🐾 Add QuestLab Assets** on the Items page opens the asset library's vehicles: four cars (a red convertible, a yellow roadster, a farm truck and a silver hatchback), a motorcycle, a bicycle, two saddled horses (bay and palomino) and a stagecoach with its team of horses. Each card shows it moving (wheels turning, legs walking), its speed and who drew it.

@@ -1,5 +1,6 @@
 import type * as Phaser from 'phaser';
 import { shadeTint, type Id, type Media, type Npc } from '@qbl/shared';
+import { figureDepth } from '../core/sorting';
 import { CharacterFigure } from './CharacterFigure';
 
 const NAME_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -100,9 +101,11 @@ export class NpcFigure extends CharacterFigure {
     // After `auto`: the picture it now shows may be stretched on its media (Scale X / Y).
     const { x: sx, y: sy } = this.stretch;
     this.sprite.setScale(size * sx * bend.scaleX, size * sy * bend.scaleY).setRotation(bend.lean);
-    this.sprite.setPosition(x, y - bend.lift * (this.sprite.displayHeight || 0)).setDepth(y);
+    // Drawn by where its feet are; in front of or behind a counter by which side of its sort line it stands.
+    const depth = figureDepth(this.scene, x, y, Math.abs(this.sprite.displayWidth) / 2);
+    this.sprite.setPosition(x, y - bend.lift * (this.sprite.displayHeight || 0)).setDepth(depth);
     this.sprite.setTint(shadeTint(this.around.shade(x, y)));
-    this.label.setPosition(x, y - Math.abs(this.sprite.displayHeight) - 6).setDepth(y + 1);
+    this.label.setPosition(x, y - Math.abs(this.sprite.displayHeight) - 6).setDepth(depth + 1);
   }
 
   override destroy() {
