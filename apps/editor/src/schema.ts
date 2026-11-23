@@ -453,7 +453,7 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
     case 'dialogue':
       return { text: 'Hello!' };
     case 'narration':
-      return { text: 'And so our story begins…' };
+      return { text: '' };
     case 'conversation':
       return starterConversation();
     case 'freeze':
