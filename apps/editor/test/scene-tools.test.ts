@@ -333,6 +333,45 @@ test('depth, reveal and avatar visibility: a scale area, a hotspot that appears 
   assert.deepEqual((await draft()).scenes[0]!.scale_areas, []);
 });
 
+test('overlapping things: a press goes to the smallest one under the pointer', async () => {
+  // A small hotspot, then a bigger one drawn over it at the same spot (both start at the middle).
+  await page.selectOption('.add-menu', 'hotspot-click');
+  await page.waitForSelector('.event-panel');
+  await type('[data-field=shortname] input', 'small-spot');
+  await type('[data-field=radius] input[type=number]', '30');
+  await page.selectOption('.add-menu', 'hotspot-click');
+  await page.waitForFunction(() => !document.querySelector('.outline-item.selected')?.textContent?.includes('small-spot'));
+  await type('[data-field=shortname] input', 'big-spot');
+  await type('[data-field=radius] input[type=number]', '120');
+
+  const selected = () => page.evaluate(() => document.querySelector('.outline-item.selected')?.textContent ?? '');
+  const circle = async (r: number) => (await page.locator(`.stage-overlay circle.hotspot[r="${r}"]`).boundingBox())!;
+  const small = await circle(30);
+  const big = await circle(120);
+
+  // The big one is on top, but the middle of the small one selects the small one.
+  await page.mouse.click(small.x + small.width / 2, small.y + small.height / 2);
+  await page.waitForFunction(() => document.querySelector('.outline-item.selected')?.textContent?.includes('small-spot'));
+  // Inside the big one but outside everything smaller selects the big one.
+  await page.mouse.click(big.x + big.width / 2, big.y + big.height * 0.1);
+  await page.waitForFunction(() => document.querySelector('.outline-item.selected')?.textContent?.includes('big-spot'));
+  const spot = async (name: string) => (await draft()).scenes[0]!.hotspots!.find((h) => h.shortname === name)!;
+  // With the big one selected, dragging from over the small one moves the big one (the selected
+  // thing can be dragged from anywhere on it); the small one stays where it is.
+  const [bigBefore, smallBefore] = [await spot('big-spot'), await spot('small-spot')];
+  await dragBy('.stage-overlay circle.hotspot[r="30"]', 40, 0);
+  assert.match(await selected(), /big-spot/);
+  assert.ok(Number((await spot('big-spot')).position_x) > Number(bigBefore.position_x) + 20, 'the selected big hotspot moved');
+  assert.equal((await spot('small-spot')).position_x, smallBefore.position_x);
+  // Once the small one is selected, dragging it moves it out from under the big one.
+  const moved = await circle(30);
+  await page.mouse.click(moved.x + moved.width / 2, moved.y + moved.height / 2);
+  await page.waitForFunction(() => document.querySelector('.outline-item.selected')?.textContent?.includes('small-spot'));
+  await dragBy('.stage-overlay circle.hotspot[r="30"]', 0, 40);
+  assert.match(await selected(), /small-spot/);
+  assert.ok(Number((await spot('small-spot')).position_y) > Number(smallBefore.position_y) + 20, 'the small hotspot moved');
+});
+
 test('media sub-tabs, scenario music and scene music', async () => {
   await page.click('.tabs >> text=Media');
   await page.waitForSelector('.subtabs');

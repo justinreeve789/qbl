@@ -46,6 +46,12 @@ export class SceneCanvas {
   private sizes = new Map<string, Point | null>();
   private drag: Drag | null = null;
   private lastPress: { key: string; at: number } | null = null;
+  /** Shapes that select something when pressed, with their area (null: measure it when pressed). */
+  private bodies = new WeakMap<Element, number | null>();
+  /** True while a press is being handed on to a smaller shape under it. */
+  private rerouting = false;
+  /** Where the selected thing was pressed over something smaller: a click there selects the smaller one. */
+  private clickThrough: { x: number; y: number } | null = null;
   private scale = 1;
   /** A spot being chosen by clicking the scene, and where the pointer is meanwhile. */
   private picking: { request: SpotRequest; hover: Point | null } | null = null;
@@ -75,6 +81,32 @@ export class SceneCanvas {
       request.done({ x: Math.max(0, Math.min(W, at.x)), y: Math.max(0, Math.min(H, at.y)) });
     }, { capture: true });
 
+    // When things overlap, a press goes to the smallest of them under the pointer, not the one
+    // drawn on top, so a small hotspot inside a big walkable area or scale area can be picked.
+    // The selected thing can still be dragged from anywhere on it: a press on it that overlaps
+    // something smaller drags it if the pointer moves, and selects the smallest if it does not.
+    // Handles of the selected thing are not bodies, so they always get their own presses.
+    this.svg.addEventListener('pointerdown', (e) => {
+      if (this.rerouting) return;
+      this.clickThrough = null;
+      if (this.picking || e.button !== 0) return;
+      const hit = this.bodyOf(e.target);
+      if (!hit) return;
+      const under = this.bodiesAt(e.clientX, e.clientY, hit);
+      const smallest = this.smallestOf(under)!;
+      if (smallest === hit) return;
+      const selected = under.find((el) => el.classList.contains('selected'));
+      let to = smallest;
+      if (selected && selected !== smallest) {
+        this.clickThrough = { x: e.clientX, y: e.clientY };
+        to = selected;
+      }
+      if (to === hit) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      this.press(to, e);
+    }, { capture: true });
+
     this.svg.addEventListener('pointerdown', (e) => {
       // Reached only when nothing drawn handled the press: the empty scene.
       if (e.target === this.svg) this.host.select({ kind: 'scene' });
@@ -92,9 +124,21 @@ export class SceneCanvas {
       this.drag.move(at, this.drag.from);
       this.draw();
     });
-    const finish = () => {
+    const finish = (e: PointerEvent) => {
       const drag = this.drag;
+      const through = this.clickThrough;
       this.drag = null;
+      this.clickThrough = null;
+      // A click (no drag) on the selected thing where something smaller overlaps it selects that.
+      if (through && e.type === 'pointerup' && !drag?.moved) {
+        const smallest = this.smallestOf(this.bodiesAt(through.x, through.y));
+        if (smallest && !smallest.classList.contains('selected')) {
+          this.press(smallest, e);
+          this.drag = null;
+          if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
+          return;
+        }
+      }
       if (!drag) return;
       if (drag.moved) {
         drag.end();
@@ -173,6 +217,68 @@ export class SceneCanvas {
       x: round((el.scrollLeft + el.clientWidth / 2) / this.scale),
       y: round((el.scrollTop + el.clientHeight / 2) / this.scale),
     };
+  }
+
+  /**
+   * Mark a drawn shape as something that can be pressed to select it, with its size in scene
+   * pixels² (left out: measured from its box when pressed). Overlapping presses go to the smallest.
+   */
+  private body<T extends SVGElement>(el: T, area?: number): T {
+    this.bodies.set(el, area ?? null);
+    return el;
+  }
+
+  /** The selectable shape a pressed element belongs to, if any (handles and markers belong to none). */
+  private bodyOf(target: EventTarget | null): SVGElement | null {
+    for (let el = target instanceof Element ? target : null; el && el !== this.svg; el = el.parentElement) {
+      if (this.bodies.has(el)) return el as SVGElement;
+    }
+    return null;
+  }
+
+  /** Every selectable shape under a screen point (plus `also`, the one pressed). */
+  private bodiesAt(clientX: number, clientY: number, also?: SVGElement): SVGElement[] {
+    const found = new Set<SVGElement>(also ? [also] : []);
+    for (const el of document.elementsFromPoint(clientX, clientY)) {
+      const body = this.bodyOf(el);
+      if (body) found.add(body);
+    }
+    return [...found];
+  }
+
+  /** The smallest of some shapes; on a tie, the first (the one on top). */
+  private smallestOf(bodies: SVGElement[]): SVGElement | null {
+    let best: SVGElement | null = null;
+    let bestArea = Infinity;
+    for (const body of bodies) {
+      const area = this.areaOf(body);
+      if (!best || area < bestArea) {
+        best = body;
+        bestArea = area;
+      }
+    }
+    return best;
+  }
+
+  /** Hand a press on to another shape, as if it had been pressed itself. */
+  private press(body: SVGElement, e: PointerEvent) {
+    this.rerouting = true;
+    try {
+      body.dispatchEvent(new PointerEvent('pointerdown', e));
+    } finally {
+      this.rerouting = false;
+    }
+  }
+
+  private areaOf(el: SVGElement): number {
+    const known = this.bodies.get(el);
+    if (known != null && Number.isFinite(known)) return Math.abs(known);
+    try {
+      const box = (el as SVGGraphicsElement).getBBox();
+      return box.width * box.height;
+    } catch {
+      return Infinity;
+    }
   }
 
   private point(e: PointerEvent): Point {
@@ -290,11 +396,11 @@ export class SceneCanvas {
       const selection: Selection = { kind: 'area', which, index };
       const isSelected = sameSelection(selection, selected);
       shapes.push(
-        s('polygon', {
+        this.body(s('polygon', {
           class: `area ${which === 'walkable_areas' ? 'walkable' : 'blocked'}${isSelected ? ' selected' : ''}`,
           points: polygon.map((p) => `${p.x},${p.y}`).join(' '),
           onpointerdown: (e: PointerEvent) => this.begin(e, selection),
-        }),
+        }), polygonArea(polygon)),
       );
       if (!isSelected) return;
       const commit = () => void this.model.setLayout(which, areas);
@@ -358,11 +464,11 @@ export class SceneCanvas {
         shapes.push(s('ellipse', { class: 'shadow-spot-shade', cx: spot.x, cy: spot.y, rx: spot.radius * k, ry: ry * k, 'fill-opacity': strength * share * 0.8 }));
       }
       shapes.push(
-        s('ellipse', {
+        this.body(s('ellipse', {
           class: `shadow-spot${isSelected ? ' selected' : ''}`, cx: spot.x, cy: spot.y, rx: spot.radius, ry,
           onpointerdown: (e: PointerEvent) =>
             this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(spot, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
-        }, s('title', null, spot.name || `Shadow ${index + 1}`)),
+        }, s('title', null, spot.name || `Shadow ${index + 1}`)), Math.PI * spot.radius * ry),
         s('text', { class: 'shape-name', x: spot.x, y: spot.y, 'font-size': 12 * u, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, spot.name || `Shadow ${index + 1}`),
       );
       if (!isSelected) return;
@@ -396,12 +502,13 @@ export class SceneCanvas {
         shapes.push(s('circle', { class: 'light-glow', cx: light.x, cy: light.y, r: radius * k, fill: color, 'fill-opacity': strength * share }));
       }
       const name = light.name || `Light ${index + 1}`;
+      const spotR = Math.max(12 * u, radius * 0.25);
       shapes.push(
-        s('circle', {
-          class: `light-spot${isSelected ? ' selected' : ''}`, cx: light.x, cy: light.y, r: Math.max(12 * u, radius * 0.25),
+        this.body(s('circle', {
+          class: `light-spot${isSelected ? ' selected' : ''}`, cx: light.x, cy: light.y, r: spotR,
           onpointerdown: (e: PointerEvent) =>
             this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(light, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
-        }, s('title', null, `${name} (${light.kind ?? 'flicker'})`)),
+        }, s('title', null, `${name} (${light.kind ?? 'flicker'})`)), Math.PI * spotR * spotR),
       );
       if (!isSelected) return;
       top.push(s('rect', {
@@ -425,11 +532,11 @@ export class SceneCanvas {
       const commit = () => void this.model.setLayout('scale_areas', areas);
       const start = { x: area.x, y: area.y, width: area.width, height: area.height };
       shapes.push(
-        s('rect', {
+        this.body(s('rect', {
           class: `scale-area${isSelected ? ' selected' : ''}`, x: area.x, y: area.y, width: area.width, height: area.height,
           onpointerdown: (e: PointerEvent) =>
             this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(area, { x: start.x + to.x - from.x, y: start.y + to.y - from.y }), end: commit } : undefined),
-        }),
+        }), area.width * area.height),
       );
       // A figure as tall as a typical avatar (160 px at full size) at each edge.
       const figure = (percent: number, feetY: number, cx: number) => {
@@ -469,11 +576,11 @@ export class SceneCanvas {
       const start = { x: flow.x, y: flow.y, width: flow.width, height: flow.height };
       const s0 = flowSettings(flow);
       shapes.push(
-        s('rect', {
+        this.body(s('rect', {
           class: `flow-area${isSelected ? ' selected' : ''}`, x: flow.x, y: flow.y, width: flow.width, height: flow.height, style: `--flow: ${s0.color}`,
           onpointerdown: (e: PointerEvent) =>
             this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(flow, { x: start.x + to.x - from.x, y: start.y + to.y - from.y }), end: commit } : undefined),
-        }),
+        }), flow.width * flow.height),
       );
       const arrow = { right: '→', left: '←', down: '↓', up: '↑', still: '〰' }[s0.direction];
       shapes.push(s('text', { class: 'shape-name', x: flow.x + 8 * u, y: flow.y + 16 * u, 'font-size': 12 * u }, `${arrow} ${flow.name || s0.kind}${s0.layer === 'over' ? ' (over)' : ''}`));
@@ -517,15 +624,15 @@ export class SceneCanvas {
 
     if (r < 0 || (x == null && y == null)) {
       // Covers the whole scene: drawn as a frame so it does not swallow every click.
-      shapes.push(s('rect', { class: `${cls} everywhere`, x: 4 * u, y: 4 * u, width: W - 8 * u, height: H - 8 * u, onpointerdown: (e: PointerEvent) => this.begin(e, selection) }));
+      shapes.push(this.body(s('rect', { class: `${cls} everywhere`, x: 4 * u, y: 4 * u, width: W - 8 * u, height: H - 8 * u, onpointerdown: (e: PointerEvent) => this.begin(e, selection) }), W * H));
       labelAt = { x: W / 2, y: 22 * u };
     } else if (x == null) {
-      shapes.push(s('rect', { class: cls, x: 0, y: y! - r, width: W, height: 2 * r, onpointerdown: press }));
+      shapes.push(this.body(s('rect', { class: cls, x: 0, y: y! - r, width: W, height: 2 * r, onpointerdown: press }), W * 2 * r));
       labelAt = { x: W / 2, y: y! };
       handleAt = { x: W / 2, y: y! + r };
       resize = (to) => (event.radius = Math.max(4, Math.abs(to.y - y!)));
     } else if (y == null) {
-      shapes.push(s('rect', { class: cls, x: x - r, y: 0, width: 2 * r, height: H, onpointerdown: press }));
+      shapes.push(this.body(s('rect', { class: cls, x: x - r, y: 0, width: 2 * r, height: H, onpointerdown: press }), 2 * r * H));
       labelAt = { x, y: H / 2 };
       handleAt = { x: x + r, y: H / 2 };
       resize = (to) => (event.radius = Math.max(4, Math.abs(to.x - x)));
@@ -537,7 +644,7 @@ export class SceneCanvas {
         const inner = Math.min(outer, Number(event.reveal_full_radius ?? outer / 2));
         shapes.push(s('circle', { class: 'reveal-ring', cx: x, cy: y, r: outer }), s('circle', { class: 'reveal-ring full', cx: x, cy: y, r: inner }));
       }
-      shapes.push(s('circle', { class: cls, cx: x, cy: y, r, onpointerdown: press }));
+      shapes.push(this.body(s('circle', { class: cls, cx: x, cy: y, r, onpointerdown: press }), Math.PI * r * r));
       // Under the circle, so the name does not sit on top of the hotspot's own label.
       labelAt = { x, y: y + r + 10 * u };
       handleAt = { x: x + r, y };
@@ -579,11 +686,11 @@ export class SceneCanvas {
       const tile = label.type === 'spritemap';
       const w = (tile ? Number(p.spritemap_width ?? size.x) : size.x * Number(media?.scale_x ?? 1)) * Number(label.scale_x ?? 1);
       const hgt = (tile ? Number(p.spritemap_height ?? size.y) : size.y * Number(media?.scale_y ?? 1)) * Number(label.scale_y ?? 1);
-      if (tile) shapes.push(s('rect', { class: 'label-box', x: x - w / 2, y: y - hgt / 2, width: w, height: hgt, onpointerdown: press }));
-      else shapes.push(s('image', { class: 'label-image', href: url, x: x - w / 2, y: y - hgt / 2, width: w, height: hgt, preserveAspectRatio: 'none', onpointerdown: press }));
+      if (tile) shapes.push(this.body(s('rect', { class: 'label-box', x: x - w / 2, y: y - hgt / 2, width: w, height: hgt, onpointerdown: press }), w * hgt));
+      else shapes.push(this.body(s('image', { class: 'label-image', href: url, x: x - w / 2, y: y - hgt / 2, width: w, height: hgt, preserveAspectRatio: 'none', onpointerdown: press }), w * hgt));
     } else {
       const text = label.type === 'text' ? String(label.text ?? '') : `(${label.type})`;
-      shapes.push(s('text', { class: 'label-text', x, y, 'font-size': 18 * Number(label.scale_y ?? 1), 'text-anchor': 'middle', 'dominant-baseline': 'middle', onpointerdown: press }, text));
+      shapes.push(this.body(s('text', { class: 'label-text', x, y, 'font-size': 18 * Number(label.scale_y ?? 1), 'text-anchor': 'middle', 'dominant-baseline': 'middle', onpointerdown: press }, text)));
     }
   }
 
@@ -606,7 +713,7 @@ export class SceneCanvas {
       const selection: Selection = { kind: 'bench-tool', index };
       const start = { x: tool.x, y: tool.y };
       const { w, h: tall } = toolSize(tool);
-      shapes.push(s('g', {
+      shapes.push(this.body(s('g', {
         class: `bench-tool ${tool.kind}${sameSelection(selection, selected) ? ' selected' : ''}${off}`,
         onpointerdown: (e: PointerEvent) => this.begin(e, selection, {
           move: (to, from) => Object.assign(tool, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }),
@@ -616,7 +723,7 @@ export class SceneCanvas {
       s('rect', { x: tool.x - w / 2, y: tool.y - tall, width: w, height: tall, rx: 8 }),
       s('text', { class: 'shape-name', x: tool.x, y: tool.y - tall / 2, 'font-size': 22 * u, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, BENCH_TOOLS[tool.kind]?.icon ?? '🔧'),
       s('text', { class: 'shape-name', x: tool.x, y: tool.y + 16 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, tool.name || BENCH_TOOLS[tool.kind]?.label || tool.kind),
-      s('title', null, `${tool.name || BENCH_TOOLS[tool.kind]?.label || tool.kind}: drag to move`)));
+      s('title', null, `${tool.name || BENCH_TOOLS[tool.kind]?.label || tool.kind}: drag to move`)), w * tall));
     });
 
     (bench.vessels ?? []).forEach((vessel, index) => {
@@ -645,7 +752,7 @@ export class SceneCanvas {
         if (band.length >= 3) parts.push(s('polygon', { class: 'bench-liquid', points: at(band), style: `fill:${weight > 0 ? colorText([rgb[0] / weight, rgb[1] / weight, rgb[2] / weight]) : '#dcecfb'}` }));
       }
       parts.push(s('polyline', { class: 'bench-wall', points: at(outline) }));
-      shapes.push(s('g', {
+      shapes.push(this.body(s('g', {
         class: `bench-vessel${sameSelection(selection, selected) ? ' selected' : ''}${vessel.supply ? ' supply' : ''}${off}`,
         onpointerdown: (e: PointerEvent) => this.begin(e, selection, {
           move: (to, from) => Object.assign(vessel, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }),
@@ -653,7 +760,7 @@ export class SceneCanvas {
         }),
       }, ...parts,
       s('text', { class: 'shape-name', x: vessel.x, y: vessel.y + 16 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, `${vesselName(vessel)}${vessel.supply ? ' ∞' : ''}`),
-      s('title', null, `${vesselName(vessel)}${vessel.supply ? ' (a stock bottle)' : ''}: drag to move`)));
+      s('title', null, `${vesselName(vessel)}${vessel.supply ? ' (a stock bottle)' : ''}: drag to move`)), polygonArea(outline)));
     });
   }
 
@@ -665,13 +772,13 @@ export class SceneCanvas {
       const y = Number(spawn.position_y ?? 0);
       const dir = spawn.facing === 'left' ? -1 : 1;
       shapes.push(
-        s(
+        this.body(s(
           'g',
           { class: `spawn${sameSelection(selection, selected) ? ' selected' : ''}`, onpointerdown: (e: PointerEvent) => this.begin(e, selection, this.moveBag(spawn, () => this.model.setLayout('spawn_points', spawns))) },
           s('circle', { cx: x, cy: y, r: 9 * u }),
           s('path', { d: `M ${x + dir * 4 * u} ${y - 5 * u} L ${x + dir * 14 * u} ${y} L ${x + dir * 4 * u} ${y + 5 * u} Z` }),
           s('text', { class: 'shape-name', x, y: y + 22 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, `⚑ ${spawn.name ?? ''}`),
-        ),
+        ), Math.PI * 81 * u * u),
       );
     });
   }
@@ -694,6 +801,7 @@ export class SceneCanvas {
       // Drawn at the size the game will draw it: its own scale, times the scale area it stands in.
       const depth = scaleAt({ scale_areas: this.model.layout<ScaleArea>('scale_areas') }, x, y);
       const scale = Number(params(thing ?? ({} as Row), 'settings').scale ?? 1) * depth;
+      let area = 1600 * u * u;
       const group = s('g', {
         class: `placement ${which}${sameSelection(selection, selected) ? ' selected' : ''}`,
         onpointerdown: (e: PointerEvent) => this.begin(e, selection, this.moveBag(placement, () => this.model.setLayout(which, placements))),
@@ -712,11 +820,12 @@ export class SceneCanvas {
               s('image', { href: url, x: 0, y: 0, width: whole.x, height: whole.y, preserveAspectRatio: 'none' })))
           : s('image', { href: url, x: x - w / 2, y: y - hgt, width: w, height: hgt, preserveAspectRatio: 'none', transform: flip });
         group.append(picture, s('rect', { class: 'outline', x: x - w / 2, y: y - hgt, width: w, height: hgt }));
+        area = w * hgt;
       } else {
         group.append(s('rect', { class: 'outline missing', x: x - 20 * u, y: y - 40 * u, width: 40 * u, height: 40 * u }));
       }
       group.append(s('text', { class: 'shape-name', x, y: y + 14 * u, 'font-size': 12 * u, 'text-anchor': 'middle' }, String(thing?.name ?? '(missing)')));
-      shapes.push(group);
+      shapes.push(this.body(group, area));
     });
   }
 
@@ -830,4 +939,15 @@ export class SceneCanvas {
       ));
     }
   }
+}
+
+/** The area enclosed by a polygon, in square pixels. */
+function polygonArea(points: ReadonlyArray<{ x: number; y: number }>): number {
+  let sum = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(sum) / 2;
 }
