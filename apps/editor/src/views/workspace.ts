@@ -9,6 +9,7 @@ import { glossaryPage } from './glossary';
 import { icon } from '../icons';
 import { sceneEditor } from './scene/sceneEditor';
 import { flushReveal } from './issues';
+import { recordVoicesButton } from './voices';
 
 /** The pages of a scenario: its address, its name, and its icon (see icons.ts). */
 export const TABS = [
@@ -40,6 +41,7 @@ export interface Place {
 export function workspace(store: Store, place: Place, go: (hash: string) => void): { element: HTMLElement; dispose(): void } {
   const ctx: FormContext = { store };
   const base = `#/s/${store.scenarioId}`;
+  const scene0 = () => (place.sceneId != null ? store.byId('scenes', place.sceneId) : undefined);
   const title = h('strong', { class: 'scenario-title' });
   const state = h('a', { class: 'publish-state', href: `${base}/publish` });
   const body = h('main', { class: 'workspace-body' });
@@ -58,6 +60,9 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
       go(`${base}/publish`);
     },
   }, '🚀 Publish');
+  // Test and Record voices sit beside Publish. The scene editor has its own test button, which starts in that scene.
+  const test = scene0() ? null : h('a', { class: 'button test', href: previewUrl(store.scenarioId), target: 'qbl-preview' }, '▶ Test');
+  const record = recordVoicesButton(ctx);
   let disposeScene: (() => void) | null = null;
 
   const drawHead = () => {
@@ -65,9 +70,10 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
     const published = Boolean(store.scenario.published_at);
     state.textContent = !published ? 'Draft' : store.unpublished ? 'Unpublished changes' : 'Published';
     state.dataset.state = !published ? 'draft' : store.unpublished ? 'changed' : 'published';
+    record.refresh();
   };
 
-  const scene = place.sceneId != null ? store.byId('scenes', place.sceneId) : undefined;
+  const scene = scene0();
 
   const page = (): HTMLElement => {
     switch (place.tab) {
@@ -121,11 +127,9 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
     h(
       'div',
       { class: 'workspace-head' },
-      h('div', { class: 'crumbs' }, h('a', { href: '#/' }, 'Scenarios'), ' › ', scene ? h('a', { href: base }, title) : title, scene ? ` › ${sceneLabel(scene)}` : null, state, h('span', { class: 'spacer' }), publish),
+      h('div', { class: 'crumbs' }, h('a', { href: '#/' }, 'Scenarios'), ' › ', scene ? h('a', { href: base }, title) : title, scene ? ` › ${sceneLabel(scene)}` : null, state, h('span', { class: 'spacer' }), record.button, test, publish),
       h('nav', { class: 'tabs', 'aria-label': 'Scenario' },
         ...TABS.map(([key, label, name]) => h('a', { href: key === 'scenes' ? base : `${base}/${key}`, 'data-tab': key, class: !scene && place.tab === key ? 'current' : scene && key === 'scenes' ? 'parent' : null }, icon(name), label)),
-        // The scene editor has its own test button, which starts in that scene.
-        scene ? null : h('a', { class: 'button test', href: previewUrl(store.scenarioId), target: 'qbl-preview' }, '▶ Test'),
       ),
     ),
     body,

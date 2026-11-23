@@ -84,7 +84,6 @@ textarea.code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, mono
 .tabs a:not(.button):hover { color: var(--text); background: var(--surface-2); }
 .tabs a.current { color: var(--text); border-bottom-color: var(--warn); font-weight: 600; background: var(--surface-2); }
 .tabs a.parent { color: var(--text); border-bottom-color: var(--line); }
-.tabs .test { margin: 0 0 6px auto; }
 .workspace-body { flex: 1; min-height: 0; overflow: auto; }
 .workspace-body.fill { overflow: hidden; display: flex; }
 .publish-state { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #4d5059; color: var(--muted); text-decoration: none; margin-left: 6px; }
@@ -344,7 +343,7 @@ input::placeholder, textarea::placeholder { color: #aab1bd; }
 .top button.who:hover:not(:disabled), .top button.who:focus-visible { border-color: #8a91a0; }
 .top button.signout { background: transparent; border-color: #8a91a0; }
 .crumbs .spacer { flex: 1; }
-.publish-now { margin-left: 8px; }
+.crumbs .record-voices, .crumbs .test, .publish-now { margin-left: 8px; }
 h2 { font-size: 16px; }
 
 /* Folding groups: in the scene outline, in the inspector, on media cards. */

@@ -56,7 +56,7 @@ The container also answers OpenAI's `POST /v1/audio/speech`, so other tools can 
 
 ## Giving characters voices and recording their lines
 
-**In the editor:** open a character on the Characters page. Under **🔊 Voice**, choose a voice (grouped as women, men, children, and robots and creatures), press **▶ Listen** to hear it, and **🎙️ Record its lines**. The Characters page has **🎙️ Record voices** for every character at once, **🎭 Give everyone a voice** to give a different voice to each character that has none, and shows how many lines are recorded. Publish afterwards so players get the recordings.
+**In the editor:** open a character on the Characters page. Under **🔊 Voice**, choose a voice (grouped as women, men, children, and robots and creatures), press **▶ Listen** to hear it, and **🎙️ Record its lines**. The header has **🎙️ Record voices** (beside **▶ Test** and **🚀 Publish**, on every page) for every character at once. The Characters page has **🎭 Give everyone a voice** to give a different voice to each character that has none, and shows how many lines are recorded. Publish afterwards so players get the recordings.
 
 **From the command line:**
 
