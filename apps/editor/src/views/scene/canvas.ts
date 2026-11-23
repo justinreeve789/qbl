@@ -1,4 +1,4 @@
-import { flowSettings, pictureScale, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
+import { flowSettings, pictureScale, placeSortLine, sortLineOf, type Item, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -820,6 +820,12 @@ export class SceneCanvas {
               s('image', { href: url, x: 0, y: 0, width: whole.x, height: whole.y, preserveAspectRatio: 'none' })))
           : s('image', { href: url, x: x - w / 2, y: y - hgt, width: w, height: hgt, preserveAspectRatio: 'none', transform: flip });
         group.append(picture, s('rect', { class: 'outline', x: x - w / 2, y: y - hgt, width: w, height: hgt }));
+        // An item's sort line: players below it are drawn in front of the item, above it behind.
+        const line = which === 'items' ? sortLineOf(params(thing ?? ({} as Row), 'settings') as Pick<Item, 'sort_line'>) : null;
+        if (line) {
+          const placed = placeSortLine(line, { x, y, width: w, height: hgt, flipped: mirrored });
+          group.append(s('polyline', { class: 'sort-line-on-scene', points: placed.points.map((p) => `${p.x},${p.y}`).join(' ') }));
+        }
         area = w * hgt;
       } else {
         group.append(s('rect', { class: 'outline missing', x: x - 20 * u, y: y - 40 * u, width: 40 * u, height: 40 * u }));

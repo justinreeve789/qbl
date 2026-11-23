@@ -756,6 +756,13 @@ export function validateScenario(doc: unknown): ValidationResult {
 
   // The bag: things players carry, and what two of them make together.
   (s.items ?? []).forEach((it, i) => {
+    if (it.sort_line != null) {
+      const line = it.sort_line as unknown;
+      const ok = Array.isArray(line) && line.length >= 2
+        && line.every((p) => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1));
+      if (!ok) err(`items[${i}].sort_line`, 'sort_line is a list of at least two [x, y] points, each between 0 and 1');
+      else if (it.placement === 'background') warn(`items[${i}].sort_line`, 'An item on the floor is under everyone’s feet, so its sort line is not used');
+    }
     if (it.carried_when != null) {
       if (!Array.isArray(it.carried_when)) err(`items[${i}].carried_when`, 'carried_when is a list of conditions');
       else checkConditions(it.carried_when, `items[${i}](carried_when)`);

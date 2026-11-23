@@ -947,6 +947,14 @@ export interface Item {
    * in front of it. `background`: it lies on the floor and players always walk over it.
    */
   placement?: 'object' | 'background';
+  /**
+   * [ext] Objects only: where the item meets the floor, for something that runs into the room at an
+   * angle (a counter, a bench seen from the side). Points `[x, y]` along its base, each a fraction of
+   * its picture (0 left/top, 1 right/bottom), at least two. A figure in front of the line, where it
+   * stands across the picture, is drawn in front of the item; one behind it, behind. Unset: the
+   * bottom edge of the picture is the line.
+   */
+  sort_line?: Array<[number, number]>;
   /** [ext] Radius used for blocking, in scene pixels. Defaults to a third of the displayed width. */
   blocking_radius?: number;
   /** [ext] Where the item sits relative to the avatar's feet while worn or ridden. */

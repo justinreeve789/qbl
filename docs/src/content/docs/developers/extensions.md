@@ -99,7 +99,7 @@ Place | Drawn | Use it for
 What decides it:
 
 * **Hotspot labels**: `placement` on the label. Default: `background`, for pictures and text alike, so **players are always drawn in front of a hotspot's labels, wherever they walk**. A label that should be walked behind says `object`; it then stands on its **bottom edge**, the line players are sorted against. `front` draws it over everything.
-* **Items**: `placement` on the item, `object` (default) or `background`. An item stands at its position, the middle of its bottom edge.
+* **Items**: `placement` on the item, `object` (default) or `background`. An item stands at its position, the middle of its bottom edge. An object item that runs into the room at an angle (a counter) can have a `sort_line` along its base: figures in front of the line where they stand are drawn in front of it, those behind it behind (see [Items](#items)).
 * **Characters and avatars** are always objects.
 * **`image_fixed` and `spritemap` actions**: `layer`, which is `above` (default: over everything), `sorted` (among the players, by `position_y`) or `behind` (part of the background).
 * **Foreground layers** are drawn over all of it, as before.
@@ -872,6 +872,8 @@ Parameter | Type | Default | Description
 media_id | int | | Image for the item.
 scale | decimal | 1.0 | Display scale.
 blocking_radius | decimal | 40 | Size of the obstacle for `blocking` items.
+placement | string | object | `object`: sorted among the players by where it stands. `background`: it lies on the floor and everyone walks over it.
+sort_line | array | | Objects only: where the item meets the floor, for something that runs into the room at an angle (a counter, a bench seen from the side). At least two `[x, y]` points along its base, each a fraction of its picture (0 left/top, 1 right/bottom), e.g. `[[0, 0.6], [0.5, 0.93], [1, 1]]`. A figure (avatar, character or pet) overlapping the picture whose feet are below the line where it stands is drawn in front of the item; one above it is drawn behind it. The line is straight between its points and level beyond its ends, and is mirrored with the picture. The item itself is drawn at the depth of the line's lowest point. Unset: the bottom edge of the picture is the line.
 attach_offset_x, attach_offset_y | decimal | 0 | Where the item sits relative to the avatar's feet while worn or ridden. X is mirrored when the avatar faces left.
 attach_layer | string | front | `front` or `behind` the avatar.
 art_faces | string | right | Which way the artwork faces. It is mirrored to match the avatar.
