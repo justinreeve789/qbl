@@ -1,4 +1,4 @@
-import { ApiError, type Row, type VoiceChoice, type VoiceStatus } from '../api';
+import { ApiError, type Row, type VoiceChoice, type VoiceRecording, type VoiceStatus } from '../api';
 import { params } from '../describe';
 import { h, help, toast } from '../dom';
 import type { FormContext } from '../fields';
@@ -172,40 +172,84 @@ export function recordAllButton(ctx: FormContext): HTMLElement {
   return h('span', { class: 'voice-tools' }, chip, assign);
 }
 
-/** Record lines a few at a time until none are left, then load the scenario again to show them. */
+/**
+ * Record lines a few at a time until none are left, then load the scenario again to show them.
+ *
+ * A request that takes longer than the proxy waits (a long line, a slow service) fails with a 504
+ * here but keeps going on the server, which saves what it records. So such a failure is not the
+ * end: wait, and ask again. Until that request finishes the server answers `busy`.
+ */
 async function recordVoices(ctx: FormContext, attrs: { character_id?: number; force?: boolean }, button: HTMLButtonElement) {
   const { store } = ctx;
   const label = button.textContent;
   button.disabled = true;
-  let recorded = 0;
   let removed = 0;
+  let total = 0;
+  let changed = false;
   const skipped = new Set<string>();
-  try {
-    await store.settled();
-    for (let round = 0; round < 200; round++) {
-      const r = await store.api.recordVoices(store.scenarioId, { ...attrs, limit: 4 });
-      recorded += r.recorded;
-      removed += r.removed;
-      for (const s of r.skipped) skipped.add(`${s.action_id}:${s.line ?? ''}`);
-      const total = recorded + r.remaining;
-      button.textContent = total ? `🎙️ Recording… ${recorded} of ${total}` : label;
-      if (r.remaining === 0 || r.recorded === 0) {
-        const parts = [recorded ? `Recorded ${recorded} line${recorded === 1 ? '' : 's'}` : 'Every line was already recorded'];
-        if (removed) parts.push(`removed ${removed} no longer needed`);
-        if (skipped.size) parts.push(`${skipped.size} left to the browser’s voice (they show a variable or play an uploaded recording)`);
-        toast(`${parts.join('; ')}.${recorded ? ' Publish to give players the new recordings.' : ''}`);
-        break;
+  let failures = 0;
+  /** One request, asked again while the answer is "not in time" (the server carries on regardless). */
+  const ask = async (extra: { dry?: boolean; limit?: number }): Promise<VoiceRecording> => {
+    for (;;) {
+      try {
+        const r = await store.api.recordVoices(store.scenarioId, { ...attrs, ...extra });
+        failures = 0;
+        return r;
+      } catch (e) {
+        // Give up after about three minutes without an answer: the server is down, not just slow.
+        if (!stillWorking(e) || ++failures > 36) throw e;
+        changed = true;
+        await wait(5000);
       }
     }
+  };
+  const show = (remaining: number) => {
+    if (total) button.textContent = `🎙️ Recording… ${Math.max(0, total - remaining)} of ${total}`;
+  };
+  try {
+    await store.settled();
+    // How many there are to record, first: so the count is right even when an answer is lost.
+    total = (await ask({ dry: true })).remaining;
+    let remaining = total;
+    show(remaining);
+    for (;;) {
+      const r = await ask({ limit: 4 });
+      remaining = r.remaining;
+      show(remaining);
+      if (r.busy) {
+        changed = true;
+        await wait(3000);
+        continue;
+      }
+      if (r.recorded || r.removed) changed = true;
+      removed += r.removed;
+      for (const s of r.skipped) skipped.add(`${s.action_id}:${s.line ?? ''}`);
+      if (r.remaining === 0 || r.recorded === 0) break;
+    }
+    // Lines recorded by a request whose answer was lost count too: the server saved them.
+    const done = Math.max(0, total - remaining);
+    const parts = [done ? `Recorded ${done} line${done === 1 ? '' : 's'}` : 'Every line was already recorded'];
+    if (removed) parts.push(`removed ${removed} no longer needed`);
+    if (skipped.size) parts.push(`${skipped.size} left to the browser’s voice (they show a variable or play an uploaded recording)`);
+    if (remaining) parts.push(`${remaining} not recorded yet: press “Record voices” to try again`);
+    toast(`${parts.join('; ')}.${done ? ' Publish to give players the new recordings.' : ''}`);
   } catch (e) {
     toast(e instanceof Error ? e.message : String(e), 'error');
   } finally {
     button.textContent = label;
     button.disabled = false;
     status.delete(store.scenarioId);
-    if (recorded || removed) await store.load();
+    if (changed) await store.load();
   }
 }
+
+/** A failure that means "no answer in time", not "no": the proxy gave up, or the connection dropped. */
+function stillWorking(e: unknown): boolean {
+  if (e instanceof TypeError) return true;
+  return e instanceof ApiError && (e.status === 504 || e.status === 502 || (e.fromProxy && e.status === 503));
+}
+
+const wait = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
 
 let playing: HTMLAudioElement | null = null;
 

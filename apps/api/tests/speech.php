@@ -421,6 +421,18 @@ $store->updateRow($sid, 'actions', $a1['id'], ['params' => ['text' => 'Something
 throws(fn () => $scenarioVoicer->record($sid), SpeechError::class, 'cannot be reached', 'a service that is down is reported, not hidden');
 $engine->down = false;
 
+// One recording at a time per scenario: a request the proxy gave up on may still be recording.
+$held = fopen(sys_get_temp_dir()."/qbl-voices-$sid.lock", 'c');
+flock($held, LOCK_EX);
+$said = count($engine->said);
+$busy = $scenarioVoicer->record($sid, ['limit' => 4, 'wait' => false]);
+same([$busy['busy'], $busy['recorded'], $busy['remaining'], count($engine->said)], [true, 0, 1, $said], 'while another call records the scenario, the editor is told so (with what is left) and nothing is recorded twice');
+flock($held, LOCK_UN);
+fclose($held);
+$free = $scenarioVoicer->record($sid, ['limit' => 4, 'wait' => false]);
+same([$free['busy'], $free['recorded'], $free['remaining']], [false, 1, 0], 'and once it is done, recording carries on');
+$store->updateRow($sid, 'actions', $a1['id'], ['params' => ['text' => 'Something newer.'] + array_column($store->bundle($sid)['actions'], null, 'id')[$a1['id']]['params']]);
+
 // ------------------------------------------------------------------ a conversation's lines
 $talk = $store->createScenario(['title' => 'Talk'], null);
 $tid = (int) $talk['id'];

@@ -19,13 +19,56 @@ final class ScenarioVoicer
     public function __construct(private ScenarioStore $store, private Voicer $voicer, private ?VoicePicker $picker = null) {}
 
     /**
-     * @param  array{force?: bool, limit?: ?int, seconds?: ?float, dry?: bool, character_id?: ?int}  $options
+     * @param  array{force?: bool, limit?: ?int, seconds?: ?float, dry?: bool, character_id?: ?int, wait?: bool}  $options
      *                                                                                                         force: record every line again; limit: at most this many recordings in this call
      *                                                                                                         (call again for the rest); seconds: start no new recording after this long;
      *                                                                                                         dry: only count; character_id: only this character's lines
-     * @return array{lines: int, recorded: int, kept: int, removed: int, remaining: int, skipped: list<array{action_id: int, line: ?int, why: string}>}
+     *
+     * One recording runs per scenario at a time (a lock), so two calls can't record the same line twice.
+     * `wait: false` (the editor) answers at once with `busy: true` and a dry run's counts while another
+     * call holds it; otherwise (`qbl:voice`) it waits its turn.
+     *
+     * @return array{lines: int, recorded: int, kept: int, removed: int, remaining: int, busy: bool, skipped: list<array{action_id: int, line: ?int, why: string}>}
      */
     public function record(int $scenarioId, array $options = [], ?callable $log = null): array
+    {
+        if (! empty($options['dry'])) {
+            return $this->recordLocked($scenarioId, $options, $log);
+        }
+        $lock = self::lock($scenarioId, (bool) ($options['wait'] ?? true));
+        if ($lock === null) {
+            return ['busy' => true] + $this->recordLocked($scenarioId, ['dry' => true] + $options, $log);
+        }
+        try {
+            return $this->recordLocked($scenarioId, $options, $log);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /**
+     * The scenario's recording lock (a file lock, released when the process ends however it ends),
+     * or null when another holds it and `$wait` is false.
+     *
+     * @return resource|null
+     */
+    private static function lock(int $scenarioId, bool $wait)
+    {
+        $handle = fopen(sys_get_temp_dir()."/qbl-voices-$scenarioId.lock", 'c');
+        if ($handle === false) {
+            return null;
+        }
+        if (! flock($handle, $wait ? LOCK_EX : LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+
+            return null;
+        }
+
+        return $handle;
+    }
+
+    private function recordLocked(int $scenarioId, array $options, ?callable $log): array
     {
         $rows = $this->store->bundle($scenarioId);
         $lang = $rows['scenario']['default_language'] ?? 'en';
@@ -50,7 +93,7 @@ final class ScenarioVoicer
         $limit = isset($options['limit']) ? max(0, (int) $options['limit']) : null;
         $dry = (bool) ($options['dry'] ?? false);
         $deadline = isset($options['seconds']) ? microtime(true) + (float) $options['seconds'] : null;
-        $out = ['lines' => 0, 'recorded' => 0, 'kept' => 0, 'removed' => 0, 'remaining' => 0, 'skipped' => []];
+        $out = ['lines' => 0, 'recorded' => 0, 'kept' => 0, 'removed' => 0, 'remaining' => 0, 'busy' => false, 'skipped' => []];
 
         foreach (Voicer::lines($rows, $this->voicer->catalog()) as $line) {
             $where = $line['action_id'].($line['line'] !== null ? ":{$line['line']}" : '');

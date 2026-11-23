@@ -30,7 +30,7 @@ use App\Qbl\Speech\SpeechFactory;
  *   POST   scenarios/{id}/publish                 generate the JSON and make it what players get
  *   GET    scenarios/{id}/voices                  the voices characters can be given, and how many lines are recorded
  *   GET    scenarios/{id}/voices/{key}/sample     a voice saying a sample line (MP3)
- *   POST   scenarios/{id}/voices/record           {limit?, force?, character_id?}: record characters' lines, a few per call
+ *   POST   scenarios/{id}/voices/record           {limit?, force?, character_id?, dry?}: record characters' lines, a few per call (dry: only count; busy: another call is recording)
  *   POST   scenarios/{id}/voices/assign           {all?}: give a voice to each character that has none
  *
  * The AI generator's routes (editor/generations) are App\Qbl\Generation\GenerationApi's.
@@ -241,10 +241,16 @@ class EditorApi
                 return [200, ['download' => ['path' => $path, 'name' => "{$voice['key']}.{$said->format}", 'type' => 'audio/mpeg', 'inline' => true]]];
             }
             if ($rest === ['record'] && $method === 'POST') {
-                // A few at a time, so no request runs long: the editor calls again while some remain.
+                // A few at a time, so most requests end well inside the proxy's 60 seconds: the editor
+                // calls again while some remain. One slow line (a long one, or a slower service such
+                // as Chatterbox) can still outlast the proxy. So the request keeps going when the
+                // browser is no longer listening, and saves what it recorded; the editor waits
+                // (`busy`, from the scenario's lock) and carries on from there.
+                ignore_user_abort(true);
+                set_time_limit(900);
                 $limit = max(1, min(20, (int) ($body['limit'] ?? 6)));
                 $result = $this->speech->scenarioVoicer($this->store)->record($id, [
-                    'limit' => $limit, 'seconds' => 12, 'force' => (bool) ($body['force'] ?? false), 'character_id' => isset($body['character_id']) ? (int) $body['character_id'] : null,
+                    'limit' => $limit, 'seconds' => 12, 'wait' => false, 'dry' => (bool) ($body['dry'] ?? false), 'force' => (bool) ($body['force'] ?? false), 'character_id' => isset($body['character_id']) ? (int) $body['character_id'] : null,
                 ]);
 
                 return [200, $result];
