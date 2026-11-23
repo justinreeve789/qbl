@@ -85,20 +85,33 @@ class InternalController extends Controller
         return response()->json(['kept' => $activity->logMessages($scenario->id, (array) $request->input('entries', []))]);
     }
 
-    /** A player's save in one instance of a scenario: `?group=`, the public instance if not given. */
-    public function loadSession(Request $request, Scenario $scenario, User $user): JsonResponse
+    /**
+     * A player's save in one instance of a scenario: `?group=`, the public instance if not given.
+     * `reset` is the save's token (ActivityStore::resetToken): hand it back when saving.
+     */
+    public function loadSession(Request $request, Scenario $scenario, User $user, ActivityStore $activity): JsonResponse
     {
-        $data = ScenarioSession::where('scenario_id', $scenario->id)->where('user_id', $user->id)->where('group_key', self::group($request))->value('data');
+        $group = self::group($request);
+        $data = ScenarioSession::where('scenario_id', $scenario->id)->where('user_id', $user->id)->where('group_key', $group)->value('data');
 
-        return response()->json(['session' => $data]);
+        return response()->json(['session' => $data, 'reset' => $activity->resetToken($scenario->id, $user->id, $group)]);
     }
 
-    public function saveSession(Request $request, Scenario $scenario, User $user): Response
+    /**
+     * Save a player's game. With `?reset=` (the token the save was loaded with), a save loaded
+     * before a teacher reset the student's progress is refused with 409, so the old game is not
+     * written back over the fresh start. Without it (an older game server) the save is written.
+     */
+    public function saveSession(Request $request, Scenario $scenario, User $user, ActivityStore $activity): Response|JsonResponse
     {
         $data = $request->validate(['session' => ['required', 'array']]);
+        $group = self::group($request);
+        if ($request->query('reset') !== null && (int) $request->query('reset') < $activity->resetToken($scenario->id, $user->id, $group)) {
+            return response()->json(['message' => 'This player\'s progress was reset since the save was loaded.', 'reset' => true], 409);
+        }
 
         ScenarioSession::updateOrCreate(
-            ['scenario_id' => $scenario->id, 'user_id' => $user->id, 'group_key' => self::group($request)],
+            ['scenario_id' => $scenario->id, 'user_id' => $user->id, 'group_key' => $group],
             ['data' => $data['session']],
         );
 

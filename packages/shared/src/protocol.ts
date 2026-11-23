@@ -175,4 +175,6 @@ export const CloseCodes = {
   ScenarioUnavailable: 4101,
   Unauthorized: 4102,
   ReplacedByNewSession: 4103,
+  /** A teacher reset the player's progress in this mission: rejoining starts it again. */
+  ProgressReset: 4104,
 } as const;

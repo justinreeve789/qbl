@@ -1,11 +1,17 @@
 import type { ActivityEntry, Id, MessageEntry, Scenario, Session, RewardMessage } from '@qbl/shared';
-import type { Access, Backend, InstanceData, User } from './Backend.js';
+import { ProgressResetError, type Access, type Backend, type InstanceData, type User } from './Backend.js';
 
 /**
  * Talks to the QBL Laravel API's internal endpoints. Every request carries
  * the shared service key; see docs/src/content/docs/developers/api.md for the contract.
  */
 export class ApiBackend implements Backend {
+  /**
+   * The token each save was loaded with (`scenario/user/group`), handed back when saving so the
+   * API can refuse a save loaded before a teacher reset the player's progress.
+   */
+  private resetTokens = new Map<string, number>();
+
   constructor(private baseUrl: string, private serviceKey: string) {}
 
   private async call<T>(method: string, path: string, body?: unknown): Promise<T | null> {
@@ -20,6 +26,7 @@ export class ApiBackend implements Backend {
       signal: AbortSignal.timeout(10_000),
     });
     if (res.status === 404 || res.status === 401) return null;
+    if (res.status === 409 && method === 'PUT' && path.includes('/sessions/')) throw new ProgressResetError();
     if (!res.ok) throw new Error(`API ${method} ${path} failed: ${res.status}`);
     if (res.status === 204) return null;
     return (await res.json()) as T;
@@ -54,12 +61,16 @@ export class ApiBackend implements Backend {
   }
 
   async loadSession(scenarioId: Id, userId: string, group: string): Promise<Session | null> {
-    const data = await this.call<{ session: Session | null }>('GET', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}?group=${encodeURIComponent(group)}`);
+    const data = await this.call<{ session: Session | null; reset?: number }>('GET', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}?group=${encodeURIComponent(group)}`);
+    // An API from before resets sends no token: saves then go without one, as before.
+    if (typeof data?.reset === 'number') this.resetTokens.set(`${scenarioId}/${userId}/${group}`, data.reset);
     return data?.session ?? null;
   }
 
   async saveSession(scenarioId: Id, userId: string, group: string, session: Session): Promise<void> {
-    await this.call('PUT', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}?group=${encodeURIComponent(group)}`, { session });
+    const token = this.resetTokens.get(`${scenarioId}/${userId}/${group}`);
+    const reset = token === undefined ? '' : `&reset=${token}`;
+    await this.call('PUT', `/scenarios/${scenarioId}/sessions/${encodeURIComponent(userId)}?group=${encodeURIComponent(group)}${reset}`, { session });
   }
 
   async loadInstance(scenarioId: Id, group: string): Promise<InstanceData | null> {

@@ -205,7 +205,12 @@ export interface StudentReport {
   badges: string[];
   messages: number;
   learning: Array<{ id: string | number; evidence: Array<{ interaction: string | null; type: string | null; values: Record<string, string | number> }> }>;
+  /** When the teacher last reset the student's progress, and who did; the report counts from then. */
+  reset_at: string | null;
+  reset_by: string | null;
 }
+/** What resetting a student's progress did (App\Qbl\ClassStore::resetProgress). */
+export interface ProgressReset { student_id: number; group: string; reset_at: string; reset_by: string }
 export interface Report {
   summary: {
     students: number; started: number; finished: number; average_time_spent: number; average_objectives_done: number; objectives_total: number;
@@ -507,6 +512,8 @@ export class Api {
   // Reports: how students did, what they did, and what they wrote to each other.
   report = async (id: number) => (await this.call<{ report: Report }>('GET', `/teach/assignments/${id}/report`)).report;
   activity = async (id: number, studentId?: number) => (await this.call<{ activity: ActivityLine[] }>('GET', `/teach/assignments/${id}/activity${studentId != null ? `/${studentId}` : ''}`)).activity;
+  /** Start a student's game in an assignment again: their save there is deleted. */
+  resetProgress = async (id: number, studentId: number) => (await this.call<{ reset: ProgressReset }>('POST', `/teach/assignments/${id}/students/${studentId}/reset`)).reset;
   messageLog = async (id: number) => (await this.call<{ messages: MessageLine[] }>('GET', `/teach/assignments/${id}/messages`)).messages;
 
   // Plans, billing and credits (App\Qbl\Billing\BillingApi).

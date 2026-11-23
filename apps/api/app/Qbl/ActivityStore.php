@@ -22,6 +22,13 @@ class ActivityStore
     public const ACTIVITY_TYPES = ['join', 'leave', 'scene', 'hotspot', 'choice', 'objective', 'glossary', 'narration', 'award'];
     public const MESSAGE_KINDS = ['chat', 'emote', 'private'];
 
+    /**
+     * The line a teacher's reset of a student's progress leaves in the activity log (ref: the
+     * teacher's id, label: their name). Not one of ACTIVITY_TYPES: only ClassStore writes it, never
+     * the game server. Reports count from the latest one; its id is the save token.
+     */
+    public const RESET = 'reset';
+
     /** The most lines one request from the game server may add. */
     public const MAX_BATCH = 500;
 
@@ -176,19 +183,22 @@ class ActivityStore
             $vars = array_merge($defaults, $shared[$group], (array) ($session['variables'] ?? []));
             $flags = (array) ($session['flags'] ?? []);
 
+            // After a reset the report is about the new attempt: lines from before it are left out (they stay in the log).
+            $reset = $this->lastReset($scenarioId, $userId, $group);
+            $after = (int) ($reset['id'] ?? 0);
             $counts = ['join' => 0, 'hotspot' => 0, 'choice' => 0, 'scene' => 0, 'glossary' => 0, 'objective' => 0, 'award' => 0];
-            foreach ($this->all('SELECT `type`, COUNT(*) AS `n` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? GROUP BY `type`', [$scenarioId, $userId, $group]) as $c) {
+            foreach ($this->all('SELECT `type`, COUNT(*) AS `n` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? AND `id` > ? GROUP BY `type`', [$scenarioId, $userId, $group, $after]) as $c) {
                 $counts[$c['type']] = (int) $c['n'];
             }
-            $span = $this->one('SELECT MIN(`created_at`) AS `first`, MAX(`created_at`) AS `last` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ?', [$scenarioId, $userId, $group]);
+            $span = $this->one('SELECT MIN(`created_at`) AS `first`, MAX(`created_at`) AS `last` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? AND `id` > ?', [$scenarioId, $userId, $group, $after]);
             $visited = array_values(array_unique(array_map(
                 fn ($r) => $scenes[(int) $r['ref']] ?? ('Scene '.$r['ref']),
-                $this->all("SELECT DISTINCT `ref` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? AND `type` IN ('scene', 'join') AND `ref` IS NOT NULL AND `ref` != ''", [$scenarioId, $userId, $group]),
+                $this->all("SELECT DISTINCT `ref` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? AND `id` > ? AND `type` IN ('scene', 'join') AND `ref` IS NOT NULL AND `ref` != ''", [$scenarioId, $userId, $group, $after]),
             )));
 
             // Questions: every answer chosen, in order, per infobox. The first one is what the student thought before any feedback.
             $questions = [];
-            foreach ($this->all("SELECT `ref`, `label`, `created_at` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? AND `type` = 'choice' ORDER BY `id`", [$scenarioId, $userId, $group]) as $c) {
+            foreach ($this->all("SELECT `ref`, `label`, `created_at` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? AND `id` > ? AND `type` = 'choice' ORDER BY `id`", [$scenarioId, $userId, $group, $after]) as $c) {
                 $ref = (string) $c['ref'];
                 $questions[$ref] ??= ['action_id' => $ref, 'attempts' => 0, 'first_answer' => $c['label'], 'last_answer' => null];
                 $questions[$ref]['attempts']++;
@@ -243,6 +253,7 @@ class ActivityStore
                 'badges' => array_column($this->all('SELECT `name` FROM `user_badges` WHERE `user_id` = ? AND `scenario_id` = ? ORDER BY `id`', [$userId, $scenarioId]), 'name'),
                 'messages' => (int) ($messages['n'] ?? 0),
                 'learning' => $shown,
+                'reset_at' => self::iso($reset['created_at'] ?? null), 'reset_by' => $reset['label'] ?? null,
             ];
         }
 
@@ -265,6 +276,23 @@ class ActivityStore
             'learning_objectives' => array_map(fn ($lo) => ['id' => $lo['id'], 'text' => $lo['text'] ?? '', 'standards' => $lo['standards'] ?? []], $learning),
             'students' => $rows,
         ];
+    }
+
+    /** The latest reset of a student's progress in one instance: its `id`, `created_at` and `label` (who), or null. */
+    public function lastReset(int $scenarioId, int $userId, string $group): ?array
+    {
+        return $this->one('SELECT `id`, `created_at`, `label` FROM `activity_log` WHERE `scenario_id` = ? AND `user_id` = ? AND `group_key` = ? AND `type` = ? ORDER BY `id` DESC LIMIT 1',
+            [$scenarioId, $userId, self::group($group), self::RESET]);
+    }
+
+    /**
+     * The save token of a player's game in one instance: 0 until a teacher resets it, then the id of
+     * the latest reset. The game server gets it with the save and hands it back when saving; a save
+     * that brings an older token was loaded before the reset and must not be written.
+     */
+    public function resetToken(int $scenarioId, int $userId, string $group): int
+    {
+        return (int) ($this->lastReset($scenarioId, $userId, $group)['id'] ?? 0);
     }
 
     /** The activity log of some instances of a scenario, newest first, optionally for one student. */

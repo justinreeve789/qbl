@@ -144,6 +144,7 @@ Endpoint | Returns
 `GET /api/teach/assignments/{id}/activity` | `{ "activity": [...] }`: the activity log of the assignment's instances, newest first
 `GET /api/teach/assignments/{id}/activity/{studentId}` | The same, for one student
 `GET /api/teach/assignments/{id}/messages` | `{ "messages": [...] }`: every message sent in the assignment's instances, newest first
+`POST /api/teach/assignments/{id}/students/{student}/reset` | `{ "reset": { "student_id", "group", "reset_at", "reset_by" } }`: deletes the student's save in the instance they play in for that assignment, so they start again. The logs, stars, XP, badges and the team's shared world are kept; the report counts from the reset (its students carry `reset_at` and `reset_by`). 404 if the student is not in the assignment
 
 Only the assignment's teacher (or an admin) may read them.
 
@@ -185,8 +186,8 @@ Endpoint | Body | Returns
 `POST /auth/verify` | `{ "token": "..." }` | `{ "user": User }`, or 401 if the token is not valid
 `GET /scenarios/{code}` | | `{ "scenario": Scenario }` (no session), or 404. A shortname is accepted too
 `GET /scenarios/{id}/access/{userId}?group=` | | `{ "allowed": true, "party": "a12", "team_name": "Comets" }`: whether the player may join that instance, the room it belongs to (a team's is its assignment's; anything else is its own) and, for a team, its name. Asked before a player is let into a room
-`GET /scenarios/{id}/sessions/{userId}?group=` | | `{ "session": Session or null }`: the player's save in that instance (`public` if no group is given)
-`PUT /scenarios/{id}/sessions/{userId}?group=` | `{ "session": Session }` | 204
+`GET /scenarios/{id}/sessions/{userId}?group=` | | `{ "session": Session or null, "reset": 0 }`: the player's save in that instance (`public` if no group is given), and its reset token: 0, or the id of the latest time a teacher reset the player's progress there
+`PUT /scenarios/{id}/sessions/{userId}?group=&reset=` | `{ "session": Session }` | 204. With `reset` (the token the save was loaded with), 409 `{ "reset": true }` if a teacher has reset the player's progress since: the game server must not write that save, and sends the player off with close code 4104 so that rejoining starts again. Without `reset` the save is written
 `GET /scenarios/{id}/instances/{group}` | | `{ "instance": InstanceData or null }`
 `PUT /scenarios/{id}/instances/{group}` | `{ "instance": InstanceData }` | 204
 `POST /scenarios/{id}/awards` | `{ "user_id": 12, "action_id": 72090 }` | `Progress` plus `delta_stars`, `delta_xp`, `note`, `rank_up`. The action must be an `award` in the published document; a once-only award already given changes nothing. 403 for a guest
