@@ -169,6 +169,29 @@ test('the narrator: a narration is the default storyteller’s to record, and th
   assert.equal((await rest<{ scenario: Scenario }>('GET', '/preview')).scenario.narrator_voice, undefined, 'back to the default');
 });
 
+test('a recording that outlasts the proxy (504) is not the end: the editor waits and carries on', async () => {
+  const bundle = await rest<{ events: Array<{ id: number }> }>('GET', '');
+  await rest('POST', '/rows/actions', { event_id: bundle.events[0]!.id, type: 'narration', params: { text: 'Then the lights came on.' } });
+  await page.reload();
+  await page.click('.tabs >> text=Characters');
+  await page.waitForSelector('.voice-tools .chip:has-text("2 of 3 lines recorded")');
+  // The first request reaches the server and records, but the browser hears only the proxy giving up.
+  let timedOut = 0;
+  await page.route('**/voices/record', async (route) => {
+    if ((route.request().postDataJSON() as { dry?: boolean }).dry || timedOut++ > 0) return route.continue();
+    await route.fetch();
+    await route.fulfill({ status: 504, contentType: 'text/html', body: '<h1>Gateway Timeout</h1>' });
+  });
+  const before = asked.length;
+  await page.click('.workspace-head button.record-voices');
+  await page.waitForSelector('.toast:has-text("Recorded 1 line")', { timeout: 15_000 });
+  await page.unroute('**/voices/record');
+  assert.ok(timedOut >= 2, 'it asked again after the 504');
+  assert.equal(asked.length - before, 1, 'and the line was recorded once');
+  assert.equal(await page.locator('.toast.error').count(), 0, 'with no error shown');
+  await page.waitForSelector('.voice-tools .chip:has-text("All 3 lines recorded")');
+});
+
 test('nothing went wrong in the browser along the way', () => {
   assert.deepEqual(errors, []);
 });

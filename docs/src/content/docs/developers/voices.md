@@ -225,7 +225,9 @@ Route | What
 ----- | ----
 `GET scenarios/{id}/voices` | `{engine, voices, lines: {total, recorded, to_record}}`: the voices for the scenario's language, and how far recording has got.
 `GET scenarios/{id}/voices/{key}/sample` | A voice saying a sample line, as `audio/mpeg`.
-`POST scenarios/{id}/voices/record` | `{limit?, force?, character_id?}`: records up to `limit` lines (default 6, at most 20) and says how many `remaining`; the editor calls again until none remain, so no request runs long.
+`POST scenarios/{id}/voices/record` | `{limit?, force?, character_id?, dry?}`: records up to `limit` lines (default 6, at most 20, starting no new one after 12 seconds) and says how many `remaining`; the editor calls again until none remain. `dry` only counts. One call records a scenario at a time: while another holds it the answer is `busy: true` with the counts, and nothing is recorded.
+
+A single slow line (a long one, or Chatterbox at 8–10× real time) can still take longer than the proxy's 60 seconds. The request then keeps going on the server (`ignore_user_abort`) and saves the line; the editor treats a 502/504 or a dropped connection as "still working", waits, and asks again (answered `busy` until that request ends). It gives up after about three minutes with no answer at all.
 `POST scenarios/{id}/voices/assign` | `{all?}`: gives a voice to each character that has none (with `all`, to every character).
 
 ## Testing

@@ -135,6 +135,8 @@ export interface VoiceRecording {
   kept: number;
   removed: number;
   remaining: number;
+  /** Another request is recording this scenario (one that outlasted its proxy, say): nothing was recorded; ask again shortly. */
+  busy?: boolean;
   /** `line`: the line of a conversation, by its place in the action's lines. */
   skipped: Array<{ action_id: number; line?: number | null; why: string }>;
 }
@@ -357,7 +359,8 @@ export interface OrgOverview {
 }
 
 export class ApiError extends Error {
-  constructor(readonly status: number, message: string) {
+  /** `fromProxy`: the answer was not the API's own (no JSON), e.g. a proxy that gave up waiting (504). */
+  constructor(readonly status: number, message: string, readonly fromProxy = false) {
     super(message);
   }
 }
@@ -398,7 +401,7 @@ export class Api {
       });
       if (res.status === 204) return undefined as T;
       const data = (await res.json().catch(() => null)) as (T & { message?: string }) | null;
-      if (!res.ok) throw new ApiError(res.status, data?.message ?? `Request failed (${res.status})`);
+      if (!res.ok) throw new ApiError(res.status, data?.message ?? `Request failed (${res.status})`, data === null);
       return data as T;
     } finally {
       if (!quiet) this.onBusy(--this.pending > 0);
@@ -555,7 +558,7 @@ export class Api {
 
   // Characters' voices: recorded by the server's text-to-speech service, with word timings.
   voices = (id: number) => this.call<VoiceStatus>('GET', `/editor/scenarios/${id}/voices`);
-  recordVoices = (id: number, attrs: { limit?: number; force?: boolean; character_id?: number } = {}) => this.call<VoiceRecording>('POST', `/editor/scenarios/${id}/voices/record`, attrs);
+  recordVoices = (id: number, attrs: { limit?: number; force?: boolean; character_id?: number; dry?: boolean } = {}) => this.call<VoiceRecording>('POST', `/editor/scenarios/${id}/voices/record`, attrs);
   assignVoices = async (id: number, all = false) => (await this.call<{ voices: Record<string, string> }>('POST', `/editor/scenarios/${id}/voices/assign`, { all })).voices;
 
   /** A voice saying a sample line, as an address an <audio> can play (revoke it when done). */
