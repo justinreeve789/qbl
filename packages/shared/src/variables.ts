@@ -85,7 +85,13 @@ export function applyOperator(
 ): VarValue {
   const fallback: VarValue = current ?? '';
   if (operator === 'set') return operand ?? '';
-  if (operator === 'random') return Math.floor(random() * RANDOM_MAX) + 1;
+  if (operator === 'random') {
+    // A whole number from 0 up to and including the operand. With no usable operand (older scenarios
+    // that narrow the result with "%" afterwards) it is 1 to RANDOM_MAX as before.
+    const top = toNumber(operand);
+    if (top === null) return Math.floor(random() * RANDOM_MAX) + 1;
+    return Math.floor(random() * (Math.max(0, Math.floor(top)) + 1));
+  }
 
   const a = toNumber(current ?? 0);
   const b = toNumber(operand);

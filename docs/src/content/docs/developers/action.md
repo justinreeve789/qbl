@@ -147,7 +147,7 @@ set | Assign the variable to the value specified in operand.
 * | Multiply the numeric variable by the value specified in operand. If the operand is non-numeric, this does nothing.
   / | Divide the numeric variable by the value specified in operand. if the operand is non-numeric, this does nothing.
   % | Modulo the numeric variable by the value specified in operand. if the operand is non-numeric, this does nothing.
-  random | Generate a random number between 1 and 1000000000 and assign it to the variable. To narrow the results, follow it up with another variable action, using modulus (%). For example, to get a number between 1 and 20, generate the random number, then apply “% 20” to it.
+  random | Generate a random whole number from 0 up to and including the operand, and assign it to the variable. For example, an operand of 20 gives a number from 0 to 20. A decimal operand is rounded down, and a negative one gives 0. If there is no operand, the number is between 1 and 1000000000 (the original behaviour); narrow that with a following variable action using modulus (%).
 
 ## Video
 Play a video (MP4) file. Currently under revision.
