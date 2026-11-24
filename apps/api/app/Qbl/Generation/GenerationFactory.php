@@ -4,7 +4,9 @@ namespace App\Qbl\Generation;
 
 use App\Qbl\Generation\Art\ArtStyle;
 use App\Qbl\Generation\Art\AssetDirector;
+use App\Qbl\Generation\Art\CharacterAnimator;
 use App\Qbl\Generation\Art\ImageGenerator;
+use App\Qbl\Generation\Art\Providers\AutoSpriteAnimator;
 use App\Qbl\Generation\Art\Providers\GeminiImageGenerator;
 use App\Qbl\Generation\Art\Providers\OfflineImageGenerator;
 use App\Qbl\Generation\Art\Providers\OpenAiImageGenerator;
@@ -150,6 +152,45 @@ class GenerationFactory
             'placeholder' => new PlaceholderImageGenerator(($style ?? $this->style())->chroma(), array_values(($style ?? $this->style())->palette())),
             default => throw new GenerationError("Unknown image driver \"$driver\": use gemini, openai, scenario, placeholder or offline."),
         };
+    }
+
+    /**
+     * Who animates the characters (config `animations`): AutoSprite, made from each character's sheet
+     * in one request per character. Null when that is switched off ("draw": strips are drawn by the
+     * image model) or not set up (no AUTOSPRITE_API_KEY), with a line in the log saying so.
+     */
+    public function animator(?string $driver = null, ?callable $log = null): ?CharacterAnimator
+    {
+        $driver ??= (string) $this->config('animations.driver', 'autosprite');
+        if ($driver === 'draw' || $driver === '') {
+            return null;
+        }
+        if ($driver !== 'autosprite') {
+            throw new GenerationError("Unknown animation driver \"$driver\": use autosprite or draw.");
+        }
+        $c = fn (string $k, $d = null) => $this->config("animations.autosprite.$k", $d);
+        if ((string) $c('api_key', '') === '') {
+            $log && $log('AUTOSPRITE_API_KEY is not set, so the characters\' animations are drawn as strips by the image model.');
+
+            return null;
+        }
+        $list = $c('animations', []);
+        $list = is_string($list) ? array_values(array_filter(array_map('trim', explode(',', $list)))) : array_values((array) $list);
+
+        return new AutoSpriteAnimator(
+            $this->http,
+            // The one generation request per character must never be sent twice: no retries for it.
+            $this->http instanceof CurlHttpClient ? new CurlHttpClient(0) : $this->http,
+            (string) $c('api_key'),
+            $list,
+            (string) $c('video_tier', 'turbo'),
+            (int) $c('frames', 16),
+            (int) $c('frame_size', 256),
+            (string) $c('remove_bg', 'default'),
+            (string) $c('base_url', 'https://www.autosprite.io/api/v1'),
+            (int) $c('timeout', 900),
+            $this->spend(),
+        );
     }
 
     /**

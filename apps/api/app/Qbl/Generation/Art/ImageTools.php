@@ -766,6 +766,65 @@ final class ImageTools
     }
 
     /**
+     * A frame of an animation in a cell of a sprite sheet, placed by its pivot rather than trimmed: the
+     * point ($px, $py, in the frame's pixels) where the feet stand goes to the middle of the cell, $pad
+     * pixels above its bottom, after scaling by $scale. Every frame of an animation shares one pivot, so
+     * whatever moves (a jump off the ground, arms thrown up, a lean) stays where it was drawn. What falls
+     * outside the cell is cut off: choose $scale with pivotExtent() so nothing does.
+     */
+    public static function pivotCell(GdImage $frame, int $cellW, int $cellH, float $scale, float $px, float $py, int $pad = 6): GdImage
+    {
+        $fw = max(1, (int) round(imagesx($frame) * $scale));
+        $fh = max(1, (int) round(imagesy($frame) * $scale));
+        $scaled = self::resize($frame, $fw, $fh);
+        // Where the frame's top left corner lands in the cell; clipped to the cell by hand, as GD does not clip a negative destination.
+        $dx = (int) round($cellW / 2 - $px * $scale);
+        $dy = (int) round($cellH - $pad - $py * $scale);
+        $sx = max(0, -$dx);
+        $sy = max(0, -$dy);
+        $w = min($fw - $sx, $cellW - max(0, $dx));
+        $h = min($fh - $sy, $cellH - max(0, $dy));
+        $out = self::blank($cellW, $cellH);
+        if ($w > 0 && $h > 0) {
+            imagecopy($out, $scaled, max(0, $dx), max(0, $dy), $sx, $sy, $w, $h);
+        }
+
+        return $out;
+    }
+
+    /**
+     * How far a set of frames sharing a pivot reach from it: [up, down, left, right] in the frames'
+     * pixels, over every frame (the highest a jump goes, the widest arms reach).
+     *
+     * @param  GdImage[]  $frames
+     * @return array{0: float, 1: float, 2: float, 3: float}
+     */
+    public static function pivotExtent(array $frames, float $px, float $py): array
+    {
+        $reach = [0.0, 0.0, 0.0, 0.0];
+        foreach ($frames as $frame) {
+            if ($box = self::bbox($frame)) {
+                $reach = [
+                    max($reach[0], $py - $box[1]),
+                    max($reach[1], $box[1] + $box[3] - $py),
+                    max($reach[2], $px - $box[0]),
+                    max($reach[3], $box[0] + $box[2] - $px),
+                ];
+            }
+        }
+
+        return $reach;
+    }
+
+    /** Where a figure's feet stand in a frame: the middle of its mass, at the bottom of what is drawn. Null if empty. */
+    public static function feet(GdImage $frame): ?array
+    {
+        $box = self::bbox($frame);
+
+        return $box ? [$box[0] + self::centroidX(self::crop($frame, $box[0], $box[1], $box[2], $box[3])), (float) ($box[1] + $box[3])] : null;
+    }
+
+    /**
      * The cells of a picture drawn as a grid of separate things, read left to right, top to bottom:
      * each cell's contents, trimmed, or null when the cell is empty or its thing runs out of it (into a
      * neighbour or off the picture). $im has its background already removed.

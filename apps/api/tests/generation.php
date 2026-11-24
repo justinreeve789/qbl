@@ -18,6 +18,7 @@ use App\Qbl\Generation\Art\AssetDirector;
 use App\Qbl\Generation\Art\ImageGenerator;
 use App\Qbl\Generation\Art\ImageTools;
 use App\Qbl\Generation\Art\PricedImageGenerator;
+use App\Qbl\Generation\Art\Providers\AutoSpriteAnimator;
 use App\Qbl\Generation\Art\Providers\GeminiImageGenerator;
 use App\Qbl\Generation\Art\Providers\OpenAiImageGenerator;
 use App\Qbl\Generation\Art\Providers\PlaceholderImageGenerator;
@@ -1455,6 +1456,228 @@ $hashes->attach("$work/hash-trace", 'test', ['x']);
 $hashes->picture('test', 'a prompt', [new Reference('not a picture', 'style anchor 1')], '1:1', false, ['kind' => 'item'], 'bytes', 0.1, null);
 $hashCall = json_decode((string) file_get_contents("$work/hash-trace/trace/calls/0001-picture-item.json"), true);
 same([$hashCall['result']['sha1'], isset($hashCall['result']['file']), $hashCall['references'][0]['role']], [sha1('bytes'), false, 'style anchor 1'], 'with pictures "none", only their hashes are kept');
+
+// ------------------------------------------------------------------ AutoSprite: every animation in one request, never another
+/**
+ * AutoSprite as its API documents it, in memory: characters, the spritesheets request, jobs, sheets
+ * and the presigned files. Each sheet is a row of 64 px frames of a 20 x 40 block standing at
+ * (32, 60); a jump lifts it off the ground in the middle frames.
+ */
+final class FakeAutoSprite implements HttpClient
+{
+    public array $sent = [];
+
+    /** job id => [kind, polls left before it finishes, outcome] */
+    private array $jobs = [];
+
+    public function __construct(
+        /** kinds that fail to start (in the answer's "failed") */
+        public array $failToStart = [],
+        /** kinds whose job fails */
+        public array $failJob = [],
+        /** an error to answer the spritesheets request with: [status, code] */
+        public ?array $refuse = null,
+        /** take the request, then lose the answer (the connection drops) */
+        public bool $loseAnswer = false,
+        /** polls each job stays "running" */
+        public int $slow = 1,
+        public int $frames = 6,
+    ) {}
+
+    public function count(string $method, string $pattern): int
+    {
+        return count(array_filter($this->sent, fn ($s) => $s['method'] === $method && preg_match($pattern, $s['url'])));
+    }
+
+    public function send(string $method, string $url, array $headers = [], array|string|null $body = null, bool $multipart = false, int $timeout = 120): HttpResponse
+    {
+        $this->sent[] = compact('method', 'url', 'headers', 'body', 'multipart');
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        if (str_starts_with($url, 'https://files.test/')) {
+            [$id, $ext] = explode('.', basename($path));
+            $kind = $this->jobs['rose_'.substr($id, 3)][0];
+
+            return new HttpResponse(200, $ext === 'png' ? $this->sheet($kind) : json_encode($this->atlas()));
+        }
+        if (($headers['x-api-key'] ?? '') !== 'vspk_test') {
+            return new HttpResponse(401, json_encode(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Invalid API key']]));
+        }
+        if ($method === 'POST' && $path === '/api/v1/characters') {
+            return new HttpResponse(201, json_encode(['id' => 'char_1', 'name' => $body['name'] ?? '']));
+        }
+        if ($method === 'POST' && preg_match('#/characters/char_1/spritesheets$#', $path)) {
+            if ($this->refuse) {
+                return new HttpResponse($this->refuse[0], json_encode(['error' => ['code' => $this->refuse[1], 'message' => 'Not enough credits for all animations']]));
+            }
+            if (count($body['animations']) > 10) {
+                return new HttpResponse(400, json_encode(['error' => ['code' => 'TOO_MANY_ANIMATIONS', 'message' => 'At most 10']]));
+            }
+            $workflows = $failed = [];
+            foreach ($body['animations'] as $a) {
+                if (in_array($a['kind'], $this->failToStart, true)) {
+                    $failed[] = ['kind' => $a['kind'], 'error' => 'could not start'];
+
+                    continue;
+                }
+                $id = 'rose_'.(count($this->jobs) + 1);
+                $this->jobs[$id] = [$a['kind'], $this->slow, in_array($a['kind'], $this->failJob, true) ? 'failed' : 'succeeded'];
+                $workflows[] = ['jobId' => $id, 'kind' => $a['kind'], 'videoId' => 'vid_'.$id];
+            }
+            if ($this->loseAnswer) {
+                throw new GenerationError('Connection reset by peer');
+            }
+
+            return new HttpResponse(202, json_encode(['characterId' => 'char_1', 'workflows' => $workflows, 'creditsUsed' => 5 * count($workflows)] + ($failed ? ['failed' => $failed] : [])));
+        }
+        if ($method === 'GET' && $path === '/api/v1/jobs') {
+            return new HttpResponse(200, json_encode(['jobs' => array_map(fn ($id) => ['jobId' => $id, 'characterId' => 'char_1', 'status' => 'running'], array_keys($this->jobs)), 'hasMore' => false]));
+        }
+        if ($method === 'GET' && preg_match('#/jobs/(rose_\d+)$#', $path, $m)) {
+            $job = &$this->jobs[$m[1]];
+            if ($job[1]-- > 0) {
+                return new HttpResponse(200, json_encode(['jobId' => $m[1], 'status' => 'running', 'progress' => ['total' => 3, 'completed' => 1], 'spritesheetIds' => []]));
+            }
+
+            return new HttpResponse(200, json_encode($job[2] === 'failed'
+                ? ['jobId' => $m[1], 'status' => 'failed', 'error' => 'Video generation timed out', 'spritesheetIds' => []]
+                : ['jobId' => $m[1], 'status' => 'succeeded', 'spritesheetIds' => ['ss_'.substr($m[1], 5)]]));
+        }
+        if ($method === 'GET' && preg_match('#/spritesheets/ss_(\d+)$#', $path, $m)) {
+            $kind = $this->jobs["rose_$m[1]"][0];
+
+            return new HttpResponse(200, json_encode(['id' => "ss_$m[1]", 'kind' => $kind, 'status' => 'ready', 'frameWidth' => 64, 'frameHeight' => 64, 'frameCount' => $this->frames, 'columns' => $this->frames,
+                'sheetUrl' => "https://files.test/ss_$m[1].png?sig=x", 'atlasUrl' => "https://files.test/ss_$m[1].json?sig=x", 'speedMultiplier' => 1]));
+        }
+
+        return new HttpResponse(404, json_encode(['error' => ['code' => 'NOT_FOUND', 'message' => "$method $path"]]));
+    }
+
+    private function sheet(string $kind): string
+    {
+        $im = ImageTools::blank(64 * $this->frames, 64);
+        $teal = imagecolorallocatealpha($im, 30, 160, 150, 0);
+        for ($i = 0; $i < $this->frames; $i++) {
+            $lift = $kind === 'jump' ? (int) round(sin(M_PI * $i / ($this->frames - 1)) * 16) : 0;
+            imagefilledrectangle($im, 64 * $i + 22, 20 - $lift, 64 * $i + 41, 59 - $lift, $teal);
+        }
+
+        return ImageTools::png($im);
+    }
+
+    private function atlas(): array
+    {
+        $frames = [];
+        for ($i = 0; $i < $this->frames; $i++) {
+            $frames[(string) $i] = ['x' => 64 * $i, 'y' => 0, 'w' => 64, 'h' => 64, 'duration' => 333];
+        }
+
+        return ['frames' => $frames, 'meta' => ['size' => ['w' => 64 * $this->frames, 'h' => 64], 'frame_size' => ['w' => 64, 'h' => 64], 'duration_s' => 2, 'fps' => $this->frames / 2, 'pivot' => ['x' => 0.5, 'y' => 60 / 64]]];
+    }
+}
+
+$noSleep = fn (int $s) => null;
+$autoSprite = fn (FakeAutoSprite $fake, array $list = [], int $timeout = 900) => new AutoSpriteAnimator($fake, $fake, 'vspk_test', $list, timeout: $timeout, spend: new Spend, sleep: $noSleep);
+$animatedDirector = function (string $dir, FakeAutoSprite $fake, string $fallback = 'draw', int $timeout = 900, ?PricedPlaceholder $images = null) use ($placeholder, $style, $autoSprite) {
+    return new AssetDirector($images ?? new PricedPlaceholder($placeholder), $style, null, $dir, 1, animator: $autoSprite($fake, [], $timeout), animatorFallback: $fallback);
+};
+$pip = $blueprint['characters'][1];
+
+$fake = new FakeAutoSprite;
+$pictures = new PricedPlaceholder($placeholder);
+$director = $animatedDirector("$work/autosprite", $fake, images: $pictures);
+$drawn = (new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+$asked = $fake->sent[array_key_last(array_filter($fake->sent, fn ($s) => str_ends_with($s['url'], '/spritesheets')))]['body'];
+same([$fake->count('POST', '#/characters$#'), $fake->count('POST', '#/spritesheets$#')], [1, 1], 'AutoSprite: the sheet is uploaded once and every animation is asked for in ONE request');
+same(array_column($asked['animations'], 'kind'), ['idle', 'walk', 'point', 'wave', 'victory', 'custom', 'talk', 'jump', 'dance', 'crouch'], 'the request holds all ten (the most allowed), the mission\'s own first');
+check($asked['videoTier'] === 'turbo' && $asked['frameCount'] === 16 && ! isset($asked['animations'][0]['prompt']) && isset($asked['animations'][5]['prompt'], $asked['animations'][5]['name']), 'presets carry no prompt; the custom "think" has a name and a prompt');
+check(($asked['animations'][6]['loop'] ?? false) && ($asked['animations'][8]['loop'] ?? false), 'talk and dance are asked to loop seamlessly');
+check((bool) array_filter($fake->sent, fn ($s) => $s['multipart'] && $s['body']['image'] instanceof CURLFile), 'the character sheet is uploaded as a file');
+check(! array_filter($fake->sent, fn ($s) => str_starts_with($s['url'], 'https://files.test/') && isset($s['headers']['x-api-key'])), 'the key is never sent to the presigned file addresses');
+same(array_column($drawn['char:bot']['params']['animations'], 'name'), ['idle', 'walk', 'point', 'wave', 'cheer', 'think', 'talk', 'jump', 'dance', 'crouch'], 'the sheet has every animation, standing and walking first');
+check(! in_array('strip', $pictures->drawn, true) && in_array('character', $pictures->drawn, true), 'the image model draws the character sheet and no strips');
+$rows = array_column($drawn['char:bot']['params']['animations'], null, 'name');
+check(! isset($rows['idle']['repeat']) && ! isset($rows['walk']['repeat']) && $rows['jump']['repeat'] === false && $rows['cheer']['duration'] === 2000, 'idle and walk loop; gestures play once, at the length AutoSprite made them');
+same([$drawn['char:bot']['frame_width'], $drawn['char:bot']['params']['sheet']['columns']], [AssetDirector::ANIMATED_CELL_W, 6], 'cells are 256 wide, one column per frame');
+check($drawn['char:bot']['body_height'] > 100 && $drawn['char:bot']['body_height'] <= AssetDirector::CELL_H - 30, 'the body height is recorded ('.$drawn['char:bot']['body_height'].' px)');
+check(MissionBuilder::characterScale($pip, $drawn['char:bot']) > MissionBuilder::characterScale($pip), 'and the game shows a smaller-drawn body at the same real size');
+$sheetIm = ImageTools::load((string) file_get_contents($drawn['char:bot']['path']));
+$cellBox = fn (int $frame) => ImageTools::bbox(ImageTools::crop($sheetIm, ($frame % 6) * 256, intdiv($frame, 6) * 320, 256, 320));
+$jump = $rows['jump']['frames'];
+check($cellBox($jump[3])[1] + $cellBox($jump[3])[3] < $cellBox($jump[0])[1] + $cellBox($jump[0])[3] - 10, 'frames are placed by their pivot: the jump leaves the ground');
+check(abs($cellBox($rows['idle']['frames'][0])[1] + $cellBox($rows['idle']['frames'][0])[3] - (320 - 6)) <= 2, 'standing feet are on the cell\'s baseline');
+check(is_file("$work/autosprite/assets/autosprite-bot.json") && (array_column($director->manifest(), null, 'key')['animations:bot']['accepted'] ?? false), 'what AutoSprite made is recorded with the run');
+
+// Resumed: nothing is asked again, nothing is even read again.
+$before = count($fake->sent);
+$again = $animatedDirector("$work/autosprite", $fake);
+$redone = (new ReflectionMethod($again, 'character'))->invoke($again, $pip, '', [], ['point']);
+same([count($fake->sent) - $before, count($redone['char:bot']['params']['animations'])], [0, 10], 'a resumed run reuses every animation without a single request');
+
+// Some fail: the walk is made from the standing picture, the rest stand in with built-in moves. No second request.
+$fake = new FakeAutoSprite(failToStart: ['wave'], failJob: ['walk']);
+$director = $animatedDirector("$work/autosprite-partial", $fake);
+$drawn = (new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+$names = array_column($drawn['char:bot']['params']['animations'], 'name');
+check(in_array('walk', $names, true) && ! in_array('wave', $names, true) && in_array('point', $names, true), 'a failed walk is made from the standing picture; a failed gesture is left to the built-in moves');
+$entry = array_column($director->manifest(), null, 'key')['animations:bot'];
+check(isset($entry['missing']['walk'], $entry['missing']['wave']) && $entry['below_bar'] === true, 'what is missing, and why, is recorded and flagged');
+(new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+same($fake->count('POST', '#/spritesheets$#'), 1, 'and nothing is asked for again, even for what failed');
+
+// Refused outright (no credits): nothing spent; the strips are drawn instead, and AutoSprite is not asked again.
+$fake = new FakeAutoSprite(refuse: [402, 'INSUFFICIENT_CREDITS']);
+$pictures = new PricedPlaceholder($placeholder);
+$director = $animatedDirector("$work/autosprite-refused", $fake, images: $pictures);
+$drawn = (new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+check(in_array('strip', $pictures->drawn, true) && $drawn['char:bot']['frame_width'] === AssetDirector::CELL_W, 'a refused request falls back to drawn strips');
+check(str_contains((string) array_column($director->manifest(), null, 'key')['animations:bot']['note'], 'INSUFFICIENT_CREDITS'), 'with AutoSprite\'s reason recorded');
+(new ReflectionMethod($animatedDirector("$work/autosprite-refused", $fake), 'character'))->invoke($animatedDirector("$work/autosprite-refused", $fake), $pip, '', [], ['point']);
+same($fake->count('POST', '#/spritesheets$#'), 1, 'a resumed run does not ask a refusing AutoSprite again');
+$fake = new FakeAutoSprite(refuse: [403, 'PLAN_REQUIRED']);
+$pictures = new PricedPlaceholder($placeholder);
+$director = $animatedDirector("$work/autosprite-puppet", $fake, 'puppet', images: $pictures);
+$drawn = (new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+same([array_column($drawn['char:bot']['params']['animations'], 'name'), in_array('strip', $pictures->drawn, true)], [['idle', 'walk'], false], 'with the puppet fallback, nothing more is asked of anyone: a walk from the standing picture');
+
+// The answer is lost after AutoSprite took the request: its jobs are found, not asked for again.
+$fake = new FakeAutoSprite(loseAnswer: true);
+$director = $animatedDirector("$work/autosprite-lost", $fake);
+$drawn = (new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+same([$fake->count('POST', '#/spritesheets$#'), count($drawn['char:bot']['params']['animations'])], [1, 10], 'a lost answer is recovered from the character\'s jobs, without asking again');
+
+// Slow jobs: the run goes on without them; a resume collects them, still without asking again.
+$fake = new FakeAutoSprite(slow: 50);
+$director = $animatedDirector("$work/autosprite-slow", $fake, timeout: 15);
+$drawn = (new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+check(str_contains((string) (array_column($director->manifest(), null, 'key')['animations:bot']['missing']['walk'] ?? ''), 'resume the run'), 'animations not ready in time are named, with what to do');
+$director = $animatedDirector("$work/autosprite-slow", $fake, timeout: 900);
+$drawn = (new ReflectionMethod($director, 'character'))->invoke($director, $pip, '', [], ['point']);
+same([count($drawn['char:bot']['params']['animations']), $fake->count('POST', '#/spritesheets$#'), $fake->count('POST', '#/characters$#')], [10, 1, 1], 'and a resume collects them by polling, never asking again');
+
+// Offline: only what was made before.
+$fake = new FakeAutoSprite;
+$offline = $autoSprite($fake);
+$offline->offline();
+$png = ImageTools::png(ImageTools::blank(8, 8));
+file_put_contents("$work/offline-sheet.png", $png);
+check($offline->animate('x', 'X', 'x', "$work/offline-sheet.png", ['walk'], $work)['refused'] !== null && $fake->sent === [], 'finishing offline asks nothing new of AutoSprite');
+
+// What is asked for, the estimate, and the grid read when there is no atlas.
+same($autoSprite(new FakeAutoSprite, ['jump'])->animationsFor(['walk', 'cheer']), ['idle', 'walk', 'cheer', 'jump'], 'a trimmed list still holds idle, walk and the mission\'s gestures');
+same(AutoSpriteAnimator::frameBoxes([], ['frameWidth' => 10, 'frameHeight' => 20, 'columns' => 2, 'frameCount' => 3], 20, 40), [[0, 0, 10, 20], [10, 0, 10, 20], [0, 20, 10, 20]], 'without an atlas, frames are read from the sheet\'s grid');
+$estimateDirector = $animatedDirector("$work/autosprite-estimate", new FakeAutoSprite);
+$estimate = $estimateDirector->estimate($blueprint);
+check(($estimate['by_kind']['animation'] ?? 0) === 10 * count($blueprint['characters']) && ! isset($estimate['by_kind']['strip']) && $estimate['usd'] >= 10 * count($blueprint['characters']) * 0.095, 'the estimate counts and prices AutoSprite\'s animations instead of strips');
+
+// Wiring: AutoSprite is the primary animator whenever its key is set, never for free pictures.
+$withKey = $config;
+$withKey['animations'] = ['driver' => 'autosprite', 'autosprite' => ['api_key' => 'vspk_test']];
+$keyed = new GenerationFactory($withKey, $store, new FakeAutoSprite, $model, images: new PricedPlaceholder($placeholder));
+check($keyed->method('classic', ['anchors_required' => false])->animator() instanceof AutoSpriteAnimator, 'with AUTOSPRITE_API_KEY set, AutoSprite animates the characters');
+check($keyed->method('classic', ['animations' => 'draw'])->animator() === null, '--animations=draw draws strips instead');
+check((new GenerationFactory($withKey, $store, new FakeAutoSprite, $model))->method('classic', ['images' => 'placeholder'])->animator() === null, 'placeholder pictures never call AutoSprite');
+check((new GenerationFactory($config, $store, new NoNetwork, $model, images: new PricedPlaceholder($placeholder)))->method('classic')->animator() === null, 'without a key, the strips are drawn as before');
+check($autoSprite(new FakeAutoSprite)->estimateUsd(['walk']) === 10 * (new Spend)->pictureCost('autosprite', 'turbo'), 'ten turbo animations are priced from Spend\'s table');
 
 if (getenv('KEEP')) {
     fwrite(STDOUT, "Work folder kept: $work\n");

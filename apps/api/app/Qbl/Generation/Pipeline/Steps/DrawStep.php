@@ -9,9 +9,12 @@ use App\Qbl\Generation\ScenarioGenerator;
 /**
  * Step 4: draw. Every picture the mission needs, in the house art style (AssetDirector::drawMission):
  *
- *   1. Characters first: a character sheet each, then their walk strip (6 frames, retried at 4, else
- *      a puppet walk made in code from the standing pose), gestures, and a portrait (cropped from the
- *      sheet by default). The first accepted sheet becomes a reference for the rest, so the cast match.
+ *   1. Characters first: a character sheet each, then their animations. With an animator (AutoSprite,
+ *      the primary source when AUTOSPRITE_API_KEY is set) every animation comes from ONE request per
+ *      character, made from the accepted sheet and never repeated (GenerationMethod::animator()).
+ *      Without one: their walk strip (6 frames, retried at 4, else a puppet walk made in code from the
+ *      standing pose) and gestures, drawn. Then a portrait (cropped from the sheet by default). The
+ *      first accepted sheet becomes a reference for the rest, so the cast match.
  *   2. Props: the small things several to a picture (a sheet cut apart), or one each; doors, holes,
  *      ladders; surfaces to put things on; ambient creatures.
  *   3. Backgrounds: one per scene, told what to leave room for (ScenarioGenerator::layouts: where the

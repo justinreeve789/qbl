@@ -35,6 +35,12 @@ class Spend
         'gemini-3.1-flash-image@4K' => 0.151,
         'gpt-image-2' => 0.17,
         'scenario' => 0.05,
+        // AutoSprite, per animation, by video tier: its credits (turbo 5, pro 15, max 35, ultra 10 a second,
+        // so 20 for two) at the Pro plan's ~$0.019 a credit ($29 for 1,500). Uploading a character is free.
+        'autosprite@turbo' => 0.095,
+        'autosprite@pro' => 0.285,
+        'autosprite@max' => 0.665,
+        'autosprite@ultra' => 0.38,
     ];
 
     /** A picture from a model not in the table is counted at this. */

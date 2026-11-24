@@ -32,6 +32,12 @@ use GdImage;
  * only the animations the mission plays (walk, and wave or cheer where they are used), their standing
  * picture as idle, and their portrait cut from their sheet (each configurable); and once the run has
  * spent its budget, nothing is redrawn for a better score.
+ *
+ * Animations from an animator (CharacterAnimator: AutoSprite, the primary source when it is set up):
+ * the character sheet is still drawn and judged here, then handed to the animator, which makes every
+ * animation from it in one request (see Providers/AutoSpriteAnimator). No strips are drawn then. If
+ * the animator refuses the request outright (nothing spent), the strips are drawn as before, unless
+ * QBL_GEN_ANIMATION_FALLBACK=puppet.
  */
 class AssetDirector
 {
@@ -83,6 +89,9 @@ class AssetDirector
 
     public const CELL_H = 320;
 
+    /** Cells of sheets made from an animator's frames: a little wider for arms out, and sixteen to a 4096 px row. */
+    public const ANIMATED_CELL_W = 256;
+
     /** The far view behind a scene: as wide as the widest screen's view plus a third of a wide scene's extra length. */
     public const FAR_WIDTH = 2800;
 
@@ -120,6 +129,10 @@ class AssetDirector
         private ?Spend $spend = null,
         /** QBL_GEN_PORTRAITS, QBL_GEN_IDLE_FRAMES, QBL_GEN_PROP_SHEETS, QBL_GEN_SCALE_GUIDE: see config/qbl_generation.php. */
         private array $pictures = [],
+        /** Who animates the characters (AutoSprite); null: their animations are drawn as strips. */
+        private ?CharacterAnimator $animator = null,
+        /** When the animator refuses: "draw" the strips instead, or "puppet" (a walk made from the standing picture, built-in gestures). */
+        private string $animatorFallback = 'draw',
     ) {
         $this->log = $log;
         $this->pictures += ['portraits' => 'crop', 'idle_frames' => false, 'prop_sheets' => true, 'scale_guide' => true];
@@ -161,8 +174,10 @@ class AssetDirector
             $tick(sprintf('Drawing %s (character %d of %d)', $c['name'], $i + 1, count($b['characters'])));
             $gestures = self::gesturesUsed($b, $c);
             $assets += $this->character($c, $setting, $accents, $gestures);
-            // Their sheet, the walk, each gesture, and the idle strip and portrait when those are drawn.
-            $done += 2 + count($gestures) + ($this->pictures['idle_frames'] ? 1 : 0) + ($this->pictures['portraits'] === 'draw' ? 1 : 0);
+            // Their sheet, the walk, each gesture, and the idle strip and portrait when those are drawn
+            // (with an animator: the sheet and every animation it makes).
+            $done += ($this->animator ? 1 + count($this->animator->animationsFor(['walk', ...$gestures])) : 2 + count($gestures) + ($this->pictures['idle_frames'] ? 1 : 0))
+                + ($this->pictures['portraits'] === 'draw' ? 1 : 0);
         }
         $afterThings = $done;
         // Small things, several to a picture where it can: items, the tables and rocks they stand on, the marker.
@@ -353,9 +368,17 @@ class AssetDirector
         $add = function (string $kind, int $n = 1) use (&$by) {
             $by[$kind] = ($by[$kind] ?? 0) + $n;
         };
+        // An animator's animations are priced by it, not as pictures.
+        $animatorUsd = 0.0;
         foreach ($b['characters'] as $c) {
             $add('character');
-            $add('strip', 1 + count(self::gesturesUsed($b, $c)) + ($this->pictures['idle_frames'] ? 1 : 0));
+            if ($this->animator) {
+                $needed = ['walk', ...self::gesturesUsed($b, $c)];
+                $add('animation', count($this->animator->animationsFor($needed)));
+                $animatorUsd += $this->animator->estimateUsd($needed);
+            } else {
+                $add('strip', 1 + count(self::gesturesUsed($b, $c)) + ($this->pictures['idle_frames'] ? 1 : 0));
+            }
             if ($this->pictures['portraits'] === 'draw') {
                 $add('portrait');
             }
@@ -388,9 +411,12 @@ class AssetDirector
         if (! empty($b['badge'])) {
             $add('badge');
         }
-        $usd = 0.0;
+        $usd = $animatorUsd;
         $spend = $this->spend ?? new Spend;
         foreach ($by as $kind => $n) {
+            if ($kind === 'animation') {
+                continue;
+            }
             [$model, $size] = $this->images instanceof PricedImageGenerator ? $this->images->pricing(['kind' => $kind]) : ['placeholder', null];
             // With the references a picture of its kind is sent: the anchors, and a character's sheet for its strips.
             // ...and a background its scale guide.
@@ -476,13 +502,18 @@ class AssetDirector
             $portrait = ($this->cached("portrait:$key")['asset'] ?? null) ?: $this->portraitFromSheet($key, $sheetIm, null);
         }
 
-        // 3. Their animations, a strip each, drawn from the sheet.
+        // 3. Their animations: made from the sheet by the animator (AutoSprite) in one request, when there is one...
+        $gestures ??= array_values(array_intersect($c['gestures'] ?? [], array_keys(self::ANIMATIONS)));
+        if ($this->animator && ($animated = $this->animatedCharacter($c, $sheet['path'], $sheetIm, $sheetStats, $gestures))) {
+            return $animated + ["portrait:$key" => $portrait];
+        }
+
+        // ...else a strip each, drawn from the sheet.
         $rows = [];
         $animations = [];
         $columns = 1;
         // Walk always; idle only if asked for (otherwise the standing picture is the idle); the gestures the
         // mission plays, unless the budget is spent.
-        $gestures ??= array_values(array_intersect($c['gestures'] ?? [], array_keys(self::ANIMATIONS)));
         $wanted = array_unique([...($this->pictures['idle_frames'] ? ['idle'] : []), 'walk', ...$gestures]);
         foreach ($wanted as $name) {
             if (! in_array($name, ['idle', 'walk'], true) && $this->spend?->over() && ! $this->cached("strip:$key:$name")) {
@@ -537,6 +568,110 @@ class AssetDirector
                 'params' => ['sheet' => ['columns' => $columns, 'rows' => count($cells)], 'animations' => $animations],
             ],
             "portrait:$key" => $portrait,
+        ];
+    }
+
+    /**
+     * A character's sprite sheet from the animator's frames: every animation it made (the mission's
+     * own first, then the extras a teacher may use), a walk made from the standing picture if the
+     * walk did not come, and the standing picture as idle if the idle did not. Null when the animator
+     * refused the request and the strips are to be drawn instead.
+     *
+     * Frames are placed by their pivot (where the feet stand), all at one scale: the body as tall as a
+     * drawn character's, unless the highest jump or the widest reach would then leave the cell, when
+     * the whole character is made smaller. body_height says how tall the body came out, so the game
+     * still shows them at their real size (MissionBuilder::characterScale).
+     */
+    private function animatedCharacter(array $c, string $sheetPath, GdImage $sheetIm, array $sheetStats, array $gestures): ?array
+    {
+        $key = $c['key'];
+        $needed = array_values(array_unique(['walk', ...$gestures]));
+        $made = $this->animator->animate($key, $c['name'], $c['appearance'], $sheetPath, $needed, "{$this->workDir}/assets");
+        if ($made['refused'] !== null) {
+            $this->record("animations:$key", 'animation', null, [], ['accepted' => false, 'animator' => $this->animator->describe(), 'note' => 'The animator refused: '.$made['refused'].($this->animatorFallback === 'draw' ? ' The animations are drawn as strips instead.' : '')]);
+            if ($this->animatorFallback === 'draw') {
+                $this->say("{$c['name']}'s animations are drawn as strips instead");
+
+                return null;
+            }
+        }
+
+        $W = self::ANIMATED_CELL_W;
+        $pad = 6;
+        // name => [frames, pivot (null: a trimmed figure, placed by cell()), milliseconds, loops]
+        $rows = [];
+        foreach ($made['animations'] as $name => $a) {
+            $frames = array_map(fn ($f) => ImageTools::load((string) file_get_contents($f)), $a['frames']);
+            if ($this->style->post('match_frames', true)) {
+                $frames = array_map(fn ($f) => ImageTools::matchColours($f, ImageTools::labStats($f), $sheetStats, 0.8), $frames);
+            }
+            $pivot = $a['pivot'] ?? ImageTools::feet($frames[0]) ?? [imagesx($frames[0]) / 2, (float) imagesy($frames[0])];
+            $rows[$name] = [$frames, $pivot, $a['duration'], $a['loops']];
+        }
+        if (! isset($rows['walk'])) {
+            // Every character walks: from the standing picture, flagged for a person to look at.
+            $rows['walk'] = [$this->puppetWalk($key, $sheetIm), null, self::ANIMATIONS['walk'][1], true];
+        }
+        if (! isset($rows['idle'])) {
+            $rows['idle'] = [[ImageTools::trim($sheetIm)], null, self::ANIMATIONS['idle'][1], true];
+        }
+        // Standing and walking first (the sheet's first frame is what the editor shows), the rest as they came.
+        $rows = ['idle' => $rows['idle'], 'walk' => $rows['walk']] + $rows;
+
+        // One scale for every frame the animator made, set by the standing body.
+        $target = self::CELL_H - 30;
+        $fromAnimator = array_filter($rows, fn ($r) => $r[1] !== null);
+        $body = (float) $target;
+        $scale = 1.0;
+        if ($fromAnimator) {
+            $ref = $fromAnimator['idle'] ?? $fromAnimator['walk'] ?? reset($fromAnimator);
+            $heights = array_map(fn ($f) => (ImageTools::bbox($f) ?? [0, 0, 0, 1])[3], $ref[0]);
+            sort($heights);
+            $source = max(1, $heights[intdiv(count($heights), 2)]);
+            $scale = $target / $source;
+            foreach ($fromAnimator as [$frames, $pivot]) {
+                [$up, , $left, $right] = ImageTools::pivotExtent($frames, $pivot[0], $pivot[1]);
+                $scale = min($scale, ($up > 0 ? (self::CELL_H - $pad - 2) / $up : $scale), (max($left, $right) > 0 ? ($W / 2 - 2) / max($left, $right) : $scale));
+            }
+            $body = $source * $scale;
+        }
+
+        $cells = [];
+        $animations = [];
+        $columns = max(array_map(fn ($r) => count($r[0]), $rows));
+        $r = 0;
+        foreach ($rows as $name => [$frames, $pivot, $duration, $loops]) {
+            if ($pivot !== null) {
+                $cells[] = array_map(fn ($f) => ImageTools::pivotCell($f, $W, self::CELL_H, $scale, $pivot[0], $pivot[1], $pad), $frames);
+            } else {
+                // A trimmed figure (the standing picture, a puppet walk): its body to the same height.
+                $heights = array_map('imagesy', $frames);
+                sort($heights);
+                $cells[] = array_map(fn ($f) => ImageTools::cell($f, $W, self::CELL_H, $body / max(1, $heights[intdiv(count($heights), 2)]), $pad), $frames);
+            }
+            $animations[] = ['name' => $name, 'frames' => range($r * $columns, $r * $columns + count($frames) - 1), 'duration' => (int) $duration] + ($loops ? [] : ['repeat' => false]);
+            $r++;
+        }
+        $sheetImage = ImageTools::sheet($cells, $W, self::CELL_H, $columns);
+        $path = "{$this->workDir}/assets/".self::file("char:$key").'.png';
+        file_put_contents($path, ImageTools::png($sheetImage));
+
+        $missing = $made['missing'];
+        $this->record("animations:$key", 'animation', null, [], [
+            'accepted' => true, 'animator' => $this->animator->describe(), 'animations' => array_column($animations, 'name'),
+            'missing' => $missing ?: null, 'below_bar' => isset($missing['walk']), 'score' => null,
+            'note' => $missing ? 'Not made: '.implode('; ', array_map(fn ($n, $why) => "$n ($why)", array_keys($missing), $missing)).'. The built-in moves stand in for missing gestures.' : null,
+        ]);
+        foreach ($missing as $name => $why) {
+            $this->say("{$c['name']} has no $name animation: $why");
+        }
+
+        return [
+            "char:$key" => [
+                'path' => $path, 'width' => imagesx($sheetImage), 'height' => imagesy($sheetImage), 'frame_width' => $W, 'frame_height' => self::CELL_H,
+                'body_height' => (int) round($body),
+                'params' => ['sheet' => ['columns' => $columns, 'rows' => count($cells)], 'animations' => $animations],
+            ],
         ];
     }
 
