@@ -109,6 +109,11 @@ test('operators follow the documented rules', () => {
   assert.equal(applyOperator('x', 'set', 'hello'), 'hello');
   assert.equal(applyOperator(0, 'random', undefined, () => 0), 1);
   assert.equal(applyOperator(0, 'random', undefined, () => 0.9999999999), 1_000_000_000);
+  assert.equal(applyOperator(9, 'random', 10, () => 0), 0, 'random starts at 0');
+  assert.equal(applyOperator(9, 'random', 10, () => 0.9999999999), 10, 'and includes the number given');
+  assert.equal(applyOperator(9, 'random', '6', () => 0.5), 3, 'a numeric string works');
+  assert.equal(applyOperator(9, 'random', 2.7, () => 0.9999999999), 2, 'whole numbers only');
+  assert.equal(applyOperator(9, 'random', -5, () => 0.9999999999), 0, 'a negative limit gives 0');
 });
 
 test('conditions: case-insensitive strings, numeric ordering', () => {
