@@ -21,6 +21,9 @@ use App\Qbl\Generation\Pipeline\RoutingImageGenerator;
  *                  vehicle, badge, sheet, passage, opening)
  * The rest go to --images, else QBL_GEN_IMAGE_DRIVER.
  *
+ * With AUTOSPRITE_API_KEY set, AutoSprite animates the characters (GenerationMethod::makeAnimator), as
+ * in every method: no strips are drawn, so the sprite service draws only character sheets and props.
+ *
  * To add a sprite service that is not one of the drivers (PixelLab, Leonardo, a local ComfyUI...):
  * write an ImageGenerator for it (see Art/Providers/ScenarioImageGenerator.php for one that starts a
  * job and polls it), add it to GenerationFactory::images(), and set sprite_driver to its name.

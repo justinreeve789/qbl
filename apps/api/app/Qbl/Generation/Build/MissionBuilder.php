@@ -444,7 +444,8 @@ class MissionBuilder
      */
     public static function characterScale(array $c, ?array $sheet = null): float
     {
-        $body = AssetDirector::CELL_H - 30;
+        // How tall the body is on the sheet: as drawn (CELL_H - 30), or as an animator's frames came out (body_height).
+        $body = max(1, (int) ($sheet['body_height'] ?? AssetDirector::CELL_H - 30));
 
         return round(Sizes::PERSON_PX * Sizes::characterCm($c) / Sizes::PERSON_CM / $body, 3);
     }
@@ -664,7 +665,7 @@ class MissionBuilder
             // Their name over their head when students come near, also clickable: "Talk to Dr. Ren", or the
             // report label once the mission is ready. Not for one who walks about: the label would stay behind.
             if (! $this->moves($c)) {
-                $height = (int) (($sheet['frame_height'] ?? $sheet['height']) * self::characterScale($c) * Sizes::depth($feet, $ground));
+                $height = (int) (($sheet['frame_height'] ?? $sheet['height']) * self::characterScale($c, $sheet) * Sizes::depth($feet, $ground));
                 $label = $this->hotspot($sceneId, "label-{$c['key']}", [$x, $feet - (int) ($height / 2)], max(70, (int) ($height / 2)), click: true, conditions: isset($this->vars["away_{$c['key']}"]) ? [$this->cond("away_{$c['key']}", '=', 0)] : []);
                 $this->text($label, $x, $feet - $height - 30, "{{label_{$c['key']}}}", 'Talk to '.$c['name'], hint: true);
                 $this->action($label, 'run_event', ['target_event_id' => $dispatcher]);

@@ -32,6 +32,7 @@ class GenerateScenario extends Command
         {--owner= : Email of the teacher who will own the draft}
         {--style= : Art style (a folder in resources/art-styles); default from config}
         {--images= : Image driver: gemini, openai, scenario or placeholder}
+        {--animations= : Who animates the characters: autosprite (one request per character, the default when AUTOSPRITE_API_KEY is set) or draw (strips drawn by the image model)}
         {--attempts= : Attempts per picture before the best is kept}
         {--budget= : Most to spend on AI services for this run, in US dollars (default QBL_GEN_BUDGET_USD; 0 for none)}
         {--no-judge : Do not have each picture checked against the style anchors}
@@ -114,6 +115,7 @@ class GenerateScenario extends Command
                 'method' => $method,
                 'style' => $this->option('style'),
                 'images' => $this->option('offline') ? 'offline' : $this->option('images'),
+                'animations' => $this->option('animations'),
                 'judge' => $this->option('no-judge') ? false : null,
                 'attempts' => $this->option('attempts') ? (int) $this->option('attempts') : null,
                 'budget' => $this->option('budget') !== null ? (float) $this->option('budget') : null,

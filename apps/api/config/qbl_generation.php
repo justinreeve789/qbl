@@ -100,6 +100,40 @@ return [
         ],
     ],
 
+    // Who animates the characters. Each character's sheet is still drawn (and judged) by the image
+    // driver above; the animator then makes all their animations from it.
+    //   autosprite  AutoSprite (autosprite.io), the primary source: ONE request per character holding
+    //               every animation (idle, walk, wave, cheer, point, think, talk, jump, dance, crouch),
+    //               never repeated, not even on resume. Used whenever AUTOSPRITE_API_KEY is set.
+    //   draw        each animation drawn as a strip by the image driver (the way before AutoSprite).
+    // `qbl:generate --animations=draw` chooses for one run.
+    'animations' => [
+        'driver' => $env('QBL_GEN_ANIMATION_DRIVER', 'autosprite'),
+        // When AutoSprite refuses a character outright (no credits, no plan; nothing spent): "draw" their
+        // strips with the image driver instead, or "puppet" (a walk made from the standing picture, and the
+        // game's built-in moves for gestures; no more requests to anyone).
+        'fallback' => $env('QBL_GEN_ANIMATION_FALLBACK', 'draw'),
+        'autosprite' => [
+            // Needs a paid plan with API access (Pro). Keys start with vspk_: https://www.autosprite.io/app/api-keys
+            'api_key' => (string) $env('AUTOSPRITE_API_KEY', ''),
+            'base_url' => $env('AUTOSPRITE_BASE_URL', 'https://www.autosprite.io/api/v1'),
+            // Which to ask for, comma-separated, from the list above. Empty: all ten (the most one request
+            // holds). Walk, idle and the gestures the mission plays are always asked for.
+            'animations' => $env('QBL_GEN_AUTOSPRITE_ANIMATIONS', ''),
+            // turbo (5 credits an animation, 2 s), pro (15, 4 s), max (35, 4 s), ultra (10 a second).
+            'video_tier' => $env('QBL_GEN_AUTOSPRITE_TIER', 'turbo'),
+            // Frames per animation, 2-16 (sixteen 256 px cells make a 4096 px row, the most phones load).
+            'frames' => (int) $env('QBL_GEN_AUTOSPRITE_FRAMES', 16),
+            // Each frame's size in AutoSprite's sheet, 32-512 px (frames are scaled onto QBL's sheet after).
+            'frame_size' => (int) $env('QBL_GEN_AUTOSPRITE_FRAME_SIZE', 256),
+            // Background removal: default, or ultra (AutoSprite's AI removal; cleanest edges).
+            'remove_bg' => $env('QBL_GEN_AUTOSPRITE_REMOVE_BG', 'default'),
+            // Seconds to wait for a character's animations (they usually take 30-90). The slow ones are
+            // collected by resuming the run; they are never asked for again.
+            'timeout' => (int) $env('QBL_GEN_AUTOSPRITE_TIMEOUT', 900),
+        ],
+    ],
+
     // The art style every picture is drawn in: a folder under styles_dir with style.php and anchors/.
     'style' => $env('QBL_GEN_STYLE', 'qbl-adventure'),
     'styles_dir' => $env('QBL_GEN_STYLES_DIR', resource_path('art-styles')),

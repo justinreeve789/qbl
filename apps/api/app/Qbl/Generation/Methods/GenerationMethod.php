@@ -4,6 +4,8 @@ namespace App\Qbl\Generation\Methods;
 
 use App\Qbl\Generation\Art\ArtStyle;
 use App\Qbl\Generation\Art\AssetDirector;
+use App\Qbl\Generation\Art\CharacterAnimator;
+use App\Qbl\Generation\Art\Providers\AutoSpriteAnimator;
 use App\Qbl\Generation\Art\ImageGenerator;
 use App\Qbl\Generation\Art\StyleJudge;
 use App\Qbl\Generation\Build\MissionBuilder;
@@ -42,7 +44,9 @@ use App\Qbl\Generation\Pipeline\TracingLanguageModel;
  *
  *   WHO DOES EACH JOB: the make*() and chooseModel() hooks below — which language model aligns,
  *     designs and judges; which service draws (Gemini, OpenAI, Scenario, a router that sends sprites
- *     to one and backgrounds to another, the free placeholder); whether pictures are judged and how
+ *     to one and backgrounds to another, the free placeholder); who animates the characters
+ *     (AutoSprite, the primary source when it is set up, else strips drawn by the image model);
+ *     whether pictures are judged and how
  *     strictly; which builder turns the blueprint into engine rows.
  *
  * Steps never build their own services: they ask the method ($run->method->designer(), ->model('critic'),
@@ -219,6 +223,37 @@ abstract class GenerationMethod
         return (string) $this->factory->config('images.driver', 'gemini');
     }
 
+    /**
+     * Who animates the characters from their sheets, or null to draw each animation as a strip.
+     *
+     * AutoSprite is the primary source: used whenever AUTOSPRITE_API_KEY is set, unless the command
+     * or configuration says "draw" (--animations=draw, QBL_GEN_ANIMATION_DRIVER=draw). Never for
+     * placeholder pictures, so a free run stays free; offline (--offline), only what was made before.
+     */
+    protected function makeAnimator(): ?CharacterAnimator
+    {
+        $offline = ($this->options['images'] ?? null) === 'offline' || $this->imageDriver() === 'offline';
+        if (! $offline && $this->placeholderPictures()) {
+            return null;
+        }
+        $animator = $this->factory->animator(isset($this->options['animations']) ? (string) $this->options['animations'] : null, $this->log);
+        if ($animator instanceof AutoSpriteAnimator) {
+            // Its upload, its one request, each job's end and each sheet go in the trace as notes.
+            $animator->observe(fn (string $what, array $detail) => $this->tracer->note($what, $detail), $this->log);
+            if ($offline) {
+                $animator->offline();
+            }
+        }
+
+        return $animator;
+    }
+
+    /** When the animator refuses a character outright (nothing spent): "draw" their strips instead, or "puppet". */
+    protected function animatorFallback(): string
+    {
+        return (string) ($this->options['animation_fallback'] ?? $this->factory->config('animations.fallback', 'draw'));
+    }
+
     /** Who judges each picture, or null to keep every first attempt. */
     protected function makeJudge(): ?StyleJudge
     {
@@ -271,7 +306,7 @@ abstract class GenerationMethod
     /** The art director for a run's folder: it writes the prompts, asks images(), has judge() check. */
     protected function makeDirector(string $dir): AssetDirector
     {
-        return new AssetDirector($this->images(), $this->style(), $this->judge(), $dir, max(1, $this->attempts()), $this->log, $this->factory->spend(), $this->pictures());
+        return new AssetDirector($this->images(), $this->style(), $this->judge(), $dir, max(1, $this->attempts()), $this->log, $this->factory->spend(), $this->pictures(), $this->animator(), $this->animatorFallback());
     }
 
     /** Turns the blueprint and pictures into engine rows. */
@@ -327,6 +362,16 @@ abstract class GenerationMethod
         }
 
         return $this->made['judge'];
+    }
+
+    /** Who animates the characters (see makeAnimator), made once. */
+    final public function animator(): ?CharacterAnimator
+    {
+        if (! array_key_exists('animator', $this->made)) {
+            $this->made['animator'] = $this->makeAnimator();
+        }
+
+        return $this->made['animator'];
     }
 
     final public function aligner(): StandardsAligner

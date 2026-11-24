@@ -68,7 +68,7 @@ Method | What it tries | Costs, compared with classic
 `classic` | One design, corrected until it validates; pictures from `QBL_GEN_IMAGE_DRIVER`, judged against the style anchors. The baseline. | —
 `draft` | The real alignment and design, placeholder pictures, no judge, no voices. It still imports and plays. For iterating on the designer's prompt, the validator or the builder. | Only the language model calls
 `gemini-judge` | Gemini's main model draws everything (no cheaper props model); a stricter judge (8/10, 4 tries) sends pictures back with notes. How much can a demanding art director fix? | More: props at full price, more redraws
-`sprite-app` | A sprite service (Scenario.com by default, `QBL_GEN_SPRITE_DRIVER`) draws characters, animation strips and props; the main driver paints the scenes. | Depends on the sprite service
+`sprite-app` | A sprite service (Scenario.com by default, `QBL_GEN_SPRITE_DRIVER`) draws characters, props and (only when AutoSprite is not set up) animation strips; the main driver paints the scenes. | Depends on the sprite service
 `critic` | After the design, a critic (teacher and game designer) scores the blueprint (learning, fun, clarity, fit, coherence) and suggests changes; they are applied only if it still validates; then it reviews again. | One or two more large calls
 `best-of` | Designs N candidates (default 3), the critic scores each, only the best is drawn. Losers kept in `candidates/`. | N designs and N reviews; pictures once
 `outline-first` | A small call sketches the story (premise, hook, scenes, puzzles, twist, finale); the designer builds the blueprint from it. | One small call
@@ -112,6 +112,8 @@ final class SonnetStoryMethod extends GenerationMethod
 ```
 
 Add it to `GenerationMethods::BUILT_IN`, or without editing that file: `QBL_GEN_METHODS='{"sonnet-story": "App\\Qbl\\Generation\\Methods\\SonnetStoryMethod"}'`. Helpers for the steps list: `insertAfter`, `insertBefore`, `replace`, `without`.
+
+Who animates the characters is `makeAnimator()`: AutoSprite (`Art/Providers/AutoSpriteAnimator.php`) whenever `AUTOSPRITE_API_KEY` is set, unless `--animations=draw`; never for placeholder pictures. Return another `CharacterAnimator` (`animate`, `animationsFor`, `estimateUsd`, `describe`) to try a different animation service, or `null` to draw strips. Every method gets this, so `sprite-app` with a key has AutoSprite animate its characters and its sprite service draw only their sheets and the props.
 
 A new picture service is an `ImageGenerator` (`generate`, `transparency`, `describe`; `PricedImageGenerator` to be priced): see `Art/Providers/ScenarioImageGenerator.php` for one that starts a job and polls it. Return it from `makeImages()`, or add it to `GenerationFactory::images()` as a driver so `sprite-app` can route to it.
 
