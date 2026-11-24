@@ -44,7 +44,8 @@ class RunGeneration implements ShouldQueue
         ini_set('memory_limit', '2048M');
         $log = fn (string $line) => Log::info("generation {$this->generationId}: $line");
         try {
-            $factory->generator([], $log)->generate((string) $run['prompt'], [], $run['user_id'] !== null ? (int) $run['user_id'] : null, $this->generationId);
+            // The method the run was started with, if it says (else QBL_GEN_METHOD).
+            $factory->generator(['method' => $factory->savedMethod($this->generationId)], $log)->generate((string) $run['prompt'], [], $run['user_id'] !== null ? (int) $run['user_id'] : null, $this->generationId);
         } catch (GenerationCancelled) {
             GenerationApi::cancelled($pdo, $credits, $this->generationId);
         } catch (Throwable $e) {

@@ -39,6 +39,8 @@ Step | What | Kept in
 5\. Package | Compiles the rows into `scenario.json` and packs it with its pictures as an import ZIP, plus a preview of each scene | `scenario.zip`, `previews/`
 6\. Import | Imports the ZIP exactly as the editor's "Import a ZIP" does, as a private draft owned by `--owner`; records its standards; publishes it if `--publish` | `scenarios` and the rest; `scenario_standards`
 
+Those steps are the **classic** method's. The pipeline is pluggable: a *generation method* is a class that decides which steps run and which services do each job, and every run writes a trace of every step and AI call to its work folder. See [Generation methods and traces](/docs/developers/generation-methods/) to compare approaches or write your own.
+
 Each run has a work folder (`QuestLab_GEN_WORK_DIR`, `/data/generations/{id}` in Docker). If a run stops (a service is down, a key runs out of credit) carry on where it stopped, without paying for anything twice:
 
 ```sh
@@ -51,6 +53,8 @@ The ZIP is an ordinary scenario archive: it can be imported again, on another in
 
 Option | Effect
 ------ | ------
+`--method=` | How to make it: `classic` (default, `QBL_GEN_METHOD`), `draft`, `gemini-judge`, `sprite-app`, `critic`, `best-of`, `outline-first`. `--list-methods` lists them. See [Generation methods](/docs/developers/generation-methods/).
+`--redo=` | With `--resume`: do a step again (and every step after it), e.g. `--redo=design`.
 `--grade=` | K, 1-12, or a range such as `6-8`. Only standards for that grade are offered.
 `--subject=` | Helps choose standards and pitch the content.
 `--framework=` | The standards set(s) to align to, as named when imported (repeatable).

@@ -17,6 +17,9 @@ class GenerateScenario extends Command
 {
     protected $signature = 'qbl:generate
         {prompt? : What the mission is about, in a teacher\'s words}
+        {--method= : How to make it: classic, draft, gemini-judge, sprite-app, critic, best-of, outline-first (see --list-methods; default QBL_GEN_METHOD)}
+        {--list-methods : List the generation methods and what each tries, and stop}
+        {--redo= : With --resume: do this step again, and every step after it (align, design, draw...)}
         {--grade= : Grade level: K, 1-12, "6-8"}
         {--subject= : Science, Mathematics, English Language Arts, Social Studies...}
         {--framework=* : Standards framework(s) to align to, as imported with qbl:standards (NGSS, CCSS-MATH...)}
@@ -54,6 +57,13 @@ class GenerateScenario extends Command
                 return self::FAILURE;
             }
         }
+        if ($this->option('list-methods')) {
+            $default = (string) config('qbl_generation.method', 'classic');
+            $this->table(['Method', 'What it tries'], array_map(fn ($k, $v) => [$k.($k === $default ? ' (default)' : ''), $v], array_keys($factory->methods()), $factory->methods()));
+            $this->line('Choose one with --method=<name>. Each is a class in app/Qbl/Generation/Methods; every run writes a trace (qbl:generation-trace <run>).');
+
+            return self::SUCCESS;
+        }
         $log = fn (string $m) => $this->line($m);
         // Pictures are worked on in memory; a 2250 x 1200 background with its copies needs room.
         ini_set('memory_limit', '2048M');
@@ -90,7 +100,18 @@ class GenerateScenario extends Command
                 'publish' => $this->option('publish') ?: null,
             ], fn ($v) => $v !== null && $v !== [] && $v !== '');
 
+            // A resumed run carries on with the method it was started with, unless told otherwise.
+            $method = $this->option('method') ?: ($this->option('resume') ? $factory->savedMethod((int) $this->option('resume')) : null);
+            if ($this->option('redo')) {
+                if (! $this->option('resume')) {
+                    $this->error('--redo needs --resume=ID: it does a step of an earlier run again.');
+
+                    return self::FAILURE;
+                }
+                $options['redo'] = (string) $this->option('redo');
+            }
             $generator = $factory->generator([
+                'method' => $method,
                 'style' => $this->option('style'),
                 'images' => $this->option('offline') ? 'offline' : $this->option('images'),
                 'judge' => $this->option('no-judge') ? false : null,
@@ -110,6 +131,9 @@ class GenerateScenario extends Command
         }
 
         $this->newLine();
+        if (! empty($result['trace'])) {
+            $this->line("What every step did: php artisan qbl:generation-trace {$result['run']} (or open {$result['trace']}/README.md)");
+        }
         foreach ($result['warnings'] as $w) {
             $this->warn($w);
         }

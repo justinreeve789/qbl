@@ -33,19 +33,27 @@ use App\Qbl\Generation\Design\Sizes;
 use App\Qbl\Generation\Design\TwistIdeas;
 use App\Qbl\Generation\GenerationCancelled;
 use App\Qbl\Generation\GenerationError;
-use App\Qbl\Generation\GenerationFactory;
 use App\Qbl\Generation\GenerationEvents;
+use App\Qbl\Generation\GenerationFactory;
 use App\Qbl\Generation\GenerationRuns;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Http\HttpResponse;
 use App\Qbl\Generation\Llm\AnthropicModel;
 use App\Qbl\Generation\Llm\LanguageModel;
+use App\Qbl\Generation\Methods\GenerationMethod;
+use App\Qbl\Generation\Methods\SpriteAppMethod;
+use App\Qbl\Generation\Pipeline\GenerationRun;
+use App\Qbl\Generation\Pipeline\RoutingImageGenerator;
+use App\Qbl\Generation\Pipeline\Step;
+use App\Qbl\Generation\Pipeline\Tracer;
 use App\Qbl\Generation\ScenarioGenerator;
 use App\Qbl\Generation\Spend;
 use App\Qbl\ScenarioStore;
 use App\Qbl\Speech\Speech;
 use App\Qbl\Speech\SpeechEngine;
 use App\Qbl\Speech\SpeechFactory;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 // A warning or notice is a failure here (Laravel turns them into exceptions).
 set_error_handler(function (int $no, string $message, string $file, int $line) {
@@ -1022,7 +1030,7 @@ same($designed['pace'], ['big_moment' => true], 'the blueprint says whether it m
 
 // Twists and turns: a few ideas, picked at random for each mission; big moments only now and then.
 $pickModel = new FakeModel($blueprint);
-$quiet = new MissionDesigner($pickModel, ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 18], repairs: 0, bigMomentChance: 0.25, random: new Random\Randomizer(new Random\Engine\Mt19937(7)));
+$quiet = new MissionDesigner($pickModel, ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 18], repairs: 0, bigMomentChance: 0.25, random: new Randomizer(new Mt19937(7)));
 try {
     $quiet->design('x', $tinyAlignment, ['big_moment' => false]);
     check(false, 'a mission that may not have a big moment, with a fall, is refused');
@@ -1034,12 +1042,12 @@ check(str_contains($brief, 'Pace: nobody is in danger in this mission'), 'the br
 preg_match_all('/^- ([^:\n]+): /m', substr($brief, strpos($brief, 'Twists and turns from other missions')), $m);
 $names = array_column(TwistIdeas::IDEAS, 'big', 'name');
 same([count($m[1]), count(array_filter($m[1], fn ($n) => $names[$n] ?? true))], [6, 0], 'six ideas from the list, none of them a big moment');
-$bigPick = TwistIdeas::pick(new Random\Randomizer(new Random\Engine\Mt19937(3)), 6, true);
+$bigPick = TwistIdeas::pick(new Randomizer(new Mt19937(3)), 6, true);
 same(count(array_filter($bigPick, fn ($i) => $i['big'])), 1, 'where a big moment is allowed, one of the ideas is one');
 same(count(TwistIdeas::IDEAS) >= 23 && count(array_filter(TwistIdeas::IDEAS, fn ($i) => ! $i['big'])) >= 20, true, 'twenty and more ideas to draw on, most of them small');
 $chances = 0;
 for ($i = 0; $i < 400; $i++) {
-    $chances += (new MissionDesigner(new FakeModel($blueprint), [], 0, 0.25, new Random\Randomizer(new Random\Engine\Mt19937($i))))->pace([]) ? 1 : 0;
+    $chances += (new MissionDesigner(new FakeModel($blueprint), [], 0, 0.25, new Randomizer(new Mt19937($i))))->pace([]) ? 1 : 0;
 }
 check($chances > 60 && $chances < 140, "about one mission in four may have a big moment ($chances of 400)");
 
@@ -1221,6 +1229,232 @@ $quiet = new Spend(0);
 $quiet->picture('gemini-3-pro-image', '2K', 'background');
 same($quiet->total(), 0.134, 'with no log attached, spending works as before');
 check(count($events->runs(50)) >= 4 && $events->runs(1)[0]['id'] === $failedRun, 'recent runs are listed newest first, with their totals');
+
+// ------------------------------------------------------------------ generation methods and the trace
+// The main run above used the default method (classic). Its trace: every step, and every call each made.
+$traced = $result['trace'] ?? null;
+check($traced !== null && is_file("$traced/index.json") && is_file("$traced/README.md"), 'a run writes a trace to its work folder');
+$index = json_decode((string) file_get_contents("$traced/index.json"), true);
+same($index['method'], 'classic', 'the trace says which method made it');
+$firstSession = array_slice($index['steps'], 0, 8);
+same(array_column($firstSession, 'step'), ['align', 'design', 'estimate', 'draw', 'build', 'voice', 'package', 'import'], 'the classic method takes its eight steps in order');
+same(array_unique(array_column($firstSession, 'outcome')), ['ok'], 'each ok');
+same(array_column(array_slice($index['steps'], 8), 'skipped'), ['the run already has its alignment', 'the run already has a blueprint that passes the validator', null, null, null, null, null, null], 'the resumed session is in the same trace, its reused steps marked skipped');
+same(count($index['sessions']), 2, 'and the trace counts both sessions');
+$designStep = $firstSession[1];
+$designCalls = array_values(array_filter($index['calls'], fn ($c) => in_array($c['n'], $designStep['calls'], true)));
+same(array_column($designCalls, 'name'), ['mission_blueprint', 'blueprint_changes'], 'the design step\'s calls are filed under it: the draft, then the correction');
+same(array_unique(array_column($designCalls, 'job')), ['design'], 'as the design job');
+$correctionCall = json_decode((string) file_get_contents("$traced/{$designCalls[1]['file']}"), true);
+check(str_contains(json_encode($correctionCall['content']), 'cannot be built because') && isset($correctionCall['answer']['changes']) && $correctionCall['system'] !== '', 'a call\'s file has the system prompt, the user turn (with the problems to fix) and the answer');
+check(isset($designStep['outputs']['blueprint']) && json_decode((string) file_get_contents("$traced/{$designStep['outputs']['blueprint']}"), true)['title'] === 'The Quiet Hive', 'a step\'s outputs are kept in files of their own');
+$pictureCalls = array_values(array_filter($index['calls'], fn ($c) => $c['type'] === 'picture' && $c['step'] === 'draw'));
+check(count($pictureCalls) >= 10, 'every picture request is in the trace ('.count($pictureCalls).')');
+$aPicture = json_decode((string) file_get_contents("$traced/{$pictureCalls[0]['file']}"), true);
+check($aPicture['prompt'] !== '' && isset($aPicture['hints']['kind']) && is_file("$traced/{$aPicture['result']['file']}"), 'with its prompt, hints and the picture that came back');
+// (The placeholder's shapes are not judged; with a real picture source, the judge's calls are traced as its own job.)
+$judging = (new GenerationFactory($config, $store, new NoNetwork, $model, images: new PricedPlaceholder($placeholder)))->method('classic', ['anchors_required' => false]);
+$judging->tracer()->attach("$work/judge-trace", 'classic', ['draw']);
+$judging->judge()->judge('item', $placeholder->generate('a jar', [], '1:1', false, ['kind' => 'item', 'label' => 'jar']), $style->anchorsFor('item') ?: [new Reference($placeholder->generate('anchor', [], '1:1', false, ['kind' => 'item']), 'style anchor 1')], [], 'a jar');
+$judgeIndex = json_decode((string) file_get_contents("$work/judge-trace/trace/index.json"), true);
+same(array_column($judgeIndex['calls'], 'job'), ['judge'], 'the style judge\'s calls are traced too, as the judge job');
+$judgeCall = json_decode((string) file_get_contents("$work/judge-trace/trace/{$judgeIndex['calls'][0]['file']}"), true);
+$sent = array_values(array_filter($judgeCall['content'], fn ($p) => is_array($p) && isset($p['image'])));
+check(count($sent) >= 2 && is_file("$work/judge-trace/trace/{$sent[0]['image']['file']}") && ! str_contains(json_encode($judgeCall), 'iVBOR'), 'pictures sent to a model are kept as files, not inline');
+$judging->tracer()->detach();
+check(str_contains((string) file_get_contents("$traced/README.md"), '| 2 | [design]'), 'README.md shows the timeline');
+
+// The list of methods.
+$methods = $factory->methods();
+same(array_keys($methods), ['classic', 'draft', 'gemini-judge', 'sprite-app', 'critic', 'best-of', 'outline-first'], 'every built-in method is listed');
+check(! array_filter($methods, fn ($s) => strlen($s) < 20), 'each saying what it tries');
+check((function () use ($factory) {
+    try {
+        $factory->generator(['method' => 'nonsense']);
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), 'There is no generation method "nonsense"') && str_contains($e->getMessage(), 'critic');
+    }
+
+    return false;
+})(), 'an unknown method is refused, naming the ones there are');
+same($factory->savedMethod($result['run']), 'classic', 'a run remembers its method, to be resumed with it');
+
+// draft: the real design, placeholder pictures, nothing judged, no voices.
+$judgedBefore = count(array_filter($model->calls, fn ($c) => $c['name'] === 'style_review'));
+$draft = $factory->generator(['method' => 'draft'])->generate('A draft of the orchard mission', ['grade' => '3', 'frameworks' => ['TEST-SCI']], null);
+same([$draft['status'], $draft['method']], ['done', 'draft'], 'the draft method makes a whole mission');
+same(count(array_filter($model->calls, fn ($c) => $c['name'] === 'style_review')), $judgedBefore, 'without judging a picture');
+$draftIndex = json_decode((string) file_get_contents("{$draft['trace']}/index.json"), true);
+same(array_column($draftIndex['steps'], 'skipped')[5], 'voices are off for this run', 'and without voices');
+same((new GenerationRuns($pdo))->get($draft['run'])['options']['method'], 'draft', 'the run records its method');
+
+// --redo: a step of an earlier run done again, and the steps after it; the ones before reused.
+$designsBefore = $model->blueprints;
+$redone = $factory->generator(['method' => 'draft'])->generate('', ['redo' => 'design'], null, $draft['run']);
+same($model->blueprints, $designsBefore + 1, 'redo=design designs it again');
+$redoIndex = json_decode((string) file_get_contents("{$redone['trace']}/index.json"), true);
+$redoSteps = array_slice($redoIndex['steps'], 8);
+same([$redoSteps[0]['skipped'], $redoSteps[1]['skipped']], ['the run already has its alignment', null], 'reusing the alignment before it');
+check(! isset((new GenerationRuns($pdo))->get($draft['run'])['options']['redo']), 'and redo is not saved with the run (a later resume would redo again)');
+check((function () use ($factory, $draft) {
+    try {
+        $factory->generator(['method' => 'draft'])->generate('', ['redo' => 'nowhere'], null, $draft['run']);
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), 'has no step "nowhere"');
+    }
+
+    return false;
+})(), 'redo of a step the method does not have is refused, naming its steps');
+
+// critic: reviewed, changed, reviewed again until it passes.
+$criticModel = new FakeModel($blueprint);
+$criticFactory = new GenerationFactory($config, $store, new NoNetwork, $criticModel);
+$critiqued = $criticFactory->generator(['method' => 'critic'])->generate('A mission about pollination', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design'], null);
+same($critiqued['status'], 'designed', 'the critic method runs to the design');
+$critiqueDir = dirname($critiqued['trace']);
+$reviews = json_decode((string) file_get_contents("$critiqueDir/critique.json"), true);
+same([count($reviews), $reviews[0]['outcome'], $reviews[1]['outcome']], [2, 'applied', 'passed (at least 8)'], 'it is reviewed, its changes applied, and reviewed again until it passes');
+same((new GenerationRuns($pdo))->get($critiqued['run'])['blueprint']['title'], 'The Quiet Hive Revisited', 'the critic\'s change is in the saved blueprint');
+same(array_column(json_decode((string) file_get_contents("{$critiqued['trace']}/index.json"), true)['steps'], 'step'), ['align', 'design', 'critique', 'estimate'], 'between the design and the estimate');
+$criticModel->reviewChanges = 'break';
+$criticModel->reviews = 0;
+$broken = $criticFactory->generator(['method' => 'critic'])->generate('A mission about pollination, again', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design'], null);
+$reviews = json_decode((string) file_get_contents(dirname($broken['trace']).'/critique.json'), true);
+same($reviews[0]['outcome'], 'discarded: the changes would break the mission', 'changes that would break the mission are thrown away');
+same((new GenerationRuns($pdo))->get($broken['run'])['blueprint']['title'], 'The Quiet Hive', 'and the blueprint stays as it was');
+$reviewsBefore = $criticModel->reviews;
+$criticFactory->generator(['method' => 'critic'])->generate('', [], null, $broken['run']);
+same($criticModel->reviews, $reviewsBefore, 'a resumed run is not reviewed again');
+
+// best-of: two candidates, the one the critic scores higher kept.
+$bestModel = new FakeModel($blueprint);
+$best = (new GenerationFactory($config, $store, new NoNetwork, $bestModel))->generator(['method' => 'best-of', 'candidates' => 2])->generate('A mission about pollination', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design'], null);
+$bestDir = dirname($best['trace']);
+same([$bestModel->blueprints, $bestModel->reviews], [2, 2], 'best-of designs each candidate and has each scored');
+check(is_file("$bestDir/candidates/1.json") && is_file("$bestDir/candidates/2.review.json"), 'every candidate and its review is kept');
+$bestIndex = json_decode((string) file_get_contents("{$best['trace']}/index.json"), true);
+same(json_decode((string) file_get_contents("{$best['trace']}/{$bestIndex['steps'][1]['outputs']['candidates']}"), true)['kept'], 2, 'the higher-scoring one is kept');
+
+// outline-first: an outline, then the design from it.
+$outlineModel = new FakeModel($blueprint);
+$outlined = (new GenerationFactory($config, $store, new NoNetwork, $outlineModel))->generator(['method' => 'outline-first'])->generate('A mission about pollination', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design', 'notes' => 'Keep it short.'], null);
+same(array_column($outlineModel->calls, 'name'), ['curriculum_alignment', 'mission_outline', 'mission_blueprint', 'blueprint_changes'], 'outline-first outlines before it designs');
+$briefed = json_encode(array_values(array_filter($outlineModel->calls, fn ($c) => $c['name'] === 'mission_blueprint'))[0]['content']);
+check(str_contains($briefed, 'Build the mission from this outline') && str_contains($briefed, 'Wake the bees') && str_contains($briefed, 'Keep it short.'), 'and the designer is given the outline, with the teacher\'s own notes');
+check(is_file(dirname($outlined['trace']).'/outline.json'), 'the outline is kept in the work folder');
+check(! isset((new GenerationRuns($pdo))->get($outlined['run'])['options']['notes']) || (new GenerationRuns($pdo))->get($outlined['run'])['options']['notes'] === 'Keep it short.', 'the outline is not saved into the teacher\'s notes');
+
+// sprite-app: pictures routed by kind.
+final class Recorder implements ImageGenerator
+{
+    public array $drawn = [];
+
+    public function __construct(private string $name, private PlaceholderImageGenerator $inner, private bool $alpha = false) {}
+
+    public function generate(string $prompt, array $references, string $aspect, bool $transparent, array $hints = []): string
+    {
+        $this->drawn[] = $hints['kind'] ?? '?';
+
+        return $this->inner->generate($prompt, $references, $aspect, $transparent, $hints);
+    }
+
+    public function transparency(): bool
+    {
+        return $this->alpha;
+    }
+
+    public function describe(): string
+    {
+        return $this->name;
+    }
+}
+$scenes = new Recorder('scenes', $placeholder);
+$sprites = new Recorder('sprites', $placeholder, true);
+$router = new RoutingImageGenerator($scenes, array_fill_keys(SpriteAppMethod::SPRITE_KINDS, $sprites));
+$router->generate('a background', [], '16:9', false, ['kind' => 'background']);
+$router->generate('a character', [], '3:4', true, ['kind' => 'character']);
+$router->generate('a walk', [], '16:9', true, ['kind' => 'strip']);
+same([$scenes->drawn, $sprites->drawn], [['background'], ['character', 'strip']], 'the router sends scenes to one source and sprites to the other');
+same($router->transparency(), false, 'and only claims transparency when every source has it');
+check(str_contains($router->describe(), 'character') && str_contains($router->describe(), 'rest→scenes'), 'it says where each kind goes: '.$router->describe());
+$spriteMethod = $factory->method('sprite-app', ['sprite_driver' => 'placeholder', 'anchors_required' => false]);
+check(str_starts_with($spriteMethod->images()->describe(), 'route('), 'the sprite-app method draws through a router');
+$sprited = $factory->generator(['method' => 'sprite-app', 'sprite_driver' => 'placeholder', 'voices' => false])->generate('A sprite-app mission', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'import' => false], null);
+same($sprited['status'], 'packaged', 'and makes a whole mission with it');
+
+// gemini-judge: Gemini's main model for everything, and a stricter judge.
+$geminiConfig = $config;
+$geminiConfig['images'] = ['driver' => 'gemini', 'gemini' => ['api_key' => 'k', 'model' => 'gemini-3-pro-image', 'props_model' => 'gemini-3.1-flash-image', 'props_size' => '1K']];
+$geminiFactory = new GenerationFactory($geminiConfig, $store, new NoNetwork, $model);
+same($geminiFactory->method('classic', ['anchors_required' => false])->images()->pricing(['kind' => 'item']), ['gemini-3.1-flash-image', '1K'], 'classic draws small things with the cheaper props model');
+same($geminiFactory->method('gemini-judge', ['anchors_required' => false])->images()->pricing(['kind' => 'item']), ['gemini-3-pro-image', '2K'], 'gemini-judge draws everything with the main model');
+$minScore = fn (GenerationMethod $m) => (fn () => $this->minScore())->call($m);
+same([$minScore($geminiFactory->method('classic')), $minScore($geminiFactory->method('gemini-judge'))], [7.0, 8.0], 'and judges more strictly');
+check((function () use ($geminiFactory) {
+    try {
+        $geminiFactory->generator(['method' => 'gemini-judge']);
+    } catch (GenerationError $e) {
+        return str_contains($e->getMessage(), 'anchor');
+    }
+
+    return false;
+})(), 'like classic, it needs the style\'s anchors');
+
+// A method of one's own, from configuration: its own step, filed in the trace like the built-in ones.
+final class CountScenesStep extends Step
+{
+    public function name(): string
+    {
+        return 'count-scenes';
+    }
+
+    public function stage(): string
+    {
+        return 'designing';
+    }
+
+    public function run(GenerationRun $run): void
+    {
+        $run->data['scenes'] = count($run->blueprint['scenes']);
+        $run->say("{$run->data['scenes']} scenes");
+        $run->output('count', ['scenes' => $run->data['scenes']]);
+        $run->stop('designed');
+    }
+}
+final class CountingMethod extends GenerationMethod
+{
+    public static function key(): string
+    {
+        return 'counting';
+    }
+
+    public static function summary(): string
+    {
+        return 'A test method: align, design, count the scenes, stop.';
+    }
+
+    public function steps(): array
+    {
+        return [...array_slice(parent::steps(), 0, 2), new CountScenesStep];
+    }
+}
+$customConfig = $config + ['methods' => ['counting' => CountingMethod::class]];
+$customFactory = new GenerationFactory($customConfig, $store, new NoNetwork, new FakeModel($blueprint));
+check(isset($customFactory->methods()['counting']), 'a method of one\'s own is listed from configuration');
+$counted = $customFactory->generator(['method' => 'counting'])->generate('A mission about pollination', ['grade' => '3', 'frameworks' => ['TEST-SCI']], null);
+$countIndex = json_decode((string) file_get_contents("{$counted['trace']}/index.json"), true);
+same([$counted['status'], array_column($countIndex['steps'], 'step'), $countIndex['steps'][2]['notes']], ['designed', ['align', 'design', 'count-scenes'], ['5 scenes']], 'and runs its own steps, which are traced like the rest');
+
+// The trace can be switched off, and can keep only hashes of pictures.
+$quietConfig = $config;
+$quietConfig['trace'] = ['enabled' => false];
+$untraced = (new GenerationFactory($quietConfig, $store, new NoNetwork, new FakeModel($blueprint)))->generator(['method' => 'draft'])->generate('Untraced', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design'], null);
+check(! isset($untraced['trace']) && ! is_dir("$work/generations/{$untraced['run']}/trace"), 'with the trace off, nothing is written');
+$hashes = new Tracer(true, 'none');
+$hashes->attach("$work/hash-trace", 'test', ['x']);
+$hashes->picture('test', 'a prompt', [new Reference('not a picture', 'style anchor 1')], '1:1', false, ['kind' => 'item'], 'bytes', 0.1, null);
+$hashCall = json_decode((string) file_get_contents("$work/hash-trace/trace/calls/0001-picture-item.json"), true);
+same([$hashCall['result']['sha1'], isset($hashCall['result']['file']), $hashCall['references'][0]['role']], [sha1('bytes'), false, 'style anchor 1'], 'with pictures "none", only their hashes are kept');
 
 if (getenv('KEEP')) {
     fwrite(STDOUT, "Work folder kept: $work\n");

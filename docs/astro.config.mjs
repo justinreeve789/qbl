@@ -118,6 +118,7 @@ export default defineConfig({
             { label: 'Save data', slug: 'developers/save-data' },
             { label: 'Instances, teams and save data', slug: 'developers/instances' },
             { label: 'Generating missions with AI', slug: 'developers/generation' },
+            { label: 'Generation methods and traces', slug: 'developers/generation-methods' },
             { label: "Characters' voices (text-to-speech)", slug: 'developers/voices' },
             { label: 'The asset library', slug: 'developers/asset-library' },
             { label: 'Architecture', slug: 'developers/architecture' },
