@@ -14,6 +14,12 @@ final class FakeModel implements LanguageModel
 
     public bool $badChanges = false;
 
+    /** Reviews by the critic so far (BlueprintCritic). */
+    public int $reviews = 0;
+
+    /** What the critic's changes do: "title" renames the mission (harmless), "break" gives a question two right answers. */
+    public string $reviewChanges = 'title';
+
     public function __construct(private array $blueprint) {}
 
     public function structured(string $system, array $content, string $name, array $schema, int $maxTokens = 16000): array
@@ -49,6 +55,25 @@ final class FakeModel implements LanguageModel
                 return ['changes' => $this->badChanges
                     ? [['op' => 'set', 'path' => 'interactions.nowhere.question.choices.0.correct', 'value' => 'false']]
                     : [['op' => 'set', 'path' => 'interactions.q_pollen.question.choices.0.correct', 'value' => 'false']]];
+            case 'blueprint_review':
+                // The critic: a low score with a change the first time, a passing score after. Asked for scores
+                // only (best-of), every second candidate scores higher, so the second is kept.
+                $this->reviews++;
+                $withChanges = isset($schema['properties']['changes']);
+                $score = $withChanges ? ($this->reviews === 1 ? 6 : 9) : ($this->reviews % 2 === 0 ? 8 : 6);
+                $change = $this->reviewChanges === 'break'
+                    ? ['op' => 'set', 'path' => 'interactions.q_pollen.question.choices.0.correct', 'value' => 'true']
+                    : ['op' => 'set', 'path' => 'title', 'value' => '"The Quiet Hive Revisited"'];
+
+                return ['scores' => array_fill_keys(['learning', 'fun', 'clarity', 'fit', 'coherence'], $score), 'strengths' => ['A good hook.'], 'problems' => $score < 8 ? ['The title gives nothing away.'] : []]
+                    + ($withChanges ? ['changes' => $score < 8 ? [$change] : []] : []);
+            case 'mission_outline':
+                return [
+                    'title' => 'The Quiet Hive', 'premise' => 'The orchard has flowers but no fruit.', 'hook' => 'A silent hive.',
+                    'scenes' => [['title' => 'Orchard', 'what_happens' => 'Find the problem', 'learning' => 'Flowers need pollen moved']],
+                    'puzzles' => [['what' => 'Wake the bees', 'needs' => 'warmth', 'teaches' => 'pollinators']],
+                    'twist' => 'A storm.', 'misconception_moment' => 'Flowers do not turn into fruit by themselves.', 'finale' => 'Fruit at last.',
+                ];
             case 'style_review':
                 return ['scores' => array_fill_keys(['line', 'shading', 'colour', 'shapes', 'rendering', 'subject', 'composition'], 8), 'problems' => [], 'fix' => ''];
         }

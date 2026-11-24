@@ -3,36 +3,46 @@
 namespace App\Qbl\Generation;
 
 use App\Qbl\Generation\Art\AssetDirector;
-use App\Qbl\Generation\Build\MissionBuilder;
-use App\Qbl\Generation\Build\StoryBuilder;
-use App\Qbl\Generation\Curriculum\StandardsAligner;
 use App\Qbl\Generation\Curriculum\StandardsStore;
-use App\Qbl\Generation\Design\BlueprintValidator;
 use App\Qbl\Generation\Design\Connections;
-use App\Qbl\Generation\Design\MissionDesigner;
-use App\Qbl\Generation\Design\StoryPlan;
-use App\Qbl\Generation\Design\StoryValidator;
-use App\Qbl\ScenarioArchive;
+use App\Qbl\Generation\Methods\GenerationMethod;
+use App\Qbl\Generation\Pipeline\GenerationRun;
+use App\Qbl\Generation\Pipeline\Step;
+use App\Qbl\Generation\Pipeline\Steps\ImportStep;
 use App\Qbl\ScenarioStore;
 use App\Qbl\Speech\VoicePicker;
 use App\Qbl\Speech\Voicer;
 
 /**
- * Makes a whole mission from a teacher's prompt:
+ * Makes a whole mission from a teacher's prompt, by running a generation method's steps in order.
  *
- *   1. align    choose the curriculum standards and write learning objectives (StandardsAligner)
- *   2. design   write the blueprint: story, scenes, characters, items, interactions, checklist (MissionDesigner)
- *   3. draw     every picture, in the house art style (AssetDirector)
- *   4. build    rows of the QBL tables from the blueprint and pictures (MissionBuilder)
- *   5. package  scenario.json and assets/ as an import ZIP (ScenarioPackage)
- *   6. import   through ScenarioArchive, as a private draft; record its standards; optionally publish
+ * This class is the bookkeeping around the steps, and the same for every method:
+ *
+ *   - find the run (a new row in scenario_generations, or the one being resumed) and its work folder
+ *   - attach the run's spend ledger, audit log, progress bar and trace
+ *   - hand a GenerationRun to each step in turn (through the Tracer, which writes down what it did)
+ *   - stop early when a step says so (design-only, no-import)
+ *   - on failure or cancel, mark the run and keep everything it made, so it can be resumed
+ *
+ * WHAT the steps are, and WHO does each job (which models, which picture services), is the method's
+ * business: see Methods/GenerationMethod.php. The classic method's steps are:
+ *
+ *   1. align    choose the curriculum standards and write learning objectives (Steps/AlignStep)
+ *   2. design   write the blueprint: story, scenes, characters, items, interactions, checklist (Steps/DesignStep)
+ *   3. estimate count and price the pictures; --design-only stops here (Steps/EstimateStep)
+ *   4. draw     every picture, in the house art style (Steps/DrawStep)
+ *   5. build    rows of the QBL tables from the blueprint and pictures (Steps/BuildStep)
+ *   6. voice    record the characters' lines (Steps/VoiceStep)
+ *   7. package  scenario.json and assets/ as an import ZIP (Steps/PackageStep)
+ *   8. import   as a private draft; record its standards; optionally publish (Steps/ImportStep)
  *
  * How far it has got is kept on the run as it goes (GenerationProgress), for the editor's progress
  * bar; a teacher can stop it from there, between two pictures (GenerationCancelled).
  *
- * Each stage's result is saved on the run (scenario_generations) and in its work folder, so a run
+ * Each step's result is saved on the run (scenario_generations) and in its work folder, so a run
  * that stops is resumed from where it stopped. What it spends on AI services is counted in the work
- * folder (spend.json, see Spend), estimated before drawing, and reported at the end.
+ * folder (spend.json, see Spend), estimated before drawing, and reported at the end. What every step
+ * and every AI call did is in the work folder's trace/ (see Pipeline/Tracer).
  */
 class ScenarioGenerator
 {
@@ -48,10 +58,8 @@ class ScenarioGenerator
     public function __construct(
         private GenerationRuns $runs,
         private StandardsStore $standards,
-        private StandardsAligner $aligner,
-        private MissionDesigner $designer,
-        /** Makes the director for a run: fn(string $workDir): AssetDirector */
-        private \Closure $director,
+        /** How scenarios are made: the steps, and who does each job. */
+        private GenerationMethod $method,
         private ScenarioStore $store,
         private string $workRoot,
         ?callable $log = null,
@@ -69,146 +77,84 @@ class ScenarioGenerator
         $this->log = $log;
     }
 
+    public function method(): GenerationMethod
+    {
+        return $this->method;
+    }
+
     /**
      * @param  array{grade?: ?string, subject?: ?string, frameworks?: string[], standards?: string[], scenes?: ?int,
      *               min_players?: int, max_players?: int, minutes?: ?int, notes?: ?string, style?: string,
-     *               stop_after?: ?string, import?: bool, publish?: bool}  $options
-     * @return array{run: int, status: string, scenario_id: ?int, zip: ?string, warnings: string[]}
+     *               stop_after?: ?string, import?: bool, publish?: bool, redo?: ?string}  $options
+     *                                                                                                  redo: with $resume, a step to do again (and every step after it)
+     * @return array{run: int, status: string, scenario_id: ?int, zip: ?string, warnings: string[], method: string, trace?: string}
      */
     public function generate(string $prompt, array $options, ?int $userId = null, ?int $resume = null): array
     {
+        // `redo` is for this session only: it is never saved with the run (a later resume must not redo again).
+        $redo = $options['redo'] ?? null;
+        unset($options['redo']);
+
+        // ------------------------------------------------------------ the run: new, or resumed
         if ($resume) {
-            $run = $this->runs->get($resume) ?? throw new GenerationError("There is no generation $resume.");
+            $saved = $this->runs->get($resume) ?? throw new GenerationError("There is no generation $resume.");
             $id = $resume;
-            $prompt = $run['prompt'];
+            $prompt = $saved['prompt'];
             // Options given now win over the saved ones, so a resumed run can, say, be published.
             // Where to stop is decided afresh: a run made with --design-only is resumed to carry on.
-            $options = array_filter($options, fn ($v) => $v !== null && $v !== []) + array_diff_key($run['options'] ?? [], ['stop_after' => 1, 'import' => 1, 'publish' => 1]);
-            $userId ??= $run['user_id'] !== null ? (int) $run['user_id'] : null;
+            $options = array_filter($options, fn ($v) => $v !== null && $v !== []) + array_diff_key($saved['options'] ?? [], ['stop_after' => 1, 'import' => 1, 'publish' => 1, 'redo' => 1]);
+            $userId ??= $saved['user_id'] !== null ? (int) $saved['user_id'] : null;
         } else {
             $id = $this->runs->create($prompt, $options, $userId);
-            $run = $this->runs->get($id);
+            $saved = $this->runs->get($id);
         }
+        // Which method made it, so a resume (and anyone reading the run later) knows.
+        $options['method'] = $this->method::key();
         $this->lastRun = $id;
         $this->runs->update($id, ['options' => $options, 'error' => null]);
         $dir = rtrim($this->workRoot, '/')."/$id";
         if (! is_dir($dir) && ! mkdir($dir, 0775, true) && ! is_dir($dir)) {
             throw new GenerationError("Cannot create $dir.");
         }
-        $this->say("Generation $id (work folder $dir)");
+        $steps = $this->method->steps();
+        $this->say("Generation $id (work folder $dir), method {$this->method::key()}: ".implode(' → ', array_map(fn (Step $s) => $s->name(), $steps)));
         $this->progress = $progress = new GenerationProgress($this->runs, $id, GenerationProgress::stagesFor((bool) $this->voices), $this->spend ? fn () => $this->spend->total() : null);
-        $warnings = [];
         // What this run spends is counted into its work folder, carrying on from where a resumed run was.
         $this->spend?->attach("$dir/spend.json");
         // And every call is logged in the database for auditing.
         $this->spend?->logTo($this->events, $id);
+        // And every step and call is written down in the work folder's trace/, for developers.
+        $tracer = $this->method->tracer();
+        $tracer->attach($dir, $this->method::key(), array_map(fn (Step $s) => $s->name(), $steps));
         $ended = ['ok', null];
 
+        // Everything the steps share: what the run already has (from an earlier session), and the services.
+        $run = new GenerationRun(
+            $id, $dir, $prompt, $options, $userId, $saved, $this->method,
+            $this->runs, $this->store, $this->standards, $progress, $this->spend, $this->events, $tracer, $this->voices,
+            fn (string $m) => $this->say($m),
+            fn (string $status) => $this->status($id, $status),
+        );
+        $run->alignment = $saved['alignment'] ?? null;
+        $run->blueprint = $saved['blueprint'] ?? null;
+        $run->manifest = $saved['manifest'] ?? null;
+
         try {
-            // ------------------------------------------------------------ 1. align
-            $alignment = $run['alignment'];
-            if (! $alignment) {
-                $this->status($id, 'aligning');
-                $this->say('Aligning to curriculum standards');
-                $alignment = $this->aligner->align($prompt, $options);
-                $this->runs->update($id, ['alignment' => $alignment]);
-                $n = count($alignment['standards'] ?? []);
-                $progress->fraction(1, "Aligned to $n standard".($n === 1 ? '' : 's'));
+            if ($redo !== null) {
+                $this->forgetFrom($steps, (string) $redo, $run);
             }
-            $warnings = array_merge($warnings, $alignment['warnings'] ?? []);
-            foreach ($alignment['standards'] as $s) {
-                $this->say("  {$s['code']} ({$s['alignment']})");
-            }
-
-            // A mission to play, or a story to watch: as asked, or else as the aligner read the request.
-            $format = in_array($options['format'] ?? null, ['mission', 'story'], true) ? $options['format'] : ($alignment['format'] ?? 'mission');
-            if (($options['format'] ?? null) !== $format) {
-                $options['format'] = $format;
-                $this->runs->update($id, ['options' => $options]);
-            }
-            $story = $format === 'story';
-            if ($story) {
-                $this->say('Telling it as a story: it plays by itself, scene after scene');
-            }
-
-            // ------------------------------------------------------------ 2. design
-            $blueprint = $run['blueprint'];
-            if ($blueprint && (($blueprint['format'] ?? 'mission') === 'story') !== $story) {
-                $blueprint = null; // designed as the other kind: design it again
-            }
-            if (! $blueprint || ($story ? StoryValidator::errors($blueprint) : BlueprintValidator::errors($blueprint, array_column($alignment['learning_objectives'], 'id')))) {
-                $this->status($id, 'designing');
-                $this->say('Designing the mission');
-                $blueprint = $this->designer->design($prompt, $alignment, $options, $this->log, fn (float $f, string $detail) => $progress->fraction($f, $detail));
-                $this->runs->update($id, ['blueprint' => $blueprint]);
-            }
-            file_put_contents("$dir/blueprint.json", json_encode($blueprint, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-            $this->say($story ? StoryPlan::describe($blueprint) : sprintf('"%s": %d scenes, %d characters, %d items, %d interactions (%d with the bag), %d combinations, %d twists', $blueprint['title'], count($blueprint['scenes']), count($blueprint['characters']), count($blueprint['items']), count($blueprint['interactions']), count(array_filter($blueprint['interactions'], fn ($it) => ($it['type'] ?? '') === 'use')), count($blueprint['combinations'] ?? []), count($blueprint['twists'] ?? [])));
-            $director = ($this->director)($dir);
-            // A story's pictures are drawn as a mission's are, from the same blueprint seen as the art director reads one.
-            $art = $story ? StoryPlan::forArt($blueprint) : $blueprint;
-            $estimate = $director->estimate($art);
-            $this->events?->record($id, ['type' => 'estimate', 'stage' => 'designing', 'step' => 'drawing estimate', 'usd' => round((float) $estimate['usd'], 5), 'detail' => ['pictures' => $estimate['pictures']]]);
-            $this->say(sprintf('Drawing it will take about %d pictures, about $%.2f%s.', $estimate['pictures'], $estimate['usd'], $this->spend ? sprintf(' (spent so far: $%.2f%s)', $this->spend->total(), $this->spend->budget() > 0 ? sprintf(' of a $%.2f budget', $this->spend->budget()) : '') : ''));
-            if ($this->spend && $this->spend->budget() > 0 && $this->spend->total() + $estimate['usd'] > $this->spend->budget()) {
-                $warnings[] = sprintf('The estimate ($%.2f with what is spent) is over the budget of $%.2f: some pictures may be kept below the style bar or animations left out. Raise it with --budget=... if you want them all.', $this->spend->total() + $estimate['usd'], $this->spend->budget());
-            }
-            if (($options['stop_after'] ?? null) === 'design') {
-                $this->status($id, 'designed');
-
-                return ['run' => $id, 'status' => 'designed', 'scenario_id' => null, 'zip' => null, 'warnings' => $warnings, 'estimate' => $estimate, 'spend' => $this->spend?->summary()];
-            }
-
-            // ------------------------------------------------------------ 3. draw
-            $this->status($id, 'drawing');
-            $director->onProgress(fn (int $done, int $total, string $detail) => $progress->count($done, $total, $detail));
-            $assets = $director->drawMission($art, self::layouts($art));
-            $manifest = $director->manifest();
-            $this->runs->update($id, ['manifest' => $manifest]);
-            foreach ($manifest as $m) {
-                if (! empty($m['below_bar'])) {
-                    $warnings[] = "{$m['key']} was kept below the style bar (score ".($m['score'] ?? '?').'): look at it before publishing.';
+            // ------------------------------------------------------------ the steps, in order
+            foreach ($steps as $step) {
+                $tracer->step($step, $run, fn () => $step->run($run), fn () => $this->spend?->total() ?? 0.0);
+                if ($run->stoppedAs !== null) {
+                    break; // design-only, or no import: the run ends here, as the step said
                 }
             }
-
-            // ------------------------------------------------------------ 4, 5. build and package
-            $this->status($id, 'building');
-            $voices = $this->voices ? self::voicesFor($blueprint, $this->voices['picker']) : [];
-            $built = ($story ? new StoryBuilder : new MissionBuilder)->build($blueprint, $alignment, $assets, $options + ['generation_id' => $id, 'voices' => $voices]);
-            if ($this->voices && $voices) {
-                $this->status($id, 'voicing');
-                $this->say('Recording the characters\' lines ('.$this->voices['voicer']->engine()->name().')');
-                // Each line is logged with how long it took (the tick comes before each: it ends the line before).
-                $voiceLine = null;
-                $voiced = $this->voices['voicer']->voiceBuilt($built, "$dir/voices", $blueprint['language'] ?? 'en', $this->log, function (int $done, int $total, string $line) use ($progress, $id, &$voiceLine) {
-                    $this->events?->end($voiceLine);
-                    $voiceLine = $this->events?->begin($id, ['type' => 'voice', 'kind' => 'line', 'stage' => 'voicing', 'step' => 'voice:'.($done + 1), 'label' => $line, 'model' => $this->voices['voicer']->engine()->name()]);
-                    $progress->count($done, $total, 'Recording line '.($done + 1)." of $total: $line");
-                });
-                $this->events?->end($voiceLine);
-                $built = $voiced['built'];
-                $warnings = array_merge($warnings, $voiced['warnings']);
-                $this->say("  {$voiced['recorded']} lines recorded".($voiced['skipped'] ? ", {$voiced['skipped']} left to the browser (they have {{placeholders}})" : ''));
-            }
-            $spent = $this->spend ? 'Made for '.$this->spend->describe().'.' : null;
-            $package = ScenarioPackage::write($built, $dir, $alignment, $manifest, $blueprint, $spent);
-            $this->say("Packaged {$package['zip']}");
-            if ($spent) {
-                $this->say($spent);
-            }
-            if (($options['import'] ?? true) === false) {
-                $this->status($id, 'packaged');
-
-                return ['run' => $id, 'status' => 'packaged', 'scenario_id' => null, 'zip' => $package['zip'], 'warnings' => $warnings, 'spend' => $this->spend?->summary()];
+            if ($tracer->folder()) {
+                $this->say("Trace: {$tracer->folder()}/README.md");
             }
 
-            // ------------------------------------------------------------ 6. import
-            $this->status($id, 'importing');
-            $scenarioId = $this->import($package['zip'], $userId, $alignment, $built['evidence'], (bool) ($options['publish'] ?? false));
-            $progress->fraction(1, 'Ready');
-            $this->runs->update($id, ['scenario_id' => $scenarioId, 'status' => 'done']);
-
-            return ['run' => $id, 'status' => 'done', 'scenario_id' => $scenarioId, 'zip' => $package['zip'], 'warnings' => $warnings, 'spend' => $this->spend?->summary()];
+            return $run->result();
         } catch (\Throwable $e) {
             if ($this->spend) {
                 $this->say('Spent so far: '.$this->spend->describe().'.');
@@ -219,8 +165,28 @@ class ScenarioGenerator
         } finally {
             $this->events?->stage($id, null, $ended[0], $ended[1]);
             $this->spend?->logTo(null);
+            $tracer->detach();
             $this->progress = null;
         }
+    }
+
+    /**
+     * `--redo=<step>`: forget what that step and every step after it made in earlier sessions, so they
+     * run again. (The steps before it are reused as usual.)
+     *
+     * @param  Step[]  $steps
+     */
+    private function forgetFrom(array $steps, string $name, GenerationRun $run): void
+    {
+        $names = array_map(fn (Step $s) => $s->name(), $steps);
+        $from = array_search($name, $names, true);
+        if ($from === false) {
+            throw new GenerationError("The method {$this->method::key()} has no step \"$name\". Its steps are: ".implode(', ', $names).'.');
+        }
+        foreach (array_slice($steps, $from) as $step) {
+            $step->forget($run);
+        }
+        $this->say("Doing again from \"$name\": ".implode(', ', array_slice($names, $from)));
     }
 
     /**
@@ -263,18 +229,7 @@ class ScenarioGenerator
     /** Import a package (this run's, or one from elsewhere) as a private draft, and record its standards. */
     public function import(string $zip, ?int $userId, array $alignment = [], array $evidence = [], bool $publish = false): int
     {
-        $scenarioId = (new ScenarioArchive($this->store))->import($zip, $userId);
-        if (! empty($alignment['standards'])) {
-            $this->standards->attach($scenarioId, array_map(fn ($s) => $s + ['evidence' => $evidence[$s['code']] ?? []], $alignment['standards']));
-        }
-        $scenario = $this->store->scenario($scenarioId);
-        $this->say("Imported as scenario $scenarioId, a private draft at /{$scenario['code']}");
-        if ($publish) {
-            $this->store->publish($scenarioId);
-            $this->say('Published');
-        }
-
-        return $scenarioId;
+        return ImportStep::importZip($this->store, $this->standards, $zip, $userId, $alignment, $evidence, $publish, fn (string $m) => $this->say($m));
     }
 
     /**

@@ -1,0 +1,174 @@
+---
+title: "Generation methods and traces"
+host:
+  who: riona
+  says: "Try a different way of making missions, and see exactly what every step did."
+---
+import Flow from '../../../components/diagrams/Flow.astro';
+
+The AI generator is a pipeline of **steps**, run by a **generation method**. The method decides two things: *what happens, in what order* (its list of steps) and *who does each job* (which language model designs, which service draws, who judges). To try a different approach, write a method: a small PHP class. Every run writes a **trace**: what each step did and every call it made to an AI service, with the prompts and the answers.
+
+```sh
+php artisan qbl:generate --list-methods
+php artisan qbl:generate "Why does the orchard have flowers but no fruit?" --grade=3 --method=critic
+php artisan qbl:generation-trace 42            # what each step did
+php artisan qbl:generation-trace 42 --calls    # every AI call, in order
+php artisan qbl:generation-trace 42 --call=7   # one call in full: system prompt, user turn, answer
+```
+
+## Where the code is
+
+`apps/api/app/Qbl/Generation/`:
+
+Folder / file | What it is
+---- | ----
+`ScenarioGenerator.php` | The bookkeeping around the steps, the same for every method: finds or creates the run, attaches spend, progress, the audit log and the trace, runs the steps, handles failure and cancelling.
+`Methods/GenerationMethod.php` | **The base class. Start reading here.** The default steps, and the hooks a method overrides: `chooseModel($job)`, `makeImages()`, `makeJudge()`, `minScore()`, `attempts()`, `makeDesigner()`, `makeCritic()`, `makeDirector()`, `builder()`, `wantsVoices()`, `check()`.
+`Methods/*Method.php` | The methods (below), each a few lines over the base.
+`Methods/GenerationMethods.php` | The list of methods by key.
+`Pipeline/Step.php` | The base class of a step: `name()`, `stage()` (its part of the progress bar), `run(GenerationRun)`, `forget()` (for `--redo`).
+`Pipeline/Steps/*Step.php` | The steps. Each one's comment says what it does, how, what it reads and what it leaves.
+`Pipeline/GenerationRun.php` | What a run knows so far, handed from step to step: `alignment`, `blueprint`, `assets`, `built`... and helpers (`say`, `stage`, `skip`, `output`, `note`, `stop`).
+`Pipeline/Tracer.php` | Writes the trace. `TracingLanguageModel` and `TracingImageGenerator` wrap every model and picture source a method hands out, so nothing has to remember to trace.
+`Pipeline/RoutingImageGenerator.php` | Sends each picture to a different service by its kind (sprites to one, scenes to another).
+`Design/BlueprintCritic.php` | Reviews a blueprint as a teacher and game designer would: scores and changes.
+
+## The steps
+
+<Flow steps={[
+  { who: 'riona', title: 'align', text: 'Standards' },
+  { icon: '📐', title: 'design', text: 'The blueprint' },
+  { icon: '🧮', title: 'estimate', text: 'Count, price' },
+  { icon: '🎨', title: 'draw', text: 'Every picture' },
+  { icon: '🧱', title: 'build', text: 'Engine rows' },
+  { icon: '🔊', title: 'voice', text: 'Every line' },
+  { icon: '📦', title: 'package', text: 'The ZIP' },
+  { icon: '📥', title: 'import', text: 'A draft' },
+]} caption="The classic method's steps. Other methods add, replace or drop steps." />
+
+Step | Class | Reads | Leaves on the run | AI job
+---- | ---- | ---- | ---- | ----
+align | `AlignStep` | prompt, options | `alignment`, `format` | `align`
+design | `DesignStep` | alignment, `designOptions()` | `blueprint` | `design`
+estimate | `EstimateStep` | blueprint | `director`, `art`, `estimate`; stops with `--design-only` | —
+draw | `DrawStep` | art | `assets`, `manifest` | pictures; `judge`
+build | `BuildStep` | blueprint, assets | `built`, `voices` | — (plain code)
+voice | `VoiceStep` | built | `built` with recordings | speech engine
+package | `PackageStep` | built | `package`; stops with `--no-import` | —
+import | `ImportStep` | package | `scenarioId` | —
+outline | `OutlineStep` (outline-first) | alignment | `data['outline']`, a note in `designNotes` | `outline`
+critique | `CritiqueStep` (critic) | blueprint | a better `blueprint`, `critique.json` | `critic`
+
+Steps are resumable: a step whose result is already there (a stopped run, resumed) skips itself and says why in the trace. `--resume=ID --redo=<step>` forgets what that step and every step after it made, so they run again: `--redo=design` to try a new prompt on the same alignment, `--redo=draw` to redraw everything (the old pictures are moved to `assets-<time>/`, not deleted).
+
+## The methods
+
+Method | What it tries | Costs, compared with classic
+---- | ---- | ----
+`classic` | One design, corrected until it validates; pictures from `QBL_GEN_IMAGE_DRIVER`, judged against the style anchors. The baseline. | —
+`draft` | The real alignment and design, placeholder pictures, no judge, no voices. It still imports and plays. For iterating on the designer's prompt, the validator or the builder. | Only the language model calls
+`gemini-judge` | Gemini's main model draws everything (no cheaper props model); a stricter judge (8/10, 4 tries) sends pictures back with notes. How much can a demanding art director fix? | More: props at full price, more redraws
+`sprite-app` | A sprite service (Scenario.com by default, `QBL_GEN_SPRITE_DRIVER`) draws characters, animation strips and props; the main driver paints the scenes. | Depends on the sprite service
+`critic` | After the design, a critic (teacher and game designer) scores the blueprint (learning, fun, clarity, fit, coherence) and suggests changes; they are applied only if it still validates; then it reviews again. | One or two more large calls
+`best-of` | Designs N candidates (default 3), the critic scores each, only the best is drawn. Losers kept in `candidates/`. | N designs and N reviews; pictures once
+`outline-first` | A small call sketches the story (premise, hook, scenes, puzzles, twist, finale); the designer builds the blueprint from it. | One small call
+
+Choose one per run with `--method=`, or for every run (the editor's too) with `QBL_GEN_METHOD`. A resumed run carries on with the method it was started with. `--images=placeholder` makes any method free to try (the explicit option wins over the method's choice of source).
+
+Settings (`config/qbl_generation.php`, `method_options`): `QBL_GEN_GJ_MIN_SCORE`, `QBL_GEN_GJ_ATTEMPTS`; `QBL_GEN_SPRITE_DRIVER`, `QBL_GEN_SPRITE_KINDS`; `QBL_GEN_CRITIC_ROUNDS`, `QBL_GEN_CRITIC_PASS`; `QBL_GEN_BEST_OF`.
+
+## Writing a method
+
+```php
+namespace App\Qbl\Generation\Methods;
+
+use App\Qbl\Generation\Llm\LanguageModel;
+use App\Qbl\Generation\Pipeline\Steps\CritiqueStep;
+use App\Qbl\Generation\Pipeline\Steps\OutlineStep;
+
+final class SonnetStoryMethod extends GenerationMethod
+{
+    public static function key(): string { return 'sonnet-story'; }
+
+    public static function summary(): string { return 'Opus outlines, Sonnet fills in the blueprint, Opus critiques.'; }
+
+    // Who does each job.
+    protected function chooseModel(string $job): LanguageModel
+    {
+        return match ($job) {
+            'design' => $this->factory->anthropicModel('claude-sonnet-5-5'),
+            default => parent::chooseModel($job), // outline and critic: the design model from config (Opus)
+        };
+    }
+
+    // What happens.
+    public function steps(): array
+    {
+        $steps = self::insertBefore(parent::steps(), 'design', new OutlineStep);
+
+        return self::insertAfter($steps, 'design', new CritiqueStep);
+    }
+}
+```
+
+Add it to `GenerationMethods::BUILT_IN`, or without editing that file: `QBL_GEN_METHODS='{"sonnet-story": "App\\Qbl\\Generation\\Methods\\SonnetStoryMethod"}'`. Helpers for the steps list: `insertAfter`, `insertBefore`, `replace`, `without`.
+
+A new picture service is an `ImageGenerator` (`generate`, `transparency`, `describe`; `PricedImageGenerator` to be priced): see `Art/Providers/ScenarioImageGenerator.php` for one that starts a job and polls it. Return it from `makeImages()`, or add it to `GenerationFactory::images()` as a driver so `sprite-app` can route to it.
+
+## Writing a step
+
+```php
+final class ReadingLevelStep extends Step
+{
+    public function name(): string { return 'reading-level'; }
+    public function stage(): string { return 'designing'; }
+
+    public function run(GenerationRun $run): void
+    {
+        $lines = /* every dialogue line in $run->blueprint */;
+        $answer = $run->method->model('reading')->structured($system, [$lines], 'reading_level', $schema);
+        $run->say("Reading level: {$answer['grade']}");
+        $run->output('reading-level', $answer);              // its own file in the trace
+        if ($answer['grade'] > ($run->options['grade'] ?? 99)) {
+            $run->warn('Some lines are above the grade.');
+        }
+    }
+}
+```
+
+`$run->method->model('<job>')` is a traced language model; any job name works (unknown jobs get the design model until a method's `chooseModel` says otherwise). Make steps resumable: if the result is already there, `$run->skip('why')` and return. Steps before the design can add to the designer's brief with `$run->designNotes[] = '...'`.
+
+## The trace
+
+Every run writes `trace/` in its work folder (`storage/app/generations/<run>/trace`, `/data/generations/<run>/trace` in Docker):
+
+File | What
+---- | ----
+`README.md` | The timeline: steps with outcome, time, cost and notes; then every call. Rewritten after every step and call, so a run that died shows how far it got.
+`index.json` | The same, as data. Each session of a resumed run is listed.
+`steps/NN-<step>.json` | One step: when, how long, what it cost (from the spend ledger), what it logged, whether it skipped, its calls.
+`steps/NN-<step>.<output>.json` | What the step made: the alignment, the blueprint, the estimate, the manifest, the built rows, the critic's reviews.
+`calls/NNNN-llm-<job>-<answer>.json` | A language model call: job, model, system prompt, user turn, JSON schema, answer, time, error.
+`calls/NNNN-picture-<kind>.json` | A picture request: provider, prompt, references (by role), hints, aspect, the result.
+`calls/NNNN-note-*.json` | Something a step put in the timeline: a critic round, a best-of candidate.
+`blobs/<sha1>.png` | Every picture sent or received, once each (the style anchors go with many calls; they are stored once).
+
+`QBL_GEN_TRACE=false` turns it off. `QBL_GEN_TRACE_PICTURES`: `thumb` (default, 512 px copies), `full` (as they came), `none` (hashes only).
+
+The trace is for developers: what exactly happened, and why it came out like that. The [audit log](/docs/developers/generation/#the-audit-log) (`qbl:generation-log`) is in the database, for what each run cost and how long it took. Pictures the director accepted, and its attempts and scores, are in `assets/<key>.json`.
+
+## Testing
+
+`npm run test:generation` runs every method against the fake model and the placeholder pictures: the trace's contents, `--redo`, the critic applying a change and throwing away one that would break the mission, best-of keeping the higher score, outline-first briefing the designer, routing by kind, and a method defined in a test from configuration.
+
+## More to try
+
+Ideas that fit as methods or steps, not built yet:
+
+- **Library first.** Before drawing, look for each thing and character in the [asset library](/docs/developers/asset-library/) and reuse what matches; draw only what is missing. Cheaper, and missions share a look.
+- **Playtest critic.** Run the generated scenario through the headless client (as the end-to-end test does) with a scripted or model-driven student, and feed where it got stuck back to the designer.
+- **Teacher checkpoint.** Stop after `critique` or `estimate` and wait for the teacher to approve the outline and price in the editor before drawing (the `designed` status already exists).
+- **Picture shoot-out.** Draw each background with two services and keep the one the judge scores higher; or have the judge pick from N variants drawn at once.
+- **Gemini as the judge or designer.** A `LanguageModel` for Gemini's structured output, then `chooseModel('judge')` returns it: compare the two judges on the same pictures from a trace.
+- **Section by section.** Design scenes one call each (with the outline and the scenes so far), then stitch: smaller answers, fewer corrections, maybe better scenes.
+- **Replay.** A step that reads a call from another run's trace and sends it again with a changed prompt, to A/B a prompt change on exactly the same input.

@@ -10,6 +10,42 @@
 $env = fn (string $key, mixed $default) => ($v = env($key)) === null || $v === '' ? $default : $v;
 
 return [
+    // How scenarios are made: which steps, in what order, and who does each job (see
+    // app/Qbl/Generation/Methods). classic | draft | gemini-judge | sprite-app | critic | best-of |
+    // outline-first. `php artisan qbl:generate --list-methods` says what each one does; --method=...
+    // chooses one for a single run.
+    'method' => $env('QBL_GEN_METHOD', 'classic'),
+    // Methods of your own, without editing GenerationMethods: JSON like {"mine": "App\\Qbl\\Generation\\Methods\\MyMethod"}.
+    'methods' => (array) (json_decode((string) $env('QBL_GEN_METHODS', '{}'), true) ?: []),
+    // Each method's own settings (read with GenerationMethod::setting()).
+    'method_options' => [
+        'gemini-judge' => [
+            'min_score' => (float) $env('QBL_GEN_GJ_MIN_SCORE', 8),
+            'attempts' => (int) $env('QBL_GEN_GJ_ATTEMPTS', 4),
+        ],
+        'sprite-app' => [
+            // Which driver draws characters, animations and props; the scenes come from images.driver.
+            'sprite_driver' => $env('QBL_GEN_SPRITE_DRIVER', 'scenario'),
+            // Which kinds of picture count as sprites (comma-separated). Empty: the method's default list.
+            'sprite_kinds' => $env('QBL_GEN_SPRITE_KINDS', '') ?: null,
+        ],
+        'critic' => [
+            'rounds' => (int) $env('QBL_GEN_CRITIC_ROUNDS', 2),
+            'pass' => (float) $env('QBL_GEN_CRITIC_PASS', 8),
+        ],
+        'best-of' => [
+            'candidates' => (int) $env('QBL_GEN_BEST_OF', 3),
+        ],
+    ],
+
+    // Every step of a run and every call it makes to an AI service, written to the run's work folder
+    // (trace/README.md first), for developers. Read it with `php artisan qbl:generation-trace <run>`.
+    'trace' => [
+        'enabled' => filter_var($env('QBL_GEN_TRACE', true), FILTER_VALIDATE_BOOL),
+        // thumb: a 512 px copy of every picture sent or received; full: the pictures as they were; none: only their hashes.
+        'pictures' => $env('QBL_GEN_TRACE_PICTURES', 'thumb'),
+    ],
+
     // Writes the mission: its story, scenes, characters, dialogue, events and questions. Also aligns it
     // to standards and, with judge.enabled, looks at every picture to check it matches the art style.
     'llm' => [

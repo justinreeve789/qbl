@@ -10,22 +10,26 @@ use App\Qbl\Generation\Art\Providers\OfflineImageGenerator;
 use App\Qbl\Generation\Art\Providers\OpenAiImageGenerator;
 use App\Qbl\Generation\Art\Providers\PlaceholderImageGenerator;
 use App\Qbl\Generation\Art\Providers\ScenarioImageGenerator;
-use App\Qbl\Generation\Art\StyleJudge;
-use App\Qbl\Generation\Curriculum\StandardsAligner;
 use App\Qbl\Generation\Curriculum\StandardsStore;
-use App\Qbl\Generation\Design\MissionDesigner;
 use App\Qbl\Generation\Http\CurlHttpClient;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Llm\AnthropicModel;
 use App\Qbl\Generation\Llm\LanguageModel;
+use App\Qbl\Generation\Methods\GenerationMethod;
+use App\Qbl\Generation\Methods\GenerationMethods;
 use App\Qbl\ScenarioStore;
 use App\Qbl\Speech\SpeechError;
 use App\Qbl\Speech\SpeechFactory;
+use App\Qbl\Speech\VoicePicker;
+use App\Qbl\Speech\Voicer;
 
 /**
  * Puts the generator together from configuration (config/qbl_generation.php), in plain PHP, so Laravel,
  * the commands and the tests build it the same way. Services are only constructed when used: drawing
  * with the placeholder needs no image key, and designing only needs the language model's.
+ *
+ * The factory makes the shared services (language models, picture sources, the spend ledger, voices);
+ * a generation method (Methods/GenerationMethod) decides which of them a run uses, and in what steps.
  */
 class GenerationFactory
 {
@@ -36,6 +40,9 @@ class GenerationFactory
     private ?LanguageModel $alignLlm = null;
 
     private ?Spend $spend = null;
+
+    /** For tests: the model that stands in for every model. */
+    private ?LanguageModel $llmOverride = null;
 
     public function __construct(
         private array $config,
@@ -49,6 +56,7 @@ class GenerationFactory
         private ?SpeechFactory $speech = null,
     ) {
         $this->http ??= new CurlHttpClient;
+        $this->llmOverride = $llm;
         $this->llm = $llm;
         $this->judgeLlm = $llm;
         $this->alignLlm = $llm;
@@ -94,6 +102,18 @@ class GenerationFactory
         return $this->spend ??= new Spend((float) $this->config('budget', 0), (array) $this->config('prices', []));
     }
 
+    /** A Claude model by name, with the configured key, limits and spend ledger (for methods that want another model). */
+    public function anthropicModel(string $model): LanguageModel
+    {
+        return $this->llmOverride ?? $this->anthropic($model);
+    }
+
+    /** For tests: the picture source injected in place of every driver, if any. */
+    public function injectedImages(): ?ImageGenerator
+    {
+        return $this->images;
+    }
+
     private function anthropic(string $model): AnthropicModel
     {
         return new AnthropicModel(
@@ -133,38 +153,55 @@ class GenerationFactory
     }
 
     /**
-     * @param  array{style?: ?string, images?: ?string, judge?: ?bool, attempts?: ?int, anchors_required?: bool, budget?: ?float}  $options
+     * The generation method a run uses: by key (--method), else QBL_GEN_METHOD, else "classic".
+     *
+     * @param  array  $options  as for generator()
+     */
+    public function method(?string $key = null, array $options = [], ?callable $log = null): GenerationMethod
+    {
+        $key = $key ?: (string) $this->config('method', 'classic');
+        $class = GenerationMethods::classFor($key, (array) $this->config('methods', []));
+
+        return new $class($this, $options, $log);
+    }
+
+    /** Every method there is: key => summary. */
+    public function methods(): array
+    {
+        return array_map(fn (string $class) => $class::summary(), GenerationMethods::all((array) $this->config('methods', [])));
+    }
+
+    /** The method a run was made with (to resume it the same way), if it says. */
+    public function savedMethod(int $run): ?string
+    {
+        $method = (new GenerationRuns($this->store->pdo()))->get($run)['options']['method'] ?? null;
+
+        return is_string($method) && $method !== '' ? $method : null;
+    }
+
+    /**
+     * @param  array{method?: ?string, style?: ?string, images?: ?string, judge?: ?bool, attempts?: ?int, anchors_required?: bool, budget?: ?float, voices?: ?bool}  $options
+     *                                                                                                                                                                         method: which GenerationMethod (default QBL_GEN_METHOD, else classic); the rest are passed to it
      */
     public function generator(array $options = [], ?callable $log = null): ScenarioGenerator
     {
-        $style = $this->style($options['style'] ?? null);
-        $driver = $options['images'] ?? (string) $this->config('images.driver', 'gemini');
-        $placeholder = in_array($driver, ['placeholder', 'offline'], true) && ! $this->images;
-        if (($options['anchors_required'] ?? true) && ! $placeholder && count($style->anchors()) === 0) {
-            throw new GenerationError("The art style \"{$style->key}\" has no approved anchor pictures yet, and they are what keeps every picture in one style. Make them first: php artisan qbl:art-style {$style->key} --bootstrap (then --approve). To go ahead without them, pass --without-anchors.");
-        }
-        // Judging placeholder shapes against anchors would only waste calls.
-        $judging = ($options['judge'] ?? (bool) $this->config('judge.enabled', true)) && ! $placeholder;
-        $judge = $judging ? new StyleJudge($this->judgeLlm(), (float) $this->config('judge.min_score', 7)) : null;
-        $attempts = (int) ($options['attempts'] ?? $this->config('judge.max_attempts', 3));
-        $images = $this->images($driver, $style);
+        $method = $this->method($options['method'] ?? null, $options, $log);
+        // Refuse now, before anything is spent, if the method cannot work as set up (no style anchors, say).
+        $method->check();
         $spend = $this->spend();
         if (isset($options['budget'])) {
             $spend->setBudget((float) $options['budget']);
         }
-        $pictures = (array) $this->config('pictures', []);
 
         return new ScenarioGenerator(
             new GenerationRuns($this->store->pdo()),
             $this->standards(),
-            new StandardsAligner($this->standards(), $this->alignLlm()),
-            new MissionDesigner($this->llm(), (array) $this->config('limits', ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 18]), bigMomentChance: (float) $this->config('pacing.big_moment_chance', 0.25)),
-            fn (string $dir) => new AssetDirector($images, $style, $judge, $dir, max(1, $attempts), $log, $spend, $pictures),
+            $method,
             $this->store,
             (string) $this->config('work_dir'),
             $log,
             $spend,
-            $this->voices($options['voices'] ?? null, $log),
+            $this->voices($method->wantsVoices() === false ? false : ($options['voices'] ?? null), $log),
             new GenerationEvents($this->store->pdo()),
         );
     }
@@ -173,7 +210,7 @@ class GenerationFactory
      * What gives the characters voices and records their lines; null when that is switched off
      * ($wanted false, or QL_TTS_DRIVER=none) or the voices are not set up.
      *
-     * @return ?array{picker: \App\Qbl\Speech\VoicePicker, voicer: \App\Qbl\Speech\Voicer}
+     * @return ?array{picker: VoicePicker, voicer: Voicer}
      */
     private function voices(?bool $wanted, ?callable $log): ?array
     {
