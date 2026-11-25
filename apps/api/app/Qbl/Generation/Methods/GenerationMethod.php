@@ -403,6 +403,17 @@ abstract class GenerationMethod
         return $this->made['surveyor'];
     }
 
+    /**
+     * How the things cut out of a background (SurveyStep) are taken out of the background itself
+     * (ClearStep): "paint" (the picture source draws what is behind them, else "fill"), "fill" (the
+     * colours around them, no request), or null to leave them painted in. Missions and stories leave
+     * them; SceneMethod clears them.
+     */
+    public function clearing(): ?string
+    {
+        return null;
+    }
+
     /** Who animates the characters (see makeAnimator), made once. */
     final public function animator(): ?CharacterAnimator
     {

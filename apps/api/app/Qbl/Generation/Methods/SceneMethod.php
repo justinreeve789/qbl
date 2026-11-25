@@ -3,6 +3,7 @@
 namespace App\Qbl\Generation\Methods;
 
 use App\Qbl\Generation\Art\SceneSurveyor;
+use App\Qbl\Generation\Pipeline\Steps\ClearStep;
 use App\Qbl\Generation\Pipeline\Steps\SceneBuildStep;
 use App\Qbl\Generation\Pipeline\Steps\SceneDesignStep;
 use App\Qbl\Generation\Pipeline\Steps\SceneDrawStep;
@@ -13,7 +14,7 @@ use App\Qbl\Generation\Pipeline\Steps\SurveyStep;
  * ONE new scene for a scenario a teacher is making (the editor's "Generate a scene"), rather than a
  * whole mission:
  *
- *   design → draw → survey → build → merge
+ *   design → draw → survey → clear → build → merge
  *
  *   design  SceneDesigner plans the scene: the background, what stands on its floor, what can be clicked
  *           and what the narrator says about it, lights, a living sky, critters (language model "design")
@@ -21,6 +22,9 @@ use App\Qbl\Generation\Pipeline\Steps\SurveyStep;
  *           scenario's own scenes (AssetDirector, as a mission's)
  *   survey  the floor traced, each standing thing cut out pixel for pixel with its sort line, the
  *           painted things and lights found (SceneSurveyor, language model "survey")
+ *   clear   the cut-out things taken out of the background itself, so nothing is painted under them:
+ *           the picture source paints what is behind them (else the colours around fill them); every
+ *           other pixel of the background stays as it was painted (BackgroundCleaner)
  *   build   SceneBuilder: the rows of one scene
  *   merge   added to the scenario (ScenarioStore::mergeRows); the editor takes it in as one undoable step
  *
@@ -41,7 +45,7 @@ final class SceneMethod extends GenerationMethod
 
     public function steps(): array
     {
-        return [new SceneDesignStep, new SceneDrawStep, new SurveyStep, new SceneBuildStep, new SceneMergeStep];
+        return [new SceneDesignStep, new SceneDrawStep, new SurveyStep, new ClearStep, new SceneBuildStep, new SceneMergeStep];
     }
 
     public function stages(bool $voices): array
@@ -52,6 +56,23 @@ final class SceneMethod extends GenerationMethod
     public function wantsVoices(): ?bool
     {
         return false;
+    }
+
+    /**
+     * Option clear: "paint" (the default with real pictures), "fill" (the default with placeholder
+     * pictures, which cannot paint over a picture), or "off" / false to keep the things painted in.
+     */
+    public function clearing(): ?string
+    {
+        $wanted = $this->options['clear'] ?? null;
+        if ($wanted === false || $wanted === 'off' || $wanted === 'none') {
+            return null;
+        }
+        if (in_array($wanted, ['paint', 'fill'], true)) {
+            return $wanted;
+        }
+
+        return $this->placeholderPictures() ? 'fill' : 'paint';
     }
 
     /**

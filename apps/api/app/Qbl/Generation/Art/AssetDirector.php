@@ -931,6 +931,20 @@ class AssetDirector
         }
     }
 
+    /**
+     * Has the picture source change a picture it is shown (BackgroundCleaner: a background without the
+     * things cut out of it), priced into the run's Spend like any picture. The prompt is used as it is,
+     * not wrapped in the style's: what is asked is to keep the picture's own look.
+     *
+     * @param  Reference[]  $refs
+     */
+    public function retouch(string $prompt, array $refs, string $aspect, array $hints): string
+    {
+        $this->say('Retouching '.($hints['label'] ?? 'a picture'));
+
+        return $this->draw($prompt, $refs, $aspect, false, $hints);
+    }
+
     /** Whether another attempt at a picture may be paid for: not once the budget is spent. */
     private function mayRedraw(): bool
     {

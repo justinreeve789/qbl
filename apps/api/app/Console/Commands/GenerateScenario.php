@@ -56,7 +56,8 @@ class GenerateScenario extends Command
         {--repeat= : With --scenario: what a thing with several descriptions does when clicked again: last or cycle; default: chosen thing by thing}
         {--no-hotspots : With --scenario: nothing to click}
         {--no-animations : With --scenario: no lights, living sky, things in the air or flowing water}
-        {--critters : With --scenario: birds, squirrels, deer... that come and go}';
+        {--critters : With --scenario: birds, squirrels, deer... that come and go}
+        {--clear= : With --scenario: what goes behind the things cut out of the background: paint (the picture source draws it; the default), fill (the colours around them, free) or off (they stay painted in)}';
 
     protected $description = 'Generate a whole mission (scenes, characters, art, dialogue, events, curriculum alignment) from a prompt';
 
@@ -106,6 +107,11 @@ class GenerateScenario extends Command
             }
             // One scene for a scenario: its own options, made by the scene method.
             if ($this->option('scenario')) {
+                if ($this->option('clear') !== null && ! in_array($this->option('clear'), ['paint', 'fill', 'off'], true)) {
+                    $this->error('--clear is one of: paint, fill, off.');
+
+                    return self::FAILURE;
+                }
                 foreach (['place', 'time', 'width', 'repeat'] as $key) {
                     $value = $this->option($key);
                     $allowed = SceneDesigner::OPTIONS[$key];
@@ -164,6 +170,7 @@ class GenerateScenario extends Command
                 'budget' => $this->option('budget') !== null ? (float) $this->option('budget') : null,
                 'anchors_required' => ! $this->option('without-anchors') && ! $this->option('design-only'),
                 'voices' => $this->option('no-voices') ? false : null,
+                'clear' => $this->option('clear'),
             ], $log);
             $result = $generator->generate($prompt, $options, $owner?->id, $this->option('resume') ? (int) $this->option('resume') : null);
         } catch (GenerationError|StoreError $e) {

@@ -19,6 +19,7 @@
  */
 
 use App\Qbl\Generation\Art\ArtStyle;
+use App\Qbl\Generation\Art\BackgroundCleaner;
 use App\Qbl\Generation\Art\ImageGenerator;
 use App\Qbl\Generation\Art\ImageTools;
 use App\Qbl\Generation\Art\Providers\PlaceholderImageGenerator;
@@ -148,10 +149,26 @@ final class Painter implements ImageGenerator
 
     public function generate(string $prompt, array $references, string $aspect, bool $transparent, array $hints = []): string
     {
-        $this->asked[] = ['kind' => $hints['kind'] ?? null, 'prompt' => $prompt, 'references' => array_map(fn ($r) => $r->role, $references)];
+        $this->asked[] = ['kind' => $hints['kind'] ?? null, 'prompt' => $prompt, 'references' => array_map(fn ($r) => $r->role, $references), 'aspect' => $aspect, 'hints' => $hints];
+        if (($hints['kind'] ?? null) === 'retouch') {
+            // The same picture without the oak and the well, as a painter would answer: the part asked for,
+            // a little brighter all over (painters drift), at half size.
+            [$x, $y, $w, $h] = $hints['window'];
+            $part = ImageTools::crop(ImageTools::load($this->scene(false)), $x, $y, $w, $h);
+            imagefilter($part, IMG_FILTER_BRIGHTNESS, 6);
+
+            return ImageTools::png(ImageTools::resize($part, intdiv($w, 2), intdiv($h, 2)));
+        }
         if (($hints['kind'] ?? null) !== 'background') {
             return $this->placeholder->generate($prompt, $references, $aspect, $transparent, $hints);
         }
+
+        return $this->scene(true);
+    }
+
+    /** The mill yard, with or without the things standing out on its floor. */
+    public function scene(bool $things): string
+    {
         $im = imagecreatetruecolor(2250, 1200);
         $c = fn (int $r, int $g, int $b) => imagecolorallocate($im, $r, $g, $b);
         $ink = $c(40, 30, 50);
@@ -161,12 +178,14 @@ final class Painter implements ImageGenerator
         imagesetthickness($im, 3);
         imageline($im, 0, 790, 2249, 790, $ink);
         imagerectangle($im, 0, 300, 2249, 789, $ink);
-        imagefilledrectangle($im, 1482, 702, 1518, 1008, $c(110, 70, 40));       // the oak's trunk
-        imagerectangle($im, 1480, 700, 1520, 1010, $ink);
-        imagefilledellipse($im, 1500, 600, 320, 280, $c(60, 140, 70));           // its canopy
-        imageellipse($im, 1500, 600, 320, 280, $ink);
-        imagefilledrectangle($im, 572, 842, 708, 958, $c(130, 130, 140));        // the well
-        imagerectangle($im, 570, 840, 710, 960, $ink);
+        if ($things) {
+            imagefilledrectangle($im, 1482, 702, 1518, 1008, $c(110, 70, 40));   // the oak's trunk
+            imagerectangle($im, 1480, 700, 1520, 1010, $ink);
+            imagefilledellipse($im, 1500, 600, 320, 280, $c(60, 140, 70));       // its canopy
+            imageellipse($im, 1500, 600, 320, 280, $ink);
+            imagefilledrectangle($im, 572, 842, 708, 958, $c(130, 130, 140));    // the well
+            imagerectangle($im, 570, 840, 710, 960, $ink);
+        }
         imagefilledrectangle($im, 1990, 480, 2010, 520, $c(255, 226, 130));      // the lamp, lit
         imagerectangle($im, 1988, 478, 2012, 522, $ink);
         imagefilledrectangle($im, 300, 520, 420, 640, $c(230, 210, 170));        // a poster on the wall
@@ -328,6 +347,45 @@ $covers = fn (array $poly, int $x, int $y) => $x >= min(array_column($poly, 'x')
 check((bool) array_filter($blocked, fn ($p) => $covers($p, 1500, 1000)), 'nobody walks through the oak\'s trunk');
 check((bool) array_filter($blocked, fn ($p) => $covers($p, 640, 950)), 'or the well');
 check(! array_filter($blocked, fn ($p) => $covers($p, 1000, 1000)), 'but the open floor between them is open');
+
+// The background, with the oak and the well taken out of it: painted behind them, every other pixel as painted.
+$retouches = array_values(array_filter($painter->asked, fn ($a) => $a['kind'] === 'retouch'));
+same(count($retouches), 1, 'the painter is asked once to paint behind the oak and the well (they fit in one 16:9 window)');
+if ($retouches) {
+    $r = $retouches[0];
+    check(str_contains($r['prompt'], 'oak tree') && str_contains($r['prompt'], 'well') && str_contains($r['prompt'], 'take away'), 'told what to take away');
+    check(count($r['references']) === 2 && str_contains($r['references'][1], 'mask'), 'shown the picture and a mask of them');
+    same([$r['aspect'], $r['hints']['window'][3]], ['16:9', 1200], 'in a 16:9 window the height of the picture');
+}
+$painted = glob("$work/generations/{$result['run']}/assets/bg-old_mill_yard.png")[0] ?? null;
+$bgFile = "$work/media/".$media[$bgLayer['media_id']]['filepath'];
+check($painted && str_ends_with($bgFile, '.png'), 'the scene\'s picture is the cleared one, a PNG: '.basename($bgFile));
+if ($painted) {
+    $before = ImageTools::load((string) file_get_contents($painted));
+    $after = ImageTools::load((string) file_get_contents($bgFile));
+    same([imagesx($after), imagesy($after)], [imagesx($before), imagesy($before)], 'at the size it was painted');
+    // Every pixel more than a few pixels from the oak and the well is exactly as painted.
+    $near = fn (int $x, int $y) => ($x >= 1330 && $x <= 1670 && $y >= 450 && $y <= 1020) || ($x >= 560 && $x <= 720 && $y >= 830 && $y <= 970);
+    $changed = 0;
+    $outside = 0;
+    for ($y = 0; $y < imagesy($before); $y++) {
+        for ($x = 0; $x < imagesx($before); $x++) {
+            if (imagecolorat($before, $x, $y) !== imagecolorat($after, $x, $y)) {
+                $changed++;
+                $outside += $near($x, $y) ? 0 : 1;
+            }
+        }
+    }
+    check($changed > 20000, "the oak and the well are gone from it ($changed pixels changed)");
+    same($outside, 0, 'and nothing else changed, pixel for pixel');
+    $rgb = fn (GdImage $im, int $x, int $y) => [(imagecolorat($im, $x, $y) >> 16) & 0xFF, (imagecolorat($im, $x, $y) >> 8) & 0xFF, imagecolorat($im, $x, $y) & 0xFF];
+    $close = fn (array $a, array $b) => max(array_map(fn ($p, $q) => abs($p - $q), $a, $b)) <= 3;
+    check($close($rgb($after, 1500, 900), $rgb($before, 1000, 900)), 'behind the oak\'s trunk: the cobbles, colour-matched to those around: '.json_encode([$rgb($after, 1500, 900), $rgb($before, 1000, 900)]));
+    check($close($rgb($after, 1500, 600), $rgb($before, 1000, 600)), 'behind its canopy: the mill\'s wall: '.json_encode([$rgb($after, 1500, 600), $rgb($before, 1000, 600)]));
+    check($close($rgb($after, 640, 900), $rgb($before, 1000, 900)), 'behind the well: the cobbles: '.json_encode([$rgb($after, 640, 900), $rgb($before, 1000, 900)]));
+}
+$clearedRecord = json_decode((string) file_get_contents("$work/generations/{$result['run']}/survey/old_mill_yard-cleared.json"), true);
+same([$clearedRecord['how'], array_column($clearedRecord['windows'], 'how')], ['painted', ['painted']], 'the run records that it was painted');
 check((bool) array_filter($result['warnings'], fn ($w) => str_contains($w, 'Ghost cart')), 'a planned thing the picture does not show is a warning for the teacher');
 
 // Things to click, and what the narrator says.
@@ -449,6 +507,97 @@ check((function () use ($factory, $sid, $teacher) {
     return false;
 })(), 'a scene for a scenario that is gone stops at once, before anything is drawn');
 
+// ------------------------------------------------------------------ BackgroundCleaner on its own
+/**
+ * A small yard: a wall (y < 200) over cobbles, a see-through sky above y 60, a dark line where they
+ * meet, and a post standing out on the cobbles whose top reaches up into the sky; and its cut-out.
+ */
+$yard = function (bool $post): GdImage {
+    $im = ImageTools::blank(600, 400);
+    imagefilledrectangle($im, 0, 60, 599, 199, imagecolorallocatealpha($im, 176, 160, 140, 0));
+    imagefilledrectangle($im, 0, 200, 599, 399, imagecolorallocatealpha($im, 150, 140, 120, 0));
+    imagefilledrectangle($im, 0, 198, 599, 201, imagecolorallocatealpha($im, 40, 30, 50, 0));
+    if ($post) {
+        imagefilledrectangle($im, 280, 20, 320, 330, imagecolorallocatealpha($im, 110, 70, 40, 0));
+    }
+
+    return $im;
+};
+$yardPicture = $yard(true);
+$postCut = ['image' => ImageTools::crop($yardPicture, 280, 20, 41, 311), 'x' => 280, 'y' => 20, 'name' => 'post'];
+$sameOutside = function (GdImage $a, GdImage $b): int {
+    $n = 0;
+    for ($y = 0; $y < 400; $y++) {
+        for ($x = 0; $x < 600; $x++) {
+            $inside = $x >= 278 && $x <= 322 && $y >= 18 && $y <= 332;
+            $n += ! $inside && imagecolorat($a, $x, $y) !== imagecolorat($b, $x, $y) ? 1 : 0;
+        }
+    }
+
+    return $n;
+};
+$pixel = fn (GdImage $im, int $x, int $y) => [(imagecolorat($im, $x, $y) >> 16) & 0xFF, (imagecolorat($im, $x, $y) >> 8) & 0xFF, imagecolorat($im, $x, $y) & 0xFF, (imagecolorat($im, $x, $y) >> 24) & 0x7F];
+$chroma = $style->chroma();
+$withChromaSky = function (GdImage $im) use ($chroma): GdImage {
+    $out = imagecreatetruecolor(imagesx($im), imagesy($im));
+    imagefill($out, 0, 0, imagecolorallocate($out, ...$chroma));
+    imagealphablending($out, true);
+    imagecopy($out, $im, 0, 0, 0, 0, imagesx($im), imagesy($im));
+
+    return $out;
+};
+
+// Filled from around: no painter.
+$filled = BackgroundCleaner::clear($yardPicture, [$postCut], null, $chroma);
+same([$filled['how'], $sameOutside($yardPicture, $filled['image'])], ['filled', 0], 'filled from around, with nothing else touched');
+same($pixel($filled['image'], 300, 300), [150, 140, 120, 0], 'the cobbles carry on where the post stood');
+same($pixel($filled['image'], 300, 120), [176, 160, 140, 0], 'and the wall');
+same($pixel($filled['image'], 300, 30)[3], 127, 'and the sky stays see-through behind its top');
+
+// Painted: the painter's sky is the flat colour, which comes back see-through.
+$cleanYard = $withChromaSky($yard(false));
+$good = fn ($prompt, $refs, $aspect, $hints) => ImageTools::png(ImageTools::crop($cleanYard, ...$hints['window']));
+$painted = BackgroundCleaner::clear($yardPicture, [$postCut], $good, $chroma);
+same([$painted['how'], $sameOutside($yardPicture, $painted['image'])], ['painted', 0], 'painted behind, with nothing else touched');
+same([$pixel($painted['image'], 300, 300), $pixel($painted['image'], 300, 120)], [[150, 140, 120, 0], [176, 160, 140, 0]], 'the painter\'s cobbles and wall where the post stood');
+same($pixel($painted['image'], 300, 30)[3], 127, 'its flat sky see-through');
+same(array_column($painted['windows'], 'width'), [600], 'one window: the whole of a picture narrower than 16:9');
+
+// Answers that cannot be used: the holes are filled instead, and the run is told why.
+$shifted = function ($prompt, $refs, $aspect, $hints) use ($withChromaSky, $yard) {
+    // The same yard drawn 60 pixels lower: the line between wall and cobbles is in the wrong place.
+    $low = $withChromaSky($yard(false));
+    $out = imagecreatetruecolor(600, 400);
+    imagecopy($out, $low, 0, 60, 0, 0, 600, 340);
+    imagecopy($out, $low, 0, 0, 0, 0, 600, 60);
+
+    return ImageTools::png($out);
+};
+$unchanged = fn ($prompt, $refs, $aspect, $hints) => ImageTools::png($withChromaSky($yardPicture));
+$broken = fn () => throw new RuntimeException('the picture source is down');
+foreach (['shifted' => [$shifted, 'line up'], 'unchanged' => [$unchanged, 'left the things'], 'broken' => [$broken, 'is down']] as $what => [$answer, $why]) {
+    $told = [];
+    $r = BackgroundCleaner::clear($yardPicture, [$postCut], $answer, $chroma, 'flat magenta', function ($m) use (&$told) {
+        $told[] = $m;
+    });
+    check($r['how'] === 'filled' && str_contains($r['windows'][0]['problem'] ?? '', $why) && $told, "a $what answer is not used: ".json_encode($r['windows']));
+    same([$sameOutside($yardPicture, $r['image']), $pixel($r['image'], 300, 300)], [0, [150, 140, 120, 0]], "and the post is filled in from around, nothing else touched ($what)");
+}
+
+// Things far apart in a wide picture: a window each.
+$wide = ImageTools::blank(4000, 900);
+imagefilledrectangle($wide, 0, 0, 3999, 899, imagecolorallocatealpha($wide, 150, 140, 120, 0));
+$thing = ImageTools::blank(40, 100);
+imagefilledrectangle($thing, 0, 0, 39, 99, imagecolorallocatealpha($thing, 90, 60, 30, 0));
+$asks = [];
+$r = BackgroundCleaner::clear($wide, [['image' => $thing, 'x' => 200, 'y' => 700], ['image' => $thing, 'x' => 700, 'y' => 700], ['image' => $thing, 'x' => 3600, 'y' => 700]], function ($prompt, $refs, $aspect, $hints) use (&$asks, $wide) {
+    $asks[] = [$aspect, $hints['window']];
+
+    return ImageTools::png(ImageTools::crop($wide, ...$hints['window']));
+}, $chroma);
+same(array_column($asks, 0), ['16:9', '16:9'], 'two things side by side share a 16:9 window; one far off gets its own');
+same(array_map(fn ($a) => $a[1][2], $asks), [1600, 1600], 'each the height of the picture, 16:9 wide');
+
 if (getenv('QBL_KEEP')) {
     fwrite(STDOUT, "(kept $work)\n");
 } else {
@@ -458,4 +607,4 @@ if ($failures) {
     fwrite(STDERR, "$failures of $checks checks failed\n");
     exit(1);
 }
-echo "ok: $checks checks passed (scene plan, run, layout, cut-outs, hotspots, counters, lights, critters, merge)\n";
+echo "ok: $checks checks passed (scene plan, run, layout, cut-outs, background cleared, hotspots, counters, lights, critters, merge)\n";
