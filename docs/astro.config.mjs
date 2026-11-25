@@ -30,7 +30,11 @@ export default defineConfig({
       plugins: [starlightLinksValidator({ errorOnLocalLinks: false })],
       customCss: ['./src/styles/qbl.css'],
       // Each page's host (frontmatter `host:`) speaks first.
-      components: { MarkdownContent: './src/components/MarkdownContent.astro' },
+      components: {
+        MarkdownContent: './src/components/MarkdownContent.astro',
+        // A way back to the QuestLab site (/) beside the docs title.
+        SiteTitle: './src/components/SiteTitle.astro',
+      },
       lastUpdated: false,
       sidebar: [
         {
