@@ -8,7 +8,7 @@ host:
 
 Custom global variables can be declared by a user, and can be used throughout the project by storing numbers and strings. They are particularly useful when defining conditions for events and actions. A certain number of global variables are reserved for system use. Reserved variables are used for reference by the user in their scripting; the system keeps their values, so actions cannot change them. They are all prefixed with “QL_”.
 
-:::note[Spec v2]
+:::note[Also see]
 Player and shared (`room`) scope, `persist`, and more reserved variables are described in [Variables](/docs/developers/extensions/variables/).
 :::
 
@@ -43,7 +43,7 @@ QL_PlayerRank | The name of the player's rank.
 QL_PlayerCount | How many players are playing together: the player's team, when there are teams.
 QL_SceneId | The id of the scene the player is in.
 QL_Holding | The id of the thing the player is using from their bag, while they use it; 0 otherwise. A hotspot or a character's event whose conditions test it takes things from the bag. See [The bag](/docs/developers/extensions/items/#the-bag-point-and-click-things).
-QL_NextMission | The title of the mission the player's teacher has just launched for them in this game, until they go to it; empty otherwise. A departure scene tests `QL_NextMission != ""` (an empty value). See [Travel](/docs/developers/extensions/actions-world/#travel).
+QL_NextMission | The title of the mission the player's teacher has just launched for them in this game, until they go to it; empty otherwise. A departure scene tests `QL_NextMission != ""` (an empty value). See [Travel](/docs/developers/actions/travel/).
 `QL_Ability_<key>` | 1 while the player has a marketplace ability with that key equipped, otherwise 0.
 
 ### Older names

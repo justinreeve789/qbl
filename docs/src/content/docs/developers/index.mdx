@@ -21,7 +21,7 @@ QuestLab scenarios are interactive experiences built around media: audio, images
 
     * [How a scenario fits together](/docs/developers/structure/)
     * [The JSON reference](/docs/developers/scenario/)
-    * [Runtime extensions (spec v2)](/docs/developers/extensions/)
+    * [All 29 actions](/docs/developers/actions/)
     * [Patterns that need no special support](/docs/developers/extensions/patterns/)
   </Card>
   <Card title="Run the platform" icon="setting">
@@ -59,9 +59,12 @@ A scenario holds scenes; a scene holds events; an event holds actions that run i
 Page | What it is
 ---- | ----------
 [How a scenario fits together](/docs/developers/structure/) | The tree, what points at what, and a complete example
-[Scenarios](/docs/developers/scenario/), [Scenes](/docs/developers/scene/), [Events](/docs/developers/event/), [Actions](/docs/developers/action/), [Conditions](/docs/developers/condition/), [Global variables](/docs/developers/variable/) | The core objects, field by field
-[Media](/docs/developers/media/), [Characters](/docs/developers/character/), [Items](/docs/developers/item/), [Spritemaps](/docs/developers/spritemap/), [Labels](/docs/developers/label/) | The things scenes are made of
-[Runtime extensions (spec v2)](/docs/developers/extensions/) | Everything the walk-around runtime added, in fifteen pages. It is **optional and additive**: a document that uses none of it still plays
+[Scenarios](/docs/developers/scenario/), [Scenario fields](/docs/developers/extensions/scenario/), [Scenes](/docs/developers/scene/), [Scenes, layers and spawn points](/docs/developers/extensions/scenes/), [Skies, weather, water, stories](/docs/developers/extensions/atmosphere/), [The close-up bench](/docs/developers/extensions/bench/) | Scenarios and scenes
+[Events](/docs/developers/event/), [Events and hotspots](/docs/developers/extensions/events/), [Conditions](/docs/developers/condition/), [Labels](/docs/developers/label/) | When things happen, and what decides it
+[Actions](/docs/developers/actions/) | All 29 actions, grouped as in the editor, one page each: [dialogue](/docs/developers/actions/dialogue/), [infobox](/docs/developers/actions/infobox/), [walk](/docs/developers/actions/walk/), [jump](/docs/developers/actions/jump/), [award](/docs/developers/actions/award/) and the rest
+[Global variables](/docs/developers/variable/), [Player and shared variables](/docs/developers/extensions/variables/) | The mission's memory
+[Media](/docs/developers/media/), [Spritemaps](/docs/developers/spritemap/), [Animations](/docs/developers/extensions/animations/), [Characters](/docs/developers/character/), [Characters in the world](/docs/developers/extensions/characters/), [Items](/docs/developers/item/), [Items, the bag and vehicles](/docs/developers/extensions/items/) | The things scenes are made of
+[The side panel and messages](/docs/developers/extensions/player-interface/), [Patterns, and not built yet](/docs/developers/extensions/patterns/) | The player's screen, and recipes made of ordinary pieces
 
 ### The platform
 

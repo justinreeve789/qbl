@@ -8,7 +8,7 @@ host:
 
 What characters say can be **recorded in a voice of their own**, and the game then plays the recording and lights each word on screen as it is spoken. The lines are recorded once, on the server, by a text-to-speech service, and kept with the scenario as audio files with the time of every word. Players never wait on the service, and a scenario with recordings plays the same on every device.
 
-A line with no recording is read by the browser's own voice, as before (see [Reading text aloud](/docs/developers/extensions/dialogue/#reading-text-aloud)).
+A line with no recording is read by the browser's own voice, as before (see [Reading text aloud](/docs/developers/actions/reading-aloud/)).
 
 ## The service: Kokoro, in the `tts` container
 
@@ -126,7 +126,7 @@ The pick is from the [theatrical voices](#theatrical-voices) (`--style=dramatic`
 - A recording someone uploaded and attached by hand (`narration_media_id` on media without `speech.engine`) is never replaced.
 - Recordings are cached by service, voice and text (`QL_TTS_CACHE_DIR`, `/data/speech` in Docker). A copy of a scenario, or a line changed back, costs nothing to record.
 
-The voiced line gets `narrate: true` and `narration_media_id`. The recording is an audio media with its word timings in `params.speech`, which the document carries as the media's [`speech`](/docs/developers/extensions/dialogue/#reading-text-aloud):
+The voiced line gets `narrate: true` and `narration_media_id`. The recording is an audio media with its word timings in `params.speech`, which the document carries as the media's [`speech`](/docs/developers/actions/reading-aloud/):
 
 ```json
 {
@@ -140,7 +140,7 @@ The voiced line gets `narrate: true` and `narration_media_id`. The recording is 
 
 ## The narrator
 
-What no character says is read by the **narrator**: every [`narration`](/docs/developers/extensions/dialogue/#the-narrator) action (unless it has `narrate: false`), and the text overlays and infoboxes that are read aloud (marked `narrate: true`, or all of them when the scenario's `narration` is `on`). "Record voices", `qbl:voice` and the generator record them in the narrator's voice, with `character_id` 0 in `Voicer::lines()`.
+What no character says is read by the **narrator**: every [`narration`](/docs/developers/actions/narration/) action (unless it has `narrate: false`), and the text overlays and infoboxes that are read aloud (marked `narrate: true`, or all of them when the scenario's `narration` is `on`). "Record voices", `qbl:voice` and the generator record them in the narrator's voice, with `character_id` 0 in `Voicer::lines()`.
 
 - **Who narrates.** The scenario's `narrator_voice` (Settings, "Talking and reading", in the editor), or else the default narrator for its language: the catalog's `narrators` (`"en": "storyteller"`, `"es": "alex-es"`, …). `QL_TTS_NARRATOR` names another catalog voice to use instead, for scenarios in that voice's language. `narrator_voice: "none"` means no narrator: their recordings are removed the next time voices are recorded, and the browser reads them.
 - **The storyteller** (`bm_fable(2)+bm_lewis(1)` at 0.94 on Kokoro; OpenAI's `fable`, told to be a dramatic storyteller) is the English default: expressive like Fable, with Lewis's weight beneath it.
