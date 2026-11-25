@@ -71,6 +71,8 @@ trait StoryStaging
     {
         $opening ??= $sequence === 1;
         $close = ($scene['shot'] ?? 'wide') === 'close';
+        // In a close shot everyone is drawn twice as big, as the picture is (the scale area, and the cut-outs' own size).
+        $this->shot = $close ? Cutscenes::CLOSE : 1.0;
         $this->still = 0;
         $key = $scene['key'];
         $sceneId = $this->sceneIds[$key];
@@ -216,14 +218,12 @@ trait StoryStaging
             $this->ending($e, $b);
         }
 
-        $blockedAreas = array_map(fn ($r) => self::ellipse(($r[0] + $r[1]) / 2, ($r[2] + $r[3]) / 2, ($r[1] - $r[0]) / 2, ($r[3] - $r[2]) / 2), $this->blocked);
         $flows = $this->flows($scene, $bg);
         $this->rows['scenes'][$sceneIndex]['layout'] = [
             'walkable_areas' => [$this->walkable($left, $right, $top, $bottom)],
-            'blocked_areas' => $blockedAreas,
+            'blocked_areas' => $this->blockedAreas(),
             'spawn_points' => [['name' => 'default', 'position_x' => (int) ($W / 2), 'position_y' => $this->clear((int) ($W / 2), (int) (($top + $bottom) / 2))]],
-            // In a close shot everyone is drawn twice as big, as the picture is.
-            'scale_areas' => [['name' => 'depth', 'x' => 0, 'y' => $ground, 'width' => $W, 'height' => $H - $ground, 'scale_top' => (int) round(Sizes::DEPTH_BACK * 100 * ($close ? Cutscenes::CLOSE : 1)), 'scale_bottom' => (int) round(Sizes::DEPTH_FRONT * 100 * ($close ? Cutscenes::CLOSE : 1)), 'speed_effect' => 60]],
+            'scale_areas' => [$this->scaleArea()],
             'items' => $layoutItems,
             'characters' => $placements,
         ] + ($lights ? ['lights' => $lights] : []) + ($flows ? ['flows' => $flows] : []) + ($critters ? ['critters' => $critters] : []);

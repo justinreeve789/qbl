@@ -163,6 +163,15 @@ class MissionBuilder
     /** id => [x, y]: where a painted light's light is (the brightest part of where it was found). */
     protected array $glows = [];
 
+    /**
+     * Where the scene's scale area starts, from the top: the back of its floor as traced (a little behind
+     * it), or its ground line. Set by surveyed(); read by scaleArea() and depthScale().
+     */
+    protected int $scaleTop = 0;
+
+    /** How much bigger everything is drawn in the scene being built: 1, or Cutscenes::CLOSE in a close shot. */
+    protected float $shot = 1.0;
+
     /** The scene's trees and bushes, cut out of its background: [x, base, top], for the critters that climb and hide. */
     protected array $trees = [];
 
@@ -534,6 +543,7 @@ class MissionBuilder
         $W = $this->width = Sizes::sceneWidth($scene);
         $H = self::HEIGHT;
         $ground = $this->ground = (int) round($H * max(0.5, min(0.85, (float) $scene['ground_line'])));
+        $this->shot = 1.0;
         $this->geometry[$key] = [$W, $ground];
         $floor = $H - $ground;
         $bg = $assets["bg:$key"] ?? throw new GenerationError("There is no background for the scene $key.");
@@ -764,13 +774,12 @@ class MissionBuilder
 
         // The floor students walk on: between its ends, down to where a foreground lets them come, around
         // what lies in it. Figures are drawn a little smaller at the back of it and larger at the front.
-        $blockedAreas = array_map(fn ($r) => self::ellipse(($r[0] + $r[1]) / 2, ($r[2] + $r[3]) / 2, ($r[1] - $r[0]) / 2, ($r[3] - $r[2]) / 2), $this->blocked);
         $flows = $this->flows($scene, $bg);
         $this->rows['scenes'][$sceneIndex]['layout'] = [
             'walkable_areas' => [$this->walkable($left, $right, $top, $bottom)],
-            'blocked_areas' => $blockedAreas,
+            'blocked_areas' => $this->blockedAreas(),
             'spawn_points' => $spawns,
-            'scale_areas' => [['name' => 'depth', 'x' => 0, 'y' => $ground, 'width' => $W, 'height' => $H - $ground, 'scale_top' => (int) round(Sizes::DEPTH_BACK * 100), 'scale_bottom' => (int) round(Sizes::DEPTH_FRONT * 100), 'speed_effect' => 60]],
+            'scale_areas' => [$this->scaleArea()],
             'items' => $layoutItems,
             'characters' => $placements,
         ] + ($lights ? ['lights' => $lights] : []) + ($flows ? ['flows' => $flows] : []) + ($critters ? ['critters' => $critters] : []);
@@ -1086,6 +1095,10 @@ class MissionBuilder
     {
         $survey = $assets["survey:$key"] ?? null;
         $this->backEdge = [];
+        // The scale area reaches the back of the floor wherever it was traced, so nobody standing behind the
+        // ground line is drawn at full size (set before the cut-outs, whose own size undoes it).
+        $traced = array_column((array) ($survey['floor'] ?? []), 1);
+        $this->scaleTop = (int) max(0, min($this->ground, $traced ? (int) min($traced) - 10 : $this->ground));
         $this->found = (array) ($survey['found'] ?? []);
         $this->glows = (array) ($survey['glows'] ?? []);
         $this->trees = [];
@@ -1130,20 +1143,45 @@ class MissionBuilder
     }
 
     /**
-     * How much bigger or smaller the scene's depth draws something standing at y (its scale area, as
-     * the game reads it: whole percentages from the back of the floor to the front).
+     * The scene's scale area: from the back of its floor (as traced, or the ground line) to the bottom,
+     * drawing figures smaller at the back and larger at the front, at the sizes its picture was painted
+     * for (Sizes::DEPTH_BACK at the ground line, carried on behind it; Sizes::DEPTH_FRONT at the bottom),
+     * times the shot (a close-up draws everything twice as big).
+     */
+    protected function scaleArea(): array
+    {
+        [$top, $bottom] = $this->scalePercents();
+
+        return ['name' => 'depth', 'x' => 0, 'y' => $this->scaleTop, 'width' => $this->width, 'height' => self::HEIGHT - $this->scaleTop, 'scale_top' => $top, 'scale_bottom' => $bottom, 'speed_effect' => 60];
+    }
+
+    /** @return array{0: int, 1: int} the scale area's whole percentages at its top and bottom */
+    protected function scalePercents(): array
+    {
+        $per = (Sizes::DEPTH_FRONT - Sizes::DEPTH_BACK) / max(1, self::HEIGHT - $this->ground);
+
+        return [(int) round(100 * $this->shot * (Sizes::DEPTH_BACK - $per * ($this->ground - $this->scaleTop))), (int) round(100 * $this->shot * Sizes::DEPTH_FRONT)];
+    }
+
+    /**
+     * How the scene's scale area draws something standing at y, as the game reads it (see scaleArea): a
+     * cut-out's scale is one over this, so it is drawn at its own size wherever it stands.
      */
     protected function depthScale(int $y): float
     {
-        $ground = $this->ground;
-        if ($y < $ground || $y > self::HEIGHT) {
-            return 1.0;
+        if ($y < $this->scaleTop || $y > self::HEIGHT) {
+            return 1.0; // outside the scale area: drawn at its own size
         }
-        $top = (int) round(Sizes::DEPTH_BACK * 100);
-        $bottom = (int) round(Sizes::DEPTH_FRONT * 100);
-        $t = (self::HEIGHT - $ground) > 0 ? ($y - $ground) / (self::HEIGHT - $ground) : 1;
+        [$top, $bottom] = $this->scalePercents();
+        $t = ($y - $this->scaleTop) / max(1, self::HEIGHT - $this->scaleTop);
 
         return max(0.05, ($top + ($bottom - $top) * $t) / 100);
+    }
+
+    /** The scene's blocked areas: each patch nobody walks on (this->blocked), as a flat ellipse lying on the floor. */
+    protected function blockedAreas(): array
+    {
+        return array_map(fn ($r) => self::ellipse(($r[0] + $r[1]) / 2, ($r[2] + $r[3]) / 2, ($r[1] - $r[0]) / 2, ($r[3] - $r[2]) / 2), $this->blocked);
     }
 
     /** The walkable area: the traced floor when the background was surveyed, else the box of the plain floor. */
@@ -1895,19 +1933,66 @@ class MissionBuilder
      * Something in the background to look at: its name when students come near or point at it, and what
      * they notice, as their own thought. Nothing to pick up or count.
      */
-    protected function detail(int $sceneId, int $i, array $d, int $x, int $ground): void
+    /**
+     * A thing painted into the scene to click (a scene's detail): an invisible hotspot over where the
+     * picture shows it (else about where it was asked for), its name shown when the student is near or
+     * points at it, and what is said about it (describe()). A mission's student thinks it aloud; a scene
+     * made on its own (SceneBuilder) has the narrator say it, and may have several passages.
+     *
+     * @param  'thought'|'narration'  $voice
+     * @return bool whether the picture was found to show it
+     */
+    protected function detail(int $sceneId, int $i, array $d, int $x, int $ground, string $voice = 'thought', ?string $variable = null): bool
     {
         $floor = self::HEIGHT - $ground;
         $y = ($d['placement'] ?? 'back') === 'ground' ? $this->clear($x, $ground + (int) ($floor * 0.3)) : $this->backAt($x, -110);
         $radius = 85;
         // Where the background shows it, when it was found there.
-        if (($at = $this->foundAt("detail:$i")) && abs($at['x'] - $x) < $this->width * 0.2) {
+        $found = ($at = $this->foundAt("detail:$i")) && abs($at['x'] - $x) < $this->width * 0.2;
+        if ($found) {
             [$x, $y] = [$at['x'], $at['y']];
             $radius = (int) max(60, min(160, max($at['width'], $at['height']) / 2 + 10));
         }
-        $hot = $this->hotspot($sceneId, "detail-$i", [$x, $y], $radius, click: true);
-        $this->text($hot, $x, $y - 60, $d['label'], hint: true);
-        $this->dialogue($hot, ['speaker' => 'player', 'text' => $d['text']], style: 'bubble');
+        $this->describe($sceneId, "detail-$i", $x, $y, $radius, $d['label'], $y - 60, $d['texts'] ?? [$d['text']], $d['repeat'] ?? 'last', $variable ?? "detail_{$i}_seen", $voice);
+
+        return $found;
+    }
+
+    /**
+     * Something to click and hear about: an invisible hotspot, its label as a hint, and what is said about
+     * it: thought aloud by the student in a bubble, or said by the narrator. With several passages, one
+     * per click, counted in $variable (the player's own, kept between visits): "last" steps through them
+     * and then keeps saying the last one; "cycle" goes round again. Action conditions are read as each
+     * action is reached, so the count moves on only after the passage for this click is said.
+     *
+     * @param  'thought'|'narration'  $voice
+     */
+    protected function describe(int $sceneId, string $shortname, int $x, int $y, int $radius, string $label, int $labelY, array $texts, string $repeat, string $variable, string $voice = 'narration'): int
+    {
+        $hot = $this->hotspot($sceneId, $shortname, [$x, $y], $radius, click: true);
+        $this->text($hot, $x, max(40, $labelY), $label, hint: true);
+        $texts = array_values(array_filter(array_map('strval', $texts), 'strlen')) ?: [$label];
+        $say = fn (string $text, array $when = []) => $voice === 'thought'
+            ? $this->dialogue($hot, ['speaker' => 'player', 'text' => $text], $when, style: 'bubble')
+            : $this->action($hot, 'narration', ['text' => $text], conditions: $when);
+        $n = count($texts);
+        if ($n === 1) {
+            $say($texts[0]);
+
+            return $hot;
+        }
+        $this->variable($variable, 0);
+        foreach ($texts as $i => $text) {
+            $say($text, [$repeat !== 'cycle' && $i === $n - 1 ? $this->cond($variable, '>=', $i) : $this->cond($variable, '=', $i)]);
+        }
+        if ($repeat === 'cycle') {
+            $this->action($hot, 'variable', ['name' => $variable, 'operator' => '+', 'operand' => 1]);
+            $this->action($hot, 'variable', ['name' => $variable, 'operator' => 'set', 'operand' => 0], conditions: [$this->cond($variable, '>=', $n)]);
+        } else {
+            $this->action($hot, 'variable', ['name' => $variable, 'operator' => '+', 'operand' => 1], conditions: [$this->cond($variable, '<', $n - 1)]);
+        }
+
+        return $hot;
     }
 
     /**
