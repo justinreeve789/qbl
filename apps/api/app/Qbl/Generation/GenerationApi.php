@@ -5,6 +5,9 @@ namespace App\Qbl\Generation;
 use App\Qbl\Billing\Credits;
 use App\Qbl\Billing\Entitlements;
 use App\Qbl\Generation\Design\DesignRules;
+use App\Qbl\Generation\Design\SceneDesigner;
+use App\Qbl\Generation\Methods\SceneMethod;
+use App\Qbl\ScenarioStore;
 use App\Qbl\StoreError;
 use PDO;
 use Throwable;
@@ -21,6 +24,8 @@ use Throwable;
  *
  *   GET   editor/generations              my generations, newest first, what one costs, my plan and credits
  *   POST  editor/generations              {prompt, grade?, subject?, min_players?, max_players?, minutes?, notes?, format?, opening?, focus?, freedom?} -> 202
+ *                                         or {kind: "scene", scenario_id, prompt, kind_of_place?, time?, width?, hotspots?, repeat?, animations?, critters?, grade?, notes?}:
+ *                                         one scene added to a scenario the teacher can edit (Methods\SceneMethod; costs less: costs.scene)
  *   GET   editor/generations/active       the one being made now (or null): what the editor's progress chip asks
  *   GET   editor/generations/all          administrators: everyone's latest, with who asked and what each spent
  *   GET   editor/generations/{id}         one generation: its status and progress, and the scenario once it is done
@@ -53,6 +58,8 @@ class GenerationApi
         private $preflight = null,
         private bool $voices = false,
         private ?\Closure $clock = null,
+        /** The scenarios, to check a scene is asked for one the teacher can edit; by default over the same connection. */
+        private ?ScenarioStore $scenarios = null,
     ) {}
 
     /** @return array{0: int, 1: array|null} */
@@ -78,8 +85,8 @@ class GenerationApi
         $this->sweep();
         if (count($parts) === 0) {
             return match ($method) {
-                'GET' => [200, ['generations' => $this->mine($me, $admin), 'cost' => $this->cost(), 'plan' => $this->plan($me), 'now' => $this->now()]],
-                'POST' => [202, $this->start($me, $body, $admin)],
+                'GET' => [200, ['generations' => $this->mine($me, $admin), 'cost' => $this->cost(), 'costs' => ['mission' => $this->cost(), 'scene' => $this->cost('scene')], 'plan' => $this->plan($me), 'now' => $this->now()]],
+                'POST' => [202, $this->start($me, $body, $admin, $user)],
                 default => throw new StoreError(405, 'Method not allowed.'),
             };
         }
@@ -129,9 +136,10 @@ class GenerationApi
         ];
     }
 
-    private function cost(): int
+    /** What a mission (or a scene) costs in credits. */
+    private function cost(string $kind = 'mission'): int
     {
-        return $this->entitlements->plans()->cost('generation');
+        return $this->entitlements->plans()->cost($kind === 'scene' ? 'scene_generation' : 'generation');
     }
 
     private function creditsOf(?int $userId): ?array
@@ -139,27 +147,29 @@ class GenerationApi
         return $userId && $this->entitlements->for($userId)['generator'] ? $this->credits->summary($userId) : null;
     }
 
-    private function start(int $me, array $body, bool $admin): array
+    private function start(int $me, array $body, bool $admin, array $user = []): array
     {
         $plan = $this->entitlements->for($me);
         if (! $plan['generator']) {
             throw new StoreError(402, 'The AI mission generator comes with the Teacher Plus plan. See Plans to start a free trial.');
         }
+        $scene = ($body['kind'] ?? null) === 'scene';
         $prompt = trim(strip_tags((string) ($body['prompt'] ?? '')));
-        if (mb_strlen($prompt) < 12) {
-            throw new StoreError(422, 'Say what the mission is about in a sentence or two: the topic, and what students should learn.');
+        if (mb_strlen($prompt) < ($scene ? 8 : 12)) {
+            throw new StoreError(422, $scene ? 'Say what the scene shows in a sentence or two: the place, and anything players should find there.' : 'Say what the mission is about in a sentence or two: the topic, and what students should learn.');
         }
         if (mb_strlen($prompt) > 2000) {
             throw new StoreError(422, 'Keep the description under 2000 characters.');
         }
         if ($this->column('SELECT COUNT(*) FROM scenario_generations WHERE user_id = ? AND status IN ('.self::marks(self::BUSY).')', [$me, ...self::BUSY])) {
-            throw new StoreError(409, 'One of your missions is still being made. Start the next one when it is done.');
+            throw new StoreError(409, 'Something you asked the generator for is still being made. Start the next one when it is done.');
         }
-        $options = self::options($body);
-        $cost = $this->cost();
+        $options = $scene ? $this->sceneOptions($body, $user + ['id' => $me]) : self::options($body);
+        $what = $scene ? 'A scene' : 'A mission';
+        $cost = $this->cost($scene ? 'scene' : 'mission');
         $credits = $this->credits->summary($me);
         if ($credits['enforced'] && $credits['balance'] < $cost) {
-            throw new StoreError(402, "A mission costs $cost credits and you have {$credits['balance']}. More arrive with your plan's next month.");
+            throw new StoreError(402, "$what costs $cost credits and you have {$credits['balance']}. More arrive with your plan's next month.");
         }
         if ($this->preflight) {
             try {
@@ -171,10 +181,10 @@ class GenerationApi
 
         $runs = new GenerationRuns($this->pdo);
         $id = $runs->create($prompt, $options, $me);
-        $runs->update($id, ['progress' => ['stage' => 'queued', 'stages' => GenerationProgress::stagesFor($this->voices), 'percent' => 0, 'detail' => GenerationProgress::STAGES['queued'][2], 'done' => null, 'total' => null, 'started_at' => null, 'stage_started_at' => $this->now(), 'updated_at' => $this->now()]]);
+        $runs->update($id, ['progress' => ['stage' => 'queued', 'stages' => self::stagesOf($options, $this->voices), 'percent' => 0, 'detail' => GenerationProgress::STAGES['queued'][2], 'done' => null, 'total' => null, 'started_at' => null, 'stage_started_at' => $this->now(), 'updated_at' => $this->now()]]);
         $ref = "generation:$id";
         try {
-            $this->credits->spend($me, $cost, $ref, 'Generated a mission: '.mb_substr($prompt, 0, 120));
+            $this->credits->spend($me, $cost, $ref, ($scene ? 'Generated a scene: ' : 'Generated a mission: ').mb_substr($prompt, 0, 120));
         } catch (StoreError $e) {
             $this->pdo->prepare('DELETE FROM scenario_generations WHERE id = ?')->execute([$id]);
             throw $e;
@@ -217,13 +227,13 @@ class GenerationApi
      */
     public static function failed(PDO $pdo, Credits $credits, int $id, string $error): void
     {
-        self::settle($pdo, $credits, $id, 'failed', $error, 'Credits back: the mission could not be made');
+        self::settle($pdo, $credits, $id, 'failed', $error, 'Credits back: the %s could not be made');
     }
 
     /** Mark a run cancelled (by its teacher) and give back what it cost (once). */
     public static function cancelled(PDO $pdo, Credits $credits, int $id): void
     {
-        self::settle($pdo, $credits, $id, 'cancelled', 'Stopped: you cancelled it.', 'Credits back: you stopped the mission');
+        self::settle($pdo, $credits, $id, 'cancelled', 'Stopped: you cancelled it.', 'Credits back: you stopped the %s');
     }
 
     private static function settle(PDO $pdo, Credits $credits, int $id, string $status, string $error, string $note): void
@@ -239,7 +249,7 @@ class GenerationApi
         if ($run['user_id'] !== null) {
             $spent = $pdo->prepare("SELECT COALESCE(-SUM(delta), 0) FROM credit_ledger WHERE user_id = ? AND reason = 'spend' AND ref = ?");
             $spent->execute([(int) $run['user_id'], "generation:$id"]);
-            $credits->refund((int) $run['user_id'], (int) $spent->fetchColumn(), "generation:$id", $note);
+            $credits->refund((int) $run['user_id'], (int) $spent->fetchColumn(), "generation:$id", sprintf($note, ($run['options']['kind'] ?? null) === 'scene' ? 'scene' : 'mission'));
         }
     }
 
@@ -285,6 +295,42 @@ class GenerationApi
         ] + DesignRules::chosen($body), fn ($v) => $v !== null);
     }
 
+    /**
+     * The teacher's "Generate a scene" form, as the run's options (SceneDesigner::OPTIONS): for a scenario
+     * they can edit, made by the scene method. `kind_of_place` is the kind of place (`kind` says this is a scene).
+     */
+    public function sceneOptions(array $body, array $user): array
+    {
+        $scenarios = $this->scenarios ??= new ScenarioStore($this->pdo);
+        $scenarioId = (int) ($body['scenario_id'] ?? 0);
+        $scenario = $scenarioId > 0 ? $scenarios->scenario($scenarioId) : null;
+        if (! $scenario || ! $scenarios->canEdit($scenario, $user + ['role' => null, 'id' => 0])) {
+            throw new StoreError(404, 'There is no such scenario of yours to add a scene to.');
+        }
+        $text = fn ($k, $n) => isset($body[$k]) && trim((string) $body[$k]) !== '' ? mb_substr(trim(strip_tags((string) $body[$k])), 0, $n) : null;
+        $grade = $text('grade', 8);
+        if ($grade !== null && ! preg_match('/^(K|PK|\d{1,2})(-(K|\d{1,2}))?$/i', $grade)) {
+            throw new StoreError(422, 'The grade is K, 1 to 12, or a range such as 6-8.');
+        }
+        $pick = fn (string $key, string $from) => in_array($body[$from] ?? null, SceneDesigner::OPTIONS[$key], true) ? $body[$from] : null;
+        $flag = fn (string $key) => array_key_exists($key, $body) && $body[$key] !== null ? (bool) $body[$key] : null;
+
+        return array_filter([
+            'kind' => 'scene', 'method' => SceneMethod::key(), 'scenario_id' => $scenarioId,
+            // The kind of place (outdoor, indoor...): under its own name here, since `kind` says what is made.
+            'place' => $pick('place', 'kind_of_place'),
+            'time' => $pick('time', 'time'), 'width' => $pick('width', 'width'), 'repeat' => $pick('repeat', 'repeat'),
+            'hotspots' => $flag('hotspots'), 'animations' => $flag('animations'), 'critters' => $flag('critters'),
+            'grade' => $grade === null ? null : strtoupper($grade), 'notes' => $text('notes', 1000),
+        ], fn ($v) => $v !== null);
+    }
+
+    /** The stages a run goes through: a scene's are its own (no standards, no voices). */
+    public static function stagesOf(array $options, bool $voices): array
+    {
+        return ($options['kind'] ?? null) === 'scene' ? ['designing', 'drawing', 'building', 'importing'] : GenerationProgress::stagesFor($voices);
+    }
+
     private function mine(int $me, bool $admin): array
     {
         $st = $this->pdo->prepare('SELECT id FROM scenario_generations WHERE user_id = ? ORDER BY id DESC LIMIT 30');
@@ -312,7 +358,7 @@ class GenerationApi
     private function present(array $run, bool $admin = false): array
     {
         $busy = in_array($run['status'], self::BUSY, true);
-        $progress = (array) ($run['progress'] ?? []) + ['stage' => $run['status'], 'stages' => GenerationProgress::stagesFor($this->voices), 'percent' => 0, 'detail' => null, 'done' => null, 'total' => null, 'started_at' => null, 'stage_started_at' => null];
+        $progress = (array) ($run['progress'] ?? []) + ['stage' => $run['status'], 'stages' => self::stagesOf((array) $run['options'], $this->voices), 'percent' => 0, 'detail' => null, 'done' => null, 'total' => null, 'started_at' => null, 'stage_started_at' => null];
         if ($run['status'] === 'done') {
             $progress['percent'] = 100;
         }
@@ -323,6 +369,9 @@ class GenerationApi
             'id' => (int) $run['id'], 'prompt' => $run['prompt'], 'status' => $run['status'], 'busy' => $busy,
             'cancelling' => $busy && ! empty($run['cancelled_at']),
             'title' => $run['blueprint']['title'] ?? null, 'scenario_id' => $run['scenario_id'] === null ? null : (int) $run['scenario_id'],
+            // A mission (or story) made as a new draft, or a scene added to a scenario (its id, once added).
+            'kind' => ($run['options']['kind'] ?? null) === 'scene' ? 'scene' : 'mission',
+            'scene_id' => isset($run['blueprint']['scene_id']) ? (int) $run['blueprint']['scene_id'] : null,
             'options' => (array) $run['options'], 'approach' => self::approach($run), 'error' => $run['error'] ?? null, 'progress' => $progress,
             'created_at' => self::iso($run['created_at']), 'updated_at' => self::iso($run['updated_at']),
         ] + ($admin ? ['usd' => $usd] : []);

@@ -1310,7 +1310,7 @@ check(str_contains((string) file_get_contents("$traced/README.md"), '| 2 | [desi
 
 // The list of methods.
 $methods = $factory->methods();
-same(array_keys($methods), ['classic', 'draft', 'gemini-judge', 'sprite-app', 'critic', 'best-of', 'outline-first'], 'every built-in method is listed');
+same(array_keys($methods), ['classic', 'draft', 'gemini-judge', 'sprite-app', 'critic', 'best-of', 'outline-first', 'scene'], 'every built-in method is listed');
 check(! array_filter($methods, fn ($s) => strlen($s) < 20), 'each saying what it tries');
 check((function () use ($factory) {
     try {

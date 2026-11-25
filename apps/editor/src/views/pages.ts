@@ -10,6 +10,7 @@ import { icon } from '../icons';
 import { sceneGroupControl, sceneGroupsCard } from './glossary';
 import { chip, deleteIcon, groupTone, pick, tileTitle } from './kit';
 import { sceneMap } from './sceneMap/sceneMap';
+import { generateSceneButton } from './sceneGenerate';
 
 /** The scenario's own pages: its scenes, its settings, and checking and publishing it. */
 
@@ -95,7 +96,7 @@ export function scenesPage(ctx: FormContext, open: (sceneId: number) => void): H
       h('div', null, h('h1', null, 'Scenes', h('span', { class: 'count' }, String(scenes.length)), help(mapped
         ? 'The places that make up the mission, and the ways between them. Each box is a scene and each arrow a jump: a hotspot or event that takes players to another scene. Drag boxes to lay the mission out, drag a box’s + onto another box to link them, and click ✏️ to edit a scene.'
         : 'The places that make up the mission. Players move between them through jump actions, usually on a hotspot along an edge.'))),
-      h('div', { class: 'row-actions' }, switcher, mapped ? null : h('button', { type: 'button', class: 'primary', onclick: add }, 'New scene')),
+      h('div', { class: 'row-actions' }, switcher, mapped ? null : generateSceneButton(ctx), mapped ? null : h('button', { type: 'button', class: 'primary', onclick: add }, 'New scene')),
     ),
     ...(mapped
       ? [sceneMap(ctx, open)]

@@ -376,16 +376,18 @@ respond(404, ['message' => 'Not found.']);
 /** QBL_DEV_GENERATOR=1: move pretend runs along by the clock (see the generations route above). */
 function devPretendGenerations(PDO $pdo, ScenarioStore $store, App\Qbl\Billing\Credits $credits): void
 {
-    $plan = ['queued' => 3, 'aligning' => 5, 'designing' => 14, 'drawing' => 40, 'building' => 3, 'importing' => 2];
     $wanted = (float) getenv('QBL_DEV_GENERATOR');
-    if ($wanted > 1) {
-        $plan = array_map(fn ($s) => $s * $wanted / array_sum($plan), $plan);
-    }
-    $pictures = 17;
     $runs = new App\Qbl\Generation\GenerationRuns($pdo);
     $busy = $pdo->query("SELECT id FROM scenario_generations WHERE status IN ('".implode("', '", App\Qbl\Generation\GenerationApi::BUSY)."')")->fetchAll(PDO::FETCH_COLUMN);
     foreach ($busy as $id) {
         $run = $runs->get((int) $id);
+        // A scene for a scenario: no standards; it is added to the scenario as a plain scene with a thing to click.
+        $scene = ($run['options']['kind'] ?? null) === 'scene';
+        $plan = $scene ? ['queued' => 2, 'designing' => 5, 'drawing' => 12, 'building' => 2, 'importing' => 1] : ['queued' => 3, 'aligning' => 5, 'designing' => 14, 'drawing' => 40, 'building' => 3, 'importing' => 2];
+        if ($wanted > 1) {
+            $plan = array_map(fn ($s) => $s * $wanted / array_sum($plan), $plan);
+        }
+        $pictures = $scene ? 2 : 17;
         if ($run['cancelled_at']) {
             App\Qbl\Generation\GenerationApi::cancelled($pdo, $credits, (int) $id);
 
@@ -404,9 +406,36 @@ function devPretendGenerations(PDO $pdo, ScenarioStore $store, App\Qbl\Billing\C
             $at += $seconds;
         }
         $iso = fn (int $u) => gmdate('Y-m-d\TH:i:s\Z', $u);
-        if (empty($run['alignment']) && microtime(true) - $start >= $plan['queued'] + $plan['aligning']) {
+        if (! $scene && empty($run['alignment']) && microtime(true) - $start >= $plan['queued'] + $plan['aligning']) {
             // Aligned: "Choose for me" leans it open for students to explore (DesignRules), as the aligner might.
             $runs->update((int) $id, ['alignment' => ['learning_objectives' => [], 'approach' => ['freedom' => 'open']]]);
+        }
+        if ($finished && $scene) {
+            $title = 'Pretend scene';
+            $sceneId = null;
+            try {
+                $map = $store->mergeRows((int) $run['options']['scenario_id'], [
+                    'variables' => [['id' => 1, 'variable_name' => 'pretend_look_'.$id, 'default_value' => 0]],
+                    'scenes' => [['id' => 1, 'shortname' => "pretend_scene_$id", 'subtitle' => $title, 'description' => mb_strimwidth($run['prompt'], 0, 200, '…'), 'sequence' => 99, 'width' => 2250, 'height' => 1200,
+                        'layout' => ['walkable_areas' => [[['x' => 0, 'y' => 800], ['x' => 2250, 'y' => 800], ['x' => 2250, 'y' => 1200], ['x' => 0, 'y' => 1200]]], 'spawn_points' => [['name' => 'default', 'position_x' => 1125, 'position_y' => 1000]],
+                            'scale_areas' => [['name' => 'depth', 'x' => 0, 'y' => 800, 'width' => 2250, 'height' => 400, 'scale_top' => 90, 'scale_bottom' => 108]]]]],
+                    'events' => [['id' => 1, 'scene_id' => 1, 'kind' => 'hotspot', 'shortname' => 'look-0', 'position_x' => 600, 'position_y' => 600, 'radius' => 90, 'activate_by_trigger' => true]],
+                    'actions' => [
+                        ['id' => 1, 'event_id' => 1, 'type' => 'narration', 'sequence' => 1, 'params' => ['text' => 'A pretend thing to look at.']],
+                        ['id' => 2, 'event_id' => 1, 'type' => 'variable', 'sequence' => 2, 'params' => ['name' => 'pretend_look_'.$id, 'operator' => '+', 'operand' => 1]],
+                    ],
+                    'labels' => [['id' => 1, 'event_id' => 1, 'type' => 'text', 'position_x' => 600, 'position_y' => 480, 'text' => 'Something', 'params' => ['show_near' => 300]]],
+                ]);
+                $sceneId = $map['scenes'][1] ?? null;
+            } catch (Throwable $e) {
+                App\Qbl\Generation\GenerationApi::failed($pdo, $credits, (int) $id, 'The scenario is gone: '.$e->getMessage());
+
+                continue;
+            }
+            $runs->update((int) $id, ['status' => 'done', 'scenario_id' => (int) $run['options']['scenario_id'], 'blueprint' => ['title' => $title, 'scene_id' => $sceneId],
+                'progress' => ['stage' => 'importing', 'percent' => 100, 'detail' => 'Ready', 'started_at' => $iso((int) ($start + $plan['queued'])), 'stage_started_at' => $iso((int) $at)] + (array) $run['progress']]);
+
+            continue;
         }
         if ($finished) {
             $title = 'Pretend mission: '.mb_strimwidth($run['prompt'], 0, 40, '…');
@@ -419,12 +448,12 @@ function devPretendGenerations(PDO $pdo, ScenarioStore $store, App\Qbl\Billing\C
         $fraction = $t / $plan[$stage];
         $done = $stage === 'drawing' ? (int) floor($fraction * $pictures) : null;
         $detail = match ($stage) {
-            'drawing' => $done < 4 ? sprintf('Drawing Professor Fern (character 1 of 2)') : ($done < 7 ? 'Drawing the props: a watering can, a seed tray and the marker' : sprintf('Painting the Greenhouse (scene %d of 5)', min(5, $done - 6))),
-            'designing' => $fraction < 0.7 ? 'Writing the story, scenes and questions' : 'Fixing 2 problems in the design (round 1)',
+            'drawing' => $scene ? ($done < 1 ? 'Painting Pretend scene (scene 1 of 1)' : 'Looking over Pretend scene for where people can walk') : ($done < 4 ? sprintf('Drawing Professor Fern (character 1 of 2)') : ($done < 7 ? 'Drawing the props: a watering can, a seed tray and the marker' : sprintf('Painting the Greenhouse (scene %d of 5)', min(5, $done - 6)))),
+            'designing' => $scene ? 'Planning the scene: what stands in it and what to click' : ($fraction < 0.7 ? 'Writing the story, scenes and questions' : 'Fixing 2 problems in the design (round 1)'),
             default => App\Qbl\Generation\GenerationProgress::STAGES[$stage][2],
         };
-        $runs->update((int) $id, ['status' => $stage, 'blueprint' => $stage === 'drawing' || $stage === 'building' || $stage === 'importing' ? ['title' => 'The Greenhouse Mystery'] : null, 'progress' => [
-            'stage' => $stage, 'stages' => App\Qbl\Generation\GenerationProgress::stagesFor(false),
+        $runs->update((int) $id, ['status' => $stage, 'blueprint' => $stage === 'drawing' || $stage === 'building' || $stage === 'importing' ? ['title' => $scene ? 'Pretend scene' : 'The Greenhouse Mystery'] : null, 'progress' => [
+            'stage' => $stage, 'stages' => App\Qbl\Generation\GenerationApi::stagesOf((array) $run['options'], false),
             'percent' => App\Qbl\Generation\GenerationProgress::percent($stage, $stage === 'drawing' ? $done / $pictures : $fraction),
             'detail' => $detail, 'done' => $done, 'total' => $stage === 'drawing' ? $pictures : null,
             'started_at' => $stage === 'queued' ? null : $iso((int) ($start + $plan['queued'])), 'stage_started_at' => $iso((int) $at), 'updated_at' => $iso(time()),

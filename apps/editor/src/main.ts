@@ -69,6 +69,17 @@ tracker.subscribe((g) => {
 });
 tracker.onFinished((g) => {
   document.title = baseTitle;
+  if (g.kind === 'scene') {
+    // A scene for a scenario: taken into the scenario if it is the one open (one step Ctrl+Z undoes), with a way to it.
+    if (g.status === 'done' && g.scenario_id) {
+      const open = store?.scenarioId === g.scenario_id ? store : null;
+      void (open ? open.takeIn() : Promise.resolve()).then(() =>
+        toast(`The scene “${runName(g, 60)}” is ready${open ? ' and added to your scenes' : ''}.`, 'info', { label: 'Open it', run: () => go(g.scene_id ? `#/s/${g.scenario_id}/scene/${g.scene_id}` : `#/s/${g.scenario_id}`) }));
+    } else if (g.status === 'failed') {
+      toast('The scene could not be made. Any credits it cost were given back.', 'error', { label: 'See why', run: () => go('#/generate') });
+    }
+    return;
+  }
   if (g.status === 'done' && g.scenario_id) {
     toast(`“${runName(g, 60)}” is ready: a draft in your scenarios.`, 'info', { label: 'Open it', run: () => go(`#/s/${g.scenario_id}`) });
   } else if (g.status === 'failed') {

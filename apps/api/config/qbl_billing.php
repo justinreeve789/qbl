@@ -77,6 +77,8 @@ return [
     // What the generator costs, in credits.
     'costs' => [
         'generation' => $int('QBL_CREDITS_PER_GENERATION', 10),
+        // One scene for a scenario being made (the editor's "Generate a scene"): one background, surveyed.
+        'scene_generation' => $int('QBL_CREDITS_PER_SCENE', 2),
     ],
 
     // Where "Contact us for a quote" requests are emailed (they are also kept in quote_requests).

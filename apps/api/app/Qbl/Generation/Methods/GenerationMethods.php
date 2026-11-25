@@ -21,6 +21,7 @@ final class GenerationMethods
         'critic' => CriticMethod::class,
         'best-of' => BestOfMethod::class,
         'outline-first' => OutlineFirstMethod::class,
+        'scene' => SceneMethod::class,
     ];
 
     /**

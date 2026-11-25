@@ -1,6 +1,6 @@
 import { Api, ApiError, type Bundle, type LibraryAdded, type Row, type Table } from './api';
 import { toast } from './dom';
-import { clone, diff, History, type Change } from './history';
+import { clone, diff, History, nextGesture, type Change } from './history';
 
 /**
  * The scenario being edited, held in memory.
@@ -123,6 +123,21 @@ export class Store {
       this.emit();
     }
     return row;
+  }
+
+  /**
+   * Take in what was added to the scenario elsewhere (a scene the AI generator made for it): load it
+   * again, and keep what changed as one step of its own, so Ctrl+Z takes the whole scene away again.
+   */
+  async takeIn(): Promise<void> {
+    await this.settled();
+    // A step of its own, not part of whatever the author last did.
+    nextGesture();
+    const step = this.history.take();
+    const before = clone(this.bundle);
+    await this.load();
+    const change = diff(before, this.bundle);
+    if (change.rows.length || change.scenario) this.history.record(step, change);
   }
 
   /**

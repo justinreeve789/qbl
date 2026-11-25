@@ -116,7 +116,7 @@ $config = [
         'teacher' => ['name' => 'Teacher', 'price' => 30, 'summary' => '', 'curricular' => true, 'generator' => false, 'students' => 2, 'monthly_credits' => 0, 'credit_carryover' => 0],
         'teacher_plus' => ['name' => 'Teacher Plus', 'price' => 50, 'summary' => '', 'curricular' => true, 'generator' => true, 'students' => 2, 'monthly_credits' => 100, 'credit_carryover' => 50, 'trial_credits' => 20],
     ],
-    'costs' => ['generation' => 10],
+    'costs' => ['generation' => 10, 'scene_generation' => 2],
 ];
 $plans = new Plans($config);
 $entitlements = new Entitlements($pdo, $plans);
@@ -421,6 +421,32 @@ $auditLog->record($runId, ['type' => 'picture', 'kind' => 'background', 'step' =
 same($gen->handle('GET', [(string) $runId, 'events'], [], $teacher)[0], 403, 'a teacher cannot see what a generation cost call by call');
 [$status, $audited] = $gen->handle('GET', [(string) $runId, 'events'], [], ['id' => 3, 'role' => 'admin']);
 same([$status, count($audited['events']), $audited['events'][0]['step'], $audited['events'][0]['duration_ms'], $audited['totals']['total']['usd']], [200, 1, 'background:orchard', 12500, 0.134], 'an administrator can, with every call and the totals');
+
+// One scene for a scenario being made: cheaper, its own stages, only into a scenario the teacher can edit.
+foreach ($gen->handle('GET', [], [], $teacher)[1]['generations'] as $g) {
+    if ($g['busy']) {
+        $gen->handle('POST', [(string) $g['id'], 'cancel'], [], $teacher);
+    }
+}
+$mine = $store->createScenario(['title' => 'Greenhouse'], 2);
+$theirs = $store->createScenario(['title' => 'Not yours'], 1);
+$scene = ['kind' => 'scene', 'prompt' => 'A misty greenhouse with tall ferns', 'kind_of_place' => 'indoor', 'time' => 'dusk', 'width' => 'enormous', 'repeat' => 'cycle', 'critters' => true, 'hotspots' => false, 'grade' => '4'];
+same($gen->handle('POST', [], ['scenario_id' => $theirs['id']] + $scene, $teacher)[0], 404, 'a scene cannot be added to someone else\'s scenario');
+same($gen->handle('POST', [], ['scenario_id' => 999999] + $scene, $teacher)[0], 404, 'or to one that does not exist');
+same($gen->handle('POST', [], ['scenario_id' => $mine['id'], 'prompt' => 'A cave'] + $scene, $teacher)[0], 422, 'a scene needs a few words too');
+same($gen->handle('POST', [], ['scenario_id' => $mine['id'], 'grade' => 'thirteenth'] + $scene, $teacher)[0], 422, 'and a real grade');
+$before = $credits->summary(2)['balance'];
+[$status, $body] = $gen->handle('POST', [], ['scenario_id' => $mine['id']] + $scene, $teacher);
+$made = $body['generation'] ?? [];
+same([$status, $made['kind'] ?? null, $made['progress']['stages'] ?? null], [202, 'scene', ['designing', 'drawing', 'building', 'importing']], 'a scene is queued, with its own four stages');
+same($credits->summary(2)['balance'], $before - 2, 'and costs 2 credits');
+same($made['options'], ['kind' => 'scene', 'method' => 'scene', 'scenario_id' => (int) $mine['id'], 'place' => 'indoor', 'time' => 'dusk', 'repeat' => 'cycle', 'hotspots' => false, 'critters' => true, 'grade' => '4'], 'what the teacher chose is kept (an unknown width is left to the designer)');
+same($gen->handle('GET', [], [], $teacher)[1]['costs'], ['mission' => 10, 'scene' => 2], 'the page is told what a mission and a scene cost');
+same($gen->handle('POST', [], ['scenario_id' => $mine['id']] + $scene, $teacher)[0], 409, 'one at a time, scenes too');
+same($gen->handle('POST', [], ['scenario_id' => $mine['id']] + $scene, ['id' => 3, 'role' => 'admin'])[0], 202, 'an administrator may add a scene to anyone\'s scenario');
+[, $stopped] = $gen->handle('POST', [(string) $made['id'], 'cancel'], [], $teacher);
+same($stopped['credits']['balance'], $before, 'a stopped scene gives its credits back');
+same($pdo->query("SELECT note FROM credit_ledger WHERE reason = 'refund' ORDER BY id DESC LIMIT 1")->fetchColumn(), 'Credits back: you stopped the scene', 'saying it was the scene');
 
 // ClassApi passes plans through to Classes.
 $classApi = new ClassApi($pdo, null, $entitlements);
