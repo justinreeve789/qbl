@@ -26,6 +26,9 @@ export const imageOverlay: Presenter<'image_overlay'> = (action, pc) => {
     scaleX: action.scale_x,
     scaleY: action.scale_y,
     duration: action.duration,
+    panel: action.panel,
+    motion: action.motion,
+    tone: action.tone,
   });
   pc.track(action.id, { kind: 'overlay', overlay }, overlay);
   return overlay;

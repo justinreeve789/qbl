@@ -558,7 +558,7 @@ check((function () use ($factory) {
 })(), 'a real image driver is refused while the style has no approved anchors');
 
 $log = [];
-$generator = $factory->generator(['images' => 'placeholder'], function ($m) use (&$log) {
+$generator = $factory->generator(['images' => 'placeholder', 'survey' => true], function ($m) use (&$log) {
     $log[] = $m;
 });
 $result = $generator->generate('A mission about why an orchard has flowers but no fruit, for grade 3', ['grade' => '3', 'subject' => 'Science', 'frameworks' => ['TEST-SCI'], 'min_players' => 2, 'max_players' => 6], null);
@@ -587,7 +587,7 @@ $estimate = $factory->director("$work/estimate-only")->estimate($run['blueprint'
 same(end($drawing)['total'], $estimate['pictures'], 'drawing is counted in the pictures the estimate expects');
 same([end($drawing)['done'], end($drawing)['detail']], [$estimate['pictures'], 'All the pictures are drawn'], 'and finishes at all of them');
 $details = implode("\n", array_column($reports, 'detail'));
-foreach (['Drawing Keeper Ama (character 1 of 4)', 'Drawing the props:', 'Painting Orchard Landing (scene 1 of', 'Painting the far view behind Blue Orchard', 'Drawing the foreground of Root Burrow', 'Drawing the door to', 'Recording line 1 of', 'Fixing 1 problem in the design (round 1)'] as $said) {
+foreach (['Drawing Keeper Ama (character 1 of 4)', 'Drawing the props:', 'Painting Orchard Landing (scene 1 of', 'Painting the far view behind Blue Orchard', 'Drawing the foreground of Root Burrow', 'Looking over Orchard Landing for where people can walk', 'Recording line 1 of', 'Fixing 1 problem in the design (round 1)'] as $said) {
     check(str_contains($details, $said), "progress says what it is doing: \"$said\"");
 }
 check(count(array_unique(array_column($drawing, 'done'))) > 5, 'and moves picture by picture, not only stage by stage');
@@ -785,20 +785,27 @@ check($landing['walkable_areas'][0][0]['x'] > 0, 'its floor ends before the left
 $burrow = $scenesByName['burrow'];
 $roots = $burrow['foreground_media'][0];
 same([$roots['position_x'], $roots['display_width'], $roots['position_y'] + $roots['display_height']], [0, 2250, 1200], 'roots run along the bottom of the burrow');
-check($burrow['walkable_areas'][0][2]['y'] < 1200 && $burrow['walkable_areas'][0][2]['y'] > $roots['position_y'], 'students can walk behind them, but not out of sight');
+$burrowBottom = max(array_column($burrow['walkable_areas'][0], 'y'));
+check($burrowBottom < 1200 && $burrowBottom > $roots['position_y'], 'students can walk behind them, but not out of sight');
 $hive = $scenesByName['hive'];
 same($hive['foreground_media'][0]['position_x'] + $hive['foreground_media'][0]['display_width'], 2250, 'a bush stands in the hive\'s right corner');
 $door = $byShort['landing/way-greenhouse'];
-check(($door['labels'][0]['scale_x'] ?? 1) < 1, 'a door at the back of the floor is drawn a little smaller, as people there are');
-same($door['labels'][1]['show_near'] ?? null, MissionBuilder::HINT_NEAR, 'and says where it goes only near it');
+same(array_column($door['labels'], 'type'), ['text'], 'a door is painted into the background: its hotspot has no picture of its own');
+same($door['labels'][0]['show_near'] ?? null, MissionBuilder::HINT_NEAR, 'and says where it goes only near it');
 
 // A little life.
-$finch = $byShort['landing/ambient-finch'] ?? null;
-check($finch !== null, 'a finch visits the landing');
-same(array_values(array_unique(array_column($finch['actions'] ?? [], 'type'))), ['wait', 'image_fixed', 'animate', 'translate', 'cancel', 'repeat'], 'flying in, landing, hopping about and flying off, again and again');
-$finchSheet = $assetById[$finch['actions'][1]['media_id']];
+$crittersOf = fn (string $scene) => array_column($scenesByName[$scene]['critters'] ?? [], null, 'name');
+$finch = $crittersOf('landing')['finch'] ?? null;
+check($finch !== null && ! isset($byShort['landing/ambient-finch']), 'a finch visits the landing, as a critter of the scene (not a scripted event)');
+same([$finch['behavior'] ?? null, count($finch['spots'] ?? []), $finch['shy'] ?? 'default'], ['lands', 3, 'default'], 'landing on one of three spots on the floor, and shy');
+$finchSheet = $assetById[$finch['media_id']];
 same(array_column($finchSheet['animations'] ?? [], 'name'), ['idle', 'move'], 'its picture sits still or flaps');
-same([count($byShort['orchard/ambient-moths']['actions'] ?? []) > 0, isset($byShort['burrow/ambient-beetle'])], [true, true], 'moths flit through the orchard and a beetle crosses the burrow');
+same(($finch['animations'] ?? [])['fly'] ?? null, 'move', 'and it flies with its move');
+same([$crittersOf('orchard')['moths']['behavior'] ?? null, $crittersOf('burrow')['beetle']['behavior'] ?? null], ['flies_by', 'walks_by'], 'moths flit through the orchard and a beetle crosses the burrow');
+$squirrel = $crittersOf('orchard')['squirrel'] ?? null;
+$squirrelSheet = $squirrel ? $assetById[$squirrel['media_id']] : null;
+check($squirrel !== null && $squirrel['behavior'] === 'climbs' && in_array('hop', array_column($squirrelSheet['animations'] ?? [], 'name'), true), 'a ready-made squirrel from the asset library runs about the orchard, with its own animations');
+check(! isset($prompts['ambient:orchard:squirrel:up']) && ($squirrel['scale'] ?? 0) > 0, 'and is not drawn: it is scaled to its size');
 check(isset($byShort['landing/sundial']) && ! array_filter($byShort['landing/sundial']['labels'], fn ($l) => $l['type'] === 'image' && $l['media'] !== $markerId), 'a fun thing to look at is painted in, with only a question mark over it');
 
 // A twist.
@@ -1099,7 +1106,9 @@ $director->drawMission($cheap, $layouts);
 $kinds = array_count_values($images->drawn);
 same(count($images->drawn), $estimate['pictures'], 'the estimate counts the pictures a mission needs: '.json_encode($estimate['by_kind']));
 $thingCount = count(AssetDirector::things($cheap));
-same([$kinds['sheet'] ?? 0, $kinds['item'] ?? 0], [(int) ceil($thingCount / AssetDirector::SHEET_MAX), 0], "its $thingCount small things (creatures' poses too) are drawn on sheets, not one picture each");
+// (A last sheet of one thing would be one picture all the same: it is drawn alone.)
+$lone = $thingCount % AssetDirector::SHEET_MAX === 1 ? 1 : 0;
+same([$kinds['sheet'] ?? 0, $kinds['item'] ?? 0], [(int) ceil($thingCount / AssetDirector::SHEET_MAX) - $lone, $lone], "its $thingCount small things (creatures' poses too) are drawn on sheets, not one picture each");
 same([$kinds['portrait'] ?? 0, $kinds['strip'] ?? 0], [0, 6], 'portraits are cut from the sheets; strips only for walks and the gestures the mission plays');
 same([$kinds['distance'] ?? 0, $kinds['foreground'] ?? 0], [1, 3], 'one far view and three foregrounds');
 same(AssetDirector::gesturesUsed($cheap, array_column($cheap['characters'], null, 'key')['bot']), [], 'Pip\'s pointing is never played, so it is not drawn');
@@ -1238,9 +1247,10 @@ check($traced !== null && is_file("$traced/index.json") && is_file("$traced/READ
 $index = json_decode((string) file_get_contents("$traced/index.json"), true);
 same($index['method'], 'classic', 'the trace says which method made it');
 $firstSession = array_slice($index['steps'], 0, 8);
-same(array_column($firstSession, 'step'), ['align', 'design', 'estimate', 'draw', 'build', 'voice', 'package', 'import'], 'the classic method takes its eight steps in order');
+$firstSession = array_slice($index['steps'], 0, 9);
+same(array_column($firstSession, 'step'), ['align', 'design', 'estimate', 'draw', 'survey', 'build', 'voice', 'package', 'import'], 'the classic method takes its nine steps in order');
 same(array_unique(array_column($firstSession, 'outcome')), ['ok'], 'each ok');
-same(array_column(array_slice($index['steps'], 8), 'skipped'), ['the run already has its alignment', 'the run already has a blueprint that passes the validator', null, null, null, null, null, null], 'the resumed session is in the same trace, its reused steps marked skipped');
+same(array_column(array_slice($index['steps'], 9), 'skipped'), ['the run already has its alignment', 'the run already has a blueprint that passes the validator', null, null, null, null, null, null, null], 'the resumed session is in the same trace, its reused steps marked skipped');
 same(count($index['sessions']), 2, 'and the trace counts both sessions');
 $designStep = $firstSession[1];
 $designCalls = array_values(array_filter($index['calls'], fn ($c) => in_array($c['n'], $designStep['calls'], true)));
@@ -1286,7 +1296,8 @@ $draft = $factory->generator(['method' => 'draft'])->generate('A draft of the or
 same([$draft['status'], $draft['method']], ['done', 'draft'], 'the draft method makes a whole mission');
 same(count(array_filter($model->calls, fn ($c) => $c['name'] === 'style_review')), $judgedBefore, 'without judging a picture');
 $draftIndex = json_decode((string) file_get_contents("{$draft['trace']}/index.json"), true);
-same(array_column($draftIndex['steps'], 'skipped')[5], 'voices are off for this run', 'and without voices');
+same(array_column($draftIndex['steps'], 'skipped')[4], 'no surveyor (placeholder pictures, or QBL_GEN_SURVEY=false)', 'without reading the backgrounds');
+same(array_column($draftIndex['steps'], 'skipped')[6], 'voices are off for this run', 'and without voices');
 same((new GenerationRuns($pdo))->get($draft['run'])['options']['method'], 'draft', 'the run records its method');
 
 // --redo: a step of an earlier run done again, and the steps after it; the ones before reused.
@@ -1294,7 +1305,7 @@ $designsBefore = $model->blueprints;
 $redone = $factory->generator(['method' => 'draft'])->generate('', ['redo' => 'design'], null, $draft['run']);
 same($model->blueprints, $designsBefore + 1, 'redo=design designs it again');
 $redoIndex = json_decode((string) file_get_contents("{$redone['trace']}/index.json"), true);
-$redoSteps = array_slice($redoIndex['steps'], 8);
+$redoSteps = array_slice($redoIndex['steps'], 9);
 same([$redoSteps[0]['skipped'], $redoSteps[1]['skipped']], ['the run already has its alignment', null], 'reusing the alignment before it');
 check(! isset((new GenerationRuns($pdo))->get($draft['run'])['options']['redo']), 'and redo is not saved with the run (a later resume would redo again)');
 check((function () use ($factory, $draft) {

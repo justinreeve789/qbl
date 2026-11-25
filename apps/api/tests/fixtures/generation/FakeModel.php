@@ -20,6 +20,11 @@ final class FakeModel implements LanguageModel
     /** What the critic's changes do: "title" renames the mission (harmless), "break" gives a question two right answers. */
     public string $reviewChanges = 'title';
 
+    /** Backgrounds surveyed so far, and what the surveyor says stands on their floors. */
+    public int $surveys = 0;
+
+    public array $standing = [];
+
     public function __construct(private array $blueprint) {}
 
     public function structured(string $system, array $content, string $name, array $schema, int $maxTokens = 16000): array
@@ -74,6 +79,38 @@ final class FakeModel implements LanguageModel
                     'puzzles' => [['what' => 'Wake the bees', 'needs' => 'warmth', 'teaches' => 'pollinators']],
                     'twist' => 'A storm.', 'misconception_moment' => 'Flowers do not turn into fruit by themselves.', 'finale' => 'Fruit at last.',
                 ];
+            case 'scene_survey':
+                // Reads the picture as a model would: the floor's edge is the dark line nearest the middle
+                // (a placeholder background's ground line), given a little off so the tracer has to find it.
+                $this->surveys++;
+                $png = array_values(array_filter($content, fn ($p) => is_array($p) && isset($p['image'])))[0]['image'] ?? null;
+                $floor = [];
+                if ($png) {
+                    $im = imagecreatefromstring($png);
+                    [$w, $h] = [imagesx($im), imagesy($im)];
+                    foreach ([0.04, 0.3, 0.5, 0.7, 0.96] as $fx) {
+                        $x = (int) ($fx * $w);
+                        for ($y = (int) ($h * 0.95); $y > $h * 0.3; $y--) {
+                            $c = imagecolorat($im, $x, $y);
+                            if (0.299 * (($c >> 16) & 0xFF) + 0.587 * (($c >> 8) & 0xFF) + 0.114 * ($c & 0xFF) < 70) {
+                                break;
+                            }
+                        }
+                        $floor[] = [round($fx * 100, 1), round(100 * $y / $h + 1.5, 1)];
+                    }
+                }
+                // Whatever it was asked to find, about where it was asked for.
+                $found = [];
+                foreach (array_filter($content, 'is_string') as $text) {
+                    if (preg_match_all('/^- ([a-z]+:[a-z0-9_]+): .*?(?:about (\d+)% across)?\)?$/m', $text, $m, PREG_SET_ORDER)) {
+                        foreach ($m as $hit) {
+                            $x = (float) ($hit[2] ?? 50 ?: 50);
+                            $found[] = ['id' => $hit[1], 'box' => [$x - 4, 40, $x + 4, 58]];
+                        }
+                    }
+                }
+
+                return ['floor' => $floor, 'standing' => $this->standing, 'found' => $found];
             case 'style_review':
                 return ['scores' => array_fill_keys(['line', 'shading', 'colour', 'shapes', 'rendering', 'subject', 'composition'], 8), 'problems' => [], 'fix' => ''];
         }

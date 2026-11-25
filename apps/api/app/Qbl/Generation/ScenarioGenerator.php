@@ -250,22 +250,30 @@ class ScenarioGenerator
                 if ($end['via'] === 'edge') {
                     $out[$key]['exits'][$end['edge']] = $towards;
                 } else {
-                    $out[$key]['passages'][] = ['via' => $end['via'], 'x' => $end['x'], 'towards' => $towards];
+                    $out[$key]['passages'][] = ['via' => $end['via'], 'x' => $end['x'], 'towards' => $towards, 'look' => $end['look'] ?? null];
                 }
             }
         }
         foreach ($b['interactions'] as $it) {
             $scene = $scenes[$it['scene']] ?? null;
             if ($scene && ! empty($it['item']) && isset($items[$it['item']]) && AssetDirector::placementOf($it, $items[$it['item']], $scene) === 'wall') {
-                $out[$it['scene']]['wall'][] = (float) ($it['x'] ?? 0.5);
+                // Painted on the wall unless it is taken away (then it is a thing of its own, hung there).
+                $out[$it['scene']]['wall'][] = AssetDirector::paintedOnWall($it)
+                    ? ['x' => (float) ($it['x'] ?? 0.5), 'what' => "{$items[$it['item']]['name']}: {$items[$it['item']]['appearance']}"]
+                    : ['x' => (float) ($it['x'] ?? 0.5), 'what' => null];
             }
             // Something to look at that has no object: the background shows it where its marker is.
             if ($scene && empty($it['item']) && ! empty($it['look']) && isset($it['x']) && empty($it['character']) && empty($it['at_report'])) {
                 $out[$it['scene']]['looks'][] = ['x' => (float) $it['x'], 'what' => $it['look'], 'where' => AssetDirector::placementOf($it, null, $scene)];
             }
         }
-        // Things in the scene to look at (details): painted in where they are.
+        // Things in the scene to look at (details): painted in where they are. Lights hung on a wall: painted on it.
         foreach ($b['scenes'] as $scene) {
+            foreach (array_values($scene['lights'] ?? []) as $l) {
+                if (($l['placement'] ?? null) === 'wall') {
+                    $out[$scene['key']]['lights'][] = ['x' => (float) $l['x'], 'what' => rtrim((string) $l['look'], '.').', lit and glowing'];
+                }
+            }
             foreach ($scene['details'] ?? [] as $d) {
                 if (! empty($d['look']) && isset($d['x'])) {
                     $out[$scene['key']]['looks'][] = ['x' => (float) $d['x'], 'what' => $d['look'], 'where' => ($d['placement'] ?? 'back') === 'ground' ? 'ground' : 'back'];

@@ -322,7 +322,26 @@ export interface ImageOverlayAction extends ActionBase {
   scale_x?: number;
   scale_y?: number;
   duration?: number;
+  /**
+   * [ext] Shown as a story panel: the picture fills the play area over a dark backdrop, like a page
+   * of a comic or a shot in a film, instead of floating over the scene. Used for a cutscene's inserts
+   * (a close-up of a letter, a memory, the ship far away). Keep it up no longer than about 20 seconds:
+   * a still picture any longer gets dull.
+   */
+  panel?: boolean;
+  /**
+   * [ext] Panels only: how the camera moves over the picture while it is shown, slowly, over its
+   * `duration`: `push_in` (closer and closer, for tension), `pull_out` (revealing more), `pan_left`,
+   * `pan_right` (gliding across). Default `still`.
+   */
+  motion?: OverlayMotion;
+  /** [ext] Panels only: `memory` (warm, faded, soft edges: a flashback) or `dream` (hazy and bright). Default none. */
+  tone?: 'memory' | 'dream';
 }
+
+/** [ext] How a story panel moves while it is shown (ImageOverlayAction.motion). */
+export type OverlayMotion = 'still' | 'push_in' | 'pull_out' | 'pan_left' | 'pan_right';
+export const OVERLAY_MOTIONS: OverlayMotion[] = ['still', 'push_in', 'pull_out', 'pan_left', 'pan_right'];
 export interface CallToAction {
   /** Button label. May contain {{variable}} placeholders. */
   text: string;
@@ -681,6 +700,12 @@ export interface CameraAction extends ActionBase {
   position_y?: number;
   /** Milliseconds the glide takes. Default 1200. The action waits for it. */
   duration?: number;
+  /**
+   * [ext] How close the view is, glided to over `duration` along with where it looks: 1 is the
+   * scene's usual view, 1.5 half again as close (a push in on someone's face), up to 3. It stays
+   * until another camera action changes it. Absent: as it is.
+   */
+  zoom?: number;
 }
 
 /**
@@ -1244,6 +1269,55 @@ export interface SceneLight {
   period?: number;
 }
 
+/**
+ * [ext] How a critter (Scene.critters) lives in a scene:
+ * - `lands`: flies in, lands on one of its spots, pecks and hops about, flies off (birds).
+ * - `climbs`: scampers in along the floor, darts about, runs to a tree and climbs up it out of sight
+ *   (squirrels). Its spots are the bottoms of the trees, each with the `top` it climbs to.
+ * - `hides`: pops out of one hiding place, sits a while (its idle: a twitching nose), then hops into
+ *   another (a rabbit in the bushes). Its spots are the hiding places, at their base; it is drawn
+ *   behind whatever stands there, so it seems to go into it.
+ * - `walks_by`, `flies_by`, `swims_by`, `drives_by`: crosses the scene and is gone.
+ */
+export type CritterBehavior = 'lands' | 'climbs' | 'hides' | 'walks_by' | 'flies_by' | 'swims_by' | 'drives_by';
+export const CRITTER_BEHAVIORS: CritterBehavior[] = ['lands', 'climbs', 'hides', 'walks_by', 'flies_by', 'swims_by', 'drives_by'];
+
+/**
+ * [ext] A little life in a scene that has nothing to do with the lesson: birds landing and flying off,
+ * a squirrel running up a tree, a rabbit popping out of a bush. Each player sees their own critters
+ * (they are not shared), now and then. A shy critter scatters early when anyone (a player or a
+ * character) comes near: birds take off, a squirrel bolts for its tree, a rabbit dives into the
+ * nearest bush.
+ */
+export interface SceneCritter {
+  name?: string;
+  /** Its picture: a sprite sheet whose named animations (media params) it moves with. A single picture works too. */
+  media_id: Id;
+  behavior: CritterBehavior;
+  /**
+   * Which of its sheet's animations to play for each thing it does, when the names differ from these:
+   * `idle` (standing or sitting still), `walk`, `run`, `fly`, `take_off`, `land`, `peck`, `hop`,
+   * `climb`. A missing one falls back to a near one (run → walk, hop → walk, peck → idle...).
+   */
+  animations?: Partial<Record<'idle' | 'walk' | 'run' | 'fly' | 'take_off' | 'land' | 'peck' | 'hop' | 'climb', string>>;
+  /** Its spots, in scene pixels (see CritterBehavior): where it lands, the trees it climbs (`top`: how high), the bushes it hides in. */
+  spots?: Array<{ x: number; y: number; top?: number }>;
+  /** How big it is drawn (before the scene's depth). Default 1. */
+  scale?: number;
+  /** Which way its picture faces. Default right. */
+  faces?: 'left' | 'right';
+  /** Seconds between its visits, at random between the two. Default [12, 28]. */
+  every?: [number, number];
+  /** How close (scene pixels) anyone may come before it scatters. Default 170; 0: it never does. */
+  shy?: number;
+  /** How many come together, a little apart (a flock of sparrows). Default 1, at most 6. */
+  count?: number;
+  /** How fast it moves, in scene pixels per second. Default by behavior. */
+  speed?: number;
+  /** A built-in sound it makes as it comes (sounds.ts): tweet, car, hooves... */
+  sound?: string;
+}
+
 /** [ext] Something in the air of a scene, drawn over it: fireflies at dusk, falling leaves, snow, rain. */
 export interface SceneAtmosphere {
   kind: 'fireflies' | 'leaves' | 'snow' | 'rain' | 'dust' | 'bubbles';
@@ -1368,6 +1442,8 @@ export interface Scene {
   weather?: SceneWeather | null;
   /** [ext] Rivers, streams, waterfalls and the sea, flowing (see SceneFlow). */
   flows?: SceneFlow[] | null;
+  /** [ext] Birds, squirrels, rabbits and other little life that come and go, and scatter (see SceneCritter). */
+  critters?: SceneCritter[] | null;
   /**
    * [ext] The scene plays by itself, like a page of a picture book: what happens is in its start
    * events (characters walk, talk, the rain starts), and it usually ends by jumping to the next scene.

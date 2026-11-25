@@ -23,6 +23,7 @@ It prints its progress and ends with the new scenario's id. The mission is **pri
   { who: 'riona', title: 'Align', text: 'Standards, objectives' },
   { icon: '📐', title: 'Design', text: 'The blueprint' },
   { icon: '🎨', title: 'Draw', text: 'Every picture' },
+  { icon: '🔍', title: 'Survey', text: 'Floors, cut-outs' },
   { icon: '🧱', title: 'Build', text: 'Table rows' },
   { icon: '🔊', title: 'Voice', text: 'Every line' },
   { icon: '📦', title: 'Package', text: 'scenario.zip' },
@@ -34,6 +35,7 @@ Step | What | Kept in
 1\. Align | Chooses 1-3 primary standards (and up to 3 supporting ones) from those imported, and writes measurable learning objectives, vocabulary and misconceptions to address | `scenario_generations.alignment`
 2\. Design | Writes the **blueprint**: story, scenes and how they connect, characters, items, interactions, the checklist, the briefing and the final report. It is checked, and sent back to be corrected until it can be built | `scenario_generations.blueprint`, `blueprint.json`
 3\. Draw | Draws every picture: each character's design, then their animations (from AutoSprite in one request per character when `AUTOSPRITE_API_KEY` is set, else drawn as strips; their portrait is cut from the design); the mission's small things, several to a picture; doors and holes; every background; the mission patch | `assets/` in the work folder, `scenario_generations.manifest`
+3½\. Survey | Reads each finished background with a model that can see (the judge's): where the floor really meets the buildings, walls, fences and water, traced onto the painted line; the things standing out on the floor that people walk around, each lifted out of the picture pixel for pixel as an item with its sort line; and where the doors, ladders, wall things and wall lights it was asked to paint ended up. See [Reading the backgrounds](#reading-the-backgrounds) | `survey/` and `assets/cutout-*.png` in the work folder
 4\. Build | Turns the blueprint into rows of the QuestLab tables, using the patterns from [Runtime extensions](/docs/developers/extensions/#patterns). Gives each character a voice from what the blueprint says of them, a different one each | 
 4½\. Voice | Records every line the characters say, with the time of every word, on the server's text-to-speech service ([Characters' voices](/docs/developers/voices/)). Free with Kokoro. If the service is down this is a warning, not a failure | `voices/` in the work folder
 5\. Package | Compiles the rows into `scenario.json` and packs it with its pictures as an import ZIP, plus a preview of each scene | `scenario.zip`, `previews/`
@@ -185,6 +187,30 @@ And an `ending`: a closing line and one to three questions to talk about.
 The validator follows each script with who is on the stage, so nobody speaks, walks or gestures before coming on, nobody comes back on after leaving the scene, every character appears somewhere, every scene has something said, and weather and water are only where they make sense. Corrections are made by changes, as for missions.
 
 `StoryPlan::forArt` shows the art director the story as it reads a mission (each character in the first scene they are in, the gestures the script asks for as a cutscene's), so every picture is drawn by the same code, in the same style. **StoryBuilder** (a MissionBuilder, with its helpers) makes every scene a [story scene](/docs/developers/extensions/#story-scenes) and its script one start event that acts it out: characters wait off stage beyond the edge they will come on from, walk on, about and off, turn to whoever they speak to, speak in bubbles; the narrator's captions are read aloud in the narrator's voice (`narrator_voice`, recorded with the characters' lines); the weather changes; a creature or vehicle the script cues (`cue`) passes once when it says. The first scene opens with the title; each ends by jumping to the next; the last ends with "The End", an award, and a box with the questions to talk about and **Watch it again**. Its checklist is one line, "Watch the story to the end" (`mission_complete`). The README lists the scenes and the questions.
+
+## Reading the backgrounds
+
+A painted picture never matches what was asked for to the pixel, so after drawing, each background is surveyed (`SurveyStep`; off with `QBL_GEN_SURVEY=false`, and for placeholder pictures unless `survey` is passed):
+
+- **The floor.** `SceneSurveyor` sends the picture with a labelled grid and asks for the back edge of the floor people could walk on, left to right: along the base of buildings, walls, fences, hedges, cliffs and the water's edge, as far back as anyone could walk on open ground. `FloorTracer` moves each point (and points between, along level stretches) onto the strongest painted line within 3% of the picture's height, 6 pixels in front of it. The walkable area is that edge down to the bottom of the floor; everything placed in the scene (characters, spawn points, things at the back of the floor, the doorway of a top exit) stands in front of it.
+- **Things people walk around.** Trees, bushes, lamp posts, fountains, rocks, carts... standing out on the floor (not the buildings, not what hangs on walls, not what lies flat). `ObjectCutter` floods the scenery in from the edges of a box a little bigger than the thing, stopping at the house style's outlines; what the flood cannot reach is the thing (pieces parted from it only by an outline, like a trunk below its canopy, join it). When the outlines leak, the outline the surveyor drew is used. The cut-out is the background's own pixels, an even number wide, placed exactly over itself as an item (`scale` undoing the scene's depth there, so it is drawn at 1:1), with its sort line found as the editor's **✨ Find it from the picture** finds it (`SortLine`, a port of `findSortLine`), or level along its base when it stands on a narrow base under something wider (a tree). Its base is a blocked patch.
+- **What was painted in.** Doors, gates, caves, portals, ladders and stairs up are now painted into the background where they go, and so are things on walls that stay there (a map, a gauge, a fireplace) and lights hung on walls; only holes, hatches and stairs down are still drawn apart, and a wall thing that is collected (it must be able to disappear). The surveyor finds each, and its hotspot (invisible but for its name and question mark) goes over it; a wall light's glow goes on the brightest part of where it was found.
+
+## Little life from the asset library
+
+A scene's `ambient` creatures become the game's [critters](/docs/developers/extensions/#critters): birds that land (`count` for a flock), a squirrel that `climbs` one of the scene's cut-out trees, a rabbit that `hides` between its cut-out bushes, walkers, fliers, swimmers and vehicles. Shy ones scatter when someone comes near (`shy: false` for a tame hen). The designer picks a ready-made animal or vehicle from the asset library (`ambient.library`: `LibraryCritters::CATALOGUE`, the QuestLab Assets) when one fits, and its sheet and animations are used as they are, scaled to its size; only what the library lacks is drawn. `QBL_GEN_LIBRARY_CRITTERS=false` draws everything; the library is `QBL_LIBRARY_DIR`, else the checkout's `scenarios/assets/library`.
+
+## Cutscenes, shots and panels
+
+Stories and missions can be told like a comic or a film (`Design/Cutscenes`):
+
+- **`shot`**: `wide` (the whole place) or `close` (a close-up: the background painted as if the camera were near, everyone drawn twice as big).
+- **`continues`**: the next panel of an earlier scene, the same place from the same view a moment later, everyone where they were. With no `changes` the earlier picture is used again (nothing drawn); with `changes` ("the raven now perches on the bookshelf") it is redrawn as an edit of the earlier picture, sent as the first reference; a change of shot draws a close-up of the place from it.
+- **`show`** beat: an insert, a picture full-screen for a moment ([a story panel](/docs/developers/extensions/#story-panels)) with narration over it, a slow camera move and a `memory` or `dream` tone. Drawn; at most six per story or mission.
+- **`camera`** beat: `push_in` on someone, `pull_back` to the stage, `pan` to a spot.
+- **A mission's `cutscenes`** (at most two): `when` is `intro` (the first arrival, before the briefing; the validator keeps it under 45 seconds, so students play within a couple of minutes) or an interaction (right after a student first completes it). Each has one to four panels, set `at` one of the mission's places or continuing the panel before; each panel is a story scene of its own (`cut_<key>_<n>`), the last one bringing the student back (beside the interaction, spawn `after-<key>`). Once per student (`seen_cut_<key>`).
+
+The 20-second rule: an insert stays at most 20 seconds whatever is asked; a close-up's script must fit in about 20 seconds (the validator asks for the rest to continue in another panel); and while any story scene plays, `StoryStaging` lets the camera drift slightly whenever nothing has moved for about 14 seconds. The designer is given storytelling devices to choose from: establish then go close, the reveal, before and after, the insert, flashback and imagination, dramatic irony, rising tension, cross-cutting, the cliffhanger.
 
 ## Weather, water and vehicles
 

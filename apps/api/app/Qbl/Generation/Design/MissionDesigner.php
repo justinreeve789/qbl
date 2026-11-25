@@ -2,6 +2,8 @@
 
 namespace App\Qbl\Generation\Design;
 
+use App\Qbl\Generation\Art\LibraryCritters;
+
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\Llm\LanguageModel;
 use Random\Randomizer;
@@ -347,13 +349,25 @@ class MissionDesigner
           down). Big tense moments (someone fallen, trapped or swept away, whom students save by gathering what
           is around and building something with what they learn) are rare: only when the brief's pace allows
           one, and never more than one. Exciting, never frightening: nobody is hurt, and help is always close.
+        - Cutscenes (cutscenes, optional, at most two, short): where the story turns, the student can be
+          taken to a page that plays by itself, told in panels like a comic, then brought back. The opening
+          hook (when intro: under about 20 seconds, students must be playing within a minute or two) or the
+          payoff after a big discovery (when: that interaction). Frame them as a storyteller would: a wide
+          panel of the place, then a close-up as the truth dawns; the same panel again with one thing changed
+          (continues + changes: the vault door now open); an insert of the clue in someone's hand (show); a
+          memory (show, tone memory); a camera push in for tension. Never more than about 20 seconds on one
+          still picture. Most missions need none: tell the story through what students find and do.
         - Make the scenes feel alive, and a little funny, from what this place would really have moving in it.
           Read the setting and the story: a camp at night has a campfire and lanterns, maybe fireflies; a crashed
           ship has beacons still blinking inside and out; a cave has glowing crystals; an autumn wood has falling
           leaves; a mission that ends at the close of day can have its sun set while students work. Give most
           outdoor scenes a living sky at a time that suits the story, with clouds unless it is clear or night.
           Keep it subtle: a few lights where there would be lights, not everywhere. In most scenes add one or two
-          ambient creatures. Add one
+          ambient creatures, and use a ready-made one from the asset library (ambient library) whenever one fits
+          the place: a bluebird or two that land (lands, count 2-3), a squirrel that runs up a tree (climbs: then
+          the background must show a tree standing out on the floor), a cat strolling by, a car or a horse and
+          cart driving by. Draw one only when nothing in the library fits (a rabbit that hides in the bushes:
+          motion hides, and the background must show two or more bushes standing out on the floor). Add one
           or two extra characters who are not needed for the plot but give the place depth: a busker, a bored
           guard, a gossiping neighbour, a chef muttering about soup; give them chatter and an optional talk with
           a joke or a bit of local colour (not in a required step). Let some characters walk about (walks). Add a
@@ -897,6 +911,10 @@ class MissionDesigner
             if (isset($a['sound']) && ! in_array($a['sound'], BlueprintSchema::SOUNDS, true)) {
                 unset($s['ambient'][$i]['sound']);
             }
+            // A library animal that cannot do what was asked is drawn instead.
+            if (isset($a['library']) && ! in_array($a['motion'] ?? '', LibraryCritters::CATALOGUE[$a['library']][1] ?? [], true)) {
+                unset($s['ambient'][$i]['library']);
+            }
             if (isset($a['cue']) && ! $a['cue']) {
                 unset($s['ambient'][$i]['cue']);
             }
@@ -936,6 +954,30 @@ class MissionDesigner
           footsteps, a magic chime...).
         - Each scene plays its script, then the story moves on to the next scene by itself. After the last
           one comes "The End" and a few questions for the class to talk about.
+        - Scenes are framed like the panels of a comic or the shots of a film: a wide shot (the whole place)
+          or a close-up (shot close: the characters twice as big, for a face, a reaction, hands doing
+          something). A scene can continue an earlier one (continues): the same place from the same view a
+          moment later, everything where it was unless its changes say what is different in the picture (the
+          raven now perches on the bookshelf; the candle has burned low) or its script moves people. A picture
+          can be shown full-screen for a moment (show: an insert, with narration over it, the camera moving
+          slowly across it, tinted as a memory or a dream), and the view can push in on someone or pull back
+          (camera).
+
+        Storytelling devices to use with them (choose what serves this story, two or three at most):
+        - Establish, then go close: open a place wide, then a close-up on whoever feels most.
+        - The reveal: the same panel again with one thing changed (continues + changes), a beat of silence
+          (wait), then the reaction in a close-up.
+        - Before and after, time passing: continue a scene with the season, the light or the room changed
+          (a title like "Ten years later..." sparingly).
+        - The insert: show the clue, the letter, the tiny detail in someone's hand, so students notice it.
+        - Flashback and imagination: show with tone memory or dream, while the narrator speaks.
+        - Dramatic irony: show students something a character cannot see (the storm gathering behind them).
+        - Rising tension: shorter beats, a camera push_in, a sound (thunder, a knock), a wait.
+        - Cross-cutting: alternate short scenes in two places to show things happening at the same time.
+        - A cliffhanger at the end of a scene, answered in the next.
+        Never leave one still picture up for more than about 20 seconds: a close-up's whole script fits in
+        about 20 seconds (carry on in a panel that continues it), and an insert stays at most 20 seconds,
+        with only a sentence or two read over it.
 
         How to write it:
         - Show, don't only tell. Each scene is acted out: characters come and go, react, talk to each
@@ -1036,7 +1078,8 @@ class MissionDesigner
                     continue;
                 }
                 $beat = array_filter($beat, fn ($v) => $v !== '' && $v !== null && $v !== []);
-                foreach (['x' => [0.08, 0.92], 'seconds' => [0.5, 6]] as $k => [$lo, $hi]) {
+                // A picture insert may stay up to 20 seconds; a pause, 6.
+                foreach (['x' => [0.08, 0.92], 'seconds' => [0.5, in_array($beat['do'], ['show', 'camera'], true) ? 20 : 6]] as $k => [$lo, $hi]) {
                     if (isset($beat[$k]) && is_numeric($beat[$k])) {
                         $beat[$k] = max($lo, min($hi, (float) $beat[$k]));
                     }

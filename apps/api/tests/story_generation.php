@@ -316,7 +316,7 @@ same(count($pass), 1, 'the truck has a pass of its own');
 same(array_values(array_filter($pass[0]['actions'], fn ($a) => $a['type'] === 'audio'))[0]['sound'] ?? null, 'car', 'and sounds like a car');
 check(! array_filter($doc['scenes'][2]['start_events'], fn ($e) => $e['shortname'] === 'ambient-truck'), 'and does not come by on its own');
 check((bool) array_filter($a2, fn ($a) => $a['type'] === 'run_event' && $a['target_event_id'] === $pass[0]['id']), 'the script sends it by');
-check((bool) array_filter($doc['scenes'][0]['start_events'], fn ($e) => $e['shortname'] === 'ambient-wren'), 'the wren comes and goes by itself');
+same(array_column($doc['scenes'][0]['critters'] ?? [], 'behavior', 'name'), ['wren' => 'lands'], 'the wren comes and goes by itself, as a critter');
 // The end.
 $types = array_column($a2, 'type');
 same(array_slice($types, -4), ['text_overlay', 'variable', 'award', 'infobox'], 'the last scene ends: The End, done, an award, and things to talk about');

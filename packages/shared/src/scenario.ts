@@ -218,6 +218,7 @@ export function collectSceneMediaIds(scenario: Scenario, scene: Scene): Id[] {
   });
   const items = new Map((scenario.items ?? []).map((i) => [i.id, i]));
   for (const p of scene.items ?? []) add(items.get(p.item_id)?.media_id);
+  for (const c of scene.critters ?? []) add(c.media_id);
   const chars = new Map((scenario.characters ?? []).map((c) => [c.id, c]));
   for (const p of scene.characters ?? []) {
     const c = chars.get(p.character_id);

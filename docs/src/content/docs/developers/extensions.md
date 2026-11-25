@@ -83,6 +83,7 @@ shadow_spots | array | | Patches of shade. See [Shadow spots](#shadow-spots).
 sky | object | | A living sky behind the backgrounds. See [Living skies, lights and the air](#living-skies-lights-and-the-air).
 lights | array | | Glows that flicker, burn, breathe, blink or twinkle. See the same section.
 atmosphere | array | | What is in the air: fireflies, leaves, snow, rain, dust, bubbles. See the same section.
+critters | array | | Birds, squirrels, rabbits, cats, cars: little life that comes and goes, and scatters. See [Critters](#critters).
 team_only | bool | the group's | Show a player only their own team in this scene. See [Teams in a scene](#teams-in-a-scene).
 params.editor_map | `{x, y}` | | Where the scene's box sits on the editor's scene map (Scenes page › Map), in map pixels. The editor writes it; the game ignores it. A scene without one is placed by the map itself.
 
@@ -588,8 +589,38 @@ target | string | | `character`: follow a character placed in the scene as they 
 character_id | int | | For `character`.
 position_x, position_y | int | | For `point`: the middle of the view, kept inside the scene.
 duration | int | 1200 | Milliseconds the glide takes; with `blocking`, the next action waits for it.
+zoom | number | as it is | How close the view is, glided to over `duration`: 1 is the scene's usual view, 1.6 a push in on someone's face, up to 3 (0.5 at the least; never so far out that the scene stops filling the window).
 
-It lasts until another camera action, or the scene ends.
+It lasts until another camera action, or the scene ends. A story builder uses it for push-ins, pull-backs and pans, and lets the view drift slightly (zoom 1.12 and back) whenever nothing has moved on screen for a while.
+
+### Story panels
+
+An `image_overlay` with `panel: true` is shown like a page of a comic or a shot in a film: the picture fills the play area over a dark backdrop (under the captions, so narration reads over it), fades in and out, and a click moves on.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+panel | bool | false | Show it as a story panel.
+duration | int | | Milliseconds it stays. Keep it to 20 seconds at most: the validator warns above that (a still picture gets dull), and when it has none.
+motion | string | `still` | How the camera moves over it, slowly, over its duration: `push_in`, `pull_out`, `pan_left`, `pan_right`. Off with reduced motion.
+tone | string | | `memory` (warm, faded, a dark vignette: a flashback) or `dream` (hazy and bright).
+
+### Critters
+
+`scene.critters`: a little life that has nothing to do with the lesson. Each player sees their own (they are not shared through the room), now and then: `CritterSystem` in the client. A shy critter scatters early when anyone comes near (the player, another player or a character): birds take off, a squirrel bolts for its tree, a rabbit dives into the nearest bush. There are none with reduced motion.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+media_id | int | | Its picture: a sprite sheet whose named animations it plays (a single picture works too, and still hops).
+behavior | string | | `lands` (flies in, lands on a spot, pecks and hops, flies off), `climbs` (scampers about, then runs up a tree out of sight), `hides` (pops out of one hiding place, sits, hops into another), `walks_by`, `flies_by`, `swims_by`, `drives_by`.
+spots | array | | `{x, y, top?}` in scene pixels: where it lands; the bottoms of the trees it climbs (`top`: how high); the bases of the bushes it hides in (it is drawn just behind the base, so behind the bush's sort line: it seems to go in). Also the depth a walker or vehicle crosses at.
+animations | object | | Which sheet animation plays for `idle`, `walk`, `run`, `fly`, `take_off`, `land`, `peck`, `hop`, `climb`, when the names differ. A missing one falls back (run → walk, peck → idle...).
+scale | number | 1 | Its size, before the scene's depth.
+faces | string | `right` | Which way its picture faces.
+every | [min, max] | [12, 28] | Seconds between visits.
+shy | int | 170 | How near (pixels; counted double in depth) anyone may come before it scatters. 0: never.
+count | int | 1 | How many come together (a flock), at most 6.
+speed | number | by behavior | Pixels per second.
+sound | string | | One of [the game's own sounds](#the-games-own-sounds), as it comes.
 
 ### The game's own sounds
 
