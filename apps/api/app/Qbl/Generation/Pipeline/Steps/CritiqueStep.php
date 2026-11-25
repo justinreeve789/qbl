@@ -61,7 +61,7 @@ final class CritiqueStep extends Step
         for ($round = 1; $round <= $rounds; $round++) {
             $run->progress->fraction(1, "A teacher's review of the mission (round $round of $rounds)");
             // 1. Review: scores, strengths, problems, and changes in the designer's change format.
-            $review = $critic->review($blueprint, $run->prompt, $run->alignment, $run->options);
+            $review = $critic->review($blueprint, $run->prompt, $run->alignment, $run->designOptions());
             $run->say(sprintf('Critic, round %d: %.1f/10 (%s)', $round, $review['score'], implode(', ', array_map(fn ($k, $v) => "$k $v", array_keys($review['scores']), $review['scores']))));
             foreach (array_slice($review['problems'], 0, 3) as $p) {
                 $run->say("  - $p");
@@ -78,7 +78,8 @@ final class CritiqueStep extends Step
 
             // 3. Apply its changes to a copy, tidy it as the designer would, and check it still builds and plays.
             [$changed, $failed] = MissionDesigner::applyChanges($blueprint, $review['changes']);
-            $candidate = isset($blueprint['pace']) ? ['pace' => $blueprint['pace']] + MissionDesigner::tidy($changed) : MissionDesigner::tidy($changed);
+            // What the designer decided (pace) and the teacher chose (approach) stay as they were.
+            $candidate = array_intersect_key($blueprint, ['pace' => 1, 'approach' => 1]) + MissionDesigner::tidy($changed);
             try {
                 $problems = BlueprintValidator::errors($candidate, $run->objectiveIds());
             } catch (\TypeError|\ErrorException|\ValueError $e) {

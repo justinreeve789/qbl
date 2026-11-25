@@ -4,6 +4,7 @@ namespace App\Qbl\Generation\Pipeline;
 
 use App\Qbl\Generation\Art\AssetDirector;
 use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Design\DesignRules;
 use App\Qbl\Generation\GenerationEvents;
 use App\Qbl\Generation\GenerationProgress;
 use App\Qbl\Generation\GenerationRuns;
@@ -185,15 +186,19 @@ final class GenerationRun
         $this->warnings[] = $warning;
     }
 
-    /** What the designer is given: the run's options, with any notes earlier steps added. */
+    /**
+     * What the designer is given: the run's options, with any notes earlier steps added, and the design
+     * approach settings the teacher left as "Choose for me" as the aligner chose them.
+     */
     public function designOptions(): array
     {
+        $options = $this->options + DesignRules::chosen($this->alignment['approach'] ?? []);
         if (! $this->designNotes) {
-            return $this->options;
+            return $options;
         }
         $notes = trim(implode("\n\n", array_filter([$this->options['notes'] ?? null, ...$this->designNotes])));
 
-        return ['notes' => $notes] + $this->options;
+        return ['notes' => $notes] + $options;
     }
 
     public function isStory(): bool

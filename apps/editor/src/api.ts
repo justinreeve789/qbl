@@ -303,6 +303,10 @@ export interface GenerationOptions {
   grade?: string; subject?: string; min_players?: number; max_players?: number; minutes?: number; notes?: string;
   /** A mission students play, or a story they watch play out; absent: as the description reads. */
   format?: 'mission' | 'story';
+  /** The design rules' tensions (DesignRules::SETTINGS on the server); absent: "Choose for me" (chosen while aligning). */
+  opening?: 'action' | 'balanced' | 'story';
+  focus?: 'play' | 'balanced' | 'rigor';
+  freedom?: 'guided' | 'balanced' | 'open';
 }
 export interface Generation {
   id: number;
@@ -315,6 +319,11 @@ export interface Generation {
   title: string | null;
   scenario_id: number | null;
   options: GenerationOptions;
+  /**
+   * How the mission leans on the design rules, once it is aligned: the teacher's choices, and what was
+   * chosen where they left "Choose for me" (absent from `options`). Null before then. Stories: focus only.
+   */
+  approach?: Pick<GenerationOptions, 'opening' | 'focus' | 'freedom'> | null;
   error: string | null;
   progress: GenerationProgress;
   created_at: string;

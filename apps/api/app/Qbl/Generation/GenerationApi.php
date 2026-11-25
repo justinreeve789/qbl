@@ -4,6 +4,7 @@ namespace App\Qbl\Generation;
 
 use App\Qbl\Billing\Credits;
 use App\Qbl\Billing\Entitlements;
+use App\Qbl\Generation\Design\DesignRules;
 use App\Qbl\StoreError;
 use PDO;
 use Throwable;
@@ -19,7 +20,7 @@ use Throwable;
  * subscription, an organization's license, an administrator, or billing switched off).
  *
  *   GET   editor/generations              my generations, newest first, what one costs, my plan and credits
- *   POST  editor/generations              {prompt, grade?, subject?, min_players?, max_players?, minutes?, notes?, format?} -> 202
+ *   POST  editor/generations              {prompt, grade?, subject?, min_players?, max_players?, minutes?, notes?, format?, opening?, focus?, freedom?} -> 202
  *   GET   editor/generations/active       the one being made now (or null): what the editor's progress chip asks
  *   GET   editor/generations/all          administrators: everyone's latest, with who asked and what each spent
  *   GET   editor/generations/{id}         one generation: its status and progress, and the scenario once it is done
@@ -280,7 +281,8 @@ class GenerationApi
             'notes' => $text('notes', 1000),
             // A mission to play or a story to watch; absent: as the request reads.
             'format' => in_array($body['format'] ?? null, ['mission', 'story'], true) ? $body['format'] : null,
-        ], fn ($v) => $v !== null);
+            // How the design rules' tensions lean (opening, focus, freedom); absent: chosen for the request while aligning.
+        ] + DesignRules::chosen($body), fn ($v) => $v !== null);
     }
 
     private function mine(int $me, bool $admin): array
@@ -321,9 +323,28 @@ class GenerationApi
             'id' => (int) $run['id'], 'prompt' => $run['prompt'], 'status' => $run['status'], 'busy' => $busy,
             'cancelling' => $busy && ! empty($run['cancelled_at']),
             'title' => $run['blueprint']['title'] ?? null, 'scenario_id' => $run['scenario_id'] === null ? null : (int) $run['scenario_id'],
-            'options' => (array) $run['options'], 'error' => $run['error'] ?? null, 'progress' => $progress,
+            'options' => (array) $run['options'], 'approach' => self::approach($run), 'error' => $run['error'] ?? null, 'progress' => $progress,
             'created_at' => self::iso($run['created_at']), 'updated_at' => self::iso($run['updated_at']),
         ] + ($admin ? ['usd' => $usd] : []);
+    }
+
+    /**
+     * How the mission leans on the design rules (DesignRules), once it is aligned: the teacher's choices,
+     * and what was chosen for them where they left "Choose for me". Null before then. A story has only
+     * the settings that apply to stories.
+     */
+    private static function approach(array $run): ?array
+    {
+        if (empty($run['alignment'])) {
+            return null;
+        }
+        $options = (array) $run['options'];
+        $approach = (array) ($run['blueprint']['approach'] ?? null) ?: DesignRules::approach($options, (array) ($run['alignment']['approach'] ?? []));
+        if (($options['format'] ?? null) === 'story') {
+            $approach = array_intersect_key($approach, array_filter(DesignRules::SETTINGS, fn ($s) => $s['stories']));
+        }
+
+        return $approach;
     }
 
     private function column(string $sql, array $args): mixed

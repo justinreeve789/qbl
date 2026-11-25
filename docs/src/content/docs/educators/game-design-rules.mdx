@@ -146,6 +146,27 @@ Run this list before you launch. Add it to the one in <em>Designing missions tha
 - [ ] I have checked the values in my design.
 - [ ] Real, varied students have played it.
 
+## In the AI generator
+
+The [AI mission generator](/docs/editor/plans-and-generator/#the-ai-mission-generator) follows these rules for you:
+
+- **Its designer** gets the rules with its instructions. A story students watch gets the ones that fit a story: the lesson in the world, accuracy, a varied cast and a closing discussion.
+- **Before anything is drawn**, it checks the rules a program can count: something to click in the first scene from the start, an opening that is not too long, and at least one optional bonus step. A mission that breaks one goes back to be fixed.
+- **Its reviewer** (in the `critic` and `best-of` [generation methods](/docs/developers/generation-methods/)) checks the mission against the whole list and names any rule it breaks.
+- **Teamwork without roles.** Every player can do anything the others can; if you want crew roles, hand them out in class. To make teammates need each other (rule 15), it spreads clues, things to collect and measurements across scenes, so the group has to pool what it finds, and adds team tasks where they fit.
+
+Checking the science with someone who knows the subject, checking the values and playtesting with real students are still yours: a generated mission is a draft for you to look over.
+
+### Where the rules pull two ways
+
+Some rules pull against each other. Under **Design approach (optional)** on the Generate page you can choose which way a mission leans (`--opening`, `--focus` and `--freedom` on the command line). Each starts at **Choose for me**: while it matches the mission to standards, the generator picks what suits your description, grade and subject. It picks the middle choice unless your description points another way (a story to set the scene, a lab practical for older students). A setting you choose always wins. A generated mission's card shows how it leans, marking what was chosen for you.
+
+Tension | Setting | Choices
+------- | ------- | -------
+**A fast start, or the story?** Long openings lose players, but a good story pulls them in. | **How it starts** | **Straight into the action** (at most two opening lines). **Action first, story through discoveries** (at most four). **Story first** (still playing within two minutes). Missions only.
+**Rigor, or engagement?** A fast hook keeps students; accurate systems and real practice teach them. | **Rigor or play** | **Lighter and playful** (still accurate). **Quick hook, rigorous middle.** **Rigorous, like a practitioner**, from the start. Missions and stories.
+**Teacher control, or student choice?** Students steer play their own way whatever we plan. | **Student freedom** | **Guided, one path**, each step opening the next. **Some choice of order** inside a clear goal. **Open to explore**: most of it in any order, more to discover. Missions only.
+
 ## Where these rules come from
 
 The rules draw on research and writing about educational games and simulations by Clark Aldrich (simulations and virtual worlds), Jane McGonigal (what makes games motivating), James Paul Gee (learning principles in good games), Karl Kapp (building the content itself into the game), Kurt Squire (games as designed experiences in classrooms), Constance Steinkuehler (learning in online game communities), David Williamson Shaffer (learning to think like a professional), Ian Bogost (how a game's rules make an argument) and Mary Flanagan (human values in design).
