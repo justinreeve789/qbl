@@ -4,6 +4,7 @@ namespace App\Qbl\Generation\Art;
 
 use App\Qbl\Generation\Design\BlueprintSchema;
 use App\Qbl\Generation\Design\Connections;
+use App\Qbl\Generation\Design\Cutscenes;
 use App\Qbl\Generation\Design\Sizes;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\Spend;
@@ -133,6 +134,8 @@ class AssetDirector
         private ?CharacterAnimator $animator = null,
         /** When the animator refuses: "draw" the strips instead, or "puppet" (a walk made from the standing picture, built-in gestures). */
         private string $animatorFallback = 'draw',
+        /** Ready-made animals and vehicles for a scene's little life (ambient library); null: every creature is drawn. */
+        private ?LibraryCritters $library = null,
     ) {
         $this->log = $log;
         $this->pictures += ['portraits' => 'crop', 'idle_frames' => false, 'prop_sheets' => true, 'scale_guide' => true];
@@ -181,7 +184,7 @@ class AssetDirector
         }
         $afterThings = $done;
         // Small things, several to a picture where it can: items, the tables and rocks they stand on, the marker.
-        $things = self::things($b);
+        $things = self::things($b, library: $this->library);
         $sheets = $this->pictures['prop_sheets'] && count($things) > 1;
         $afterThings += $sheets ? (int) ceil(count($things) / self::SHEET_MAX) : count($things);
         if ($sheets) {
@@ -214,14 +217,23 @@ class AssetDirector
         // The doors, holes and ladders that lead between scenes.
         foreach (Connections::ends($b) as $scene => $ends) {
             foreach ($ends as $end) {
-                if ($end['via'] !== 'edge') {
+                // Doors, ladders and stairs up are painted into the background (painted()); only openings in the floor are drawn.
+                if ($end['via'] !== 'edge' && Connections::inFloor($end['via'])) {
                     $tick(sprintf('Drawing the %s to %s', str_replace('_', ' ', $end['via']), $titles[$end['to']] ?? $end['to']));
                     $assets["passage:$scene:{$end['to']}"] = $this->passage($end, $accents);
                     $done++;
                 }
             }
         }
+        $byKey = array_column($b['scenes'], null, 'key');
         foreach (array_values($b['scenes']) as $i => $scene) {
+            // A story's panel that continues an earlier one: the same picture, or redrawn from it.
+            $base = isset($scene['continues']) ? ($byKey[$scene['continues']] ?? null) : null;
+            if ($this->panel($scene, $base, $assets, $layouts, $setting, $accents, $b, $tick, sprintf('Painting %s (scene %d of %d)', $scene['title'] ?? $scene['key'], $i + 1, count($b['scenes'])))) {
+                $done++;
+
+                continue;
+            }
             $tick(sprintf('Painting %s (scene %d of %d)', $scene['title'] ?? $scene['key'], $i + 1, count($b['scenes'])));
             $assets["bg:{$scene['key']}"] = $this->background($scene, $layouts[$scene['key']] ?? [], $setting, $accents, $b['art_direction']['time_of_day'] ?? null);
             // Where its water was cut out, for the game to draw the water there (also for a background drawn before).
@@ -240,6 +252,22 @@ class AssetDirector
                 $done++;
             }
         }
+        // A mission's cutscene panels: a place's own picture again, a close-up of it, or the panel before with changes.
+        $rows = $byKey;
+        foreach (Cutscenes::panels($b) as $panel) {
+            $base = $rows[$panel['base']] ?? null;
+            $this->panel($panel, $base, $assets, $layouts, $setting, $accents, $b, $tick, sprintf('Painting a cutscene: %s', $panel['title']), force: true);
+            if ($base && Cutscenes::pictureOf($panel, $base) !== 'same') {
+                $done++;
+            }
+            $rows[$panel['key']] = $panel;
+        }
+        // Pictures shown full-screen in cutscenes and stories (show beats): an illustration each.
+        foreach (Cutscenes::inserts(($b['format'] ?? 'mission') === 'story' ? $b['scenes'] : Cutscenes::panels($b)) as $key => $insert) {
+            $tick('Drawing a picture for the story: '.mb_substr($insert['picture'], 0, 60));
+            $assets[$key] = $this->insert($key, $insert, $setting, $accents);
+            $done++;
+        }
         // Clouds to drift across the living skies: one picture for the whole mission.
         if (self::cloudy($b)) {
             $tick('Drawing the clouds');
@@ -249,6 +277,12 @@ class AssetDirector
         // Creatures that bring scenes to life: their poses, drawn with the props, made into a little sprite sheet each.
         foreach ($b['scenes'] as $scene) {
             foreach ($scene['ambient'] ?? [] as $a) {
+                // Ready-made: the library's own animated sheet, scaled to its size here.
+                if (! empty($a['library']) && ($ready = $this->library?->asset($a['library'], (int) ($a['size_cm'] ?? 0) ?: null))) {
+                    $assets["ambient:{$scene['key']}:{$a['key']}"] = $ready['asset'] + ['critter' => ['scale' => $ready['scale'], 'animations' => $ready['animations'], 'faces' => $ready['faces']]];
+
+                    continue;
+                }
                 $poses = [];
                 foreach (self::ambientPoses($a) as $pose => $_) {
                     $poses[$pose] = $assets["ambient:{$scene['key']}:{$a['key']}:$pose"] ?? null;
@@ -278,7 +312,7 @@ class AssetDirector
      *
      * @return array<string, array>
      */
-    public static function things(array $b, string $marker = ''): array
+    public static function things(array $b, string $marker = '', ?LibraryCritters $library = null): array
     {
         $scenes = array_column($b['scenes'], null, 'key');
         $items = array_column($b['items'], null, 'key');
@@ -286,7 +320,7 @@ class AssetDirector
         // Items hung on a wall are drawn as wall-mounted things.
         $mounted = [];
         foreach ($b['interactions'] as $it) {
-            if (! empty($it['item']) && isset($items[$it['item']], $scenes[$it['scene']]) && self::placementOf($it, $items[$it['item']], $scenes[$it['scene']]) === 'wall') {
+            if (! empty($it['item']) && isset($items[$it['item']], $scenes[$it['scene']]) && self::placementOf($it, $items[$it['item']], $scenes[$it['scene']]) === 'wall' && ! self::paintedOnWall($it)) {
                 $mounted[$it['item']] = true;
             }
         }
@@ -307,6 +341,9 @@ class AssetDirector
         // Ambient creatures: each pose a thing of its own, put together into a sprite sheet once drawn.
         foreach ($b['scenes'] as $scene) {
             foreach ($scene['ambient'] ?? [] as $a) {
+                if (! empty($a['library']) && $library?->asset($a['library'])) {
+                    continue; // ready-made in the asset library: nothing to draw
+                }
                 $px = Sizes::pixels((int) max(5, min(($a['motion'] ?? '') === 'drives_by' ? 900 : 150, (int) ($a['size_cm'] ?? 25))));
                 foreach (self::ambientPoses($a) as $pose => $how) {
                     $key = "ambient:{$scene['key']}:{$a['key']}:$pose";
@@ -318,6 +355,9 @@ class AssetDirector
         // game's glow can be put where their light is.
         foreach ($b['scenes'] as $scene) {
             foreach (array_values($scene['lights'] ?? []) as $i => $l) {
+                if (($l['placement'] ?? null) === 'wall') {
+                    continue; // painted on the wall (see painted()): only its glow is added
+                }
                 $kind = BlueprintSchema::LIGHTS[$l['kind']] ?? BlueprintSchema::LIGHTS['lantern'];
                 $out["light:{$scene['key']}:$i"] = [
                     'key' => 'light:'.substr(md5($l['kind'].'|'.$l['look']), 0, 12), 'asset' => "light:{$scene['key']}:$i", 'kind' => 'item',
@@ -383,7 +423,7 @@ class AssetDirector
                 $add('portrait');
             }
         }
-        $things = self::things($b);
+        $things = self::things($b, library: $this->library);
         if ($this->pictures['prop_sheets'] && count($things) > 1) {
             $add('sheet', (int) ceil(count($things) / self::SHEET_MAX));
         } else {
@@ -391,12 +431,23 @@ class AssetDirector
         }
         foreach (Connections::ends($b) as $ends) {
             foreach ($ends as $end) {
-                if ($end['via'] !== 'edge') {
-                    $add(Connections::inFloor($end['via']) ? 'opening' : 'passage');
+                // Doors and ladders are painted into the backgrounds: only openings in the floor are drawn.
+                if ($end['via'] !== 'edge' && Connections::inFloor($end['via'])) {
+                    $add('opening');
                 }
             }
         }
-        $add('background', count($b['scenes']));
+        // Backgrounds: each scene's, but a panel that is an earlier picture again costs nothing; inserts are drawn too.
+        $byKey = array_column($b['scenes'], null, 'key');
+        $add('background', count(array_filter($b['scenes'], fn ($sc) => ! isset($sc['continues'], $byKey[$sc['continues']]) || Cutscenes::pictureOf($sc, $byKey[$sc['continues']]) !== 'same')));
+        $rows = $byKey;
+        foreach (Cutscenes::panels($b) as $panel) {
+            if (isset($rows[$panel['base']]) && Cutscenes::pictureOf($panel, $rows[$panel['base']]) !== 'same') {
+                $add('background');
+            }
+            $rows[$panel['key']] = $panel;
+        }
+        $add('background', count(Cutscenes::inserts(($b['format'] ?? 'mission') === 'story' ? $b['scenes'] : Cutscenes::panels($b))));
         if (self::cloudy($b)) {
             $add('clouds');
         }
@@ -445,6 +496,65 @@ class AssetDirector
         }
 
         return Sizes::placement($item, $it['placement'] ?? null, $scene);
+    }
+
+    /**
+     * Whether an interaction's thing on a wall is painted into the background (with an invisible hotspot
+     * over it) rather than hung there as a picture of its own: always, unless it is taken away (collected),
+     * when it must be able to disappear. A map, a gauge, a switch, a fireplace stay part of the wall.
+     */
+    public static function paintedOnWall(array $it): bool
+    {
+        return ($it['type'] ?? '') !== 'collect';
+    }
+
+    /**
+     * What is painted into each scene's background rather than stood in it as a thing of its own, for
+     * the surveyor to find (SceneSurveyor) and the builder to put hotspots and glows over: the doors,
+     * gates, caves, ladders and stairs that lead on (only holes, hatches and stairs down, which lie in the
+     * floor, are drawn apart); things on the walls; lights hung on walls; and what students look at
+     * where there is no object (an interaction's look, a scene's details).
+     *
+     * @return array<string, list<array{id: string, what: string, x: float}>> by scene key
+     */
+    public static function painted(array $b): array
+    {
+        $scenes = array_column($b['scenes'], null, 'key');
+        $items = array_column($b['items'] ?? [], null, 'key');
+        $out = [];
+        foreach (Connections::ends($b) as $key => $ends) {
+            foreach ($ends as $end) {
+                if ($end['via'] !== 'edge' && ! Connections::inFloor($end['via'])) {
+                    $out[$key][] = ['id' => "way:{$end['to']}", 'what' => str_replace('_', ' ', $end['via']).': '.($end['look'] ?? 'a way through'), 'x' => (float) $end['x']];
+                }
+            }
+        }
+        foreach ($b['interactions'] ?? [] as $it) {
+            $scene = $scenes[$it['scene'] ?? ''] ?? null;
+            if (! $scene || ! isset($it['key']) || ! empty($it['at_report']) || ($it['type'] ?? '') === 'talk') {
+                continue;
+            }
+            $item = isset($it['item']) ? ($items[$it['item']] ?? null) : null;
+            if ($item && self::placementOf($it, $item, $scene) === 'wall' && self::paintedOnWall($it)) {
+                $out[$scene['key']][] = ['id' => "thing:{$it['key']}", 'what' => "{$item['name']}: {$item['appearance']}", 'x' => (float) ($it['x'] ?? 0.5)];
+            } elseif (! $item && ! empty($it['look']) && empty($it['character'])) {
+                $out[$scene['key']][] = ['id' => "thing:{$it['key']}", 'what' => $it['look'], 'x' => (float) ($it['x'] ?? 0.5)];
+            }
+        }
+        foreach ($b['scenes'] as $scene) {
+            foreach (array_values($scene['details'] ?? []) as $i => $d) {
+                if (! empty($d['look'])) {
+                    $out[$scene['key']][] = ['id' => "detail:$i", 'what' => $d['look'], 'x' => (float) ($d['x'] ?? 0.5)];
+                }
+            }
+            foreach (array_values($scene['lights'] ?? []) as $i => $l) {
+                if (($l['placement'] ?? null) === 'wall') {
+                    $out[$scene['key']][] = ['id' => "light:$i", 'what' => "the glowing part of {$l['look']}", 'x' => (float) $l['x']];
+                }
+            }
+        }
+
+        return $out;
     }
 
     /** Which surfaces small things need: "indoor" (a table), "outdoor" (a flat rock). */
@@ -961,6 +1071,73 @@ class AssetDirector
     // ================================================================== backgrounds
 
     /**
+     * A panel's picture, when it is made from another (Cutscenes::pictureOf): the base's own picture
+     * again ("same": nothing drawn; its far view, foreground and survey go with it), or redrawn from it
+     * ("edit": the same view with changes; "closer": a close-up of the place). With $force a panel set
+     * straight in a place (a mission's cutscene) is that place's picture. Returns whether it was handled
+     * (false: draw it as any background).
+     */
+    private function panel(array $scene, ?array $base, array &$assets, array $layouts, string $setting, array $accents, array $b, callable $tick, string $say, bool $force = false): bool
+    {
+        if (! $base || ! isset($assets["bg:{$base['key']}"])) {
+            return false;
+        }
+        $key = $scene['key'];
+        $mode = Cutscenes::pictureOf($scene, $base);
+        if ($mode === 'same') {
+            foreach (['bg', 'far', 'fg', 'survey'] as $part) {
+                if (isset($assets["$part:{$base['key']}"])) {
+                    $assets["$part:$key"] = $assets["$part:{$base['key']}"];
+                }
+            }
+            foreach ($assets as $k => $a) {
+                if (str_starts_with($k, "cutout:{$base['key']}:")) {
+                    $assets["cutout:$key:".substr($k, strlen("cutout:{$base['key']}:"))] = $a;
+                }
+            }
+
+            return true;
+        }
+        if ($mode === 'new' && ! $force) {
+            return false;
+        }
+        $tick($say);
+        $from = (string) file_get_contents($assets["bg:{$base['key']}"]['path']);
+        $assets["bg:$key"] = $this->background($scene, $layouts[$base['key']] ?? [], $setting, $accents, $b['art_direction']['time_of_day'] ?? null, [
+            'picture' => new Reference($from, $mode === 'edit' ? 'the earlier panel: draw exactly this picture again, with only the changes asked for' : 'the place to show in close-up', str_ends_with($assets["bg:{$base['key']}"]['path'], '.jpg') ? 'image/jpeg' : 'image/png'),
+            'mode' => $mode, 'changes' => $scene['changes'] ?? null,
+        ]);
+        // The far view behind is the same; so is what stands in front, when the view is.
+        foreach ($mode === 'edit' ? ['far', 'fg'] : ['far'] as $part) {
+            if (isset($assets["$part:{$base['key']}"])) {
+                $assets["$part:$key"] = $assets["$part:{$base['key']}"];
+            }
+        }
+        if (($water = Sizes::water($scene)) && is_file($assets["bg:$key"]['path'] ?? '')) {
+            $assets["bg:$key"]['water'] = self::waterHole(ImageTools::load((string) file_get_contents($assets["bg:$key"]['path'])), $water);
+        }
+
+        return true;
+    }
+
+    /** A picture shown full-screen in a story or a cutscene (a show beat): one illustration, in the house style. */
+    private function insert(string $key, array $insert, string $setting, array $accents): array
+    {
+        if (($cache = $this->cached($key)) && ! empty($cache['asset'])) {
+            return $cache['asset'];
+        }
+        $notes = ['A single illustration that fills the frame edge to edge, like a panel of a picture book: no borders, no frames, no text, speech bubbles or captions'];
+        if (($insert['tone'] ?? null) === 'memory') {
+            $notes[] = 'It is a memory of long ago: soft warm light';
+        }
+        $subject = ($setting ? "$setting. " : '').$insert['picture'];
+
+        return $this->attempts($key, 'background', $subject, '16:9', $this->style->anchorsFor('background'), [], $accents, $notes, ['kind' => 'background', 'label' => 'insert', 'ground_line' => 0.75], function (string $raw) {
+            return [ImageTools::cover(ImageTools::load($raw), 1600, 900), null];
+        }, jpeg: true);
+    }
+
+    /**
      * How a scene's background is drawn and cut to size: the aspect asked for, the size it comes back at
      * once scaled to the scene's width, and how much of its top is cut off (wide scenes keep their
      * bottom: the floor and the scenery, not the sky). [aspect, drawn width, drawn height, top cut].
@@ -982,16 +1159,22 @@ class AssetDirector
         [, , $drawnH, $cut] = self::frame($scene);
         $ground = (int) round(Sizes::SCENE_HEIGHT * (float) $scene['ground_line']);
         $pct = fn (float $px) => (int) round(100 * $px / $drawnH);
-        $child = Sizes::PERSON_PX;
+        // A close-up: everything twice as big, as if the camera were near the people.
+        $child = Sizes::PERSON_PX * (($scene['shot'] ?? 'wide') === 'close' ? Cutscenes::CLOSE : 1);
 
         return [
+            ...(($scene['shot'] ?? 'wide') === 'close' ? ['A CLOSE-UP: the camera is near the people, so the place is seen closer than usual and everything is drawn bigger; only part of the place fits in the picture'] : []),
             sprintf('SCALE: a 130 cm child standing at the back of the floor is %d%% of the picture\'s height tall (head to feet), and %d%% at the front of the floor. Draw everything to that scale, as seen from a few metres away: a doorway is about %d%% of the picture\'s height, a table top %d%% above the floor, a grown-up %d%%, a two-storey house about %d%%; anything bigger (a big tree, a cliff, a tall building) runs off the top of the picture rather than being shrunk',
                 $pct($child * Sizes::DEPTH_BACK), $pct($child * Sizes::DEPTH_FRONT), $pct($child * 1.6 * Sizes::DEPTH_BACK), $pct($child * 0.55), $pct($child * 1.3), $pct($child * 4.4)),
             sprintf('The walkable floor starts %d%% of the way down the picture and fills everything below that line', round(100 * ($ground + $cut) / $drawnH)),
         ];
     }
 
-    private function background(array $scene, array $layout, string $setting, array $accents, ?string $time): array
+    /**
+     * @param  array{picture: Reference, mode: string, changes: ?string}|null  $from  A panel drawn from an earlier picture
+     *                                                                                 (Cutscenes::pictureOf): "edit", the same picture with changes; "closer", a close-up of that place.
+     */
+    private function background(array $scene, array $layout, string $setting, array $accents, ?string $time, ?array $from = null): array
     {
         $key = "bg:{$scene['key']}";
         $look = 'another scene of this same mission, but a DIFFERENT place: match how it is painted (colours, light, level of detail) and the size of things beside people, not its buildings, layout, landmarks or sky';
@@ -1035,19 +1218,27 @@ class AssetDirector
             'underwater' => 'An underwater place: the sea floor, light rippling down from the surface far above, bubbles',
             default => 'An outdoor place',
         };
-        // Doors, holes and ladders are drawn separately and stood in the scene; the background leaves room.
+        // Holes, hatches and stairs down are drawn separately and laid in the floor; the background leaves room.
+        // Doors, gates, caves, ladders and stairs up are part of the scenery: painted in, where they go.
         foreach ($layout['passages'] ?? [] as $p) {
+            $look = rtrim((string) ($p['look'] ?? ''), '.');
             $notes[] = Connections::inFloor($p['via'])
                 ? $at($p['x']).", the floor is plain and open (an opening leading {$p['towards']} is added there later; do not paint it)"
                 : match ($p['via']) {
-                    'door' => $at($p['x']).", a wall of a building stands at the back of the floor, plain where a door leading {$p['towards']} is added later (do not paint the door)",
-                    'cave', 'tunnel' => $at($p['x']).", a rock face or bank stands at the back of the floor, plain where an opening leading {$p['towards']} is added later (do not paint it)",
-                    'ladder', 'stairs_up' => $at($p['x']).", something tall rises at the back of the floor (a wall, a cliff or a big tree) with a ledge or opening high above, where a way up leading {$p['towards']} is added later (do not paint the ladder or stairs)",
-                    default => $at($p['x']).", the back of the floor is plain where a way through leading {$p['towards']} is added later (do not paint it)",
+                    'door' => $at($p['x']).", in a wall of a building at the back of the floor, a door leading {$p['towards']}".($look ? ": $look" : '').'; full size beside the people, its bottom on the floor line, clearly a way in',
+                    'cave', 'tunnel' => $at($p['x']).", in a rock face or bank at the back of the floor, a dark opening leading {$p['towards']}".($look ? ": $look" : '').', big enough to walk into, its bottom on the floor line',
+                    'ladder', 'stairs_up' => $at($p['x']).', at the back of the floor, '.($p['via'] === 'ladder' ? 'a ladder' : 'a flight of stairs')." rising against something tall (a wall, a cliff or a big tree) up to a ledge or opening high above, leading {$p['towards']}".($look ? ": $look" : '').'; its foot on the floor line',
+                    default => $at($p['x']).", at the back of the floor, a way through leading {$p['towards']}".($look ? ": $look" : '').', its bottom on the floor line',
                 };
         }
-        foreach ($layout['wall'] ?? [] as $x) {
-            $notes[] = 'The back wall is plain and uncluttered '.$at($x).', a little above the floor (something is hung there later)';
+        foreach ($layout['wall'] ?? [] as $onWall) {
+            $onWall = is_array($onWall) ? $onWall : ['x' => (float) $onWall, 'what' => null];
+            $notes[] = $onWall['what']
+                ? 'On the back wall '.$at($onWall['x']).', a little above the floor, part of the wall and clearly visible: '.rtrim($onWall['what'], '.')
+                : 'The back wall is plain and uncluttered '.$at($onWall['x']).', a little above the floor (something is hung there later)';
+        }
+        foreach ($layout['lights'] ?? [] as $l) {
+            $notes[] = 'On the wall '.$at($l['x']).', above head height: '.$l['what'];
         }
         // What students look at where there is no object of its own: part of the painting.
         foreach ($layout['looks'] ?? [] as $l) {
@@ -1092,10 +1283,17 @@ class AssetDirector
         }
         $subject = ($setting ? "$setting. " : '')."{$scene['title']}: {$scene['background']}";
         $refs = $this->style->anchorsFor('background');
-        if ($this->sceneLook) {
+        if ($from) {
+            // The next panel of a picture: that picture first, and what is to be different about it.
+            $changes = rtrim((string) ($from['changes'] ?? ''), '.');
+            $subject = $from['mode'] === 'edit'
+                ? "EXACTLY the picture given as the first reference, the same place from the same view: the same composition, layout, colours, light and style, every object where it is. Change only this: $changes. Everything else stays exactly as it is"
+                : "A CLOSE-UP of the place in the first reference picture: the same place, objects, colours, light and style, seen from much nearer, so only part of it fills the picture".($changes ? ". Also: $changes" : '').". {$scene['title']}: {$scene['background']}";
+            array_unshift($refs, $from['picture']);
+        } elseif ($this->sceneLook) {
             $refs[] = $this->sceneLook;
         }
-        if ($this->pictures['scale_guide']) {
+        if ($this->pictures['scale_guide'] && ($from['mode'] ?? null) !== 'edit') {
             $refs[] = $this->guide($scene);
         }
         $chroma = $this->style->chroma();
@@ -1122,7 +1320,9 @@ class AssetDirector
 
             return [$im, $problem];
         }, jpeg: ! $distance && ! $water);
-        $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), $look, ($distance || $water) ? 'image/png' : 'image/jpeg');
+        if (! $from) {
+            $this->sceneLook ??= new Reference((string) file_get_contents($result['path']), $look, ($distance || $water) ? 'image/png' : 'image/jpeg');
+        }
 
         return $result;
     }
@@ -1159,7 +1359,7 @@ class AssetDirector
             $y = $ground + (int) ((($drawnH * $s) - $ground) * 0.45);
             $blocked[] = [(int) ($x - $half), (int) ($x + $half), $y - 25, $y + 25];
         }
-        $im = ImageTools::scaleGuide(1600, (int) round($drawnH * $s), $ground, (int) round(Sizes::PERSON_PX * $s),
+        $im = ImageTools::scaleGuide(1600, (int) round($drawnH * $s), $ground, (int) round(Sizes::PERSON_PX * (($scene['shot'] ?? 'wide') === 'close' ? Cutscenes::CLOSE : 1) * $s),
             fn (int $feet) => Sizes::depth((int) round($feet / $s) - $cut, $groundFinal), $blocked);
 
         return new Reference(ImageTools::png($im), 'a layout and SCALE GUIDE, not a picture to copy: the grey band is the walkable floor, the grey figures show how tall a 130 cm child is at the back, the middle and the front of the floor, and the outline is a doorway beside them. Paint the scene to exactly this scale and layout; do not draw the figures, the outline, the grey or the lines');
@@ -1282,6 +1482,8 @@ class AssetDirector
     {
         return match ($a['motion'] ?? 'lands') {
             'lands' => ['rest' => 'standing on the ground, still', 'up' => 'flying, wings raised high', 'down' => 'flying, wings swept down'],
+            'hides' => ['rest' => 'sitting up on the ground, ears up, still', 'sniff' => 'sitting up on the ground, ears up, its nose twitching and whiskers twitched forward', 'up' => 'mid-hop, stretched out long, all four feet off the ground', 'down' => 'landing from a hop, crouched low, hind legs bunched'],
+            'climbs' => ['rest' => 'sitting up on its back legs, tail curled up behind, still', 'up' => 'running, mid-bound with its legs stretched out', 'down' => 'running, legs gathered under its body'],
             'flies_by' => ['up' => 'flying, wings raised high', 'down' => 'flying, wings swept down'],
             'swims_by' => ['up' => 'swimming, tail curved up', 'down' => 'swimming, tail curved down'],
             'drives_by' => ['up' => 'driving along, seen exactly side-on, its wheels on the ground', 'down' => 'the same, a moment later: its wheels turned a little and its body bouncing slightly up'],
@@ -1303,13 +1505,18 @@ class AssetDirector
         $path = "{$this->workDir}/assets/".self::file("ambient:$name").'.png';
         file_put_contents($path, ImageTools::png($sheet));
         $names = array_keys($poses);
-        $moveFrames = array_keys(array_filter($names, fn ($n) => $n !== 'rest'));
+        $moveFrames = array_keys(array_filter($names, fn ($n) => $n !== 'rest' && $n !== 'sniff'));
         $idle = isset($poses['rest']) ? [array_search('rest', $names, true)] : [$moveFrames[0]];
+        // Sitting with a twitching nose: still, sniff, still, sniff-sniff.
+        if (isset($poses['sniff'])) {
+            [$r, $n] = [array_search('rest', $names, true), array_search('sniff', $names, true)];
+            $idle = [$r, $r, $r, $n, $r, $n, $r, $r];
+        }
 
         return [
             'path' => $path, 'width' => imagesx($sheet), 'height' => imagesy($sheet), 'frame_width' => $cw, 'frame_height' => $ch,
             'params' => ['sheet' => ['columns' => count($cells), 'rows' => 1], 'animations' => [
-                ['name' => 'idle', 'frames' => $idle, 'duration' => 600],
+                ['name' => 'idle', 'frames' => $idle, 'duration' => count($idle) > 1 ? 1600 : 600, 'repeat' => true],
                 ['name' => 'move', 'frames' => $moveFrames, 'duration' => match ($a['motion'] ?? '') { 'walks_by' => 500, 'drives_by' => 220, default => 280 }, 'repeat' => true],
             ]],
         ];

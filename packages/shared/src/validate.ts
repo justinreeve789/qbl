@@ -1,7 +1,7 @@
 import { checkBench, checkBenchAction } from './bench-validate.js';
 import { inHotspot, isWalkable, walkContext } from './geometry.js';
 import { labelMediaId, layerMediaId, normalizeActionType, sceneSize } from './scenario.js';
-import { ANIMATION_NAME, BUILT_IN_MOVES, findAnimation, frameCount } from './types.js';
+import { ANIMATION_NAME, BUILT_IN_MOVES, CRITTER_BEHAVIORS, findAnimation, frameCount, OVERLAY_MOTIONS } from './types.js';
 import { ROUTINE_STEP_TYPES } from './types.js';
 import type { Action, Character, Condition, ConversationAction, GameEvent, Id, Media, Npc, RoutineStep, Scenario, Scene, WalkAction } from './types.js';
 import { CHARACTER_POSES, isPose, normalizeNpc } from './characters.js';
@@ -594,8 +594,16 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (target === 'point' && (typeof a.position_x !== 'number' || typeof a.position_y !== 'number')) err(path, 'position_x and position_y are required');
         if (target === 'auto' && !scene.story) warn(`${path}.target`, 'Following whoever is acting is for story scenes; elsewhere the view follows the player');
         if (a.duration != null && !(typeof a.duration === 'number' && a.duration >= 0)) err(`${path}.duration`, 'duration is a number of milliseconds');
+        if (a.zoom != null && !(typeof a.zoom === 'number' && a.zoom >= 0.5 && a.zoom <= 3)) err(`${path}.zoom`, 'zoom is a number from 0.5 to 3 (1: the usual view)');
         break;
       }
+      case 'image_overlay':
+        if (a.motion != null && !(OVERLAY_MOTIONS as string[]).includes(a.motion)) err(`${path}.motion`, `motion is one of ${OVERLAY_MOTIONS.join(', ')}`);
+        if (a.tone != null && a.tone !== 'memory' && a.tone !== 'dream') err(`${path}.tone`, 'tone is "memory" or "dream"');
+        if ((a.motion != null || a.tone != null) && !a.panel) warn(path, 'motion and tone are only for panels (panel: true)');
+        if (a.panel && !(typeof a.duration === 'number' && a.duration > 0)) warn(`${path}.duration`, 'A panel stays until it is clicked away: give it a duration (at most 20 seconds), so the story moves on');
+        else if (a.panel && (a.duration ?? 0) > 20000) warn(`${path}.duration`, 'A still picture up for more than 20 seconds gets dull: split it into more panels');
+        break;
       case 'spritemap':
         if (!a.spritemap_tiles_horizontal || !a.spritemap_tiles_vertical) err(path, 'spritemap_tiles_horizontal and spritemap_tiles_vertical are required');
         break;
@@ -683,6 +691,25 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (f.color != null && !COLOR.test(f.color)) err(`${p}.color`, 'color is #rrggbb');
       if (f.layer != null && f.layer !== 'behind' && f.layer !== 'over') err(`${p}.layer`, 'layer is "behind" or "over"');
       if ((f.layer ?? 'behind') === 'behind' && (scene.background_media ?? []).length === 0) warn(p, 'The water is drawn behind the scene\'s picture, but the scene has none');
+    });
+    (scene.critters ?? []).forEach((c, i) => {
+      const p = `${sp}.critters[${i}]`;
+      if (c.media_id == null) err(`${p}.media_id`, 'A critter needs a picture (media_id)');
+      else if (!media.has(c.media_id)) err(`${p}.media_id`, `Media ${c.media_id} does not exist`);
+      if (!(CRITTER_BEHAVIORS as string[]).includes(c.behavior)) err(`${p}.behavior`, `behavior is one of ${CRITTER_BEHAVIORS.join(', ')}`);
+      (c.spots ?? []).forEach((s, si) => {
+        if (typeof s?.x !== 'number' || typeof s?.y !== 'number') err(`${p}.spots[${si}]`, 'A spot needs x and y');
+        if (s?.top != null && !(typeof s.top === 'number' && s.top < s.y)) err(`${p}.spots[${si}].top`, 'top is a height above the spot (a smaller y)');
+      });
+      if (c.behavior === 'climbs' && !(c.spots ?? []).some((s) => s?.top != null)) warn(`${p}.spots`, 'A climber with no tree (a spot with a top) runs off the edge instead');
+      if (c.behavior === 'hides' && (c.spots ?? []).length < 2) warn(`${p}.spots`, 'A hider needs two hiding places to go between; with fewer it hops in from the edge');
+      if (c.every != null && !(Array.isArray(c.every) && c.every.length === 2 && c.every.every((n) => typeof n === 'number' && n >= 0) && c.every[0]! <= c.every[1]!)) err(`${p}.every`, 'every is [fewest, most] seconds');
+      if (c.shy != null && !(typeof c.shy === 'number' && c.shy >= 0)) err(`${p}.shy`, 'shy is a number of pixels (0: never scatters)');
+      if (c.count != null && !(Number.isInteger(c.count) && c.count >= 1 && c.count <= 6)) err(`${p}.count`, 'count is 1 to 6');
+      if (c.scale != null && !(typeof c.scale === 'number' && c.scale > 0)) err(`${p}.scale`, 'scale is a number greater than 0');
+      if (c.speed != null && !(typeof c.speed === 'number' && c.speed > 0)) err(`${p}.speed`, 'speed is a number of pixels per second');
+      if (c.sound != null && !isBuiltInSound(c.sound)) warn(`${p}.sound`, `"${c.sound}" is not a built-in sound`);
+      if (c.faces != null && c.faces !== 'left' && c.faces !== 'right') err(`${p}.faces`, 'faces is "left" or "right"');
     });
     if (scene.story) {
       if (!(scene.start_events ?? []).some((e) => (e.actions ?? []).length > 0)) warn(sp, 'A story scene plays its start events, and this one has none: nothing will happen');

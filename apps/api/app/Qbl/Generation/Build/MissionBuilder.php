@@ -4,8 +4,11 @@ namespace App\Qbl\Generation\Build;
 
 use App\Qbl\Characters\NpcCharacter;
 use App\Qbl\Generation\Art\AssetDirector;
+use App\Qbl\Generation\Art\FloorTracer;
+use App\Qbl\Generation\Art\SortLine;
 use App\Qbl\Generation\Design\BlueprintSchema;
 use App\Qbl\Generation\Design\Connections;
+use App\Qbl\Generation\Design\Cutscenes;
 use App\Qbl\Generation\Design\Sizes;
 use App\Qbl\Generation\GenerationError;
 
@@ -49,6 +52,8 @@ use App\Qbl\Generation\GenerationError;
  */
 class MissionBuilder
 {
+    use StoryStaging;
+
     /** A normal scene's size; a wide one is wider (Sizes::SCENE_WIDTH). */
     public const WIDTH = 2250;
 
@@ -148,6 +153,27 @@ class MissionBuilder
 
     /** [x0, x1, y0, y1] of each blocked patch of floor in the scene being built. */
     protected array $blocked = [];
+
+    /** The scene being built, as its background was surveyed (SurveyStep): the floor's back edge, left to right, in scene pixels. Empty: the ground line. */
+    protected array $backEdge = [];
+
+    /** id => [x0, y0, x1, y1]: where things painted into the scene's background were found ("way:<to>", "thing:<interaction>", "detail:<i>", "light:<i>"). */
+    protected array $found = [];
+
+    /** id => [x, y]: where a painted light's light is (the brightest part of where it was found). */
+    protected array $glows = [];
+
+    /** The scene's trees and bushes, cut out of its background: [x, base, top], for the critters that climb and hide. */
+    protected array $trees = [];
+
+    protected array $bushes = [];
+
+    /** cutscene key => its blueprint row; interaction key => the cutscene played after it; and the events that complete each such interaction. */
+    protected array $cutscenes_ = [];
+
+    protected array $cutAfter = [];
+
+    protected array $cutEvents = [];
 
     /** How many cutscenes there are, for their names. */
     protected int $cutscenes = 0;
@@ -319,9 +345,24 @@ class MissionBuilder
         foreach ($ordered as $scene) {
             $this->sceneIds[$scene['key']] = $this->id('scenes');
         }
+        // Cutscenes: their panels are scenes too, played by themselves; known before the scenes that start them.
+        $panels = Cutscenes::panels($b);
+        foreach ($panels as $panel) {
+            $this->sceneIds[$panel['key']] = $this->id('scenes');
+        }
+        foreach ((array) ($b['cutscenes'] ?? []) as $cut) {
+            if (! empty($cut['key']) && array_filter($panels, fn ($p) => $p['cutscene'] === $cut['key'])) {
+                $this->cutscenes_[$cut['key']] = $cut;
+                $this->variable("seen_cut_{$cut['key']}", 0);
+                if (($cut['when'] ?? '') !== 'intro') {
+                    $this->cutAfter[$cut['when']] = $cut['key'];
+                }
+            }
+        }
         foreach ($ordered as $scene) {
             $this->scene($scene, ++$sequence, $assets, $b);
         }
+        $this->cutscenePanels($panels, $assets, $b, $sequence);
         // Questions that pop up after another interaction, and twists: their events exist now.
         foreach ($this->pendingFollowUps as [$event, $question, $when]) {
             $this->action($event, 'run_event', ['target_event_id' => $this->entry[$question]], conditions: [...$when, $this->cond("done_$question", '=', 0)]);
@@ -507,6 +548,8 @@ class MissionBuilder
         [$left, $right] = $this->floorEnds($scene, $W, isset($edges['left']), isset($edges['right']));
         [$layersFront, $foreground] = $this->foregroundLayer($scene, $key, $sequence, $assets, $W, $H);
         [$top, $bottom] = $this->floorDepth($scene, $foreground, $ground, $H);
+        // As the background turned out: where its floor really ends at the back, and the things people walk around in it.
+        $cutouts = $this->surveyed($key, $assets, $top, $bottom);
 
         // Where things stand. Interactions, characters, props and obstacles share the width; spread them so
         // none overlap. Doors, holes and the doorway of a top exit stay exactly where they are, and everything
@@ -565,17 +608,22 @@ class MissionBuilder
             ];
             // Big things stand at the back, so the floor stays open; smaller ones a little way into the floor.
             $big = Sizes::cm($item) > 150;
-            $layoutItems[] = ['item_id' => $itemId, 'position_x' => $xs["prop:$i"], 'position_y' => $big ? $ground + 10 : $this->clear($xs["prop:$i"], $ground + (int) ($floor * 0.3))];
+            $layoutItems[] = ['item_id' => $itemId, 'position_x' => $xs["prop:$i"], 'position_y' => $big ? $this->backAt($xs["prop:$i"], 10) : $this->clear($xs["prop:$i"], $ground + (int) ($floor * 0.3))];
         }
+        // What people walk around, lifted out of the background: each exactly over itself.
+        array_push($layoutItems, ...$cutouts);
         // Lights: the lantern, campfire or beacon stood in the scene, and its glow where its light is.
         $lights = [];
         foreach (array_values($scene['lights'] ?? []) as $i => $l) {
             $asset = $assets["light:$key:$i"] ?? null;
-            if (! $asset || ! isset($xs["light:$i"])) {
+            $wall = ($l['placement'] ?? null) === 'wall';
+            if ((! $asset && ! $wall) || ! isset($xs["light:$i"])) {
                 continue;
             }
-            [$itemId, $light] = $this->light($key, $i, $l, $asset, $xs["light:$i"], $ground, $floor);
-            $layoutItems[] = $itemId;
+            [$placement, $light] = $this->light($key, $i, $l, $asset, $xs["light:$i"], $ground, $floor);
+            if ($placement) {
+                $layoutItems[] = $placement;
+            }
             $lights[] = $light;
         }
 
@@ -603,6 +651,14 @@ class MissionBuilder
         $arrive = $this->event($sceneId, 'start', 'arrive');
         $this->action($arrive, 'text_overlay', ['text' => $scene['title'], 'alignment' => 'top center', 'text_font_size' => 34, 'duration' => 2500], blocking: false);
         if ($start) {
+            // The opening cutscene, once: off to its first panel; back here, the briefing follows.
+            foreach ($this->cutscenes_ as $ck => $cut) {
+                if (($cut['when'] ?? '') === 'intro') {
+                    $unseen = [$this->cond("seen_cut_$ck", '=', 0)];
+                    $this->action($arrive, 'variable', ['name' => "seen_cut_$ck", 'operator' => 'set', 'operand' => 1], conditions: $unseen);
+                    $this->action($arrive, 'jump', ['scene_id' => $this->sceneIds["cut_{$ck}_1"]], conditions: $unseen);
+                }
+            }
             $intro = [$this->cond('intro_seen', '=', 0)];
             $this->action($arrive, 'variable', ['name' => 'intro_seen', 'operator' => 'set', 'operand' => 1], conditions: $intro);
             $this->action($arrive, 'freeze', ['frozen' => true], conditions: $intro);
@@ -672,6 +728,14 @@ class MissionBuilder
             }
         }
 
+        // ---- coming back from a cutscene played after one of this scene's interactions: beside it
+        foreach ($this->cutAfter as $ik => $ck) {
+            if (($this->interactions[$ik]['scene'] ?? null) === $key && isset($xs["int:$ik"])) {
+                $sx = (int) max(120, min($W - 120, $xs["int:$ik"] + ($xs["int:$ik"] > $W / 2 ? -150 : 150)));
+                $spawns[] = ['name' => "after-$ck", 'position_x' => $sx, 'position_y' => $this->clear($sx, $ground + (int) ($floor * 0.45))];
+            }
+        }
+
         // ---- the scene's interactions, at varied depths on the floor
         $here = array_filter($this->interactions, fn ($it) => $it['scene'] === $key && $this->placed($it));
         uksort($here, fn ($a, $c) => $xs["int:$a"] <=> $xs["int:$c"]);
@@ -690,10 +754,11 @@ class MissionBuilder
             $this->obstacle($sceneId, $tk, $this->twists[$tk], $xs["obstacle:$tk"], $feet);
         }
 
-        // ---- a little life: creatures that land, stroll or swim by now and then
+        // ---- a little life: birds that land, a squirrel up a tree, a rabbit in the bushes, a cat strolling by
+        $critters = [];
         foreach (array_values($scene['ambient'] ?? []) as $i => $a) {
             if ($sheet = $assets["ambient:$key:{$a['key']}"] ?? null) {
-                $this->ambient($sceneId, $a, $this->media("ambient-$key-{$a['key']}", $sheet, 60), $sheet, $i);
+                $critters[] = $this->critter($a, $this->media("ambient-$key-{$a['key']}", array_diff_key($sheet, ['critter' => 1]), 60), $sheet, $i, $bottom);
             }
         }
 
@@ -702,13 +767,89 @@ class MissionBuilder
         $blockedAreas = array_map(fn ($r) => self::ellipse(($r[0] + $r[1]) / 2, ($r[2] + $r[3]) / 2, ($r[1] - $r[0]) / 2, ($r[3] - $r[2]) / 2), $this->blocked);
         $flows = $this->flows($scene, $bg);
         $this->rows['scenes'][$sceneIndex]['layout'] = [
-            'walkable_areas' => [[['x' => $left, 'y' => $top], ['x' => $right, 'y' => $top], ['x' => $right, 'y' => $bottom], ['x' => $left, 'y' => $bottom]]],
+            'walkable_areas' => [$this->walkable($left, $right, $top, $bottom)],
             'blocked_areas' => $blockedAreas,
             'spawn_points' => $spawns,
             'scale_areas' => [['name' => 'depth', 'x' => 0, 'y' => $ground, 'width' => $W, 'height' => $H - $ground, 'scale_top' => (int) round(Sizes::DEPTH_BACK * 100), 'scale_bottom' => (int) round(Sizes::DEPTH_FRONT * 100), 'speed_effect' => 60]],
             'items' => $layoutItems,
             'characters' => $placements,
-        ] + ($lights ? ['lights' => $lights] : []) + ($flows ? ['flows' => $flows] : []);
+        ] + ($lights ? ['lights' => $lights] : []) + ($flows ? ['flows' => $flows] : []) + ($critters ? ['critters' => $critters] : []);
+    }
+
+    /**
+     * A mission's cutscenes: each panel a scene that plays by itself (StoryStaging), one after another,
+     * the last one taking the student back where it began (the start scene, or beside the interaction
+     * it followed). Each plays once per student: after the interaction's last action, the student goes.
+     */
+    protected function cutscenePanels(array $panels, array $assets, array $b, int &$sequence): void
+    {
+        $ordered = array_values($panels);
+        foreach ($ordered as $i => $panel) {
+            $cut = $this->cutscenes_[$panel['cutscene']] ?? null;
+            if (! $cut || ! isset($assets["bg:{$panel['key']}"])) {
+                continue;
+            }
+            $next = ($ordered[$i + 1]['cutscene'] ?? null) === $panel['cutscene'] ? $ordered[$i + 1]['key'] : null;
+            $when = (string) ($cut['when'] ?? 'intro');
+            $back = $when === 'intro'
+                ? [$this->sceneIds[$b['start_scene']], null]
+                : [$this->sceneIds[$this->interactions[$when]['scene'] ?? $b['start_scene']], "after-{$cut['key']}"];
+            $this->scenesByKey[$panel['key']] = $panel;
+            $this->storyScene($panel, ++$sequence, $assets, $b, $next, $next ? null : $back, opening: false);
+        }
+        // Off to the first panel, once, at the very end of what completing the interaction does.
+        foreach ($this->cutEvents as $ik => $events) {
+            $ck = $this->cutAfter[$ik];
+            if (! isset($this->sceneIds["cut_{$ck}_1"])) {
+                continue;
+            }
+            foreach ($events as [$event, $when]) {
+                $unseen = [...$when, $this->cond("seen_cut_$ck", '=', 0)];
+                $this->action($event, 'variable', ['name' => "seen_cut_$ck", 'operator' => 'set', 'operand' => 1], conditions: $unseen);
+                $this->action($event, 'jump', ['scene_id' => $this->sceneIds["cut_{$ck}_1"]], conditions: $unseen);
+            }
+        }
+    }
+
+    /**
+     * A creature of a scene's little life as the game's critter (Scene.critters): its sheet, how it lives,
+     * its spots (where birds land, the trees a squirrel climbs, the bushes a rabbit hides in, from the
+     * surveyed background), how big it is drawn, which of its sheet's animations it plays for what, and
+     * whether it scatters when anyone comes near. A ready-made one from the library brings its own
+     * animations and scale; a drawn one has an idle and a move.
+     */
+    protected function critter(array $a, int $mediaId, array $sheet, int $i, int $bottom): array
+    {
+        $W = $this->width;
+        $floor = self::HEIGHT - $this->ground;
+        $motion = $a['motion'] ?? 'lands';
+        $ready = $sheet['critter'] ?? null;
+        $spots = match ($motion) {
+            'lands' => array_map(fn ($f) => ['x' => (int) ($W * $f), 'y' => $this->clear((int) ($W * $f), min($bottom - 40, $this->backAt($W * $f, (int) ($floor * 0.22))))], [0.3, 0.5, 0.7]),
+            'climbs' => array_map(fn ($t) => ['x' => $t[0], 'y' => $t[1], 'top' => $t[2]], $this->trees),
+            'hides' => array_map(fn ($b) => ['x' => $b[0], 'y' => $b[1]], $this->bushes),
+            'walks_by' => [['x' => (int) ($W / 2), 'y' => $this->clear((int) ($W / 2), max($this->ground + (int) ($floor * 0.14), $this->backAt($W / 2, 30)))]],
+            'drives_by' => [['x' => (int) ($W / 2), 'y' => $this->backAt($W / 2, (int) ($floor * 0.04))]],
+            default => [],
+        };
+        // A drawn creature has an idle and a move; a ready-made one its own animations (renamed: idle, walk, fly, peck...).
+        $animations = $ready ? (array) ($ready['animations'] ?? []) : ['walk' => 'move', 'run' => 'move', 'fly' => 'move', 'hop' => 'move', 'climb' => 'move', 'take_off' => 'move', 'land' => 'move'];
+        $animal = $motion !== 'drives_by';
+
+        return array_filter([
+            'name' => $a['key'],
+            'media_id' => $mediaId,
+            'behavior' => $motion,
+            'animations' => $animations ?: null,
+            'spots' => $spots ?: null,
+            'scale' => $ready ? (float) $ready['scale'] : null,
+            'faces' => $ready && ($ready['faces'] ?? 'right') === 'left' ? 'left' : null,
+            'count' => $motion === 'lands' && (int) ($a['count'] ?? 1) > 1 ? min(5, (int) $a['count']) : null,
+            // Animals scatter when anyone comes near, unless they are tame; vehicles never do.
+            'shy' => ! $animal || ($a['shy'] ?? true) === false ? 0 : null,
+            'every' => [12 + 6 * $i, 26 + 8 * $i],
+            'sound' => ! empty($a['sound']) && in_array($a['sound'], BlueprintSchema::SOUNDS, true) ? $a['sound'] : null,
+        ], fn ($v) => $v !== null);
     }
 
     /**
@@ -869,9 +1010,18 @@ class MissionBuilder
      *
      * @return array{0: array, 1: array} the item's placement, the light
      */
-    protected function light(string $sceneKey, int $i, array $l, array $asset, int $x, int $ground, int $floor): array
+    protected function light(string $sceneKey, int $i, array $l, ?array $asset, int $x, int $ground, int $floor): array
     {
         $kind = BlueprintSchema::LIGHTS[$l['kind']] ?? BlueprintSchema::LIGHTS['lantern'];
+        if ($asset === null) {
+            // Hung on a wall, painted into the background: only its glow, where the light was found (else about where it was asked).
+            $at = $this->glows["light:$i"] ?? (($f = $this->foundAt("light:$i")) ? [$f['x'], $f['y']] : [$x, $this->backAt($x, -220)]);
+
+            return [null, array_filter([
+                'name' => $l['kind'], 'x' => (int) $at[0], 'y' => (int) $at[1], 'radius' => (int) round($kind['radius'] * Sizes::DEPTH_BACK),
+                'color' => $l['color'] ?? $kind['color'], 'kind' => $kind['glow'], 'strength' => 75, 'period' => $kind['period'] ?? null,
+            ], fn ($v) => $v !== null)];
+        }
         $mediaId = $this->media("light-$sceneKey-$i", $asset, 45);
         $blocking = in_array($l['kind'], ['campfire'], true);
         $itemId = $this->id('items');
@@ -881,8 +1031,8 @@ class MissionBuilder
         ];
         $y = match ($l['placement'] ?? ($blocking ? 'ground' : 'back')) {
             'ground' => $this->clear($x, $ground + (int) ($floor * 0.3)),
-            'wall' => $ground - 120,
-            default => $ground + 8,
+            'wall' => $this->backAt($x, -120),
+            default => $this->backAt($x, 8),
         };
         // Drawn smaller at the back of the floor and larger at the front, as everything is.
         $s = $y >= $ground ? Sizes::depth($y, $ground) : Sizes::DEPTH_BACK;
@@ -903,16 +1053,115 @@ class MissionBuilder
     /** A spot on the floor moved forward or back, if it would be in a patch nobody walks on. */
     protected function clear(int $x, int $y): int
     {
+        // Never behind the floor's back edge (into a wall the floor meets further forward here).
+        if ($this->backEdge) {
+            $y = (int) max($y, min(self::HEIGHT - 40, SortLine::yAt($this->backEdge, $x) + 30));
+        }
         foreach ($this->blocked as [$x0, $x1, $y0, $y1]) {
             if ($x > $x0 - 40 && $x < $x1 + 40 && $y > $y0 - 40 && $y < $y1 + 40) {
                 // Behind it, unless there is no room there.
                 $behind = $y0 - 50;
 
-                return $behind > $this->ground + 20 ? $behind : $y1 + 50;
+                return $behind > $this->backAt($x, 20) ? $behind : $y1 + 50;
             }
         }
 
         return $y;
+    }
+
+    /** The back of the floor at x, as surveyed (or the ground line), and $by pixels in front of it. */
+    protected function backAt(int|float $x, int $by = 0): int
+    {
+        return ($this->backEdge ? (int) round(SortLine::yAt($this->backEdge, (float) $x)) : $this->ground) + $by;
+    }
+
+    /**
+     * Take in the survey of a scene's background (SurveyStep), if it was surveyed: its floor's back edge
+     * (kept behind water along the back), where painted things were found, and the things people walk
+     * around, each a cut-out item placed exactly over itself in the picture (drawn at its own size
+     * whatever the depth there: its scale undoes the scene's), sorted by its sort line, its base a patch
+     * nobody walks through. Returns their placements.
+     */
+    protected function surveyed(string $key, array $assets, int $top, int $bottom): array
+    {
+        $survey = $assets["survey:$key"] ?? null;
+        $this->backEdge = [];
+        $this->found = (array) ($survey['found'] ?? []);
+        $this->glows = (array) ($survey['glows'] ?? []);
+        $this->trees = [];
+        $this->bushes = [];
+        if (! $survey) {
+            return [];
+        }
+        if (count($survey['floor'] ?? []) >= 2) {
+            // Water along the back is never walked into, wherever the edge was traced.
+            $this->backEdge = array_map(fn ($p) => [(int) $p[0], (int) max($p[1], $top > $this->ground ? $top : $p[1])], $survey['floor']);
+        }
+        $placements = [];
+        foreach (array_values($survey['standing'] ?? []) as $n => $thing) {
+            $asset = $assets["cutout:$key:$n"] ?? null;
+            if (! $asset || empty($asset['path'])) {
+                continue;
+            }
+            $base = (int) $asset['y'] + (int) $asset['height'];
+            $cx = (int) $asset['x'] + intdiv((int) $asset['width'], 2);
+            $mediaId = $this->media("cutout-$key-$n", ['path' => $asset['path'], 'width' => $asset['width'], 'height' => $asset['height']], 46);
+            $itemId = $this->id('items');
+            $this->rows['items'][] = [
+                'id' => $itemId, 'name' => ucfirst((string) $thing['name']), 'unique' => true, 'physical' => false, 'blocking' => false, 'wearable' => false, 'vehicle' => false, 'media_id' => $mediaId,
+                'settings' => array_filter(['scale' => round(1 / $this->depthScale($base), 6), 'placement' => 'object', 'sort_line' => $asset['sort_line'] ?? null, 'params' => ['cut_from' => 'background']], fn ($v) => $v !== null),
+            ];
+            $placements[] = ['item_id' => $itemId, 'position_x' => $cx, 'position_y' => $base];
+            // Its base: nobody walks through a trunk or a fountain's rim.
+            [$fx0, $fx1] = $asset['footprint'] ?? [$cx - 20, $cx + 20];
+            $depth = (int) max(14, min(70, ($fx1 - $fx0) * 0.25));
+            if ($base > $top && $base < $bottom) {
+                $this->blocked[] = [(int) $fx0 + 4, (int) $fx1 - 4, $base - $depth, $base + 4];
+            }
+            $top_ = (int) $asset['y'];
+            if ($thing['kind'] === 'tree') {
+                $this->trees[] = [(int) round(($fx0 + $fx1) / 2), $base, (int) round($top_ + ($base - $top_) * 0.35)];
+            } elseif (in_array($thing['kind'], ['bush', 'plant', 'rock'], true)) {
+                $this->bushes[] = [$cx, $base, $top_];
+            }
+        }
+
+        return $placements;
+    }
+
+    /**
+     * How much bigger or smaller the scene's depth draws something standing at y (its scale area, as
+     * the game reads it: whole percentages from the back of the floor to the front).
+     */
+    protected function depthScale(int $y): float
+    {
+        $ground = $this->ground;
+        if ($y < $ground || $y > self::HEIGHT) {
+            return 1.0;
+        }
+        $top = (int) round(Sizes::DEPTH_BACK * 100);
+        $bottom = (int) round(Sizes::DEPTH_FRONT * 100);
+        $t = (self::HEIGHT - $ground) > 0 ? ($y - $ground) / (self::HEIGHT - $ground) : 1;
+
+        return max(0.05, ($top + ($bottom - $top) * $t) / 100);
+    }
+
+    /** The walkable area: the traced floor when the background was surveyed, else the box of the plain floor. */
+    protected function walkable(int $left, int $right, int $top, int $bottom): array
+    {
+        if ($this->backEdge) {
+            return FloorTracer::polygon($this->backEdge, $left, $right, $bottom);
+        }
+
+        return [['x' => $left, 'y' => $top], ['x' => $right, 'y' => $top], ['x' => $right, 'y' => $bottom], ['x' => $left, 'y' => $bottom]];
+    }
+
+    /** The middle of where a painted thing was found, or null. */
+    protected function foundAt(string $id): ?array
+    {
+        $b = $this->found[$id] ?? null;
+
+        return $b ? ['x' => (int) round(($b[0] + $b[2]) / 2), 'y' => (int) round(($b[1] + $b[3]) / 2), 'top' => (int) $b[1], 'bottom' => (int) $b[3], 'width' => (int) ($b[2] - $b[0]), 'height' => (int) ($b[3] - $b[1])] : null;
     }
 
     /** A polygon for a flat ellipse lying on the floor. */
@@ -938,7 +1187,7 @@ class MissionBuilder
     {
         $edge = $x['edge'];
         $at = match ($edge) {
-            'left' => [0, null], 'right' => [$this->width, null], 'top' => [(int) ($this->width / 2), $ground], 'bottom' => [null, $bottom],
+            'left' => [0, null], 'right' => [$this->width, null], 'top' => [(int) ($this->width / 2), $this->backAt($this->width / 2)], 'bottom' => [null, $bottom],
         };
         $requires = ! empty($x['requires']) ? $this->requirement($x['requires']) : [];
         $twist = $this->blockingTwist($key, $x['to']);
@@ -964,13 +1213,20 @@ class MissionBuilder
         $floor = self::HEIGHT - $ground;
         [$mediaId, $asset] = $this->passageMedia["$key|{$p['to']}"] ?? [null, null];
         $inFloor = Connections::inFloor($p['via']);
+        // A door, ladder or stairs up is painted into the background: its hotspot goes where it was painted.
+        $painted = ! $inFloor ? $this->foundAt("way:{$p['to']}") : null;
+        if ($painted && abs($painted['x'] - $x) < $this->width * 0.2) {
+            $x = $painted['x'];
+        } else {
+            $painted = null;
+        }
         // In the floor: lying a little way in. At the back: standing on the floor line. Smaller at the back.
-        $feet = $inFloor ? $ground + (int) ($floor * 0.42) : $ground + 10;
+        $feet = $inFloor ? $ground + (int) ($floor * 0.42) : $this->backAt($x, 10);
         $k = Sizes::depth($feet, $ground);
-        $w = $asset ? (int) round($asset['width'] * $k) : 200;
-        $h = $asset ? (int) round($asset['height'] * $k) : 300;
-        $cy = $inFloor ? $feet : $feet - (int) ($h / 2);
-        $standY = $inFloor ? $cy : $ground + 40;
+        $w = $painted ? $painted['width'] : ($asset ? (int) round($asset['width'] * $k) : 200);
+        $h = $painted ? $painted['height'] : ($asset ? (int) round($asset['height'] * $k) : 300);
+        $cy = $inFloor ? $feet : ($painted ? $painted['y'] : $feet - (int) ($h / 2));
+        $standY = $inFloor ? $cy : $this->clear($x, $this->backAt($x, 40));
         $radius = (int) max(90, min(190, ($inFloor ? $w : max($w, $h * 0.6)) / 2 + 10));
         $requires = ! empty($p['requires']) ? $this->requirement($p['requires']) : [];
         $twist = $this->blockingTwist($key, $p['to']);
@@ -1006,7 +1262,7 @@ class MissionBuilder
             return ['name' => "from-{$p['to']}", 'position_x' => $x + $side * ($radius + 60), 'position_y' => $cy, 'facing' => $side > 0 ? 'right' : 'left'];
         }
 
-        return ['name' => "from-{$p['to']}", 'position_x' => $x, 'position_y' => $this->clear($x, $ground + (int) ($floor * 0.4)), 'facing' => $x > $this->width / 2 ? 'left' : 'right'];
+        return ['name' => "from-{$p['to']}", 'position_x' => $x, 'position_y' => $this->clear($x, max($ground + (int) ($floor * 0.4), $this->backAt($x, 90))), 'facing' => $x > $this->width / 2 ? 'left' : 'right'];
     }
 
     /**
@@ -1055,6 +1311,17 @@ class MissionBuilder
         [$mediaId, $asset] = isset($it['item']) ? ($this->itemMedia[$it['item']] ?? [null, null]) : [null, null];
         $floor = self::HEIGHT - $ground;
         $placement = AssetDirector::placementOf($it, $item, $scene);
+        // On a wall, and staying there: painted into the background, with only a hotspot (and its mark) over it.
+        if ($placement === 'wall' && AssetDirector::paintedOnWall($it)) {
+            [$mediaId, $asset] = [null, null];
+        }
+        // Where the background shows it, when it is painted in and was found there.
+        $painted = ! $asset ? $this->foundAt("thing:$key") : null;
+        if ($painted && abs($painted['x'] - $x) < $this->width * 0.2) {
+            $x = $painted['x'];
+        } else {
+            $painted = null;
+        }
         // Out on the floor where a patch nobody walks on is, things stand at the back instead.
         if ($placement === 'ground' && $this->clear($x, $ground + (int) ($floor * 0.5)) !== $ground + (int) ($floor * 0.5)) {
             $placement = 'back';
@@ -1089,16 +1356,17 @@ class MissionBuilder
                 $params = ['placement' => 'object'];
                 break;
             default: // back
-                $k = Sizes::depth($ground + 12, $ground);
+                $base = $this->backAt($x, 12);
+                $k = Sizes::depth($base, $ground);
                 $h = $asset ? (int) round($asset['height'] * $k) : 0;
-                $cy = $ground + 12 - (int) ($h / 2);
+                $cy = $base - (int) ($h / 2);
         }
         $w = $asset ? (int) round($asset['width'] * $k) : 0;
         if (! $asset) {
-            // Painted in: the mark floats where the thing is, at the back or on the floor.
-            $cy = $placement === 'ground' ? $ground + (int) ($floor * 0.28) - 40 : $ground - 110;
+            // Painted in: the mark floats where the thing is, at the back or on the floor (or where it was found).
+            $cy = $painted ? $painted['y'] : ($placement === 'ground' ? $ground + (int) ($floor * 0.28) - 40 : $this->backAt($x, -110));
         }
-        $radius = $asset ? (int) max(80, min(170, max($w, $h) / 2 + 20)) : 95;
+        $radius = $asset ? (int) max(80, min(170, max($w, $h) / 2 + 20)) : ($painted ? (int) max(70, min(170, max($painted['width'], $painted['height']) / 2 + 10)) : 95);
         $requires = [];
         foreach ($it['requires'] ?? [] as $r) {
             array_push($requires, ...$this->requirement($r));
@@ -1109,8 +1377,8 @@ class MissionBuilder
             array_push($requires, $this->cond("away_$rescued", '=', 1), $this->cond("saved_$key", '=', 0));
         }
         $reveal = ! empty($it['hidden']);
-        // The question mark: just above the thing, or where the painted thing is.
-        $markerY = $asset ? $cy - (int) ($h / 2) - 34 : $cy;
+        // The question mark: just above the thing, or where the painted thing is (over it, when it was found).
+        $markerY = $asset ? $cy - (int) ($h / 2) - 34 : ($painted ? max(60, $painted['top'] - 30) : $cy);
         $textY = $markerY - 50;
 
         // What it looks like: the thing, if it has one, a quiet question mark, and its name when students come near.
@@ -1630,8 +1898,14 @@ class MissionBuilder
     protected function detail(int $sceneId, int $i, array $d, int $x, int $ground): void
     {
         $floor = self::HEIGHT - $ground;
-        $y = ($d['placement'] ?? 'back') === 'ground' ? $this->clear($x, $ground + (int) ($floor * 0.3)) : $ground - 110;
-        $hot = $this->hotspot($sceneId, "detail-$i", [$x, $y], 85, click: true);
+        $y = ($d['placement'] ?? 'back') === 'ground' ? $this->clear($x, $ground + (int) ($floor * 0.3)) : $this->backAt($x, -110);
+        $radius = 85;
+        // Where the background shows it, when it was found there.
+        if (($at = $this->foundAt("detail:$i")) && abs($at['x'] - $x) < $this->width * 0.2) {
+            [$x, $y] = [$at['x'], $at['y']];
+            $radius = (int) max(60, min(160, max($at['width'], $at['height']) / 2 + 10));
+        }
+        $hot = $this->hotspot($sceneId, "detail-$i", [$x, $y], $radius, click: true);
         $this->text($hot, $x, $y - 60, $d['label'], hint: true);
         $this->dialogue($hot, ['speaker' => 'player', 'text' => $d['text']], style: 'bubble');
     }
@@ -1842,6 +2116,9 @@ class MissionBuilder
             $this->action($event, 'wait', ['duration' => 700], conditions: $when);
         }
         $this->action($event, 'variable', ['name' => "done_$key", 'operator' => 'set', 'operand' => 1], conditions: $when);
+        if (isset($this->cutAfter[$key])) {
+            $this->cutEvents[$key][] = [$event, $when];
+        }
     }
 
     /** The character an interaction saves, if it is a rescue of someone who can be away. */

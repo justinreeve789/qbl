@@ -20,6 +20,7 @@ shadow_spots | array | | Patches of shade. See [Shadow spots](#shadow-spots).
 sky | object | | A living sky behind the backgrounds. See [Living skies, lights and the air](/docs/developers/extensions/atmosphere/#living-skies-lights-and-the-air).
 lights | array | | Glows that flicker, burn, breathe, blink or twinkle. See the same section.
 atmosphere | array | | What is in the air: fireflies, leaves, snow, rain, dust, bubbles. See the same section.
+critters | array | | Birds, squirrels, rabbits, cats, cars: little life that comes and goes, and scatters. See [Critters](/docs/developers/extensions/atmosphere/#critters).
 team_only | bool | the group's | Show a player only their own team in this scene. See [Teams in a scene](#teams-in-a-scene).
 params.editor_map | `{x, y}` | | Where the scene's box sits on the editor's scene map (Scenes page › Map), in map pixels. The editor writes it; the game ignores it. A scene without one is placed by the map itself.
 

@@ -45,7 +45,7 @@ return [
             'sky' => ['time' => 'afternoon', 'until' => 'afternoon', 'clouds' => 'many'], 'atmosphere' => [['kind' => 'leaves', 'amount' => 'few'], ['kind' => 'leaves'], ['kind' => 'lava']],
             'distance' => 'rolling blue hills under a pale morning sky with two small moons',
             'floor' => ['blocked' => [['x' => 0.4, 'width' => 0.06, 'what' => 'a small round pond with lily pads']]],
-            'ambient' => [['key' => 'moths', 'look' => 'a fluffy yellow moth with blue spots', 'motion' => 'flies_by', 'size_cm' => 8]],
+            'ambient' => [['key' => 'moths', 'look' => 'a fluffy yellow moth with blue spots', 'motion' => 'flies_by', 'size_cm' => 8], ['key' => 'squirrel', 'look' => 'a red squirrel', 'motion' => 'climbs', 'size_cm' => 35, 'library' => 'red-squirrel']],
             'exits' => [
                 ['edge' => 'top', 'to' => 'hive', 'requires' => 'talk_keeper', 'locked_message' => 'The keeper asked you to talk to her before you go up to the hive.'],
                 ['via' => 'hole', 'x' => 0.2, 'to' => 'burrow', 'look' => 'a dark round hole between the roots of a tree', 'label' => 'Jump into the hole!'],

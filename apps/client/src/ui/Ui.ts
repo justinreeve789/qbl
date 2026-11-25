@@ -1,4 +1,4 @@
-import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type CharacterPicture, type ChatMode, type ObjectiveStatus } from '@qbl/shared';
+import { CHAT_MAX_LENGTH, EMOTES, type ActionHandle, type Alignment, type CharacterPicture, type ChatMode, type ObjectiveStatus, type OverlayMotion } from '@qbl/shared';
 import { placeBubble, type BubbleAnchor } from './bubble';
 import { AccountMenu, type MenuStats } from './AccountMenu';
 import { emojiIcon, icon } from './icons';
@@ -379,13 +379,48 @@ export class Ui implements UiPort {
     return { choice, close: finish };
   }
 
-  imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number }): OverlayHandle {
+  imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number; panel?: boolean; motion?: OverlayMotion; tone?: 'memory' | 'dream' }): OverlayHandle {
+    if (o.panel) return this.panel(url, o);
     const node = el('img', `qbl-overlay qbl-image ${ALIGN_CLASS(o.alignment)}`);
     node.src = url;
     node.alt = '';
     node.style.setProperty('--sx', String(o.scaleX ?? 1));
     node.style.setProperty('--sy', String(o.scaleY ?? 1));
     return this.overlay(node, o.duration);
+  }
+
+  /**
+   * A story panel: the picture fills the play area over a dark backdrop, fading in, moving slowly as
+   * its motion says over its whole duration (a push in, a pan), and fading out.
+   */
+  private panel(url: string, o: { duration?: number; motion?: OverlayMotion; tone?: 'memory' | 'dream' }): OverlayHandle {
+    const frame = el('div', `qbl-panel${o.tone ? ` qbl-panel-${o.tone}` : ''}`);
+    const img = el('img', `qbl-panel-picture qbl-move-${o.motion ?? 'still'}`);
+    img.src = url;
+    img.alt = '';
+    const ms = o.duration && o.duration > 0 ? o.duration : 8000;
+    frame.style.setProperty('--qbl-panel-ms', `${ms}ms`);
+    frame.appendChild(img);
+    // Under the captions, so the narration reads over the picture.
+    if (this.overlays.parentNode === this.root) this.root.insertBefore(frame, this.overlays);
+    else this.root.appendChild(frame);
+    let timer: number | undefined;
+    const h = handle(() => {
+      window.clearTimeout(timer);
+      frame.classList.add('leaving');
+      window.setTimeout(() => frame.remove(), 400);
+    });
+    if (o.duration && o.duration > 0) timer = window.setTimeout(() => h.finish(), o.duration);
+    // Clicked, it moves on at once, as a caption does.
+    frame.addEventListener('pointerdown', () => h.finish());
+    return {
+      done: h.done,
+      cancel: h.cancel,
+      transition: (to, ms2) => {
+        frame.style.transition = `opacity ${ms2}ms linear`;
+        if (to.alpha != null) frame.style.opacity = String(to.alpha);
+      },
+    };
   }
 
   videoOverlay(url: string, o: { alignment?: Alignment; volume?: number }): OverlayHandle {

@@ -172,6 +172,20 @@ return [
         'max_attempts' => (int) $env('QBL_GEN_MAX_ATTEMPTS', 3),
     ],
 
+    // After the pictures, each background is read by a language model that can see (the judge's model):
+    // where the floor really meets the buildings, walls and water (the walkable area is traced to the
+    // painted line), and which things on the floor people walk around (cut out of the picture pixel for
+    // pixel, with a sort line, so figures pass behind them). Off: the blueprint's plain floor.
+    'survey' => [
+        'enabled' => filter_var($env('QBL_GEN_SURVEY', true), FILTER_VALIDATE_BOOL),
+    ],
+
+    // Little life in scenes (birds, squirrels, cats, fish, cars...) comes from the asset library's
+    // ready-made animals and vehicles where one fits (scenarios/assets/library), and is drawn only when
+    // none does. Off: always drawn.
+    'library_critters' => filter_var($env('QBL_GEN_LIBRARY_CRITTERS', true), FILTER_VALIDATE_BOOL),
+    'library_dir' => $env('QBL_LIBRARY_DIR', null),
+
     // Curriculum standards come from the curriculum_standards table, filled by `php artisan qbl:standards`.
     'standards' => [
         // https://platform.learningcommons.org: every US state's standards and CCSS, with CASE identifiers.

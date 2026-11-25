@@ -1,5 +1,5 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, Badge, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, SiteLink } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, OverlayMotion, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
 
 export type { SpeakOptions };
@@ -70,7 +70,7 @@ export interface UiPort {
 
   /** `speak`, here and on the other text below: read it aloud, highlighting each word as it is spoken. */
   textOverlay(text: string, o: { alignment?: Alignment; size?: number; color?: string; style?: string; duration?: number; speak?: SpeakOptions }): OverlayHandle;
-  imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number }): OverlayHandle;
+  imageOverlay(url: string, o: { alignment?: Alignment; scaleX?: number; scaleY?: number; duration?: number; panel?: boolean; motion?: OverlayMotion; tone?: 'memory' | 'dream' }): OverlayHandle;
   videoOverlay(url: string, o: { alignment?: Alignment; volume?: number }): OverlayHandle;
   /**
    * `html` is trusted only as far as the sanitiser allows. `choice` settles with the button that

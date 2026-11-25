@@ -145,6 +145,7 @@ class ScenarioCompiler
                 // The weather and whether the scene plays by itself (a story) are settings too; its water is placed.
                 'weather' => is_array(self::json($sc['params'] ?? null)['weather'] ?? null) ? self::json($sc['params'] ?? null)['weather'] : null,
                 'flows' => ($layout['flows'] ?? []) ?: null,
+                'critters' => ($layout['critters'] ?? []) ?: null,
                 'story' => ! empty(self::json($sc['params'] ?? null)['story']) ? true : null,
                 // Whether the scene shows a player only their own team. Absent: as its group says.
                 'team_only' => array_key_exists('team_only', self::json($sc['params'] ?? null)) && self::json($sc['params'] ?? null)['team_only'] !== null ? self::bool(self::json($sc['params'] ?? null)['team_only']) : null,

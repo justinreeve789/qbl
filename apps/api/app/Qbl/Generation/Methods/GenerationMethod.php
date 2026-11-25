@@ -7,6 +7,7 @@ use App\Qbl\Generation\Art\AssetDirector;
 use App\Qbl\Generation\Art\CharacterAnimator;
 use App\Qbl\Generation\Art\Providers\AutoSpriteAnimator;
 use App\Qbl\Generation\Art\ImageGenerator;
+use App\Qbl\Generation\Art\SceneSurveyor;
 use App\Qbl\Generation\Art\StyleJudge;
 use App\Qbl\Generation\Build\MissionBuilder;
 use App\Qbl\Generation\Build\StoryBuilder;
@@ -24,6 +25,7 @@ use App\Qbl\Generation\Pipeline\Steps\DrawStep;
 use App\Qbl\Generation\Pipeline\Steps\EstimateStep;
 use App\Qbl\Generation\Pipeline\Steps\ImportStep;
 use App\Qbl\Generation\Pipeline\Steps\PackageStep;
+use App\Qbl\Generation\Pipeline\Steps\SurveyStep;
 use App\Qbl\Generation\Pipeline\Steps\VoiceStep;
 use App\Qbl\Generation\Pipeline\Tracer;
 use App\Qbl\Generation\Pipeline\TracingImageGenerator;
@@ -129,6 +131,7 @@ abstract class GenerationMethod
             new DesignStep,    // the blueprint, corrected until it validates        (language model: 'design')
             new EstimateStep,  // count and price the pictures; --design-only stops here
             new DrawStep,      // every picture, judged against the style anchors    (images(), judge())
+            new SurveyStep,    // trace each floor, cut out what people walk around  (language model: 'survey')
             new BuildStep,     // blueprint + pictures → engine rows (plain code, no AI)
             new VoiceStep,     // record the characters' lines (when voices are set up)
             new PackageStep,   // the import ZIP; --no-import stops here
@@ -187,13 +190,14 @@ abstract class GenerationMethod
      *   judge   scoring pictures against the style anchors   (default QBL_GEN_JUDGE_MODEL, Sonnet)
      *   critic  reviewing a blueprint as a teacher would     (default: the design model)
      *   outline sketching the story before the blueprint     (default: the design model)
+     *   survey  reading each background: floor, things to walk around (default: the judge's model)
      * A step of your own can ask for any job name; unknown jobs get the design model.
      */
     protected function chooseModel(string $job): LanguageModel
     {
         return match ($job) {
             'align' => $this->factory->alignLlm(),
-            'judge' => $this->factory->judgeLlm(),
+            'judge', 'survey' => $this->factory->judgeLlm(),
             default => $this->factory->llm(),
         };
     }
@@ -203,7 +207,7 @@ abstract class GenerationMethod
     {
         return (string) match ($job) {
             'align' => $this->factory->config('llm.align_model', $this->factory->config('llm.model')),
-            'judge' => $this->factory->config('llm.judge_model'),
+            'judge', 'survey' => $this->factory->config('llm.judge_model'),
             default => $this->factory->config('llm.model'),
         };
     }
@@ -260,6 +264,21 @@ abstract class GenerationMethod
         return $this->judging() ? new StyleJudge($this->model('judge'), $this->minScore()) : null;
     }
 
+    /**
+     * Who reads the finished backgrounds (SurveyStep), or null not to: then a floor is the blueprint's
+     * plain one and nothing is cut out. As the command says (survey), else as configured
+     * (QBL_GEN_SURVEY, on by default); never for placeholder shapes unless asked for.
+     */
+    protected function makeSurveyor(): ?SceneSurveyor
+    {
+        $wanted = $this->options['survey'] ?? null;
+        if ($wanted === null && $this->placeholderPictures()) {
+            return null;
+        }
+
+        return (bool) ($wanted ?? $this->factory->config('survey.enabled', true)) ? new SceneSurveyor($this->model('survey')) : null;
+    }
+
     /** Below this (out of 10) a picture is drawn again. */
     protected function minScore(): float
     {
@@ -306,7 +325,7 @@ abstract class GenerationMethod
     /** The art director for a run's folder: it writes the prompts, asks images(), has judge() check. */
     protected function makeDirector(string $dir): AssetDirector
     {
-        return new AssetDirector($this->images(), $this->style(), $this->judge(), $dir, max(1, $this->attempts()), $this->log, $this->factory->spend(), $this->pictures(), $this->animator(), $this->animatorFallback());
+        return new AssetDirector($this->images(), $this->style(), $this->judge(), $dir, max(1, $this->attempts()), $this->log, $this->factory->spend(), $this->pictures(), $this->animator(), $this->animatorFallback(), $this->factory->libraryCritters());
     }
 
     /** Turns the blueprint and pictures into engine rows. */
@@ -362,6 +381,16 @@ abstract class GenerationMethod
         }
 
         return $this->made['judge'];
+    }
+
+    /** Who reads the backgrounds (see makeSurveyor), made once. */
+    final public function surveyor(): ?SceneSurveyor
+    {
+        if (! array_key_exists('surveyor', $this->made)) {
+            $this->made['surveyor'] = $this->makeSurveyor();
+        }
+
+        return $this->made['surveyor'];
     }
 
     /** Who animates the characters (see makeAnimator), made once. */

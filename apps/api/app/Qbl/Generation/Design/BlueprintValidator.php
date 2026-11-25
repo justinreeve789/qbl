@@ -2,6 +2,8 @@
 
 namespace App\Qbl\Generation\Design;
 
+use App\Qbl\Generation\Art\LibraryCritters;
+
 /**
  * Checks a blueprint before anything is drawn or built: references, the rules of each kind of
  * interaction, the bag (what is carried, used and put together), cutscenes, twists and the final debrief, and, by playing the mission through in the
@@ -14,6 +16,69 @@ final class BlueprintValidator
 
     /** At most this many debrief questions: the report is the end of the mission, not an exam. */
     public const MAX_REPORT_QUESTIONS = 3;
+
+    /**
+     * A mission's cutscenes: when each plays (intro, or after an interaction), and each panel set in a
+     * place, or continuing the panel before, with a script that plays (StoryValidator::scriptProblems)
+     * and framing that keeps any still picture under about 20 seconds (Cutscenes::problems).
+     *
+     * @return string[]
+     */
+    public static function cutsceneProblems(array $b, array $scenes, array $characters, array $interactions): array
+    {
+        $e = [];
+        $cuts = (array) ($b['cutscenes'] ?? []);
+        if (count($cuts) > 2) {
+            $e[] = 'cutscenes: at most 2; the mission is for playing.';
+        }
+        $seen = [];
+        $panelsByKey = array_column(Cutscenes::panels($b), null, 'key');
+        foreach (array_values($cuts) as $c => $cut) {
+            $key = (string) ($cut['key'] ?? '');
+            $p = "cutscenes[$c]";
+            if (! preg_match('/'.BlueprintSchema::KEY.'/', $key) || isset($seen[$key])) {
+                $e[] = "$p.key: a unique key.";
+            }
+            $seen[$key] = true;
+            $when = (string) ($cut['when'] ?? '');
+            if ($when !== 'intro' && ! isset($interactions[$when])) {
+                $e[] = "$p.when: \"intro\" or the key of an interaction it plays after.";
+            } elseif ($when !== 'intro' && (! empty($interactions[$when]['at_report']) || ($interactions[$when]['type'] ?? '') === 'talk')) {
+                $e[] = "$p.when: not after a talk or a debrief question; after something the student does in a scene.";
+            }
+            $panels = array_values((array) ($cut['panels'] ?? []));
+            if (! $panels || count($panels) > 4) {
+                $e[] = "$p.panels: one to four panels.";
+            }
+            $earlier = [];
+            $total = 0;
+            foreach ($panels as $n => $panel) {
+                $pp = "$p.panels[$n]";
+                if (! empty($panel['continues']) && $n === 0) {
+                    $e[] = "$pp.continues: the first panel continues nothing; give it the scene it is set in (at).";
+                } elseif (empty($panel['continues']) && ! isset($scenes[$panel['at'] ?? ''])) {
+                    $e[] = "$pp.at: \"".($panel['at'] ?? '').'" is not a scene; a panel is set in one of the mission\'s places.';
+                }
+                $scene = $panelsByKey['cut_'.$key.'_'.($n + 1)] ?? ['key' => 'panel', 'cast' => $panel['cast'] ?? [], 'script' => $panel['script'] ?? []];
+                foreach (array_values((array) ($panel['cast'] ?? [])) as $i => $who) {
+                    if (($who['who'] ?? '') === 'player') {
+                        $e[] = "$pp.cast[$i]: the student is not shown in a cutscene; tell it with the characters.";
+                    }
+                }
+                $appears = [];
+                array_push($e, ...StoryValidator::scriptProblems($pp, $scene, $characters, $appears, story: false));
+                array_push($e, ...Cutscenes::problems($pp, ['continues' => ! empty($panel['continues']) ? 'previous' : null] + $panel, $n > 0 ? ['previous' => true] : [], $characters));
+                $total += Cutscenes::scriptTime((array) ($panel['script'] ?? []));
+                $earlier[$n] = true;
+            }
+            // The opening hook: students should be playing within a couple of minutes.
+            if ($when === 'intro' && $total > 45000) {
+                $e[] = sprintf('%s: the opening cutscene plays for about %d seconds; keep it under 45 so students can start playing soon (tell the rest through the mission itself).', $p, round($total / 1000));
+            }
+        }
+
+        return $e;
+    }
 
     /** @return string[] errors; empty when the blueprint can be built */
     public static function errors(array $b, array $objectiveIds = []): array
@@ -36,6 +101,9 @@ final class BlueprintValidator
         if (! isset($scenes[$b['start_scene'] ?? ''])) {
             $e[] = 'start_scene "'.($b['start_scene'] ?? '').'" is not a scene key.';
         }
+
+        // ---- cutscenes: panels told like a comic, between the playing
+        array_push($e, ...self::cutsceneProblems($b, $scenes, $characters, $interactions));
 
         // ---- how scenes connect: edges and passages, two-way
         array_push($e, ...Connections::problems($b, $scenes));
@@ -914,7 +982,18 @@ final class BlueprintValidator
             } elseif ($motion === 'drives_by' && $kind !== 'outdoor') {
                 $e[] = "$p.ambient[$i]: vehicles drive by only outdoors.";
             }
-            if ((int) ($a['size_cm'] ?? 0) > 150 && $motion !== 'drives_by') {
+            if (in_array($motion, ['climbs', 'hides'], true) && ! in_array($kind, ['outdoor', 'up_high'], true)) {
+                $e[] = "$p.ambient[$i]: a critter that $motion needs trees or bushes standing out on the floor: outdoors only.";
+            }
+            if (isset($a['library'])) {
+                $ready = LibraryCritters::CATALOGUE[$a['library']] ?? null;
+                if (! $ready) {
+                    $e[] = "$p.ambient[$i].library: one of ".implode(', ', array_keys(LibraryCritters::CATALOGUE)).', or leave it out to have it drawn.';
+                } elseif (! in_array($motion, $ready[1], true)) {
+                    $e[] = "$p.ambient[$i].library: {$a['library']} cannot do \"$motion\" (it can: ".implode(', ', $ready[1]).'); choose another motion, another one, or leave library out to have it drawn.';
+                }
+            }
+            if ((int) ($a['size_cm'] ?? 0) > 150 && $motion !== 'drives_by' && ! isset($a['library'])) {
                 $e[] = "$p.ambient[$i].size_cm: a creature passing by is at most 150 cm; only a vehicle that drives_by is bigger.";
             }
             if (isset($a['sound']) && ! in_array($a['sound'], BlueprintSchema::SOUNDS, true)) {

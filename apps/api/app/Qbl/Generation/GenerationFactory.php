@@ -2,6 +2,8 @@
 
 namespace App\Qbl\Generation;
 
+use App\Qbl\Generation\Art\LibraryCritters;
+
 use App\Qbl\Generation\Art\ArtStyle;
 use App\Qbl\Generation\Art\AssetDirector;
 use App\Qbl\Generation\Art\CharacterAnimator;
@@ -62,6 +64,26 @@ class GenerationFactory
         $this->llm = $llm;
         $this->judgeLlm = $llm;
         $this->alignLlm = $llm;
+    }
+
+    /**
+     * The asset library's ready-made animals and vehicles, for scenes' little life, or null when they
+     * are turned off (QBL_GEN_LIBRARY_CRITTERS=false). The library is the shipped pack: QBL_LIBRARY_DIR,
+     * else the checkout's scenarios/assets/library, else where the containers mount it.
+     */
+    public function libraryCritters(): ?LibraryCritters
+    {
+        if (! (bool) $this->config('library_critters', true)) {
+            return null;
+        }
+        $dir = $this->config('library_dir') ?: (getenv('QBL_LIBRARY_DIR') ?: null);
+        if (! $dir) {
+            $checkout = dirname(__DIR__, 5).'/scenarios/assets/library';
+            $dir = is_dir($checkout) ? $checkout : '/repo/scenarios/assets/library';
+        }
+        $library = new LibraryCritters((string) $dir);
+
+        return $library->available() ? $library : null;
     }
 
     public function config(string $key, mixed $default = null): mixed
@@ -273,6 +295,6 @@ class GenerationFactory
     {
         $style = $this->style($styleKey);
 
-        return new AssetDirector($this->images($driver, $style), $style, null, $dir, 1, $log);
+        return new AssetDirector($this->images($driver, $style), $style, null, $dir, 1, $log, library: $this->libraryCritters());
     }
 }

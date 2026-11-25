@@ -42,7 +42,7 @@ final class StoryValidator
             }
         }
         $appears = [];
-        $soundSet = array_flip(BlueprintSchema::SOUNDS);
+        $earlier = [];
         foreach ($scenes as $key => $scene) {
             $p = "scenes.$key";
             foreach (['title', 'background'] as $k) {
@@ -62,141 +62,9 @@ final class StoryValidator
                     $e[] = "$p.props[$i].item: \"".($prop['item'] ?? '')."\" is not one of the items.";
                 }
             }
-            $passers = array_column((array) ($scene['ambient'] ?? []), null, 'key');
-            $on = [];
-            foreach (array_values((array) ($scene['cast'] ?? [])) as $i => $c) {
-                $who = (string) ($c['who'] ?? '');
-                if (! isset($characters[$who])) {
-                    $e[] = "$p.cast[$i].who: \"$who\" is not one of the characters.";
-                } elseif (isset($on[$who])) {
-                    $e[] = "$p.cast: $who is listed twice.";
-                } else {
-                    $on[$who] = true;
-                    $appears[$who] = true;
-                }
-            }
-            $gone = [];
-            $spoken = 0;
-            $script = array_values((array) ($scene['script'] ?? []));
-            if (count($script) < 3) {
-                $e[] = "$p.script: at least 3 beats: the scene acted out.";
-            }
-            if (count($script) > 24) {
-                $e[] = "$p.script: at most 24 beats; split it into two scenes.";
-            }
-            foreach ($script as $i => $beat) {
-                $bp = "$p.script[$i]";
-                $do = (string) ($beat['do'] ?? '');
-                $who = (string) ($beat['who'] ?? '');
-                $onStage = function () use ($who, &$on, $characters, $bp, &$e, $do, &$gone): bool {
-                    if (! isset($characters[$who])) {
-                        $e[] = "$bp ($do).who: \"$who\" is not one of the characters.";
-
-                        return false;
-                    }
-                    if (! isset($on[$who])) {
-                        $e[] = isset($gone[$who])
-                            ? "$bp ($do): $who has left this scene by then."
-                            : "$bp ($do): $who is not on stage yet; put them in the scene's cast, or bring them on first with an enter beat.";
-
-                        return false;
-                    }
-
-                    return true;
-                };
-                $text = trim((string) ($beat['text'] ?? ''));
-                switch ($do) {
-                    case 'narrate':
-                        $spoken++;
-                        if ($text === '') {
-                            $e[] = "$bp (narrate): text is what the narrator says.";
-                        }
-                        break;
-                    case 'say':
-                        $spoken++;
-                        $onStage();
-                        if ($text === '') {
-                            $e[] = "$bp (say): text is what they say.";
-                        } elseif (mb_strlen($text) > 200) {
-                            $e[] = "$bp (say): at most 200 characters; split it into two lines.";
-                        }
-                        if (! empty($beat['to']) && ($beat['to'] === $who || ! isset($on[$beat['to']]))) {
-                            $e[] = "$bp (say).to: \"{$beat['to']}\" must be someone else on stage.";
-                        }
-                        break;
-                    case 'walk':
-                        $onStage();
-                        if (! is_numeric($beat['x'] ?? null)) {
-                            $e[] = "$bp (walk).x: where they walk to, between 0.08 and 0.92.";
-                        }
-                        break;
-                    case 'enter':
-                        if (! isset($characters[$who])) {
-                            $e[] = "$bp (enter).who: \"$who\" is not one of the characters.";
-                        } elseif (isset($on[$who])) {
-                            $e[] = "$bp (enter): $who is already on stage.";
-                        } elseif (isset($gone[$who])) {
-                            $e[] = "$bp (enter): $who left this scene and cannot come back in it; start a new scene.";
-                        } else {
-                            $on[$who] = true;
-                            $appears[$who] = true;
-                        }
-                        if (! in_array($beat['from'] ?? '', ['left', 'right'], true)) {
-                            $e[] = "$bp (enter).from: left or right.";
-                        }
-                        if (! is_numeric($beat['x'] ?? null)) {
-                            $e[] = "$bp (enter).x: where they walk to once on, between 0.08 and 0.92.";
-                        }
-                        break;
-                    case 'leave':
-                        if ($onStage()) {
-                            unset($on[$who]);
-                            $gone[$who] = true;
-                        }
-                        if (! in_array($beat['edge'] ?? '', ['left', 'right'], true)) {
-                            $e[] = "$bp (leave).edge: left or right.";
-                        }
-                        break;
-                    case 'gesture':
-                        $onStage();
-                        if (! in_array($beat['gesture'] ?? '', BlueprintSchema::CUTSCENE_GESTURES, true)) {
-                            $e[] = "$bp (gesture).gesture: one of ".implode(', ', BlueprintSchema::CUTSCENE_GESTURES).'.';
-                        }
-                        break;
-                    case 'wait':
-                        if (! is_numeric($beat['seconds'] ?? null)) {
-                            $e[] = "$bp (wait).seconds: how long, from 0.5 to 6.";
-                        }
-                        break;
-                    case 'sound':
-                        if (! isset($soundSet[$beat['sound'] ?? ''])) {
-                            $e[] = "$bp (sound).sound: one of ".implode(', ', BlueprintSchema::SOUNDS).'.';
-                        }
-                        break;
-                    case 'weather':
-                        if (! in_array($beat['weather'] ?? '', [...BlueprintSchema::WEATHERS, 'clear'], true)) {
-                            $e[] = "$bp (weather).weather: one of ".implode(', ', [...BlueprintSchema::WEATHERS, 'clear']).'.';
-                        } elseif (! in_array(Sizes::sceneKind($scene), BlueprintSchema::WEATHER_KINDS, true)) {
-                            $e[] = "$bp (weather): weather falls only on outdoor and up_high scenes.";
-                        }
-                        break;
-                    case 'pass':
-                        if (! isset($passers[$beat['passer'] ?? ''])) {
-                            $e[] = "$bp (pass).passer: \"".($beat['passer'] ?? '').'" is not one of this scene\'s ambient creatures or vehicles; add it to ambient.';
-                        }
-                        break;
-                    case 'title':
-                        if ($text === '' || mb_strlen($text) > 60) {
-                            $e[] = "$bp (title): text of at most 60 characters.";
-                        }
-                        break;
-                    default:
-                        $e[] = "$bp.do: one of ".implode(', ', StorySchema::BEATS).'.';
-                }
-            }
-            if ($script && $spoken === 0) {
-                $e[] = "$p.script: nobody says anything and the narrator is silent; tell the story.";
-            }
+            array_push($e, ...self::scriptProblems($p, $scene, $characters, $appears));
+            array_push($e, ...Cutscenes::problems($p, $scene, $earlier, $characters));
+            $earlier[$key] = true;
         }
         foreach ($characters as $key => $_) {
             if (! isset($appears[$key])) {
@@ -206,6 +74,166 @@ final class StoryValidator
         $discussion = array_filter((array) ($b['ending']['discussion'] ?? []), fn ($q) => trim((string) $q) !== '');
         if (! $discussion) {
             $e[] = 'ending.discussion: one to three questions for students to talk about.';
+        }
+
+        return $e;
+    }
+
+    /**
+     * A scene's script followed through, beat by beat, with who is on the stage: nobody speaks or walks
+     * before they have come on, nobody comes on twice. For a story's scenes and a mission's cutscene panels.
+     *
+     * @param  array<string, true>  $appears  who has appeared anywhere, added to
+     * @return string[]
+     */
+    public static function scriptProblems(string $p, array $scene, array $characters, array &$appears, bool $story = true): array
+    {
+        $e = [];
+        $soundSet = array_flip(BlueprintSchema::SOUNDS);
+        $passers = array_column((array) ($scene['ambient'] ?? []), null, 'key');
+        $on = [];
+        foreach (array_values((array) ($scene['cast'] ?? [])) as $i => $c) {
+            $who = (string) ($c['who'] ?? '');
+            if (! isset($characters[$who])) {
+                $e[] = "$p.cast[$i].who: \"$who\" is not one of the characters.";
+            } elseif (isset($on[$who])) {
+                $e[] = "$p.cast: $who is listed twice.";
+            } else {
+                $on[$who] = true;
+                $appears[$who] = true;
+            }
+        }
+        $gone = [];
+        $spoken = 0;
+        $script = array_values((array) ($scene['script'] ?? []));
+        if ($story && count($script) < 3) {
+            $e[] = "$p.script: at least 3 beats: the scene acted out.";
+        }
+        if (count($script) > 24) {
+            $e[] = "$p.script: at most 24 beats; split it into two scenes.";
+        }
+        foreach ($script as $i => $beat) {
+            $bp = "$p.script[$i]";
+            $do = (string) ($beat['do'] ?? '');
+            $who = (string) ($beat['who'] ?? '');
+            $onStage = function () use ($who, &$on, $characters, $bp, &$e, $do, &$gone): bool {
+                if (! isset($characters[$who])) {
+                    $e[] = "$bp ($do).who: \"$who\" is not one of the characters.";
+
+                    return false;
+                }
+                if (! isset($on[$who])) {
+                    $e[] = isset($gone[$who])
+                        ? "$bp ($do): $who has left this scene by then."
+                        : "$bp ($do): $who is not on stage yet; put them in the scene's cast, or bring them on first with an enter beat.";
+
+                    return false;
+                }
+
+                return true;
+            };
+            $text = trim((string) ($beat['text'] ?? ''));
+            switch ($do) {
+                case 'narrate':
+                    $spoken++;
+                    if ($text === '') {
+                        $e[] = "$bp (narrate): text is what the narrator says.";
+                    }
+                    break;
+                case 'say':
+                    $spoken++;
+                    $onStage();
+                    if ($text === '') {
+                        $e[] = "$bp (say): text is what they say.";
+                    } elseif (mb_strlen($text) > 200) {
+                        $e[] = "$bp (say): at most 200 characters; split it into two lines.";
+                    }
+                    if (! empty($beat['to']) && ($beat['to'] === $who || ! isset($on[$beat['to']]))) {
+                        $e[] = "$bp (say).to: \"{$beat['to']}\" must be someone else on stage.";
+                    }
+                    break;
+                case 'walk':
+                    $onStage();
+                    if (! is_numeric($beat['x'] ?? null)) {
+                        $e[] = "$bp (walk).x: where they walk to, between 0.08 and 0.92.";
+                    }
+                    break;
+                case 'enter':
+                    if (! isset($characters[$who])) {
+                        $e[] = "$bp (enter).who: \"$who\" is not one of the characters.";
+                    } elseif (isset($on[$who])) {
+                        $e[] = "$bp (enter): $who is already on stage.";
+                    } elseif (isset($gone[$who])) {
+                        $e[] = "$bp (enter): $who left this scene and cannot come back in it; start a new scene.";
+                    } else {
+                        $on[$who] = true;
+                        $appears[$who] = true;
+                    }
+                    if (! in_array($beat['from'] ?? '', ['left', 'right'], true)) {
+                        $e[] = "$bp (enter).from: left or right.";
+                    }
+                    if (! is_numeric($beat['x'] ?? null)) {
+                        $e[] = "$bp (enter).x: where they walk to once on, between 0.08 and 0.92.";
+                    }
+                    break;
+                case 'leave':
+                    if ($onStage()) {
+                        unset($on[$who]);
+                        $gone[$who] = true;
+                    }
+                    if (! in_array($beat['edge'] ?? '', ['left', 'right'], true)) {
+                        $e[] = "$bp (leave).edge: left or right.";
+                    }
+                    break;
+                case 'gesture':
+                    $onStage();
+                    if (! in_array($beat['gesture'] ?? '', BlueprintSchema::CUTSCENE_GESTURES, true)) {
+                        $e[] = "$bp (gesture).gesture: one of ".implode(', ', BlueprintSchema::CUTSCENE_GESTURES).'.';
+                    }
+                    break;
+                case 'wait':
+                    if (! is_numeric($beat['seconds'] ?? null)) {
+                        $e[] = "$bp (wait).seconds: how long, from 0.5 to 6.";
+                    }
+                    break;
+                case 'sound':
+                    if (! isset($soundSet[$beat['sound'] ?? ''])) {
+                        $e[] = "$bp (sound).sound: one of ".implode(', ', BlueprintSchema::SOUNDS).'.';
+                    }
+                    break;
+                case 'weather':
+                    if (! in_array($beat['weather'] ?? '', [...BlueprintSchema::WEATHERS, 'clear'], true)) {
+                        $e[] = "$bp (weather).weather: one of ".implode(', ', [...BlueprintSchema::WEATHERS, 'clear']).'.';
+                    } elseif (! in_array(Sizes::sceneKind($scene), BlueprintSchema::WEATHER_KINDS, true)) {
+                        $e[] = "$bp (weather): weather falls only on outdoor and up_high scenes.";
+                    }
+                    break;
+                case 'pass':
+                    if (! isset($passers[$beat['passer'] ?? ''])) {
+                        $e[] = "$bp (pass).passer: \"".($beat['passer'] ?? '').'" is not one of this scene\'s ambient creatures or vehicles; add it to ambient.';
+                    }
+                    break;
+                case 'title':
+                    if ($text === '' || mb_strlen($text) > 60) {
+                        $e[] = "$bp (title): text of at most 60 characters.";
+                    }
+                    break;
+                case 'show':
+                    if ($text !== '') {
+                        $spoken++;
+                    }
+                    break; // its picture: Cutscenes::problems
+                case 'camera':
+                    if (($beat['move'] ?? '') === 'push_in') {
+                        $onStage();
+                    }
+                    break;
+                default:
+                    $e[] = "$bp.do: one of ".implode(', ', StorySchema::BEATS).'.';
+            }
+        }
+        if ($story && $script && $spoken === 0) {
+            $e[] = "$p.script: nobody says anything and the narrator is silent; tell the story.";
         }
 
         return $e;

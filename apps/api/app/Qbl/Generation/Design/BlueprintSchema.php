@@ -2,6 +2,8 @@
 
 namespace App\Qbl\Generation\Design;
 
+use App\Qbl\Generation\Art\LibraryCritters;
+
 /**
  * The shape of a mission blueprint: what the language model writes, and all it writes.
  *
@@ -58,7 +60,7 @@ final class BlueprintSchema
     public const CUTSCENE_GESTURES = ['wave', 'point', 'cheer', 'think', 'jump', 'spin', 'dance'];
 
     /** How a creature that is only there for life moves through a scene. */
-    public const AMBIENT_MOTIONS = ['lands', 'walks_by', 'flies_by', 'swims_by', 'drives_by'];
+    public const AMBIENT_MOTIONS = ['lands', 'climbs', 'hides', 'walks_by', 'flies_by', 'swims_by', 'drives_by'];
 
     /** The sounds the game makes itself (packages/shared/src/sounds.ts): no recording needed. */
     public const SOUNDS = ['rain', 'heavy_rain', 'wind', 'river', 'stream', 'waves', 'fire', 'birds', 'crickets', 'thunder', 'car', 'horn', 'hooves', 'bell', 'chime', 'knock', 'door', 'footsteps', 'splash', 'whoosh', 'pop', 'tweet'];
@@ -227,13 +229,16 @@ final class BlueprintSchema
                             'text' => $text('What the student notices, as their own thought: "Someone lost a boot. Something is growing in it!"', 160),
                             'placement' => ['type' => 'string', 'enum' => ['back', 'ground']],
                         ]]],
-                        'ambient' => ['type' => 'array', 'maxItems' => 2, 'description' => 'Optional: a little life that has nothing to do with the lesson: birds that land, peck about and fly off; a cat that strolls by; fish that swim past. One or two in most scenes.', 'items' => [
+                        'ambient' => ['type' => 'array', 'maxItems' => 3, 'description' => 'Optional: a little life that has nothing to do with the lesson, coming and going now and then on each student\'s screen: birds that land, peck about and fly off; a squirrel that darts about and runs up a tree; a rabbit that pops out of a bush, sits twitching its nose and hops into another; a cat that strolls by; fish that swim past; a car driving by. Shy animals scatter early when anyone comes near (birds take off, the squirrel bolts up its tree, the rabbit dives into the nearest bush). One or two in most outdoor scenes.', 'items' => [
                             'type' => 'object', 'required' => ['key', 'look', 'motion', 'size_cm'],
                             'properties' => [
                                 'key' => $key,
                                 'look' => $text('What it looks like: "a small round blue bird with an orange beak".', 160),
-                                'motion' => ['type' => 'string', 'enum' => self::AMBIENT_MOTIONS, 'description' => 'lands: flies in, lands on the floor, hops and pecks, flies off. walks_by: walks across the floor. flies_by: flies across the sky. swims_by: swims across (underwater). drives_by: a vehicle (a car, a cart, a bus, a tractor, a horse and cart) drives across the back of the floor, outdoors.'],
+                                'motion' => ['type' => 'string', 'enum' => self::AMBIENT_MOTIONS, 'description' => 'lands: flies in, lands on the floor, hops and pecks, flies off (birds; count for a little flock). climbs: scampers in, darts about, runs up one of the scene\'s trees out of sight (a squirrel: the background must have a tree standing out on the floor). hides: pops out of one bush, sits a while twitching its nose, hops into another (a rabbit, a hedgehog: the background must have two or more bushes standing out on the floor). walks_by: walks across the floor. flies_by: flies across the sky. swims_by: swims across (underwater). drives_by: a vehicle (a car, a cart, a bus, a tractor, a horse and cart) drives across the back of the floor, outdoors.'],
                                 'size_cm' => ['type' => 'integer', 'minimum' => 5, 'maximum' => 900, 'description' => 'Its real longest side: a sparrow 15, a cat 45, a car 420, a bus 900.'],
+                                'library' => ['type' => 'string', 'enum' => array_keys(LibraryCritters::CATALOGUE), 'description' => 'Optional, and best when one fits: a ready-made animal or vehicle from the asset library, already animated, used instead of drawing one (look is then only a note). Only with a motion it suits: '.str_replace("\n", '; ', LibraryCritters::described())],
+                                'count' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 5, 'description' => 'lands: how many come together (a little flock). Default 1.'],
+                                'shy' => ['type' => 'boolean', 'description' => 'Default true for animals: it scatters when anyone comes near. false: it does not care (a tame hen, a cat).'],
                                 'sound' => ['type' => 'string', 'enum' => self::SOUNDS, 'description' => 'Optional: the sound it makes as it passes (car, hooves, tweet...).'],
                             ],
                         ]],
@@ -425,6 +430,26 @@ final class BlueprintSchema
                         'done_when' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 6, 'items' => $key, 'description' => 'Interaction (or combination) keys; the step is done when all of them are.'],
                         'after' => ['type' => 'string', 'description' => 'Optional: a step key (or a twist key); this step is only listed once that one is done (or has happened).'],
                         'optional' => ['type' => 'boolean'],
+                    ],
+                ]],
+                'cutscenes' => ['type' => 'array', 'maxItems' => 2, 'description' => 'Optional, at most two, and short: moments told like a comic or a film, between the playing. The student is taken to a page that plays by itself, then brought back where they were. Use one where the story turns: the opening hook (when intro, at most 20 seconds before students can act), or the payoff after a big discovery. Each is one to four panels; a panel is a scene of its own, set in one of the mission\'s places (its picture is used again, or a close-up of it drawn), or the next panel of the one before (a moment later, with changes). Tell it with storytelling devices: an establishing wide shot, then a close-up on a face as the truth dawns; a before and after; a reveal (the same panel with one thing changed: the creature is now on the roof); an insert of the clue in someone\'s hand (show); a memory (show with tone memory); a camera push in for tension. Never more than about 20 seconds on one still picture.', 'items' => [
+                    'type' => 'object', 'required' => ['key', 'when', 'panels'],
+                    'properties' => [
+                        'key' => $key,
+                        'when' => ['type' => 'string', 'description' => '"intro": the first time a student arrives in the start scene, before the guide\'s briefing. Or an interaction\'s key: right after a student first completes it.'],
+                        'panels' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 4, 'items' => [
+                            'type' => 'object', 'required' => ['cast', 'script'],
+                            'properties' => [
+                                'at' => ['type' => 'string', 'pattern' => self::KEY, 'description' => 'The scene (place) it is set in: its look is used. Not needed when it continues.'],
+                                'continues' => ['type' => 'boolean', 'description' => 'true: the next panel of the panel before: the same place and view a moment later, everything where it was unless changes or the script says otherwise.'],
+                                'shot' => ['type' => 'string', 'enum' => Cutscenes::SHOTS, 'description' => 'wide (default): the whole place. close: a close-up, the characters drawn twice as big; its script fits in about 20 seconds.'],
+                                'changes' => ['type' => 'string', 'maxLength' => 300, 'description' => 'With continues: what is different in the picture itself ("the vault door now stands open, gold light spilling out").'],
+                                'cast' => ['type' => 'array', 'maxItems' => 4, 'items' => ['type' => 'object', 'required' => ['who', 'x'], 'properties' => [
+                                    'who' => $key, 'x' => ['type' => 'number', 'minimum' => 0.1, 'maximum' => 0.9], 'facing' => ['type' => 'string', 'enum' => ['left', 'right']],
+                                ]]],
+                                'script' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 12, 'items' => StorySchema::beat()],
+                            ],
+                        ]],
                     ],
                 ]],
                 'intro' => ['type' => 'object', 'required' => ['dialogue'], 'properties' => [

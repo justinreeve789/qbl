@@ -18,6 +18,11 @@ export class RemotePlayersSystem implements SceneSystem {
     return this.avatars.get(sessionId);
   }
 
+  /** Where the other players in this scene stand (their feet). */
+  feet(): Array<{ x: number; y: number }> {
+    return [...this.avatars.values()].map((a) => ({ x: a.x, y: a.y }));
+  }
+
   /** True while the pointer is over another player: a click then opens their profile instead of walking there. */
   get hovering(): boolean {
     return this.pointerOver > 0;

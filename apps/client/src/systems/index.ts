@@ -2,6 +2,7 @@ import type { SceneSystemClass } from '../core/SceneRuntime';
 import { AtmosphereSystem } from './AtmosphereSystem';
 import { BenchSystem } from './BenchSystem';
 import { CameraSystem } from './CameraSystem';
+import { CritterSystem } from './CritterSystem';
 import { DebugSystem } from './DebugSystem';
 import { HotspotSystem } from './HotspotSystem';
 import { LayerSystem } from './LayerSystem';
@@ -34,6 +35,7 @@ export const sceneSystems: SceneSystemClass[] = [
   RemotePlayersSystem,
   LocalPlayerSystem,
   HotspotSystem,
+  CritterSystem,
   BenchSystem,
   SpeechSystem,
   CameraSystem,

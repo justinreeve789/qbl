@@ -85,6 +85,24 @@ name | string | | For the editor.
 
 The generator paints a scene's water as a flat chroma colour, cuts it out and puts a `flows` box where the see-through part is, so the water always flows between the banks it painted.
 
+## Critters
+
+`scene.critters`: a little life that has nothing to do with the lesson. Each player sees their own (they are not shared through the room), now and then: `CritterSystem` in the client. A shy critter scatters early when anyone comes near (the player, another player or a character): birds take off, a squirrel bolts for its tree, a rabbit dives into the nearest bush. There are none with reduced motion.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+media_id | int | | Its picture: a sprite sheet whose named animations it plays (a single picture works too, and still hops).
+behavior | string | | `lands` (flies in, lands on a spot, pecks and hops, flies off), `climbs` (scampers about, then runs up a tree out of sight), `hides` (pops out of one hiding place, sits, hops into another), `walks_by`, `flies_by`, `swims_by`, `drives_by`.
+spots | array | | `{x, y, top?}` in scene pixels: where it lands; the bottoms of the trees it climbs (`top`: how high); the bases of the bushes it hides in (it is drawn just behind the base, so behind the bush's sort line: it seems to go in). Also the depth a walker or vehicle crosses at.
+animations | object | | Which sheet animation plays for `idle`, `walk`, `run`, `fly`, `take_off`, `land`, `peck`, `hop`, `climb`, when the names differ. A missing one falls back (run → walk, peck → idle...).
+scale | number | 1 | Its size, before the scene's depth.
+faces | string | `right` | Which way its picture faces.
+every | [min, max] | [12, 28] | Seconds between visits.
+shy | int | 170 | How near (pixels; counted double in depth) anyone may come before it scatters. 0: never.
+count | int | 1 | How many come together (a flock), at most 6.
+speed | number | by behavior | Pixels per second.
+sound | string | | One of [the game's own sounds](/docs/developers/actions/audio/#the-games-own-sounds), as it comes.
+
 ## Story scenes
 
 **`story: true`** (kept in the scene's `params`): the scene plays by itself, like a page of a picture book. What happens is in its start events: characters walk on and off, say lines, wave; a narrator's captions; the rain starts; a car goes by. They usually end with a `jump` to the next scene, so a story turns its own pages. In a story scene:

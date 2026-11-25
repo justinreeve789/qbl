@@ -35,6 +35,13 @@ export class CameraSystem implements SceneSystem {
   private glide: { from: Point; to: Point; ms: number; t: number; done: () => void } | null = null;
   /** The last character who acted, for a story scene's view. */
   private actor: Id | null = null;
+  /** How close the view is (CameraAction.zoom): 1 is the scene's usual view. */
+  private closeness = 1;
+  /** A change of closeness under way. */
+  private zooming: { from: number; to: number; ms: number; t: number } | null = null;
+  /** The zoom that fills the window with the scene, and the usual view's zoom. */
+  private cover = 1;
+  private base = 1;
 
   constructor(private rt: SceneRuntime) {}
 
@@ -75,6 +82,11 @@ export class CameraSystem implements SceneSystem {
     const target = action.target ?? (action.character_id != null ? 'character' : action.position_x != null ? 'point' : 'player');
     const ms = Math.max(0, action.duration ?? 1200);
     const from = this.centre();
+    if (typeof action.zoom === 'number' && Number.isFinite(action.zoom)) {
+      const to = Math.min(3, Math.max(0.5, action.zoom));
+      if (ms <= 0) this.setCloseness(to);
+      else this.zooming = { from: this.closeness, to, ms, t: 0 };
+    }
     this.glide?.done();
     this.glide = null;
     switch (target) {
@@ -109,9 +121,16 @@ export class CameraSystem implements SceneSystem {
   }
 
   update(_time: number, delta: number) {
+    const dt = Math.min(delta, 100);
+    if (this.zooming) {
+      const z = this.zooming;
+      z.t = Math.min(1, z.t + dt / z.ms);
+      const k = z.t < 0.5 ? 2 * z.t * z.t : 1 - (-2 * z.t + 2) ** 2 / 2;
+      this.setCloseness(z.from + (z.to - z.from) * k);
+      if (z.t >= 1) this.zooming = null;
+    }
     if (this.mode.kind === 'player' || !this.focus) return;
     const cam = this.rt.scene.cameras.main;
-    const dt = Math.min(delta, 100);
     if (this.glide) {
       const g = this.glide;
       g.t = Math.min(1, g.t + dt / g.ms);
@@ -194,7 +213,24 @@ export class CameraSystem implements SceneSystem {
       cam.centerOn(size.width / 2, size.height / 2);
       return;
     }
-    const cover = Math.max(width / size.width, height / size.height);
-    scene.cameras.main.setZoom(Math.max(cover, height / VIEW_HEIGHT));
+    this.cover = Math.max(width / size.width, height / size.height);
+    this.base = Math.max(this.cover, height / VIEW_HEIGHT);
+    this.applyZoom();
+  }
+
+  /** How close the view is now (1: the usual view). */
+  get zoom(): number {
+    return this.closeness;
+  }
+
+  private setCloseness(closeness: number) {
+    this.closeness = closeness;
+    this.applyZoom();
+  }
+
+  /** The usual view times how close it is, never so far out that the scene stops filling the window. */
+  private applyZoom() {
+    if (this.whole) return;
+    this.rt.scene.cameras.main.setZoom(Math.max(this.cover, this.base * this.closeness));
   }
 }
