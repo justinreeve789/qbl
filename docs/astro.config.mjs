@@ -4,8 +4,8 @@ import starlight from '@astrojs/starlight';
 import starlightLinksValidator from 'starlight-links-validator';
 
 const developers = [
-  'scenario', 'scene', 'event', 'action', 'media', 'character', 'item', 'variable', 'condition', 'spritemap', 'label',
-  'extensions', 'save-data', 'generation', 'architecture', 'api', 'protocol',
+  'scenario', 'scene', 'event', 'media', 'character', 'item', 'variable', 'condition', 'spritemap', 'label',
+  'save-data', 'generation', 'architecture', 'api', 'protocol',
 ];
 
 export default defineConfig({
@@ -18,6 +18,14 @@ export default defineConfig({
       [...developers.filter((p) => p !== 'save-data'), 'session'].map((p) => [`/${p}`, `/docs/developers/${p === 'session' ? 'save-data' : p}/`]),
     ),
     '/labels': '/docs/developers/label/',
+    // Actions used to be on /developers/action/ and four pages under /developers/extensions/.
+    '/action': '/docs/developers/actions/',
+    '/developers/action': '/docs/developers/actions/',
+    '/developers/extensions': '/docs/developers/structure/',
+    '/developers/extensions/actions': '/docs/developers/actions/',
+    '/developers/extensions/actions-world': '/docs/developers/actions/',
+    '/developers/extensions/dialogue': '/docs/developers/actions/dialogue/',
+    '/developers/extensions/rewards': '/docs/developers/actions/award/',
     '/classes': '/docs/editor/classes/',
     '/tooling': '/docs/editor/backups-and-copies/',
     '/developers/api-v1': '/docs/api-v1/',
@@ -119,35 +127,98 @@ export default defineConfig({
               items: [
                 { label: 'How a scenario fits together', slug: 'developers/structure' },
                 {
-                  label: 'Core objects',
-                  items: ['scenario', 'scene', 'event', 'action', 'condition', 'variable'].map((p) => ({ slug: `developers/${p}` })),
+                  label: 'Scenarios and scenes',
+                  items: [
+                    { label: 'Scenario', slug: 'developers/scenario' },
+                    { label: 'Scenario fields', slug: 'developers/extensions/scenario' },
+                    { label: 'Scene', slug: 'developers/scene' },
+                    { label: 'Scenes, layers and spawn points', slug: 'developers/extensions/scenes' },
+                    { label: 'Skies, weather, water, stories', slug: 'developers/extensions/atmosphere' },
+                    { label: 'The close-up bench', slug: 'developers/extensions/bench' },
+                  ],
+                },
+                {
+                  label: 'Events and conditions',
+                  items: [
+                    { label: 'Event', slug: 'developers/event' },
+                    { label: 'Events and hotspots', slug: 'developers/extensions/events' },
+                    { label: 'Condition', slug: 'developers/condition' },
+                    { label: 'Label', slug: 'developers/label' },
+                  ],
+                },
+                {
+                  label: 'Actions',
+                  items: [
+                    { label: 'All actions', slug: 'developers/actions' },
+                    { label: 'Talking and storytelling', collapsed: true, items: [
+                      { label: 'Dialogue', slug: 'developers/actions/dialogue' },
+                      { label: 'Narration', slug: 'developers/actions/narration' },
+                      { label: 'Conversation', slug: 'developers/actions/conversation' },
+                      { label: 'Reading text aloud', slug: 'developers/actions/reading-aloud' },
+                    ] },
+                    { label: 'Boxes and words on screen', collapsed: true, items: [
+                      { label: 'Infobox', slug: 'developers/actions/infobox' },
+                      { label: 'Text overlay', slug: 'developers/actions/text-overlay' },
+                    ] },
+                    { label: 'Characters and the player', collapsed: true, items: [
+                      { label: 'Walk', slug: 'developers/actions/walk' },
+                      { label: 'Animate', slug: 'developers/actions/animate' },
+                      { label: 'Freeze', slug: 'developers/actions/freeze' },
+                      { label: 'Avatar', slug: 'developers/actions/avatar' },
+                    ] },
+                    { label: 'Pictures, video and sound', collapsed: true, items: [
+                      { label: 'Image fixed', slug: 'developers/actions/image-fixed' },
+                      { label: 'Image overlay', slug: 'developers/actions/image-overlay' },
+                      { label: 'Spritemap', slug: 'developers/actions/spritemap' },
+                      { label: 'Video', slug: 'developers/actions/video' },
+                      { label: 'Audio', slug: 'developers/actions/audio' },
+                      { label: 'Translate', slug: 'developers/actions/translate' },
+                    ] },
+                    { label: 'Scenes, camera and weather', collapsed: true, items: [
+                      { label: 'Jump', slug: 'developers/actions/jump' },
+                      { label: 'Camera', slug: 'developers/actions/camera' },
+                      { label: 'Weather', slug: 'developers/actions/weather' },
+                      { label: 'Travel', slug: 'developers/actions/travel' },
+                    ] },
+                    { label: 'Timing and flow', collapsed: true, items: [
+                      { label: 'Wait', slug: 'developers/actions/wait' },
+                      { label: 'Run event', slug: 'developers/actions/run-event' },
+                      { label: 'Repeat', slug: 'developers/actions/repeat' },
+                      { label: 'Cancel action', slug: 'developers/actions/cancel' },
+                      { label: 'Cancel event', slug: 'developers/actions/cancel-event' },
+                    ] },
+                    { label: 'Rewards and progress', collapsed: true, items: [
+                      { label: 'Award', slug: 'developers/actions/award' },
+                      { label: 'Glossary', slug: 'developers/actions/glossary' },
+                      { label: 'Variable', slug: 'developers/actions/variable' },
+                      { label: 'Shop', slug: 'developers/actions/shop' },
+                    ] },
+                    { label: 'Science', collapsed: true, items: [
+                      { label: 'Bench', slug: 'developers/actions/bench' },
+                    ] },
+                  ],
+                },
+                {
+                  label: 'Variables',
+                  items: [
+                    { label: 'Global variables', slug: 'developers/variable' },
+                    { label: 'Player and shared variables', slug: 'developers/extensions/variables' },
+                  ],
                 },
                 {
                   label: 'Media, characters and items',
-                  items: ['media', 'character', 'item', 'spritemap', 'label'].map((p) => ({ slug: `developers/${p}` })),
-                },
-                {
-                  label: 'Runtime extensions (spec v2)',
-                  collapsed: true,
                   items: [
-                    { label: 'Overview', slug: 'developers/extensions' },
-                    { label: 'Scenario fields', slug: 'developers/extensions/scenario' },
-                    { label: 'Scenes, layers and spawn points', slug: 'developers/extensions/scenes' },
-                    { label: 'Skies, weather, water, stories', slug: 'developers/extensions/atmosphere' },
-                    { label: 'Events and hotspots', slug: 'developers/extensions/events' },
-                    { label: 'Actions overview', slug: 'developers/extensions/actions' },
-                    { label: 'Dialogue, conversations, infoboxes', slug: 'developers/extensions/dialogue' },
-                    { label: 'Move, change and travel', slug: 'developers/extensions/actions-world' },
-                    { label: 'Stars, XP, awards, marketplace', slug: 'developers/extensions/rewards' },
-                    { label: 'The close-up bench', slug: 'developers/extensions/bench' },
-                    { label: 'Variables', slug: 'developers/extensions/variables' },
-                    { label: 'Items, the bag and vehicles', slug: 'developers/extensions/items' },
-                    { label: 'Characters in the world', slug: 'developers/extensions/characters' },
+                    { label: 'Media', slug: 'developers/media' },
+                    { label: 'Spritemap', slug: 'developers/spritemap' },
                     { label: 'Animations', slug: 'developers/extensions/animations' },
-                    { label: 'The side panel and messages', slug: 'developers/extensions/player-interface' },
-                    { label: 'Patterns, and not built yet', slug: 'developers/extensions/patterns' },
+                    { label: 'Character', slug: 'developers/character' },
+                    { label: 'Characters in the world', slug: 'developers/extensions/characters' },
+                    { label: 'Item', slug: 'developers/item' },
+                    { label: 'Items, the bag and vehicles', slug: 'developers/extensions/items' },
                   ],
                 },
+                { label: 'The side panel and messages', slug: 'developers/extensions/player-interface' },
+                { label: 'Patterns, and not built yet', slug: 'developers/extensions/patterns' },
               ],
             },
             {

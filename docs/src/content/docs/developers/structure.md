@@ -29,14 +29,14 @@ An event can carry `conditions`, and so can each action in it: one that fails is
 
 ## Where each part is documented
 
-The first version of the format has one reference page per object. Everything the walk-around runtime added is optional and lives in the [spec v2 section](/docs/developers/extensions/).
+Each object has a reference page for its basic fields and a second page for what the walk-around runtime adds (where avatars can walk, where they appear, how scenes connect, which state is shared between players). Everything the second pages describe is optional: a document that uses none of it still plays.
 
-Object | Original reference | Added by spec v2
------- | ------------------ | ----------------
+Object | Basic fields | Walk-around fields
+------ | ------------ | ------------------
 Scenario | [Scenarios](/docs/developers/scenario/) | [Scenario fields](/docs/developers/extensions/scenario/)
 Scene | [Scenes](/docs/developers/scene/) | [Scenes, layers and spawn points](/docs/developers/extensions/scenes/), [skies, weather and water](/docs/developers/extensions/atmosphere/)
 Event, hotspot | [Events](/docs/developers/event/) | [Events and hotspots](/docs/developers/extensions/events/)
-Action | [Actions](/docs/developers/action/) | [Actions overview](/docs/developers/extensions/actions/)
+Action | [All actions](/docs/developers/actions/) | One page for each of the 29 actions
 Condition | [Conditions](/docs/developers/condition/) | [Variables](/docs/developers/extensions/variables/) (the `>=`, `<=`, `%` and `!%` operators)
 Variable | [Global variables](/docs/developers/variable/) | [Variables](/docs/developers/extensions/variables/) (player and shared scope)
 Character | [Characters](/docs/developers/character/) | [Characters that live in the world](/docs/developers/extensions/characters/)
@@ -44,6 +44,13 @@ Item | [Items](/docs/developers/item/) | [Items, the bag and vehicles](/docs/dev
 Media | [Media](/docs/developers/media/) | [Animations](/docs/developers/extensions/animations/) (sprite sheets and named animations)
 Spritemap, label | [Spritemaps](/docs/developers/spritemap/), [Labels](/docs/developers/label/) | [Animations](/docs/developers/extensions/animations/)
 Save data | [Save data](/docs/developers/save-data/) | [Instances, teams and save data](/docs/developers/instances/)
+
+## Ground rules
+
+* Everything the walk-around pages describe is **optional and additive**. A document that uses none of it still plays: the whole scene is walkable, players appear in the centre, and all variables are per-player.
+* Set `"spec_version": 2` on scenarios that use these fields.
+* All coordinates are scene pixels with the origin at the top left. An avatar's position is the position of its **feet**.
+* `npm run validate -- path/to/scenario.json` checks a document against all of it. See [Run QuestLab locally](/docs/developers/local-development/#check-a-scenario).
 
 ## What points at what
 

@@ -7,7 +7,7 @@ host:
 
 Events are a series of actions that execute in sequential order. There are four types of events:
 
-:::note[Spec v2]
+:::note[Also see]
 How hotspots fire in a walk-around game, reveal distances, `once` and `audience` are described in [Events and hotspots](/docs/developers/extensions/events/).
 :::
 

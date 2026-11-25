@@ -1,5 +1,5 @@
 ---
-title: "Variables (spec v2)"
+title: "Variables"
 description: "Player and shared variables, and the extra reserved variables and operators."
 host:
   who: sam
