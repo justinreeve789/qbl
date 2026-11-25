@@ -1,12 +1,12 @@
 ---
 // The docs live under /docs/ in the same site as the game, so the header carries a way home:
-// a "QuestLab" pill (the marketing page, `/`) beside the docs title (which goes to the docs home).
+// a round arrow button (the marketing page, `/`) beside the docs title (which goes to the docs home).
 import Default from '@astrojs/starlight/components/SiteTitle.astro';
 ---
 
 <div class="title-row">
   <a href="/" class="back-home" aria-label="Back to the QuestLab site">
-    <span aria-hidden="true">←</span> <span class="back-label">QuestLab</span>
+    <span aria-hidden="true">←</span>
   </a>
   <Default><slot /></Default>
 </div>
@@ -22,13 +22,14 @@ import Default from '@astrojs/starlight/components/SiteTitle.astro';
     flex: none;
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.25rem 0.7rem;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
     border: 1px solid var(--sl-color-gray-5);
-    border-radius: 999px;
+    border-radius: 50%;
     color: var(--sl-color-text);
-    font-size: var(--sl-text-sm);
-    font-weight: 600;
+    font-size: var(--sl-text-base);
+    line-height: 1;
     text-decoration: none;
     white-space: nowrap;
   }
@@ -37,10 +38,5 @@ import Default from '@astrojs/starlight/components/SiteTitle.astro';
     border-color: var(--sl-color-accent);
     background: var(--sl-color-accent-low);
     color: var(--sl-color-white);
-  }
-  /* Tight phones: the arrow alone is enough, and the title keeps its room. */
-  @media (max-width: 30rem) {
-    .back-label { display: none; }
-    .back-home { padding: 0.25rem 0.6rem; }
   }
 </style>

@@ -1,5 +1,5 @@
 ---
-title: "Scenario fields (spec v2)"
+title: "Scenario fields"
 description: "Everything v2 adds to the top of the document: code, visibility, chat, objectives, avatars, glossary, narration and placeholders."
 host:
   who: asimov
@@ -27,11 +27,11 @@ session | object | null | Save data for the requesting player. See [Save data](/
 curriculum | object | | What the mission teaches: `standards` (`framework`, `code`, `description`, `alignment`, `rationale`), `learning_objectives` (`id`, `text`, `standards`), `vocabulary`, and `evidence`: for each objective, the variables that record a student's evidence of it. Written by the [mission generator](/docs/developers/generation/); the runtime ignores it.
 
 scene_groups | array | | Groups of scenes, each `{id, name, team_only}`. A scene names its group with `group_id`. See [Teams in a scene](/docs/developers/extensions/scenes/#teams-in-a-scene).
-glossary | array | | Words the mission teaches. See [Glossary](/docs/developers/extensions/dialogue/#glossary).
-narration | string | off | `on`: dialogue, infoboxes and text overlays are read aloud unless an action says otherwise. `off`: only actions marked `narrate`. See [Reading text aloud](/docs/developers/extensions/dialogue/#reading-text-aloud).
-narrator_voice | string | the default narrator | The narrator's voice: what no character says (`narration` actions, and the text overlays and infoboxes read aloud) is recorded in it. A key of the server's voice catalog. Absent: the server's default narrator for the scenario's language (in English, "storyteller": dramatic and charismatic). `none`: no narrator, so the browser reads them. See [The narrator](/docs/developers/extensions/dialogue/#the-narrator).
+glossary | array | | Words the mission teaches. See [Glossary](/docs/developers/actions/glossary/).
+narration | string | off | `on`: dialogue, infoboxes and text overlays are read aloud unless an action says otherwise. `off`: only actions marked `narrate`. See [Reading text aloud](/docs/developers/actions/reading-aloud/).
+narrator_voice | string | the default narrator | The narrator's voice: what no character says (`narration` actions, and the text overlays and infoboxes read aloud) is recorded in it. A key of the server's voice catalog. Absent: the server's default narrator for the scenario's language (in English, "storyteller": dramatic and charismatic). `none`: no narrator, so the browser reads them. See [The narrator](/docs/developers/actions/narration/).
 private_messages | bool | false | Players may send typed messages to one other player. See [Messages](/docs/developers/extensions/player-interface/#messages).
-wait_for_launch | bool | false | Kept in the scenario's `settings`. Students see the mission, and can join it, only once their teacher launches their assignment of it (`assignments.launched_at`): from the game (the `launch` message, see [Travel](/docs/developers/extensions/actions-world/#travel)) or from the Classes page (`POST`/`DELETE /api/teach/assignments/{id}/launch`). Not listed to students as a public mission, and its public instance is closed to them. Applies at once, without publishing.
+wait_for_launch | bool | false | Kept in the scenario's `settings`. Students see the mission, and can join it, only once their teacher launches their assignment of it (`assignments.launched_at`): from the game (the `launch` message, see [Travel](/docs/developers/actions/travel/)) or from the Classes page (`POST`/`DELETE /api/teach/assignments/{id}/launch`). Not listed to students as a public mission, and its public instance is closed to them. Applies at once, without publishing.
 
 `jump_targets` is generated from jump actions (including those on infobox buttons), by the API when it builds the JSON and again by the runtime. It may be either an object keyed by scene id (`{"3": [4]}`) or an array of `{scene_id, targets}`.
 
@@ -56,6 +56,6 @@ The player is told when an objective becomes complete.
 Text overlays, infobox content, infobox button labels, text labels and objective text may contain placeholders:
 
 * `{{variable_name}}` is replaced with the variable's current value. Reserved variables work too.
-* `{{media:ID}}` is replaced with the URL of a media asset, for use in infobox HTML: `<img src="{{media:40}}" alt="">`. Written on its own in an infobox's text, it shows the media itself. See [Rich infoboxes](/docs/developers/extensions/dialogue/#rich-infoboxes).
+* `{{media:ID}}` is replaced with the URL of a media asset, for use in infobox HTML: `<img src="{{media:40}}" alt="">`. Written on its own in an infobox's text, it shows the media itself. See [Rich infoboxes](/docs/developers/actions/infobox/#rich-infoboxes).
 
 Values are escaped when inserted into HTML. A placeholder that names nothing is left as written, so a typo shows up.

@@ -7,8 +7,8 @@ host:
 
 A media object describes an audio, image, or video file that has been uploaded and associated with the scenario.
 
-:::note[Spec v2]
-Sprite sheets, named animations and animated PNGs are spec v2: see [Animations](/docs/developers/extensions/animations/). A file is not always needed: [the game's own sounds](/docs/developers/extensions/actions-world/#the-games-own-sounds) are made as they play.
+:::note[Also see]
+Sprite sheets, named animations and animated PNGs are described in [Animations](/docs/developers/extensions/animations/). A file is not always needed: [the game's own sounds](/docs/developers/actions/audio/#the-games-own-sounds) are made as they play.
 :::
 
 Media objects are currently defined at the action level, but with the draft revisions, they are being transferred to a single list at the scenario level for better reusability, and so they can be referenced from different scenes for pre-loading.

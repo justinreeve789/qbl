@@ -15,7 +15,7 @@ id, name | int, string | | As in the base docs.
 animations | object | | The character's animations, by name. See below.
 scale | decimal | 1.0 | Display scale of its pictures. Each picture is also stretched by its own media `scale_x` and `scale_y`, so a sheet shared by several characters can be sized once, on the media, and each character sized on top of that.
 tts_voice | | | The voice its lines are recorded in, a key of the server's voice catalog. See [Characters' voices](/docs/developers/voices/).
-voice_pitch, voice_rate, voice_name | | | How the browser reads its lines that have no recording. See [Reading text aloud](/docs/developers/extensions/dialogue/#reading-text-aloud).
+voice_pitch, voice_rate, voice_name | | | How the browser reads its lines that have no recording. See [Reading text aloud](/docs/developers/actions/reading-aloud/).
 conditions | array | | Scenario characters only: the character is there only while these hold. One whose conditions stop holding while players are in the scene fades away (a character who leaves for good sets a shared variable it tests). One placed in the scene (not roaming) fades back in where it is placed once they hold again: a character who fell and has been rescued.
 media_id, portrait_media_id | int | | *Before animations.* One picture and a close-up. Read only when `animations` is empty (see below).
 
@@ -42,7 +42,7 @@ Name | Shown
 
 A pose that is missing is filled in from another, so a single picture makes a whole character. Walking uses `walk_<way>`, else the other walk mirrored, else standing. Standing uses `stand_<way>`, else the other stand mirrored, else the portrait. The portrait is `portrait`, else the character standing facing right. Art is taken to face the way its name says: give a character only `stand_right` and it is mirrored to face left.
 
-Any **other name** (`wave`, `dig`, `talk`...) is played when an [`animate` action](/docs/developers/extensions/actions-world/#animate) or, for an avatar, a player's [move](/docs/developers/extensions/animations/#moves-what-players-can-do-themselves) asks for it. A name that is also a [built-in move](/docs/developers/extensions/animations/#built-in-moves) (`jump`, `dance`...) replaces that move with these frames. Names are lowercase letters, digits and underscores, starting with a letter.
+Any **other name** (`wave`, `dig`, `talk`...) is played when an [`animate` action](/docs/developers/actions/animate/) or, for an avatar, a player's [move](/docs/developers/extensions/animations/#moves-what-players-can-do-themselves) asks for it. A name that is also a [built-in move](/docs/developers/extensions/animations/#built-in-moves) (`jump`, `dance`...) replaces that move with these frames. Names are lowercase letters, digits and underscores, starting with a letter.
 
 ```json
 { "id": 1, "name": "Captain Vega", "scale": 0.85,

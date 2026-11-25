@@ -7,7 +7,7 @@ host:
 
 Labels are associated with a single hotspot. One hotspot can have many labels. Labels can be text, images, or spritemaps.
 
-:::note[Spec v2]
+:::note[Also see]
 How hotspots fire, and how far away a hotspot's labels are revealed, are described in [Events and hotspots](/docs/developers/extensions/events/).
 :::
 
