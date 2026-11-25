@@ -1,6 +1,7 @@
 <?php
 
 use App\Qbl\Speech\Engines\ChatterboxEngine;
+use App\Qbl\Speech\Engines\ElevenLabsEngine;
 use App\Qbl\Speech\Engines\KokoroEngine;
 use App\Qbl\Speech\Engines\OpenAiSpeechEngine;
 
@@ -27,7 +28,8 @@ $env = function (string $key, mixed $default): mixed {
 
 return [
     // Which service records: kokoro (the "tts" container in docker-compose.yml), chatterbox (the
-    // "chatterbox" container: livelier, slower, needs COMPOSE_PROFILES=chatterbox), openai (any service
+    // "chatterbox" container: livelier, slower, needs COMPOSE_PROFILES=chatterbox), elevenlabs (the paid
+    // ElevenLabs service: very natural, needs QL_TTS_ELEVENLABS_KEY), openai (any service
     // that speaks OpenAI's /v1/audio/speech; no word timings, so words are lit at an even pace), or
     // none (nothing is recorded; the browser reads every line).
     'driver' => $env('QL_TTS_DRIVER', 'kokoro'),
@@ -54,6 +56,23 @@ return [
             // then) and kept by the chatterbox container. none: clips are only uploaded
             // (php artisan qbl:chatterbox-clips).
             'clips_from' => $env('QL_TTS_CHATTERBOX_CLIPS_FROM', 'kokoro'),
+        ],
+        'elevenlabs' => [
+            'class' => ElevenLabsEngine::class,
+            // ElevenLabs, a paid service (charged by the character). Off unless QL_TTS_DRIVER=elevenlabs.
+            'api_key' => (string) $env('QL_TTS_ELEVENLABS_KEY', (string) env('ELEVENLABS_API_KEY', '')),
+            // eleven_multilingual_v2: the most natural, 29 languages. eleven_flash_v2_5: faster and
+            // half the price per character.
+            'model' => $env('QL_TTS_ELEVENLABS_MODEL', 'eleven_multilingual_v2'),
+            'url' => $env('QL_TTS_ELEVENLABS_URL', 'https://api.elevenlabs.io'),
+            'timeout' => (int) $env('QL_TTS_ELEVENLABS_TIMEOUT', 120),
+            // Each catalog voice is spoken by the account's best-fitting voice. To choose one yourself:
+            // "storyteller=JBFqnCBsd6RMkjVDRZzb, heart=Sarah" (catalog key = ElevenLabs voice id or name).
+            'voices' => (string) $env('QL_TTS_ELEVENLABS_VOICES', ''),
+            // Voice categories never picked for a character (pinned ones are still used). "cloned" is
+            // a real person's voice, often a teacher's own.
+            'skip_categories' => (string) $env('QL_TTS_ELEVENLABS_SKIP', 'cloned'),
+            'output_format' => $env('QL_TTS_ELEVENLABS_FORMAT', 'mp3_44100_128'),
         ],
         'openai' => [
             'class' => OpenAiSpeechEngine::class,

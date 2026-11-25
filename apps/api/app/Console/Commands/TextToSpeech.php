@@ -31,7 +31,7 @@ class TextToSpeech extends Command
         {--seed= : Make the random pick repeatable}
         {--out= : Where to save it: a file, or a folder for several (default: tts-<voice>.mp3 here)}
         {--timings : Also save the word timings next to each file, as <name>.json}
-        {--driver= : The service to use instead of the configured one (kokoro, openai)}';
+        {--driver= : The service to use instead of the configured one (kokoro, chatterbox, elevenlabs, openai)}';
 
     protected $description = 'Say some text in a random voice from the catalog and save it as an MP3';
 
