@@ -2,6 +2,7 @@
 
 namespace App\Qbl\Generation\Pipeline\Steps;
 
+use App\Qbl\Generation\Design\DesignRules;
 use App\Qbl\Generation\Pipeline\GenerationRun;
 use App\Qbl\Generation\Pipeline\Step;
 
@@ -49,6 +50,7 @@ final class OutlineStep extends Step
                 "Learning objectives:\n".implode("\n", array_map(fn ($o) => "- {$o['id']}: {$o['text']}", $run->alignment['learning_objectives'] ?? [])),
                 "Misconceptions to confront:\n- ".implode("\n- ", $run->alignment['misconceptions'] ?? ['(none given)']),
                 ...(! empty($run->options['notes']) ? ["The teacher's notes: {$run->options['notes']}"] : []),
+                "How the mission should lean:\n- ".implode("\n- ", DesignRules::briefLines($run->designOptions())),
             ], 'mission_outline', self::SCHEMA, 4000);
             file_put_contents($file, json_encode($outline, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
             $run->say('  "'.($outline['title'] ?? '?').'": '.count($outline['scenes'] ?? []).' scenes, '.count($outline['puzzles'] ?? []).' puzzles');

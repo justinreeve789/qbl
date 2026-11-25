@@ -60,6 +60,20 @@ test('a description is needed, and an example fills one in', async () => {
   assert.equal(await page.isDisabled(go), false);
 });
 
+test('the design approach leans the mission, and only what applies to a story is offered for one', async () => {
+  await page.click('details[data-fold=generate-approach] summary');
+  for (const name of ['opening', 'focus', 'freedom']) {
+    assert.equal(await page.inputValue(`select[name=${name}]`), '', `${name} starts at Choose for me`);
+    assert.equal(await page.textContent(`select[name=${name}] option:checked`), 'Choose for me');
+  }
+  await page.selectOption('select[name=format]', 'story');
+  assert.deepEqual([await page.isDisabled('select[name=opening]'), await page.isDisabled('select[name=focus]'), await page.isDisabled('select[name=freedom]')], [true, false, true]);
+  await page.selectOption('select[name=format]', '');
+  assert.equal(await page.isDisabled('select[name=opening]'), false);
+  await page.selectOption('select[name=opening]', 'action');
+  await page.selectOption('select[name=focus]', 'rigor');
+});
+
 test('a run shows its stages and a progress bar that moves, and can be cancelled', async () => {
   await page.click('form[data-form=generate] button[data-action=generate]');
   await page.waitForSelector('.gen-run.live [data-progress]');
@@ -70,7 +84,8 @@ test('a run shows its stages and a progress bar that moves, and can be cancelled
   // The chip in the header is for other pages.
   assert.equal(await page.isHidden('.gen-chip-host'), true);
   const first = await percentOf('.gen-run.live [data-progress]');
-  await page.waitForFunction(() => document.querySelector('.gen-steps li.now')?.getAttribute('data-stage') === 'designing');
+  // Designing lasts about three seconds in a pretend run: seeing it or the stage after it is enough.
+  await page.waitForFunction(() => ['designing', 'drawing'].includes(document.querySelector('.gen-steps li.now')?.getAttribute('data-stage') ?? ''));
   await page.waitForFunction((p) => Number(document.querySelector('.gen-run.live [data-progress]')?.getAttribute('aria-valuenow')) > p, first);
   assert.match(await page.textContent('.gen-run.live .gen-meta') ?? '', /Started .* ago/);
 
@@ -81,8 +96,10 @@ test('a run shows its stages and a progress bar that moves, and can be cancelled
 });
 
 test('"Try again" puts the description back', async () => {
+  assert.match(await page.textContent('.gen-run.cancelled') ?? '', /Straight into the action · Rigorous, like a practitioner · Open to explore \(chosen for you\)/, 'with how it leans, and what Choose for me picked once it was aligned');
   await page.click('.gen-run.cancelled button[data-action=again]');
   assert.match(await page.inputValue('textarea[name=prompt]'), /rainforest research station/);
+  assert.deepEqual([await page.inputValue('select[name=opening]'), await page.inputValue('select[name=focus]'), await page.inputValue('select[name=freedom]')], ['action', 'rigor', ''], 'and how it leans');
 });
 
 test('the header chip follows a run from other pages, and says when it is ready', async () => {
@@ -106,6 +123,7 @@ test('the Generate page lists it, ready to open', async () => {
   await page.click('.top-nav [data-place=generate]');
   await page.waitForSelector('.gen-run.done');
   assert.match(await page.textContent('.gen-run.done') ?? '', /Ready/);
+  assert.match(await page.textContent('.gen-run.done') ?? '', /Open to explore \(chosen for you\)/, 'with what Choose for me picked');
   assert.equal(await page.locator('.gen-run.done button:has-text("Open in the editor")').count(), 1);
   assert.equal(await page.locator('.gen-everyone').count(), 0, 'a teacher does not see everyone’s');
 });

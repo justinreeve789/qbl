@@ -29,6 +29,7 @@ use App\Qbl\Generation\Curriculum\StandardsImporter;
 use App\Qbl\Generation\Curriculum\StandardsStore;
 use App\Qbl\Generation\Design\BlueprintValidator;
 use App\Qbl\Generation\Design\Connections;
+use App\Qbl\Generation\Design\DesignRules;
 use App\Qbl\Generation\Design\MissionDesigner;
 use App\Qbl\Generation\Design\Sizes;
 use App\Qbl\Generation\Design\TwistIdeas;
@@ -216,6 +217,31 @@ check($has(BlueprintValidator::errors($bad, $lo), 'debrief questions'), 'a missi
 $bad = $valid;
 $bad['steps'][2]['done_when'][] = 'q_report';
 check($has(BlueprintValidator::errors($bad, $lo), 'is a debrief question'), 'a debrief question listed in a step is caught');
+
+// The design rules that can be counted (DesignRules), only for blueprints designed under them (approach).
+$ruled = ['approach' => DesignRules::approach([])] + $valid;
+same(BlueprintValidator::errors($ruled, $lo), [], 'the fixture follows the design rules');
+$bad = $ruled;
+$bad['steps'] = array_map(fn ($s) => ['optional' => false] + $s, $bad['steps']);
+check($has(BlueprintValidator::errors($bad, $lo), 'optional bonus step'), 'a mission with no optional bonus step is caught');
+same(BlueprintValidator::errors(array_diff_key($bad, ['approach' => 1]), $lo), [], 'but not in a blueprint saved before the rules (no approach), so it still resumes');
+$bad = $ruled;
+$bad['interactions'] = array_map(fn ($it) => $it['scene'] === 'landing' && empty($it['at_report']) ? ['hidden' => true] + $it : $it, $bad['interactions']);
+check($has(BlueprintValidator::errors($bad, $lo), 'Real action fast'), 'a start scene with nothing to click at once is caught');
+$bad = $ruled;
+$bad['intro']['dialogue'] = array_fill(0, 3, $valid['intro']['dialogue'][0]);
+same(BlueprintValidator::errors($bad, $lo), [], 'three lines of opening are fine by default');
+$bad['scenes'][$at('landing', 'scenes')]['arrival']['dialogue'] = array_fill(0, 2, $valid['intro']['dialogue'][0]);
+check($has(BlueprintValidator::errors($bad, $lo), 'The opening is too long'), 'five, across the briefing and the start scene\'s arrival, are not');
+$bad['approach']['opening'] = 'story';
+same(BlueprintValidator::errors($bad, $lo), [], 'unless the mission starts with its story');
+$bad['approach']['opening'] = 'action';
+$bad['scenes'][$at('landing', 'scenes')]['arrival']['dialogue'] = [];
+check($has(BlueprintValidator::errors($bad, $lo), 'at most 2'), 'straight into the action allows two');
+same(DesignRules::approach(['opening' => 'story', 'focus' => 'nonsense']), ['opening' => 'story', 'focus' => 'balanced', 'freedom' => 'balanced'], 'unknown settings fall back to the default');
+same(DesignRules::approach(['opening' => 'story'], ['opening' => 'action', 'freedom' => 'open']), ['opening' => 'story', 'focus' => 'balanced', 'freedom' => 'open'], 'the teacher\'s choice wins over the aligner\'s, which wins over the default');
+same(count(DesignRules::briefLines(['opening' => 'action'], story: true)), 1, 'a story is told only how it leans between rigor and play');
+same(DesignRules::chosen(['opening' => 'action', 'focus' => 'nonsense', 'freedom' => null, 'grade' => '4']), ['opening' => 'action'], 'only known settings are kept from a form');
 $bad = $valid;
 foreach ($bad['interactions'] as &$it) {
     unset($it['resolves']);
@@ -1028,6 +1054,13 @@ $tinyAlignment = ['learning_objectives' => [['id' => 'LO1', 'text' => 'a', 'stan
 $designed = (new MissionDesigner($badModel, ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 18]))->design('x', $tinyAlignment, ['big_moment' => true]);
 same([$badModel->corrections, $badModel->blueprints, BlueprintValidator::errors($designed, ['LO1', 'LO2'])], [3, 2, []], 'when changes do not fix it, the blueprint is rewritten once as a last resort');
 same($designed['pace'], ['big_moment' => true], 'the blueprint says whether it may have a big moment');
+same($designed['approach'], DesignRules::DEFAULTS, 'and how it leans on the design rules (the defaults when the teacher chose none)');
+$rulesModel = new FakeModel($blueprint);
+$leaning = (new MissionDesigner($rulesModel, ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 18]))->design('x', $tinyAlignment, ['big_moment' => true, 'opening' => 'story', 'freedom' => 'open']);
+same($leaning['approach'], ['opening' => 'story', 'focus' => 'balanced', 'freedom' => 'open'], 'the teacher\'s settings are kept on the blueprint');
+$first = $rulesModel->calls[0];
+check(str_contains($first['system'], 'Rules from research on educational games') && str_contains($first['system'], 'Hard but learnable'), 'the designer is given the design rules');
+check(str_contains($first['content'][0], 'Opening: story first') && str_contains($first['content'][0], 'Student freedom: open') && str_contains($first['content'][0], 'Rigor or play: a quick hook and a rigorous middle'), 'and the brief says which way this mission leans');
 
 // Twists and turns: a few ideas, picked at random for each mission; big moments only now and then.
 $pickModel = new FakeModel($blueprint);
@@ -1316,6 +1349,9 @@ $critiqueDir = dirname($critiqued['trace']);
 $reviews = json_decode((string) file_get_contents("$critiqueDir/critique.json"), true);
 same([count($reviews), $reviews[0]['outcome'], $reviews[1]['outcome']], [2, 'applied', 'passed (at least 8)'], 'it is reviewed, its changes applied, and reviewed again until it passes');
 same((new GenerationRuns($pdo))->get($critiqued['run'])['blueprint']['title'], 'The Quiet Hive Revisited', 'the critic\'s change is in the saved blueprint');
+same((new GenerationRuns($pdo))->get($critiqued['run'])['blueprint']['approach'] ?? null, DesignRules::DEFAULTS, 'and its settings for the design rules are kept through the changes');
+$review = array_values(array_filter($criticModel->calls, fn ($c) => $c['name'] === 'blueprint_review'))[0];
+check(str_contains($review['system'], 'design rules from research') && str_contains(implode("\n", $review['content']), "The mission's settings"), 'the critic checks it against the design rules and the mission\'s settings');
 same(array_column(json_decode((string) file_get_contents("{$critiqued['trace']}/index.json"), true)['steps'], 'step'), ['align', 'design', 'critique', 'estimate'], 'between the design and the estimate');
 $criticModel->reviewChanges = 'break';
 $criticModel->reviews = 0;
@@ -1343,6 +1379,17 @@ same(array_column($outlineModel->calls, 'name'), ['curriculum_alignment', 'missi
 $briefed = json_encode(array_values(array_filter($outlineModel->calls, fn ($c) => $c['name'] === 'mission_blueprint'))[0]['content']);
 check(str_contains($briefed, 'Build the mission from this outline') && str_contains($briefed, 'Wake the bees') && str_contains($briefed, 'Keep it short.'), 'and the designer is given the outline, with the teacher\'s own notes');
 check(is_file(dirname($outlined['trace']).'/outline.json'), 'the outline is kept in the work folder');
+
+// "Choose for me": the aligner chooses the design approach settings the teacher left; the teacher's own win.
+$leanModel = new FakeModel($blueprint);
+$leanModel->approach = ['opening' => 'action', 'focus' => 'play', 'freedom' => 'sideways'];
+$leaned = (new GenerationFactory($config, $store, new NoNetwork, $leanModel))->generator()->generate('A mission about pollination', ['grade' => '3', 'frameworks' => ['TEST-SCI'], 'stop_after' => 'design', 'focus' => 'rigor'], null);
+$alignCall = $leanModel->calls[0];
+check($alignCall['name'] === 'curriculum_alignment' && str_contains($alignCall['system'], 'Also choose how the mission should lean') && isset($alignCall['schema']['properties']['approach']['properties']['opening']['enum']), 'the aligner is asked how the mission should lean');
+$leanedRun = (new GenerationRuns($pdo))->get($leaned['run']);
+same($leanedRun['alignment']['approach'], ['opening' => 'action', 'focus' => 'play'], 'its choice is kept with the alignment (an unknown one dropped)');
+same($leanedRun['blueprint']['approach'], ['opening' => 'action', 'focus' => 'rigor', 'freedom' => 'balanced'], 'the mission leans as the teacher chose, the aligner chose for the rest, and the default where neither did');
+same(array_intersect_key($leanedRun['options'], DesignRules::SETTINGS), ['focus' => 'rigor'], 'the teacher\'s options still say only what the teacher chose, so Try again offers Choose for me again');
 check(! isset((new GenerationRuns($pdo))->get($outlined['run'])['options']['notes']) || (new GenerationRuns($pdo))->get($outlined['run'])['options']['notes'] === 'Keep it short.', 'the outline is not saved into the teacher\'s notes');
 
 // sprite-app: pictures routed by kind.

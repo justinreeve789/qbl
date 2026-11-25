@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Qbl\Generation\Design\DesignRules;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\GenerationFactory;
 use App\Qbl\StoreError;
@@ -29,6 +30,9 @@ class GenerateScenario extends Command
         {--minutes= : Rough playing time}
         {--notes= : Anything else the designer should know}
         {--format= : mission (students play it) or story (it plays by itself, for students to watch); default: as the prompt reads}
+        {--opening= : How it starts: action, balanced (action first, story through discoveries) or story; default: chosen to suit the prompt}
+        {--focus= : Rigor or play: play, balanced (quick hook, rigorous middle) or rigor; default: chosen to suit the prompt}
+        {--freedom= : Student freedom: guided, balanced (some choice of order) or open; default: chosen to suit the prompt}
         {--owner= : Email of the teacher who will own the draft}
         {--style= : Art style (a folder in resources/art-styles); default from config}
         {--images= : Image driver: gemini, openai, scenario or placeholder}
@@ -83,6 +87,14 @@ class GenerateScenario extends Command
 
                 return self::FAILURE;
             }
+            foreach (DesignRules::SETTINGS as $key => $setting) {
+                $value = $this->option($key);
+                if ($value !== null && ! isset($setting['choices'][$value])) {
+                    $this->error("--$key is one of: ".implode(', ', array_keys($setting['choices'])).'.');
+
+                    return self::FAILURE;
+                }
+            }
             [$min, $max] = array_map('intval', explode('-', (string) $this->option('players').'-'.(string) $this->option('players')));
             $options = array_filter([
                 'grade' => $this->option('grade'),
@@ -95,6 +107,7 @@ class GenerateScenario extends Command
                 'minutes' => $this->option('minutes') ? (int) $this->option('minutes') : null,
                 'notes' => $this->option('notes'),
                 'format' => in_array($this->option('format'), ['mission', 'story'], true) ? $this->option('format') : null,
+                ...DesignRules::chosen(['opening' => $this->option('opening'), 'focus' => $this->option('focus'), 'freedom' => $this->option('freedom')]),
                 'style' => $this->option('style'),
                 'stop_after' => $this->option('design-only') ? 'design' : null,
                 'import' => $this->option('no-import') ? false : null,

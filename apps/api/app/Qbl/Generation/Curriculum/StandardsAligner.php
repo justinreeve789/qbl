@@ -2,6 +2,7 @@
 
 namespace App\Qbl\Generation\Curriculum;
 
+use App\Qbl\Generation\Design\DesignRules;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\Llm\LanguageModel;
 
@@ -71,7 +72,7 @@ class StandardsAligner
         fable, a day in the life of...); "mission" (the usual) when students are to play it: explore, solve,
         investigate, experiment. A story's learning objectives are what students take from watching it and
         talking about it afterwards.
-        TXT;
+        TXT."\n".DesignRules::alignerPrompt();
 
         $user = "Mission request: $prompt\n"
             .($grade ? "Grade: $grade\n" : '')
@@ -102,6 +103,7 @@ class StandardsAligner
                 'vocabulary' => ['type' => 'array', 'maxItems' => 10, 'items' => ['type' => 'object', 'required' => ['term', 'definition'], 'properties' => ['term' => ['type' => 'string'], 'definition' => ['type' => 'string']]]],
                 'misconceptions' => ['type' => 'array', 'maxItems' => 5, 'items' => ['type' => 'string']],
                 'format' => ['type' => 'string', 'enum' => ['mission', 'story'], 'description' => 'mission: students play it. story: students watch it told.'],
+                'approach' => DesignRules::alignerSchema(),
             ],
         ];
 
@@ -144,6 +146,8 @@ class StandardsAligner
             'misconceptions' => array_values($answer['misconceptions'] ?? []),
             // What the teacher asked for: a mission to play (the usual), or a story to watch.
             'format' => ($answer['format'] ?? null) === 'story' ? 'story' : 'mission',
+            // How it leans, for the settings the teacher left as "Choose for me" (the teacher's own win).
+            'approach' => DesignRules::chosen((array) ($answer['approach'] ?? [])),
             'warnings' => $warnings,
         ];
     }
