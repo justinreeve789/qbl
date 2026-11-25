@@ -31,10 +31,17 @@ const removeButton = (ctx: FormContext, table: Table, row: Row, what: string) =>
 // --------------------------------------------------------------------- media
 
 const MEDIA_TABS = [
-  ['all', 'All', '🗂️'], ['background', 'Backgrounds', '🏞️'], ['character', 'NPCs', '🧑‍🚀'],
+  ['all', 'All', '🗂️'], ['sprites', 'Sprites', '🎞️'], ['background', 'Backgrounds', '🏞️'], ['character', 'NPCs', '🧑‍🚀'],
   ['item', 'Items', '🎒'], ['vehicle', 'Vehicles', '🚙'], ['audio', 'Sounds and music', '🔊'], ['video', 'Video', '🎬'], ['shop', 'Shop items', '🛍️'], ['other', 'Other images', '🖼️'],
 ] as const;
 type MediaTab = (typeof MEDIA_TABS)[number][0];
+/**
+ * Sprites is a view across the other tabs, not a place a file is filed: every picture cut into a
+ * sprite sheet, and every animated PNG, whatever else it is used for.
+ */
+type MediaCategory = Exclude<MediaTab, 'all' | 'sprites'>;
+const isCategory = (key: string): key is MediaCategory => MEDIA_TABS.some(([k]) => k === key && k !== 'all' && k !== 'sprites');
+const isSprite = (media: Row) => media.type === 'image' && Boolean(params(media).sheet || params(media).apng);
 /** The sub-tab showing. Kept outside the view so a redraw does not reset it. */
 let mediaTab: MediaTab = 'all';
 
@@ -43,10 +50,10 @@ let mediaTab: MediaTab = 'all';
  * background, a character's picture is an NPC, and so on); a file can also be filed by hand,
  * which is what puts a fresh upload under the tab it was uploaded from.
  */
-function mediaCategory(ctx: FormContext, media: Row): Exclude<MediaTab, 'all'> {
+function mediaCategory(ctx: FormContext, media: Row): MediaCategory {
   const { store } = ctx;
   const chosen = params(media).category as string | undefined;
-  if (chosen && MEDIA_TABS.some(([key]) => key === chosen && key !== 'all')) return chosen as Exclude<MediaTab, 'all'>;
+  if (chosen && isCategory(chosen)) return chosen;
   if (media.type === 'audio') return 'audio';
   if (media.type === 'video') return 'video';
   const id = media.id;
@@ -71,7 +78,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
         const apng = params(row).apng as { frames: number; duration: number } | undefined;
         if (apng) toast(`${picked.name} is an animated PNG with ${apng.frames} frames. It plays by itself, and a character can use all of its frames or some of them.`);
         // File it under the tab it was uploaded from, until how it is used says otherwise.
-        if (mediaTab !== 'all' && mediaTab !== 'audio' && mediaTab !== 'video' && row.type === 'image') void store.patch('media', row.id, { params: { ...params(row), category: mediaTab } });
+        if (isCategory(mediaTab) && mediaTab !== 'audio' && mediaTab !== 'video' && row.type === 'image') void store.patch('media', row.id, { params: { ...params(row), category: mediaTab } });
       } catch (err) {
         toast(`${picked.name}: ${err instanceof Error ? err.message : 'upload failed'}`, 'error');
       }
@@ -89,7 +96,8 @@ export function mediaPage(ctx: FormContext): HTMLElement {
   };
 
   const categories = new Map(store.rows('media').map((m) => [m.id, mediaCategory(ctx, m)]));
-  const count = (tab: MediaTab) => (tab === 'all' ? categories.size : [...categories.values()].filter((c) => c === tab).length);
+  const inTab = (media: Row, tab: MediaTab) => (tab === 'all' ? true : tab === 'sprites' ? isSprite(media) : categories.get(media.id) === tab);
+  const count = (tab: MediaTab) => store.rows('media').filter((m) => inTab(m, tab)).length;
   const tabs = h('div', { class: 'subtabs', role: 'tablist', 'aria-label': 'Kinds of media' }, ...MEDIA_TABS.map(([key, label, icon]) =>
     h('button', {
       type: 'button', role: 'tab', class: mediaTab === key ? 'current' : null, 'aria-selected': String(mediaTab === key), 'data-tab': key,
@@ -99,7 +107,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       },
     }, emojiIcon(icon), label, h('small', null, count(key)))));
 
-  const cards = store.rows('media').filter((m) => mediaTab === 'all' || categories.get(m.id) === mediaTab).map((media) => {
+  const cards = store.rows('media').filter((m) => inTab(m, mediaTab)).map((media) => {
     const id = media.id;
     const url = mediaUrl(store, media);
     const category = categories.get(id)!;
@@ -137,7 +145,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
     'Media',
     'The images, sounds and videos the scenario uses. Upload files, or point at files already on the web. Click a picture, or Details, to change it; Sprite sheet cuts a picture into frames and makes its animations, which characters, items and vehicles play.',
     [h('button', { type: 'button', class: 'primary', onclick: () => file.click() }, 'Upload files'), h('button', { type: 'button', onclick: addByAddress }, 'Add by address'), file],
-    h('div', null, tabs, cards.length ? h('div', { class: 'grid media-grid' }, ...cards) : none(mediaTab === 'all' ? 'No media yet. Upload a background image to get started.' : 'Nothing here yet. Upload a file while this tab is open and it is filed here.')),
+    h('div', null, tabs, cards.length ? h('div', { class: 'grid media-grid' }, ...cards) : none(mediaTab === 'all' ? 'No media yet. Upload a background image to get started.' : mediaTab === 'sprites' ? 'No sprites yet. Upload an animated PNG, or open a picture and use Sprite sheet to cut it into frames.' : 'Nothing here yet. Upload a file while this tab is open and it is filed here.')),
     categories.size,
   );
 }
@@ -174,7 +182,7 @@ export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
         form(MEDIA_FIELDS, media, (key, value, field) => void store.patch('media', id, { [key]: value }, key === 'url' || field.structural === true), ctx),
         media.type === 'image'
           ? h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Filed under'),
-              select(MEDIA_TABS.filter(([key]) => !['all', 'audio', 'video'].includes(key)).map(([key, label]) => [key, label] as const), String(params(media).category ?? ''),
+              select(MEDIA_TABS.filter(([key]) => !['all', 'sprites', 'audio', 'video'].includes(key)).map(([key, label]) => [key, label] as const), String(params(media).category ?? ''),
                 (v) => void store.patch('media', id, { params: withValue(params(store.byId('media', id)!), 'category', v) }, true), `Automatic (${MEDIA_TABS.find(([key]) => key === category(media))?.[1]})`))
           : null,
         mediaCredit(media),
