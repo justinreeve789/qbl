@@ -7,7 +7,7 @@ host:
   side: right
 ---
 
-Action `type` values are matched loosely: `Image Fixed`, `imageFixed` and `image_fixed` are the same. The canonical names are `audio`, `cancel`, `image_fixed`, `image_overlay`, `infobox`, `jump`, `repeat`, `run_event`, `spritemap`, `text_overlay`, `translate`, `variable`, `video` and `wait`.
+Action `type` values are matched loosely: `Image Fixed`, `imageFixed` and `image_fixed` are the same. The canonical names of the original fourteen are `audio`, `cancel`, `image_fixed`, `image_overlay`, `infobox`, `jump`, `repeat`, `run_event`, `spritemap`, `text_overlay`, `translate`, `variable`, `video` and `wait`. The runtime adds fifteen more, listed below: `animate`, `avatar`, `award`, `bench`, `camera`, `cancel_event`, `conversation`, `dialogue`, `freeze`, `glossary`, `narration`, `shop`, `travel`, `walk` and `weather`.
 
 Actions may carry their own `conditions` array (the Conditions page allows this; the Actions page did not list it). An action whose conditions fail is skipped.
 
@@ -28,6 +28,7 @@ The original actions are described on [Actions](/docs/developers/action/). These
 `cancel_event` | Stops a whole running event | [Cancel event](/docs/developers/extensions/actions-world/#cancel-event)
 `travel` | Takes the player to the mission their teacher launched | [Travel](/docs/developers/extensions/actions-world/#travel)
 `avatar` | Shows or hides the player's own avatar | [Avatar](/docs/developers/extensions/actions-world/#avatar)
+`glossary` | Gives the player a glossary word | [Glossary](/docs/developers/extensions/dialogue/#glossary)
 `award` | Gives stars, XP and badges | [Award](/docs/developers/extensions/rewards/#award)
 `shop` | Opens the marketplace | [Shop](/docs/developers/extensions/rewards/#shop)
 `bench` | Works the scene's close-up bench | [The bench action](/docs/developers/extensions/bench/#the-bench-action)
