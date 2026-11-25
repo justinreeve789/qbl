@@ -6,7 +6,7 @@ The site served at `/docs/`, built with [Astro Starlight](https://starlight.astr
 | ------- | ----- | --- |
 | **Build a mission** and the **Cloudy Pond walkthrough** | `src/content/docs/editor/` | Teachers and content creators using the editor |
 | **Teaching** | `src/content/docs/editor/classes.mdx` | Classes, assignments, teams and reports |
-| **Developers** | `src/content/docs/developers/` | The scenario JSON, the runtime extensions, save data, and the architecture, HTTP and multiplayer contracts |
+| **Developers** | `src/content/docs/developers/` | Grouped in the sidebar as Scenario JSON (`structure`, the reference pages, and the spec v2 pages in `extensions/`), The platform, and AI, voices and the library; plus `local-development` and the `index` hub |
 
 The sidebar is in `astro.config.mjs`. Pages are Markdown (`.md`), or `.mdx` where they use components (Starlight's numbered steps, a section host, a diagram). In `.mdx`, `{` and `<` in prose start code: put `{{variable}}` in backticks.
 

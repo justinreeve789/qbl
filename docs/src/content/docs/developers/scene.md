@@ -8,7 +8,11 @@ host:
 
 A scene consists of a single media item as the background, namely an image. A scenario is composed of multiple scenes, and scenes contain events which describe interactions within the scene.
 
-### Primary Attributes
+:::note[Spec v2]
+Scene size, walkable areas, spawn points, layers, music, skies, weather and water are all spec v2: see [Scenes, layers and spawn points](/docs/developers/extensions/scenes/) and [Skies, weather, water and story scenes](/docs/developers/extensions/atmosphere/).
+:::
+
+## Primary Attributes
 
 Parameter | Type   | Default | Description
 --------- |--------| ------- | -----------

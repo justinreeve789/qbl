@@ -8,7 +8,11 @@ host:
 
 An event consists of actions, and actions describe what happens when the user interacts with a scene. Actions are executed in sequential order, and actions from different events can be run simultaneously.
 
-### Primary Attributes
+:::note[Spec v2]
+The runtime adds actions such as `dialogue`, `walk`, `award` and `bench`. They are all listed, with where each is described, on [Actions overview](/docs/developers/extensions/actions/).
+:::
+
+## Primary Attributes
 Parameter | Type | Default | Description
 --------- |-----|---------| -----------
 id | int |  | action id
@@ -26,7 +30,7 @@ Parameter | Type | Default | Description
 volume | decimal | 1.0 | Volume range from 0.0 to 1.0.
 repeat | bool | false | If true, play the audio file on an infinite loop once it reaches the end, until a jump or cancel action stops the file.
 persist | bool | false | If true, do not stop playing the audio file after a jump action. Audio actions are the only action types that can persist across scenes.
-sound | string | | [ext] One of the game's own sounds instead of a file: `thunder`, `car`, `rain`, `river`, `bell`... See [the game's own sounds](/docs/developers/extensions/#the-games-own-sounds).
+sound | string | | [ext] One of the game's own sounds instead of a file: `thunder`, `car`, `rain`, `river`, `bell`... See [the game's own sounds](/docs/developers/extensions/actions-world/#the-games-own-sounds).
 
 ##  Cancel
 Cancel an action that’s currently executing.
@@ -70,7 +74,7 @@ Open an informational box.
 
 Parameter | Type   | Default         | Description                                                    
 --------- |--------|-----------------|----------------------------------------------------------------
-content | string | | The text to show in the box (HTML allowed). [ext] Can hold pages, slideshows, video, sound, cards, callouts, answer boxes and glossary words: see [Rich infoboxes](/docs/developers/extensions/#rich-infoboxes).
+content | string | | The text to show in the box (HTML allowed). [ext] Can hold pages, slideshows, video, sound, cards, callouts, answer boxes and glossary words: see [Rich infoboxes](/docs/developers/extensions/dialogue/#rich-infoboxes).
 call_to_actions | json   | null | A list of buttons, each containing (1) a string, and (2) an action that is performed when clicked or tapped. [ext] A button can have a `mark`: `right`, `wrong` or `try_again`.
 
 ## Jump

@@ -13,7 +13,7 @@ use App\Qbl\Generation\GenerationError;
  * Turns a mission blueprint and its pictures into rows of the QBL tables (the shape of
  * ScenarioStore::bundle()), which ScenarioCompiler makes into the scenario document.
  *
- * Every interaction becomes events and actions by one of the patterns in docs/src/content/docs/developers/extensions.md
+ * Every interaction becomes events and actions by one of the patterns in docs/src/content/docs/developers/extensions/patterns.md
  * ("Patterns"), so what the language model wrote is never trusted to be valid JSON for the runtime:
  *
  *   talk        a character's click event runs a dispatcher that picks the conversation that applies
