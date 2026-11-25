@@ -8,7 +8,7 @@ host:
 
 A spritemap is an animation that can be used in a label or as an action. A PNG containing all the frames for an animation shown together, called a sprite sheet, is referenced by the spritemap to produce the animation.
 
-:::note[Spec v2]
+:::note[Also see]
 A sprite sheet's media can also carry named animations, which anything drawn with it can play: see [Animations](/docs/developers/extensions/animations/).
 :::
 

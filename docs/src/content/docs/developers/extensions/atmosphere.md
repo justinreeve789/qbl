@@ -60,7 +60,7 @@ sound | bool | true | Rain on the ground (heavier with a heavier rain), the wind
 { "weather": { "kind": "storm", "intensity": 0.9, "wind": -0.5 } }
 ```
 
-Rain or snow listed in a scene's `atmosphere` is weather too, as `{ "kind": "rain", "intensity": 0.55 }` (few 0.3, some 0.55, many 0.85). The [`weather` action](/docs/developers/extensions/actions-world/#weather-action) changes it while the player is in the scene. For players whose system asks for reduced motion only the darkening (and the sound) is there: nothing falls, and nothing flashes.
+Rain or snow listed in a scene's `atmosphere` is weather too, as `{ "kind": "rain", "intensity": 0.55 }` (few 0.3, some 0.55, many 0.85). The [`weather` action](/docs/developers/actions/weather/) changes it while the player is in the scene. For players whose system asks for reduced motion only the darkening (and the sound) is there: nothing falls, and nothing flashes.
 
 The plugin works in any Phaser scene, not only QBL's: `new Weather(scene, options)` and `weather.set({ kind: 'rain' })`, or as a scene plugin (`plugins: { scene: [{ key: 'WeatherPlugin', plugin: WeatherPlugin, mapping: 'weather' }] }`, then `this.weather.storm()`). See `apps/client/src/plugins/weather/README.md`.
 
@@ -90,9 +90,9 @@ The generator paints a scene's water as a flat chroma colour, cuts it out and pu
 **`story: true`** (kept in the scene's `params`): the scene plays by itself, like a page of a picture book. What happens is in its start events: characters walk on and off, say lines, wave; a narrator's captions; the rain starts; a car goes by. They usually end with a `jump` to the next scene, so a story turns its own pages. In a story scene:
 
 - avatars are not shown (whatever `show_avatars` says), and the player does not walk (a freeze that is never released);
-- the view follows whoever is acting: the last character to speak, walk or play an animation while on the stage, and otherwise the middle of everyone on it (a [`camera` action](/docs/developers/extensions/actions-world/#camera) can say otherwise);
+- the view follows whoever is acting: the last character to speak, walk or play an animation while on the stage, and otherwise the middle of everyone on it (a [`camera` action](/docs/developers/actions/camera/) can say otherwise);
 - a bar at the foot of the screen offers **↺ Again** (the scene from its beginning) and **Skip ⏭** (to the scene its start events jump to, running its end events first), when there is somewhere to skip to.
 
 **Off stage.** A character placed beyond the left or right edge of a scene (`position_x` below 0, or past the scene's width) waits off stage, out of sight, until a walk brings it on: it walks straight in to the edge, then on to where the walk says. A walk to a point beyond an edge walks it off the stage and out of sight. This works in any scene, not only stories.
 
-**Captions.** A text overlay with `text_font_style: "caption"` is a story's narration: a soft panel of words, usually at `bottom center`. A text overlay read aloud stays until the voice has finished, as a speech bubble does. A scenario's `narrator_voice` (a key of the voice catalog) is the voice its read-aloud text overlays are recorded in (`qbl:voice`, the editor's "Record voices" and the generator record them). A story box for the narrator is the [`narration`](/docs/developers/extensions/dialogue/#the-narrator) action.
+**Captions.** A text overlay with `text_font_style: "caption"` is a story's narration: a soft panel of words, usually at `bottom center`. A text overlay read aloud stays until the voice has finished, as a speech bubble does. A scenario's `narrator_voice` (a key of the voice catalog) is the voice its read-aloud text overlays are recorded in (`qbl:voice`, the editor's "Record voices" and the generator record them). A story box for the narrator is the [`narration`](/docs/developers/actions/narration/) action.

@@ -8,7 +8,7 @@ host:
 
 Characters are NPCs associated with a scenario.
 
-:::note[Spec v2]
+:::note[Also see]
 Animations, walking characters and the avatars players choose are described in [Characters that live in the world](/docs/developers/extensions/characters/). How a character gets a voice is on [Characters' voices](/docs/developers/voices/).
 :::
 

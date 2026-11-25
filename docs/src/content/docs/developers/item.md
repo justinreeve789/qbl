@@ -7,7 +7,7 @@ host:
 
 Items are any object in a scenario that isn't part of the background scene. The player may interact with items set around a scene. Some items may even cross scenes.
 
-:::note[Spec v2]
+:::note[Also see]
 Placing items, blocking items, wearables, the bag and vehicles are described in [Items, the bag and vehicles](/docs/developers/extensions/items/).
 :::
 

@@ -1,6 +1,6 @@
 ---
 title: "The close-up bench"
-description: "Scene.bench: substances, vessels, tools, reactions, readouts, watches, graphs, and the bench action."
+description: "Scene.bench: substances, vessels, tools, reactions, readouts, watches and graphs."
 host:
   who: sam
   says: "Pour, mix, heat and measure: a whole lab in one scene."
@@ -46,6 +46,4 @@ host:
 
 The bench runs in each player's browser (there is no shared mode yet), is not saved between visits, and is kept in the scene's `layout` in the database, so it travels in exports and copies; a watch's `event_id` follows its event to a copy.
 
-## The bench action
-
-`{ "type": "bench", "op": "reset" | "add" | "empty" | "stir" | "burner", … }` works the scene's [close-up bench](/docs/developers/extensions/bench/): `reset` puts everything back as it started; `add` puts `amount` of `substance` into `vessel_id`; `empty` and `stir` take a `vessel_id`; `burner` lights or puts out `tool_id` (`on`: true or false; absent, it changes over). In a scene with no bench it does nothing, and the validator says so.
+The scene is worked from events with the [`bench` action](/docs/developers/actions/bench/).

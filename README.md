@@ -369,7 +369,7 @@ A **scenario** is a whole mission a group of students goes on together. It conta
 - **Variables are a player's own or shared.** A player's own variable has a separate value for each player (how many animals this student has greeted). A shared one has a single value for everyone playing together, so one student changing it changes it for all (the boulders have fallen; the path is closed). The variable's `scope` decides, once, where it is defined.
 - **Dialogue** is a speech bubble over the speaker, or a story box across the screen with the speaker's close-up portrait, for the characters that carry the story. Characters and avatars can each be given a portrait.
 
-`docs/src/content/docs/developers/extensions/` lists the fields added for the walk-around runtime (walkable areas, spawn points, item and character placement, shared variables, chat mode).
+`docs/src/content/docs/developers/extensions/` lists the fields added for the walk-around runtime, and `docs/src/content/docs/developers/actions/` has a page for each action (walkable areas, spawn points, item and character placement, shared variables, chat mode).
 
 ## Generating missions with AI
 
