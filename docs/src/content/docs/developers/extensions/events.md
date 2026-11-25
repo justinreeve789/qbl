@@ -1,5 +1,5 @@
 ---
-title: "Events and hotspots (spec v2)"
+title: "Events and hotspots"
 description: "How hotspots fire in a walk-around game, reveal distances, and who sees an event."
 host:
   who: mallory

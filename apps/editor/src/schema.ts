@@ -3,7 +3,7 @@ import type { Field } from './fields';
 
 /**
  * What can be edited, as data. Each list here becomes a form. The attributes are the ones in
- * docs/src/content/docs/developers (action.md, scene.md, event.md, ...) plus the extensions in docs/src/content/docs/developers/extensions/.
+ * docs/src/content/docs/developers (scene.md, event.md, ...; actions/ has a page for each action) plus the walk-around pages in docs/src/content/docs/developers/extensions/.
  */
 
 const ALIGNMENTS = ['top left', 'top center', 'top right', 'center left', 'center center', 'center right', 'bottom left', 'bottom center', 'bottom right']
