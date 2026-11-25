@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Scenario;
 use App\Qbl\ScenarioStore;
+use App\Qbl\Speech\Engines\ElevenLabsEngine;
 use App\Qbl\Speech\SpeechError;
 use App\Qbl\Speech\SpeechFactory;
 use App\Qbl\Speech\VoiceCatalog;
@@ -26,7 +27,7 @@ class VoiceScenario extends Command
         {--reassign : First give every character a new voice, replacing the ones they have}
         {--force : Record every line again, even those whose recording is up to date}
         {--dry-run : Only say what would be recorded}
-        {--driver= : The service to use instead of the configured one (kokoro, openai)}';
+        {--driver= : The service to use instead of the configured one (kokoro, chatterbox, elevenlabs, openai)}';
 
     protected $description = 'Record the characters\' lines of a scenario with text-to-speech voices (with word timings for highlighting)';
 
@@ -102,6 +103,18 @@ class VoiceScenario extends Command
         foreach ($catalog->all() as $key => $v) {
             $on = $engine ? $catalog->specFor($key, $engine->name()) : null;
             $clip = $on['spec']['clip'] ?? null;
+            if ($on && $engine instanceof ElevenLabsEngine) {
+                // Who speaks it is worked out from the account's voices: show the one chosen.
+                try {
+                    $chosen = $engine->resolve($on['spec'], $v['lang'] ?? null);
+                    $spec = $chosen['name'].($chosen['name'] !== $chosen['id'] ? " ({$chosen['id']})" : '').($chosen['pinned'] ? ', pinned' : '');
+                } catch (SpeechError $e) {
+                    $spec = 'none: '.$e->getMessage();
+                }
+                $rows[] = [$key, VoiceCatalog::label($v).(($v['flair'] ?? 0) >= 2 ? ' 🎭' : ''), $v['lang'], implode(', ', array_slice((array) $v['traits'], 0, 4)), $spec];
+
+                continue;
+            }
             $spec = ! $on ? '' : ($clip !== null
                 ? "clip $clip".(isset($on['spec']['exaggeration']) ? ', exaggeration '.$on['spec']['exaggeration'] : '').($has && ! isset($has[$clip]) ? ' (made when first used)' : '')
                 : (string) ($on['spec']['voice'] ?? json_encode($on['spec'])));
