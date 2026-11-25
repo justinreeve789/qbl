@@ -49,6 +49,7 @@ export default defineConfig({
             { label: 'Maximizing learning', slug: 'educators/maximize-learning' },
             { label: 'Mission ideas', slug: 'educators/ideas' },
             { label: 'Designing missions that teach', slug: 'educators/design-for-learning' },
+            { label: 'Game design rules for missions', slug: 'educators/game-design-rules' },
           ],
         },
         {
