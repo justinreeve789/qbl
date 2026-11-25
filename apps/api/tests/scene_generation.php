@@ -333,9 +333,9 @@ check((bool) array_filter($result['warnings'], fn ($w) => str_contains($w, 'Ghos
 // Things to click, and what the narrator says.
 $events = array_values(array_filter($bundle['events'], fn ($e) => (int) $e['scene_id'] === (int) $new['id']));
 $hotspots = array_column(array_filter($events, fn ($e) => $e['kind'] === 'hotspot'), null, 'shortname');
-same(array_keys($hotspots), ['look-0', 'look-1', 'look-old-oak'], 'a hotspot for each detail and for the oak (the well has nothing to say)');
+same(array_keys($hotspots), ['detail-0', 'detail-1', 'look-old-oak'], 'a hotspot for each detail and for the oak (the well has nothing to say)');
 same(count($events), 3, 'and no other events: what happens there is the teacher\'s');
-$poster = $hotspots['look-0'];
+$poster = $hotspots['detail-0'];
 check(abs($poster['position_x'] - 360) <= 3 && abs($poster['position_y'] - 580) <= 3 && $poster['activate_by_trigger'], 'the poster\'s hotspot is over the poster as painted, clicked: '.json_encode([$poster['position_x'], $poster['position_y']]));
 $oakSpot = $hotspots['look-old-oak'];
 check(abs($oakSpot['position_x'] - 1500) <= 10 && $oakSpot['radius'] >= 150, 'the oak\'s is over the whole tree');
@@ -388,8 +388,8 @@ same($play($bundle, (int) $oakSpot['id'], [], 5), [
     'M.R. — the miller, Martha Reed, who built this place.', 'M.R. — the miller, Martha Reed, who built this place.',
 ], 'the oak\'s passages are told one per click, and then the last one stays');
 same($play($bundle, (int) $poster['id'], [], 5), ['A poster for the harvest fair.', 'It promises a pie the size of a cartwheel.', 'A poster for the harvest fair.', 'It promises a pie the size of a cartwheel.', 'A poster for the harvest fair.'], 'the poster\'s go round again');
-same($play($bundle, (int) $hotspots['look-1']['id'], [], 2), ['The wheel turns slowly, dripping.', 'The wheel turns slowly, dripping.'], 'one passage is simply said each time');
-check(! array_filter($bundle['actions'], fn ($a) => (int) $a['event_id'] === (int) $hotspots['look-1']['id'] && $a['type'] === 'variable'), 'and counts nothing');
+same($play($bundle, (int) $hotspots['detail-1']['id'], [], 2), ['The wheel turns slowly, dripping.', 'The wheel turns slowly, dripping.'], 'one passage is simply said each time');
+check(! array_filter($bundle['actions'], fn ($a) => (int) $a['event_id'] === (int) $hotspots['detail-1']['id'] && $a['type'] === 'variable'), 'and counts nothing');
 
 // The lamp's glow, the critters.
 $glow = $layout['lights'][0] ?? null;

@@ -31,9 +31,6 @@ use App\Qbl\Generation\GenerationError;
  */
 class SceneBuilder extends MissionBuilder
 {
-    /** Where the scene's scale area starts, from the top: the back of the floor as traced, or the ground line. */
-    protected int $scaleTop = 0;
-
     /** What the teacher should know: something planned that the picture did not show. */
     protected array $warnings = [];
 
@@ -63,11 +60,7 @@ class SceneBuilder extends MissionBuilder
         //      plan says otherwise), how deep, and, as the picture turned out, where it ends at the back
         [$left, $right] = $this->floorEnds($scene, $W, false, false);
         [$top, $bottom] = $this->floorDepth($scene, null, $ground, $H);
-        // The scale area reaches the back of the floor wherever it was traced, so nobody standing there is
-        // drawn at full size (set before the cut-outs, whose own size undoes it).
-        $survey = $assets["survey:$key"] ?? null;
-        $traced = array_column((array) ($survey['floor'] ?? []), 1);
-        $this->scaleTop = (int) max(0, min($ground, $traced ? (int) min($traced) - 10 : $ground));
+        $this->shot = 1.0;
         $cutouts = $this->surveyed($key, $assets, $top, $bottom);
         $cutAt = $this->cutoutBoxes($key, $assets);
 
@@ -118,19 +111,10 @@ class SceneBuilder extends MissionBuilder
         // ---- things to click, described by the narrator
         $described = 0;
         foreach (array_values($scene['details'] ?? []) as $i => $d) {
-            $at = $this->foundAt("detail:$i");
-            $x = (int) round($W * (float) $d['x']);
-            if ($at && abs($at['x'] - $x) < $W * 0.25) {
-                [$x, $y] = [$at['x'], $at['y']];
-                $radius = (int) max(55, min(170, max($at['width'], $at['height']) / 2 + 12));
-            } else {
-                $y = ($d['placement'] ?? 'back') === 'ground' ? $this->clear($x, $ground + (int) ($floor * 0.25)) : $this->backAt($x, -110);
-                $radius = 80;
-                if ($assets["survey:$key"] ?? null) {
-                    $this->warnings[] = "“{$d['label']}” could not be found in the picture: its hotspot is about where it was asked for. Move it in the scene editor if it is not over it.";
-                }
+            $found = $this->detail($sceneId, $i, $d, (int) round($W * (float) $d['x']), $ground, 'narration', "{$varBase}_look_".(++$described));
+            if (! $found && ($assets["survey:$key"] ?? null)) {
+                $this->warnings[] = "“{$d['label']}” could not be found in the picture: its hotspot is about where it was asked for. Move it in the scene editor if it is not over it.";
             }
-            $this->describe($sceneId, "look-$i", $x, $y, $radius, $d['label'], $d['texts'] ?? [$d['text']], $d['repeat'] ?? 'last', "{$varBase}_look_".(++$described));
         }
         foreach ($standing as $i => $t) {
             if (empty($t['texts'])) {
@@ -146,7 +130,7 @@ class SceneBuilder extends MissionBuilder
                 $y = $this->backAt($x, 40) - 120;
                 $radius = 90;
             }
-            $this->describe($sceneId, 'look-'.self::slug($t['label']), $x, $y, $radius, $t['label'], $t['texts'], $t['repeat'] ?? 'last', "{$varBase}_look_".(++$described));
+            $this->describe($sceneId, 'look-'.self::slug($t['label']), $x, $y, $radius, $t['label'], $y - $radius - 24, $t['texts'], $t['repeat'] ?? 'last', "{$varBase}_look_".(++$described));
         }
 
         // ---- a little life: birds that land, a squirrel up a tree, a deer walking by
@@ -163,7 +147,7 @@ class SceneBuilder extends MissionBuilder
         $flows = $this->flows($scene, $bg);
         $this->rows['scenes'][$sceneIndex]['layout'] = [
             'walkable_areas' => [$this->walkable($left, $right, $top, $bottom)],
-            'blocked_areas' => array_map(fn ($r) => self::ellipse(($r[0] + $r[1]) / 2, ($r[2] + $r[3]) / 2, ($r[1] - $r[0]) / 2, ($r[3] - $r[2]) / 2), $this->blocked),
+            'blocked_areas' => $this->blockedAreas(),
             'spawn_points' => $spawns,
             'scale_areas' => [$this->scaleArea()],
             'items' => $cutouts,
@@ -174,39 +158,6 @@ class SceneBuilder extends MissionBuilder
             'rows' => $this->rows, 'files' => $this->files, 'scene' => $key, 'warnings' => $this->warnings,
             'counts' => ['cutouts' => count($cutouts), 'hotspots' => $described, 'lights' => count($lights), 'critters' => count($critters), 'blocked' => count($this->blocked)],
         ];
-    }
-
-    /**
-     * A thing to click: an invisible hotspot, its name shown when the player is near or points at it, and
-     * the narrator saying what is there. With several passages, one per click, counted in $variable (the
-     * player's own, kept between visits): "last" steps through them and then keeps saying the last one;
-     * "cycle" goes round again. Conditions on each action are read as it is reached, so the count moves on
-     * only after the passage for this click is said.
-     */
-    protected function describe(int $sceneId, string $shortname, int $x, int $y, int $radius, string $label, array $texts, string $repeat, string $variable): int
-    {
-        $hot = $this->hotspot($sceneId, $shortname, [$x, $y], $radius, click: true);
-        $this->text($hot, $x, max(40, $y - $radius - 24), $label, hint: true);
-        $texts = array_values(array_filter(array_map('strval', $texts), 'strlen')) ?: [$label];
-        $n = count($texts);
-        if ($n === 1) {
-            $this->action($hot, 'narration', ['text' => $texts[0]]);
-
-            return $hot;
-        }
-        $this->variable($variable, 0);
-        foreach ($texts as $i => $text) {
-            $when = $repeat !== 'cycle' && $i === $n - 1 ? $this->cond($variable, '>=', $i) : $this->cond($variable, '=', $i);
-            $this->action($hot, 'narration', ['text' => $text], conditions: [$when]);
-        }
-        if ($repeat === 'cycle') {
-            $this->action($hot, 'variable', ['name' => $variable, 'operator' => '+', 'operand' => 1]);
-            $this->action($hot, 'variable', ['name' => $variable, 'operator' => 'set', 'operand' => 0], conditions: [$this->cond($variable, '>=', $n)]);
-        } else {
-            $this->action($hot, 'variable', ['name' => $variable, 'operator' => '+', 'operand' => 1], conditions: [$this->cond($variable, '<', $n - 1)]);
-        }
-
-        return $hot;
     }
 
     /** The cut-outs as surveyed (in the order surveyed() placed them): their box in the scene and their item. */
@@ -263,39 +214,6 @@ class SceneBuilder extends MissionBuilder
         }
 
         return $out;
-    }
-
-    /**
-     * The scale area: from the back of the floor (as traced, or the ground line) to the bottom, drawing
-     * figures smaller at the back and larger at the front, at the sizes the picture was painted for
-     * (Sizes::DEPTH_BACK at the ground line, Sizes::DEPTH_FRONT at the bottom), carried on past the
-     * ground line where the traced floor goes further back.
-     */
-    protected function scaleArea(): array
-    {
-        [$top, $bottom] = $this->scalePercents();
-
-        return ['name' => 'depth', 'x' => 0, 'y' => $this->scaleTop, 'width' => $this->width, 'height' => self::HEIGHT - $this->scaleTop, 'scale_top' => $top, 'scale_bottom' => $bottom, 'speed_effect' => 60];
-    }
-
-    /** @return array{0: int, 1: int} the scale area's percentages at its top and bottom */
-    protected function scalePercents(): array
-    {
-        $per = (Sizes::DEPTH_FRONT - Sizes::DEPTH_BACK) / max(1, self::HEIGHT - $this->ground);
-
-        return [(int) round(100 * (Sizes::DEPTH_BACK - $per * ($this->ground - $this->scaleTop))), (int) round(Sizes::DEPTH_FRONT * 100)];
-    }
-
-    /** How the scene's scale area draws something standing at y, as the game reads it (see scaleArea). */
-    protected function depthScale(int $y): float
-    {
-        if ($y < $this->scaleTop || $y > self::HEIGHT) {
-            return 1.0; // outside the scale area: drawn at its own size
-        }
-        [$top, $bottom] = $this->scalePercents();
-        $t = ($y - $this->scaleTop) / max(1, self::HEIGHT - $this->scaleTop);
-
-        return max(0.05, ($top + ($bottom - $top) * $t) / 100);
     }
 
     /** A scene's shortname as the start of variable names: lower case letters, digits and underscores. */

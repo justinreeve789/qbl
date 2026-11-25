@@ -227,6 +227,7 @@ same([$placedTree['position_x'], $placedTree['position_y']], [$tree['x'] + intdi
 $area = $landing['scale_areas'][0];
 $depth = ($area['scale_top'] + ($area['scale_bottom'] - $area['scale_top']) * (($placedTree['position_y'] - $area['y']) / $area['height'])) / 100;
 check(abs($treeItem['scale'] * $depth - 1) < 1e-4, 'drawn at its own size, whatever the depth there');
+check($area['y'] <= 766 && $area['scale_top'] < 90, 'the scale area reaches back to the floor traced in front of the building, so nobody there is drawn at full size: '.json_encode($area));
 same([$treeItem['placement'] ?? null, $treeItem['sort_line'] ?? null, $treeItem['blocking'] ?? null], ['object', $tree['sort_line'], false], 'sorted among the figures by its sort line, its base blocked instead of a circle');
 check((bool) array_filter($landing['blocked_areas'], fn ($a) => min(array_column($a, 'x')) >= $tree['footprint'][0] && max(array_column($a, 'x')) <= $tree['footprint'][1] + 1), 'nobody walks through its trunk');
 foreach ([...$landing['characters'], ...$landing['spawn_points']] as $p) {
@@ -242,7 +243,28 @@ $cut1 = $scenes['cut_found_1'];
 $cut2 = $scenes['cut_found_2'];
 same([$cut1['story'] ?? false, $cut1['show_avatars'], $cut2['story'] ?? false], [true, false, true], 'its panels play by themselves, with no avatars');
 same(end($cut1['background_media'])['media_id'], end($scenes['greenhouse']['background_media'])['media_id'], 'the wide panel shows the greenhouse\'s own picture');
-same($cut2['scale_areas'][0]['scale_top'], (int) round(90 * Cutscenes::CLOSE), 'in the close-up everyone is twice as big');
+same($cut2['scale_areas'][0]['scale_bottom'], (int) round(108 * Cutscenes::CLOSE), 'in the close-up everyone is twice as big');
+$closeCuts = array_values(array_filter($cut2['items'] ?? [], fn ($p) => ($items[$p['item_id']]['params']['cut_from'] ?? null) === 'background'));
+// A thing cut out of a close shot's picture (the scale area twice as big there): still drawn at its own size.
+$closeBuilder = new class extends MissionBuilder
+{
+    public function cutInCloseUp(array $assets): array
+    {
+        $this->rows = ['media' => [], 'items' => []];
+        [$this->width, $this->ground, $this->shot] = [2250, 816, Cutscenes::CLOSE];
+        $placed = $this->surveyed('close', $assets, 816, 1200);
+
+        return [$placed[0], $this->rows['items'][0], $this->scaleArea()];
+    }
+};
+[$cp, $ci, $ca] = $closeBuilder->cutInCloseUp(['survey:close' => ['floor' => [[0, 800], [2250, 800]], 'standing' => [['name' => 'tree', 'kind' => 'tree']]], 'cutout:close:0' => ['path' => "$work/bg.png", 'x' => 1000, 'y' => 500, 'width' => 200, 'height' => 500, 'footprint' => [1080, 1120]]]);
+$cd = ($ca['scale_top'] + ($ca['scale_bottom'] - $ca['scale_top']) * (($cp['position_y'] - $ca['y']) / $ca['height'])) / 100;
+check($cd > 1.5 && abs($ci['settings']['scale'] * $cd - 1) < 1e-4, 'a thing cut out of a close-up is drawn at its own size, not twice it (depth '.round($cd, 3).', scale '.$ci['settings']['scale'].')');
+foreach ($closeCuts as $p) {
+    $a = $cut2['scale_areas'][0];
+    $d = ($a['scale_top'] + ($a['scale_bottom'] - $a['scale_top']) * (($p['position_y'] - $a['y']) / $a['height'])) / 100;
+    check(abs($items[$p['item_id']]['scale'] * $d - 1) < 1e-4, 'and a thing cut out of the close-up is still drawn at its own size, not twice it');
+}
 $play = fn (array $scene) => array_values(array_filter($scene['start_events'], fn ($e) => $e['shortname'] === 'story'))[0]['actions'];
 $a1 = $play($cut1);
 $a2 = $play($cut2);
