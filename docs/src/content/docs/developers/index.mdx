@@ -1,51 +1,96 @@
 ---
 title: Developers
-description: The scenario JSON, how the pieces fit together, and the HTTP and multiplayer contracts.
+description: The scenario JSON, how the pieces fit together, running the platform, and the HTTP, multiplayer and school-integration contracts.
 host:
   who: asimov
   says: "Beep! Welcome to the engine room: the JSON that describes every mission, and how the machines talk to each other."
   side: right
 ---
+import { Card, CardGrid } from '@astrojs/starlight/components';
 import Host from '../../../components/Host.astro';
-
 
 This section is for people who work with QuestLab's data and code: writing or generating scenarios as JSON, running the platform, or building against its APIs. If you only want to make missions, start with [the editor](/docs/editor/).
 
 QuestLab scenarios are interactive experiences built around media: audio, images, text, sprite sheets and video. On the backend the QuestLab API outputs a scenario as one JSON document; the Phaser game reads it and runs the scenario as scripted. The editor writes this JSON for you (**Publish** generates it), and a ZIP with a `scenario.json` can bring a hand-written or generated one in whole (see [Backups, copies and the starship hub](/docs/editor/backups-and-copies/#making-a-zip-by-hand)).
 
-## The JSON reference
+## Choose your path
+
+<CardGrid>
+  <Card title="Write scenario JSON" icon="document">
+    Learn the shape of a document, then look up any object or action.
+
+    * [How a scenario fits together](/docs/developers/structure/)
+    * [The JSON reference](/docs/developers/scenario/)
+    * [Runtime extensions (spec v2)](/docs/developers/extensions/)
+    * [Patterns that need no special support](/docs/developers/extensions/patterns/)
+  </Card>
+  <Card title="Run the platform" icon="setting">
+    Get it running, then see how the containers and the multiplayer room fit.
+
+    * [Run QuestLab locally](/docs/developers/local-development/)
+    * [Architecture](/docs/developers/architecture/)
+    * [Multiplayer protocol](/docs/developers/protocol/)
+    * [HTTP API contract](/docs/developers/api/)
+  </Card>
+  <Card title="Connect a school" icon="random">
+    Roster classes, assign missions, sign students in and read grades, without sending any personal data.
+
+    * [Public API (v1): quickstart](/docs/api-v1/)
+    * [Authentication](/docs/api-v1/authentication/)
+    * [Privacy by design](/docs/api-v1/privacy/)
+    * [OpenAPI description](/docs/api/v1/openapi.yaml)
+  </Card>
+  <Card title="AI, voices, library" icon="rocket">
+    The mission generator, the voices behind every character, and the shared assets.
+
+    * [Generating missions with AI](/docs/developers/generation/)
+    * [Generation methods and traces](/docs/developers/generation-methods/)
+    * [Characters' voices](/docs/developers/voices/)
+    * [The asset library](/docs/developers/asset-library/)
+  </Card>
+</CardGrid>
+
+## Every page in this section
+
+### Scenario JSON
 
 A scenario holds scenes; a scene holds events; an event holds actions that run in order.
 
-* [Scenarios](/docs/developers/scenario/)
-* [Scenes](/docs/developers/scene/)
-* [Events](/docs/developers/event/)
-* [Actions](/docs/developers/action/)
-* [Media](/docs/developers/media/)
-* [Characters](/docs/developers/character/)
-* [Items](/docs/developers/item/)
-* [Variables](/docs/developers/variable/)
-* [Conditions](/docs/developers/condition/)
-* [Spritemaps](/docs/developers/spritemap/)
-* [Labels](/docs/developers/label/)
+Page | What it is
+---- | ----------
+[How a scenario fits together](/docs/developers/structure/) | The tree, what points at what, and a complete example
+[Scenarios](/docs/developers/scenario/), [Scenes](/docs/developers/scene/), [Events](/docs/developers/event/), [Actions](/docs/developers/action/), [Conditions](/docs/developers/condition/), [Global variables](/docs/developers/variable/) | The core objects, field by field
+[Media](/docs/developers/media/), [Characters](/docs/developers/character/), [Items](/docs/developers/item/), [Spritemaps](/docs/developers/spritemap/), [Labels](/docs/developers/label/) | The things scenes are made of
+[Runtime extensions (spec v2)](/docs/developers/extensions/) | Everything the walk-around runtime added, in fifteen pages. It is **optional and additive**: a document that uses none of it still plays
 
-The original pages describe the first version of the format. Everything the walk-around runtime added is **optional and additive** and is described in [Runtime extensions (spec v2)](/docs/developers/extensions/).
+### The platform
 
-## The platform
+Page | What it is
+---- | ----------
+[Run QuestLab locally](/docs/developers/local-development/) | One command, the editor, or the whole Docker stack; seeding, accounts, tests
+[Architecture](/docs/developers/architecture/) | The containers, the repository, design decisions, how to add an action type
+[Save data](/docs/developers/save-data/) | What a player's save holds and how it is delivered with the scenario
+[Instances, teams and save data](/docs/developers/instances/) | How a team's copy of a mission is kept, and which tables hold it
+[Multiplayer protocol](/docs/developers/protocol/) | Join options, synchronized state, messages and the trust model
+[HTTP API contract](/docs/developers/api/) | The internal endpoints the player, editor and game server use
+[Billing, credits and district sign-in](/docs/developers/billing/) | Plans, Stripe, credits, rostering and district single sign-on
 
-<Host who="asimov" side="right">
-Under the hood: one engine shared by the client and the server, Laravel for everything stored, and Colyseus for everyone in the room.
+### AI, voices and the library
+
+Page | What it is
+---- | ----------
+[Generating missions with AI](/docs/developers/generation/) | The `qbl:generate` command, what it costs, and how every picture stays in one style
+[Generation methods and traces](/docs/developers/generation-methods/) | Writing a method or a step, and reading a trace
+[Characters' voices (text-to-speech)](/docs/developers/voices/) | The TTS services, recording lines, and the voice catalog
+[The asset library](/docs/developers/asset-library/) | Ready-made characters, items, pictures and sounds shared by the whole platform
+
+### Connecting a school's systems
+
+<Host who="buck" side="right">
+Rostering, assigning, signing in and grades all go through the versioned public API. It never takes a student's personal data.
 </Host>
 
-* [Save data](/docs/developers/save-data/): what a player's save holds and how it is delivered with the scenario.
-* [Instances, teams and save data](/docs/developers/instances/): how a team's copy of a mission is kept, and which tables hold it.
-* [Generating missions with AI](/docs/developers/generation/): the `qbl:generate` command.
-* [Architecture](/docs/developers/architecture/): the containers and how they talk.
-* [HTTP API contract](/docs/developers/api/) (internal: used by the player, editor and game server) and [Multiplayer protocol](/docs/developers/protocol/).
-
-## Connecting a school's systems
-
-Rostering classes from a student information system, assigning missions from an LMS, signing students in and reading grades and learning reports are done through the supported, versioned **[public API (v1)](/docs/api-v1/)** under `/api/v1`. It takes no personal data about students. Start with its [quickstart](/docs/api-v1/#your-first-ten-minutes) and the [authentication](/docs/api-v1/authentication/) page. An [OpenAPI description](/docs/api/v1/openapi.yaml) is available.
+Rostering classes from a student information system, assigning missions from an LMS, signing students in and reading grades and learning reports are done through the supported, versioned **[public API (v1)](/docs/api-v1/)** under `/api/v1`. Start with its [quickstart](/docs/api-v1/#your-first-ten-minutes) and the [authentication](/docs/api-v1/authentication/) page. The [HTTP API contract](/docs/developers/api/) above is the *internal* one, used by the player, the editor and the game server.
 
 ## Validating a scenario
 
@@ -55,4 +100,4 @@ From the repository root:
 npm run validate -- path/to/scenario.json
 ```
 
-This runs the same checks the editor's **Publish** button runs.
+This runs the same checks the editor's **Publish** button runs. See [Run QuestLab locally](/docs/developers/local-development/#check-a-scenario).

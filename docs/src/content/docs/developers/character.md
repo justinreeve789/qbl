@@ -8,7 +8,11 @@ host:
 
 Characters are NPCs associated with a scenario.
 
-### Primary Attributes
+:::note[Spec v2]
+Animations, walking characters and the avatars players choose are described in [Characters that live in the world](/docs/developers/extensions/characters/). How a character gets a voice is on [Characters' voices](/docs/developers/voices/).
+:::
+
+## Primary Attributes
 Parameter | Type        | Default | Description
 --------- |-------------|---------| -----------
 id | int         |         | Character id
