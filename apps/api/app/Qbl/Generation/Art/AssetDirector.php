@@ -144,6 +144,16 @@ class AssetDirector
         }
     }
 
+    /**
+     * Paint the scenes to look like this picture (how it is painted, not what is in it): a scene of the
+     * scenario a new scene is made for (SceneMethod), so the new one matches the scenes it joins. A scene
+     * drawn in an earlier session of the run takes its place.
+     */
+    public function lookLike(Reference $picture): void
+    {
+        $this->sceneLook ??= $picture;
+    }
+
     /** Be told how many of the mission's pictures are drawn, before each one and at the end (see drawMission). */
     public function onProgress(callable $progress): void
     {
@@ -550,6 +560,12 @@ class AssetDirector
             foreach (array_values($scene['lights'] ?? []) as $i => $l) {
                 if (($l['placement'] ?? null) === 'wall') {
                     $out[$scene['key']][] = ['id' => "light:$i", 'what' => "the glowing part of {$l['look']}", 'x' => (float) $l['x']];
+                }
+            }
+            // Things standing on the floor that a scene made on its own describes (SceneDesigner): the whole of each.
+            foreach (array_values($scene['standing'] ?? []) as $i => $t) {
+                if (! empty($t['texts'])) {
+                    $out[$scene['key']][] = ['id' => "standing:$i", 'what' => "all of {$t['look']} (standing on the floor)", 'x' => (float) $t['x']];
                 }
             }
         }
@@ -1192,7 +1208,18 @@ class AssetDirector
         $down = fn (int $y) => round(100 * ($y + $cut) / $drawnH).'%';
         $notes = self::scaleNotes($scene);
         $floor = $scene['floor'] ?? [];
-        $notes[] = 'Keep the floor open, flat and empty, with no objects, plants, rocks or furniture standing on it'.(! empty($floor['blocked']) ? ', except what the requirements below place in it' : '');
+        // A scene made on its own (SceneDesigner) may ask for things standing out on the floor: they are cut out of
+        // the picture afterwards (SurveyStep), so each needs open floor all around it.
+        $standing = (array) ($layout['standing'] ?? []);
+        $notes[] = $standing
+            ? 'Apart from the things standing on the floor listed below, keep the floor open, flat and empty'
+            : 'Keep the floor open, flat and empty, with no objects, plants, rocks or furniture standing on it'.(! empty($floor['blocked']) ? ', except what the requirements below place in it' : '');
+        foreach ($standing as $thing) {
+            $notes[] = sprintf('%s, standing out on the floor %s, whole and clearly separate, with open floor all around it so a person could walk behind it and in front of it, its base resting on the floor: %s',
+                ucfirst($at((float) $thing['x'])), match ($thing['depth'] ?? 'middle') {
+                    'back' => 'near its back edge', 'front' => 'near the front', default => 'in the middle of it',
+                }, rtrim((string) $thing['look'], '.'));
+        }
         $notes[] = 'No characters, people, animals or creatures';
         if (($floor['left'] ?? 0) > 0.02) {
             $notes[] = 'The floor ends '.$at((float) $floor['left']).' at a wall, a drop or something nobody can cross; left of that is not floor';
@@ -1238,7 +1265,12 @@ class AssetDirector
                 : 'The back wall is plain and uncluttered '.$at($onWall['x']).', a little above the floor (something is hung there later)';
         }
         foreach ($layout['lights'] ?? [] as $l) {
-            $notes[] = 'On the wall '.$at($l['x']).', above head height: '.$l['what'];
+            // Hung on a wall (the default), or a light standing at the back of the floor or out on it (a scene made on its own paints those in too).
+            $notes[] = match ($l['where'] ?? 'wall') {
+                'back' => ucfirst($at($l['x'])).', at the back of the floor: '.$l['what'],
+                'floor' => ucfirst($at($l['x'])).', standing out on the floor with open floor around it: '.$l['what'],
+                default => 'On the wall '.$at($l['x']).', above head height: '.$l['what'],
+            };
         }
         // What students look at where there is no object of its own: part of the painting.
         foreach ($layout['looks'] ?? [] as $l) {

@@ -110,7 +110,7 @@ Command | Covers
 `npm run test:laravel` | The Laravel feature tests (`cd apps/api && php artisan test`)
 `npm run test:api`, `test:progress`, `test:classes`, `test:porting`, `test:activity`, `test:billing`, `test:district`, `test:library`, `test:walk`, `test:speech` | The plain-PHP suites for each part of the backend
 `npm run test:api-v1` | The [public API](/docs/api-v1/)
-`npm run test:generation`, `test:story-generation` | The [mission generator](/docs/developers/generation/#testing)
+`npm run test:generation`, `test:story-generation`, `test:scene-generation` | The [mission generator](/docs/developers/generation/#testing), and one [scene for a scenario](/docs/developers/generation/#one-scene-for-a-scenario)
 `npm run test:all` | All of the above except the Laravel suite and `test:api-v1`
 `npm run typecheck` | Types for the shared package, server, client and editor
 

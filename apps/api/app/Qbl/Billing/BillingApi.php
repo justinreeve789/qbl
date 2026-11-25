@@ -38,7 +38,7 @@ class BillingApi
         $plans = $this->entitlements->plans();
         // What is on sale can be read by anyone (the pricing page, signed out).
         if ($path === '' && $method === 'GET' && ! $user) {
-            return [200, ['enabled' => $plans->enabled(), 'payments' => $plans->enabled() && $plans->stripeReady(), 'trial_days' => $plans->trialDays(), 'plans' => $plans->catalogue(), 'costs' => ['generation' => $plans->cost('generation')], 'sales_phone' => $plans->salesPhone()]];
+            return [200, ['enabled' => $plans->enabled(), 'payments' => $plans->enabled() && $plans->stripeReady(), 'trial_days' => $plans->trialDays(), 'plans' => $plans->catalogue(), 'costs' => ['generation' => $plans->cost('generation'), 'scene' => $plans->cost('scene_generation')], 'sales_phone' => $plans->salesPhone()]];
         }
         if (! $user) {
             throw new StoreError(401, 'Unauthenticated.');
@@ -76,7 +76,7 @@ class BillingApi
             'payments' => $plans->enabled() && $plans->stripeReady(),
             'trial_days' => $plans->trialDays(),
             'plans' => $plans->catalogue(),
-            'costs' => ['generation' => $plans->cost('generation')],
+            'costs' => ['generation' => $plans->cost('generation'), 'scene' => $plans->cost('scene_generation')],
             'sales_phone' => $plans->salesPhone(),
             'entitlements' => $plan + ['students_used' => $this->entitlements->studentCount($userId)],
             'subscription' => $sub === null ? null : array_diff_key($sub, ['stripe_customer_id' => 1, 'stripe_subscription_id' => 1]) + ['manageable' => $sub['stripe_customer_id'] !== null],

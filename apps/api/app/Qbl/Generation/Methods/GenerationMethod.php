@@ -16,6 +16,7 @@ use App\Qbl\Generation\Design\BlueprintCritic;
 use App\Qbl\Generation\Design\MissionDesigner;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\GenerationFactory;
+use App\Qbl\Generation\GenerationProgress;
 use App\Qbl\Generation\Llm\LanguageModel;
 use App\Qbl\Generation\Pipeline\Step;
 use App\Qbl\Generation\Pipeline\Steps\AlignStep;
@@ -332,6 +333,15 @@ abstract class GenerationMethod
     public function builder(bool $story): MissionBuilder|StoryBuilder
     {
         return $story ? new StoryBuilder : new MissionBuilder;
+    }
+
+    /**
+     * The stages of the editor's progress bar a run goes through, in order (GenerationProgress::STAGES):
+     * by default every one, with voicing only when voices are recorded here.
+     */
+    public function stages(bool $voices): array
+    {
+        return GenerationProgress::stagesFor($voices);
     }
 
     /** Whether runs record voices: null as the command and configuration say; false never. */

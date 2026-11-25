@@ -325,6 +325,30 @@ These models think before they answer (on Opus 5.5 thinking is always on), and t
 
 Gemini's image models are not on its free tier: the key's project needs billing turned on in Google AI Studio. Without it every request is refused with a quota of 0, and the generator says so.
 
+## One scene for a scenario
+
+The editor's **✨ Generate a scene** (Scenes page and scene map, `apps/editor/src/views/sceneGenerate.ts`) makes ONE scene for the scenario being edited rather than a mission. It is a run like any other (same queue, credits, progress chip, trace and audit log) whose options say `kind: "scene"`, and it is made by the `scene` method (`Methods/SceneMethod`):
+
+Step | Class | What it does
+---- | ---- | ----
+design | `SceneDesignStep` → `Design/SceneDesigner` | One language-model call plans the scene, told the request, the scenario's title and its other scenes: the background; `standing` (up to 5 things out on the floor to walk around, each with `x`, `depth`, `label`, `look`); `details` (up to 6 things painted in to click); the narrator's `texts` (1-4 passages) and `repeat` (`last` or `cycle`) on details and on standing things worth a look; with life on, `lights` (painted in: `where` wall, back or floor), `sky`, `atmosphere`, `water`, `weather`; with critters on, `ambient`. `SceneDesigner::tidy()` clamps everything, drops what the options turn off, and puts it in the shape of a one-scene mission blueprint, keyed by a shortname no scene of the scenario has.
+draw | `SceneDrawStep` | `DrawStep`, as for a mission, with the scenario's start scene (or its first with a picture) passed to the painter as how the game looks (`AssetDirector::lookLike`). The background prompt asks for the standing things with open floor all around each, and the details and lights painted where they go.
+survey | `SurveyStep` | As for a mission: the floor traced, the standing things cut out with their sort lines, and the details, lights and described standing things found (`standing:<i>` beside `detail:<i>` and `light:<i>`). Always on for real pictures.
+build | `SceneBuildStep` → `Build/SceneBuilder` | The rows of one scene (below). Warnings for anything planned that the picture did not show.
+merge | `SceneMergeStep` | `ScenarioStore::mergeRows`: added after the scenario's last scene, its pictures copied into the scenario's media, every id afresh. The run's `scenario_id` is the scenario and its blueprint's `scene_id` the new scene.
+
+What `SceneBuilder` (a `MissionBuilder`, reusing its floor, survey, light, critter, water and sky helpers) makes:
+
+- The scene: the background layer, with a living sky and drifting clouds behind it when it has one; its `sky`, `atmosphere` and `weather` in params.
+- `walkable_areas`: the traced floor (`FloorTracer::polygon`), edge to edge unless the plan narrowed it. `blocked_areas`: the base of each cut-out, a pond, and the base of a planned standing thing that could not be cut out. `scale_areas`: one, from the back of the floor as traced (or the ground line) to the bottom, at the sizes the picture was painted for (`Sizes::DEPTH_BACK` at the ground line, carried on behind it). One `default` spawn point in the middle of the floor.
+- Each cut-out: an item placed exactly over itself (`placement: object`, `sort_line`, `scale` undoing the depth there, `params.cut_from: background`), named as planned where one matches (by the found box's overlap, else by where across).
+- Things to click: a click hotspot over where each was found (else about where it was asked for, with a warning), its label as a hint text (`show_near`), and `narration` actions. With several passages, a player variable `<scene>_look_<n>` counts the clicks: each passage has the condition `= i` (the last `>= n-1` with `last`), then `+ 1` while below `n-1` (`last`), or `+ 1` and `set 0` when `>= n` (`cycle`). Action conditions are read as each action is reached, so the count moves on after the passage is said. A variable the scenario already has is not added again.
+- `lights` (on the brightest part of where each was found), `critters` (a squirrel's spots are the cut-out trees, a rabbit's the bushes and rocks; a creature that needs them and has none walks by), `flows` for water.
+
+The API takes `POST editor/generations` with `{kind: "scene", scenario_id, prompt, kind_of_place?, time?, width?, hotspots?, repeat?, animations?, critters?, grade?, notes?}` (`GenerationApi::sceneOptions`: the scenario must be one the teacher can edit; the kind of place is kept as `place`, since `kind` says what is made). It costs `QBL_CREDITS_PER_SCENE` (default 2) and goes through four stages: designing, drawing, building, importing. Runs say `kind` (`mission` or `scene`) and `scene_id`. When one finishes and the editor has its scenario open, `Store.takeIn()` loads the scenario again and records the difference as one history step, so **Ctrl+Z** removes the scene, its media rows, items and variables (the files stay on disk) and **Ctrl+Y** puts them back.
+
+From the command line: `php artisan qbl:generate "A cobbled yard outside an old water mill" --method=scene --scenario=12` (with `--critters`, `--no-hotspots`, `--no-animations`, `--place=indoor`, `--time=dusk` and the usual `--images=placeholder`, `--resume`, `--redo=`).
+
 ## From the editor: the queue, progress and cancelling
 
 The editor's **Generate** page (`apps/editor/src/views/generate.ts`) calls `App\Qbl\Generation\GenerationApi` under `/api/editor/generations`. Starting one checks the plan (`Entitlements`), takes the credits (`Credits`) and dispatches `App\Jobs\RunGeneration` to the queue worker in the app container, which runs the same `ScenarioGenerator` as `qbl:generate`.
@@ -345,6 +369,8 @@ Route | What
 Without Docker, the dev server (`npm run dev:editor`) cannot make missions; with `QuestLab_DEV_GENERATOR=1` it pretends, moving a run through every stage in about 70 seconds and ending with an empty draft (a number of seconds above 1 sets how long).
 
 ## Testing
+
+`npm run test:scene-generation` runs a scene's whole run with no network, against a stand-in painter (a mill wall, an oak, a well, a lamp, a poster, in the house style) and a stand-in designer and surveyor: the plan tidied, what the painter and surveyor were asked, the four stages, the floor traced to the mill's base, the oak and the well cut out and placed over themselves with their sort lines and bases blocked, the scale area, the hotspots over what they describe, the narrator stepping through to the last passage and going round, the critters, a failed merge leaving the scenario's own files alone, and the game's validator over the result. `QBL_KEEP=1` keeps its work folder.
 
 `npm run test:generation` runs the whole pipeline with no network, and checks every progress report it makes: a stand-in model answers from `apps/api/tests/fixtures/generation/blueprint.php` (a mission with every feature: a door, a hole, a twist, predictions, a debrief, the bag, cutscenes, a wide scene with a far view, foregrounds...), and the placeholder draws the pictures. With the JavaScript side installed (`npm install`), it then checks the generated scenario with the game's own validator, and plays it **from the briefing to the debrief through the real engine** (`apps/client/test/generated-mission.test.ts`): a student goes through the door, picks up twine, sees the twist, digs the channel, jumps into the hole, finds a hook, puts the two together, fishes a battery out of a crack with them, gives it to the robot (after offering him the wrong thing), makes a prediction, runs the experiment, answers the debrief wrong and then right, and watches the pilot leave.
 

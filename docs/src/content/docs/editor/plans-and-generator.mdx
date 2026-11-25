@@ -65,9 +65,28 @@ One mission is made at a time per teacher: you can write the next one while one 
 
 Teachers without the generator see what it is and a link to the plans; on a school license without it, they are asked to talk to whoever runs QuestLab for their school. Administrators also see **Everyone's generations**: the latest 50 by anyone, with who asked and roughly what each spent on AI services.
 
+### One scene: Generate a scene
+
+Already making a scenario and need one more place? On its **Scenes** page (cards or map) click **✨ Generate a scene** and describe the place: "a busy harbour at dawn, fishing boats, stacks of crates, a lighthouse; something about the tides to discover". You can also choose:
+
+- **Kind of place** (outdoors, indoors, underground, high up, underwater), **Time of day** and **Size** (normal, or wide: a long place the view follows the player along). Each can be left to **Choose for me**.
+- **Things to click, described by the narrator** (on by default): things painted in the picture, like a poster, an old map or tracks in the mud, and things standing in it, get an invisible hotspot whose name shows when a player comes near. Clicking one, the narrator says what is there. A thing can have up to four descriptions: the first click says what you see, the next looks closer, the last is the payoff. **Clicked again** says what happens after the last one: **step through them, then keep saying the last** (a counter of the scene remembers, for each player, how far they got), or **go round them again** (a parrot's phrases, a radio's stations). Left at **Choose for me**, each thing gets whichever suits it.
+- **Lights and movement** (on by default): lamps, lanterns and campfires that glow and flicker, a living sky with drifting clouds outdoors (it can slowly turn to dusk), leaves or fireflies in the air, water that flows.
+- **Critters that come and go** (off by default): now and then birds land and peck about, a squirrel runs up a tree, a rabbit hops between bushes, a deer walks by. They scatter when someone comes near, and each player sees their own.
+- **Grade** and **Notes**, for what the descriptions should teach and anything to put in or leave out.
+
+The scene is painted to match the scenario's own scenes. Then it is looked over the way a level designer would:
+
+- **Where players walk.** The back edge of the floor is traced right up to the base of whatever stops a person (a wall, a fence, a cliff, the water's edge), and players walk only in front of it.
+- **Things to walk around.** Trees, bushes, lamp posts, wells, benches and the like standing on the floor are cut out of the picture pixel for pixel and put back exactly where they were, as items with a [sort line](/docs/editor/library/#where-it-meets-the-floor), so players walk behind them and in front of them. Their bases are blocked, so nobody walks through a trunk.
+- **Depth.** Players are drawn a little smaller at the back of the floor and larger at the front.
+- **Lights** glow on the lit part of the lamp or window they belong to.
+
+It takes a few minutes; the ✨ chip at the top follows it, and you can carry on working. When it is made it is added after your last scene, with a message and **Open it**. If you have the scenario open, the new scene, its pictures, items and counters arrive as one step: **Ctrl+Z** takes it all away again. There are no characters, exits or jump points: add those as you would in any scene. If something it planned did not turn up in the picture, the message on the Generate page says so (for example, a thing to click whose hotspot is only about where it was asked for: move it in the scene editor).
+
 ### Credits
 
-A generated mission costs **10 credits**. Teacher Plus gives **100 credits at the start of each billing month** (20 during the free trial). Credits you do not use **carry over** to the next month, up to **100**; above that they expire when the new month's credits arrive. So the most you can have is 200.
+A generated mission costs **10 credits**, and a generated scene **2**. Teacher Plus gives **100 credits at the start of each billing month** (20 during the free trial). Credits you do not use **carry over** to the next month, up to **100**; above that they expire when the new month's credits arrive. So the most you can have is 200.
 
 The Generate page shows your balance beside the title, and under the button what you will have left. If a generation fails or you cancel it, its credits are **given back**. One whose server stopped part way (no progress for half an hour) is marked failed and given back too. **Plan** in the editor shows your balance and every change to it. Administrators are not charged.
 

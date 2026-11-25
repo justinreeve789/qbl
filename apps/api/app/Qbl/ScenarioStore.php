@@ -655,62 +655,8 @@ class ScenarioStore
                 }
                 $id = $created = $this->insert('scenarios', $row + ['code' => $code, 'user_id' => $userId, 'created_at' => $now, 'updated_at' => $now]);
 
-                // First every row, with the columns that point at a parent following the parent's new id...
-                $map = array_fill_keys(self::CONTENT, []);
-                $new = [];
-                foreach (self::CONTENT as $table) {
-                    foreach ($rows[$table] ?? [] as $content) {
-                        $content += self::IMPORT_DEFAULTS[$table];
-                        if (isset(self::SCHEMA[$table]['scenario_id'])) {
-                            $content['scenario_id'] = $id;
-                        }
-                        foreach ((self::PARENTS[$table] ?? []) + ['media_id' => 'media'] as $column => $parent) {
-                            if (isset(self::SCHEMA[$table][$column]) && isset($content[$column])) {
-                                $content[$column] = $map[$parent][(int) $content[$column]] ?? null;
-                            }
-                        }
-                        if (isset(self::PARENTS[$table]) && ! array_filter(array_intersect_key($content, self::PARENTS[$table]), fn ($v) => $v !== null)) {
-                            continue; // its parent is not in the file
-                        }
-                        if ($table === 'media') {
-                            $file = $fileFor ? $fileFor($content) : null;
-                            $content['filepath'] = null;
-                            if ($file !== null && $this->mediaDir !== null) {
-                                [$content['type'], $content['filepath'], $content['url'], $size] = $this->storeFile($id, $file);
-                                if ($size) {
-                                    [$content['width'], $content['height']] = [$size[0], $size[1]];
-                                }
-                            }
-                        }
-                        $encoded = $this->encode($table, $content);
-                        $this->assertValid($id, $table, array_filter($encoded, fn ($v) => $v !== null), false);
-                        $newId = $this->insert($table, $encoded + ['created_at' => $now, 'updated_at' => $now]);
-                        if (isset($content['id'])) {
-                            $map[$table][(int) $content['id']] = $newId;
-                        }
-                        $new[$table][$newId] = $content;
-                    }
-                }
+                [$map, $new] = $this->insertContent($id, $rows, $fileFor, $now);
 
-                // ...then the references kept inside JSON (an action's target, a scene's layers and placements).
-                foreach ($new as $table => $list) {
-                    $json = array_keys(array_filter(self::SCHEMA[$table], fn ($type) => $type === 'json'));
-                    foreach ($list as $newId => $content) {
-                        $changed = [];
-                        foreach ($json as $column) {
-                            if (is_array($content[$column] ?? null)) {
-                                $layers = $table === 'scenes' && in_array($column, ['background_media', 'foreground_media'], true);
-                                $value = self::follow($content[$column], $map, $layers);
-                                if ($value !== $content[$column]) {
-                                    $changed[$column] = $value;
-                                }
-                            }
-                        }
-                        if ($changed) {
-                            $this->update($table, $newId, $this->encode($table, $changed));
-                        }
-                    }
-                }
                 $this->update('scenarios', $id, $this->encode('scenarios', ['settings' => self::follow($settings, $map)]) + [
                     'start_scene_id' => $map['scenes'][(int) ($source['start_scene_id'] ?? 0)] ?? (array_values($map['scenes'])[0] ?? array_key_first($new['scenes'])),
                     'intro_media_portrait_id' => $map['media'][(int) ($source['intro_media_portrait_id'] ?? 0)] ?? null,
@@ -726,6 +672,112 @@ class ScenarioStore
             }
             throw $e;
         }
+    }
+
+    /**
+     * Add rows made elsewhere (a generated scene, with its pictures, items, variables and events) to a
+     * scenario that already exists, beside what is there. Ids are given afresh and every reference
+     * among the rows follows them, as on import. A variable whose name the scenario already has is
+     * not added again (the scenario's own is kept). Nothing else of the scenario changes.
+     *
+     * @param  array<string, list<array>>  $rows  content rows (media, items, variables, scenes, events, actions, conditions, labels...) with ids of their own
+     * @param  callable(array $media): ?string|null  $fileFor  the file of a media row, to copy into the scenario's uploads
+     * @return array<string, array<int, int>> table => [id in $rows => new id]
+     */
+    public function mergeRows(int $scenarioId, array $rows, ?callable $fileFor = null): array
+    {
+        if (! $this->scenario($scenarioId)) {
+            throw new StoreError(404, 'That scenario is gone.');
+        }
+        $taken = array_flip(array_map('strval', $this->run('SELECT `variable_name` FROM `variables` WHERE `scenario_id` = ?', [$scenarioId])->fetchAll(PDO::FETCH_COLUMN)));
+        $rows['variables'] = array_values(array_filter($rows['variables'] ?? [], fn ($v) => ! isset($taken[(string) ($v['variable_name'] ?? '')])));
+        $stored = [];
+        try {
+            $map = $this->transaction(function () use ($scenarioId, $rows, $fileFor, &$stored) {
+                [$map] = $this->insertContent($scenarioId, $rows, $fileFor, self::now(), $stored);
+
+                return $map;
+            });
+        } catch (\Throwable $e) {
+            // The rows were rolled back; the files copied for them go too, and only those.
+            foreach ($stored as $relative) {
+                @unlink($this->mediaDir.'/'.$relative);
+            }
+            throw $e;
+        }
+        $this->touch($scenarioId);
+
+        return $map;
+    }
+
+    /**
+     * Insert content rows into a scenario: first every row, with the columns that point at a parent
+     * following the parent's new id, then the references kept inside JSON. Media rows get their files
+     * copied in ($fileFor); the paths stored are added to $stored, relative to the media directory.
+     *
+     * @return array{0: array<string, array<int, int>>, 1: array<string, array<int, array>>} [old id => new id by table, the new rows by table and new id]
+     */
+    private function insertContent(int $id, array $rows, ?callable $fileFor, string $now, array &$stored = []): array
+    {
+        // First every row, with the columns that point at a parent following the parent's new id...
+        $map = array_fill_keys(self::CONTENT, []);
+        $new = [];
+        foreach (self::CONTENT as $table) {
+            foreach ($rows[$table] ?? [] as $content) {
+                $content += self::IMPORT_DEFAULTS[$table];
+                if (isset(self::SCHEMA[$table]['scenario_id'])) {
+                    $content['scenario_id'] = $id;
+                }
+                foreach ((self::PARENTS[$table] ?? []) + ['media_id' => 'media'] as $column => $parent) {
+                    if (isset(self::SCHEMA[$table][$column]) && isset($content[$column])) {
+                        $content[$column] = $map[$parent][(int) $content[$column]] ?? null;
+                    }
+                }
+                if (isset(self::PARENTS[$table]) && ! array_filter(array_intersect_key($content, self::PARENTS[$table]), fn ($v) => $v !== null)) {
+                    continue; // its parent is not in the file
+                }
+                if ($table === 'media') {
+                    $file = $fileFor ? $fileFor($content) : null;
+                    $content['filepath'] = null;
+                    if ($file !== null && $this->mediaDir !== null) {
+                        [$content['type'], $content['filepath'], $content['url'], $size] = $this->storeFile($id, $file);
+                        $stored[] = $content['filepath'];
+                        if ($size) {
+                            [$content['width'], $content['height']] = [$size[0], $size[1]];
+                        }
+                    }
+                }
+                $encoded = $this->encode($table, $content);
+                $this->assertValid($id, $table, array_filter($encoded, fn ($v) => $v !== null), false);
+                $newId = $this->insert($table, $encoded + ['created_at' => $now, 'updated_at' => $now]);
+                if (isset($content['id'])) {
+                    $map[$table][(int) $content['id']] = $newId;
+                }
+                $new[$table][$newId] = $content;
+            }
+        }
+
+        // ...then the references kept inside JSON (an action's target, a scene's layers and placements).
+        foreach ($new as $table => $list) {
+            $json = array_keys(array_filter(self::SCHEMA[$table], fn ($type) => $type === 'json'));
+            foreach ($list as $newId => $content) {
+                $changed = [];
+                foreach ($json as $column) {
+                    if (is_array($content[$column] ?? null)) {
+                        $layers = $table === 'scenes' && in_array($column, ['background_media', 'foreground_media'], true);
+                        $value = self::follow($content[$column], $map, $layers);
+                        if ($value !== $content[$column]) {
+                            $changed[$column] = $value;
+                        }
+                    }
+                }
+                if ($changed) {
+                    $this->update($table, $newId, $this->encode($table, $changed));
+                }
+            }
+        }
+
+        return [$map, $new];
     }
 
     /**

@@ -30,6 +30,9 @@ const SPANS: Record<string, [number, number]> = {
 
 /** How long each stage usually takes, in seconds: for moving the bar between reports, and the time left. */
 const TYPICAL: Record<string, number> = { queued: 20, aligning: 25, designing: 150, drawing: 420, building: 10, voicing: 90, importing: 10 };
+/** The same for one scene made for a scenario: one plan, one background, one survey. */
+const TYPICAL_SCENE: Record<string, number> = { queued: 20, designing: 40, drawing: 150, building: 5, importing: 5 };
+const typicalOf = (g: Generation) => (g.kind === 'scene' ? TYPICAL_SCENE : TYPICAL);
 
 const seconds = (iso: string | null | undefined) => (iso ? Date.parse(iso) / 1000 : NaN);
 
@@ -46,7 +49,7 @@ export function shownPercent(g: Generation, now: number): number {
   const since = Math.max(0, now - seconds(p.updated_at ?? p.stage_started_at));
   // The most it may reach before the next report: the next picture, or near the stage's end.
   let ceiling = span[0] + (span[1] - span[0]) * 0.92;
-  let pace = TYPICAL[p.stage] ?? 60;
+  let pace = typicalOf(g)[p.stage] ?? 60;
   if (p.total && p.done != null) {
     ceiling = span[0] + ((span[1] - span[0]) * Math.min(p.total, p.done + 1)) / p.total;
     const inStage = Math.max(1, now - seconds(p.stage_started_at) - since);
@@ -68,14 +71,15 @@ export function duration(secs: number): string {
 export function timeLeft(g: Generation, now: number): number | null {
   const p = g.progress;
   if (!g.busy || p.stage === 'queued') return null;
-  const later = (p.stages.length ? p.stages : Object.keys(TYPICAL)).slice(p.stages.indexOf(p.stage) + 1);
-  const after = later.reduce((sum, s) => sum + (TYPICAL[s] ?? 0), 0);
+  const typical = typicalOf(g);
+  const later = (p.stages.length ? p.stages : Object.keys(typical)).slice(p.stages.indexOf(p.stage) + 1);
+  const after = later.reduce((sum, s) => sum + (typical[s] ?? 0), 0);
   const inStage = Math.max(0, now - seconds(p.stage_started_at));
   if (p.stage === 'drawing' && p.total && p.done && p.done >= 2) {
     return (inStage / p.done) * (p.total - p.done) + after;
   }
-  const typical = TYPICAL[p.stage] ?? 60;
-  return Math.max(typical * 0.2, typical - inStage) + after;
+  const usual = typical[p.stage] ?? 60;
+  return Math.max(usual * 0.2, usual - inStage) + after;
 }
 
 /**
