@@ -383,6 +383,11 @@ test('media sub-tabs, scenario music and scene music', async () => {
   assert.match(await tab('vehicle').innerText(), /Vehicles\s*1/, 'boat.png belongs to a vehicle');
   assert.match(await tab('character').innerText(), /NPCs\s*2/, 'guide.png is a character, and so is the close-up that was cut from it');
   assert.equal(await tab('avatar').count(), 0, 'there is no avatars tab: avatars are not a scenario\'s');
+  // Sprites is a view across the other tabs: every sheet and animated PNG, whatever else it is used for.
+  const spriteBadge = Number((await tab('sprites').innerText()).match(/Sprites\s*(\d+)/)![1]);
+  await tab('sprites').click();
+  assert.equal(await page.locator('[data-media]').count(), spriteBadge, 'the Sprites badge counts the cards in it');
+  assert.equal(await page.locator('[data-media]:not(:has(.chip.anim))').count(), 0, 'each sprite is a sheet or an animated PNG');
   await tab('vehicle').click();
   assert.equal(await page.locator('[data-media]').count(), 1);
   await tab('audio').click();

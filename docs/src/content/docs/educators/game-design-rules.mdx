@@ -1,0 +1,153 @@
+---
+title: "Game design rules for missions"
+description: "Research-based rules for making a mission that students want to play and learn from: a fast start, learning built into the play, help that teaches, and teamwork that matters."
+host:
+  who: sam
+  says: "A mission is a game first and a lesson second, and the best ones are both at once. Here are the rules that help."
+---
+import Host from '../../../components/Host.astro';
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+[Designing missions that teach](/docs/educators/design-for-learning/) starts from the debrief and works backwards: objectives, questions and wrong answers. This page adds the *game* side: how a mission starts, what students do in it, how it helps them when they are stuck, and how teams work together. The rules draw on research into educational games and simulations (see [where they come from](#where-these-rules-come-from)).
+
+You do not need to follow every rule in every mission. Use the [checklist](#a-pre-publish-checklist) at the end as a last pass.
+
+## The first five minutes
+
+### 1. Let students act within two minutes
+
+Long backstories, cutscenes and reading before any action make students lose interest. Keep the opening short, and put something to do on screen as soon as students arrive. Tell the story through what they find, not through what they sit through.
+
+<Aside type="tip" title="Check it">
+Time a first-time player. If nothing is interactive after two minutes, cut.
+</Aside>
+
+### 2. Make the first scene a safe on-ramp
+
+Use the first scene to teach moving, talking, the bag and the objectives checklist. Do not gate anything and do not penalize mistakes. Introduce one new thing at a time. Students who have never played this kind of game should be able to finish scene 1 without help.
+
+### 3. Start simple, then add layers
+
+Begin with a simplified version of the idea: one variable on the [bench](/docs/editor/bench/), one clear question. Add complexity scene by scene, and use objectives or abilities to open later scenes. Each scene should need only skills taught before it.
+
+### 4. Make it hard, but learnable
+
+Students enjoy a challenge they can overcome, and they do not enjoy a dumbed-down one. Raise the difficulty gradually, and add at least one **Bonus** objective that is harder than the rest for students who want more.
+
+## The learning is the play
+
+<Host who="val" side="right">
+A world to walk around in teaches nothing by itself. Give every place something to do.
+</Host>
+
+### 5. Give every scene a verb tied to a learning goal
+
+For each scene, say what the student *does* there and which goal it serves ("the lab: test the samples to find the source"). If you cannot, cut the scene or merge it into another. Each learning goal needs at least one action that produces evidence: a checked answer box, a bench goal, a variable the student sets. The report shows how many students have evidence for each goal ([Reading the reports](/docs/editor/reports/)).
+
+### 6. Build the mission from the content, not from points
+
+Stars, XP and badges alone do not change how students learn. Make the challenge, the characters and the story out of the topic itself. Give rewards for objectives and mastery, and never for clicking around or visiting a place. Award each reward once, on an event rather than on a choice (see [stars, XP and the marketplace](/docs/developers/extensions/rewards/)).
+
+<Aside type="tip" title="Check it">
+Imagine the mission with no stars or badges. Is it still worth playing?
+</Aside>
+
+### 7. Put the information in the world
+
+Let characters, objects, conversations, glossary words and the way an experiment behaves carry the key ideas. Use infoboxes as lab books and references, not as the whole lesson, and do not put a wall of reading in front of an action.
+
+### 8. Make sure the rules are right
+
+A mission teaches through how its system behaves, not only through its text. If a bench or formula is wrong, students learn the wrong thing, whatever the box says. Check [bench](/docs/editor/bench/) kits, formulas and physics against real values. Where you simplify on purpose, say so in the debrief. Also make sure the rewards do not work against the lesson, for example by rewarding speed in a lesson about careful measurement.
+
+<Aside type="tip" title="Check it">
+Ask someone who knows the subject to play and try to break the model.
+</Aside>
+
+### 9. Give students a role
+
+Name a role: field biologist, ship engineer, historian. Make the tasks use that person's tools, questions and standards of evidence, and let your characters talk to the student as colleagues would. Students learn more from working the way a practitioner works than from being handed facts. Write objectives as what that person would do ("Report the source of the contamination").
+
+### 10. Give them a place to experiment
+
+Include at least one scene where students can change something, watch what happens and try again: a bench, or a box of [hands-on instruments](/docs/editor/infoboxes/#hands-on-instruments) with sliders and switches. Trying again should cost nothing.
+
+## Help and failure
+
+[Designing missions that teach](/docs/educators/design-for-learning/#write-wrong-answers-that-teach) covers questions and wrong answers. Two more rules from the game side:
+
+### 11. Make failure cheap and a little fun
+
+Avoid dead ends and game-over moments. A wrong answer or a failed test should loop back to practice, with a light tone and no cost for trying again. Players stay hopeful when failing is safe.
+
+### 12. Layer the help, and let characters give it
+
+Go from a nudge, to a pointer, to a worked example. A coach character is a natural way to do it: a [conversation](/docs/editor/conversations/) can give a small hint the first time and a clearer one when the student comes back (use *Said only when*). Never penalize a student for asking.
+
+## Choice and purpose
+
+### 13. Let students choose their challenge
+
+Offer a choice of order or path where you can, and keep **Bonus** content truly optional. People work hardest on challenges they chose.
+
+### 14. Give the group a goal and a payoff
+
+Use a **Shared** variable (one value for everyone playing together) that each student's work adds to, and show the progress. Include at least one payoff moment: a reveal, a discovery, a badge. A shared goal makes each student's effort matter to the group.
+
+## Working together
+
+### 15. Make teammates need each other
+
+Teams play one world together, so use that. Split information, tools or measurements across players, and use Shared variables so one student's finding unlocks another's task. Do not build a mission one confident student can solve alone.
+
+### 16. Support figuring things out together
+
+Give teams something shared to build on: a graph, a journal, a board in the room. Add prompts such as "What do you predict?" and let evidence settle disagreements. See [Maximizing learning](/docs/educators/maximize-learning/#5-put-students-in-teams-on-purpose).
+
+### 17. Leave room for play
+
+Students enjoy exploring without being scored. Do not attach points to every move, and do not lock the fun behind quizzes. If everything counts, nothing feels like play.
+
+## Debrief and testing
+
+### 18. End with an after-action review
+
+What happened, why, and where does it show up in real life? Close the mission with a reflection moment, and write discussion prompts in the assignment note. [Maximizing learning](/docs/educators/maximize-learning/) shows how to debrief from what students did.
+
+### 19. Expect students to play their own way
+
+Students bring their own goals and their own experience with games. Watch real students play, and use the report to see where they stall, wander off or leave. Look beyond accuracy: first answers, number of tries, time, and the scene where students stop. See [Testing](/docs/editor/settings-and-publishing/#testing).
+
+## Fairness and values
+
+### 20. Check the values in your design
+
+Every design choice says something. Ask who your characters are, who leads in team tasks, whose knowledge counts, which avatars and voices appear, and whether any stereotype has slipped in. Use a mix of avatars, and keep reading levels fitted to your students. Ask a few different students to play and tell you what they notice.
+
+## A pre-publish checklist
+
+<Host who="mallory" side="left">
+Run this list before you launch. Add it to the one in <em>Designing missions that teach</em>.
+</Host>
+
+- [ ] The first interactive thing appears within two minutes.
+- [ ] Scene 1 is a safe on-ramp.
+- [ ] Every scene has a verb tied to a learning goal.
+- [ ] Rewards come from mastery, not from clicking.
+- [ ] Key facts live in the world, not in walls of text.
+- [ ] Someone who knows the subject has checked the experiments and formulas.
+- [ ] Failing is cheap and a wrong answer loops back.
+- [ ] Help comes in layers, from a character.
+- [ ] At least one **Bonus** objective is optional and harder.
+- [ ] Team tasks split information or tools.
+- [ ] There is a shared goal and a payoff moment.
+- [ ] A debrief moment ends the mission.
+- [ ] I have checked the values in my design.
+- [ ] Real, varied students have played it.
+
+## Where these rules come from
+
+The rules draw on research and writing about educational games and simulations by Clark Aldrich (simulations and virtual worlds), Jane McGonigal (what makes games motivating), James Paul Gee (learning principles in good games), Karl Kapp (building the content itself into the game), Kurt Squire (games as designed experiences in classrooms), Constance Steinkuehler (learning in online game communities), David Williamson Shaffer (learning to think like a professional), Ian Bogost (how a game's rules make an argument) and Mary Flanagan (human values in design).
+
+Much of this research rests on case studies and classroom experience rather than controlled trials, so treat the rules as strong guidelines and test them with your own students.

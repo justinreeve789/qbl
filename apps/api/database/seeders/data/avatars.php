@@ -6,7 +6,7 @@
  * `portrait_url`: a still picture faces right and is mirrored to face left), or a character with
  * `animations` by name: the poses stand_right, stand_left, walk_right, walk_left and portrait
  * (a missing one is filled in from another), and moves such as jump. See Avatars::seed, and
- * docs/src/content/docs/developers/extensions.md, "Characters".
+ * docs/src/content/docs/developers/extensions/characters.md.
  *
  * The cast (ids 11 to 19) replaced the first set (1 to 10: Nova … Halley and Sprocket) on
  * 2026-11-21; see the migration 2026_11_21_000200_replace_platform_avatars, which retires those

@@ -369,7 +369,7 @@ A **scenario** is a whole mission a group of students goes on together. It conta
 - **Variables are a player's own or shared.** A player's own variable has a separate value for each player (how many animals this student has greeted). A shared one has a single value for everyone playing together, so one student changing it changes it for all (the boulders have fallen; the path is closed). The variable's `scope` decides, once, where it is defined.
 - **Dialogue** is a speech bubble over the speaker, or a story box across the screen with the speaker's close-up portrait, for the characters that carry the story. Characters and avatars can each be given a portrait.
 
-`docs/src/content/docs/developers/extensions.md` lists the fields added for the walk-around runtime (walkable areas, spawn points, item and character placement, shared variables, chat mode).
+`docs/src/content/docs/developers/extensions/` lists the fields added for the walk-around runtime (walkable areas, spawn points, item and character placement, shared variables, chat mode).
 
 ## Generating missions with AI
 
@@ -418,14 +418,14 @@ All of this is data: scenes, hotspots, events, actions, variables and the checkl
 
 ## Animations
 
-- **Characters, and the avatars players choose, are drawn from their animations**: `stand_right`, `stand_left`, `walk_right`, `walk_left` and `portrait` (the poses, shown by themselves; a missing one is another one mirrored, so one picture makes a character), and any others by name (`wave`, `dig`). Each is a picture (a still image, an animated PNG or a sprite sheet) and the frames of it to play, so one sheet can serve several characters. Avatars are the platform's, drawn from the platform's own pictures (`platform_media`). Edited on the Characters page; see "Characters" in `docs/.../developers/extensions.md`.
+- **Characters, and the avatars players choose, are drawn from their animations**: `stand_right`, `stand_left`, `walk_right`, `walk_left` and `portrait` (the poses, shown by themselves; a missing one is another one mirrored, so one picture makes a character), and any others by name (`wave`, `dig`). Each is a picture (a still image, an animated PNG or a sprite sheet) and the frames of it to play, so one sheet can serve several characters. Avatars are the platform's, drawn from the platform's own pictures (`platform_media`). Edited on the Characters page; see "Characters" in `docs/.../developers/extensions/animations.md`.
 - **Any image can be a sprite sheet**: say how many frames across and down on the Media page. Characters take frames from it; animations named on the sheet itself are for items, vehicles and pictures (`idle` and `walk` play by themselves). An **animated PNG** is kept as it is and the game cuts it into frames as it loads.
 - **Anything else is played when asked**: by a "Play an animation" action aimed at the player, an item or vehicle, a character or a picture; or by the player, from a **move** button on their screen.
 - **Moves** are listed on the editor's Moves page. A move with a condition appears when the condition holds, so an event teaches a move by setting one of the player's own variables. Moves bought in the marketplace belong to the account and work in every scenario.
 - **Five built-in moves** (jump, spin, crouch, wave, dance) work on any picture, sheet or not, by moving the picture itself. Frames drawn under the same name are used instead.
 - A player's animation goes through the game server, so everyone in the scene sees it.
 
-See "Animations" in `docs/src/content/docs/developers/extensions.md`.
+See "Animations" in `docs/src/content/docs/developers/extensions/animations.md`.
 
 ## Stars, XP, ranks and the marketplace
 
@@ -435,7 +435,7 @@ See "Animations" in `docs/src/content/docs/developers/extensions.md`.
 - The **marketplace** sells things to wear (head, body, back, hand), pets that follow the avatar, ways for the avatar to move, and abilities. Players open it from their stars in the top-left corner of the game, or through a `shop` action, and choose what to have on under "My things". Other players see what they wear.
 - Every scenario sells the platform's catalogue (`apps/api/database/seeders/data/shop.php`; there is no screen for editing it yet). Authors add **mission-specific items** on the editor's Shop page.
 - **Abilities** are flags: while a player has one equipped, the variable `QL_Ability_<key>` is 1, and a scenario decides what that unlocks. They do not change walking speed or reveal distances.
-- The backend grants awards, checking each against the published scenario, and keeps a ledger of every change. See "Stars, XP and the marketplace" in `docs/src/content/docs/developers/extensions.md`.
+- The backend grants awards, checking each against the published scenario, and keeps a ledger of every change. See "Stars, XP and the marketplace" in `docs/src/content/docs/developers/extensions/rewards.md`.
 
 ## The editor
 

@@ -86,10 +86,23 @@ same($animations['walk_right']['media_id'], $byRole['sheet']['id'], 'its walk is
 same($animations['portrait']['media_id'], $byRole['portrait']['id'], 'and its close-up from the copied portrait');
 same($byRole['sheet']['params']['sheet'], $pack['assets'][0]['files']['sheet']['params']['sheet'], 'the sheet keeps its grid');
 same($byRole['sheet']['params']['category'], 'character', 'filed under characters');
+// Its animations are the sheet's own (made on the Media page), and the squirrel plays them by name.
+$sheetAnimations = array_column($byRole['sheet']['params']['animations'] ?? [], null, 'name');
+foreach ($animations as $name => $a) {
+    if ($a['media_id'] !== $byRole['sheet']['id'] || empty($a['frames'])) {
+        continue;
+    }
+    $on = $sheetAnimations[$a['sheet_animation'] ?? ''] ?? null;
+    check($on !== null, "its $name plays one of the sheet's animations");
+    same($on['frames'] ?? null, $a['frames'], "with the same frames ($name)");
+}
+check(isset($sheetAnimations['walk']), 'its walk is one, named walk');
 
 $again = $library->addToScenario($store, $sid, 'red-squirrel');
 same([$again['created']['row']['name'], $again['copied']], ['Red Squirrel 2', []], 'adding it again shares the pictures and takes the next name');
 same(array_column($again['media'], 'id'), array_column($added['media'], 'id'), 'the same media');
+same(array_column($again['media'][0]['params']['animations'] ?? [], 'name'), array_keys($sheetAnimations), 'and the same animations of them, not added twice');
+same($again['created']['row']['settings']['animations'], $animations, 'which the second plays just as the first');
 
 $ride = $library->addToScenario($store, $sid, 'stagecoach', ['name' => 'The Mail Coach']);
 $coach = $ride['created']['row'];

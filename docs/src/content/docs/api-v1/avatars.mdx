@@ -75,7 +75,7 @@ Send the picture as `multipart/form-data` (`image`, and optionally `portrait`), 
 | `portrait` | An optional close-up, shown beside what the avatar says in conversations. |
 | `scale` | 0.1 to 4: how large it is drawn (default 1). The platform's own are about 0.85. |
 | `sheet` | For a sprite sheet: `{"columns", "rows"}` (1 to 32 each). Frames are numbered left to right, top to bottom, from 0. |
-| `animations` | With a sheet: `[{name, frames, duration?, repeat?}]`, as described in [named animations](/docs/developers/extensions/#sprite-sheets-and-named-animations). `idle` and `walk` (or `walk_left` and `walk_right`) play by themselves. |
+| `animations` | With a sheet: `[{name, frames, duration?, repeat?}]`, as described in [named animations](/docs/developers/extensions/animations/#sprite-sheets-and-named-animations). `idle` and `walk` (or `walk_left` and `walk_right`) play by themselves. |
 | `sequence` | Where it sits in the list. |
 
 In the example the sheet is 384 × 256 pixels with six columns and two rows, so each frame is 64 × 128: frames 0 and 1 are the standing pair, 6 to 11 the walking cycle.

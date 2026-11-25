@@ -170,7 +170,7 @@ Endpoint | Body | Returns
 { "stars": 56, "xp": 240, "rank": "Explorer", "next_rank_xp": 300, "owned": [1, 102], "equipped": [102] }
 ```
 
-`ShopItem` is described under [Stars, XP and the marketplace](/docs/developers/extensions/#stars-xp-and-the-marketplace). There is no public endpoint that gives stars: awards come only through the game server (below).
+`ShopItem` is described under [Stars, XP and the marketplace](/docs/developers/extensions/rewards/). There is no public endpoint that gives stars: awards come only through the game server (below).
 
 ### User
 

@@ -7,6 +7,10 @@ host:
 
 Items are any object in a scenario that isn't part of the background scene. The player may interact with items set around a scene. Some items may even cross scenes.
 
+:::note[Spec v2]
+Placing items, blocking items, wearables, the bag and vehicles are described in [Items, the bag and vehicles](/docs/developers/extensions/items/).
+:::
+
 Some items can't be moved. Examples may include:
 
 - Trees
@@ -25,7 +29,7 @@ Some items move when bumped into. Examples may include:
 - Boxes
 - Chairs
 
-### Primary Attributes
+## Primary Attributes
 Parameter | Type        | Default | Description
 --------- |-------------|---------| -----------
 id | int         |         | Item id
