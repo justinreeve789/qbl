@@ -94,6 +94,10 @@ abstract class Character
             if (($a['flip'] ?? false) === true) {
                 $clean['flip'] = true;
             }
+            // The picture's own animation (Media page) whose frames these are; the editor keeps them in step.
+            if (is_string($a['sheet_animation'] ?? null) && preg_match(self::NAME, $a['sheet_animation'])) {
+                $clean['sheet_animation'] = $a['sheet_animation'];
+            }
             $out[$name] = $clean;
         }
 

@@ -949,6 +949,7 @@ frames | array | every frame | For a sheet or an animated PNG: the frame numbers
 duration | int | | Milliseconds one pass takes. Default: an animated PNG's own speed (in proportion, for some of its frames), else 100 per frame.
 repeat | bool | | Whether it loops. Default: the poses loop, and the built-in moves that loop (`dance`); anything else plays once.
 flip | bool | false | Draw it mirrored, so art drawn facing one way serves the other.
+sheet_animation | string | | The animation of the picture's this one plays, by name (the picture's `animations`, made on the Media page). The editor copies its `frames`, `duration` and `repeat` here and keeps them in step when it changes, so the game reads only the fields above.
 
 Five names are **poses**, which the game shows by itself:
 
@@ -1025,7 +1026,7 @@ Each step is written as the action it is, without an `id` and without saying who
 
 ### Sprite sheets and named animations
 
-Any image can be a **sprite sheet**: a grid of equal frames. The media says how the grid is cut, and can name animations made of its frames. Characters and avatars take the frames they need in their own animations (see [Characters](#characters)); the animations named on the media are for whatever else is drawn with it (an item, a vehicle, an `image_fixed` picture).
+Any image can be a **sprite sheet**: a grid of equal frames. The media says how the grid is cut, and can name animations made of its frames. Every animation is made here, on the media: an item, a vehicle or an `image_fixed` picture drawn with it plays them by name, and a character's animation names the one it plays (`sheet_animation`, see [Characters](#characters)), with its frames copied, so several characters can share one sheet's walk.
 
 Parameter | Type | Description
 --------- | ---- | -----------

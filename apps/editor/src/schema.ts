@@ -286,7 +286,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'target_id', label: 'Action', kind: 'action' },
       {
         key: 'animation', label: 'Animation', kind: 'animation', wide: true, placeholder: 'None: stop what is playing',
-        hint: 'For a character, one of the animations defined for it on the Characters page. For an item, one from its picture’s sprite sheet (on the Media page) or a built-in move: jump, spin, crouch, wave, dance. None stops what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
+        hint: 'For a character, one of its animations listed on the Characters page (their frames are made on the Media page). For an item, one from its picture’s sprite sheet (on the Media page) or a built-in move: jump, spin, crouch, wave, dance. None stops what is playing. With “Wait for it” ticked, the next action waits until a one-pass animation has finished.',
       },
     ],
   },

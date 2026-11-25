@@ -5,7 +5,7 @@
  */
 import {
   animationDuration, animationFrames, frameCount, normalizeNpc, resolvePose,
-  type CharacterAnimation, type Media, type Npc,
+  type CharacterAnimation, type Media, type MediaAnimation, type Npc,
 } from '@qbl/shared';
 import type { Row } from './api';
 import { apngStrip } from './apng';
@@ -151,4 +151,100 @@ export function parseFrames(text: string): number[] {
     } else if (/^\d+$/.test(part)) out.push(Number(part));
   }
   return out.slice(0, 256);
+}
+
+// ------------------------------------------------- the picture's own animations
+
+/*
+ * Animations are defined on pictures, on the Media page: a sprite sheet's or an animated PNG's
+ * named runs of frames. A character's animation plays one of them by name (`sheet_animation`),
+ * with its frames, duration and repeat copied onto the character so the game reads them as ever;
+ * the copies are kept in step here whenever the picture's animations change.
+ */
+
+/** A picture's own animations, as the Media page defines them. */
+export function pictureAnimations(row: Row | undefined): MediaAnimation[] {
+  const list = row ? params(row).animations : undefined;
+  return Array.isArray(list) ? (list as MediaAnimation[]).filter((a) => a && typeof a.name === 'string') : [];
+}
+
+/** Whether a picture has frames to make animations of: a sprite sheet or an animated PNG. */
+export function hasFrames(row: Row | undefined): boolean {
+  const p = row ? params(row) : {};
+  return !!(p.sheet || p.apng);
+}
+
+/** A character's animation playing one of its picture's: the frames, duration and repeat are the picture's; mirroring stays the character's. */
+export function playing(animation: Pick<CharacterAnimation, 'media_id' | 'flip'>, from: MediaAnimation): CharacterAnimation {
+  const out: CharacterAnimation = { media_id: animation.media_id };
+  if (from.frames?.length) out.frames = [...from.frames];
+  if (from.duration && from.duration > 0) out.duration = from.duration;
+  if (from.repeat != null) out.repeat = from.repeat;
+  if (animation.flip) out.flip = true;
+  out.sheet_animation = from.name;
+  return out;
+}
+
+/** A name for a new animation of a picture, made for a character's: "stand" and "walk" for the poses, else the same name; free on the picture. */
+export function freeAnimationName(row: Row | undefined, wanted: string): string {
+  const base = wanted.startsWith('stand_') ? 'stand' : wanted.startsWith('walk_') ? 'walk' : wanted === 'portrait' ? 'portrait' : wanted;
+  const taken = new Set(pictureAnimations(row).map((a) => a.name));
+  let name = base;
+  for (let n = 2; taken.has(name); n++) name = `${base.slice(0, 28)}_${n}`;
+  return name;
+}
+
+/** The picture's animation a character's of this name plays when the picture is first chosen: one named for it, if there is one. */
+export function matchingAnimation(row: Row | undefined, name: string): MediaAnimation | undefined {
+  const list = pictureAnimations(row);
+  const way = name.endsWith('_left') ? 'left' : 'right';
+  const wanted = name.startsWith('stand_') ? [name, 'stand', 'idle', `stand_${way === 'left' ? 'right' : 'left'}`]
+    : name.startsWith('walk_') ? [name, 'walk', `walk_${way === 'left' ? 'right' : 'left'}`]
+    : [name];
+  for (const n of wanted) {
+    const found = list.find((a) => a.name === n);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/** The characters playing each of a picture's animations: by its name, the character and which of its animations. */
+export function playersOf(store: Store, mediaId: number): Map<string, Array<{ row: Row; name: string }>> {
+  const out = new Map<string, Array<{ row: Row; name: string }>>();
+  for (const row of store.rows('characters')) {
+    for (const [name, a] of Object.entries(storedAnimations(row) ?? {})) {
+      if (a?.media_id !== mediaId || !a.sheet_animation) continue;
+      const list = out.get(a.sheet_animation) ?? out.set(a.sheet_animation, []).get(a.sheet_animation)!;
+      list.push({ row, name });
+    }
+  }
+  return out;
+}
+
+/**
+ * After a picture's animations change, the characters playing them take the change: new frames,
+ * duration and repeat, and a new name for one renamed (`renames`, old name to new). One taken away
+ * is left as it was, playing the frames it had, until another is chosen.
+ */
+export function syncPictureAnimations(store: Store, mediaId: number, renames: Record<string, string> = {}): void {
+  const media = store.byId('media', mediaId);
+  const list = pictureAnimations(media);
+  for (const row of store.rows('characters')) {
+    const stored = storedAnimations(row);
+    if (!stored) continue;
+    let changed = false;
+    const next: Record<string, CharacterAnimation> = {};
+    for (const [name, a] of Object.entries(stored)) {
+      next[name] = a;
+      if (a?.media_id !== mediaId || !a.sheet_animation) continue;
+      const from = list.find((m) => m.name === (renames[a.sheet_animation!] ?? a.sheet_animation));
+      if (!from) continue;
+      const now = playing(a, from);
+      if (JSON.stringify(now) !== JSON.stringify(a)) {
+        next[name] = now;
+        changed = true;
+      }
+    }
+    if (changed) void store.patch('characters', row.id, { settings: { ...params(row, 'settings'), animations: next } }, true);
+  }
 }

@@ -1015,6 +1015,12 @@ export interface CharacterAnimation {
   repeat?: boolean;
   /** Draw the picture mirrored, so art drawn facing one way can serve the other. */
   flip?: boolean;
+  /**
+   * The animation of the picture's (defined on the Media page) this one plays. Its frames,
+   * duration and repeat are copied here, and the editor keeps them in step when the picture's
+   * animation changes, so the game reads only the fields above.
+   */
+  sheet_animation?: string;
 }
 
 /**

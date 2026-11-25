@@ -352,6 +352,7 @@ class AssetLibrary
                 foreach ((array) ($definition['animations'] ?? []) as $name => $animation) {
                     $animations[$name] = ['media_id' => $mediaFor((string) $animation['file'])] + array_diff_key($animation, ['file' => 1]);
                 }
+                $animations = $this->framesOnPictures($store, $scenarioId, $animations, $media);
                 $settings = array_filter(['animations' => $animations ?: null, 'scale' => $definition['scale'] ?? null, 'voice' => $definition['voice'] ?? null], fn ($v) => $v !== null);
                 $created = ['table' => 'characters', 'row' => $store->createRow($scenarioId, 'characters', [
                     'name' => $this->freeName($scenarioId, 'characters', (string) ($options['name'] ?? $found['name'])),
@@ -644,6 +645,78 @@ class AssetLibrary
         return [$store->updateRow($scenarioId, 'media', (int) $row['id'], $columns), true];
     }
 
+    /**
+     * A character's animations are defined on its pictures (the Media page) and only named by the
+     * character. Each animation with frames on a sprite sheet or animated PNG plays one of the
+     * picture's: the one it names, else one with the same frames, duration and repeat, else a new
+     * one added to the picture. Its frames are copied onto the character, as the game reads them.
+     *
+     * @param  array<string, array>  $animations  the character's, by name
+     * @param  array<string, array>  $rows  the media rows they are drawn from, by role: updated where animations are added
+     * @return array<string, array>
+     */
+    private function framesOnPictures(ScenarioStore $store, int $scenarioId, array $animations, array &$rows): array
+    {
+        $params = [];
+        foreach ($rows as $row) {
+            $params[(int) $row['id']] = is_array($row['params'] ?? null) ? $row['params'] : [];
+        }
+        $changed = [];
+        foreach ($animations as $name => $a) {
+            $id = (int) $a['media_id'];
+            $p = $params[$id] ?? null;
+            if ($p === null || (! is_array($p['sheet'] ?? null) && ! is_array($p['apng'] ?? null))) {
+                continue;
+            }
+            $list = array_values(array_filter((array) ($p['animations'] ?? []), 'is_array'));
+            $same = fn (array $m) => array_map('intval', (array) ($m['frames'] ?? [])) === array_map('intval', (array) ($a['frames'] ?? []))
+                && ($m['duration'] ?? null) === ($a['duration'] ?? null) && ($m['repeat'] ?? null) === ($a['repeat'] ?? null);
+            $found = null;
+            foreach ($list as $m) {
+                if (isset($a['sheet_animation']) && ($m['name'] ?? null) === $a['sheet_animation']) {
+                    $found = $m;
+                }
+            }
+            if (! $found && empty($a['frames'])) {
+                unset($animations[$name]['sheet_animation']);
+
+                continue; // every frame of the picture: nothing to name
+            }
+            foreach ($found ? [] : $list as $m) {
+                if (! $found && $same($m)) {
+                    $found = $m;
+                }
+            }
+            if (! $found) {
+                $base = (string) ($a['sheet_animation'] ?? (str_starts_with($name, 'stand_') ? 'stand' : (str_starts_with($name, 'walk_') ? 'walk' : $name)));
+                $names = array_column($list, 'name');
+                $free = $base;
+                for ($n = 2; in_array($free, $names, true); $n++) {
+                    $free = substr($base, 0, 28).'_'.$n;
+                }
+                $found = array_filter(['name' => $free, 'frames' => array_map('intval', (array) $a['frames']), 'duration' => $a['duration'] ?? null, 'repeat' => $a['repeat'] ?? null], fn ($v) => $v !== null);
+                $list[] = $found;
+                $params[$id]['animations'] = $list;
+                $changed[$id] = true;
+            }
+            $animations[$name] = array_filter([
+                'media_id' => $id, 'frames' => array_values(array_map('intval', (array) ($found['frames'] ?? []))) ?: null,
+                'duration' => $found['duration'] ?? null, 'repeat' => $found['repeat'] ?? null, 'flip' => ($a['flip'] ?? false) === true ? true : null,
+                'sheet_animation' => $found['name'],
+            ], fn ($v) => $v !== null);
+        }
+        foreach (array_keys($changed) as $id) {
+            $updated = $store->updateRow($scenarioId, 'media', $id, ['params' => $params[$id]]);
+            foreach ($rows as $role => $row) {
+                if ((int) $row['id'] === $id) {
+                    $rows[$role] = $updated;
+                }
+            }
+        }
+
+        return $animations;
+    }
+
     private function mediaRow(ScenarioStore $store, int $scenarioId, int $id): array
     {
         foreach ($store->bundle($scenarioId)['media'] as $m) {
@@ -719,6 +792,9 @@ class AssetLibrary
                 $clean = ['file' => self::role($animation['file'])];
                 if (isset($animation['frames'])) {
                     $clean['frames'] = array_values(array_map('intval', (array) $animation['frames']));
+                }
+                if (is_string($animation['sheet_animation'] ?? null) && preg_match('/^[a-z][a-z0-9_]{0,31}$/', $animation['sheet_animation'])) {
+                    $clean['sheet_animation'] = $animation['sheet_animation'];
                 }
                 foreach (['duration' => 'intval', 'repeat' => 'boolval', 'flip' => 'boolval'] as $key => $cast) {
                     if (isset($animation[$key])) {

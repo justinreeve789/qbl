@@ -134,6 +134,9 @@ export function validateScenario(doc: unknown): ValidationResult {
         else if (picture && a.frames.some((f) => !Number.isInteger(f) || f < 0 || f >= count)) err(`${ap}.frames`, `Frames are numbered 0 to ${count - 1}`);
       }
       if (a.duration != null && !(typeof a.duration === 'number' && a.duration > 0)) err(`${ap}.duration`, 'duration is a number of milliseconds');
+      if (a.sheet_animation != null && picture?.sheet && !picture.animations?.some((m) => m.name === a.sheet_animation)) {
+        warn(`${ap}.sheet_animation`, `The picture has no animation “${a.sheet_animation}” any more: it plays the frames it had. Choose one of the picture’s animations`);
+      }
     }
     if (!CHARACTER_POSES.some((pose) => pose !== 'portrait' && c.animations![pose])) warn(`${path}.animations`, 'No standing or walking picture: the character cannot be seen in a scene');
   };
