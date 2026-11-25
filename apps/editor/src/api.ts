@@ -279,7 +279,7 @@ export interface BillingStatus {
   payments: boolean;
   trial_days: number;
   plans: PlanInfo[];
-  costs: { generation: number };
+  costs: { generation: number; scene?: number };
   entitlements: Entitlements;
   subscription: { plan: string | null; status: string | null; trial_ends_at: string | null; current_period_end: string | null; cancel_at_period_end: boolean; trial_used: boolean; manageable: boolean } | null;
   credits: CreditSummary | null;
@@ -308,9 +308,37 @@ export interface GenerationOptions {
   focus?: 'play' | 'balanced' | 'rigor';
   freedom?: 'guided' | 'balanced' | 'open';
 }
+/**
+ * "Generate a scene": one scene added to a scenario being made (App\Qbl\Generation\Methods\SceneMethod).
+ * Every choice left out is the designer's ("Choose for me").
+ */
+export interface SceneGenerationForm {
+  kind: 'scene';
+  scenario_id: number;
+  prompt: string;
+  /** What sort of place: outdoor, indoor, underground, up_high or underwater. */
+  kind_of_place?: string;
+  /** The time of day: dawn, morning, midday, afternoon, golden, sunset, dusk or night. */
+  time?: string;
+  width?: 'normal' | 'wide';
+  /** Things to click that the narrator describes. Default true. */
+  hotspots?: boolean;
+  /** A thing with several descriptions, clicked again: step through and keep the last, or go round. */
+  repeat?: 'auto' | 'last' | 'cycle';
+  /** Lights, a living sky, what is in the air, flowing water. Default true. */
+  animations?: boolean;
+  /** Birds, squirrels, deer... that come and go now and then. Default false. */
+  critters?: boolean;
+  grade?: string;
+  notes?: string;
+}
 export interface Generation {
   id: number;
   prompt: string;
+  /** A mission (or story) made as a new draft, or a scene added to a scenario. */
+  kind?: 'mission' | 'scene';
+  /** A scene's id, once it is added to its scenario (`scenario_id`). */
+  scene_id?: number | null;
   /** queued, aligning, designing, drawing, building, voicing, importing; then done, failed or cancelled. */
   status: string;
   busy: boolean;
@@ -318,7 +346,7 @@ export interface Generation {
   cancelling: boolean;
   title: string | null;
   scenario_id: number | null;
-  options: GenerationOptions;
+  options: GenerationOptions & Partial<Omit<SceneGenerationForm, 'kind' | 'prompt'>> & { kind?: 'scene'; place?: string };
   /**
    * How the mission leans on the design rules, once it is aligned: the teacher's choices, and what was
    * chosen where they left "Choose for me" (absent from `options`). Null before then. Stories: focus only.
@@ -553,11 +581,11 @@ export class Api {
 
   // The AI mission generator (App\Qbl\Generation\GenerationApi).
   // Asked every few seconds while one is being made: quietly, so the header does not flash "Saving…".
-  generations = () => this.call<{ generations: Generation[]; cost: number; plan: GeneratorPlan; now: string }>('GET', '/editor/generations', undefined, true);
+  generations = () => this.call<{ generations: Generation[]; cost: number; costs?: { mission: number; scene: number }; plan: GeneratorPlan; now: string }>('GET', '/editor/generations', undefined, true);
   generation = (id: number) => this.call<{ generation: Generation; now: string }>('GET', `/editor/generations/${id}`, undefined, true);
   activeGeneration = () => this.call<{ generation: Generation | null; now: string }>('GET', '/editor/generations/active', undefined, true);
   everyonesGenerations = () => this.call<{ generations: Generation[]; now: string }>('GET', '/editor/generations/all', undefined, true);
-  generate = (form: { prompt: string } & GenerationOptions) => this.call<{ generation: Generation; credits: CreditSummary | null; now: string }>('POST', '/editor/generations', form);
+  generate = (form: ({ prompt: string } & GenerationOptions) | SceneGenerationForm) => this.call<{ generation: Generation; credits: CreditSummary | null; now: string }>('POST', '/editor/generations', form);
   cancelGeneration = (id: number) => this.call<{ generation: Generation; credits: CreditSummary | null; now: string }>('POST', `/editor/generations/${id}/cancel`);
 
   // The district admin panel (App\Qbl\District\DistrictApi).

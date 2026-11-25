@@ -367,7 +367,7 @@ function liveRun(first: Generation, skew: () => number, cancel: () => void) {
     const left = timeLeft(g, now);
     meta.textContent = [
       g.status === 'queued' ? `Asked for ${duration(now - Date.parse(g.created_at) / 1000)} ago` : `Started ${duration(now - started)} ago`,
-      left != null ? `about ${duration(Math.max(60, left))} left` : 'usually about ten minutes in all',
+      left != null ? `about ${duration(Math.max(60, left))} left` : g.kind === 'scene' ? 'usually a few minutes in all' : 'usually about ten minutes in all',
       g.usd != null ? `$${g.usd.toFixed(2)} spent so far` : null,
     ].filter(Boolean).join(' · ');
     stop.disabled = g.cancelling;
@@ -388,7 +388,8 @@ function pastRun(g: Generation, open: (id: number) => void, again: (g: Generatio
     const label = a.choices.find(([v]) => v === value)?.[1];
     return label && !g.options[a.key] ? `${label} (chosen for you)` : label;
   });
-  const opts = [g.options.grade ? `Grade ${g.options.grade}` : null, g.options.subject, g.options.minutes ? `${g.options.minutes} min` : null, ...leans].filter(Boolean).join(' · ');
+  const scene = g.kind === 'scene';
+  const opts = [scene ? 'A scene for a scenario' : null, g.options.grade ? `Grade ${g.options.grade}` : null, g.options.subject, g.options.minutes ? `${g.options.minutes} min` : null, ...(scene ? [] : leans)].filter(Boolean).join(' · ');
   const status = STAGE_NAMES[g.status]?.short ?? g.status;
   return h('div', { class: `card gen-run ${g.status}`, 'data-generation': g.id, 'data-status': g.status },
     h('div', { class: 'card-title' }, h('strong', null, runName(g)), h('span', { class: `gen-status ${g.status}` }, g.status === 'done' ? '✅ Ready' : g.status === 'failed' ? '⚠️ Failed' : status)),
@@ -396,10 +397,15 @@ function pastRun(g: Generation, open: (id: number) => void, again: (g: Generatio
     h('p', { class: 'muted gen-meta' }, [when, opts, g.usd != null ? `$${g.usd.toFixed(2)} spent` : null].filter(Boolean).join(' · ')),
     g.status === 'failed' ? h('p', { class: 'issue error' }, g.error ?? 'Something went wrong.', ' Any credits it cost were given back.') : null,
     g.status === 'cancelled' ? h('p', { class: 'muted' }, 'You stopped it. Any credits it cost were given back.') : null,
-    h('div', { class: 'row-actions' },
-      g.scenario_id ? h('button', { type: 'button', class: 'primary', onclick: () => open(g.scenario_id!) }, 'Open in the editor') : null,
-      g.scenario_id ? h('span', { class: 'muted' }, 'A private draft: look it over, then publish and assign it.') : null,
-      h('button', { type: 'button', 'data-action': 'again', onclick: () => again(g) }, g.status === 'done' ? 'Make another like it' : 'Try again')));
+    scene
+      // A scene was added to a scenario: open it there (another is made from the scenario's Scenes page).
+      ? h('div', { class: 'row-actions' },
+        g.status === 'done' && g.scenario_id ? h('a', { class: 'button primary', href: g.scene_id ? `#/s/${g.scenario_id}/scene/${g.scene_id}` : `#/s/${g.scenario_id}` }, 'Open the scene') : null,
+        g.status === 'done' ? h('span', { class: 'muted' }, 'Added to the scenario’s scenes.') : h('span', { class: 'muted' }, 'Make another from the scenario’s Scenes page: ✨ Generate a scene.'))
+      : h('div', { class: 'row-actions' },
+        g.scenario_id ? h('button', { type: 'button', class: 'primary', onclick: () => open(g.scenario_id!) }, 'Open in the editor') : null,
+        g.scenario_id ? h('span', { class: 'muted' }, 'A private draft: look it over, then publish and assign it.') : null,
+        h('button', { type: 'button', 'data-action': 'again', onclick: () => again(g) }, g.status === 'done' ? 'Make another like it' : 'Try again')));
 }
 
 /** For a teacher whose plan does not have the generator: what it is, and where to get it. */

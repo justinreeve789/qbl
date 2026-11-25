@@ -44,6 +44,7 @@ Teachers also reach this dialog from the **New scenario** button on their missio
 The Scenes page shows one card per scene, with its background as a thumbnail, its subtitle, and labels for its size and how many hotspots, other events and spawn points it has. A scene in a group takes the group's colour along the top of its card.
 
 * **New scene** asks for a short name (for example `forest-path`) and opens the new scene.
+* **✨ Generate a scene** (also on the map's toolbar) has AI make one from a description: a background painted to match your other scenes, the things standing in it cut out so players walk behind and in front of them, the floor traced so they walk only where they could, and, if you like, things to click that the narrator describes, lights and critters. See [Generate a scene](/docs/editor/plans-and-generator/#one-scene-generate-a-scene).
 * Click the thumbnail or **✏️ Edit** to open the [scene editor](/docs/editor/scene-editor/). **▶ Test** plays the draft starting in that scene.
 * **←** and **→** change the scene's place in the list. The order is for your own tidiness; players move between scenes only through jump actions.
 * **🚩** makes a scene the one players arrive in. The current one is marked **🚩 Start scene** on its thumbnail.

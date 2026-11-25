@@ -118,7 +118,7 @@ class ScenarioGenerator
         }
         $steps = $this->method->steps();
         $this->say("Generation $id (work folder $dir), method {$this->method::key()}: ".implode(' → ', array_map(fn (Step $s) => $s->name(), $steps)));
-        $this->progress = $progress = new GenerationProgress($this->runs, $id, GenerationProgress::stagesFor((bool) $this->voices), $this->spend ? fn () => $this->spend->total() : null);
+        $this->progress = $progress = new GenerationProgress($this->runs, $id, $this->method->stages((bool) $this->voices), $this->spend ? fn () => $this->spend->total() : null);
         // What this run spends is counted into its work folder, carrying on from where a resumed run was.
         $this->spend?->attach("$dir/spend.json");
         // And every call is logged in the database for auditing.
@@ -271,8 +271,12 @@ class ScenarioGenerator
         foreach ($b['scenes'] as $scene) {
             foreach (array_values($scene['lights'] ?? []) as $l) {
                 if (($l['placement'] ?? null) === 'wall') {
-                    $out[$scene['key']]['lights'][] = ['x' => (float) $l['x'], 'what' => rtrim((string) $l['look'], '.').', lit and glowing'];
+                    $out[$scene['key']]['lights'][] = ['x' => (float) $l['x'], 'what' => rtrim((string) $l['look'], '.').', lit and glowing', 'where' => $l['where'] ?? 'wall'];
                 }
+            }
+            // A scene made on its own: things standing out on the floor, to be cut out of the picture afterwards.
+            if (! empty($scene['standing'])) {
+                $out[$scene['key']]['standing'] = array_map(fn ($t) => ['x' => (float) $t['x'], 'depth' => $t['depth'] ?? 'middle', 'look' => (string) $t['look']], array_values($scene['standing']));
             }
             foreach ($scene['details'] ?? [] as $d) {
                 if (! empty($d['look']) && isset($d['x'])) {

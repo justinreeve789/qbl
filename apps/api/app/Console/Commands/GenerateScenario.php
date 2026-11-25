@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Qbl\Generation\Design\DesignRules;
+use App\Qbl\Generation\Design\SceneDesigner;
 use App\Qbl\Generation\GenerationError;
 use App\Qbl\Generation\GenerationFactory;
 use App\Qbl\StoreError;
@@ -47,7 +48,15 @@ class GenerateScenario extends Command
         {--no-import : Make the ZIP but do not import it}
         {--publish : Publish the imported draft straight away}
         {--resume= : Carry on a generation that stopped, by its id}
-        {--import= : Import a scenario ZIP made earlier, and do nothing else}';
+        {--import= : Import a scenario ZIP made earlier, and do nothing else}
+        {--scenario= : Make ONE scene and add it to this scenario (by id) instead of a mission (method scene)}
+        {--place= : With --scenario: outdoor, indoor, underground, up_high or underwater; default: chosen to suit the prompt}
+        {--time= : With --scenario: the time of day (dawn, morning, midday, afternoon, golden, sunset, dusk, night)}
+        {--width= : With --scenario: normal or wide}
+        {--repeat= : With --scenario: what a thing with several descriptions does when clicked again: last or cycle; default: chosen thing by thing}
+        {--no-hotspots : With --scenario: nothing to click}
+        {--no-animations : With --scenario: no lights, living sky, things in the air or flowing water}
+        {--critters : With --scenario: birds, squirrels, deer... that come and go}';
 
     protected $description = 'Generate a whole mission (scenes, characters, art, dialogue, events, curriculum alignment) from a prompt';
 
@@ -95,6 +104,24 @@ class GenerateScenario extends Command
                     return self::FAILURE;
                 }
             }
+            // One scene for a scenario: its own options, made by the scene method.
+            if ($this->option('scenario')) {
+                foreach (['place', 'time', 'width', 'repeat'] as $key) {
+                    $value = $this->option($key);
+                    $allowed = SceneDesigner::OPTIONS[$key];
+                    if ($value !== null && ! in_array($value, $allowed, true)) {
+                        $this->error("--$key is one of: ".implode(', ', $allowed).'.');
+
+                        return self::FAILURE;
+                    }
+                }
+                $sceneOptions = array_filter([
+                    'kind' => 'scene', 'scenario_id' => (int) $this->option('scenario'),
+                    'place' => $this->option('place'), 'time' => $this->option('time'), 'width' => $this->option('width'), 'repeat' => $this->option('repeat'),
+                    'hotspots' => ! $this->option('no-hotspots'), 'animations' => ! $this->option('no-animations'), 'critters' => (bool) $this->option('critters'),
+                    'grade' => $this->option('grade'), 'notes' => $this->option('notes'),
+                ], fn ($v) => $v !== null && $v !== '');
+            }
             [$min, $max] = array_map('intval', explode('-', (string) $this->option('players').'-'.(string) $this->option('players')));
             $options = array_filter([
                 'grade' => $this->option('grade'),
@@ -114,8 +141,11 @@ class GenerateScenario extends Command
                 'publish' => $this->option('publish') ?: null,
             ], fn ($v) => $v !== null && $v !== [] && $v !== '');
 
+            if (isset($sceneOptions)) {
+                $options = $sceneOptions;
+            }
             // A resumed run carries on with the method it was started with, unless told otherwise.
-            $method = $this->option('method') ?: ($this->option('resume') ? $factory->savedMethod((int) $this->option('resume')) : null);
+            $method = $this->option('method') ?: ($this->option('resume') ? $factory->savedMethod((int) $this->option('resume')) : (isset($sceneOptions) ? 'scene' : null));
             if ($this->option('redo')) {
                 if (! $this->option('resume')) {
                     $this->error('--redo needs --resume=ID: it does a step of an earlier run again.');
@@ -151,6 +181,11 @@ class GenerateScenario extends Command
         }
         foreach ($result['warnings'] as $w) {
             $this->warn($w);
+        }
+        if ($result['method'] === 'scene' && $result['status'] === 'done') {
+            $this->info("Done: a new scene in scenario {$result['scenario_id']} (generation {$result['run']}). Open the scenario in the editor to look it over.");
+
+            return self::SUCCESS;
         }
         match ($result['status']) {
             'designed' => $this->info("Blueprint ready (generation {$result['run']}). Look at it, then draw and build it with: php artisan qbl:generate --resume={$result['run']}".(isset($result['estimate']) ? sprintf(' (about %d pictures, about $%.2f)', $result['estimate']['pictures'], $result['estimate']['usd']) : '')),

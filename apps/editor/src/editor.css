@@ -634,6 +634,18 @@ dialog.modal { width: min(92vw, 520px); padding: 20px; border-radius: 12px; bord
 dialog.modal::backdrop { background: rgba(0, 0, 0, 0.6); }
 dialog.modal h2 { margin: 0 0 12px; font-size: 18px; }
 dialog.modal .field { margin-bottom: 14px; }
+/* "Generate a scene" (views/sceneGenerate.ts): wider, its choices side by side. */
+dialog.modal[data-dialog='generate-scene'] { width: min(94vw, 680px); }
+.gen-scene-form textarea { width: 100%; }
+.gen-scene-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.gen-scene-row > .field { flex: 1 1 160px; min-width: 0; }
+.gen-scene-row > .field.wide { flex: 2 1 260px; }
+.gen-scene-row select, .gen-scene-row input { width: 100%; }
+.gen-scene-extras { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 4px; margin: 0 0 14px; display: grid; gap: 8px; }
+.gen-scene-extras legend { padding: 0 6px; font-weight: 600; }
+.gen-scene-extras label.inline { display: flex; align-items: center; gap: 8px; }
+.gen-scene-extras .field { margin: 0 0 4px 26px; }
+.gen-scene-extras .field.disabled { opacity: 0.5; }
 .choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .choice:has(input:checked) { border-color: var(--accent-solid); background: var(--accent-soft); }
 .choice strong { display: block; }

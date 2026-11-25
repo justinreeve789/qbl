@@ -5,6 +5,7 @@ import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { clear, confirmDelete, h, help, s, toast } from '../../dom';
 import type { FormContext } from '../../fields';
 import { emojiIcon } from '../../icons';
+import { generateSceneButton } from '../sceneGenerate';
 import { sceneGroupControl } from '../glossary';
 import type { Point, Side } from '../scene/model';
 import { selectOnOpen } from '../scene/sceneEditor';
@@ -622,6 +623,7 @@ export function sceneMap(ctx: FormContext, open: (sceneId: number) => void): HTM
   return h('div', { class: 'scene-map' },
     h('div', { class: 'map-toolbar' },
       h('button', { type: 'button', class: 'primary', onclick: () => void newScene(null) }, emojiIcon('➕'), 'New scene'),
+      generateSceneButton(ctx),
       h('button', { type: 'button', title: 'Lay the scenes out from the start scene, each beside the edge that leads to it', onclick: () => void arrange() }, emojiIcon('✨'), 'Arrange for me'),
       h('span', { class: 'map-zoom', role: 'group', 'aria-label': 'Zoom' },
         h('button', { type: 'button', class: 'icon', 'aria-label': 'Zoom out', onclick: () => zoomBy(1 / 1.25) }, '−'),
