@@ -72,7 +72,7 @@ Method | What it tries | Costs, compared with classic
 `critic` | After the design, a critic (teacher and game designer) scores the blueprint (learning, fun, clarity, fit, coherence) and suggests changes; they are applied only if it still validates; then it reviews again. | One or two more large calls
 `best-of` | Designs N candidates (default 3), the critic scores each, only the best is drawn. Losers kept in `candidates/`. | N designs and N reviews; pictures once
 `outline-first` | A small call sketches the story (premise, hook, scenes, puzzles, twist, finale); the designer builds the blueprint from it. | One small call
-`scene` | Not a mission: ONE scene for a scenario being made (the editor's **Generate a scene**, `options.scenario_id`): design → draw → survey → build → merge. See [One scene for a scenario](/docs/developers/generation/#one-scene-for-a-scenario). | One design call, one background, one survey
+`scene` | Not a mission: ONE scene for a scenario being made (the editor's **Generate a scene**, `options.scenario_id`): design → draw → survey → clear → build → merge. See [One scene for a scenario](/docs/developers/generation/#one-scene-for-a-scenario). | One design call, one background, one survey, one retouch per 16:9 window of standing things (usually one)
 
 Choose one per run with `--method=`, or for every run (the editor's too) with `QBL_GEN_METHOD`. A resumed run carries on with the method it was started with. `--images=placeholder` makes any method free to try (the explicit option wins over the method's choice of source).
 
