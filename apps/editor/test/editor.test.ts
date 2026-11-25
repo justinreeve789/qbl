@@ -4,7 +4,7 @@ import { after, before, test } from 'node:test';
 import { normalizeScenario, validateScenario, type Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
 import { Game } from '../../client/test/harness';
-import { png, startSite, wav, type TestSite } from './servers';
+import { png, startSite, wav, type TestSite, chooseMedia } from './servers';
 
 /**
  * The editor, end to end, in a real browser against the real backend classes:
@@ -100,7 +100,7 @@ test('give the scene a wide background, which makes it a scrolling scene', async
   await page.click(`[data-scene="${firstScene}"] >> text=Edit`);
   await page.waitForSelector('.stage-overlay polygon');
   await page.click('[title="Add: background layers"]');
-  await inspector('[data-field=media_id] select').selectOption({ label: 'pond.png' });
+  await chooseMedia(inspector('[data-field=media_id]'), 'pond.png');
   await page.waitForSelector('.stage img.layer');
   await page.click('.outline-item >> text=Scene settings');
   await page.click('text=Make the scene that size');
@@ -122,7 +122,7 @@ test('add a hotspot with a label, an infobox, a button that changes a variable, 
   await page.click('text=+ Add label');
   await page.waitForSelector('.labels .card');
   await inspector('.labels [data-field=type] select').selectOption('image');
-  await inspector('.labels [data-field=media_id] select').selectOption({ label: 'frog.png' });
+  await chooseMedia(inspector('.labels [data-field=media_id]'), 'frog.png');
   await page.waitForSelector('.stage-overlay image.label-image');
 
   await inspector('.add-action').selectOption('infobox');
@@ -266,7 +266,7 @@ test('stars and a shop: an award in the start event, an item only this scenario 
   };
   await fill('[data-field=name] input', 'Frog badge');
   await fill('[data-field=price] input', '3');
-  await card('[data-field=media_id] select').selectOption({ label: 'frog.png' });
+  await chooseMedia(card('[data-field=media_id]'), 'frog.png');
   await saved();
   assert.equal(await card('[data-field=slot] select').inputValue(), 'head', 'something to wear says where it is worn');
   await card('[data-field=kind] select').selectOption('ability');
@@ -356,7 +356,7 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   await saved();
   assert.match(await card.locator('.panel-title').innerText(), /Old Toad/, 'the panel\'s heading follows the name');
   // Its close-up is its portrait animation; nothing else is drawn yet.
-  await card.locator('[data-animation=portrait] select').selectOption({ label: 'frog.png' });
+  await chooseMedia(card.locator('[data-animation=portrait] .anim-picture-choice'), 'frog.png');
   await saved();
   await card.locator('.panel-close').click();
   await page.waitForSelector('dialog[data-panel]', { state: 'detached' });
@@ -419,7 +419,7 @@ test('animations: an animated PNG plays as it is, its animations are made on the
   await page.click('.tabs >> text=Characters');
   await page.locator('.character-card', { has: page.locator('.card-title', { hasText: 'Old Toad' }) }).locator('[data-open=character]').click();
   const toad = page.locator('dialog[data-panel=character]');
-  await toad.locator('[data-animation=stand_right] select.anim-picture-choice').selectOption({ label: 'hop.apng (animated)' });
+  await chooseMedia(toad.locator('[data-animation=stand_right] .anim-picture-choice'), 'hop.apng');
   await saved();
   assert.match(await toad.locator('[data-animation=stand_left]').innerText(), /Uses Standing, facing right, mirrored/, 'the other side is filled in, mirrored');
   assert.match(await toad.locator('[data-animation=walk_right]').innerText(), /Uses Standing, facing right/);

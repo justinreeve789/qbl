@@ -10,6 +10,7 @@ import { checkFeet, mirror, sheetOf, walkCycle, WALK_DURATION, WALK_FRAMES, type
 import { mediaLabel, mediaUrl, params } from '../describe';
 import { confirmDelete, h, help, toast } from '../dom';
 import { form, withValue, type FormContext } from '../fields';
+import { mediaChoiceButton } from '../mediaPicker';
 import { openPanel } from '../panel';
 import { CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
@@ -209,25 +210,26 @@ function animationRow(ctx: FormContext, row: Row, name: string): HTMLElement {
       pose ? null : h('button', { type: 'button', class: 'danger icon anim-delete', title: 'Delete this animation', onclick: () => confirmDelete(`the animation “${name}”`) && changeAnimation(ctx, id, name, null) }, '×')));
 }
 
-/** The picture an animation is drawn from, chosen from the scenario's images. */
-function pictureSelect(ctx: FormContext, id: number, name: string, animation: CharacterAnimation | undefined): HTMLSelectElement {
+/** The picture an animation is drawn from, chosen from the scenario's images in the picture pop-up. */
+function pictureSelect(ctx: FormContext, id: number, name: string, animation: CharacterAnimation | undefined): HTMLElement {
   const { store } = ctx;
   const pose = isPose(name);
-  const images = store.rows('media').filter((m) => m.type === 'image');
-  const picture = h('select', {
-    'aria-label': `Picture for ${name}`, class: 'anim-picture-choice',
-    onchange: () => {
-      if (!picture.value) return changeAnimation(ctx, id, name, null);
+  const node = mediaChoiceButton(store, {
+    label: `Picture for ${labelOf(name)}`, types: ['image'], category: 'character', selected: animation?.media_id ?? null,
+    title: `Picture for ${labelOf(name)}: choose a character picture or sprite sheet`,
+    // A pose can be left without a picture; another animation is removed with its own ×.
+    none: pose && animation ? 'No picture' : undefined,
+    onChoose: (mediaId) => {
+      if (mediaId == null) return changeAnimation(ctx, id, name, null);
       // A new picture plays its animation named for this one, if it has one; else every frame. Mirroring stays.
-      const mediaRow = store.byId('media', Number(picture.value));
-      const start = { media_id: Number(picture.value), ...(animation?.flip ? { flip: true } : {}) };
+      const mediaRow = store.byId('media', mediaId);
+      const start = { media_id: mediaId, ...(animation?.flip ? { flip: true } : {}) };
       const match = hasFrames(mediaRow) ? matchingAnimation(mediaRow, name) : undefined;
       changeAnimation(ctx, id, name, match ? playing(start, match) : start);
     },
-  },
-  h('option', { value: '' }, pose ? (animation ? '(none)' : 'Choose a picture…') : '(remove)'),
-  ...images.map((m) => h('option', { value: m.id, selected: animation?.media_id === m.id }, `${mediaLabel(m)}${params(m).sheet ? ' (sheet)' : params(m).apng ? ' (animated)' : ''}`)));
-  return picture;
+  });
+  node.classList.add('anim-picture-choice');
+  return node;
 }
 
 /**

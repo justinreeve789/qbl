@@ -179,13 +179,13 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
   spritemap: {
     label: 'Spritemap',
     about: 'An animated sprite sheet placed in the scene.',
-    fields: [{ key: 'media_id', label: 'Sprite sheet', kind: 'media', mediaType: 'image', wide: true }, ...shownAt, ...scale, ...spritemap, layer],
+    fields: [{ key: 'media_id', label: 'Sprite sheet', kind: 'media', mediaType: 'image', mediaCategory: 'sprites', wide: true }, ...shownAt, ...scale, ...spritemap, layer],
   },
   video: {
     label: 'Video',
     about: 'Play a video over the screen.',
     fields: [
-      { key: 'media_id', label: 'Video', kind: 'media', mediaType: 'video', wide: true },
+      { key: 'media_id', label: 'Video', kind: 'media', mediaType: 'video', mediaCategory: 'video', wide: true },
       { key: 'alignment', label: 'Where', kind: 'select', options: ALIGNMENTS, placeholder: 'center center' },
       { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1', slider: { min: 0, max: 1 } },
       ...scale,
@@ -663,7 +663,7 @@ export const FLOW_FIELDS: Field[] = [
 
 /** A background or foreground layer (docs/src/content/docs/developers/extensions/scenes.md). */
 export const LAYER_FIELDS: Field[] = [
-  { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', wide: true },
+  { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', mediaCategory: 'background', wide: true },
   { key: 'position_x', label: 'X', kind: 'number', placeholder: '0' },
   { key: 'position_y', label: 'Y', kind: 'number', placeholder: '0' },
   { key: 'display_width', label: 'Shown width (px)', kind: 'number', min: 1, placeholder: 'Scene width', hint: 'Empty: the image is stretched to the size of the scene.' },
@@ -778,7 +778,7 @@ export const VARIABLE_FIELDS: Field[] = [
 
 export const ITEM_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text' },
-  { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image' },
+  { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', mediaCategory: (v) => (v.vehicle ? 'vehicle' : 'item') },
   { key: 'unique', label: 'Unique: only one player can hold it', kind: 'bool', wide: true },
   { key: 'physical', label: 'Physical: it sits in the scene', kind: 'bool', wide: true },
   { key: 'blocking', label: 'Blocking: avatars walk around it', kind: 'bool', wide: true },
@@ -812,7 +812,7 @@ export const SHOP_ITEM_FIELDS: Field[] = [
   { key: 'price', label: 'Price (stars)', kind: 'number', min: 0, step: 1 },
   { key: 'description', label: 'Description', kind: 'text', wide: true },
   { key: 'kind', label: 'Kind', kind: 'select', structural: true, options: [['wearable', 'Something to wear'], ['pet', 'A pet that follows the avatar'], ['animation', 'A way of standing'], ['move', 'A move: a button on the player’s screen'], ['ability', 'An ability']] },
-  { key: 'media_id', label: 'Picture', kind: 'media', mediaType: 'image' },
+  { key: 'media_id', label: 'Picture', kind: 'media', mediaType: 'image', mediaCategory: 'shop' },
   { key: 'active', label: 'On sale', kind: 'bool', default: true, wide: true, hint: 'Take an item off sale instead of deleting it: players who bought it keep it.' },
 ];
 /** Kept in the shop item's `settings` column; which apply depends on the kind. */

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
-import { png, startSite, wav, type TestSite } from './servers';
+import { png, startSite, wav, type TestSite, chooseMedia } from './servers';
 
 /**
  * The rest of what a scene and a scenario can hold, each checked in the JSON the editor's
@@ -91,7 +91,7 @@ test('items and characters: define them, with conditions', async () => {
   const item = 'dialog[data-panel=item]';
   await page.waitForSelector(item);
   await type(`${item} [data-field=name] input`, 'rowing boat');
-  await page.locator(`${item} [data-field=media_id] select`).selectOption({ label: 'boat.png' });
+  await chooseMedia(page.locator(`${item} [data-field=media_id]`), 'boat.png');
   assert.equal(await page.locator(`${item} [data-field=speed_multiplier]`).count(), 0, 'no speed for something that is not a vehicle');
   await page.locator(`${item} [data-field=vehicle] input`).check();
   await page.waitForSelector(`${item} [data-field=speed_multiplier]`);
@@ -106,7 +106,7 @@ test('items and characters: define them, with conditions', async () => {
   await page.click('text=New character');
   await page.waitForSelector('dialog[data-panel=character]');
   await type('dialog[data-panel=character] [data-field=name] input', 'Ferry keeper');
-  await page.locator('dialog[data-panel=character] [data-animation=stand_right] select').selectOption({ label: 'guide.png' });
+  await chooseMedia(page.locator('dialog[data-panel=character] [data-animation=stand_right] .anim-picture-choice'), 'guide.png');
   // The character gets a close-up of its own, cut from the top third of its picture and shown beside it.
   await page.waitForFunction(() => {
     const portrait = document.querySelector('.character-card .anim-preview.portrait img')?.getAttribute('src') ?? '';
@@ -133,14 +133,14 @@ test('layers: a repeated, drifting sky behind and a foreground in front', async 
   sceneId = Number(/scene\/(\d+)/.exec(page.url())![1]);
 
   await page.click('[title="Add: background layers"]');
-  await inspector('[data-field=media_id] select').selectOption({ label: 'sky.png' });
+  await chooseMedia(inspector('[data-field=media_id]'), 'sky.png');
   await inspector('[data-field=tile] input').check();
   await type('.inspector [data-field=scroll_speed_x] input[type=number]', '-12');
   await type('.inspector [data-field=parallax] input[type=number]', '0.4');
   await page.waitForSelector('.stage .layer.tiled');
 
   await page.click('[title="Add: foreground layers"]');
-  await inspector('[data-field=media_id] select').selectOption({ label: 'boat.png' });
+  await chooseMedia(inspector('[data-field=media_id]'), 'boat.png');
   await type('.inspector [data-field=position_y] input', '900');
   await type('.inspector [data-field=display_height] input', '180');
 
@@ -158,7 +158,7 @@ test('layers: drag a background layer to the top and it becomes the main picture
   const sky = media((await draft()).scenes[0]!.background_media![0]);
 
   await page.click('[title="Add: background layers"]');
-  await inspector('[data-field=media_id] select').selectOption({ label: 'guide.png' });
+  await chooseMedia(inspector('[data-field=media_id]'), 'guide.png');
   await saved();
   const rows = '[data-section="Background layers"] li.layer-row';
   await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 2, rows);
@@ -193,7 +193,7 @@ test('layers: tick a background layer as the main picture, for the scene in list
   const media = (l: unknown) => (l as { media_id?: number; id?: number }).media_id ?? (l as { id?: number }).id;
   const rows = '[data-section="Background layers"] li.layer-row';
   await page.click('[title="Add: background layers"]');
-  await inspector('[data-field=media_id] select').selectOption({ label: 'guide.png' });
+  await chooseMedia(inspector('[data-field=media_id]'), 'guide.png');
   await saved();
   await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 2, rows);
   const mains = () => draft().then((d) => d.scenes[0]!.background_media!.map((l) => (l as { main?: boolean }).main === true));

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { infoboxRefs, SYSTEM_VARIABLES, validateScenario, type InfoboxAction, type Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
-import { png, startSite, type TestSite } from './servers';
+import { png, startSite, type TestSite, chooseMedia } from './servers';
 
 /**
  * The infobox content editor: text typed as it looks, blocks put in with ＋ Insert and by
@@ -153,7 +153,7 @@ test('an answer box saves into a variable, and a button can be the right answer'
 });
 
 test('the picture at the top, the size and the colour are the box\'s own fields', async () => {
-  await page.locator('.inspector details.action [data-field=media_id] select').selectOption({ label: '🖼️ pond.png' });
+  await chooseMedia(page.locator('.inspector details.action [data-field=media_id]'), 'pond.png');
   await saved();
   await page.locator('.inspector details.action [data-field=size] select').selectOption('large');
   await page.locator('.inspector details.action [data-field=accent] input[type=text]').fill('#ff7a00');
