@@ -48,8 +48,9 @@ class MissionDesigner
 
     /**
      * @param  array  $alignment  StandardsAligner::align()
-     * @param  array{grade?: ?string, subject?: ?string, scenes?: ?int, min_players?: int, max_players?: int, minutes?: ?int, notes?: ?string, big_moment?: bool}  $options
+     * @param  array{grade?: ?string, subject?: ?string, scenes?: ?int, min_players?: int, max_players?: int, minutes?: ?int, notes?: ?string, big_moment?: bool, opening?: string, focus?: string, freedom?: string}  $options
      *                                                                                                                                                                       big_moment: whether it may have a big tense moment (else by chance)
+     *                                                                                                                                                                       opening, focus, freedom: the design rules' settings (DesignRules::SETTINGS)
      * @param  callable|null  $log  fn(string $message)
      * @param  callable|null  $progress  fn(float $fraction, string $detail): how far the design has got, for the progress bar
      */
@@ -66,9 +67,12 @@ class MissionDesigner
         $objectiveIds = array_column($alignment['learning_objectives'], 'id');
         // Whether this one may have a big tense moment is decided here, not by the model, so they stay rare.
         $pace = ['big_moment' => $this->pace($options)];
+        // The teacher's settings for the design rules' tensions; kept on the blueprint so every later
+        // check of it (corrections, the critic, best-of) holds it to the same ones.
+        $approach = DesignRules::approach($options);
 
         return $this->loop(BlueprintSchema::schema($this->limits), $this->system(), $this->brief($prompt, $alignment, $options, $pace), 'mission_blueprint',
-            fn (array $b) => BlueprintValidator::errors($b, $objectiveIds), fn (array $b) => ['pace' => $pace] + self::tidy($b), 'mission', $log, $progress);
+            fn (array $b) => BlueprintValidator::errors($b, $objectiveIds), fn (array $b) => ['pace' => $pace, 'approach' => $approach] + self::tidy($b), 'mission', $log, $progress);
     }
 
     /**
@@ -390,7 +394,7 @@ class MissionDesigner
         - Dialogue is warm and brief (one or two sentences a line), in character, often a little funny, and never
           talks down to students.
         - Keys are lowercase with underscores, unique across interactions, combinations, steps and twists.
-        TXT;
+        TXT."\n\n".DesignRules::missionRules();
     }
 
     private function brief(string $prompt, array $alignment, array $options, array $pace = ['big_moment' => false]): string
@@ -415,6 +419,7 @@ class MissionDesigner
         if (! empty($options['notes'])) {
             $lines[] = "Also: {$options['notes']}";
         }
+        array_push($lines, ...DesignRules::briefLines($options));
         $lines[] = '';
         if ($alignment['standards']) {
             $lines[] = 'Standards this mission is built around:';
@@ -1005,7 +1010,7 @@ class MissionDesigner
           friendly for children: exciting moments, never frightening ones; nobody is hurt.
         - Lines are warm and brief (one or two sentences), in character, and never talk down to students.
         - Keys are lowercase with underscores, unique within their list.
-        TXT;
+        TXT."\n\n".DesignRules::storyRules();
     }
 
     private function storyBrief(string $prompt, array $alignment, array $options): string
@@ -1025,6 +1030,7 @@ class MissionDesigner
         if (! empty($options['notes'])) {
             $lines[] = "Also: {$options['notes']}";
         }
+        array_push($lines, ...DesignRules::briefLines($options, story: true));
         $lines[] = '';
         if ($alignment['standards']) {
             $lines[] = 'Standards the story serves:';

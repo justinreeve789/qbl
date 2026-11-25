@@ -10,7 +10,8 @@
  * editor's routes and the compiled document all run for real.
  *
  * With KOKORO_URL=http://localhost:8880 it also records a few lines with a real Kokoro-FastAPI, and
- * with CHATTERBOX_URL=http://localhost:8004 (and KOKORO_URL, to make clips) with a real chatterbox container.
+ * with CHATTERBOX_URL=http://localhost:8004 (and KOKORO_URL, to make clips) with a real chatterbox container,
+ * and with ELEVENLABS_API_KEY with the real ElevenLabs (a few short lines: it is charged by the character).
  */
 
 use App\Qbl\EditorApi;
@@ -21,6 +22,7 @@ use App\Qbl\ScenarioDecompiler;
 use App\Qbl\ScenarioStore;
 use App\Qbl\Speech\ChatterboxClips;
 use App\Qbl\Speech\Engines\ChatterboxEngine;
+use App\Qbl\Speech\Engines\ElevenLabsEngine;
 use App\Qbl\Speech\Engines\KokoroEngine;
 use App\Qbl\Speech\Engines\OpenAiSpeechEngine;
 use App\Qbl\Speech\ScenarioVoicer;
@@ -233,6 +235,71 @@ $said = $openai->synthesize('Hello there', ['voice' => 'coral', 'instructions' =
 same([$http->sent[0]['url'], $http->sent[0]['body']['voice'], $http->sent[0]['body']['instructions'], $http->sent[0]['body']['model']], ['https://api.openai.com/v1/audio/speech', 'coral', 'Warm.', 'gpt-4o-mini-tts'], 'an OpenAI-style service is asked the same way');
 same([$said->format, $said->words], ['mp3', []], 'and gives audio without timings (the game then paces the words evenly)');
 
+// ------------------------------------------------------------------ ElevenLabs
+// The account's voices, labelled as GET /v1/voices labels them.
+$account = new HttpResponse(200, json_encode(['voices' => [
+    ['voice_id' => 'EXAVITQu4vr4xnSDxMaL', 'name' => 'Sarah', 'category' => 'premade', 'labels' => ['gender' => 'female', 'age' => 'young', 'accent' => 'american', 'description' => 'soft', 'use_case' => 'news']],
+    ['voice_id' => 'cgSgspJ2msm6clMCkdW9', 'name' => 'Jessica', 'category' => 'premade', 'labels' => ['gender' => 'female', 'age' => 'young', 'accent' => 'american', 'description' => 'expressive', 'use_case' => 'conversational']],
+    ['voice_id' => 'FGY2WhTYpPnrIDTdsKH5', 'name' => 'Laura', 'category' => 'premade', 'labels' => ['gender' => 'female', 'age' => 'young', 'accent' => 'american', 'description' => 'upbeat', 'use_case' => 'social media']],
+    ['voice_id' => 'XrExE9yKIg1WjnnlVkGX', 'name' => 'Matilda', 'category' => 'premade', 'labels' => ['gender' => 'female', 'age' => 'middle_aged', 'accent' => 'american', 'description' => 'friendly', 'use_case' => 'narration']],
+    ['voice_id' => 'JBFqnCBsd6RMkjVDRZzb', 'name' => 'George', 'category' => 'premade', 'labels' => ['gender' => 'male', 'age' => 'middle aged', 'accent' => 'british', 'description' => 'warm', 'use_case' => 'narration']],
+    ['voice_id' => 'pqHfZKP75CvOlQylNhV4', 'name' => 'Bill', 'category' => 'premade', 'labels' => ['gender' => 'male', 'age' => 'old', 'accent' => 'american', 'description' => 'trustworthy', 'use_case' => 'narration']],
+    ['voice_id' => 'SAz9YHcvj6GT2YYXdXww', 'name' => 'River', 'category' => 'premade', 'labels' => ['gender' => 'non-binary', 'age' => 'middle_aged', 'accent' => 'american', 'description' => 'confident']],
+    ['voice_id' => 'esVoiceLucia000000001', 'name' => 'Lucía', 'category' => 'professional', 'labels' => ['gender' => 'female', 'age' => 'young', 'accent' => 'peninsular'], 'verified_languages' => [['language' => 'es', 'model_id' => 'eleven_multilingual_v2']]],
+    ['voice_id' => 'myOwnCloneOfMrsDavies', 'name' => 'Mrs Davies', 'category' => 'cloned', 'labels' => ['gender' => 'female', 'age' => 'young', 'accent' => 'american', 'description' => 'expressive']],
+]]));
+$timedReply = fn (string $text, float $step = 0.05, string $audio = 'el') => new HttpResponse(200, json_encode(['audio_base64' => base64_encode(mp3($audio)), 'alignment' => [
+    'characters' => mb_str_split($text),
+    'character_start_times_seconds' => array_map(fn ($i) => round($i * $step, 3), range(0, mb_strlen($text) - 1)),
+    'character_end_times_seconds' => array_map(fn ($i) => round(($i + 1) * $step, 3), range(0, mb_strlen($text) - 1)),
+], 'normalized_alignment' => ['characters' => []]]));
+$http = new Recorded([$account, $timedReply('Hello, explorer! Ready?'), $timedReply('Again')]);
+$eleven = new ElevenLabsEngine($http, 'xi-test', url: 'https://api.elevenlabs.io/');
+$said = $eleven->synthesize('Hello, explorer! Ready?', ['key' => 'heart', 'gender' => 'female', 'age' => 'adult', 'accent' => 'American', 'lang' => 'en-US', 'traits' => ['warm', 'friendly'], 'stability' => 0.4, 'style' => 0.25, 'speed' => 1.1], 'en-US');
+same([$http->sent[0]['method'], $http->sent[0]['url'], $http->sent[0]['headers']['xi-api-key'] ?? null], ['GET', 'https://api.elevenlabs.io/v1/voices', 'xi-test'], 'ElevenLabs is asked for the account\'s voices first, with the key');
+same($http->sent[1]['url'], 'https://api.elevenlabs.io/v1/text-to-speech/XrExE9yKIg1WjnnlVkGX/with-timestamps?output_format=mp3_44100_128', 'a warm, friendly American woman is spoken by the account\'s friendly middle-aged American woman, with character timings');
+same(array_intersect_key($http->sent[1]['body'], array_flip(['text', 'model_id', 'voice_settings'])), ['text' => 'Hello, explorer! Ready?', 'model_id' => 'eleven_multilingual_v2', 'voice_settings' => ['stability' => 0.4, 'similarity_boost' => 0.75, 'style' => 0.25, 'use_speaker_boost' => true, 'speed' => 1.1]], 'in the catalog\'s stability, style and speed, on the multilingual model');
+check(! isset($http->sent[1]['body']['language_code']) && is_int($http->sent[1]['body']['seed']), 'multilingual v2 is given no language code (it refuses one), and a seed so a line comes out the same again');
+same([$said->audio, $said->format, $said->words, $said->duration], [mp3('el'), 'mp3', [['w' => 'Hello,', 's' => 0, 'e' => 300], ['w' => 'explorer!', 's' => 350, 'e' => 800], ['w' => 'Ready?', 's' => 850, 'e' => 1150]], 1150], 'the characters\' times become the words\' times');
+same(ElevenLabsEngine::words(['characters' => [' ', 'H', 'i', ' ', '—', ' ', 'y', 'o'], 'character_start_times_seconds' => [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7], 'character_end_times_seconds' => [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]]), [['w' => 'Hi', 's' => 100, 'e' => 300], ['w' => 'yo', 's' => 600, 'e' => 800]], 'spaces split words and a lone dash is not one');
+$eleven->synthesize('Again', ['key' => 'heart', 'gender' => 'female', 'age' => 'adult', 'accent' => 'American']);
+same(count(array_filter($http->sent, fn ($s) => $s['method'] === 'GET')), 1, 'the account\'s voices are asked for once');
+
+$http = new Recorded([$account, $timedReply('Hola')]);
+(new ElevenLabsEngine($http, 'k', 'eleven_flash_v2_5'))->synthesize('Hola', ['key' => 'dora-es', 'gender' => 'female', 'age' => 'young', 'accent' => 'Spanish', 'lang' => 'es'], 'es');
+same([$http->sent[1]['body']['language_code'] ?? null, str_contains($http->sent[1]['url'], '/esVoiceLucia000000001/')], ['es', true], 'flash v2.5 is told the language, and a Spanish voice is spoken by the account\'s voice verified in Spanish');
+$http = new Recorded([$account, $timedReply('こんにちは')]);
+same((new ElevenLabsEngine($http, 'k'))->synthesize('こんにちは', ['key' => 'kumo', 'gender' => 'male', 'lang' => 'ja'], 'ja')->words, [], 'Japanese, written without spaces, is left untimed (paced evenly), as on Kokoro');
+
+// Choosing among the account's voices.
+$el = fn (array $pins = [], array $skip = ['cloned']) => new ElevenLabsEngine(new Recorded([$account]), 'k', pins: $pins, skip: $skip);
+$engine = $el();
+$youngWomen = [];
+foreach (['bella', 'sky', 'nova', 'aoede', 'kore', 'jessica', 'nicole', 'alloy'] as $k) {
+    $youngWomen[$k] = $engine->resolve(['key' => $k, 'gender' => 'female', 'age' => 'young', 'accent' => 'American'])['name'];
+}
+check(! array_diff($youngWomen, ['Sarah', 'Jessica', 'Laura', 'Matilda']), 'young American women are spoken by the account\'s American women, young or a little older ('.implode(', ', array_unique($youngWomen)).')');
+check(count(array_unique($youngWomen)) >= 3, 'and catalog voices that sound alike are spread over them, not all given one');
+same($engine->resolve(['key' => 'bella', 'gender' => 'female', 'age' => 'young', 'accent' => 'American']), $el()->resolve(['key' => 'bella', 'gender' => 'female', 'age' => 'young', 'accent' => 'American']), 'the same catalog voice always gets the same ElevenLabs voice');
+same($engine->resolve(['key' => 'wise-man', 'gender' => 'male', 'age' => 'elder', 'accent' => 'American'])['name'], 'Bill', 'an old man gets the old man');
+same($engine->resolve(['key' => 'ash', 'gender' => 'neutral', 'age' => 'adult', 'accent' => 'American'])['name'], 'River', 'a neutral voice gets the non-binary voice');
+check(! in_array('Mrs Davies', $youngWomen, true), 'a cloned voice (a real person\'s) is never picked for a character');
+same($el(['bella' => 'Mrs Davies'])->resolve(['key' => 'bella', 'gender' => 'female']), ['id' => 'myOwnCloneOfMrsDavies', 'name' => 'Mrs Davies', 'pinned' => true], 'but can be pinned to one, by name');
+same($el(['giant' => 'JBFqnCBsd6RMkjVDRZzb'])->resolve(['key' => 'giant'])['name'], 'George', 'or by id');
+same($el()->resolve(['key' => 'x', 'voice' => 'pNInz6obpgDQGcFmaJgBxx'])['id'], 'pNInz6obpgDQGcFmaJgBxx', 'an id the account does not list (a library voice) is used as it is');
+throws(fn () => $el(['heart' => 'Nobody Here'])->resolve(['key' => 'heart']), SpeechError::class, 'no voice called "Nobody Here"', 'a pin to a voice that does not exist says so');
+throws(fn () => (new ElevenLabsEngine(new Recorded([new HttpResponse(200, json_encode(['voices' => [['voice_id' => 'c1', 'name' => 'Me', 'category' => 'cloned']]]))]), 'k'))->resolve(['key' => 'heart']), SpeechError::class, 'only cloned voices', 'an account with only cloned voices says how to use them');
+same(ElevenLabsEngine::pins(' storyteller = JBFqnCBsd6RMkjVDRZzb, heart=Sarah ;bad, =x'), ['storyteller' => 'JBFqnCBsd6RMkjVDRZzb', 'heart' => 'Sarah'], 'pins are read from QL_TTS_ELEVENLABS_VOICES');
+throws(fn () => (new ElevenLabsEngine(new Recorded([]), ''))->synthesize('Hi', ['key' => 'heart']), SpeechError::class, 'QL_TTS_ELEVENLABS_KEY', 'without a key it says which setting to fill in');
+throws(fn () => (new ElevenLabsEngine(new Recorded([new HttpResponse(401, json_encode(['detail' => ['status' => 'invalid_api_key', 'message' => 'Invalid API key']]))]), 'bad'))->synthesize('Hi', ['key' => 'heart']), SpeechError::class, 'Invalid API key. Check QL_TTS_ELEVENLABS_KEY', 'a refused key says so');
+throws(fn () => (new ElevenLabsEngine(new Recorded([$account, new HttpResponse(401, json_encode(['detail' => ['status' => 'quota_exceeded', 'message' => 'This request exceeds your quota']]))]), 'k'))->synthesize('Hi', ['key' => 'heart', 'gender' => 'female']), SpeechError::class, 'out of characters', 'running out of characters says so');
+throws(fn () => (new ElevenLabsEngine(new Recorded([new RuntimeException('Could not resolve host')]), 'k'))->voices(), SpeechError::class, 'cannot be reached', 'a service that cannot be reached says so');
+same((new ElevenLabsEngine(new Recorded([$account]), 'k'))->voices()[0], 'EXAVITQu4vr4xnSDxMaL', 'ElevenLabs lists the account\'s voices by id');
+$factory = new SpeechFactory(['driver' => 'elevenlabs', 'voices' => $catalogPath, 'engines' => ['elevenlabs' => ['class' => ElevenLabsEngine::class, 'api_key' => 'k', 'voices' => 'heart=Sarah', 'model' => '']]], new Recorded([$account]));
+same([$factory->engine()?->name(), $factory->engine()->resolve(['key' => 'heart'])['name']], ['elevenlabs', 'Sarah'], 'the factory builds ElevenLabs from its settings, pins included');
+$config = (string) file_get_contents(__DIR__.'/../config/qbl_speech.php');
+check(str_contains($config, "'driver' => \$env('QL_TTS_DRIVER', 'kokoro')") && str_contains($config, "'class' => ElevenLabsEngine::class"), 'Kokoro stays the default; ElevenLabs is there to switch on');
+
 // ------------------------------------------------------------------ the catalog
 $all = $catalog->all();
 check(count($all) >= 40, 'the catalog has a good many voices ('.count($all).')');
@@ -256,6 +323,11 @@ foreach ($all as $key => $v) {
     check(in_array($v['flair'], [0, 1, 2], true), "$key says how much of a character it is");
     check(in_array($v['gender'], ['female', 'male', 'neutral'], true) && in_array($v['age'], ['child', 'young', 'adult', 'elder'], true) && $v['description'] !== '' && $v['traits'], "$key says who it is and how it sounds");
     check(isset($v['engines']['openai']['voice']), "$key also says what it is on an OpenAI-style service");
+    $el = $v['engines']['elevenlabs'] ?? [];
+    check(($el['key'] ?? null) === $key && ($el['gender'] ?? null) === $v['gender'] && ($el['age'] ?? null) === $v['age'] && ($el['lang'] ?? null) === $v['lang'], "$key says who it is on ElevenLabs, to find the account's voice for it");
+    $elFeeling = (float) ($el['style'] ?? 0);
+    check(($v['flair'] ?? 0) >= 2 ? $elFeeling >= 0.5 && ($el['stability'] ?? 1) <= 0.3 : $elFeeling <= 0.25, "$key has as much feeling on ElevenLabs as its flair");
+    check(($el['speed'] ?? 1.0) >= 0.7 && ($el['speed'] ?? 1.0) <= 1.2, "$key speaks at a speed ElevenLabs takes");
 }
 same(array_keys(array_filter($all, fn ($v) => $v['age'] === 'child')) !== [], true, 'there are voices for children');
 $theatrical = $catalog->matching(['lang' => 'en', 'flair' => 2]);
@@ -639,6 +711,23 @@ if ($url = getenv('CHATTERBOX_URL')) {
         file_put_contents(sys_get_temp_dir()."/chatterbox-$key.mp3", $real['speech']->audio);
     }
     check(in_array('giant', $live->voices(), true), 'the clip made for a voice is kept by the container');
+}
+
+// ------------------------------------------------------------------ the real ElevenLabs, with a key (charged: one short line)
+if ($key = getenv('ELEVENLABS_API_KEY')) {
+    $live = new ElevenLabsEngine(new App\Qbl\Generation\Http\CurlHttpClient(0), $key, getenv('ELEVENLABS_MODEL') ?: 'eleven_multilingual_v2');
+    check(count($live->voices()) > 0, 'the account has voices');
+    $spec = $catalog->get('heart')['engines']['elevenlabs'];
+    $chosen = $live->resolve($spec, 'en-US');
+    $said = $live->synthesize('Hello, explorer! Ready?', $spec, 'en-US');
+    check(strlen($said->audio) > 2000 && (str_starts_with($said->audio, 'ID3') || ord($said->audio[0]) === 0xFF), 'ElevenLabs gives an MP3');
+    same(array_map(fn ($w) => strtolower(trim($w['w'], ',!?')), $said->words), ['hello', 'explorer', 'ready'], 'with every word timed');
+    $times = array_column($said->words, 's');
+    $sorted = $times;
+    sort($sorted);
+    check($times === $sorted && $said->duration >= end($said->words)['e'], 'in order, within the recording');
+    echo "Live ElevenLabs: heart is {$chosen['name']} ({$chosen['id']}), ".count($said->words).' words in '.round($said->duration / 1000, 1).' s'.PHP_EOL;
+    file_put_contents(sys_get_temp_dir().'/elevenlabs-heart.mp3', $said->audio);
 }
 
 exec('rm -rf '.escapeshellarg($cache).' '.escapeshellarg($mediaDir).' '.escapeshellarg($work));

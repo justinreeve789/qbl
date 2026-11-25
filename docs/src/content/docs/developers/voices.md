@@ -54,6 +54,39 @@ To give a voice a clip of your own, upload it and set that voice's `engines.chat
 
 The container also answers OpenAI's `POST /v1/audio/speech`, so other tools can use it; its own routes are listed at the top of `docker/chatterbox/server.py`.
 
+## Or: ElevenLabs, a paid service
+
+[ElevenLabs](https://elevenlabs.io) has the most natural voices of the services here, in 29 languages, with the time of every character (put together into words, so words are lit as they are said, as with Kokoro). It is a paid service charged by the character and runs on ElevenLabs' servers, not yours, so it is off unless you switch it on; Kokoro stays the default.
+
+To use it, in `.env`:
+
+```sh
+QL_TTS_DRIVER=elevenlabs
+QL_TTS_ELEVENLABS_KEY=sk_...       # elevenlabs.io → My Account → API Keys; needs Text to Speech and Voices (read)
+```
+
+then `docker compose up -d app`. Nothing else starts: the `tts` container can be stopped (`docker compose stop tts`) unless you switch back. What to expect:
+
+- **Cost.** Lines are recorded once and kept, as with every service, and recording a scenario again only records the lines that changed. So a scenario costs its characters' lines once. `QL_TTS_ELEVENLABS_MODEL=eleven_flash_v2_5` is faster and half the price per character of the default `eleven_multilingual_v2`, a little less natural.
+- **Which voice speaks a character** is worked out from the voices on *your* account (`GET /v1/voices`), not written into the catalog. ElevenLabs retires its default voices from time to time (the current ones on 31 December 2026), and every account has different ones, so each catalog voice's `engines.elevenlabs` entry says who it is (`gender`, `age`, `accent`, `lang`, `traits`) and the account's best-fitting voice speaks it: the same gender, then a close age, the same accent, a voice verified in the language for non-English voices, and words of its description. Among voices that fit (nearly) as well, the catalog key chooses, so the catalog's many voices are spread over the account's and the same catalog voice always gets the same one. Add voices from the ElevenLabs Voice Library to My Voices to give the catalog more to choose from.
+- **Cloned voices** (a real person's: often a teacher's own) are never given to characters unless pinned. `QL_TTS_ELEVENLABS_SKIP` lists the categories left out (`cloned` by default).
+- **Feeling** goes with flair, as on Chatterbox: everyday voices stability 0.5 and no style, voices with character 0.4 and 0.25, theatrical ones 0.3 and 0.5. Speed follows the voice's Kokoro speed (0.8 to 1.15), a little faster for children.
+- Japanese and Chinese lines are recorded without word timings (they have no spaces between words), as on Kokoro.
+
+See who speaks each voice, and choose some yourself:
+
+```sh
+docker compose exec app php artisan qbl:voice --list --driver=elevenlabs
+docker compose exec app php artisan qbl:voice --sample=giant --driver=elevenlabs
+```
+
+```sh
+# catalog key = ElevenLabs voice id or name (from My Voices)
+QL_TTS_ELEVENLABS_VOICES=storyteller=JBFqnCBsd6RMkjVDRZzb,heart=Sarah
+```
+
+A voice can also be pinned in `voices.json` with `"voice": "<id or name>"` in its `engines.elevenlabs` entry. Recordings already made keep their voice when the account's voices or the pins change: record again with `qbl:voice {code} --force`.
+
 ## Giving characters voices and recording their lines
 
 **In the editor:** open a character on the Characters page. Under **🔊 Voice**, choose a voice (grouped as women, men, children, and robots and creatures), press **▶ Listen** to hear it, and **🎙️ Record its lines**. The header has **🎙️ Record voices** (beside **▶ Test** and **🚀 Publish**, on every page) for every character at once. The Characters page has **🎭 Give everyone a voice** to give a different voice to each character that has none, and shows how many lines are recorded. Publish afterwards so players get the recordings.
@@ -200,7 +233,7 @@ These were called `QBL_TTS_…` before (`QBL_TTS_DRIVER` and so on). An `.env` w
 
 Variable | Default | What
 -------- | ------- | ----
-`QL_TTS_DRIVER` | `kokoro` | `kokoro`, `chatterbox`, `openai`, or `none`.
+`QL_TTS_DRIVER` | `kokoro` | `kokoro`, `chatterbox`, `elevenlabs`, `openai`, or `none`.
 `QL_TTS_URL` | `http://tts:8880` | Kokoro-FastAPI.
 `QL_TTS_API_KEY` | | Only for a Kokoro-FastAPI started with `API_KEYS`.
 `QL_TTS_IMAGE` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.10.0` | The `tts` container's image.
@@ -212,6 +245,11 @@ Variable | Default | What
 `QL_CHATTERBOX_TORCH` | `https://download.pytorch.org/whl/cpu` | The PyTorch build the image is made with (`…/whl/cu124` for an NVIDIA GPU).
 `QL_CHATTERBOX_WORD_TIMES` | `true` | `false`: no word timings, about 1 GB less memory.
 `QL_CHATTERBOX_THREADS` | 0 | CPU threads; 0 lets PyTorch decide.
+`QL_TTS_ELEVENLABS_KEY` | `ELEVENLABS_API_KEY` | With `QL_TTS_DRIVER=elevenlabs`: the API key.
+`QL_TTS_ELEVENLABS_MODEL` | `eleven_multilingual_v2` | Or `eleven_flash_v2_5` (faster, half the price), `eleven_turbo_v2_5`.
+`QL_TTS_ELEVENLABS_VOICES` | | Pins: `catalog key=voice id or name`, comma-separated.
+`QL_TTS_ELEVENLABS_SKIP` | `cloned` | Voice categories never given to characters unless pinned.
+`QL_TTS_ELEVENLABS_URL`, `QL_TTS_ELEVENLABS_TIMEOUT`, `QL_TTS_ELEVENLABS_FORMAT` | `https://api.elevenlabs.io`, 120, `mp3_44100_128` | The API, seconds to wait for one line, the audio format.
 `QL_TTS_OPENAI_URL`, `QL_TTS_OPENAI_KEY`, `QL_TTS_OPENAI_MODEL` | `https://api.openai.com`, `OPENAI_API_KEY`, `gpt-4o-mini-tts` | With `QL_TTS_DRIVER=openai`.
 `QL_TTS_TIMEOUT` | 120 | Seconds to wait for one line.
 `QL_TTS_CACHE_DIR` | `/data/speech` (Docker), `storage/app/speech` | Recordings already made.
@@ -232,4 +270,4 @@ A single slow line (a long one, or Chatterbox at 8–10× real time) can still t
 
 ## Testing
 
-`npm run test:speech` tests the engines (with recorded responses), the catalog, choosing voices, recording a scenario and keeping it up to date, the editor's routes and the compiled document, with no network. With a Kokoro running, `KOKORO_URL=http://localhost:8880 npm run test:speech` also records lines with it and checks that every voice in the catalog exists there. With the `chatterbox` container too, `CHATTERBOX_URL=http://localhost:8004 KOKORO_URL=http://localhost:8880 npm run test:speech` records an English, a theatrical and a Spanish line on it, making their clips with Kokoro if it has none (`CHATTERBOX_REMAKE_CLIPS=1` makes them again). `apps/editor/test/voices.test.ts` drives the editor against a stand-in Kokoro, and `apps/client/test/narrator.test.ts` checks that the highlight follows a recording's clock.
+`npm run test:speech` tests the engines (with recorded responses), the catalog, choosing voices, recording a scenario and keeping it up to date, the editor's routes and the compiled document, with no network. With a Kokoro running, `KOKORO_URL=http://localhost:8880 npm run test:speech` also records lines with it and checks that every voice in the catalog exists there. With the `chatterbox` container too, `CHATTERBOX_URL=http://localhost:8004 KOKORO_URL=http://localhost:8880 npm run test:speech` records an English, a theatrical and a Spanish line on it, making their clips with Kokoro if it has none (`CHATTERBOX_REMAKE_CLIPS=1` makes them again). `ELEVENLABS_API_KEY=sk_... npm run test:speech` records one short line on the real ElevenLabs (about 20 characters). `apps/editor/test/voices.test.ts` drives the editor against a stand-in Kokoro, and `apps/client/test/narrator.test.ts` checks that the highlight follows a recording's clock.

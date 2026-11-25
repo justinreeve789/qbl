@@ -36,7 +36,7 @@ final class BestOfDesignStep extends DesignStep
                 return $candidate;
             }
             // Scores only: its suggested changes are not wanted here (the critic method applies them).
-            $review = $run->method->critic()->review($candidate, $run->prompt, $run->alignment, $run->options, withChanges: false);
+            $review = $run->method->critic()->review($candidate, $run->prompt, $run->alignment, $run->designOptions(), withChanges: false);
             file_put_contents("$run->dir/candidates/$i.review.json", json_encode($review, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
             $summary[] = ['candidate' => $i, 'title' => $candidate['title'] ?? null, 'score' => $review['score'], 'scores' => $review['scores']];
             $run->say(sprintf('  "%s": %.1f/10', $candidate['title'] ?? '?', $review['score']));

@@ -7,6 +7,23 @@ import { session } from '../session';
 /** What a run is doing, for the teacher (kept for older callers; STAGE_NAMES has the rest). */
 export const STEPS: Record<string, string> = Object.fromEntries(Object.entries(STAGE_NAMES).map(([k, v]) => [k, v.long]));
 
+/**
+ * The design rules' tensions, as the teacher can lean them (mirrors DesignRules::SETTINGS on the server).
+ * Each starts at "Choose for me" (sent as nothing): the generator picks what suits the request.
+ * `stories`: whether it applies to a story students watch.
+ */
+const APPROACH: { key: 'opening' | 'focus' | 'freedom'; label: string; help: string; stories: boolean; choices: [string, string][] }[] = [
+  { key: 'opening', label: 'How it starts', stories: false,
+    help: 'Fast start or story? Long openings lose players, but a good story pulls them in. Choose for me picks what suits your description. Missions only.',
+    choices: [['action', 'Straight into the action'], ['balanced', 'Action first, story through discoveries'], ['story', 'Story first (still playing within two minutes)']] },
+  { key: 'focus', label: 'Rigor or play', stories: true,
+    help: 'How much it leans on exact, practitioner-style work (real values, evidence, explaining why) versus lighter play. Choose for me picks what suits your description and the grade.',
+    choices: [['play', 'Lighter and playful'], ['balanced', 'Quick hook, rigorous middle'], ['rigor', 'Rigorous, like a practitioner']] },
+  { key: 'freedom', label: 'Student freedom', stories: false,
+    help: 'How much students choose their own path: guided keeps everyone on one path, open lets them explore in any order. Choose for me picks what suits your description. Missions only.',
+    choices: [['guided', 'Guided, one path'], ['balanced', 'Some choice of order'], ['open', 'Open to explore']] },
+];
+
 const EXAMPLES = [
   { label: 'Rainforest plant mystery', text: 'A mystery in a rainforest research station: students work out what plants need to grow (light, water, air). Grade 4.' },
   { label: 'The water cycle as a raindrop', text: 'A trip through the water cycle as a raindrop, from the ocean to a cloud and back down a mountain stream. Grade 5 science.' },
@@ -185,6 +202,25 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
     h('option', { value: '' }, 'Decide from what I write'),
     h('option', { value: 'mission' }, '🎮 A mission students play'),
     h('option', { value: 'story' }, '📖 A story students watch'));
+  const approach = Object.fromEntries(APPROACH.map((a) => [a.key, h('select', { name: a.key },
+    h('option', { value: '' }, 'Choose for me'),
+    ...a.choices.map(([value, label]) => h('option', { value }, label)))])) as Record<'opening' | 'focus' | 'freedom', HTMLSelectElement>;
+  const approachFields = APPROACH.map((a) => h('label', { class: 'field', 'data-approach': a.key },
+    h('span', { class: 'field-label' }, a.label, help(a.help)), approach[a.key]));
+  // A story is watched, not played: how it starts and how free students are do not apply to it.
+  const storyOnly = () => {
+    APPROACH.forEach((a, i) => {
+      const off = format.value === 'story' && !a.stories;
+      approach[a.key].disabled = off;
+      approachFields[i]!.classList.toggle('muted', off);
+    });
+  };
+  format.addEventListener('change', storyOnly);
+  const design = h('details', { class: 'fold gen-more', 'data-fold': 'generate-approach' },
+    h('summary', null, 'Design approach (optional)'),
+    h('div', { class: 'fold-body' },
+      h('p', { class: 'muted' }, 'Every mission follows design rules from research on educational games. Where that research pulls two ways, choose how this one leans, or leave it to the generator.'),
+      h('div', { class: 'gen-fields gen-approach' }, ...approachFields)));
   const submit = h('button', { type: 'submit', class: 'primary gen-go', 'data-action': 'generate' }, '✨ Generate');
   const note = h('span', { class: 'gen-note muted', 'data-note': '' });
   const more = h('details', { class: 'fold gen-more', 'data-fold': 'generate-options' },
@@ -193,7 +229,7 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
       h('div', { class: 'gen-fields' },
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Grade'), grade),
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Subject'), subject),
-        h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Fewest players', help('Missions are played together. With more than one player each can choose a crew role with a job of their own.')), min),
+        h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Fewest players', help('Missions are played together. With more than one player, clues and tasks are spread out so the team has to pool what each finds.')), min),
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Most players'), max),
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Minutes'), minutes)),
       h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Anything else'), notes)));
@@ -210,7 +246,13 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
     h('label', { class: 'field gen-format' }, h('span', { class: 'field-label' }, 'Make',
       help('A mission: students explore, solve puzzles and answer questions together. A story: it plays by itself like an animated picture book, scene after scene, with characters acting it out, a narrator, weather and sounds, and things to talk about at the end. “Tell the story of…” is read as a story.')), format),
     more,
+    design,
     h('div', { class: 'row-actions gen-actions' }, submit, note));
+
+  /** The settings the teacher chose (not "Choose for me"; a disabled one, for a story, is left out). */
+  const chosenApproach = (): Pick<GenerationOptions, 'opening' | 'focus' | 'freedom'> => Object.fromEntries(APPROACH
+    .filter((a) => approach[a.key].value && !approach[a.key].disabled)
+    .map((a) => [a.key, approach[a.key].value]));
 
   let busy = false;
   let short = false;
@@ -236,6 +278,7 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
         prompt: prompt.value.trim(), grade: text(grade), subject: text(subject),
         min_players: Number(min.value) || undefined, max_players: Number(max.value) || undefined, minutes: Number(minutes.value) || undefined, notes: text(notes),
         format: format.value === 'mission' || format.value === 'story' ? format.value : undefined,
+        ...chosenApproach(),
       });
       prompt.value = '';
     } catch (err) {
@@ -256,6 +299,9 @@ function buildForm(start: (body: { prompt: string } & GenerationOptions) => Prom
     notes.value = options.notes ?? '';
     format.value = options.format ?? '';
     if (options.grade || options.subject || options.minutes || options.notes) more.open = true;
+    for (const a of APPROACH) approach[a.key].value = options[a.key] ?? '';
+    if (APPROACH.some((a) => approach[a.key].value)) design.open = true;
+    storyOnly();
     counted();
     prompt.focus();
   };
@@ -336,7 +382,13 @@ function liveRun(first: Generation, skew: () => number, cancel: () => void) {
 /** A finished run: open what it made, or see why not and use the description again. */
 function pastRun(g: Generation, open: (id: number) => void, again: (g: Generation) => void): HTMLElement {
   const when = new Date(g.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  const opts = [g.options.grade ? `Grade ${g.options.grade}` : null, g.options.subject, g.options.minutes ? `${g.options.minutes} min` : null].filter(Boolean).join(' · ');
+  // How it leans: the teacher's choices, and once it is aligned, what "Choose for me" picked.
+  const leans = APPROACH.map((a) => {
+    const value = g.approach?.[a.key] ?? g.options[a.key];
+    const label = a.choices.find(([v]) => v === value)?.[1];
+    return label && !g.options[a.key] ? `${label} (chosen for you)` : label;
+  });
+  const opts = [g.options.grade ? `Grade ${g.options.grade}` : null, g.options.subject, g.options.minutes ? `${g.options.minutes} min` : null, ...leans].filter(Boolean).join(' · ');
   const status = STAGE_NAMES[g.status]?.short ?? g.status;
   return h('div', { class: `card gen-run ${g.status}`, 'data-generation': g.id, 'data-status': g.status },
     h('div', { class: 'card-title' }, h('strong', null, runName(g)), h('span', { class: `gen-status ${g.status}` }, g.status === 'done' ? '✅ Ready' : g.status === 'failed' ? '⚠️ Failed' : status)),

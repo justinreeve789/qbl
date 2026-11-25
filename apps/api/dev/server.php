@@ -404,6 +404,10 @@ function devPretendGenerations(PDO $pdo, ScenarioStore $store, App\Qbl\Billing\C
             $at += $seconds;
         }
         $iso = fn (int $u) => gmdate('Y-m-d\TH:i:s\Z', $u);
+        if (empty($run['alignment']) && microtime(true) - $start >= $plan['queued'] + $plan['aligning']) {
+            // Aligned: "Choose for me" leans it open for students to explore (DesignRules), as the aligner might.
+            $runs->update((int) $id, ['alignment' => ['learning_objectives' => [], 'approach' => ['freedom' => 'open']]]);
+        }
         if ($finished) {
             $title = 'Pretend mission: '.mb_strimwidth($run['prompt'], 0, 40, '…');
             $scenario = $store->createScenario(['title' => $title], $run['user_id'] !== null ? (int) $run['user_id'] : null);

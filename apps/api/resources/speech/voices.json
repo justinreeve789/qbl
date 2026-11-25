@@ -1,5 +1,5 @@
 {
-  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\", a speed, and for the theatrical voices a blend that takes a voice away (\"am_santa(1.5)-am_michael(0.5)\": more Santa than Santa), a lang (the language code to read in, when the voice is borrowed from another language) and a volume; for openai a voice and instructions; for chatterbox the clip it speaks in (a recording kept by the chatterbox container, made from this voice on kokoro the first time it is needed, from clip_lines), an exaggeration and a cfg_weight. flair says how much of a character a voice is: 0 or absent an everyday voice, 1 one with character, 2 a theatrical one (a giant, a pixie, a pantomime villain); voices with flair are chosen first (QL_TTS_FLAIR). A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md. narrators: the default narrator's voice for each language, for scenarios that do not choose one (Scenario.narrator_voice).",
+  "$comment": "The voices characters can be given (Character.tts_voice is a key here). Each says what it is on every text-to-speech service QBL can use, under engines.<service>: for kokoro a voice id or a blend such as \"af_bella(2)+af_sky(1)\", a speed, and for the theatrical voices a blend that takes a voice away (\"am_santa(1.5)-am_michael(0.5)\": more Santa than Santa), a lang (the language code to read in, when the voice is borrowed from another language) and a volume; for openai a voice and instructions; for elevenlabs who it is (key, gender, age, accent, lang, traits: the account's best-fitting ElevenLabs voice speaks it, unless a voice is pinned with QL_TTS_ELEVENLABS_VOICES or written here as voice) and a stability, style and speed; for chatterbox the clip it speaks in (a recording kept by the chatterbox container, made from this voice on kokoro the first time it is needed, from clip_lines), an exaggeration and a cfg_weight. flair says how much of a character a voice is: 0 or absent an everyday voice, 1 one with character, 2 a theatrical one (a giant, a pixie, a pantomime villain); voices with flair are chosen first (QL_TTS_FLAIR). A voice with nothing for the service in use borrows the nearest voice that has something (same language, gender, then age). See docs/src/content/docs/developers/voices.md. narrators: the default narrator's voice for each language, for scenarios that do not choose one (Scenario.narrator_voice).",
   "stand_ins": {
     "en": "explorer",
     "es": "explorador",
@@ -65,6 +65,22 @@
         },
         "chatterbox": {
           "clip": "heart"
+        },
+        "elevenlabs": {
+          "key": "heart",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "warm",
+            "friendly",
+            "clear",
+            "kind",
+            "encouraging"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -93,6 +109,22 @@
         },
         "chatterbox": {
           "clip": "bella"
+        },
+        "elevenlabs": {
+          "key": "bella",
+          "gender": "female",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "bright",
+            "energetic",
+            "excited",
+            "cheerful",
+            "enthusiastic"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -121,6 +153,22 @@
         },
         "chatterbox": {
           "clip": "mentor"
+        },
+        "elevenlabs": {
+          "key": "mentor",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "warm",
+            "upbeat",
+            "encouraging",
+            "patient",
+            "teacher"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -154,6 +202,23 @@
           "clip": "nicole",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "nicole",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "soft",
+            "calm",
+            "gentle",
+            "quiet",
+            "mysterious"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -182,6 +247,22 @@
         },
         "chatterbox": {
           "clip": "sky"
+        },
+        "elevenlabs": {
+          "key": "sky",
+          "gender": "female",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "light",
+            "curious",
+            "breezy",
+            "friendly"
+          ],
+          "stability": 0.5,
+          "style": 0.0,
+          "speed": 1.05
         }
       }
     },
@@ -214,6 +295,23 @@
           "clip": "pip",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "pip",
+          "gender": "female",
+          "age": "child",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "playful",
+            "cheerful",
+            "curious",
+            "excited",
+            "kid"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 1.15
         }
       }
     },
@@ -241,6 +339,22 @@
         },
         "chatterbox": {
           "clip": "sarah"
+        },
+        "elevenlabs": {
+          "key": "sarah",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "confident",
+            "practical",
+            "clear",
+            "smart",
+            "scientist"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -267,6 +381,21 @@
         },
         "chatterbox": {
           "clip": "nova"
+        },
+        "elevenlabs": {
+          "key": "nova",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "crisp",
+            "professional",
+            "precise",
+            "announcer"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -299,6 +428,23 @@
           "clip": "aoede",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "aoede",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "smooth",
+            "thoughtful",
+            "wise",
+            "calm",
+            "storyteller"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -327,6 +473,22 @@
         },
         "chatterbox": {
           "clip": "kore"
+        },
+        "elevenlabs": {
+          "key": "kore",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "steady",
+            "serious",
+            "determined",
+            "brave",
+            "commander"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -355,6 +517,22 @@
         },
         "chatterbox": {
           "clip": "jessica"
+        },
+        "elevenlabs": {
+          "key": "jessica",
+          "gender": "female",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "chatty",
+            "friendly",
+            "casual",
+            "funny"
+          ],
+          "stability": 0.5,
+          "style": 0.0,
+          "speed": 1.05
         }
       }
     },
@@ -381,6 +559,20 @@
         },
         "chatterbox": {
           "clip": "river"
+        },
+        "elevenlabs": {
+          "key": "river",
+          "gender": "female",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "relaxed",
+            "easygoing",
+            "kind"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -413,6 +605,23 @@
           "clip": "grandma",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "grandma",
+          "gender": "female",
+          "age": "elder",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "kindly",
+            "slow",
+            "gentle",
+            "wise",
+            "grandmotherly"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.88
         }
       }
     },
@@ -441,6 +650,22 @@
         },
         "chatterbox": {
           "clip": "emma"
+        },
+        "elevenlabs": {
+          "key": "emma",
+          "gender": "female",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "kind",
+            "proper",
+            "clear",
+            "polite",
+            "teacher"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -468,6 +693,21 @@
         },
         "chatterbox": {
           "clip": "isabella"
+        },
+        "elevenlabs": {
+          "key": "isabella",
+          "gender": "female",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "lively",
+            "warm",
+            "adventurous",
+            "explorer"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -495,6 +735,21 @@
         },
         "chatterbox": {
           "clip": "alice"
+        },
+        "elevenlabs": {
+          "key": "alice",
+          "gender": "female",
+          "age": "young",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "curious",
+            "bright",
+            "quick"
+          ],
+          "stability": 0.5,
+          "style": 0.0,
+          "speed": 1.05
         }
       }
     },
@@ -522,6 +777,21 @@
         },
         "chatterbox": {
           "clip": "lily"
+        },
+        "elevenlabs": {
+          "key": "lily",
+          "gender": "female",
+          "age": "young",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "gentle",
+            "shy",
+            "sweet",
+            "soft"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -554,6 +824,23 @@
           "clip": "professor-emma",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "professor-emma",
+          "gender": "female",
+          "age": "elder",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "wise",
+            "precise",
+            "learned",
+            "calm",
+            "professor"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.9
         }
       }
     },
@@ -581,6 +868,22 @@
         },
         "chatterbox": {
           "clip": "michael"
+        },
+        "elevenlabs": {
+          "key": "michael",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "warm",
+            "steady",
+            "reassuring",
+            "friendly",
+            "dad"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -614,6 +917,23 @@
           "clip": "captain",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "captain",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "commanding",
+            "deep",
+            "warm",
+            "confident",
+            "leader"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -646,6 +966,22 @@
           "clip": "fenrir",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "fenrir",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "deep",
+            "strong",
+            "bold",
+            "brave",
+            "hero"
+          ],
+          "stability": 0.4,
+          "style": 0.25
         }
       }
     },
@@ -678,6 +1014,23 @@
           "clip": "puck",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "puck",
+          "gender": "male",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "playful",
+            "mischievous",
+            "funny",
+            "cheeky",
+            "trickster"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 1.05
         }
       }
     },
@@ -710,6 +1063,23 @@
           "clip": "scout",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "scout",
+          "gender": "male",
+          "age": "child",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "excited",
+            "eager",
+            "playful",
+            "curious",
+            "kid"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 1.15
         }
       }
     },
@@ -738,6 +1108,22 @@
         },
         "chatterbox": {
           "clip": "liam"
+        },
+        "elevenlabs": {
+          "key": "liam",
+          "gender": "male",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "friendly",
+            "eager",
+            "helpful",
+            "upbeat"
+          ],
+          "stability": 0.5,
+          "style": 0.0,
+          "speed": 1.05
         }
       }
     },
@@ -764,6 +1150,21 @@
         },
         "chatterbox": {
           "clip": "echo"
+        },
+        "elevenlabs": {
+          "key": "echo",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "calm",
+            "even",
+            "patient",
+            "quiet"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -791,6 +1192,21 @@
         },
         "chatterbox": {
           "clip": "eric"
+        },
+        "elevenlabs": {
+          "key": "eric",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "confident",
+            "businesslike",
+            "brisk",
+            "inventor"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -823,6 +1239,23 @@
           "clip": "onyx",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "onyx",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "deep",
+            "grave",
+            "serious",
+            "mysterious",
+            "villain"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -855,6 +1288,23 @@
           "clip": "grandpa",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "grandpa",
+          "gender": "male",
+          "age": "elder",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "jolly",
+            "kindly",
+            "grandfatherly",
+            "wise",
+            "old"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -887,6 +1337,23 @@
           "clip": "george",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "george",
+          "gender": "male",
+          "age": "elder",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "wise",
+            "learned",
+            "warm",
+            "professor",
+            "old"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -916,6 +1383,21 @@
           "clip": "fable",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "fable",
+          "gender": "male",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "expressive",
+            "storyteller",
+            "lively",
+            "dramatic"
+          ],
+          "stability": 0.4,
+          "style": 0.25
         }
       }
     },
@@ -947,6 +1429,22 @@
           "clip": "lewis",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "lewis",
+          "gender": "male",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "deep",
+            "serious",
+            "stern",
+            "knight"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -974,6 +1472,21 @@
         },
         "chatterbox": {
           "clip": "daniel"
+        },
+        "elevenlabs": {
+          "key": "daniel",
+          "gender": "male",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "calm",
+            "polite",
+            "precise",
+            "butler"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -1008,6 +1521,23 @@
           "clip": "robot",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "robot",
+          "gender": "neutral",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "robot",
+            "robotic",
+            "even",
+            "precise",
+            "computer"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 0.95
         }
       }
     },
@@ -1034,6 +1564,21 @@
         },
         "chatterbox": {
           "clip": "alloy"
+        },
+        "elevenlabs": {
+          "key": "alloy",
+          "gender": "neutral",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "neutral",
+            "matter-of-fact",
+            "clear",
+            "narrator"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -1068,6 +1613,23 @@
           "clip": "sprite",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "sprite",
+          "gender": "neutral",
+          "age": "child",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "squeaky",
+            "quick",
+            "mischievous",
+            "magical",
+            "creature"
+          ],
+          "stability": 0.4,
+          "style": 0.25,
+          "speed": 1.15
         }
       }
     },
@@ -1107,6 +1669,23 @@
           "clip": "giant",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "giant",
+          "gender": "male",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "booming",
+            "deep",
+            "rumbling",
+            "slow",
+            "gruff"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.85
         }
       }
     },
@@ -1145,6 +1724,23 @@
           "clip": "dragon",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "dragon",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "growling",
+            "deep",
+            "menacing",
+            "fierce",
+            "grumpy"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.92
         }
       }
     },
@@ -1181,6 +1777,22 @@
           "clip": "gnome",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gnome",
+          "gender": "male",
+          "age": "elder",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "jolly",
+            "merry",
+            "chuckling",
+            "twinkly",
+            "gnome"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -1218,6 +1830,23 @@
           "clip": "jolly",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "jolly",
+          "gender": "male",
+          "age": "elder",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "jolly",
+            "hearty",
+            "booming",
+            "merry",
+            "laughing"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.97
         }
       }
     },
@@ -1255,6 +1884,23 @@
           "clip": "thespian",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "thespian",
+          "gender": "male",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "theatrical",
+            "dramatic",
+            "grand",
+            "flamboyant",
+            "expressive"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.97
         }
       }
     },
@@ -1292,6 +1938,23 @@
           "clip": "wizard",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "wizard",
+          "gender": "male",
+          "age": "elder",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "wizard",
+            "sorcerer",
+            "mystical",
+            "ancient",
+            "wise"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.9
         }
       }
     },
@@ -1329,6 +1992,23 @@
           "clip": "imp",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "imp",
+          "gender": "male",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "mischievous",
+            "sly",
+            "cheeky",
+            "quirky",
+            "trickster"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.12
         }
       }
     },
@@ -1365,6 +2045,22 @@
           "clip": "hero",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "hero",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "heroic",
+            "bold",
+            "booming",
+            "dashing",
+            "superhero"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -1402,6 +2098,23 @@
           "clip": "pirate",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "pirate",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "gruff",
+            "hearty",
+            "salty",
+            "swashbuckling",
+            "pirate"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.95
         }
       }
     },
@@ -1439,6 +2152,23 @@
           "clip": "boffin",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "boffin",
+          "gender": "male",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "zany",
+            "eccentric",
+            "excitable",
+            "quirky",
+            "frantic"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.15
         }
       }
     },
@@ -1477,6 +2207,23 @@
           "clip": "villain",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "villain",
+          "gender": "male",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "scheming",
+            "sinister",
+            "silky",
+            "haughty",
+            "dramatic"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.9
         }
       }
     },
@@ -1515,6 +2262,23 @@
           "clip": "sprout",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "sprout",
+          "gender": "male",
+          "age": "child",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "squeaky",
+            "eager",
+            "bouncy",
+            "excited",
+            "cartoon"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.15
         }
       }
     },
@@ -1553,6 +2317,23 @@
           "clip": "goblin",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "goblin",
+          "gender": "neutral",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "goblin",
+            "gremlin",
+            "cheeky",
+            "mischievous",
+            "quirky"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.15
         }
       }
     },
@@ -1591,6 +2372,23 @@
           "clip": "pixie",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "pixie",
+          "gender": "female",
+          "age": "child",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "tiny",
+            "squeaky",
+            "tinkling",
+            "sparkly",
+            "magical"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.15
         }
       }
     },
@@ -1629,6 +2427,23 @@
           "clip": "mouse",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "mouse",
+          "gender": "neutral",
+          "age": "child",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "mouse",
+            "tiny",
+            "timid",
+            "squeaky",
+            "small"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.15
         }
       }
     },
@@ -1667,6 +2482,23 @@
           "clip": "fox",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "fox",
+          "gender": "female",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "sly",
+            "clever",
+            "cunning",
+            "playful",
+            "purring"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.05
         }
       }
     },
@@ -1704,6 +2536,23 @@
           "clip": "ghost",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "ghost",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "whispery",
+            "eerie",
+            "spooky",
+            "haunting",
+            "mysterious"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.1
         }
       }
     },
@@ -1742,6 +2591,23 @@
           "clip": "witch",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "witch",
+          "gender": "female",
+          "age": "elder",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "witch",
+            "crafty",
+            "crone",
+            "spooky",
+            "sly"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.1
         }
       }
     },
@@ -1779,6 +2645,23 @@
           "clip": "queen",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "queen",
+          "gender": "female",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "regal",
+            "haughty",
+            "grand",
+            "imperious",
+            "posh"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.92
         }
       }
     },
@@ -1817,6 +2700,23 @@
           "clip": "godmother",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "godmother",
+          "gender": "female",
+          "age": "elder",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "twinkly",
+            "sing-song",
+            "kindly",
+            "magical",
+            "enchanting"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.92
         }
       }
     },
@@ -1854,6 +2754,23 @@
           "clip": "bubbles",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "bubbles",
+          "gender": "female",
+          "age": "young",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "bubbly",
+            "giddy",
+            "excitable",
+            "perky",
+            "bouncy"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.1
         }
       }
     },
@@ -1891,6 +2808,23 @@
           "clip": "fusspot",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "fusspot",
+          "gender": "female",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "prim",
+            "fussy",
+            "shrill",
+            "flustered",
+            "proper"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.05
         }
       }
     },
@@ -1928,6 +2862,22 @@
           "clip": "warrior",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "warrior",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "fierce",
+            "bold",
+            "heroic",
+            "commanding",
+            "dramatic"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -1964,6 +2914,22 @@
           "clip": "diva",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "diva",
+          "gender": "female",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "dramatic",
+            "flamboyant",
+            "showy",
+            "glamorous",
+            "operatic"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -2001,6 +2967,22 @@
           "clip": "alien",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "alien",
+          "gender": "neutral",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "alien",
+            "otherworldly",
+            "strange",
+            "cosmic",
+            "weird"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -2039,6 +3021,23 @@
           "clip": "gizmo",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gizmo",
+          "gender": "neutral",
+          "age": "child",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "chirpy",
+            "beeping",
+            "cute",
+            "tiny",
+            "robot"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.15
         }
       }
     },
@@ -2077,6 +3076,23 @@
           "clip": "colossus",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "colossus",
+          "gender": "neutral",
+          "age": "adult",
+          "accent": "American",
+          "lang": "en-US",
+          "traits": [
+            "monotone",
+            "deep",
+            "ominous",
+            "cold",
+            "mechanical"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.9
         }
       }
     },
@@ -2107,6 +3123,23 @@
         },
         "chatterbox": {
           "clip": "storyteller"
+        },
+        "elevenlabs": {
+          "key": "storyteller",
+          "gender": "male",
+          "age": "adult",
+          "accent": "British",
+          "lang": "en-GB",
+          "traits": [
+            "dramatic",
+            "charismatic",
+            "engaging",
+            "expressive",
+            "storyteller"
+          ],
+          "stability": 0.5,
+          "style": 0.0,
+          "speed": 0.94
         }
       }
     },
@@ -2132,6 +3165,20 @@
         },
         "chatterbox": {
           "clip": "dora"
+        },
+        "elevenlabs": {
+          "key": "dora",
+          "gender": "female",
+          "age": "adult",
+          "accent": "Spanish",
+          "lang": "es",
+          "traits": [
+            "warm",
+            "friendly",
+            "clear"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2156,6 +3203,19 @@
         },
         "chatterbox": {
           "clip": "alex-es"
+        },
+        "elevenlabs": {
+          "key": "alex-es",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Spanish",
+          "lang": "es",
+          "traits": [
+            "friendly",
+            "steady"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2184,6 +3244,20 @@
           "clip": "santa-es",
           "exaggeration": 0.6,
           "cfg_weight": 0.45
+        },
+        "elevenlabs": {
+          "key": "santa-es",
+          "gender": "male",
+          "age": "elder",
+          "accent": "Spanish",
+          "lang": "es",
+          "traits": [
+            "jolly",
+            "kindly",
+            "old"
+          ],
+          "stability": 0.4,
+          "style": 0.25
         }
       }
     },
@@ -2223,6 +3297,23 @@
           "clip": "gigante-es",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gigante-es",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Spanish",
+          "lang": "es",
+          "traits": [
+            "gigante",
+            "ogro",
+            "enorme",
+            "grave",
+            "booming"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.88
         }
       }
     },
@@ -2262,6 +3353,23 @@
           "clip": "hada-es",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "hada-es",
+          "gender": "female",
+          "age": "child",
+          "accent": "Spanish",
+          "lang": "es",
+          "traits": [
+            "hada",
+            "duende",
+            "pequeña",
+            "mágica",
+            "aguda"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.13
         }
       }
     },
@@ -2299,6 +3407,22 @@
           "clip": "gnomo-es",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gnomo-es",
+          "gender": "male",
+          "age": "elder",
+          "accent": "Spanish",
+          "lang": "es",
+          "traits": [
+            "gnomo",
+            "enano",
+            "alegre",
+            "risueño",
+            "jolly"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -2337,6 +3461,23 @@
           "clip": "travieso-es",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "travieso-es",
+          "gender": "male",
+          "age": "young",
+          "accent": "Spanish",
+          "lang": "es",
+          "traits": [
+            "travieso",
+            "pícaro",
+            "bromista",
+            "duende",
+            "mischievous"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.1
         }
       }
     },
@@ -2362,6 +3503,20 @@
         },
         "chatterbox": {
           "clip": "siwis"
+        },
+        "elevenlabs": {
+          "key": "siwis",
+          "gender": "female",
+          "age": "adult",
+          "accent": "French",
+          "lang": "fr",
+          "traits": [
+            "warm",
+            "clear",
+            "friendly"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2401,6 +3556,23 @@
           "clip": "fee-fr",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "fee-fr",
+          "gender": "female",
+          "age": "child",
+          "accent": "French",
+          "lang": "fr",
+          "traits": [
+            "fée",
+            "lutin",
+            "petite",
+            "magique",
+            "aiguë"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.1
         }
       }
     },
@@ -2425,6 +3597,19 @@
         },
         "chatterbox": {
           "clip": "sara-it"
+        },
+        "elevenlabs": {
+          "key": "sara-it",
+          "gender": "female",
+          "age": "adult",
+          "accent": "Italian",
+          "lang": "it",
+          "traits": [
+            "warm",
+            "friendly"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2449,6 +3634,19 @@
         },
         "chatterbox": {
           "clip": "nicola"
+        },
+        "elevenlabs": {
+          "key": "nicola",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Italian",
+          "lang": "it",
+          "traits": [
+            "friendly",
+            "steady"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2487,6 +3685,23 @@
           "clip": "gigante-it",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gigante-it",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Italian",
+          "lang": "it",
+          "traits": [
+            "gigante",
+            "orco",
+            "enorme",
+            "grave",
+            "booming"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.88
         }
       }
     },
@@ -2527,6 +3742,23 @@
           "clip": "fatina-it",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "fatina-it",
+          "gender": "female",
+          "age": "child",
+          "accent": "Italian",
+          "lang": "it",
+          "traits": [
+            "fata",
+            "fatina",
+            "folletto",
+            "piccola",
+            "magica"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.13
         }
       }
     },
@@ -2564,6 +3796,22 @@
           "clip": "gnomo-it",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gnomo-it",
+          "gender": "male",
+          "age": "elder",
+          "accent": "Italian",
+          "lang": "it",
+          "traits": [
+            "gnomo",
+            "nano",
+            "allegro",
+            "ridente",
+            "jolly"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -2602,6 +3850,23 @@
           "clip": "birbante-it",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "birbante-it",
+          "gender": "male",
+          "age": "young",
+          "accent": "Italian",
+          "lang": "it",
+          "traits": [
+            "birbante",
+            "furbo",
+            "dispettoso",
+            "folletto",
+            "mischievous"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.1
         }
       }
     },
@@ -2626,6 +3891,19 @@
         },
         "chatterbox": {
           "clip": "dora-pt"
+        },
+        "elevenlabs": {
+          "key": "dora-pt",
+          "gender": "female",
+          "age": "adult",
+          "accent": "Brazilian",
+          "lang": "pt-BR",
+          "traits": [
+            "warm",
+            "friendly"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2650,6 +3928,19 @@
         },
         "chatterbox": {
           "clip": "alex-pt"
+        },
+        "elevenlabs": {
+          "key": "alex-pt",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Brazilian",
+          "lang": "pt-BR",
+          "traits": [
+            "friendly",
+            "steady"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2689,6 +3980,23 @@
           "clip": "gigante-pt",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gigante-pt",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Brazilian",
+          "lang": "pt-BR",
+          "traits": [
+            "gigante",
+            "ogro",
+            "enorme",
+            "grave",
+            "booming"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 0.88
         }
       }
     },
@@ -2728,6 +4036,23 @@
           "clip": "fada-pt",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "fada-pt",
+          "gender": "female",
+          "age": "child",
+          "accent": "Brazilian",
+          "lang": "pt-BR",
+          "traits": [
+            "fada",
+            "duende",
+            "pequena",
+            "mágica",
+            "aguda"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.13
         }
       }
     },
@@ -2765,6 +4090,22 @@
           "clip": "gnomo-pt",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "gnomo-pt",
+          "gender": "male",
+          "age": "elder",
+          "accent": "Brazilian",
+          "lang": "pt-BR",
+          "traits": [
+            "gnomo",
+            "anão",
+            "alegre",
+            "risonho",
+            "jolly"
+          ],
+          "stability": 0.3,
+          "style": 0.5
         }
       }
     },
@@ -2803,6 +4144,23 @@
           "clip": "travesso-pt",
           "exaggeration": 0.8,
           "cfg_weight": 0.35
+        },
+        "elevenlabs": {
+          "key": "travesso-pt",
+          "gender": "male",
+          "age": "young",
+          "accent": "Brazilian",
+          "lang": "pt-BR",
+          "traits": [
+            "travesso",
+            "malandro",
+            "brincalhão",
+            "duende",
+            "mischievous"
+          ],
+          "stability": 0.3,
+          "style": 0.5,
+          "speed": 1.1
         }
       }
     },
@@ -2827,6 +4185,19 @@
         },
         "chatterbox": {
           "clip": "alpha-hi"
+        },
+        "elevenlabs": {
+          "key": "alpha-hi",
+          "gender": "female",
+          "age": "adult",
+          "accent": "Hindi",
+          "lang": "hi",
+          "traits": [
+            "warm",
+            "clear"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2851,6 +4222,19 @@
         },
         "chatterbox": {
           "clip": "beta-hi"
+        },
+        "elevenlabs": {
+          "key": "beta-hi",
+          "gender": "female",
+          "age": "young",
+          "accent": "Hindi",
+          "lang": "hi",
+          "traits": [
+            "bright",
+            "friendly"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2875,6 +4259,19 @@
         },
         "chatterbox": {
           "clip": "omega-hi"
+        },
+        "elevenlabs": {
+          "key": "omega-hi",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Hindi",
+          "lang": "hi",
+          "traits": [
+            "steady",
+            "calm"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2899,6 +4296,19 @@
         },
         "chatterbox": {
           "clip": "psi-hi"
+        },
+        "elevenlabs": {
+          "key": "psi-hi",
+          "gender": "male",
+          "age": "young",
+          "accent": "Hindi",
+          "lang": "hi",
+          "traits": [
+            "friendly",
+            "upbeat"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2923,6 +4333,19 @@
         },
         "chatterbox": {
           "clip": "alpha-ja"
+        },
+        "elevenlabs": {
+          "key": "alpha-ja",
+          "gender": "female",
+          "age": "adult",
+          "accent": "Japanese",
+          "lang": "ja",
+          "traits": [
+            "warm",
+            "clear"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2947,6 +4370,19 @@
         },
         "chatterbox": {
           "clip": "kumo"
+        },
+        "elevenlabs": {
+          "key": "kumo",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Japanese",
+          "lang": "ja",
+          "traits": [
+            "calm",
+            "steady"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2971,6 +4407,19 @@
         },
         "chatterbox": {
           "clip": "xiaoxiao"
+        },
+        "elevenlabs": {
+          "key": "xiaoxiao",
+          "gender": "female",
+          "age": "adult",
+          "accent": "Mandarin",
+          "lang": "zh",
+          "traits": [
+            "warm",
+            "clear"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     },
@@ -2995,6 +4444,19 @@
         },
         "chatterbox": {
           "clip": "yunxi"
+        },
+        "elevenlabs": {
+          "key": "yunxi",
+          "gender": "male",
+          "age": "adult",
+          "accent": "Mandarin",
+          "lang": "zh",
+          "traits": [
+            "friendly",
+            "steady"
+          ],
+          "stability": 0.5,
+          "style": 0.0
         }
       }
     }

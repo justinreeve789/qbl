@@ -12,6 +12,41 @@ An event consists of actions, and actions describe what happens when the user in
 The runtime adds actions such as `dialogue`, `walk`, `award` and `bench`. They are all listed, with where each is described, on [Actions overview](/docs/developers/extensions/actions/).
 :::
 
+## All action types
+Every value `type` can take. The first fourteen are described on this page; the rest were added by the runtime and are described on the pages linked.
+
+`type` | What it does | Described in
+------ | ------------ | ------------
+`audio` | Plays a sound or music | [Audio](#audio)
+`cancel` | Stops another action | [Cancel](#cancel)
+`image_fixed` | Shows a picture fixed to the screen | [Image Fixed](#image-fixed)
+`image_overlay` | Shows a picture in the scene | [Image Overlay](#image-overlay)
+`infobox` | Opens a box of text, questions and buttons | [Infobox](#infobox)
+`jump` | Goes to another scene | [Jump](#jump)
+`repeat` | Repeats actions | [Repeat](#repeat)
+`run_event` | Starts another event | [Run Event](#run-event)
+`spritemap` | Plays a sprite sheet | [Spritemap](#spritemap)
+`text_overlay` | Shows text | [Text Overlay](#text-overlay)
+`translate` | Moves, resizes or fades another action's picture or video | [Translate](#translate)
+`variable` | Sets or changes a variable | [Variable](#variable)
+`video` | Plays a video | [Video](#video)
+`wait` | Pauses | [Wait](#wait)
+`dialogue` | Says a line | [Dialogue](/docs/developers/extensions/dialogue/#dialogue)
+`narration` | The narrator speaks | [The narrator](/docs/developers/extensions/dialogue/#the-narrator)
+`conversation` | A dialogue tree | [Conversations](/docs/developers/extensions/dialogue/#conversations-dialogue-trees)
+`glossary` | Gives the player a glossary word | [Glossary](/docs/developers/extensions/dialogue/#glossary)
+`animate` | Plays an animation | [Animate](/docs/developers/extensions/actions-world/#animate)
+`walk` | Walks a character or the player | [Walk](/docs/developers/extensions/actions-world/#walk)
+`freeze` | Stops or frees the player's walking | [Freeze](/docs/developers/extensions/actions-world/#freeze)
+`avatar` | Shows or hides the player's avatar | [Avatar](/docs/developers/extensions/actions-world/#avatar)
+`weather` | Changes the weather | [Weather action](/docs/developers/extensions/actions-world/#weather-action)
+`camera` | Points the player's view | [Camera](/docs/developers/extensions/actions-world/#camera)
+`cancel_event` | Stops a running event | [Cancel event](/docs/developers/extensions/actions-world/#cancel-event)
+`travel` | Takes the player to the launched mission | [Travel](/docs/developers/extensions/actions-world/#travel)
+`award` | Gives stars, XP and badges | [Award](/docs/developers/extensions/rewards/#award)
+`shop` | Opens the marketplace | [Shop](/docs/developers/extensions/rewards/#shop)
+`bench` | Works the close-up bench | [The bench action](/docs/developers/extensions/bench/#the-bench-action)
+
 ## Primary Attributes
 Parameter | Type | Default | Description
 --------- |-----|---------| -----------

@@ -558,6 +558,11 @@ final class BlueprintValidator
         if (! array_filter($steps, fn ($s) => empty($s['optional']))) {
             $e[] = 'At least one step must be required (not optional).';
         }
+        // The design rules that can be counted (DesignRules). Only for blueprints designed under them
+        // (they carry `approach`), so a blueprint saved by an older run still resumes as it was.
+        if (isset($b['approach'])) {
+            array_push($e, ...self::ruleProblems($b, $interactions, $steps, $scenes));
+        }
         foreach (['intro', 'completion'] as $part) {
             foreach ($b[$part]['dialogue'] ?? [] as $i => $line) {
                 if (($line['speaker'] ?? '') !== 'player' && ! isset($characters[$line['speaker'] ?? ''])) {
@@ -587,6 +592,36 @@ final class BlueprintValidator
      * students get there), so whatever sets it right must be reachable without it. A use needs its thing
      * in the bag first, and a combination both of its things.
      */
+    /**
+     * The design rules that a program can check (the rest are in the designer's instructions and the
+     * critic's checklist): something to do in the start scene from the first moment, an opening no
+     * longer than the mission's setting allows, and an optional bonus step.
+     *
+     * @return string[]
+     */
+    private static function ruleProblems(array $b, array $interactions, array $steps, array $scenes): array
+    {
+        $e = [];
+        $approach = DesignRules::approach((array) $b['approach']);
+        $start = $b['start_scene'] ?? '';
+        if (isset($scenes[$start])) {
+            $now = array_filter($interactions, fn ($it) => ($it['scene'] ?? null) === $start && empty($it['at_report']) && empty($it['hidden']) && empty($it['requires']));
+            if (! $now) {
+                $e[] = "Real action fast: the start scene \"$start\" needs something students can click from the first moment (an interaction there that is not hidden, needs nothing first and is not a debrief question).";
+            }
+            $limit = DesignRules::openingLines($approach);
+            $said = count($b['intro']['dialogue'] ?? []) + count($scenes[$start]['arrival']['dialogue'] ?? []);
+            if ($limit !== null && $said > $limit) {
+                $e[] = "The opening is too long for this mission (see Opening in the brief): the intro and the start scene's arrival say $said lines; at most $limit. Cut lines, and let the story come out through what students find.";
+            }
+        }
+        if ($steps && ! array_filter($steps, fn ($s) => ! empty($s['optional']))) {
+            $e[] = 'Hard but learnable: add one optional bonus step (optional: true) that is genuinely harder than the rest: a tougher challenge, a hidden discovery or a deeper question.';
+        }
+
+        return $e;
+    }
+
     private static function playThrough(array $b, array $scenes, array $interactions, array $steps, array $twists, array $resolvers, array $combinations = []): array
     {
         // What is in the bag (or has been at some point): what a use and a combination need.

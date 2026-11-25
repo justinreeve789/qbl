@@ -25,11 +25,14 @@ final class FakeModel implements LanguageModel
 
     public array $standing = [];
 
+    /** How the aligner says the mission should lean (the design approach), if at all. */
+    public ?array $approach = null;
+
     public function __construct(private array $blueprint) {}
 
     public function structured(string $system, array $content, string $name, array $schema, int $maxTokens = 16000): array
     {
-        $this->calls[] = ['name' => $name, 'content' => $content, 'schema' => $schema];
+        $this->calls[] = ['name' => $name, 'system' => $system, 'content' => $content, 'schema' => $schema];
         switch ($name) {
             case 'curriculum_alignment':
                 // Only standards offered as an enum may come back; choose the first offered.
@@ -43,7 +46,7 @@ final class FakeModel implements LanguageModel
                     ],
                     'vocabulary' => [['term' => 'pollen', 'definition' => 'a yellow powder flowers make']],
                     'misconceptions' => ['Flowers turn into fruit by themselves.'],
-                ];
+                ] + ($this->approach === null ? [] : ['approach' => $this->approach]);
             case 'mission_blueprint':
                 $this->blueprints++;
                 $b = $this->blueprint;

@@ -172,8 +172,9 @@ services:
       CLEVER_CLIENT_ID: ${CLEVER_CLIENT_ID:-}
       CLEVER_CLIENT_SECRET: ${CLEVER_CLIENT_SECRET:-}
       # Characters' recorded voices (config/qbl_speech.php): kokoro (the tts container below),
-      # chatterbox (the chatterbox container below), openai (any OpenAI-style /v1/audio/speech
-      # service; no word timings), or none (the browser reads).
+      # chatterbox (the chatterbox container below), elevenlabs (the paid ElevenLabs service: set
+      # QL_TTS_ELEVENLABS_KEY), openai (any OpenAI-style /v1/audio/speech service; no word timings),
+      # or none (the browser reads).
       QL_TTS_DRIVER: ${QL_TTS_DRIVER:-${QBL_TTS_DRIVER:-kokoro}}
       QL_TTS_URL: ${QL_TTS_URL:-${QBL_TTS_URL:-http://tts:8880}}
       QL_TTS_API_KEY: ${QL_TTS_API_KEY:-${QBL_TTS_API_KEY:-}}
@@ -183,6 +184,13 @@ services:
       QL_TTS_CHATTERBOX_URL: ${QL_TTS_CHATTERBOX_URL:-}
       QL_TTS_CHATTERBOX_TIMEOUT: ${QL_TTS_CHATTERBOX_TIMEOUT:-}
       QL_TTS_CHATTERBOX_CLIPS_FROM: ${QL_TTS_CHATTERBOX_CLIPS_FROM:-}
+      QL_TTS_ELEVENLABS_KEY: ${QL_TTS_ELEVENLABS_KEY:-${ELEVENLABS_API_KEY:-}}
+      QL_TTS_ELEVENLABS_MODEL: ${QL_TTS_ELEVENLABS_MODEL:-}
+      QL_TTS_ELEVENLABS_URL: ${QL_TTS_ELEVENLABS_URL:-}
+      QL_TTS_ELEVENLABS_TIMEOUT: ${QL_TTS_ELEVENLABS_TIMEOUT:-}
+      QL_TTS_ELEVENLABS_VOICES: ${QL_TTS_ELEVENLABS_VOICES:-}
+      QL_TTS_ELEVENLABS_SKIP: ${QL_TTS_ELEVENLABS_SKIP:-}
+      QL_TTS_ELEVENLABS_FORMAT: ${QL_TTS_ELEVENLABS_FORMAT:-}
       QL_TTS_OPENAI_URL: ${QL_TTS_OPENAI_URL:-${QBL_TTS_OPENAI_URL:-}}
       QL_TTS_OPENAI_KEY: ${QL_TTS_OPENAI_KEY:-${QBL_TTS_OPENAI_KEY:-}}
       QL_TTS_OPENAI_MODEL: ${QL_TTS_OPENAI_MODEL:-${QBL_TTS_OPENAI_MODEL:-}}

@@ -46,6 +46,7 @@ class BlueprintCritic
         happily use; 9 is outstanding. Score each criterion from 0 to 10:
         $criteria
         TXT;
+        $system .= "\n\n".DesignRules::criticChecklist();
         if ($withChanges) {
             $system .= "\n\n".<<<'TXT'
             Then give the changes that would raise the scores most: at most 12, fewest that matter most
@@ -59,6 +60,7 @@ class BlueprintCritic
         $content = [
             "The teacher asked for: $prompt",
             'Grade: '.($options['grade'] ?? 'not given').'. Subject: '.($options['subject'] ?? 'not given').'.',
+            "The mission's settings:\n- ".implode("\n- ", DesignRules::briefLines($blueprint['approach'] ?? $options)),
             "Learning objectives:\n".implode("\n", array_map(fn ($o) => "- {$o['id']}: {$o['text']}", $alignment['learning_objectives'] ?? [])),
             "Misconceptions to confront:\n- ".implode("\n- ", $alignment['misconceptions'] ?? ['(none given)']),
             "The blueprint:\n".json_encode($blueprint, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
