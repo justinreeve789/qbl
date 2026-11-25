@@ -122,6 +122,12 @@ test('validation: an animation needs a picture there is, and frames it has', () 
   assert.deepEqual(errors(doc({ 'Big Wave': { media_id: 1 }, stand_right: { media_id: 1 } })), ['characters[0].animations.Big Wave']);
   assert.ok(warnings(doc({ stand_right: { media_id: 3, frames: [1] } })).includes('characters[0].animations.stand_right.frames'), 'a still picture has no frames');
   assert.ok(warnings(doc({ portrait: { media_id: 3 } })).includes('characters[0].animations'), 'no standing picture');
+  // One playing the picture's animation by name: fine while the picture has it, a warning once it is gone.
+  const named = (sheetAnimations: Array<{ name: string; frames: number[] }>) => warnings(doc({ stand_right: { media_id: 1, frames: [0, 1], sheet_animation: 'stand' } }, {
+    assets: [{ id: 1, type: 'image', url: 'a.png', sheet: { columns: 2, rows: 2 }, animations: sheetAnimations }],
+  })).filter((p) => p.endsWith('.sheet_animation'));
+  assert.deepEqual(named([{ name: 'stand', frames: [0, 1] }]), []);
+  assert.deepEqual(named([{ name: 'walk', frames: [2, 3] }]), ['characters[0].animations.stand_right.sheet_animation']);
   assert.deepEqual(errors(doc({ stand_right: { media_id: 3 } }, { avatars: [{ id: 1, name: 'A', animations: { stand_right: { media_id: 9 } } }, { id: 1, name: 'B' }] })), ['avatars[0].animations.stand_right.media_id', 'avatars[1].id']);
 
   // Playing an animation on a character: its own names, or a built-in move.

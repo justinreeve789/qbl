@@ -402,10 +402,11 @@ details.action.drop-after { box-shadow: 0 4px 0 0 var(--warn); }
 .sheet-place { position: absolute; right: 2px; bottom: 2px; padding: 0 5px; border-radius: 999px; background: #ffd24a; color: #1b1d21; font-size: 11px; font-weight: 700; }
 .sheet-preview { width: 92px; flex: none; aspect-ratio: 2 / 3; background-color: var(--field); background-repeat: no-repeat; border: 2px solid #ffd24a; border-radius: var(--radius); }
 .sheet-animations { display: grid; gap: 4px; margin-bottom: 8px; }
-.sheet-animation { display: grid; grid-template-columns: auto minmax(70px, 1fr) 84px 124px minmax(0, 1.2fr) auto; gap: 6px; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius); }
+.sheet-animation { display: grid; grid-template-columns: 108px minmax(70px, 1fr) minmax(0, 1.2fr) 84px 110px auto; gap: 6px; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius); }
 .sheet-animation.head { font-size: 11px; color: var(--muted); padding-bottom: 0; }
 .sheet-animation.editing { border-color: #ffd24a; background: rgba(255, 210, 74, 0.1); }
-.sheet-frames { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-frames { font-family: ui-monospace, monospace; font-size: 12px; }
+.sheet-users { grid-column: 2 / -1; margin-top: -2px; }
 
 /* ------------------------------------------------ colours for kinds of things
    One colour per kind of media, and per kind of character animation, used on the cards, the
@@ -554,7 +555,12 @@ button.character-stage:hover:not(:disabled) { border-color: var(--tone-character
 .anim-open-preview { display: block; padding: 0; border: 0; background: none; }
 .anim-open-preview:hover:not(:disabled) .anim-preview { border-color: var(--tone-c); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone-c) 40%, transparent); }
 .anim-row > .anim-name { grid-area: n; }
-.anim-row > .anim-picture { grid-area: pic; min-width: 0; }
+.anim-row > .anim-picture { grid-area: pic; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.anim-picture > select { flex: 1 1 140px; min-width: 0; }
+.anim-own-frames { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.anim-own-frames span { flex: 1 1 240px; }
+.anim-media-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.anim-timing { margin: 0; text-align: center; }
 .anim-row > .anim-summary { grid-area: s; display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
 .anim-row > .anim-buttons { grid-area: btn; display: flex; gap: 4px; }
 .anim-row.empty { background: transparent; border-style: dashed; grid-template-areas: 'p n pic pic' 'p s s s'; }

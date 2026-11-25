@@ -401,7 +401,7 @@ test('who sees an event, a story box with portraits, and whose a variable is', a
   assert.equal(bundle.variables.find((v) => v.variable_name === 'frogs_found')!.scope, 'room');
 });
 
-test('animations: an animated PNG plays as it is, a character takes frames of it, and a sprite sheet defines animations', async () => {
+test('animations: an animated PNG plays as it is, its animations are made on the Media page, and a character plays one by name', async () => {
   await page.click('.tabs >> text=Media');
   await page.click('.subtabs [data-tab=all]');
   const before = await page.locator('[data-media]').count();
@@ -419,26 +419,34 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
   await page.click('.tabs >> text=Characters');
   await page.locator('.character-card', { has: page.locator('.card-title', { hasText: 'Old Toad' }) }).locator('[data-open=character]').click();
   const toad = page.locator('dialog[data-panel=character]');
-  await toad.locator('[data-animation=stand_right] select').selectOption({ label: 'hop.apng (animated)' });
+  await toad.locator('[data-animation=stand_right] select.anim-picture-choice').selectOption({ label: 'hop.apng (animated)' });
   await saved();
   assert.match(await toad.locator('[data-animation=stand_left]').innerText(), /Uses Standing, facing right, mirrored/, 'the other side is filled in, mirrored');
   assert.match(await toad.locator('[data-animation=walk_right]').innerText(), /Uses Standing, facing right/);
   await toad.locator('.anim-add input').fill('hop');
   await toad.locator('text=+ Add animation').click();
   await toad.locator('[data-animation=hop]').waitFor();
-  // The new animation opens in a panel of its own, over the character's, to pick its frames.
+  // The new animation opens in a panel of its own, over the character's. It plays one of its
+  // picture's animations, made on the Media page: none yet, so a new one is made there.
   const hopPanel = page.locator('dialog[data-panel=animation]');
-  await hopPanel.locator('.frame-grid .sheet-cell').first().waitFor();
+  await hopPanel.locator('select.anim-plays').waitFor();
   assert.match(await hopPanel.locator('.panel-title').innerText(), /Old Toad · hop/);
-  assert.equal(await hopPanel.locator('.frame-grid .sheet-cell:not([disabled])').count(), 4, 'its frames are cut from the file to pick from');
-  await hopPanel.locator('.frame-grid .sheet-cell[data-frame="3"]').click();
+  assert.equal(await hopPanel.locator('.frame-grid').count(), 0, 'frames are not picked on the character');
+  await hopPanel.locator('[data-new-on-media]').click();
+  const hopMedia = page.locator('dialog[data-panel=media]');
+  await hopMedia.locator('.sheet-animation.editing input.sheet-name').waitFor();
+  assert.equal(await hopMedia.locator('.sheet-animation.editing input.sheet-name').inputValue(), 'hop', 'named for the character’s animation');
+  await hopMedia.locator('.sheet-cell').first().waitFor();
+  assert.equal(await hopMedia.locator('.sheet-cell:not([disabled])').count(), 4, 'its frames are cut from the file to pick from');
+  await hopMedia.locator('.sheet-cell[data-frame="3"]').click();
   await saved();
-  await page.waitForFunction(() => document.querySelectorAll('.frame-grid .sheet-cell.in').length === 1);
-  await hopPanel.locator('.frame-grid .sheet-cell[data-frame="1"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('dialog[data-panel=media] .sheet-cell.in').length === 1);
+  await hopMedia.locator('.sheet-cell[data-frame="1"]').click();
   await saved();
-  await page.waitForFunction(() => document.querySelectorAll('.frame-grid .sheet-cell.in').length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('dialog[data-panel=media] .sheet-cell.in').length === 2);
   const toadRow = async () => (await api<{ characters: Array<Record<string, any>> }>(`/editor/scenarios/${scenarioId}`)).characters.find((c) => c.name === 'Old Toad')!;
-  assert.deepEqual((await toadRow()).settings.animations.hop, { media_id: hop.id, frames: [3, 1] });
+  assert.deepEqual((await media('hop.apng')).params.animations, [{ name: 'hop', frames: [3, 1] }], 'the animation is the picture’s');
+  assert.deepEqual((await toadRow()).settings.animations.hop, { media_id: hop.id, frames: [3, 1], sheet_animation: 'hop' }, 'and the character plays it');
   assert.deepEqual((await toadRow()).settings.animations.stand_right, { media_id: hop.id });
   // Its preview steps through those frames.
   const seen = new Set<string>();
@@ -447,11 +455,24 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
     await page.waitForTimeout(60);
   }
   assert.deepEqual([...seen].sort(), ['1', '3']);
-  await hopPanel.locator('input.anim-duration').fill('300');
-  await hopPanel.locator('input.anim-duration').blur();
+  // Frames can be typed, a frame more than once; the speed is set there too. The character takes each change.
+  await hopMedia.locator('.sheet-animation.editing input.sheet-frames').fill('3 1 1');
+  await hopMedia.locator('.sheet-animation.editing input.sheet-frames').blur();
   await saved();
-  assert.deepEqual((await toadRow()).settings.animations.hop, { media_id: hop.id, frames: [3, 1], duration: 300 });
-  assert.match(await toad.locator('[data-animation=hop] .anim-summary').innerText(), /2 frames[\s\S]*300 ms/, 'the character\'s list sums it up');
+  await hopMedia.locator('.sheet-animation.editing input[aria-label="Milliseconds for one pass"]').fill('300');
+  await hopMedia.locator('.sheet-animation.editing input[aria-label="Milliseconds for one pass"]').blur();
+  await saved();
+  assert.deepEqual((await toadRow()).settings.animations.hop, { media_id: hop.id, frames: [3, 1, 1], duration: 300, sheet_animation: 'hop' });
+  assert.match(await hopMedia.locator('.sheet-animation.editing .sheet-users').innerText(), /Old Toad \(hop\)/, 'the picture says who plays it');
+  // Renamed on the picture, it is still the one the character plays.
+  await hopMedia.locator('.sheet-animation.editing input.sheet-name').fill('leap');
+  await hopMedia.locator('.sheet-animation.editing input.sheet-name').blur();
+  await saved();
+  assert.equal((await toadRow()).settings.animations.hop.sheet_animation, 'leap');
+  await page.keyboard.press('Escape');
+  await hopMedia.waitFor({ state: 'detached' });
+  assert.equal(await hopPanel.locator('select.anim-plays').inputValue(), 'leap');
+  assert.match(await toad.locator('[data-animation=hop] .anim-summary').innerText(), /3 frames[\s\S]*300 ms/, 'the character\'s list sums it up');
   // Escape puts away the animation's panel, then the character's.
   await page.keyboard.press('Escape');
   await hopPanel.waitFor({ state: 'detached' });
@@ -473,7 +494,7 @@ test('animations: an animated PNG plays as it is, a character takes frames of it
   assert.equal(await card.locator('.sheet-cell').count(), 4);
   await card.locator('text=+ Add animation').click();
   await page.waitForFunction(() => document.querySelectorAll('.sheet-animation[data-animation]').length === 1);
-  assert.equal(await card.locator('.sheet-animation.editing input[type=text]').inputValue(), 'idle', 'the first usual name is offered');
+  assert.equal(await card.locator('.sheet-animation.editing input.sheet-name').inputValue(), 'idle', 'the first usual name is offered');
   await card.locator('.sheet-cell[data-frame="3"]').click();
   await page.waitForFunction(() => document.querySelectorAll('[data-section=sheet] .sheet-cell.in').length === 1);
   await card.locator('.sheet-cell[data-frame="1"]').click();

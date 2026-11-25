@@ -1,9 +1,11 @@
 import {
   animationDuration, animationFrames, BUILT_IN_MOVES, CHARACTER_POSES, characterAnimationRepeats, isPose, POSE_LABELS, resolvePortrait, resolvePose,
-  type CharacterAnimation, type CharacterPose,
+  type CharacterAnimation, type CharacterPose, type MediaAnimation,
 } from '@qbl/shared';
 import type { Row } from '../api';
-import { animationPreview, characterOf, framePosition, framesOf, mediaOf, parseFrames, storedAnimations } from '../characters';
+import {
+  animationPreview, characterOf, framePosition, framesOf, freeAnimationName, hasFrames, matchingAnimation, mediaOf, pictureAnimations, playing, storedAnimations,
+} from '../characters';
 import { checkFeet, mirror, sheetOf, walkCycle, WALK_DURATION, WALK_FRAMES, type Bitmap } from '@qbl/shared';
 import { mediaLabel, mediaUrl, params } from '../describe';
 import { confirmDelete, h, help, toast } from '../dom';
@@ -12,7 +14,9 @@ import { openPanel } from '../panel';
 import { CHARACTER_FIELDS, CHARACTER_SETTINGS_FIELDS } from '../schema';
 import { rowConditions } from './conditions';
 import { keepInLibraryButton, openQuestLab } from './questlab';
+import { openMedia } from './library';
 import { gettingAround } from './routine';
+import { editSheetAnimation } from './sheet';
 import { recordAllButton, voiceSection } from './voices';
 
 type Animations = Record<string, CharacterAnimation>;
@@ -26,7 +30,7 @@ const toneOf = (name: string): Tone => (name.startsWith('stand') ? 'stand' : nam
 const SHORT: Record<CharacterPose, string> = { stand_right: 'Stand →', stand_left: '← Stand', walk_right: 'Walk →', walk_left: '← Walk', portrait: 'Portrait' };
 const labelOf = (name: string) => (isPose(name) ? POSE_LABELS[name] : name);
 
-const ABOUT_ANIMATIONS = 'Standing and walking are shown by themselves, facing the way the character goes; a pose left out uses another, mirrored. The portrait is shown in story boxes. Any other animation is played by a “Play an animation” action, or by a move: one named like a built-in move (jump, wave, dance…) replaces it with your frames.';
+const ABOUT_ANIMATIONS = 'Standing and walking are shown by themselves, facing the way the character goes; a pose left out uses another, mirrored. The portrait is shown in story boxes. Any other animation is played by a “Play an animation” action, or by a move: one named like a built-in move (jump, wave, dance…) replaces it with your frames. Each one plays a picture and one of the picture’s animations: their frames, speed and repeats are made on the Media page, so one sheet’s walk can serve several characters.';
 
 /**
  * The Characters page: the people and creatures players meet. Each is drawn from its animations:
@@ -150,6 +154,9 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
   const list = h('section', { class: 'panel-section character-animations', style: '--tone: var(--tone-move)' },
     h('h3', { class: 'section-head' }, '🎬 Animations', help(ABOUT_ANIMATIONS)),
     legacy ? h('p', { class: 'notice' }, 'Read from the character’s picture and close-up. Changing anything here saves them as animations.') : null,
+    framesHere(animations, store).length ? h('div', { class: 'notice anim-own-frames' },
+      h('span', null, `${framesHere(animations, store).map(labelOf).join(', ')} ${framesHere(animations, store).length === 1 ? 'has its' : 'have their'} frames set on the character, from before animations were made on the Media page.`),
+      h('button', { type: 'button', 'data-move-frames': '', onclick: () => moveFramesToPictures(ctx, id) }, '🎞️ Move them to the Media page')) : null,
     group('🧍 Standing', 'stand', ['stand_right', 'stand_left']),
     group('🚶 Walking', 'walk', ['walk_right', 'walk_left'], stand ? h('div', { class: 'anim-make-walk' },
       makeWalkButton(ctx, id, '✨ Make a walk from the standing picture'),
@@ -160,7 +167,7 @@ function characterBody(ctx: FormContext, row: Row): HTMLElement {
   return h('div', { class: 'character-panel' }, side, list);
 }
 
-/** One animation in the character's list: what it looks like, its picture, a summary, and a button to open it. */
+/** One animation in the character's list: what it looks like, its picture and which of the picture's animations it plays, and a button to open it. */
 function animationRow(ctx: FormContext, row: Row, name: string): HTMLElement {
   const { store } = ctx;
   const id = row.id;
@@ -168,7 +175,6 @@ function animationRow(ctx: FormContext, row: Row, name: string): HTMLElement {
   const animation = character.animations?.[name];
   const pose = isPose(name) ? name : null;
   const label = h('span', { class: 'anim-name' }, pose ? POSE_LABELS[pose] : name, h('code', null, name));
-  const picture = pictureSelect(ctx, id, name, animation);
   const open = () => openAnimation(ctx, id, name);
 
   if (!animation) {
@@ -178,26 +184,28 @@ function animationRow(ctx: FormContext, row: Row, name: string): HTMLElement {
     const flipped = fallback ? fallback.flip !== (fallback.animation.flip === true) : false;
     return h('div', { class: 'anim-row empty', 'data-animation': name, 'data-tone': toneOf(name) },
       animationPreview(store, fallback?.animation, 'anim-preview', flipped),
-      label, picture,
+      label, h('div', { class: 'anim-picture' }, pictureSelect(ctx, id, name, undefined)),
       h('span', { class: 'anim-summary anim-uses' }, fallback ? `Uses ${labelOf(fallback.name)}${flipped ? ', mirrored' : ''}` : 'Nothing to show yet'));
   }
 
-  const media = store.byId('media', animation.media_id);
-  const frames = animationFrames(animation, media ? mediaOf(media) : undefined);
+  const mediaRow = store.byId('media', animation.media_id);
+  const media = mediaRow ? mediaOf(mediaRow) : undefined;
+  const frames = animationFrames(animation, media);
   const summary = frames
     ? [
-        `${animation.frames?.length ?? frames.length} frame${frames.length === 1 ? '' : 's'}${animation.frames ? '' : ' (all)'}`,
-        `${animationDuration(animation, media ? mediaOf(media) : undefined)} ms`,
+        `${frames.length} frame${frames.length === 1 ? '' : 's'}${animation.frames ? '' : ' (all)'}`,
+        `${animationDuration(animation, media)} ms`,
         (animation.repeat ?? characterAnimationRepeats(name, {})) ? 'loops' : 'plays once',
       ]
     : ['still picture'];
   if (animation.flip) summary.push('mirrored');
   return h('div', { class: 'anim-row', 'data-animation': name, 'data-tone': toneOf(name) },
     h('button', { type: 'button', class: 'anim-open-preview', title: `Configure ${labelOf(name)}`, onclick: open }, animationPreview(store, animation)),
-    label, picture,
-    h('span', { class: 'anim-summary' }, ...summary.map((s) => h('span', { class: 'chip' }, s))),
+    label,
+    h('div', { class: 'anim-picture' }, pictureSelect(ctx, id, name, animation), hasFrames(mediaRow) ? playsSelect(ctx, id, name, animation) : null),
+    h('span', { class: 'anim-summary' }, ...summary.map((s) => h('span', { class: 'chip' }, s)), playsNote(store, animation)),
     h('span', { class: 'anim-buttons' },
-      h('button', { type: 'button', class: 'anim-configure', 'data-open': 'animation', title: frames ? 'Pick frames, speed, repeats and mirroring' : 'Mirroring and picture', onclick: open }, frames ? '⚙️ Frames & timing' : '⚙️ Configure'),
+      h('button', { type: 'button', class: 'anim-configure', 'data-open': 'animation', title: 'Its picture, which of the picture’s animations it plays, and mirroring', onclick: open }, '⚙️ Configure'),
       pose ? null : h('button', { type: 'button', class: 'danger icon anim-delete', title: 'Delete this animation', onclick: () => confirmDelete(`the animation “${name}”`) && changeAnimation(ctx, id, name, null) }, '×')));
 }
 
@@ -207,11 +215,14 @@ function pictureSelect(ctx: FormContext, id: number, name: string, animation: Ch
   const pose = isPose(name);
   const images = store.rows('media').filter((m) => m.type === 'image');
   const picture = h('select', {
-    'aria-label': `Picture for ${name}`, class: 'anim-picture',
+    'aria-label': `Picture for ${name}`, class: 'anim-picture-choice',
     onchange: () => {
       if (!picture.value) return changeAnimation(ctx, id, name, null);
-      // A new picture starts with all its frames; the rest of the animation's settings stay.
-      changeAnimation(ctx, id, name, { ...(animation ?? {}), media_id: Number(picture.value), frames: undefined });
+      // A new picture plays its animation named for this one, if it has one; else every frame. Mirroring stays.
+      const mediaRow = store.byId('media', Number(picture.value));
+      const start = { media_id: Number(picture.value), ...(animation?.flip ? { flip: true } : {}) };
+      const match = hasFrames(mediaRow) ? matchingAnimation(mediaRow, name) : undefined;
+      changeAnimation(ctx, id, name, match ? playing(start, match) : start);
     },
   },
   h('option', { value: '' }, pose ? (animation ? '(none)' : 'Choose a picture…') : '(remove)'),
@@ -219,7 +230,97 @@ function pictureSelect(ctx: FormContext, id: number, name: string, animation: Ch
   return picture;
 }
 
-/** A new animation: a name, and the standing picture to start from. It opens straight away for its frames to be picked. */
+/**
+ * Which of its picture's animations a character's plays, from those made on the Media page, or
+ * every frame of the picture. The last choice makes a new one on the picture and opens it there.
+ */
+function playsSelect(ctx: FormContext, id: number, name: string, animation: CharacterAnimation): HTMLSelectElement {
+  const { store } = ctx;
+  const mediaRow = store.byId('media', animation.media_id);
+  const list = pictureAnimations(mediaRow);
+  const linked = animation.sheet_animation;
+  const own = !linked && !!animation.frames?.length;
+  const node = h('select', {
+    'aria-label': `Animation of the picture for ${name}`, class: 'anim-plays',
+    onchange: () => {
+      const value = node.value;
+      if (value === '__new') return void newOnPicture(ctx, id, name);
+      if (value === '__own') return;
+      const from = list.find((a) => a.name === value);
+      changeAnimation(ctx, id, name, from ? playing(animation, from) : { media_id: animation.media_id, ...(animation.flip ? { flip: true } : {}) });
+    },
+  },
+  h('option', { value: '' }, 'Every frame'),
+  ...list.map((a) => h('option', { value: a.name }, `🎞️ ${a.name} · ${a.frames?.length ?? 0} frame${a.frames?.length === 1 ? '' : 's'}`)),
+  linked && !list.some((a) => a.name === linked) ? h('option', { value: linked }, `⚠️ ${linked} (gone from the picture)`) : null,
+  own ? h('option', { value: '__own' }, `Frames set here: ${animation.frames!.join(' ')}`) : null,
+  h('option', { value: '__new' }, '+ New animation on the picture…'));
+  node.value = linked ?? (own ? '__own' : '');
+  return node;
+}
+
+/** A word on where the animation's frames come from, when it is not simply one of the picture's. */
+function playsNote(store: FormContext['store'], animation: CharacterAnimation): HTMLElement | null {
+  const mediaRow = store.byId('media', animation.media_id);
+  if (!hasFrames(mediaRow)) return null;
+  const linked = animation.sheet_animation;
+  if (linked && !pictureAnimations(mediaRow).some((a) => a.name === linked)) return h('span', { class: 'chip warn' }, `⚠️ “${linked}” is gone from the picture`);
+  if (!linked && animation.frames?.length) return h('span', { class: 'chip warn', title: 'Move them to the Media page to change them' }, 'Frames set on the character');
+  return null;
+}
+
+/** The character's animations that set their own frames on a picture with frames, as before animations were made on the Media page. */
+function framesHere(animations: Animations, store: FormContext['store']): string[] {
+  return Object.entries(animations).filter(([, a]) => !a.sheet_animation && a.frames?.length && hasFrames(store.byId('media', a.media_id))).map(([n]) => n);
+}
+
+/**
+ * Put an animation's frames on its picture, as one of the picture's animations, and play that:
+ * one of the picture's with the same frames, speed and repeat is used again, else one is added,
+ * named for it. Returns the name on the picture.
+ */
+function frameAnimationOnPicture(ctx: FormContext, id: number, name: string, animation: CharacterAnimation, reuse: boolean): string | null {
+  const { store } = ctx;
+  const mediaRow = store.byId('media', animation.media_id);
+  if (!mediaRow || !hasFrames(mediaRow)) return null;
+  const list = pictureAnimations(mediaRow);
+  const same = (a: MediaAnimation) => JSON.stringify(a.frames ?? []) === JSON.stringify(animation.frames ?? []) && (a.duration ?? null) === (animation.duration ?? null) && (a.repeat ?? null) === (animation.repeat ?? null);
+  let from = reuse ? list.find(same) : undefined;
+  if (!from) {
+    from = { name: freeAnimationName(mediaRow, name), frames: [...(animation.frames ?? [])] };
+    if (animation.duration) from.duration = animation.duration;
+    if (animation.repeat != null) from.repeat = animation.repeat;
+    void store.patch('media', mediaRow.id, { params: { ...params(mediaRow), animations: [...list, from] } }, true);
+  }
+  changeAnimation(ctx, id, name, playing(animation, from));
+  return from.name;
+}
+
+/** A new animation on the picture for this one to play, opened on the Media page for its frames to be picked. */
+function newOnPicture(ctx: FormContext, id: number, name: string) {
+  const row = ctx.store.byId('characters', id);
+  const animation = row ? characterOf(ctx.store, row).animations?.[name] : undefined;
+  if (!animation) return;
+  const made = frameAnimationOnPicture(ctx, id, name, { ...animation, sheet_animation: undefined }, false);
+  if (!made) return;
+  editSheetAnimation(animation.media_id, made);
+  openMedia(ctx, animation.media_id, 'sheet');
+}
+
+/** Every animation of the character with frames of its own: onto its picture, as the picture's animations. */
+function moveFramesToPictures(ctx: FormContext, id: number) {
+  const row = ctx.store.byId('characters', id);
+  if (!row) return;
+  const animations = characterOf(ctx.store, row).animations ?? {};
+  const moved = framesHere(animations, ctx.store);
+  for (const name of moved) {
+    const latest = characterOf(ctx.store, ctx.store.byId('characters', id)!).animations?.[name];
+    if (latest) frameAnimationOnPicture(ctx, id, name, latest, true);
+  }
+  toast(`Moved ${moved.map(labelOf).join(', ')} to ${moved.length === 1 ? 'its picture' : 'their pictures'} on the Media page.`);
+}
+
+/** A new animation: a name, and the standing picture to start from. It opens straight away for its picture's animation to be chosen. */
 function addAnimation(ctx: FormContext, id: number, animations: Animations): HTMLElement {
   const options = h('datalist', { id: `character-names-${id}` }, ...SUGGESTED.filter((n) => !animations[n]).map((n) => h('option', { value: n })));
   const newName = h('input', { type: 'text', list: `character-names-${id}`, placeholder: 'wave, dig, talk…', 'aria-label': 'Name of a new animation' });
@@ -229,7 +330,10 @@ function addAnimation(ctx: FormContext, id: number, animations: Animations): HTM
     if (isPose(name) || animations[name]) return toast(`“${name}” is already one of this character’s animations.`, 'error');
     const from = animations.stand_right ?? animations.stand_left ?? Object.values(animations)[0];
     if (!from) return toast('Choose a picture for one of the poses first.', 'error');
-    changeAnimation(ctx, id, name, { media_id: from.media_id, ...(from.frames ? { frames: [...from.frames] } : {}) });
+    // The standing picture, playing its animation of this name if it has one.
+    const mediaRow = ctx.store.byId('media', from.media_id);
+    const match = hasFrames(mediaRow) ? matchingAnimation(mediaRow, name) : undefined;
+    changeAnimation(ctx, id, name, match ? playing({ media_id: from.media_id }, match) : { media_id: from.media_id });
     openAnimation(ctx, id, name);
   };
   newName.addEventListener('keydown', (e) => e.key === 'Enter' && (e.preventDefault(), add()));
@@ -238,7 +342,7 @@ function addAnimation(ctx: FormContext, id: number, animations: Animations): HTM
 
 // ---------------------------------------------------------- animation panel
 
-/** One animation in a panel of its own, over the character's: a large preview, its settings, and its frames to pick. */
+/** One animation in a panel of its own, over the character's: a large preview, its picture, which of the picture's animations it plays, and mirroring. */
 export function openAnimation(ctx: FormContext, id: number, name: string) {
   const { store } = ctx;
   openPanel({
@@ -282,38 +386,33 @@ function animationBody(ctx: FormContext, row: Row, name: string): HTMLElement | 
   const mediaRow = store.byId('media', animation.media_id);
   const media = mediaRow ? mediaOf(mediaRow) : undefined;
   const frames = animationFrames(animation, media);
+  const linked = animation.sheet_animation && pictureAnimations(mediaRow).some((a) => a.name === animation.sheet_animation) ? animation.sheet_animation : null;
+  const own = !animation.sheet_animation && !!animation.frames?.length;
 
   const controls: HTMLElement[] = [field('Picture', pictureSelect(ctx, id, name, animation), mediaRow ? (media?.sheet ? `A sprite sheet, ${media.sheet.columns} × ${media.sheet.rows}.` : media?.apng ? `An animated PNG, ${media.apng.frames} frames.` : 'A still picture.') : undefined, true)];
-  if (frames) {
-    const framesInput = h('input', {
-      type: 'text', value: animation.frames?.join(' ') ?? '', placeholder: `All ${frames.length}`, 'aria-label': 'Frames, in order: 0 1 2 or 0-3', class: 'anim-frames',
-      onchange: () => {
-        const list = parseFrames(framesInput.value);
-        change({ ...animation, frames: list.length ? list : undefined });
-      },
-    });
-    const duration = h('input', {
-      type: 'number', min: 30, step: 10, value: animation.duration ?? '', 'aria-label': 'Milliseconds for one pass', class: 'anim-duration',
-      placeholder: `${animationDuration({ ...animation, duration: undefined }, media)}`,
-      onchange: () => change({ ...animation, duration: Number(duration.value) > 0 ? Number(duration.value) : undefined }),
-    });
-    const repeat = h('select', { 'aria-label': 'Repeats', class: 'anim-repeat', onchange: () => change({ ...animation, repeat: repeat.value === '' ? undefined : repeat.value === 'yes' }) },
-      h('option', { value: '' }, characterAnimationRepeats(name, {}) ? 'Loops (usual)' : 'Once (usual)'), h('option', { value: 'yes' }, 'Loops'), h('option', { value: 'no' }, 'Plays once'));
-    repeat.value = animation.repeat == null ? '' : animation.repeat ? 'yes' : 'no';
-    controls.push(
-      field('Frames, in order', framesInput, '“0 1 2” or “0-3”, or click them below. Empty plays every frame.', true),
-      field('One pass (ms)', duration),
-      field('Repeats', repeat));
+  if (hasFrames(mediaRow)) {
+    controls.push(field('Plays the picture’s animation', playsSelect(ctx, id, name, animation), 'Its frames, speed and repeats are made on the Media page, where every character playing it takes any change.', true));
+    const toMedia = (focus?: string) => {
+      if (focus) editSheetAnimation(animation.media_id, focus);
+      openMedia(ctx, animation.media_id, 'sheet');
+    };
+    controls.push(h('div', { class: 'row-actions wide anim-media-buttons' },
+      linked ? h('button', { type: 'button', class: 'primary', 'data-edit-on-media': linked, onclick: () => toMedia(linked) }, `✏️ Edit “${linked}” on the Media page`) : null,
+      own ? h('button', { type: 'button', class: 'primary', 'data-move-frames': name, onclick: () => {
+        const made = frameAnimationOnPicture(ctx, id, name, animation, true);
+        if (made) toMedia(made);
+      } }, '🎞️ Move these frames to the Media page') : null,
+      h('button', { type: 'button', 'data-new-on-media': '', onclick: () => newOnPicture(ctx, id, name) }, '+ New animation on the picture')));
   }
   const mirror = h('input', { type: 'checkbox', checked: animation.flip === true, onchange: () => change({ ...animation, flip: mirror.checked || undefined }) });
   controls.push(h('label', { class: 'field check wide anim-mirror' }, mirror, h('span', { class: 'field-label' }, 'Mirror'), h('small', null, 'Draw it mirrored, so art facing one way serves the other.')));
 
   const order = frames && animation.frames?.length ? h('p', { class: 'anim-order' }, 'Plays ', ...animation.frames.flatMap((f, i) => [i ? ' → ' : '', h('b', null, String(f))])) : null;
+  const timing = frames ? h('p', { class: 'muted small anim-timing' }, `${animationDuration(animation, media)} ms a pass, ${(animation.repeat ?? characterAnimationRepeats(name, {})) ? 'looping' : 'played once'}${own ? '. Frames set on the character: move them to the Media page to change them.' : ''}`) : null;
   return h('div', { class: 'animation-panel' },
-    h('div', { class: 'anim-stage' }, animationPreview(store, animation, 'anim-preview xl'), order),
+    h('div', { class: 'anim-stage' }, animationPreview(store, animation, 'anim-preview xl'), order, timing),
     h('div', null,
       h('div', { class: 'form' }, ...controls),
-      frames ? frameGrid(ctx, id, name, animation, (list) => change({ ...animation, frames: list.length ? list : undefined })) : null,
       isPose(name) ? null : h('div', { class: 'row-actions' }, h('button', { type: 'button', class: 'danger', onclick: () => confirmDelete(`the animation “${name}”`) && change(null) }, 'Delete animation'))));
 }
 
@@ -345,43 +444,6 @@ async function save(ctx: FormContext, id: number, next: Animations, structural =
 
 function current(ctx: FormContext, row: Row): Animations {
   return { ...(characterOf(ctx.store, row).animations ?? {}) };
-}
-
-/** The frames of the picture being edited, each a button: click to add it to the animation or take it out; shift-click adds every frame up to it. */
-function frameGrid(ctx: FormContext, characterId: number, name: string, animation: CharacterAnimation, commit: (frames: number[]) => void): HTMLElement {
-  const { store } = ctx;
-  const mediaRow = store.byId('media', animation.media_id);
-  const box = h('div', { class: 'frame-grid', 'data-picking': name },
-    h('div', { class: 'frame-grid-head' },
-      h('span', null, h('strong', null, 'Pick frames'), h('span', { class: 'muted' }, ` · click to add or take out, in the order they play; shift-click adds every frame up to it`)),
-      h('button', { type: 'button', class: 'link', disabled: !animation.frames, onclick: () => commit([]) }, 'Use every frame')));
-  void framesOf(store, mediaRow).then((sheet) => {
-    if (!sheet) return;
-    const chosen = animation.frames ?? [];
-    const cells = Array.from({ length: sheet.columns * sheet.rows }, (_, frame) => {
-      const places = chosen.flatMap((f, i) => (f === frame ? [i + 1] : []));
-      const cell = h('button', {
-        type: 'button', class: `sheet-cell${places.length ? ' in' : ''}`, disabled: frame >= sheet.count, 'data-frame': frame,
-        title: `Frame ${frame}`,
-        onclick: (e: MouseEvent) => {
-          const frames = [...(animation.frames ?? [])];
-          if (e.shiftKey && frames.length) {
-            const from = frames[frames.length - 1]!;
-            const step = Math.sign(frame - from);
-            for (let f = from + step; step !== 0 && f !== frame + step; f += step) frames.push(f);
-          } else if (places.length) {
-            for (let i = frames.length - 1; i >= 0; i--) if (frames[i] === frame) frames.splice(i, 1);
-          } else frames.push(frame);
-          commit(frames);
-        },
-      }, h('span', { class: 'sheet-number' }, String(frame)), places.length ? h('span', { class: 'sheet-place' }, places.join(',')) : null);
-      return cell;
-    });
-    // Frames at a size to pick from, not stretched across the panel.
-    box.append(h('div', { class: 'sheet-picture', style: `max-width:${Math.max(240, sheet.columns * 120)}px` }, h('img', { src: sheet.url, alt: '' }), h('div', { class: 'sheet-cells', style: `grid-template-columns:repeat(${sheet.columns},1fr);grid-template-rows:repeat(${sheet.rows},1fr)` }, ...cells)));
-  });
-  box.dataset.character = String(characterId);
-  return box;
 }
 
 // ------------------------------------------------------------- making a walk
@@ -454,11 +516,13 @@ async function makeWalk(ctx: FormContext, id: number): Promise<void> {
     return void toast(`The walk could not be uploaded: ${(e as Error).message}`, 'error');
   }
   store.bundle.media.push(added);
+  // The walk is the new sheet's own animation, on the Media page, and the character plays it.
+  const walk: MediaAnimation = { name: 'walk', frames: Array.from({ length: WALK_FRAMES }, (_, i) => i), duration: WALK_DURATION };
   await store.patch('media', added.id, {
     scale_x: media.scale_x ?? 1, scale_y: media.scale_y ?? 1,
-    params: { ...params(added), category: 'character', sheet: { columns: WALK_FRAMES, rows: 1 }, made_from: { media_id: media.id, as: cycle.mode === 'legs' ? 'walk' : 'bob' } },
+    params: { ...params(added), category: 'character', sheet: { columns: WALK_FRAMES, rows: 1 }, animations: [walk], made_from: { media_id: media.id, as: cycle.mode === 'legs' ? 'walk' : 'bob' } },
   });
-  changeAnimation(ctx, id, 'walk_right', { media_id: added.id, duration: WALK_DURATION });
+  changeAnimation(ctx, id, 'walk_right', playing({ media_id: added.id }, walk));
 
   if (cycle.mode === 'bob') {
     toast(`No legs could be found to step with (${(cycle.why ?? '').replace(/\.$/, '').toLowerCase()}), so ${row.name} bobs along instead. Draw walking frames for real steps.`);

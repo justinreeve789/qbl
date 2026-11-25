@@ -123,11 +123,11 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       h('div', { class: 'chips' },
         h('span', { class: 'chip tone' }, emojiIcon(categoryIcon), categoryLabel),
         media.width && media.height ? h('span', { class: 'chip' }, `${media.width}×${media.height}`) : null,
-        apng ? h('span', { class: 'chip anim media-apng' }, `🎞️ Animated PNG: ${apng.frames} frames, ${apng.duration} ms`) : null,
+        apng ? h('span', { class: 'chip anim media-apng' }, `🎞️ Animated PNG: ${apng.frames} frames, ${apng.duration} ms${sheetAnimations ? ` · ${sheetAnimations} animation${sheetAnimations === 1 ? '' : 's'}` : ''}`) : null,
         sheet ? h('span', { class: 'chip anim' }, `🎞️ Sheet ${sheet.columns}×${sheet.rows} · ${sheetAnimations} animation${sheetAnimations === 1 ? '' : 's'}`) : null),
       h('div', { class: 'row-actions' },
         h('button', { type: 'button', 'data-open': 'details', onclick: () => open() }, '✏️ Details'),
-        media.type === 'image' && !apng ? h('button', { type: 'button', 'data-open': 'sheet', title: 'Cut the picture into frames and make animations of them', onclick: () => open('sheet') }, '🎞️ Sprite sheet') : null,
+        media.type === 'image' ? h('button', { type: 'button', 'data-open': 'sheet', title: apng ? 'Make animations of its frames, for characters to play' : 'Cut the picture into frames and make animations of them, for characters, items and vehicles', onclick: () => open('sheet') }, apng ? '🎞️ Animations' : '🎞️ Sprite sheet') : null,
         h('span', { class: 'spacer' }),
         h('button', { type: 'button', class: 'danger icon media-delete', title: 'Delete', 'aria-label': `Delete ${mediaLabel(media)}`, onclick: () => confirmDelete(`“${mediaLabel(media)}”. Anything using it will be left without it`) && void store.remove('media', id) }, '🗑')),
     );
@@ -135,7 +135,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
 
   return page(
     'Media',
-    'The images, sounds and videos the scenario uses. Upload files, or point at files already on the web. Click a picture, or Details, to change it; Sprite sheet cuts a picture into frames for animations.',
+    'The images, sounds and videos the scenario uses. Upload files, or point at files already on the web. Click a picture, or Details, to change it; Sprite sheet cuts a picture into frames and makes its animations, which characters, items and vehicles play.',
     [h('button', { type: 'button', class: 'primary', onclick: () => file.click() }, 'Upload files'), h('button', { type: 'button', onclick: addByAddress }, 'Add by address'), file],
     h('div', null, tabs, cards.length ? h('div', { class: 'grid media-grid' }, ...cards) : none(mediaTab === 'all' ? 'No media yet. Upload a background image to get started.' : 'Nothing here yet. Upload a file while this tab is open and it is filed here.')),
     categories.size,
@@ -181,10 +181,8 @@ export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
         h('div', { class: 'row-actions' }, removeButton(ctx, 'media', media, `“${mediaLabel(media)}”. Anything using it will be left without it`)));
       if (media.type !== 'image') return h('div', { class: 'media-panel single' }, details);
       const animation = h('section', { class: 'panel-section', 'data-section': 'sheet', style: '--tone: var(--tone-move)' },
-        h('h3', { class: 'section-head' }, apng ? '🎞️ Animated PNG' : '🎞️ Sprite sheet and animations'),
-        apng
-          ? h('p', { class: 'media-apng' }, `Animated PNG: ${apng.frames} frames, ${apng.duration} ms. It plays by itself wherever it is used; on the Characters page an animation can take some of its frames.`)
-          : sheetEditor(ctx, media));
+        h('h3', { class: 'section-head' }, apng ? '🎞️ Animated PNG and animations' : '🎞️ Sprite sheet and animations'),
+        sheetEditor(ctx, media));
       return h('div', { class: 'media-panel' }, details, animation);
     },
     opened: (dialog) => {
