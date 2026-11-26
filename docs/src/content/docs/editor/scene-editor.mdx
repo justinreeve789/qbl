@@ -128,6 +128,27 @@ A hotspot has a position and a **Radius**. Drag its dashed ring on the canvas to
 
 What a hotspot shows, and what it does, is covered in [Events and actions](/docs/editor/events-and-actions/).
 
+## Copy, cut and paste
+
+Select something in the scene (on the canvas or in the list on the left) and use the keys you know (**Cmd** instead of **Ctrl** on a Mac):
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Delete</kbd> | Deletes it, with no question asked. **Ctrl+Z** (or **Undo** on the message) brings it back. |
+| <kbd>Ctrl</kbd>+<kbd>C</kbd> | Copies it. |
+| <kbd>Ctrl</kbd>+<kbd>X</kbd> | Cuts it: copies it and deletes it. |
+| <kbd>Ctrl</kbd>+<kbd>V</kbd> | Pastes what you copied or cut into the scene that is open, and selects it. |
+
+* **A hotspot** (or a start, end or indirect event) is copied with everything in it: its actions, conditions and labels. Paste it in the same scene and the copy sits a little below and to the right of the original, named `door-2` beside `door`. Open another scene and paste to put it there.
+* **Cut and paste moves** a hotspot: pasted the first time, it is the same hotspot with the same actions, so a *Run event* or *Cancel action* elsewhere that pointed at it still does. Paste it again and you get copies.
+* **Areas, spawn points, placed items and characters, layers, lights, shadow spots, scale areas, flowing water** and the bench's **containers and tools** are copied the same way. A pasted spawn point gets a name of its own.
+* With **the scene itself** selected (nothing else), Ctrl+C copies the whole scene, and Ctrl+V pastes a duplicate of it.
+* What you copy stays on the editor's clipboard while the page is open, and is pasted only into the same scenario: it uses that scenario's pictures, items and characters. Copying text with Ctrl+C still works as usual where words are selected, and the keys are the field's own while you type in one.
+
+**Actions** are copied and moved between events by ticking them. Each action card has a tick box beside its grip, and the box above the list ticks them all; **Shift+click** a second box to tick the ones between. A bar then offers **Copy**, **Cut** and **Delete**, and the keys do the same. Select another event (or another scene, then its event) and press **Ctrl+V**, or the bar's **📋 Paste** button: the actions go at the end of that event, in the order they were in, with their own conditions. As with hotspots, cut actions are moved, and pasting them again makes copies. Everything pasted, cut or deleted is one step for **Ctrl+Z**.
+
+To copy a whole scene, use **Duplicate scene** at the bottom of the scene's settings (or the 📄 on its card on the Scenes page, or Ctrl+C and Ctrl+V on the [map](/docs/editor/scene-map/)).
+
 ## Characters and items in a scene
 
 <Host who="pinta" side="left">

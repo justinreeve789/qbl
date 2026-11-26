@@ -48,6 +48,7 @@ The Scenes page shows one card per scene, with its background as a thumbnail, it
 * Click the thumbnail or **✏️ Edit** to open the [scene editor](/docs/editor/scene-editor/). **▶ Test** plays the draft starting in that scene.
 * **←** and **→** change the scene's place in the list. The order is for your own tidiness; players move between scenes only through jump actions.
 * **🚩** makes a scene the one players arrive in. The current one is marked **🚩 Start scene** on its thumbnail.
+* **📄** duplicates the scene: a copy named `forest-path-copy`, last in the list, with everything in it (its layers, areas, spawn points, placed items and characters, and its hotspots and other events with their actions, conditions and labels). Inside the copy, things that pointed into the scene point into the copy: a hotspot that runs another of the scene's events runs the copy's, and a jump back into the scene itself lands in the copy. Jumps to other scenes still go there, and ways into the original from other scenes still lead to the original, so link the copy in where you want it. It is never the start or intro scene.
 * **🗑** removes the scene and everything in it. A scenario always keeps at least one scene.
 
 ### Scene groups

@@ -1,4 +1,4 @@
-import { Api, ApiError, type Bundle, type LibraryAdded, type Row, type Table } from './api';
+import { Api, ApiError, COPY_TABLES, type Bundle, type CopyRows, type CopyTable, type LibraryAdded, type RestoreStep, type Row, type Table } from './api';
 import { toast } from './dom';
 import { clone, diff, History, nextGesture, type Change } from './history';
 
@@ -234,6 +234,40 @@ export class Store {
     if (ok && table === 'media') this.history.clear();
     else if (ok && before) this.history.record(step, diff(before, this.bundle));
     return ok === true;
+  }
+
+  /**
+   * Add copies of rows (copy and paste, Duplicate scene), as one step for Ctrl+Z. References among
+   * the rows go to the copies; others stay as they were (ScenarioStore::copyRows). With `keepIds`
+   * (pasting what was cut, so it is a move) the rows go back under their own ids, and everything
+   * that named them still does; if one of those ids is taken by then, they are copied instead.
+   * Answers with the id each copied row has now, or undefined if the API refused.
+   */
+  async paste(rows: CopyRows, keepIds = false): Promise<((table: CopyTable, id: number) => number | undefined) | undefined> {
+    const step = this.history.take();
+    let before: Bundle | null = null;
+    const kept = keepIds && COPY_TABLES.every((t) => (rows[t] ?? []).every((r) => !this.byId(t, r.id)));
+    const made = await this.send(async () => {
+      before = clone(this.bundle);
+      if (kept) {
+        const steps: RestoreStep[] = COPY_TABLES.flatMap((table) => (rows[table] ?? []).map((row) => ({ op: 'insert' as const, table, row })));
+        try {
+          return { bundle: await this.api.restore(this.scenarioId, steps), map: null };
+        } catch (err) {
+          if (!(err instanceof ApiError) || err.status !== 409) throw err;
+        }
+      }
+      return this.api.copy(this.scenarioId, rows);
+    });
+    if (!made) {
+      await this.load().catch(() => undefined);
+      return undefined;
+    }
+    this.hold(made.bundle);
+    this.unpublished = true;
+    if (before) this.history.record(step, diff(before, this.bundle));
+    const { map } = made;
+    return (table, id) => (map ? map[table]?.[String(id)] : id);
   }
 
   /**

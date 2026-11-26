@@ -9,6 +9,8 @@ import { generateSceneButton } from '../sceneGenerate';
 import { sceneGroupControl } from '../glossary';
 import type { Point, Side } from '../scene/model';
 import { selectOnOpen } from '../scene/sceneEditor';
+import { duplicateScene, hold, holding, holdsOther, sceneRows } from '../../clipboard';
+import { useShortcuts } from '../../shortcuts';
 import {
   addLink, autoLayout, BOX, freeSpot, positions, reachable, removalNote, removeExit, savePosition, sceneExits, sceneLinks, scenesInOrder, startScene,
   type Exit, type ExitKind, type Link,
@@ -478,6 +480,22 @@ export function sceneMap(ctx: FormContext, open: (sceneId: number) => void): HTM
     else await savePositions(new Map());
   }
 
+  /**
+   * A copy of a scene and everything in it, in a free place beside the original (or `rows`, the
+   * scene as it was copied). The copy is selected.
+   */
+  async function duplicate(id: number, rows = sceneRows(store, id), name = `“${sceneLabel(byId.get(id))}”`) {
+    const near = at.get(id) ?? middle();
+    const spot = freeSpot({ x: near.x + BOX.width + GRID * 2, y: near.y }, [...at.values()]);
+    const made = await duplicateScene(store, id, rows, spot);
+    if (made == null) return;
+    view.selected = { kind: 'scene', id: made };
+    view.focus = made;
+    await savePositions(new Map());
+    store.emit(false);
+    toast(`Made “${sceneLabel(store.byId('scenes', made))}”, a copy of ${name} with everything in it. Ways into ${name} still go there.`, 'info', { label: 'Open it', run: () => open(made) });
+  }
+
   async function arrange() {
     const placed = scenes.some((sc) => params(sc).editor_map);
     if (placed && !window.confirm('Lay out every scene automatically? Scenes you have placed by hand move too.')) return;
@@ -522,6 +540,9 @@ export function sceneMap(ctx: FormContext, open: (sceneId: number) => void): HTM
       h('h3', null, `Ways in (${ins.length})`),
       ins.length ? h('ul', { class: 'map-list' }, ...ins.map((e) => exitLine(e, 'in'))) : h('p', { class: 'muted' }, id === start ? 'Players start here.' : 'None yet.'),
       h('div', { class: 'row-actions' }, h('button', {
+        type: 'button', 'data-duplicate-scene': '', title: 'Make a copy of this scene and everything in it (Ctrl+C, Ctrl+V)',
+        onclick: () => void duplicate(id),
+      }, emojiIcon('📄'), 'Duplicate'), h('button', {
         type: 'button', class: 'danger', disabled: scenes.length <= 1,
         onclick: () => confirmDelete(`the scene “${sceneLabel(scene)}” and everything in it`) && void store.remove('scenes', id),
       }, 'Delete scene')),
@@ -595,6 +616,7 @@ export function sceneMap(ctx: FormContext, open: (sceneId: number) => void): HTM
         h('li', null, h('strong', null, 'New scene: '), 'drag a ', h('span', { class: 'map-port inline' }, '+'), ' onto empty space, or use New scene.'),
         h('li', null, h('strong', null, 'Edit a scene: '), 'its ', emojiIcon('✏️'), ', or double-click it.'),
         h('li', null, h('strong', null, 'Change or remove a way: '), 'click its arrow.'),
+        h('li', null, h('strong', null, 'Duplicate a scene: '), 'select it, then Ctrl+C and Ctrl+V. Delete deletes it (Ctrl+Z brings it back).'),
         h('li', null, h('strong', null, 'Look around: '), 'drag the background; Ctrl and the mouse wheel zoom.')),
     ];
   }
@@ -620,7 +642,7 @@ export function sceneMap(ctx: FormContext, open: (sceneId: number) => void): HTM
   });
 
   const zoomBy = (factor: number) => zoomTo(view.zoom * factor);
-  return h('div', { class: 'scene-map' },
+  const root = h('div', { class: 'scene-map' },
     h('div', { class: 'map-toolbar' },
       h('button', { type: 'button', class: 'primary', onclick: () => void newScene(null) }, emojiIcon('➕'), 'New scene'),
       generateSceneButton(ctx),
@@ -639,4 +661,45 @@ export function sceneMap(ctx: FormContext, open: (sceneId: number) => void): HTM
         h('span', { class: 'key story' }), 'event or button ',
         h('span', { class: 'key gated' }), 'needs a condition')),
     h('div', { class: 'map-body' }, viewport, panel));
+
+  // Ctrl+C and Ctrl+V duplicate the selected scene; Delete deletes it.
+  const selectedScene = () => (view.selected?.kind === 'scene' ? byId.get(view.selected.id) : undefined);
+  useShortcuts(root, {
+    copy(cut) {
+      const scene = selectedScene();
+      if (!scene) {
+        toast('Select a scene to copy it.');
+        return false;
+      }
+      if (cut) {
+        toast('Scenes can be copied (Ctrl+C) and pasted as a duplicate (Ctrl+V), but not cut: the ways into a scene would be lost.');
+        return false;
+      }
+      hold(store.scenarioId, { kind: 'scene', sceneId: scene.id, rows: sceneRows(store, scene.id) }, `“${sceneLabel(scene)}”`);
+      toast(`Copied “${sceneLabel(scene)}”. Press Ctrl+V to make a duplicate of it.`);
+      return true;
+    },
+    async paste() {
+      const held = holding(store.scenarioId);
+      if (held?.clip.kind === 'scene') {
+        await duplicate(held.clip.sceneId, held.clip.rows, held.what);
+        return true;
+      }
+      toast(held ? `Open a scene to paste ${held.what} into it.` : holdsOther(store.scenarioId) ? 'What you copied is from another scenario. Copy and paste work within one scenario.' : 'Select a scene and press Ctrl+C to copy it first.');
+      return false;
+    },
+    async remove() {
+      const scene = selectedScene();
+      if (!scene) return false;
+      if (scenes.length <= 1) {
+        toast('A scenario needs at least one scene.');
+        return false;
+      }
+      view.selected = null;
+      await store.remove('scenes', scene.id);
+      toast(`Deleted the scene “${sceneLabel(scene)}” and everything in it.`, 'info', { label: 'Undo', run: () => void store.undo() });
+      return true;
+    },
+  });
+  return root;
 }

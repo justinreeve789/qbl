@@ -279,6 +279,53 @@ same([$body['scenario']['title'], $body['scenario']['code']], ['Undone', $mine['
 [, $body] = $restore([['op' => 'delete', 'table' => 'labels', 'id' => $label['id']], ['op' => 'delete', 'table' => 'actions', 'id' => $action['id']], ['op' => 'delete', 'table' => 'events', 'id' => $hotspot['id']]]);
 same([count($body['events']), count($body['actions']), count($body['labels'])], [0, 0, 0], 'redo deletes them again');
 
+// Copy and paste, and Duplicate scene: references among the rows copied follow them; others stay.
+$home = $scene['id'];
+$pond = $call('POST', "scenarios/$sid/rows/scenes", ['shortname' => 'pond'])[1]['row']['id'];
+$event = fn (array $attrs) => $call('POST', "scenarios/$sid/rows/events", $attrs)[1]['row'];
+$act = fn (array $attrs) => $call('POST', "scenarios/$sid/rows/actions", $attrs)[1]['row'];
+$ripple = $event(['scene_id' => $pond, 'kind' => 'indirect', 'shortname' => 'ripple']);
+$lily = $event(['scene_id' => $pond, 'kind' => 'hotspot', 'shortname' => 'lily', 'position_x' => 100, 'position_y' => 100]);
+$run = $act(['event_id' => $lily['id'], 'type' => 'run_event', 'params' => ['target_event_id' => $ripple['id']]]);
+$away = $act(['event_id' => $lily['id'], 'type' => 'jump', 'params' => ['scene_id' => $home]]);
+$again = $act(['event_id' => $lily['id'], 'type' => 'jump', 'params' => ['scene_id' => $pond]]);
+$call('POST', "scenarios/$sid/rows/conditions", ['action_id' => $away['id'], 'variable' => 'found_frog', 'operand' => 1]);
+$call('POST', "scenarios/$sid/rows/labels", ['event_id' => $lily['id'], 'type' => 'text', 'text' => 'Lily']);
+$call('PATCH', "scenarios/$sid/rows/scenes/$pond", ['layout' => ['characters' => [['character_id' => 0, 'event_id' => $ripple['id']]]]]);
+$of = function (array $bundle, int $sceneId): array {
+    $events = array_values(array_filter($bundle['events'], fn ($e) => $e['scene_id'] === $sceneId));
+    $ids = array_column($events, 'id');
+    $actions = array_values(array_filter($bundle['actions'], fn ($a) => in_array($a['event_id'], $ids, true)));
+    $actionIds = array_column($actions, 'id');
+
+    return [
+        'scenes' => array_values(array_filter($bundle['scenes'], fn ($s) => $s['id'] === $sceneId)),
+        'events' => $events,
+        'actions' => $actions,
+        'conditions' => array_values(array_filter($bundle['conditions'], fn ($c) => in_array($c['event_id'], $ids, true) || in_array($c['action_id'], $actionIds, true))),
+        'labels' => array_values(array_filter($bundle['labels'], fn ($l) => in_array($l['event_id'], $ids, true))),
+    ];
+};
+[$status, $body] = $call('POST', "scenarios/$sid/copy", ['rows' => $of($store->bundle($sid), $pond)]);
+$copy = $body['map']->scenes->{$pond} ?? null;
+same([$status, is_int($copy) && $copy !== $pond], [201, true], 'a scene can be duplicated');
+$dup = $of($body['bundle'], (int) $copy);
+$byName = fn (array $rows, string $name) => array_values(array_filter($rows, fn ($r) => $r['shortname'] === $name))[0] ?? null;
+same([count($dup['events']), count($dup['actions']), count($dup['conditions']), count($dup['labels'])], [2, 3, 1, 1], 'with its events, actions, conditions and labels');
+$newRipple = $byName($dup['events'], 'ripple')['id'];
+$params = array_column(array_map(fn ($a) => ['t' => $a['type'].':'.($a['params']['scene_id'] ?? $a['params']['target_event_id'] ?? ''), 'id' => $a['id']], $dup['actions']), 't');
+same($params, ["run_event:$newRipple", "jump:$home", "jump:$copy"], 'a run event follows its event to the copy, a jump elsewhere stays, a jump to itself goes to the copy');
+same($dup['scenes'][0]['layout']['characters'][0]['event_id'], $newRipple, 'references in the scene\'s layout follow too');
+same(count($of($body['bundle'], $pond)['actions']), 3, 'the original is untouched');
+[$status, $body] = $call('POST', "scenarios/$sid/copy", ['rows' => ['actions' => [['event_id' => $ripple['id']] + $run]]]);
+$pasted = array_values(array_filter($body['bundle']['actions'], fn ($a) => $a['event_id'] === $ripple['id']));
+same([$status, count($pasted), $pasted[0]['params']['target_event_id'] ?? null], [201, 1, $ripple['id']], 'actions can be pasted into another event, keeping what they point at');
+same($call('POST', "scenarios/$sid/copy", ['rows' => ['media' => [['type' => 'image']]]])[0], 422, 'only scenes, events, actions, conditions and labels are copied');
+same($call('POST', "scenarios/$sid/copy", ['rows' => ['events' => [['scene_id' => $starshipScene, 'kind' => 'start']]]])[0], 422, 'and only into this scenario');
+same(count($store->bundle($sid)['events']), 4, 'a refused copy adds nothing');
+$call('DELETE', "scenarios/$sid/rows/scenes/$pond");
+$call('DELETE', "scenarios/$sid/rows/scenes/$copy");
+
 // Uploads: the type comes from the file's content.
 $png = sys_get_temp_dir().'/qbl-test.png';
 file_put_contents($png, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAYAAAC56t6BAAAAEklEQVR42mNk+M9QzwAEjDAGACCDAv8cI7IoAAAAAElFTkSuQmCC'));

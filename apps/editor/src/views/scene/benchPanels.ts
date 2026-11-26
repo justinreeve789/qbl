@@ -25,6 +25,19 @@ export function freshBenchId(bench: SceneBench | null, list: 'substances' | 'ves
   for (let n = 2; ; n++) if (!used.has(`${base}_${n}`)) return `${base}_${n}`;
 }
 
+/** A bench without one of its containers: what named it (a burner under it, a readout, a watch) lets go of it. */
+export function withoutVessel(b: SceneBench, index: number): SceneBench {
+  const vessel = b.vessels?.[index];
+  if (!vessel) return b;
+  return {
+    ...b,
+    vessels: (b.vessels ?? []).filter((_, i) => i !== index),
+    tools: b.tools?.map((t) => (t.vessel_id === vessel.id ? withKey(t, 'vessel_id', null) : t)),
+    readouts: b.readouts?.filter((r) => r.vessel_id !== vessel.id),
+    watches: b.watches?.map((w) => (w.vessel_id === vessel.id ? withKey(w, 'vessel_id', null) : w)),
+  };
+}
+
 /** A bench in which something has a new id: everything that named it follows. */
 function renamed(bench: SceneBench, what: 'substance' | 'readout', from: string, to: string): SceneBench {
   if (from === to || !to) return bench;
@@ -435,15 +448,7 @@ export function benchVesselPanel(model: SceneModel, ctx: FormContext, index: num
         onclick: async () => {
           if (!confirmDelete(`“${vesselName(vessel)}”`)) return;
           host.select({ kind: 'bench' });
-          const b = model.bench()!;
-          // What named it lets go of it.
-          await model.setBench({
-            ...b,
-            vessels: (b.vessels ?? []).filter((_, i) => i !== index),
-            tools: b.tools?.map((t) => (t.vessel_id === vessel.id ? withKey(t, 'vessel_id', null) : t)),
-            readouts: b.readouts?.filter((r) => r.vessel_id !== vessel.id),
-            watches: b.watches?.map((w) => (w.vessel_id === vessel.id ? withKey(w, 'vessel_id', null) : w)),
-          }, true);
+          await model.setBench(withoutVessel(model.bench()!, index), true);
         },
       }, 'Delete')),
   );

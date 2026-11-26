@@ -3,6 +3,7 @@ import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
 import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, FLOW_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS, WEATHER_FIELDS } from '../../schema';
+import { duplicateScene } from '../../clipboard';
 import { eventPanel } from '../eventPanel';
 import { benchSettingsPanel, benchToolPanel, benchVesselPanel } from './benchPanels';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
@@ -13,6 +14,8 @@ export interface InspectorHost {
   natural(url: string): Point | null;
   /** Leave the scene editor after the scene was deleted. */
   closed(): void;
+  /** Open another scene in the scene editor (a duplicate just made). */
+  openScene(sceneId: number): void;
   /** Choose a spot by clicking the canvas. Returns a function that stops choosing. */
   pickSpot(request: SpotRequest): () => void;
 }
@@ -102,6 +105,13 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
       'div',
       { class: 'row-actions' },
       isStart ? null : h('button', { type: 'button', onclick: () => void store.patchScenario({ start_scene_id: scene.id }, true) }, 'Make this the start scene'),
+      h('button', {
+        type: 'button', 'data-duplicate-scene': '', title: 'Make a copy of this scene and everything in it',
+        onclick: async () => {
+          const id = await duplicateScene(store, scene.id);
+          if (id != null) toast(`Made “${sceneLabel(store.byId('scenes', id))}”, a copy of this scene.`, 'info', { label: 'Open it', run: () => host.openScene(id) });
+        },
+      }, 'Duplicate scene'),
       h('button', {
         type: 'button', class: 'danger', disabled: store.rows('scenes').length <= 1,
         onclick: async () => {

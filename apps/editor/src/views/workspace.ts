@@ -104,7 +104,7 @@ export function workspace(store: Store, place: Place, go: (hash: string) => void
 
   let stop: () => void;
   if (scene) {
-    const editor = sceneEditor(store, scene.id, () => go(base));
+    const editor = sceneEditor(store, scene.id, () => go(base), (id) => go(`${base}/scene/${id}`));
     body.classList.add('fill');
     body.append(editor.element);
     disposeScene = editor.dispose;

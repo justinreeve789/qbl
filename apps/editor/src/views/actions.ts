@@ -2,7 +2,9 @@ import { emojiIcon } from '../icons';
 import type { ActionType } from '@qbl/shared';
 import type { Row } from '../api';
 import { actionSummary, actionValues, params } from '../describe';
-import { confirmDelete, h, help, openOneAtATime, rememberOpen } from '../dom';
+import { confirmDelete, h, help, openOneAtATime, rememberOpen, toast } from '../dom';
+import { actionRows, hold, holding, onClipboard, pasteActions, pasted } from '../clipboard';
+import type { Store } from '../store';
 import { form, select, tidyAnimate, withValue, type Field, type FormContext, type Values } from '../fields';
 import { actionPicker } from '../actionPicker';
 import { ACTION_COMMON, ACTION_LOOK, ACTION_TYPES, ACTIONS, actionDefaults, starterConversation, tidyWalk } from '../schema';
@@ -14,6 +16,66 @@ const open = new Set<number>();
 
 /** The action being dragged to a new place in its event, if any. */
 let dragging: number | null = null;
+
+/** The actions ticked, to copy, cut or delete together. Only those of the event shown count. */
+const picked = new Set<number>();
+/** The last action ticked or unticked, for Shift+click to tick the ones between. */
+let lastPicked: number | null = null;
+
+const oneOrMore = (n: number) => (n === 1 ? 'the action' : `${n} actions`);
+
+/** The actions of this event that are ticked, in the order they run. */
+export function pickedActions(store: Store, eventId: number): number[] {
+  return store.where('actions', 'event_id', eventId)
+    .sort((a, b) => Number(a.sequence) - Number(b.sequence) || a.id - b.id)
+    .filter((a) => picked.has(a.id))
+    .map((a) => a.id);
+}
+
+/** Untick every action. */
+export function unpickActions() {
+  picked.clear();
+  lastPicked = null;
+}
+
+/** Put actions on the clipboard; to cut them, delete them too (one step for Ctrl+Z). */
+export async function copyActions(store: Store, eventId: number, ids: number[], cut: boolean): Promise<boolean> {
+  if (!ids.length) return false;
+  hold(store.scenarioId, { kind: 'actions', eventId, rows: actionRows(store, ids) }, oneOrMore(ids.length), cut);
+  unpickActions();
+  if (cut) {
+    await Promise.all(ids.map((id) => store.remove('actions', id)));
+    toast(`Cut ${oneOrMore(ids.length)}. Open another event and press Ctrl+V to paste ${ids.length === 1 ? 'it' : 'them'} there.`);
+  } else {
+    toast(`Copied ${oneOrMore(ids.length)}. Open an event and press Ctrl+V to paste.`);
+    store.emit(false);
+  }
+  return true;
+}
+
+/** Paste the actions on the clipboard at the end of this event. False when it holds none. */
+export async function pasteActionsInto(store: Store, eventId: number): Promise<boolean> {
+  const held = holding(store.scenarioId);
+  if (held?.clip.kind !== 'actions') return false;
+  const ids = await pasteActions(store, held.clip.rows, eventId, held.cut);
+  if (!ids) return true;
+  pasted();
+  unpickActions();
+  for (const id of ids) picked.add(id);
+  if (ids.length === 1) rememberOpen(open, ids[0]!);
+  store.emit();
+  toast(`Pasted ${oneOrMore(ids.length)} at the end of this event${ids.length > 1 ? ' (still ticked, to move or copy them on)' : ''}.`);
+  return true;
+}
+
+/** Delete actions (one step for Ctrl+Z). */
+export async function deleteActions(store: Store, ids: number[]): Promise<boolean> {
+  if (!ids.length) return false;
+  unpickActions();
+  await Promise.all(ids.map((id) => store.remove('actions', id)));
+  toast(`Deleted ${oneOrMore(ids.length)}.`, 'info', { label: 'Undo', run: () => void store.undo() });
+  return true;
+}
 
 /** Columns of the actions table; every other attribute of an action lives in `params`. */
 const COLUMNS = new Set(['media_id', 'blocking']);
@@ -63,6 +125,39 @@ export function sortedActions(ctx: FormContext, eventId: number): Row[] {
 export function actionList(ctx: FormContext, eventId: number, refresh: Array<() => void>): HTMLElement {
   const { store } = ctx;
   const actions = sortedActions(ctx, eventId);
+  // Ticks belong to the event shown.
+  for (const id of [...picked]) if (!actions.some((a) => a.id === id)) picked.delete(id);
+
+  /** What can be done with the ticked actions, and Paste when the clipboard holds actions. */
+  const bar = h('div', { class: 'action-bar', 'aria-live': 'polite' });
+  const pickAll = h('input', { type: 'checkbox', class: 'pick-all', 'aria-label': 'Tick every action', title: 'Tick every action (to copy, cut or delete them together)' });
+  const checks = new Map<number, HTMLInputElement>();
+  const drawBar = () => {
+    const ids = pickedActions(store, eventId);
+    pickAll.checked = ids.length > 0 && ids.length === actions.length;
+    pickAll.indeterminate = ids.length > 0 && ids.length < actions.length;
+    for (const [id, box] of checks) {
+      box.checked = picked.has(id);
+      box.closest('.card')?.classList.toggle('picked', box.checked);
+    }
+    const held = holding(store.scenarioId);
+    const clip = held?.clip.kind === 'actions' ? held.clip : null;
+    const count = clip?.rows.actions?.length ?? 0;
+    bar.replaceChildren(...[
+      ids.length ? h('span', { class: 'muted' }, `${ids.length} ticked`) : null,
+      ids.length ? h('button', { type: 'button', 'data-act': 'copy', title: 'Copy the ticked actions (Ctrl+C)', onclick: () => void copyActions(store, eventId, ids, false) }, 'Copy') : null,
+      ids.length ? h('button', { type: 'button', 'data-act': 'cut', title: 'Cut the ticked actions, to paste them in another event (Ctrl+X)', onclick: () => void copyActions(store, eventId, ids, true) }, 'Cut') : null,
+      ids.length ? h('button', { type: 'button', class: 'danger', 'data-act': 'delete', title: 'Delete the ticked actions (Delete)', onclick: () => void deleteActions(store, ids) }, 'Delete') : null,
+      clip ? h('button', { type: 'button', 'data-act': 'paste', title: 'Paste at the end of this event (Ctrl+V)', onclick: () => void pasteActionsInto(store, eventId) }, `📋 Paste ${count === 1 ? '1 action' : `${count} actions`}`) : null,
+    ].filter((n): n is HTMLElement => n !== null));
+    bar.hidden = !bar.childElementCount;
+  };
+  pickAll.addEventListener('change', () => {
+    if (pickAll.checked) for (const a of actions) picked.add(a.id);
+    else unpickActions();
+    drawBar();
+  });
+  const stopListening = onClipboard(() => (bar.isConnected ? drawBar() : stopListening()));
 
   const add = actionPicker(ACTION_TYPES, '', async (type) => {
     add.value = '';
@@ -151,7 +246,20 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     // The grip is what is dragged; the card follows it. Dropping on another card puts this action
     // before or after it, whichever half of that card the pointer is over.
     const grip = h('span', { class: 'grip', draggable: 'true', title: 'Drag to change the order', 'aria-hidden': 'true' }, '⠿');
-    const card = h('details', { class: 'card action', 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, emojiIcon(ACTION_LOOK[type][0]), ` ${def.label}`), summary), body);
+    // A tick, to copy, cut or delete several actions together. Shift+click ticks the ones between.
+    const check = h('input', { type: 'checkbox', class: 'pick', checked: picked.has(id), 'aria-label': `Tick action ${index + 1}`, title: 'Tick to copy, cut or delete together (Shift+click: the ones between too)' });
+    checks.set(id, check);
+    check.addEventListener('click', (e) => {
+      // A tick in the heading would also open and close the card.
+      e.stopPropagation();
+      const on = check.checked;
+      const from = lastPicked != null ? actions.findIndex((a) => a.id === lastPicked) : -1;
+      const span = e.shiftKey && from >= 0 ? actions.slice(Math.min(from, index), Math.max(from, index) + 1) : [action];
+      for (const a of span) on ? picked.add(a.id) : picked.delete(a.id);
+      lastPicked = id;
+      drawBar();
+    });
+    const card = h('details', { class: `card action${picked.has(id) ? ' picked' : ''}`, 'data-action': id, open: open.has(id), style: `--tone:${ACTION_LOOK[type][1]}` }, h('summary', null, grip, check, h('span', { class: 'step' }, index + 1), h('span', { class: 'tag' }, emojiIcon(ACTION_LOOK[type][0]), ` ${def.label}`), summary), body);
     openOneAtATime(card, id, open);
     grip.addEventListener('click', (e) => e.preventDefault());
     grip.addEventListener('dragstart', (e) => {
@@ -186,10 +294,12 @@ export function actionList(ctx: FormContext, eventId: number, refresh: Array<() 
     return card;
   });
 
+  drawBar();
   return h(
     'section',
     { class: 'actions' },
-    h('div', { class: 'sub-head' }, h('span', null, 'Run in this order'), add),
+    h('div', { class: 'sub-head' }, h('span', { class: 'inline' }, actions.length > 1 ? pickAll : null, 'Run in this order'), add),
+    bar,
     cards.length ? h('div', null, ...cards) : h('p', { class: 'muted' }, 'This event does nothing yet. Add an action.'),
   );
 }

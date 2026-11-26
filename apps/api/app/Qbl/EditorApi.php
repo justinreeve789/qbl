@@ -23,6 +23,7 @@ use App\Qbl\Speech\SpeechFactory;
  *   PATCH  scenarios/{id}/rows/{table}/{rowId}
  *   DELETE scenarios/{id}/rows/{table}/{rowId}
  *   POST   scenarios/{id}/media/upload            multipart "file"
+ *   POST   scenarios/{id}/copy                    {rows: {table: [row...]}}: copies of scenes, events, actions, conditions and labels in the scenario → {map, bundle}
  *   POST   scenarios/import                       multipart `file`: a ZIP with scenario.json and assets/; creates a new scenario
  *   POST   scenarios/{id}/duplicate               {title?}: a copy of the scenario as a new draft of the caller's
  *   GET    scenarios/{id}/export                  the scenario as a ZIP file (scenario.json and the uploaded files)
@@ -163,6 +164,12 @@ class EditorApi
             $this->store->restore($id, $steps);
 
             return [200, $this->store->bundle($id)];
+        }
+        // Copy and paste, and Duplicate scene: copies of rows, in this scenario (see ScenarioStore::copyRows).
+        if ($rest === ['copy'] && $method === 'POST') {
+            $map = $this->store->copyRows($id, is_array($body['rows'] ?? null) ? $body['rows'] : []);
+
+            return [201, ['map' => (object) array_map(fn ($ids) => (object) $ids, $map), 'bundle' => $this->store->bundle($id)]];
         }
         if (($rest[0] ?? '') === 'voices') {
             return $this->voices($id, $method, array_slice($rest, 1), $body);
