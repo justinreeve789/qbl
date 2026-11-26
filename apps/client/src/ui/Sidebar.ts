@@ -71,10 +71,10 @@ export class Sidebar {
   private launchView: LaunchView | null = null;
   private onLaunch: (choice: LaunchChoice) => void = () => {};
   /**
-   * The teacher's choices on the launch tab, kept across redraws: the launcher scene picked in the
-   * prompt ('' for none, null before they pick), staying behind, the mission being confirmed.
+   * The teacher's choices on the launch tab, kept across redraws: the launcher scene picked before
+   * launching ('' for none, the default), staying behind, the mission being confirmed.
    */
-  private launchVia: string | null = null;
+  private launchVia = '';
   private launchStay = false;
   private launchArmed: number | null = null;
   private onPlayer: { profile(id: string): void; message?(id: string): void } = { profile() {} };
@@ -232,7 +232,7 @@ export class Sidebar {
   setLaunches(view: LaunchView | null, launch: (choice: LaunchChoice) => void) {
     this.launchView = view;
     this.onLaunch = launch;
-    if (view && this.launchVia && !view.departures.some((d) => String(d.sceneId) === this.launchVia)) this.launchVia = null;
+    if (view && this.launchVia && !view.departures.some((d) => String(d.sceneId) === this.launchVia)) this.launchVia = '';
     this.offer('launch', view != null);
     this.draw('launch');
   }
@@ -502,8 +502,8 @@ export class Sidebar {
       out.push(el('p', 'qbl-sidebar-empty', 'You have no other missions assigned. Assign one on the Classes page, then launch it from here.'));
       return out;
     }
-    // With launcher scenes in this mission, the first press asks where the class goes first.
-    const asks = view.departures.length > 0;
+    // With launcher scenes in this scenario, where the class goes first is chosen before any Launch.
+    if (view.departures.length) out.push(this.launcherPrompt(view));
     const list = el('ul', 'qbl-launches');
     for (const m of view.missions) {
       const li = el('li', m.waiting ? 'waiting' : '');
@@ -519,35 +519,31 @@ export class Sidebar {
       go.dataset.launch = String(m.assignmentId);
       go.append(icon('launch', { size: 18 }), el('span', '', armed ? 'Launch now' : 'Launch'));
       go.setAttribute('aria-label', armed ? `Launch ${m.title} now` : `Launch ${m.title}`);
-      // Until a launcher scene (or none) is picked there is nothing to launch yet.
-      if (armed && asks && this.launchVia == null) go.disabled = true;
-      // Two presses: the first asks, the second launches. A launch moves the whole class.
+      // Two presses: the first confirms, the second launches. A launch moves the whole class.
       go.addEventListener('click', () => {
         if (this.launchArmed !== m.assignmentId) {
           this.launchArmed = m.assignmentId;
-          this.launchVia = null;
           this.draw('launch');
           return;
         }
-        if (asks && this.launchVia == null) return;
         this.launchArmed = null;
-        this.onLaunch({ assignmentId: m.assignmentId, sceneId: this.launchVia ? Number(this.launchVia) : undefined, stay: this.launchStay });
-        this.launchVia = null;
-        this.draw('launch');
+        const via = this.launchVia;
+        this.launchVia = '';
+        this.onLaunch({ assignmentId: m.assignmentId, sceneId: via ? Number(via) : undefined, stay: this.launchStay });
+        // Launched: the panel gets out of the way.
+        this.open(null, true);
       });
       li.append(what, go);
       if (armed) {
-        if (asks) li.append(this.launcherPrompt(view));
         const where = view.departures.find((d) => String(d.sceneId) === this.launchVia);
         const way = where ? `to ${where.name} first, and on from there` : 'straight there';
         // Every student of the teacher goes, wherever they are playing, not only those assigned it.
         const plan = `All your students go ${way}, wherever they are playing${this.launchStay ? '; you stay here' : ', and you go with them'}.`;
-        const confirm = el('p', 'qbl-launch-confirm', asks && this.launchVia == null ? 'Choose where they go first, then press Launch now.' : `${plan} Press again to launch.`);
+        const confirm = el('p', 'qbl-launch-confirm', `${plan} Press again to launch.`);
         const cancel = el('button', 'qbl-link', 'Cancel');
         cancel.type = 'button';
         cancel.addEventListener('click', () => {
           this.launchArmed = null;
-          this.launchVia = null;
           this.draw('launch');
         });
         confirm.append(' ', cancel);
@@ -559,7 +555,7 @@ export class Sidebar {
     return out;
   }
 
-  /** The prompt of an armed launch: one of this mission's scenario launcher scenes, or none. */
+  /** Where the class goes first, chosen before launching: one of this scenario's launcher scenes, or none. */
   private launcherPrompt(view: LaunchView): HTMLElement {
     const ways = el('fieldset', 'qbl-launch-ways');
     ways.append(el('legend', '', 'Before it opens, take them to'));
