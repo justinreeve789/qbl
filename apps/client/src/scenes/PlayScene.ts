@@ -38,6 +38,8 @@ export class PlayScene extends Phaser.Scene {
   engine!: SceneEngine;
   startPosition: Point | null = null;
   leaving = false;
+  /** A restart has been asked for (it may be waiting for the next scene to load): asking again does nothing. */
+  private restarting = false;
 
   private host!: ActionHost;
   private systems: SceneSystem[] = [];
@@ -54,6 +56,7 @@ export class PlayScene extends Phaser.Scene {
 
   init() {
     this.leaving = false;
+    this.restarting = false;
     this.systems = [];
     this.byClass = new Map();
   }
@@ -186,8 +189,27 @@ export class PlayScene extends Phaser.Scene {
     return walkContext(this.def, this.size, [...(props?.obstacles() ?? []), ...(hotspots?.obstacles() ?? [])]);
   }
 
+  /**
+   * Leave for a scene (or this one again), once everything it needs is loaded. Every way into a
+   * scene comes here: a jump, and the room moving the player (a teacher's launch to a launcher
+   * scene, a refused jump). Without the wait, a scene reached the second way, such as a launcher
+   * scene no door leads to, started before its sounds and pictures had arrived, and its audio
+   * actions found nothing to play.
+   */
   restart(data: PlaySceneData) {
+    if (this.restarting) return;
     this.leaving = true;
+    this.restarting = true;
+    const target = this.ctx.index.scene(data.sceneId);
+    if (target && (queueScene(this, this.ctx, target) > 0 || this.load.isLoading())) {
+      this.ctx.ui.status('Loading…');
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+        this.ctx.ui.status(null);
+        this.scene.restart(data);
+      });
+      if (!this.load.isLoading()) this.load.start();
+      return;
+    }
     this.scene.restart(data);
   }
 
@@ -215,19 +237,8 @@ export class PlayScene extends Phaser.Scene {
     const position = spawn ? { x: spawn.position_x, y: spawn.position_y } : undefined;
 
     const cam = this.cameras.main;
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      // Usually everything is already preloaded; otherwise finish loading before switching.
-      if (queueScene(this, this.ctx, target) > 0 || this.load.isLoading()) {
-        this.ctx.ui.status('Loading…');
-        this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-          this.ctx.ui.status(null);
-          this.restart({ sceneId, position });
-        });
-        if (!this.load.isLoading()) this.load.start();
-      } else {
-        this.restart({ sceneId, position });
-      }
-    });
+    // Usually everything is already preloaded; otherwise restart finishes loading before switching.
+    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.restart({ sceneId, position }));
     cam.fadeOut(300, 0, 0, 0);
   }
 

@@ -249,3 +249,22 @@ test('students get no launch tab', async () => {
   stop();
   assert.deepEqual(launchRows(g.ctx, assignments).map((r) => r.assignmentId), [3, 2], 'the rows themselves do not depend on who asks');
 });
+
+test('moved by the room while busy, a player still hears the launcher scene: its sounds load before it starts', async () => {
+  // The control room's cutscene opens with a sound no door leads to, so nothing has preloaded it.
+  const s = scenario();
+  s.assets.push({ id: 99001, type: 'audio', url: 'audio/countdown.mp3' } as (typeof s.assets)[number]);
+  const room = s.scenes.find((sc) => sc.id === CONTROL_ROOM)!;
+  room.start_events![0]!.actions.unshift({ id: 9010, type: 'audio', media_id: 99001 } as Action);
+  const g = new Game(s);
+  assert.notEqual(g.scene.def.id, CONTROL_ROOM);
+  assert.equal(g.scene.cache.audio.exists('media-99001'), false);
+
+  // The launch's jump has not run (the player is in a dialogue, say): the room has moved them, and the
+  // screen follows it on its own after a moment, as it does for any disagreement with the room.
+  (g.ctx.connection as unknown as { world: { sendToScene(id: string, scene: number): void } }).world.sendToScene(g.ctx.connection.sessionId, CONTROL_ROOM);
+  await g.wait(2500);
+
+  assert.equal(g.scene.def.id, CONTROL_ROOM);
+  assert.ok(g.world.sounds.some((sound) => (sound as unknown as { key: string }).key === 'media-99001'), 'the launcher scene\'s sound played');
+});

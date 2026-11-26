@@ -4,6 +4,7 @@ import { mediaKey } from '../../core/assets';
 import type { GameContext } from '../../core/GameContext';
 import { deferred, type Presenter } from '../Presenter';
 import { synthFor } from '../../audio/synth';
+import { askForSound } from '../../audio/soundLock';
 
 /** Stop the background music, if any. */
 export function stopMusic(ctx: GameContext): void {
@@ -26,10 +27,13 @@ export function playSceneMusic(scene: Phaser.Scene, ctx: GameContext, mediaId: I
   stopMusic(ctx);
   const sound = scene.sound.add(key, { volume, loop: true });
   ctx.music = { sound, mediaId, actionIds: new Set() };
+  askForSound(scene.sound);
   sound.play();
 }
 
 export const audio: Presenter<'audio'> = (action, pc) => {
+  // Sent here by a launch, the player may not have clicked on this page yet: the browser keeps it silent until they do.
+  askForSound(pc.scene.sound);
   // A sound the game makes itself: no file to load.
   if (action.sound) {
     const voice = synthFor(pc.scene).play(action.sound, { volume: action.volume ?? 1, loop: action.repeat === true });

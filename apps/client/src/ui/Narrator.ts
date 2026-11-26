@@ -1,4 +1,5 @@
 import { alignWordTimes, estimateWordTimes, speechDuration, speechWords, wordAt, wordAtTime, type MediaSpeech } from '@qbl/shared';
+import { askForSound } from '../audio/soundLock';
 
 /** How a line should sound. All optional: the browser's default voice reads at its own pace. */
 export interface SpeakOptions {
@@ -137,7 +138,11 @@ export class Narrator {
       }
       audio.addEventListener('ended', finish, { once: true });
       audio.addEventListener('error', finish, { once: true });
-      void audio.play().catch(finish);
+      void audio.play().catch((err: unknown) => {
+        // Autoplay refused (no click on this page yet, as after a launch): say how to turn sound on.
+        if ((err as { name?: string } | null)?.name === 'NotAllowedError') askForSound(null, true);
+        finish();
+      });
     } else {
       const synth = window.speechSynthesis;
       const utterance = new SpeechSynthesisUtterance(text);
