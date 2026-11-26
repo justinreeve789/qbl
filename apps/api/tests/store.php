@@ -7,11 +7,12 @@
  *
  * These are the same classes Laravel uses in production; only the database differs.
  */
-foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
 use App\Qbl\EditorApi;
+use App\Qbl\PngToWebp;
 use App\Qbl\ScenarioArchive;
 use App\Qbl\ScenarioStore;
 
@@ -361,6 +362,38 @@ $still = $body['row'];
 same(isset($still['params']['apng']), false, 'a still PNG does not');
 $asset = array_values(array_filter($store->compile($sid)['assets'], fn ($m) => $m['id'] === $blink['id']))[0];
 same([$asset['apng']['frames'], isset($asset['params']['apng'])], [2, false], 'the scenario document carries it on the media');
+check((bool) preg_match('#\.png$#', $blink['url'] ?? ''), 'an animated PNG stays a PNG (WebP would keep only its first frame)');
+
+// A PNG picture is kept as WebP: same size, see-through parts still see-through, far smaller.
+if (PngToWebp::available()) {
+    $picture = imagecreatetruecolor(640, 360);
+    imagealphablending($picture, false);
+    imagesavealpha($picture, true);
+    imagefill($picture, 0, 0, imagecolorallocatealpha($picture, 0, 0, 0, 127));
+    for ($x = 0; $x < 640; $x++) {
+        imageline($picture, $x, 0, $x, 239, imagecolorallocate($picture, ($x * 7) % 256, (int) ($x / 3), 200 - (int) ($x / 4)));
+    }
+    $bigPng = sys_get_temp_dir().'/qbl-test-room.png';
+    imagepng($picture, $bigPng, 0);
+    imagedestroy($picture);
+    [$status, $body] = $call('POST', "scenarios/$sid/media/upload", [], null, ['file' => ['tmp_name' => $bigPng, 'name' => 'Crew Quarters.PNG']]);
+    $room = $body['row'] ?? [];
+    same([$status, $room['width'] ?? null, $room['height'] ?? null, $room['filename'] ?? null], [201, 640, 360, 'Crew Quarters.webp'], 'an uploaded PNG becomes a WebP of the same size, listed under a .webp name');
+    check((bool) preg_match("#^/media/$sid/[a-f0-9]{24}\\.webp$#", $room['url'] ?? ''), 'stored as a .webp file');
+    $stored = "$mediaDir/{$room['filepath']}";
+    same((new finfo(FILEINFO_MIME_TYPE))->file($stored), 'image/webp', 'whose content is WebP');
+    check(filesize($stored) < filesize($bigPng) / 4, 'and much smaller than the PNG ('.filesize($stored).' bytes, was '.filesize($bigPng).')');
+    $back = imagecreatefromwebp($stored);
+    same([(imagecolorat($back, 320, 300) >> 24) & 0x7f, (imagecolorat($back, 320, 100) >> 24) & 0x7f], [127, 0], 'see-through parts stay see-through, and the rest stays solid');
+    imagedestroy($back);
+    same(count(glob(sys_get_temp_dir().'/qbl-test-room.png.webp') ?: []), 0, 'the WebP made on the way is not left behind');
+    $off = new ScenarioStore($pdo, $mediaDir, '/media', false);
+    $kept = $off->addMediaFile($sid, $bigPng, 'kept.png');
+    check((bool) preg_match('#\.png$#', $kept['url']) && $kept['filename'] === 'kept.png', 'with QBL_PNG_TO_WEBP=false a PNG is kept as it is');
+    unlink($bigPng);
+} else {
+    echo "skipped: this PHP's GD cannot write WebP, so PNG uploads are kept as PNG\n";
+}
 
 // A character is drawn from its animations, each a picture of this scenario's.
 $animations = ['stand_right' => ['media_id' => $blink['id']], 'walk_right' => ['media_id' => $still['id'], 'frames' => ['0'], 'duration' => '450', 'flip' => false, 'extra' => 1], 'wave' => ['media_id' => $blink['id'], 'repeat' => true]];

@@ -6,7 +6,7 @@
  *
  *   php apps/api/tests/library.php
  */
-foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ScenarioStore', 'ScenarioDecompiler', 'Library/AssetLibrary', 'Library/LibraryApi', 'Library/ContentAdmins'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ScenarioStore', 'ScenarioDecompiler', 'Library/AssetLibrary', 'Library/LibraryApi', 'Library/ContentAdmins'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 

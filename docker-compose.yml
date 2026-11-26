@@ -83,8 +83,9 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       QBL_GOOGLE_DOMAINS: ${QBL_GOOGLE_DOMAINS:-}
-      # Files uploaded in the editor.
+      # Files uploaded in the editor. PNG pictures are kept as WebP unless QBL_PNG_TO_WEBP=false.
       QBL_MEDIA_DIR: /media-data
+      QBL_PNG_TO_WEBP: ${QBL_PNG_TO_WEBP:-}
       # The AI scenario generator (php artisan qbl:generate): keys, models, addresses and limits, all
       # from .env. Empty means the default in apps/api/config/qbl_generation.php. See .env.example.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

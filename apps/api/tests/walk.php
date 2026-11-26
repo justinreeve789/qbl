@@ -7,7 +7,7 @@
  *
  *   php apps/api/tests/walk.php
  */
-foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Characters/WalkMaker', 'Apng', 'Avatars', 'ScenarioStore'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Characters/WalkMaker', 'Apng', 'PngToWebp', 'Avatars', 'ScenarioStore'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 

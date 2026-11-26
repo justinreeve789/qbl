@@ -6,7 +6,7 @@
  *
  *   php apps/api/tests/porting.php
  */
-foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi', 'ActivityStore', 'Api/Sql', 'Api/Reports'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi', 'ActivityStore', 'Api/Sql', 'Api/Reports'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
@@ -338,7 +338,7 @@ if (class_exists(ZipArchive::class)) {
     $z = shape(json_decode(json_encode($store->compile((int) $in['scenario']['id'])), true));
     unset($a['shop_items'], $z['shop_items'], $a['visibility'], $z['visibility']);
     same($z, $a + [], 'the imported scenario is the exported one');
-    same([is_file("$dir/media/{$in['media'][0]['filepath']}"), $in['media'][0]['url'] === "/media/{$in['media'][0]['filepath']}", filesize("$dir/media/{$in['media'][0]['filepath']}") === filesize($png)], [true, true, true], 'with its picture stored again as the new scenario\'s own file');
+    same([is_file("$dir/media/{$in['media'][0]['filepath']}"), $in['media'][0]['url'] === "/media/{$in['media'][0]['filepath']}", filesize("$dir/media/{$in['media'][0]['filepath']}") === filesize("$dir/media/{$media['filepath']}")], [true, true, true], 'with its picture stored again as the new scenario\'s own file');
     unlink($zipPath);
 
     // A ZIP made by hand: the scenario in a folder, a picture named by its address, and things that should not get through.

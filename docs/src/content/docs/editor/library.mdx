@@ -16,6 +16,8 @@ The tabs after **Scenes** hold the things a scenario defines once and uses in ma
 
 The images, sounds and videos the scenario uses. **Upload files** (pictures: PNG, JPEG, WebP, GIF; sound: MP3, WAV, OGG; video: MP4, WebM) or **Add by address** to point at a file already on the web.
 
+PNG pictures are kept as **WebP** when they are uploaded: the same picture, see-through parts included, usually a tenth of the size, so scenes load quickly for players. The file is listed with a `.webp` name. Animated PNGs stay PNGs. A server can turn this off with `QBL_PNG_TO_WEBP=false`.
+
 Media is filed under sub-tabs by what it is used for: **Backgrounds**, **NPCs**, **Items**, **Vehicles**, **Sounds and music**, **Video**, **Shop items** and **Other images**. A file follows how you use it; one uploaded while a sub-tab is open is filed there until its use says otherwise, and **Details → Filed under** overrides it.
 
 Each card previews the file, says what it is filed under and its size, and marks a sprite sheet or an animated PNG. Each kind has a colour, on its card and on its sub-tab. Click a picture or **✏️ Details** to open the file in a panel over the page; **🎞️ Sprite sheet** opens the same panel at its sprite sheet. Press Escape, the ×, or click outside the panel to close it. The panel has two parts:

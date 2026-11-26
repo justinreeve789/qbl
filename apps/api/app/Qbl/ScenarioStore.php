@@ -127,6 +127,8 @@ class ScenarioStore
         private ?string $mediaDir = null,
         /** URL prefix that directory is served under. */
         private string $mediaUrl = '/media',
+        /** Keep uploaded PNG pictures as WebP (PngToWebp). QBL_PNG_TO_WEBP=false turns it off. */
+        private bool $pngToWebp = true,
     ) {
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
@@ -573,13 +575,25 @@ class ScenarioStore
         if (! is_file($tmpPath) || filesize($tmpPath) > self::MAX_UPLOAD_BYTES) {
             throw new StoreError(422, 'The file is missing or larger than 25 MB.');
         }
-        [$type, $filepath, $url, $size] = $this->storeFile($scenarioId, $tmpPath);
+        // A PNG is kept as WebP: much smaller, so it reaches players sooner (and reaches them at all).
+        $webp = $this->pngToWebp ? PngToWebp::convert($tmpPath) : null;
+        try {
+            [$type, $filepath, $url, $size] = $this->storeFile($scenarioId, $webp ?? $tmpPath);
+        } finally {
+            if ($webp !== null) {
+                @unlink($webp);
+            }
+        }
+        $name = basename($originalName);
+        if ($webp !== null) {
+            $name = PngToWebp::filename($name);
+        }
         // An animated PNG says so, with its frames and timing: the game cuts it into frames.
         $apng = $type === 'image' ? Apng::info($this->mediaDir.'/'.$filepath) : null;
 
         return $this->createRow($scenarioId, 'media', [
             'type' => $type,
-            'filename' => mb_substr(basename($originalName), 0, 200),
+            'filename' => mb_substr($name, 0, 200),
             'filepath' => $filepath,
             'url' => $url,
             'width' => $size ? $size[0] : null,
