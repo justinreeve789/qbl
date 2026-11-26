@@ -208,16 +208,14 @@ export class LocalPlayerSystem implements SceneSystem {
     if (bench.claims(p)) return;
     if (this.rt.system(HotspotSystem).click(p.x, p.y)) return;
     if (bench.blocksWalking) return;
+    // A hidden avatar does not walk where the floor is clicked; hotspots above still work.
+    if (this.avatar.concealed) return;
     // Otherwise walk there, Club Penguin style.
     this.walkTo(p);
   }
 
   // -------------------------------------------------------------- update
 
-  /**
-   * An avatar action: show or hide the player's own figure. The game server is told, so everyone
-   * else in the scene sees the same. The player can still walk and use hotspots while hidden.
-   */
   /** True while a freeze action holds the player in place. */
   private held = false;
 
@@ -232,6 +230,12 @@ export class LocalPlayerSystem implements SceneSystem {
     if (frozen) this.stop();
   }
 
+  /**
+   * An avatar action: show or hide the player's own figure. The game server is told, so everyone
+   * else in the scene sees the same. While hidden, hotspots can still be clicked, but neither clicking
+   * the floor nor the keys walk the avatar; walk actions aimed at the player still do. In a scene
+   * with show_avatars off the avatar is hidden the same way, and the camera does not follow it.
+   */
   setAvatarVisible(visible: boolean, duration: number) {
     this.avatar.setShown(visible, duration);
     this.rt.ctx.connection.avatarVisible(visible);
@@ -288,7 +292,8 @@ export class LocalPlayerSystem implements SceneSystem {
     const step = (this.speed() * Math.min(delta, 100)) / 1000;
     let to: Point | null = null;
 
-    if (!this.rt.ctx.ui.capturesInput && !this.frozen) {
+    // Nor do the keys walk a hidden avatar. A walk action aimed at the player still does (below).
+    if (!this.rt.ctx.ui.capturesInput && !this.frozen && !me.concealed) {
       const k = this.keys;
       const dx = (k.right.isDown || k.d.isDown ? 1 : 0) - (k.left.isDown || k.a.isDown ? 1 : 0);
       const dy = (k.down.isDown || k.s.isDown ? 1 : 0) - (k.up.isDown || k.w.isDown ? 1 : 0);

@@ -137,3 +137,66 @@ test('a walk action walks the player, even while frozen, and out through a door'
   assert.ok(closest < 2, `it passed through the first spot (came within ${closest.toFixed(1)} px)`);
   assert.equal(g.sceneName, 'lab', 'went through the door to the lab');
 });
+
+/** Hold a movement key down for a while, then let it go. */
+async function holdKey(g: Game, key: string, ms: number) {
+  const keys = (g as any).world.keys as Record<string, { isDown: boolean }>;
+  (keys[key] ??= { isDown: false }).isDown = true;
+  await g.wait(ms);
+  keys[key]!.isDown = false;
+  await g.wait(32);
+}
+
+test('while an avatar action hides the player, neither floor clicks nor keys walk them; hotspots and walk actions still work', async () => {
+  const base = mission({ characters: [] });
+  const deck = base.scenes![0]!;
+  deck.hotspots!.push(
+    { id: 80, shortname: 'hide', position_x: 400, position_y: 300, radius: 30, activate_by_trigger: true, actions: [{ id: 81, type: 'avatar', visible: false }] },
+    { id: 85, shortname: 'push', position_x: 600, position_y: 300, radius: 30, activate_by_trigger: true, actions: [{ id: 86, type: 'walk', target: 'player', to: 'point', position_x: 700, position_y: 500 }] },
+    { id: 90, shortname: 'show', position_x: 500, position_y: 300, radius: 30, activate_by_trigger: true, actions: [{ id: 91, type: 'avatar', visible: true }, { id: 92, type: 'text_overlay', text: 'Shown', duration: 5000 }] },
+  );
+  const g = new Game(normalizeScenario(base));
+  await g.wait(100);
+  await g.click(400, 300);
+  const at = g.position;
+  await g.click(900, 500);
+  await g.wait(500);
+  assert.deepEqual(g.position, at, 'hidden: a click on the floor does nothing');
+  await holdKey(g, 'right', 400);
+  await holdKey(g, 'down', 400);
+  assert.deepEqual(g.position, at, 'hidden: the keys do nothing');
+  await g.click(600, 300);
+  for (let i = 0; i < 200 && Math.hypot(g.position.x - 700, g.position.y - 500) > 2; i++) await g.wait(16);
+  assert.ok(Math.hypot(g.position.x - 700, g.position.y - 500) <= 2, 'a walk action aimed at the player still walks them');
+  await g.click(500, 300);
+  assert.deepEqual(g.ui.texts, ['Shown'], 'a hotspot can still be clicked while hidden');
+  const shownAt = g.position;
+  await holdKey(g, 'left', 300);
+  assert.ok(g.position.x < shownAt.x, 'shown again: the keys walk');
+  const keyed = g.position;
+  await g.click(900, 500);
+  await g.wait(500);
+  assert.notDeepEqual(g.position, keyed, 'and clicking the floor walks');
+});
+
+test('in a scene that hides avatars, the player does not walk and the camera does not follow them', async () => {
+  const base = mission({ characters: [] });
+  base.scenes![0]!.show_avatars = false;
+  base.scenes![0]!.hotspots!.push(
+    { id: 85, shortname: 'push', position_x: 600, position_y: 300, radius: 30, activate_by_trigger: true, actions: [{ id: 86, type: 'walk', target: 'player', to: 'point', position_x: 700, position_y: 500 }] },
+  );
+  const g = new Game(normalizeScenario(base));
+  await g.wait(100);
+  const camera = (g.scene as any).cameras.main as { following: boolean; centre: { x: number; y: number } };
+  assert.equal(camera.following, false, 'the camera does not follow the hidden player');
+  const view = { ...camera.centre };
+  const at = g.position;
+  await g.click(900, 500);
+  await g.wait(400);
+  await holdKey(g, 'right', 400);
+  assert.deepEqual(g.position, at, 'neither clicks nor keys walk the player');
+  await g.click(600, 300);
+  for (let i = 0; i < 200 && Math.hypot(g.position.x - 700, g.position.y - 500) > 2; i++) await g.wait(16);
+  assert.ok(Math.hypot(g.position.x - 700, g.position.y - 500) <= 2, 'a walk action still moves the player');
+  assert.deepEqual(camera.centre, view, 'and the view stays where it was');
+});

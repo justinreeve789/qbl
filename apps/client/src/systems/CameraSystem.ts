@@ -23,11 +23,16 @@ type Mode =
  * move, while they are on the stage; otherwise the middle of those who are). A camera action can
  * follow a character, glide to a spot, or go back to either.
  *
+ * In a scene that hides avatars (`show_avatars` off) the view does not follow the player: it starts
+ * where they arrive and stays there until a camera action moves it.
+ *
  * A close-up bench without avatars is shown whole instead, in the middle of the window: nothing of
  * it may be cut off, and there is nobody to follow, so camera actions leave it where it is.
  */
 export class CameraSystem implements SceneSystem {
   private whole = false;
+  /** False in a scene that hides avatars: there is no figure to follow. */
+  private followsPlayer = true;
   private mode: Mode = { kind: 'player' };
   /** Where the view's centre is, while the camera is not following the player itself. */
   private focus: Point | null = null;
@@ -57,6 +62,7 @@ export class CameraSystem implements SceneSystem {
     const player = this.rt.system(LocalPlayerSystem).avatar;
     const cam = scene.cameras.main;
     this.whole = sceneBench(def) != null && def.show_avatars === false;
+    this.followsPlayer = def.show_avatars !== false;
     if (this.whole) {
       cam.fadeIn(350, 0, 0, 0);
       this.fit();
@@ -70,6 +76,11 @@ export class CameraSystem implements SceneSystem {
     if (def.story) {
       this.mode = { kind: 'auto' };
       this.focus = this.autoTarget() ?? { x: player.x, y: player.y };
+      cam.centerOn(this.focus.x, this.focus.y - this.lift);
+    } else if (!this.followsPlayer) {
+      // Nobody to follow: the view stays on the spot the player arrived at.
+      this.focus = { x: player.x, y: player.y };
+      this.mode = { kind: 'point', at: this.focus };
       cam.centerOn(this.focus.x, this.focus.y - this.lift);
     } else {
       cam.centerOn(player.x, player.y - this.lift);
@@ -97,6 +108,11 @@ export class CameraSystem implements SceneSystem {
     this.glide = null;
     switch (target) {
       case 'player': {
+        if (!this.followsPlayer) {
+          // The player is hidden here: glide to where they are, and stay there.
+          const avatar = this.rt.system(LocalPlayerSystem).avatar;
+          return this.glideTo(from, { x: avatar.x, y: avatar.y }, ms);
+        }
         this.mode = { kind: 'player' };
         this.focus = null;
         this.followPlayer();
@@ -109,12 +125,7 @@ export class CameraSystem implements SceneSystem {
         return this.after(ms);
       case 'point': {
         if (action.position_x == null || action.position_y == null) return null;
-        this.leaveFollow(from);
-        const to = { x: action.position_x, y: action.position_y };
-        this.mode = { kind: 'point', at: to };
-        const d = deferred();
-        this.glide = { from, to, ms: Math.max(1, ms), t: 0, done: d.resolve };
-        return { done: d.done, cancel: d.resolve };
+        return this.glideTo(from, { x: action.position_x, y: action.position_y }, ms);
       }
       case 'auto':
         this.leaveFollow(from);
@@ -205,6 +216,15 @@ export class CameraSystem implements SceneSystem {
     const cam = this.rt.scene.cameras.main as Phaser.Cameras.Scene2D.Camera & { stopFollow?: () => void };
     cam.stopFollow?.();
     this.focus = from;
+  }
+
+  /** Glide the view from one spot to another and hold it there. */
+  private glideTo(from: Point, to: Point, ms: number): ActionHandle {
+    this.leaveFollow(from);
+    this.mode = { kind: 'point', at: to };
+    const d = deferred();
+    this.glide = { from, to, ms: Math.max(1, ms), t: 0, done: d.resolve };
+    return { done: d.done, cancel: d.resolve };
   }
 
   /** A handle that finishes once the view has had time to get there. */
