@@ -143,8 +143,8 @@ test('export to a ZIP and import it again as a new scenario, uploaded files incl
   await page.click('.brand');
   await page.waitForSelector('[data-scenario]');
   await page.setInputFiles('[data-input=import]', [{ name: 'notes.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip at all') }]);
-  await page.waitForSelector('.toast.error');
-  assert.match(await page.innerText('.toast.error'), /not a ZIP/);
+  // (An earlier toast may still be showing: wait for this one.)
+  await page.waitForSelector('.toast.error:has-text("not a ZIP")');
 });
 
 test('a public mission by someone else can be copied, but not edited', async () => {

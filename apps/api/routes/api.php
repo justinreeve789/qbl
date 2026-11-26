@@ -70,6 +70,9 @@ Route::get('/sso/clever/callback', [SsoController::class, 'cleverCallback'])->mi
 // (App\Qbl\Library\LibraryApi lists the routes). Teachers read and add; administrators change it.
 Route::any('/editor/library/{path?}', LibraryController::class)->where('path', '.*')->middleware(['auth:sanctum', 'throttle:120,1']);
 
+// An exported scenario ZIP, by a signed link from POST /editor/scenarios/{id}/export-link: the browser
+// downloads it itself (streamed to disk), so it carries no token. Before the /editor catch-all.
+Route::get('/editor-export/{ticket}', [EditorController::class, 'exportByLink'])->where('ticket', '[A-Za-z0-9_.-]+')->middleware('throttle:30,1');
 // The editor. One controller hands every request to App\Qbl\EditorApi, which lists the routes.
 Route::any('/editor/{path?}', EditorController::class)->where('path', '.*')->middleware('auth:sanctum');
 

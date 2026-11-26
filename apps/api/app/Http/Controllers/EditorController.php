@@ -25,6 +25,19 @@ class EditorController extends Controller
             $upload ? ['file' => ['tmp_name' => $upload->getRealPath(), 'name' => $upload->getClientOriginalName()]] : [],
         );
 
+        return $this->answer($body, $status);
+    }
+
+    /** GET /api/editor-export/{ticket}: an exported ZIP, by the signed link the editor asked for (no token). */
+    public function exportByLink(EditorApi $api, string $ticket): Response
+    {
+        [$status, $body] = $api->exportByLink($ticket);
+
+        return $this->answer($body, $status);
+    }
+
+    private function answer(?array $body, int $status): Response
+    {
         // A file to send (an exported scenario), made for this request and removed once sent.
         // Something to play in the page (a voice sample) rather than save.
         if (isset($body['download']) && ! empty($body['download']['inline'])) {

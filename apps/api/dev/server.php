@@ -328,6 +328,11 @@ if (preg_match('#^/api/billing(?:/(checkout|change|portal|promotion|credits))?$#
 // out from the time on each request, so no worker is needed) and ends as an empty draft. For trying
 // the editor's generator page and its progress bar, nothing more. A number of seconds above 1
 // (QBL_DEV_GENERATOR=15) makes the pretend run take that long instead.
+// Exported ZIPs by signed link (EditorApi::exportByLink): the browser downloads these itself, with no token.
+$exportLinks = new App\Qbl\ExportLinks('qbl-dev-export-links');
+if ($method === 'GET' && preg_match('#^/api/editor-export/([A-Za-z0-9_.-]+)$#', $path, $m)) {
+    sendAnswer(...(new EditorApi($store, exportLinks: $exportLinks))->exportByLink($m[1]));
+}
 if (preg_match('#^/api/editor/generations(?:/([0-9a-z/]+))?$#', $path, $m)) {
     App\Qbl\Generation\GenerationRuns::sqliteUpgrade($pdo);
     $pretend = (bool) getenv('QBL_DEV_GENERATOR');
@@ -363,7 +368,14 @@ if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
         'voices' => __DIR__.'/../resources/speech/voices.json',
         'cache_dir' => "$dataDir/speech",
     ]);
-    [$status, $answer] = (new EditorApi($store, speech: $speech))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files);
+    [$status, $answer] = (new EditorApi($store, speech: $speech, exportLinks: $exportLinks))->handle($method, substr($path, strlen('/api/editor')), $body, $user, $files);
+    sendAnswer($status, $answer);
+}
+respond(404, ['message' => 'Not found.']);
+
+/** An answer from EditorApi: a file to send (and delete), or JSON. */
+function sendAnswer(int $status, ?array $answer): never
+{
     if (isset($answer['download'])) {
         header('Content-Type: '.$answer['download']['type']);
         header('Content-Disposition: '.(empty($answer['download']['inline']) ? 'attachment' : 'inline').'; filename="'.$answer['download']['name'].'"');
@@ -373,7 +385,6 @@ if (str_starts_with($path, '/api/editor/') || $path === '/api/editor') {
     }
     respond($status, $answer);
 }
-respond(404, ['message' => 'Not found.']);
 
 /** QBL_DEV_GENERATOR=1: move pretend runs along by the clock (see the generations route above). */
 function devPretendGenerations(PDO $pdo, ScenarioStore $store, App\Qbl\Billing\Credits $credits): void
