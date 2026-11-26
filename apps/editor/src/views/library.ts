@@ -8,7 +8,7 @@ import {
 } from '../schema';
 import { inlineConditions, rowConditions, type ConditionValue } from './conditions';
 import { sheetEditor } from './sheet';
-import { characterMediaIds } from '../characters';
+import { isCategory, isSprite, mediaCategory, MEDIA_TABS, type MediaTab } from '../mediaCategories';
 import { emojiIcon } from '../icons';
 import { emptyState, listPage } from './kit';
 
@@ -30,41 +30,8 @@ const removeButton = (ctx: FormContext, table: Table, row: Row, what: string) =>
 
 // --------------------------------------------------------------------- media
 
-const MEDIA_TABS = [
-  ['all', 'All', '🗂️'], ['sprites', 'Sprites', '🎞️'], ['background', 'Backgrounds', '🏞️'], ['character', 'NPCs', '🧑‍🚀'],
-  ['item', 'Items', '🎒'], ['vehicle', 'Vehicles', '🚙'], ['audio', 'Sounds and music', '🔊'], ['video', 'Video', '🎬'], ['shop', 'Shop items', '🛍️'], ['other', 'Other images', '🖼️'],
-] as const;
-type MediaTab = (typeof MEDIA_TABS)[number][0];
-/**
- * Sprites is a view across the other tabs, not a place a file is filed: every picture cut into a
- * sprite sheet, and every animated PNG, whatever else it is used for.
- */
-type MediaCategory = Exclude<MediaTab, 'all' | 'sprites'>;
-const isCategory = (key: string): key is MediaCategory => MEDIA_TABS.some(([k]) => k === key && k !== 'all' && k !== 'sprites');
-const isSprite = (media: Row) => media.type === 'image' && Boolean(params(media).sheet || params(media).apng);
 /** The sub-tab showing. Kept outside the view so a redraw does not reset it. */
 let mediaTab: MediaTab = 'all';
-
-/**
- * Which sub-tab a file belongs under. By default this follows how it is used (a scene layer is a
- * background, a character's picture is an NPC, and so on); a file can also be filed by hand,
- * which is what puts a fresh upload under the tab it was uploaded from.
- */
-function mediaCategory(ctx: FormContext, media: Row): MediaCategory {
-  const { store } = ctx;
-  const chosen = params(media).category as string | undefined;
-  if (chosen && isCategory(chosen)) return chosen;
-  if (media.type === 'audio') return 'audio';
-  if (media.type === 'video') return 'video';
-  const id = media.id;
-  const layers = store.rows('scenes').flatMap((s) => [...((s.background_media as Array<Record<string, unknown>> | null) ?? []), ...((s.foreground_media as Array<Record<string, unknown>> | null) ?? [])]);
-  if (layers.some((l) => (l.media_id ?? l.id) === id)) return 'background';
-  if (store.rows('characters').some((c) => characterMediaIds(store, c).includes(id))) return 'character';
-  const item = store.rows('items').find((i) => i.media_id === id);
-  if (item) return item.vehicle ? 'vehicle' : 'item';
-  if (store.rows('shop_items').some((i) => i.media_id === id)) return 'shop';
-  return 'other';
-}
 
 export function mediaPage(ctx: FormContext): HTMLElement {
   const { store } = ctx;
@@ -95,7 +62,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
     void store.add('media', { type, url, filename: url.split(/[?#]/)[0]!.split('/').pop() });
   };
 
-  const categories = new Map(store.rows('media').map((m) => [m.id, mediaCategory(ctx, m)]));
+  const categories = new Map(store.rows('media').map((m) => [m.id, mediaCategory(store, m)]));
   const inTab = (media: Row, tab: MediaTab) => (tab === 'all' ? true : tab === 'sprites' ? isSprite(media) : categories.get(media.id) === tab);
   const count = (tab: MediaTab) => store.rows('media').filter((m) => inTab(m, tab)).length;
   const tabs = h('div', { class: 'subtabs', role: 'tablist', 'aria-label': 'Kinds of media' }, ...MEDIA_TABS.map(([key, label, icon]) =>
@@ -156,7 +123,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
  */
 export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
   const { store } = ctx;
-  const category = (media: Row) => mediaCategory(ctx, media);
+  const category = (media: Row) => mediaCategory(ctx.store, media);
   openPanel({
     key: `media-${id}`,
     kind: 'media',

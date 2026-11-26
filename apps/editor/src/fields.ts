@@ -6,6 +6,8 @@ import { h, help, toast } from './dom';
 import type { Store } from './store';
 import { richEditor } from './rich/editor';
 import { narratorPicker } from './views/voices';
+import type { MediaTab } from './mediaCategories';
+import { mediaChoiceButton } from './mediaPicker';
 
 /**
  * Forms are described as lists of fields and drawn by `form()`. Adding an attribute to an
@@ -37,6 +39,11 @@ export interface Field {
   options?: ReadonlyArray<readonly [value: string, label: string]>;
   /** media: which type of file may be picked. `visual`: a picture or a video. */
   mediaType?: 'image' | 'audio' | 'video' | 'visual';
+  /**
+   * media (pictures and videos): the kind of file the field is for, which the picker opens on
+   * (backgrounds for a scene layer, sprites for a spritemap). Default: every file of the type.
+   */
+  mediaCategory?: MediaTab | ((values: Values) => MediaTab);
   /**
    * spawn: the sibling field that holds the scene whose spawn points are listed. `here`: the scene
    * being edited, or, where there is none (a character's routine), every scene's.
@@ -313,28 +320,35 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     }
     case 'media': {
       const type = f.mediaType ?? 'image';
-      // `visual`: a picture or a video.
-      const types = type === 'visual' ? ['image', 'video'] : [type];
-      const rows = ctx.store.rows('media').filter((m) => types.includes(String(m.type)));
-      const file = h('input', { type: 'file', hidden: true, accept: types.map((t) => `${t}/*`).join(',') });
-      const none = f.placeholder ?? (type === 'visual' ? 'None' : `No ${type}`);
-      const node = idSelect(rows.map((m) => [m.id, type === 'visual' ? `${m.type === 'video' ? '🎬' : '🖼️'} ${mediaLabel(m)}` : mediaLabel(m)]), value, (v) => set(v), none, [[NEW, type === 'visual' ? 'Upload a picture or a video…' : `Upload ${type === 'audio' ? 'an' : 'a'} ${type} file…`]], () => file.click());
+      // Pictures and videos are chosen by looking at them, in a pop-up; sounds from a list.
+      if (type !== 'audio') {
+        const category = typeof f.mediaCategory === 'function' ? f.mediaCategory(values) : f.mediaCategory;
+        return h('div', { class: `field${wide ? ' wide' : ''}`, 'data-field': f.key },
+          h('span', { class: 'field-label' }, f.label, help(f.hint)),
+          mediaChoiceButton(ctx.store, {
+            label: f.label, types: type === 'visual' ? ['image', 'video'] : [type], category, selected: (value as number | null) ?? null,
+            none: f.placeholder ?? (type === 'visual' ? 'None' : `No ${type === 'image' ? 'picture' : type}`),
+            onChoose: (id) => set(id),
+          }));
+      }
+      // Sounds: a list, with an upload at the end.
+      const rows = ctx.store.rows('media').filter((m) => m.type === 'audio');
+      const file = h('input', { type: 'file', hidden: true, accept: 'audio/*' });
+      const node = idSelect(rows.map((m) => [m.id, mediaLabel(m)]), value, (v) => set(v), f.placeholder ?? 'No audio', [[NEW, 'Upload an audio file…']], () => file.click());
       file.addEventListener('change', async () => {
         const picked = file.files?.[0];
         if (!picked) return;
         try {
           const row = await ctx.store.api.upload(ctx.store.scenarioId, picked);
-          if (!types.includes(String(row.type))) toast(`That file is ${row.type}, not ${types.join(' or ')}. It was added to the media library.`, 'error');
+          if (row.type !== 'audio') toast(`That file is ${row.type}, not audio. It was added to the media library.`, 'error');
           ctx.store.bundle.media.push(row);
-          if (types.includes(String(row.type))) set(row.id);
+          if (row.type === 'audio') set(row.id);
           ctx.store.emit(true);
         } catch (err) {
           toast(err instanceof Error ? err.message : 'Upload failed.', 'error');
         }
       });
-      const chosen = ctx.store.byId('media', value as number | null);
-      const url = chosen?.type === 'image' ? mediaUrl(ctx.store, chosen) : null;
-      return wrap(h('div', { class: 'media-pick' }, url ? h('img', { src: url, alt: '', class: 'thumb' }) : null, node, file));
+      return wrap(h('div', { class: 'media-pick' }, node, file));
     }
     default: {
       const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder, onchange: () => set(input.value) });

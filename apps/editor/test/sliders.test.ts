@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
-import { png, startSite, type TestSite } from './servers';
+import { png, startSite, type TestSite, chooseMedia } from './servers';
 
 /**
  * Sliders beside the number boxes of fields with a natural range (parallax, radii, volume...):
@@ -68,7 +68,7 @@ test('a layer\'s parallax: shown at its default until moved, then saved; the box
   await page.click('.scene-card >> text=Edit');
   await page.waitForSelector('.stage-overlay polygon');
   await page.click('[title="Add: background layers"]');
-  await page.locator('.inspector [data-field=media_id] select').selectOption({ label: 'sky.png' });
+  await chooseMedia(page.locator('.inspector [data-field=media_id]'), 'sky.png');
   await saved();
 
   // Empty: the slider sits at the default (1), dimmed, and nothing is stored.

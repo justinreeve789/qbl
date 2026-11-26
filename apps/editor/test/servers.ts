@@ -138,3 +138,16 @@ export function wav(seconds = 0.2): Buffer {
   out.writeUInt32LE(samples * 2, 40);
   return out;
 }
+
+/**
+ * Choose a picture for a field the way an author does: open its picture pop-up, look through
+ * every file, and click the one with this name. `field` is the field (or anything around its button).
+ */
+export async function chooseMedia(field: import('playwright').Locator, name: string): Promise<void> {
+  const page = field.page();
+  await field.locator('.media-choice-open').first().click();
+  const popup = page.locator('dialog[data-panel=media-choose]');
+  await popup.locator('[data-media-tab=all]').click();
+  await popup.locator(`[data-media-pick][data-name="${name}"]`).click();
+  await popup.waitFor({ state: 'detached' });
+}
