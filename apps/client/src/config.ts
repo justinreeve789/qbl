@@ -27,6 +27,11 @@ export const config = {
    * Opened by the editor's "Test this scene" button; needs the editor's sign-in.
    */
   preview: number(params.get('preview')),
+  /**
+   * A teacher's launch this page was opened on the way to (`?launch=`): a student playing another
+   * scenario is sent here first, to the teacher's launcher scene, and goes on from there.
+   */
+  launch: params.get('launch'),
   /** Start in this scene instead of the start scene or the saved one. */
   startScene: number(params.get('scene')),
   /** Which instance of the scenario to join: the public one, an assignment's ("a12") or a team's ("t7"). */

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { characterPicture, isStaff, launchPath, normalizeScenario, roleLabel, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { characterPicture, isLauncherScene, isStaff, launchPath, parseLaunchParam, normalizeScenario, roleLabel, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
@@ -519,6 +519,20 @@ async function start() {
     };
     // Teachers launch their missions for the class from here.
     if (isStaff(user.role)) ctx.fetchLaunchable = () => api.launchable();
+    // Sent here by a teacher's launch from another scenario: the server has put this player in the
+    // launcher scene, whose Open URL (to QL_SCENARIO_LAUNCH_URL) or travel takes them on. If it could
+    // not (the launch is old, or the scene is gone), they go on to the launched scenario at once.
+    const arriving = parseLaunchParam(config.launch);
+    if (config.launch != null) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('launch');
+      window.history.replaceState(null, '', url);
+    }
+    if (arriving) {
+      const scene = ctx.index.scene(connection.me?.scene_id ?? -1);
+      ctx.launched = scene && isLauncherScene(scene) ? { ...arriving, scene_id: scene.id } : arriving;
+      if (!scene || !isLauncherScene(scene)) ctx.leaveFor(arriving);
+    }
   }
   // The player's own button, top right: their profile, the wardrobe, the site's other places
   // (for a teacher: Editor, Classes, Docs), and signing out. Leaving saves first. A preview

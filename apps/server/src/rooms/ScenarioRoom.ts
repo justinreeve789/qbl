@@ -1,7 +1,7 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
-  C2S, CloseCodes, isLauncherScene, isStaff, launchPath, normalizeScenario, planLaunch, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
-  type ActivityEntry, type ChatBroadcast, type LaunchBroadcast, type LaunchMessage, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
+  C2S, CloseCodes, DETOUR_SECONDS, detourKey, detourPath, isLauncherScene, isStaff, LAUNCH_TOPIC, launchAnswerTopic, launchPath, launchReport, normalizeScenario, planLaunch, planRelay, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
+  type ActivityEntry, type ChatBroadcast, type Detour, type LaunchBroadcast, type LaunchRelay, type LaunchMessage, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
   type MessageEntry, type MoveMessage, type NoticeMessage, type ProgressMessage, type Scenario, type SceneMessage, type ShowBroadcast, type ShowMessage,
   type SnapMessage, type TrackMessage, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
 } from '@qbl/shared';
@@ -21,6 +21,8 @@ const CHAT_INTERVAL_MS = 800;
 const LOG_INTERVAL_MS = 5000;
 /** Things a player can do in a second that are worth a line in the activity log. */
 const TRACK_PER_SECOND = 5;
+/** How long the teacher's room waits for the other rooms to say how many students they sent. */
+const LAUNCH_ANSWER_MS = 800;
 /** How often characters that roam take a step: as often as the room state is sent. */
 const TICK_MS = 50;
 
@@ -70,6 +72,10 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     this.state.scenario = scenario.shortname;
     this.state.group = this.party;
     if (scenario.max_players && scenario.max_players > 0) this.maxClients = scenario.max_players;
+    // A teacher's launch in any other room reaches their students here too (see onRelay). Every
+    // room listens, so a busy server has many more than the default ten listeners: that is expected.
+    this.presence.setMaxListeners(0);
+    await this.presence.subscribe(LAUNCH_TOPIC, this.onRelay);
 
     this.onMessage(C2S.Move, (client: Client, msg: MoveMessage) => {
       const result = this.world(client)?.move(client.sessionId, msg);
@@ -236,7 +242,10 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     this.teamOf.set(client.sessionId, group);
     // A teacher switching to another team asks to arrive in the scene where that team is.
     const startScene = isStaff(user.role) ? Number(options?.scene_id) || undefined : undefined;
-    const session = world.addPlayer(client.sessionId, user, saved, Number(options?.avatar_media_id) || undefined, startScene);
+    world.addPlayer(client.sessionId, user, saved, Number(options?.avatar_media_id) || undefined, startScene);
+    // Sent here by a teacher's launch, from another scenario: they arrive in the launcher scene.
+    await this.arriveOnDetour(client, world, user.id);
+    const session = world.sessionOf(client.sessionId)!;
     const welcome: WelcomeMessage = {
       session_id: client.sessionId,
       session,
@@ -276,6 +285,7 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   }
 
   override async onDispose() {
+    this.presence.unsubscribe(LAUNCH_TOPIC, this.onRelay);
     await Promise.all([...this.ready.keys()].map((team) => this.saveInstance(team, true)));
     await this.flushLogs();
   }
@@ -283,12 +293,13 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   // ---------------------------------------------------------------- launches
 
   /**
-   * A teacher launched a mission from this game. The API opens the assignment to its students and
-   * says which instance each plays in; the students of it who are here are sent there (planLaunch),
-   * with the teacher unless they stay. With a launcher scene, everyone sent is first put in that
+   * A teacher launched a scenario from this game. The API opens the assignment and names every
+   * student of the teacher, with the instance each plays in. All of them go, at once, wherever they
+   * are: those here (planLaunch) and, through presence, those in every other room (relayed()). The
+   * teacher goes too unless they stay. With a launcher scene, everyone sent is first put in that
    * scene of this scenario, from wherever they are: their game follows them there, and the scene's
    * Open URL action (to QL_SCENARIO_LAUNCH_URL) or travel action takes them on. Without one, their
-   * game takes them straight there.
+   * game takes them straight there. Whether each may play it is the API's to say when they arrive.
    */
   private async launch(client: Client, msg: LaunchMessage) {
     const world = this.world(client);
@@ -299,32 +310,116 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     const via = msg.scene_id == null ? undefined : Number(msg.scene_id);
     if (via !== undefined) {
       const scene = world.index.scene(via);
-      if (!scene) return this.notice(client, 'launch_failed', 'That scene is not in this mission.');
+      if (!scene) return this.notice(client, 'launch_failed', 'That scene is not in this scenario.');
       if (!isLauncherScene(scene)) return this.notice(client, 'launch_failed', 'That scene is not a scenario launcher scene.');
     }
-    const answer = await services.backend.launch(teacher.id, assignmentId).catch((err: unknown) => ({ ok: false as const, message: `The mission could not be launched: ${String(err)}` }));
+    const answer = await services.backend.launch(teacher.id, assignmentId).catch((err: unknown) => ({ ok: false as const, message: `The scenario could not be launched: ${String(err)}` }));
     if (!answer.ok) return this.notice(client, 'launch_failed', answer.message);
     const { plan } = answer;
     if (Number(plan.scenario_id) === Number(this.scenario.id)) return this.notice(client, 'launch_failed', `Everyone here is already in ${plan.title}. It is open to its students now.`);
+
+    // Everyone else first, so that the teacher's students elsewhere set off at the same moment.
+    const relay: LaunchRelay = {
+      id: `${this.roomId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      origin: this.roomId,
+      by: teacher.name,
+      plan,
+      from: { scenario_id: this.scenario.id, code: String(this.scenario.code ?? this.scenario.shortname), group: this.teamOf.get(client.sessionId) ?? this.party },
+      ...(via !== undefined ? { via } : {}),
+    };
+    let elsewhere = 0;
+    const answers = launchAnswerTopic(relay.id);
+    const counted = (n: unknown) => (elsewhere += Number(n) || 0);
+    await this.presence.subscribe(answers, counted);
+    this.presence.publish(LAUNCH_TOPIC, relay);
 
     const seats = [];
     for (const c of this.clients) {
       const user = this.ready.get(this.teamOf.get(c.sessionId) ?? '')?.userOf(c.sessionId);
       if (user) seats.push({ sessionId: c.sessionId, userId: user.id, role: user.role });
     }
-    const { go, report } = planLaunch(plan, seats, client.sessionId, msg.stay === true);
-    this.notice(client, 'launched', report);
+    const { go, sent, left } = planLaunch(plan, seats, client.sessionId, msg.stay === true);
     for (const { sessionId, group } of go) {
-      const c = this.clients.find((x: Client) => x.sessionId === sessionId);
-      const w = this.ready.get(this.teamOf.get(sessionId) ?? '');
-      if (!c || !w) continue;
-      // QL_SCENARIO_LAUNCH_URL, for each of them: their own instance of the launched scenario.
-      const out: LaunchBroadcast = { code: plan.code, title: plan.title, group, by: teacher.name, url: launchPath(plan.code, group) };
-      if (via !== undefined && w.sendToScene(sessionId, via)) {
-        out.scene_id = via;
-        this.log(c, { type: 'scene', ref: String(via), label: w.index.scene(via)?.shortname });
+      // The teacher's report has to reach them before their page leaves.
+      if (sessionId === client.sessionId) continue;
+      this.sendLaunch(sessionId, relay, group, via);
+    }
+    // The teacher waits a moment for the other rooms' counts, then is told and (unless they stay) goes.
+    this.clock.setTimeout(() => {
+      this.presence.unsubscribe(answers, counted);
+      this.notice(client, 'launched', launchReport(plan.title, sent, elsewhere, left));
+      const mine = go.find((g) => g.sessionId === client.sessionId);
+      if (mine) this.sendLaunch(client.sessionId, relay, mine.group, via);
+    }, LAUNCH_ANSWER_MS);
+  }
+
+  /** Send one player here on a launch: into the launcher scene of this scenario first, if there is one. */
+  private sendLaunch(sessionId: string, relay: LaunchRelay, group: string, via?: number) {
+    const c = this.clients.find((x: Client) => x.sessionId === sessionId);
+    const w = this.ready.get(this.teamOf.get(sessionId) ?? '');
+    if (!c || !w) return false;
+    const { plan } = relay;
+    // QL_SCENARIO_LAUNCH_URL, for each of them: their own instance of the launched scenario.
+    const out: LaunchBroadcast = { code: plan.code, title: plan.title, group, by: relay.by, url: launchPath(plan.code, group) };
+    if (via !== undefined && w.sendToScene(sessionId, via)) {
+      out.scene_id = via;
+      this.log(c, { type: 'scene', ref: String(via), label: w.index.scene(via)?.shortname });
+    }
+    c.send(S2C.Launch, out);
+    return true;
+  }
+
+  /**
+   * A launch from a teacher in another room: their students here go too, whatever they are doing.
+   * In the teacher's scenario they are put in its launcher scene here; in another scenario their page
+   * goes to the teacher's scenario first (a detour), and the detour key lets them into that scene when
+   * they arrive; with no launcher scene they go straight to the launched scenario. The teacher's room
+   * is told how many went.
+   */
+  private onRelay = (relay: LaunchRelay) => {
+    if (!relay?.plan || relay.origin === this.roomId) return;
+    const seats = [];
+    for (const c of this.clients) {
+      const group = this.teamOf.get(c.sessionId) ?? '';
+      const user = this.ready.get(group)?.userOf(c.sessionId);
+      if (user) seats.push({ sessionId: c.sessionId, userId: user.id, role: user.role, group });
+    }
+    let sent = 0;
+    for (const step of planRelay(relay, this.scenario.id, seats)) {
+      if (step.how === 'scene') {
+        if (this.sendLaunch(step.sessionId, relay, step.group, relay.via)) sent++;
+        continue;
+      }
+      const c = this.clients.find((x: Client) => x.sessionId === step.sessionId);
+      const user = this.ready.get(this.teamOf.get(step.sessionId) ?? '')?.userOf(step.sessionId);
+      if (!c || !user) continue;
+      const { plan } = relay;
+      const out: LaunchBroadcast = { code: plan.code, title: plan.title, group: step.group, by: relay.by, url: launchPath(plan.code, step.group) };
+      if (step.how === 'detour' && relay.via != null) {
+        const detour: Detour = { scenario_id: relay.from.scenario_id, scene_id: relay.via };
+        this.presence.setex(detourKey(user.id), JSON.stringify(detour), DETOUR_SECONDS);
+        out.detour = detourPath(relay.from, out);
       }
       c.send(S2C.Launch, out);
+      sent++;
+    }
+    if (sent) this.presence.publish(launchAnswerTopic(relay.id), sent);
+  };
+
+  /** A player who came from another scenario on a launch's detour: put them in its launcher scene. */
+  private async arriveOnDetour(client: Client, world: World, userId: string) {
+    const raw = await Promise.resolve(this.presence.get(detourKey(userId))).catch(() => null);
+    if (!raw) return;
+    let detour: Detour | null = null;
+    try {
+      detour = JSON.parse(String(raw)) as Detour;
+    } catch {
+      detour = null;
+    }
+    if (!detour || Number(detour.scenario_id) !== Number(this.scenario.id)) return;
+    this.presence.del(detourKey(userId));
+    if (world.sendToScene(client.sessionId, Number(detour.scene_id))) {
+      this.log(client, { type: 'scene', ref: String(detour.scene_id), label: world.index.scene(Number(detour.scene_id))?.shortname });
     }
   }
 

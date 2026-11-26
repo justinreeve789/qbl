@@ -274,11 +274,11 @@ class ClassStore
 
     /**
      * Launch an assignment: its students see it on their missions page from now on, and may join it.
-     * The game server calls this when a teacher launches the mission from the game they are playing
-     * with their class, and then sends the students who are there into it: hence what it returns,
-     * the mission's address and which instance (group) each student plays in. Launching again is
-     * allowed (it sends whoever is there now) and keeps the first time. For the assignment's
-     * teacher, or an admin.
+     * The game server calls this when a teacher launches the scenario from a game, and then sends
+     * every student of the teacher who is playing anywhere into it: hence what it returns, the
+     * scenario's address and, for each of the teacher's students (the assignment's and the rest of
+     * the roster), the instance (group) they play in. Launching again is allowed (it sends whoever is
+     * playing now) and keeps the first time. For the assignment's teacher, or an admin.
      *
      * @return array{assignment_id: int, scenario_id: int, code: string, title: string, launched_at: string, party: string, students: list<array{id: int, group: string}>}
      */
@@ -296,8 +296,21 @@ class ClassStore
             $this->run('UPDATE assignments SET launched_at = ?, updated_at = ? WHERE id = ?', [$this->now(), $this->now(), $assignmentId]);
         }
         $launchedAt = $this->one('SELECT launched_at FROM assignments WHERE id = ?', [$assignmentId])['launched_at'];
-        $students = array_map(fn ($s) => ['id' => (int) $s['student_id'], 'group' => $s['team_id'] === null ? 'a'.$assignmentId : 't'.$s['team_id']],
-            $this->all('SELECT student_id, team_id FROM assignment_student WHERE assignment_id = ? ORDER BY student_id', [$assignmentId]));
+        // Every student of the teacher goes, not only those the assignment lists: those in it to their
+        // team's instance (or the assignment's), everyone else to the assignment's. Whether each may
+        // play it is checked when they arrive, as for anyone; a launch holds nobody back for it.
+        $groups = [];
+        foreach ($this->all('SELECT student_id, team_id FROM assignment_student WHERE assignment_id = ?', [$assignmentId]) as $s) {
+            $groups[(int) $s['student_id']] = $s['team_id'] === null ? 'a'.$assignmentId : 't'.$s['team_id'];
+        }
+        foreach ($this->all('SELECT student_id FROM teacher_student WHERE teacher_id = ?', [(int) $a['teacher_id']]) as $s) {
+            $groups[(int) $s['student_id']] ??= 'a'.$assignmentId;
+        }
+        ksort($groups);
+        $students = [];
+        foreach ($groups as $id => $group) {
+            $students[] = ['id' => $id, 'group' => $group];
+        }
 
         return [
             'assignment_id' => $assignmentId, 'scenario_id' => (int) $scenario['id'], 'code' => (string) $scenario['code'], 'title' => (string) $scenario['title'],

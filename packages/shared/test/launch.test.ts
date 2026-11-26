@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  departureScenes, isDepartureScene, isLaunchUrlOnly, isLauncherScene, launcherScenes, launchPath, leavesForLaunch, normalizeActionType, normalizeScenario, planLaunch, ScenarioIndex, SceneEngine, SYSTEM_VARIABLES, validateScenario, VariableStore, World,
-  type Action, type ActionHandle, type EngineHost, type GameEvent, type ItemRec, type LaunchPlan, type PlayerRec, type OpenUrlAction, type Scenario, type TravelAction, type WorldState,
+  departureScenes, detourPath, isDepartureScene, launchReport, parseLaunchParam, planRelay, isLaunchUrlOnly, isLauncherScene, launcherScenes, launchPath, leavesForLaunch, normalizeActionType, normalizeScenario, planLaunch, ScenarioIndex, SceneEngine, SYSTEM_VARIABLES, validateScenario, VariableStore, World,
+  type Action, type ActionHandle, type EngineHost, type GameEvent, type ItemRec, type LaunchPlan, type LaunchRelay, type PlayerRec, type OpenUrlAction, type Scenario, type TravelAction, type WorldState,
 } from '../src/index.js';
 
 // ------------------------------------------------------------- the travel action
@@ -187,14 +187,48 @@ const seat = (sessionId: string, userId: string, role = 'student') => ({ session
 test('a launch sends the assignment’s students here into their own games, and the teacher with the most of them', () => {
   const out = planLaunch(plan, [seat('T', '1', 'teacher'), seat('a', '11'), seat('b', '12'), seat('c', '13'), seat('x', '99'), seat('y', '2', 'teacher')], 'T');
   assert.deepEqual(out.go, [{ sessionId: 'a', group: 't1' }, { sessionId: 'b', group: 't2' }, { sessionId: 'c', group: 't2' }, { sessionId: 'T', group: 't2' }]);
-  assert.equal(out.report, '🚀 Time Portal is launched: 3 students here are on the way. 1 student here is not in it and stays.', 'another teacher looking in is not counted');
+  assert.equal(out.report, '🚀 Time Portal is launched: 3 students here are on the way. 1 student here is not yours and stays.', 'another teacher looking in is not counted');
+  assert.deepEqual([out.sent, out.left], [3, 1]);
 });
 
 test('a teacher can stay behind, and is told when nobody here is in the mission', () => {
   assert.deepEqual(planLaunch(plan, [seat('T', '1', 'teacher'), seat('a', '11')], 'T', true).go, [{ sessionId: 'a', group: 't1' }]);
   const alone = planLaunch(plan, [seat('T', '1', 'teacher'), seat('x', '98'), seat('z', '99')], 'T');
   assert.deepEqual(alone.go, [{ sessionId: 'T', group: 't1' }], 'with nobody going, the teacher goes to the first team’s game');
-  assert.equal(alone.report, '🚀 Time Portal is launched: it is on its students’ missions page now. Nobody here is in it; the 2 students here stay.');
+  assert.equal(alone.report, '🚀 Time Portal is launched. None of your students are playing right now; it is on their missions page. 2 students here are not yours and stay.');
+});
+
+test('the teacher is told how many of their students went, here and in other games', () => {
+  assert.equal(launchReport('Time Portal', 2, 5, 0), '🚀 Time Portal is launched: 7 students (2 here, 5 in other games) are on the way.');
+  assert.equal(launchReport('Time Portal', 0, 1, 0), '🚀 Time Portal is launched: 1 student from other games is on the way.');
+});
+
+// ------------------------------------------------------------- other rooms
+
+const relay = (via?: number): LaunchRelay => ({
+  id: 'r1', origin: 'room-T', by: 'Ms Tan', plan, from: { scenario_id: 7, code: 'hub', group: 'public' }, ...(via != null ? { via } : {}),
+});
+const rseat = (sessionId: string, userId: string, group: string, role = 'student') => ({ sessionId, userId, role, group });
+
+test('a launch reaches the teacher’s students in every other game, whatever they are playing', () => {
+  const seats = [rseat('a', '11', 'public'), rseat('b', '14', 'g9'), rseat('x', '99', 'public'), rseat('t', '2', 'public', 'teacher')];
+  assert.deepEqual(planRelay(relay(), 42, seats), [{ sessionId: 'a', group: 't1', how: 'straight' }, { sessionId: 'b', group: 'a5', how: 'straight' }],
+    'another teacher’s student and another teacher stay; a student who is not assigned it goes all the same');
+  assert.deepEqual(planRelay(relay(3), 42, seats).map((s) => s.how), ['detour', 'detour'], 'with a launcher scene, from another scenario they go by the teacher’s');
+  assert.deepEqual(planRelay(relay(3), 7, seats).map((s) => s.how), ['scene', 'scene'], 'in another game of the teacher’s scenario, they are put in its launcher scene');
+  assert.deepEqual(planRelay(relay(), 9, [rseat('a', '11', 't1'), rseat('b', '12', 'public')]), [{ sessionId: 'b', group: 't2', how: 'straight' }],
+    'one already in their own game of the launched scenario stays; one in another game of it moves to theirs');
+});
+
+test('a detour carries the launch along, and only an address on this site comes back out of it', () => {
+  const onward = { code: 'timeportal', title: 'Time Portal', group: 'a5', by: 'Ms Tan', url: '/timeportal?group=a5' };
+  const path = detourPath({ scenario_id: 7, code: 'hub', group: 'public' }, onward);
+  assert.ok(path.startsWith('/hub?group=public&launch='));
+  assert.deepEqual(parseLaunchParam(new URL(path, 'http://x').searchParams.get('launch')), onward);
+  assert.equal(parseLaunchParam(JSON.stringify({ ...onward, url: 'https://evil.test/' }))?.url, '/timeportal?group=a5');
+  assert.equal(parseLaunchParam(JSON.stringify({ ...onward, url: '//evil.test/' }))?.url, '/timeportal?group=a5');
+  assert.equal(parseLaunchParam('not json'), null);
+  assert.equal(parseLaunchParam(JSON.stringify({ title: 'x' })), null);
 });
 
 // ------------------------------------------------------------- the world's side
