@@ -13,8 +13,10 @@ use GdImage;
  *             buildings, walls, fences, cliffs and hedges, the water's edge, and across open ground as
  *             far back as anyone could walk. FloorTracer then puts each point on the painted line.
  *   standing  things standing out on the floor that people could walk around, in front and behind: a
- *             tree, a bush, a lamp post, a fountain, a cart. Each becomes a pixel-exact cut-out item
- *             with a sort line (ObjectCutter), so figures pass behind it.
+ *             tree, a bush, a lamp post, a fountain, a cart, a railing running across the floor. Each
+ *             becomes a pixel-exact cut-out item with a sort line (ObjectCutter), so figures pass behind
+ *             it. Each says how it can be seen through (openings: solid, open beneath, mostly gaps, leafy),
+ *             which decides what of the picture inside its outline is cut out with it.
  *   found     where things the mission painted into the picture ended up: a door, a ladder, a lantern
  *             on the wall, a crack to inspect. Hotspots and glows go there.
  *
@@ -24,7 +26,7 @@ use GdImage;
 final class SceneSurveyor
 {
     /** What things standing on the floor can be. Trees are for climbing (squirrels), bushes for hiding in (rabbits). */
-    public const KINDS = ['tree', 'bush', 'rock', 'post', 'furniture', 'structure', 'plant', 'other'];
+    public const KINDS = ['tree', 'bush', 'rock', 'post', 'furniture', 'structure', 'plant', 'railing', 'other'];
 
     public const MAX_STANDING = 8;
 
@@ -36,7 +38,7 @@ final class SceneSurveyor
     /**
      * @param  array  $scene  The blueprint's scene (its description helps the model know what it sees).
      * @param  list<array{id: string, what: string, x?: float}>  $find  Things painted in to find: an id, what it is, about where across (0-1).
-     * @return array{floor: list<array{0: int, 1: int}>, standing: list<array{name: string, kind: string, box: array, base: int, outline: list<array>}>, found: array<string, array{0: int, 1: int, 2: int, 3: int}>}
+     * @return array{floor: list<array{0: int, 1: int}>, standing: list<array{name: string, kind: string, box: array, base: int, outline: list<array>, openings: string}>, found: array<string, array{0: int, 1: int, 2: int, 3: int}>}
      */
     public function survey(GdImage $picture, array $scene, array $find = []): array
     {
@@ -69,12 +71,26 @@ final class SceneSurveyor
 
         standing: things standing ON that walkable floor, away from the back edge, that a person could walk all the
         way around, passing in front of them and behind them: trees, bushes, lamp posts, signposts, statues,
-        fountains, wells, rocks and boulders, barrels, crates, benches, carts, market stalls, pillars. NOT the
-        buildings or walls themselves (they are the floor's edge), NOT things on a wall (pictures, windows,
-        fireplaces, shelves, ladders, doors), NOT flat things lying on the floor (rugs, paths, puddles, shadows),
-        NOT things in the distant scenery behind the floor. For each: a short name; its kind; a box tight around
-        all of it [x0, y0, x1, y1]; base_y, the lowest point where it meets the floor; and an outline of 8 to 20
-        points around its silhouette. Trees: include the whole canopy. At most 8, the biggest first.
+        fountains, wells, rocks and boulders, barrels, crates, tables, chairs, benches, carts, market stalls,
+        pillars. Also railings, fences and banisters that run ACROSS the walkable floor, from near the front
+        towards the back (on the picture they run diagonally or nearly upright, not along the back): a person
+        passes in front of them on one side and behind them on the other. NOT a fence or railing along the back
+        of the floor (that is the floor's edge), NOT the buildings or walls themselves (they are the floor's edge),
+        NOT things on a wall (pictures, windows, fireplaces, shelves, ladders, doors), NOT flat things lying on
+        the floor (rugs, paths, puddles, shadows), NOT things in the distant scenery behind the floor.
+        For each: a short name that says what it is ("wooden crate", "park bench", "iron railing"); its kind; a
+        box around ALL of it [x0, y0, x1, y1], from its very top to the bottom of its lowest foot, leg or post,
+        a little loose rather than cutting any of it off; base_y, the lowest point where it meets the floor; an
+        outline of 8 to 20 points around its whole silhouette, following its legs and posts down to the floor;
+        and openings, how the scene behind shows through it:
+          none     solid all through, nothing behind shows through it: a crate, a barrel, a box, a rock, a
+                   statue, a pillar, a post, a cabinet, a counter;
+          under    solid, but the floor or wall behind shows beneath it or between its legs, posts or slats:
+                   a table, a chair, a bench, a stool, a cart, a market stall, a well with a roof on posts;
+          lattice  mostly gaps, the scene behind showing between its bars: a railing, a fence, a gate, a
+                   ladder standing free, a bike rack, a climbing frame;
+          leafy    a tree, a bush, a plant: leaves, with perhaps gaps of sky between them.
+        Trees: include the whole canopy. At most 8, the biggest first.
         TXT;
         $pct = ['type' => 'number', 'minimum' => 0, 'maximum' => 100];
         $point = ['type' => 'array', 'items' => $pct, 'minItems' => 2, 'maxItems' => 2];
@@ -85,10 +101,11 @@ final class SceneSurveyor
             'properties' => [
                 'floor' => ['type' => 'array', 'minItems' => 2, 'maxItems' => 40, 'items' => $point, 'description' => '[x, y] points along the back edge of the walkable floor, left to right.'],
                 'standing' => ['type' => 'array', 'maxItems' => self::MAX_STANDING, 'items' => [
-                    'type' => 'object', 'required' => ['name', 'kind', 'box', 'base_y'],
+                    'type' => 'object', 'required' => ['name', 'kind', 'box', 'base_y', 'openings'],
                     'properties' => [
                         'name' => ['type' => 'string', 'maxLength' => 40],
                         'kind' => ['type' => 'string', 'enum' => self::KINDS],
+                        'openings' => ['type' => 'string', 'enum' => ObjectCutter::OPENINGS],
                         'box' => $box,
                         'base_y' => $pct,
                         'outline' => ['type' => 'array', 'maxItems' => 24, 'items' => $point],
@@ -126,9 +143,11 @@ final class SceneSurveyor
                     $outline[] = [$px((float) $p[0], $W), $px((float) $p[1], $H)];
                 }
             }
+            $name = mb_substr((string) ($s['name'] ?? $s['kind']), 0, 40);
             $standing[] = [
-                'name' => mb_substr((string) ($s['name'] ?? $s['kind']), 0, 40), 'kind' => $s['kind'], 'box' => [$x0, $y0, $x1, $y1],
+                'name' => $name, 'kind' => $s['kind'], 'box' => [$x0, $y0, $x1, $y1],
                 'base' => isset($s['base_y']) ? $px((float) $s['base_y'], $H) : $y1, 'outline' => count($outline) >= 3 ? $outline : [],
+                'openings' => ObjectCutter::openingsFor($s['kind'], $name, isset($s['openings']) ? (string) $s['openings'] : null),
             ];
         }
         $found = [];

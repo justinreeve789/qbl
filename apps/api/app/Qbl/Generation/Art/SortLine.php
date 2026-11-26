@@ -72,14 +72,89 @@ final class SortLine
      * (a tree's trunk under its canopy, a lamp post under its arm): then someone behind the base is
      * behind the whole thing, and the line is level, along its bottom.
      *
+     * A thing open beneath or between (ObjectCutter's "under" and "lattice": a table, a bench, a railing)
+     * has see-through gaps where the floor shows between its legs, so the lowest pixel of a column there
+     * is the underside of its top, not the floor. Its line runs from foot to foot instead (bridged()).
+     *
      * @param  float  $baseShare  How much of its width its base is (ObjectCutter's footprint).
+     * @param  string  $openings  How it can be seen through (ObjectCutter::OPENINGS).
      * @return list<array{0: float, 1: float}>
      */
-    public static function forCutout(GdImage $im, float $baseShare = 1.0): array
+    public static function forCutout(GdImage $im, float $baseShare = 1.0, string $openings = 'none'): array
     {
-        $line = $baseShare >= 0.4 ? self::find($im) : null;
+        if ($openings === 'under' || $openings === 'lattice') {
+            $line = self::bridged($im);
+        } else {
+            $line = $baseShare >= 0.4 ? self::find($im) : null;
+        }
 
         return $line ?? [[0.0, 1.0], [1.0, 1.0]];
+    }
+
+    /**
+     * Where a thing with gaps under it meets the floor: the lowest solid pixel of each column that reaches
+     * most of the way down (its legs, posts and solid parts; not a column of tabletop over a gap, nor a
+     * tray sticking out), joined from below, so the line bridges straight from foot to foot. Points [x, y]
+     * as fractions of the picture, left to right; null without two such columns.
+     *
+     * @return list<array{0: float, 1: float}>|null
+     */
+    public static function bridged(GdImage $im, int $alphaCut = 128): ?array
+    {
+        $width = imagesx($im);
+        $height = imagesy($im);
+        $tops = [];
+        $bottoms = [];
+        for ($x = 0; $x < $width; $x++) {
+            for ($y = 0, $top = null, $low = null; $y < $height; $y++) {
+                $alpha = 255 - (int) round(((imagecolorat($im, $x, $y) >> 24) & 0x7F) * 255 / 127);
+                if ($alpha >= $alphaCut) {
+                    $top ??= $y;
+                    $low = $y;
+                }
+            }
+            if ($low !== null) {
+                $tops[$x] = $top;
+                $bottoms[$x] = $low + 1;
+            }
+        }
+        if (count($bottoms) < 2) {
+            return null;
+        }
+        $extents = [];
+        foreach ($bottoms as $x => $b) {
+            $extents[$x] = $b - $tops[$x];
+        }
+        $most = max($extents);
+        $feet = array_filter($bottoms, fn ($x) => $extents[$x] >= 0.4 * $most, ARRAY_FILTER_USE_KEY);
+        // The hull from below: each point the line keeps has none of the others below the line through it. Each
+        // column counts as low as the lowest foot within two columns (a leg's soft side does not reach as far down).
+        $hull = [];
+        foreach ($feet as $x => $b) {
+            for ($dx = -2; $dx <= 2; $dx++) {
+                $b = max($b, $feet[$x + $dx] ?? 0);
+            }
+            $p = [$x + 0.5, (float) $b];
+            while (count($hull) >= 2) {
+                [$a, $m] = [$hull[count($hull) - 2], $hull[count($hull) - 1]];
+                if ($m[1] > self::yAt([$a, $p], $m[0])) {
+                    break;
+                }
+                array_pop($hull);
+            }
+            $hull[] = $p;
+        }
+        if (count($hull) < 2) {
+            return null;
+        }
+        $tolerance = $height * 0.015;
+        $points = self::simplify($hull, $tolerance);
+        while (count($points) > 8) {
+            $tolerance *= 1.5;
+            $points = self::simplify($hull, $tolerance);
+        }
+
+        return array_map(fn ($p) => [round($p[0] / $width, 3), round($p[1] / $height, 3)], $points);
     }
 
     /** Where a line of [x, y] points is at x: straight between its points, level beyond its ends. */
