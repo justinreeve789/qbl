@@ -94,10 +94,10 @@ export interface WalkMessage extends Pick<WalkAction, 'character_id' | 'to' | 'p
   ticket: string;
 }
 /**
- * A teacher (or admin) launches one of their assignments for the players in this room: the
- * students of that assignment who are here go into it, as does the teacher unless `stay`. With
- * `scene_id`, a scene of this scenario they are first taken to, which plays their departure and
- * ends with a travel action; without, they go straight there.
+ * A teacher (or admin) launches one of their assignments: every student of the teacher goes into
+ * it at once, wherever they are playing, as does the teacher unless `stay`. With `scene_id`, a
+ * launcher scene of this scenario they are all first taken to, which plays their departure and ends
+ * with an Open URL to QL_SCENARIO_LAUNCH_URL (or a travel action); without, they go straight there.
  */
 export interface LaunchMessage { assignment_id: number; scene_id?: Id; stay?: boolean }
 /**
@@ -114,6 +114,11 @@ export interface LaunchBroadcast {
   scene_id?: Id;
   /** Where the launched scenario is played, on this site: `/{code}?group=…` (launchPath). */
   url?: string;
+  /**
+   * For a student playing another scenario when the teacher chose a launcher scene: the page to
+   * open first, the teacher's scenario in that scene (detourPath). The launch goes along with it.
+   */
+  detour?: string;
 }
 
 /** Show or hide the sender's avatar for everyone in their scene. */

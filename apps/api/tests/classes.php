@@ -223,6 +223,11 @@ $launch = $classes->launch(1, $tripId);
 same([$launch['code'], $launch['title'], $launch['party'], $launch['students']], [$portal['code'], 'Time Portal', "a$tripId", [['id' => 12, 'group' => "a$tripId"], ['id' => 13, 'group' => $redGroup]]],
     'launching says where it is and which game each student plays in');
 check($launch['launched_at'] !== null, 'and when it was launched');
+$classes->addStudent(1, 'dee@school.test');
+same($classes->launch(1, $tripId)['students'], [['id' => 12, 'group' => "a$tripId"], ['id' => 13, 'group' => $redGroup], ['id' => 14, 'group' => "a$tripId"]],
+    'every student of the teacher is sent, assigned or not: one who is not goes to the assignment’s own game');
+same(in_array(11, array_column($classes->launch(1, $tripId)['students'], 'id'), true), false, 'a student taken off the teacher’s list is not sent');
+$classes->removeStudent(1, 14);
 same(in_array('Time Portal', $titles(12), true) && in_array('Time Portal', $titles(13), true), true, 'launched, it is on its students’ pages');
 same([$classes->mayJoin(12, 'student', $portalId, "a$tripId"), $classes->mayJoin(13, 'student', $portalId, $redGroup)], [true, true], 'and they can join it');
 same($classes->mayJoin(13, 'student', $portalId, "a$tripId"), false, 'in their own team’s game only, as before');

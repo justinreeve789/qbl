@@ -6,10 +6,14 @@ import type { LaunchRow, LaunchView } from '../ui/UiPort';
 /** How often the tab's counts of who is here are brought up to date. */
 const REFRESH_MS = 1000;
 /**
- * Sent straight to a mission, a player whose scene could not run the travel at once (they were
- * between scenes) goes anyway after this long.
+ * Sent straight to a scenario, a player goes anyway after this long, whatever their scene is doing
+ * (between scenes, or end events that take their time): a launch moves everyone at once.
  */
-const STRAIGHT_THERE_MS = 4000;
+const STRAIGHT_THERE_MS = 1500;
+/** Sent to a launcher scene, a player whose game was busy (between scenes) is taken there again this often… */
+const FOLLOW_MS = 250;
+/** …for this long. */
+const FOLLOW_FOR_MS = 8000;
 
 const sceneName = (scene: Scene) => (scene.subtitle || scene.shortname || `Scene ${scene.id}`).replace(/[-_]+/g, ' ');
 
@@ -103,19 +107,41 @@ export class LaunchFeature implements GameFeature {
   }
 
   private pending: ReturnType<typeof setTimeout> | undefined;
+  private following: ReturnType<typeof setInterval> | undefined;
 
-  /** A launch reached this player: where they are going, and how. */
+  /**
+   * A launch reached this player: where they are going, and how. It happens at once, whatever they
+   * are doing: a teacher's launch moves every one of their students.
+   */
   receive(ctx: GameContext, launch: LaunchBroadcast): void {
     ctx.launched = launch;
     ctx.ui.toast(`🚀 ${launch.by} launched ${launch.title}!`, 4000);
+    clearTimeout(this.pending);
+    clearInterval(this.following);
+    if (launch.detour) {
+      // Playing another scenario: the teacher's launcher scene is in theirs, so go there first.
+      if (ctx.leavePage) ctx.leavePage(launch.detour);
+      else ctx.leaveFor(launch);
+      return;
+    }
     if (launch.scene_id != null) {
-      // The game server has already put them there; their game follows, through this scene's end events.
-      void ctx.inScene?.([{ type: 'jump', scene_id: launch.scene_id }]);
+      // The game server has already put them there; their game follows, through this scene's end
+      // events. A game between two scenes (or still leaving one) is taken there once it has arrived.
+      const target = Number(launch.scene_id);
+      const started = Date.now();
+      const follow = () => {
+        if (ctx.launched !== launch || ctx.departed || ctx.sceneId === target || Date.now() - started > FOLLOW_FOR_MS) {
+          clearInterval(this.following);
+          return;
+        }
+        if (ctx.inScene && ctx.sceneId != null) void ctx.inScene([{ type: 'jump', scene_id: target }]);
+      };
+      if (ctx.sceneId !== target) void ctx.inScene?.([{ type: 'jump', scene_id: target }]);
+      this.following = setInterval(follow, FOLLOW_MS);
       return;
     }
     void ctx.inScene?.([{ type: 'travel' }]);
-    // Between two scenes there is no scene to run it in: go anyway.
-    clearTimeout(this.pending);
+    // Between two scenes there is no scene to run it in, and end events may take a while: go anyway.
     this.pending = setTimeout(() => {
       if (ctx.launched === launch && !ctx.departed) ctx.leaveFor(launch);
     }, STRAIGHT_THERE_MS);

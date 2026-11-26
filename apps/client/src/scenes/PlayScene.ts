@@ -118,6 +118,7 @@ export class PlayScene extends Phaser.Scene {
     ctx.bag.run = (actions) => engine.runActions(actions);
     // So does a teacher's launch: the jump to the departure scene, or the travel straight there.
     ctx.inScene = (actions) => engine.runActions(actions);
+    ctx.sceneId = Number(def.id);
 
     const self = this;
     this.runtime = {
@@ -230,6 +231,7 @@ export class PlayScene extends Phaser.Scene {
 
   private shutdown() {
     this.ctx.inScene = null;
+    this.ctx.sceneId = null;
     this.stopWatching();
     this.engine.stop();
     this.host.teardown();

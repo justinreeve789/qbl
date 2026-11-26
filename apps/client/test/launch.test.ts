@@ -63,8 +63,38 @@ test('sent straight there: they go from the scene they are in, once its end even
   await g.wait(50);
   assert.equal(g.scene.def.id, here, 'no scene change on the way');
   assert.deepEqual(gone.map((l) => l.title), ['Time Portal']);
-  await new Promise((r) => setTimeout(r, 4200));
+  await new Promise((r) => setTimeout(r, 1700));
   assert.equal(gone.length, 1, 'once only: the fallback for players between scenes does not send them twice');
+  stop();
+});
+
+test('playing another scenario, with a launcher scene chosen: their page goes to the teacher’s scenario first, at once', async () => {
+  const { g, gone, connection, stop } = game();
+  await g.wait(100);
+  const pages: string[] = [];
+  g.ctx.leavePage = (href) => pages.push(href);
+  connection.launched(portal({ detour: '/hub?group=public&launch=x' }));
+  assert.deepEqual(pages, ['/hub?group=public&launch=x'], 'no waiting for the scene they are in');
+  assert.deepEqual(gone, [], 'not on to the launched scenario yet: the launcher scene takes them there');
+  stop();
+});
+
+test('sent to the launcher scene while between two scenes: their game is taken there once it has arrived', async () => {
+  const { g, connection, stop } = game();
+  await g.wait(100);
+  const before = g.scene.def.id;
+  // Between scenes: no scene to run the jump in for now.
+  const inScene = g.ctx.inScene;
+  const sceneId = g.ctx.sceneId;
+  g.ctx.inScene = null;
+  g.ctx.sceneId = null;
+  connection.launched(portal({ scene_id: CONTROL_ROOM }));
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(g.scene.def.id, before, 'nothing to follow while between scenes');
+  g.ctx.inScene = inScene;
+  g.ctx.sceneId = sceneId;
+  await g.hold([], () => g.scene.def.id === CONTROL_ROOM, 5000);
+  assert.equal(g.scene.def.id, CONTROL_ROOM, 'once a scene is running, they are taken there');
   stop();
 });
 

@@ -483,7 +483,7 @@ export class Sidebar {
   private launches(): HTMLElement[] {
     const view = this.launchView;
     if (!view) return [];
-    const intro = el('p', 'qbl-sidebar-note', 'Send the students here into one of your missions. A mission that waits for you appears on their missions page once you launch it.');
+    const intro = el('p', 'qbl-sidebar-note', 'Send all your students into one of your missions at once, wherever they are playing. A mission that waits for you appears on their missions page once you launch it.');
     const out: HTMLElement[] = [intro];
 
     const stay = el('label', 'qbl-launch-check');
@@ -511,7 +511,7 @@ export class Sidebar {
       const what = el('span', 'qbl-launch-text');
       const state = el('small', '');
       if (m.waiting) state.append(icon('waiting', { size: 14 }), document.createTextNode(' Waiting for you · '));
-      state.append(document.createTextNode(m.here ? `${m.here} of ${m.students} here` : `${m.students === 1 ? '1 student' : `${m.students} students`}, none here`));
+      state.append(document.createTextNode(`${m.students === 1 ? '1 student' : `${m.students} students`} assigned${m.here ? `, ${m.here} here` : ''}`));
       what.append(el('strong', '', m.title), state);
       const armed = this.launchArmed === m.assignmentId;
       const go = el('button', `qbl-button${armed ? ' primary' : ''}`);
@@ -540,9 +540,8 @@ export class Sidebar {
         if (asks) li.append(this.launcherPrompt(view));
         const where = view.departures.find((d) => String(d.sceneId) === this.launchVia);
         const way = where ? `to ${where.name} first, and on from there` : 'straight there';
-        const plan = m.here
-          ? `${m.here === 1 ? 'Its 1 student here goes' : `Its ${m.here} students here go`} ${way}${this.launchStay ? '; you stay here' : ', and you go with them'}.`
-          : `Nobody here is in it: it opens on its students’ missions page${this.launchStay ? '' : ', and you go to it'}.`;
+        // Every student of the teacher goes, wherever they are playing, not only those assigned it.
+        const plan = `All your students go ${way}, wherever they are playing${this.launchStay ? '; you stay here' : ', and you go with them'}.`;
         const confirm = el('p', 'qbl-launch-confirm', asks && this.launchVia == null ? 'Choose where they go first, then press Launch now.' : `${plan} Press again to launch.`);
         const cancel = el('button', 'qbl-link', 'Cancel');
         cancel.type = 'button';

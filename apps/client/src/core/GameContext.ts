@@ -181,6 +181,9 @@ export class GameContext {
    */
   inScene: ((actions: LooseAction[]) => Promise<void>) | null = null;
 
+  /** The scene being played, set by it while it runs. Null between scenes. */
+  sceneId: number | null = null;
+
   /** Set at start-up for a teacher when there is an API to ask: their assignments, to launch one from here. */
   fetchLaunchable: (() => Promise<LaunchableAssignment[]>) | null = null;
 
