@@ -216,7 +216,7 @@ export class FakeWorld {
     };
     const camera = new Emitter() as Emitter & Record<string, any>;
     Object.assign(camera, {
-      setBounds() {}, startFollow() { camera.following = true; }, stopFollow() { camera.following = false; }, fadeIn() {}, setZoom() {},
+      setBounds() {}, startFollow() { camera.following = true; }, setFollowOffset() {}, stopFollow() { camera.following = false; }, fadeIn() {}, setZoom() {},
       following: false,
       /** Where the view was last centred, for tests of what it looks at. */
       centre: { x: 0, y: 0 },

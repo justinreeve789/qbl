@@ -121,3 +121,24 @@ test('a camera action can follow a character or glide to a spot, outside stories
   await g.wait(500);
   assert.equal(cam.following, true, 'and back to the player');
 });
+
+test('on an ultrawide window the view is raised, so the top is not cut off', async () => {
+  const s = story();
+  const scene = s.scenes[0]!;
+  scene.story = false;
+  scene.show_avatars = true;
+  scene.start_events = [{ id: 10, actions: [{ id: 11, type: 'camera', target: 'point', position_x: 1800, position_y: 600, duration: 0 }] }] as never;
+  const g = new Game(s);
+  const cam = (g.scene as any).cameras.main;
+  await g.wait(100);
+  assert.ok(Math.abs(cam.centre.y - 600) < 2, `16:9 is not raised (${cam.centre.y})`);
+  const scale = (g.scene as any).scale;
+  scale.gameSize = { width: 3440, height: 1000 };
+  scale.emit('resize');
+  await g.wait(100);
+  const { height } = g.scene.size;
+  const shown = 1000 / Math.max(3440 / g.scene.size.width, 1000 / height, 1000 / 1000);
+  const lift = (Math.min(height, 1000) - shown) / 2;
+  assert.ok(lift > 0, 'the test window is wide enough to lose height');
+  assert.ok(Math.abs(cam.centre.y - (600 - lift)) < 2, `raised by half the height lost (${cam.centre.y}, lift ${lift})`);
+});
