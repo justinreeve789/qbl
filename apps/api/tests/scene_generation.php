@@ -340,7 +340,7 @@ if ($oak && $well) {
     $wellMedia = $media[$well['item']['media_id']];
     check(is_file("$work/media/".$wellMedia['filepath']) && $wellMedia['width'] >= 140 && $wellMedia['width'] < 200, 'the well\'s cut-out is its own picture: '.$wellMedia['width'].'×'.$wellMedia['height']);
     $png = imagecreatefrompng("$work/media/".$wellMedia['filepath']);
-    check(((imagecolorat($png, 2, 2) >> 24) & 0x7F) === 127, 'see-through around it');
+    check($wellMedia['width'] <= 146 && $wellMedia['height'] <= 126 && ((imagecolorat($png, 0, 60) >> 24) & 0x7F) < 64, 'cut to its own outline, with no ring of the cobbles around it: '.$wellMedia['width'].'×'.$wellMedia['height']);
 }
 $blocked = $layout['blocked_areas'];
 $covers = fn (array $poly, int $x, int $y) => $x >= min(array_column($poly, 'x')) && $x <= max(array_column($poly, 'x')) && $y >= min(array_column($poly, 'y')) && $y <= max(array_column($poly, 'y'));
@@ -529,7 +529,8 @@ $sameOutside = function (GdImage $a, GdImage $b): int {
     $n = 0;
     for ($y = 0; $y < 400; $y++) {
         for ($x = 0; $x < 600; $x++) {
-            $inside = $x >= 278 && $x <= 322 && $y >= 18 && $y <= 332;
+            $g = BackgroundCleaner::GROW;
+            $inside = $x >= 280 - $g && $x <= 320 + $g && $y >= 20 - $g && $y <= 330 + $g;
             $n += ! $inside && imagecolorat($a, $x, $y) !== imagecolorat($b, $x, $y) ? 1 : 0;
         }
     }

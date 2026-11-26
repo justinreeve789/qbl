@@ -10,8 +10,9 @@ use GdImage;
  * the floor and the wall it stood in front of. Move or delete the cut-out in the editor and there is no
  * second tree painted underneath.
  *
- * Only the pixels under the cut-outs change (their shape, grown by GROW pixels to take the last of
- * their outline and its soft edge with it). Every other pixel of the picture is copied over as it was,
+ * Only the pixels under the cut-outs change (their shape, grown by GROW pixels to take their soft
+ * edge with it). A cut-out's see-through openings (the floor between a bench's legs) are not holes:
+ * that floor is the background's, and stays exactly as painted. Every other pixel of the picture is copied over as it was,
  * and the result is a PNG, so not even a JPEG's re-compression touches the rest.
  *
  * What goes in the holes:
@@ -29,8 +30,11 @@ use GdImage;
  */
 final class BackgroundCleaner
 {
-    /** How far past a cut-out's own pixels the hole reaches: the rest of its outline and its soft edge. */
-    public const GROW = 2;
+    /**
+     * How far past a cut-out's solid pixels the hole reaches: its soft edge (ObjectCutter fades the outline's
+     * last two pixels out over the scenery) and a pixel more, for the ringing a JPEG leaves beside a line.
+     */
+    public const GROW = 3;
 
     /** The ring of picture around the holes that a painted answer must match, in pixels. */
     private const RING = 14;

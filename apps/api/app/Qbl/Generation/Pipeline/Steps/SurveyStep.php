@@ -20,9 +20,12 @@ use App\Qbl\Generation\Pipeline\Step;
  *      edge, as far back as anyone could walk on open ground. FloorTracer moves each point onto the
  *      line painted there, so the walkable area runs right up against what blocks a person.
  *   2. Things standing out on the floor that people walk around (trees, bushes, lamp posts, a
- *      fountain): each is lifted out of the picture pixel for pixel (ObjectCutter) as a transparent
- *      cut-out with its sort line (SortLine, as the editor finds it), to be placed exactly over itself,
- *      so figures pass in front of it and behind it. Its base is a patch nobody walks through.
+ *      fountain, a bench, a railing running across the floor): each is lifted out of the picture pixel
+ *      for pixel (ObjectCutter) as a transparent cut-out with its sort line (SortLine), to be placed
+ *      exactly over itself, so figures pass in front of it and behind it. How it can be seen through
+ *      (solid, open beneath, mostly gaps, leafy) decides what inside its outline goes with it: the floor
+ *      between a bench's legs and the wall between a railing's posts stay in the background. Its base
+ *      is a patch nobody walks through (along the whole of a railing).
  *   3. What the mission painted in (doors, ladders, things on the walls, lights on the walls, things
  *      to look at): where each ended up, for its hotspot or glow.
  *
@@ -83,7 +86,7 @@ final class SurveyStep extends Step
                     $run->assets["cutout:$key:$n"] = $thing;
                 }
             }
-            $run->note('survey', ['scene' => $key, 'floor_points' => count($survey['floor']), 'standing' => array_map(fn ($t) => $t['name'].' ('.$t['kind'].', '.($t['how'] ?? 'none').')', $survey['standing']), 'found' => array_keys($survey['found'])]);
+            $run->note('survey', ['scene' => $key, 'floor_points' => count($survey['floor']), 'standing' => array_map(fn ($t) => $t['name'].' ('.$t['kind'].', '.($t['openings'] ?? '?').', '.($t['how'] ?? 'not cut').(isset($t['open']) && $t['open'] > 0 ? ', '.round(100 * $t['open']).'% see-through' : '').')', $survey['standing']), 'found' => array_keys($survey['found'])]);
             $done++;
         }
         $run->progress->count(PHP_INT_MAX, null, 'All the pictures are drawn');
@@ -112,14 +115,20 @@ final class SurveyStep extends Step
             if ($floor && $thing['base'] < SortLine::yAt($floor, ($thing['box'][0] + $thing['box'][2]) / 2) - 12) {
                 continue;
             }
-            $cut = ObjectCutter::cut($im, $thing['box'], $thing['outline']);
-            $entry = ['name' => $thing['name'], 'kind' => $thing['kind'], 'box' => $thing['box'], 'how' => $cut['how'] ?? null];
+            // How it can be seen through decides what inside its outline is cut out with it (a table's legs, not the floor between them).
+            $openings = $thing['openings'] ?? ObjectCutter::openingsFor($thing['kind'], $thing['name']);
+            // Its box reaches down to where it stands, at least: a box stopping short would cut off its feet.
+            $box = $thing['box'];
+            $box[3] = max($box[3], (int) $thing['base']);
+            $cut = ObjectCutter::cut($im, $box, $thing['outline'], $openings);
+            $entry = ['name' => $thing['name'], 'kind' => $thing['kind'], 'box' => $thing['box'], 'how' => $cut['how'] ?? null, 'openings' => $openings];
             if ($cut) {
                 $file = "$assetsDir/cutout-$key-$n.png";
                 file_put_contents($file, ImageTools::png($cut['image']));
                 $entry += [
                     'path' => $file, 'width' => $cut['width'], 'height' => $cut['height'], 'x' => $cut['x'], 'y' => $cut['y'],
-                    'sort_line' => SortLine::forCutout($cut['image'], ($cut['footprint'][1] - $cut['footprint'][0] + 1) / max(1, $cut['width'])), 'footprint' => $cut['footprint'],
+                    'sort_line' => SortLine::forCutout($cut['image'], ($cut['footprint'][1] - $cut['footprint'][0] + 1) / max(1, $cut['width']), $openings), 'footprint' => $cut['footprint'],
+                    'open' => $cut['open'],
                 ];
             }
             $standing[] = $entry;

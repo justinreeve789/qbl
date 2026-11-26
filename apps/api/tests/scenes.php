@@ -125,6 +125,118 @@ same(SortLine::forCutout($cut['image'], ($cut['footprint'][1] - $cut['footprint'
 same(SortLine::forCutout($counter), SortLine::find($counter), 'a counter running into the room keeps the line found from its pixels');
 same(ObjectCutter::cut($bgIm, [2, 2, 6, 6]), null, 'nothing is lifted out of a box too small to hold anything');
 
+// ------------------------------------------------------------------ cut-outs: openings, thin parts, scenery lines, edges
+// How a thing is seen through: what the surveyor said, else its name, else its kind.
+same([ObjectCutter::openingsFor('furniture', 'wooden crate'), ObjectCutter::openingsFor('other', 'park bench'), ObjectCutter::openingsFor('structure', 'iron railing'), ObjectCutter::openingsFor('railing'), ObjectCutter::openingsFor('tree', 'old oak'), ObjectCutter::openingsFor('rock', 'boulder', 'lattice'), ObjectCutter::openingsFor('other')],
+    ['none', 'under', 'lattice', 'lattice', 'leafy', 'lattice', 'under'], 'a crate is solid, a bench open beneath, a railing mostly gaps, a tree leafy; the surveyor\'s word goes first');
+// A room in the house style, softened as a painter's edges are: a wall whose base line runs right across
+// behind everything at y 500, a wooden floor, a window.
+$room = imagecreatetruecolor(1600, 900);
+$rc = fn (int $r, int $g, int $b) => imagecolorallocate($room, $r, $g, $b);
+$rink = $rc(40, 30, 45);
+$wallColour = $rc(196, 170, 140);
+$shade = $rc(98, 78, 55);                                                   // the floor's colour, in shadow
+imagefilledrectangle($room, 0, 0, 1599, 499, $wallColour);
+imagefilledrectangle($room, 0, 500, 1599, 899, $rc(150, 120, 85));
+imagesetthickness($room, 3);
+imageline($room, 0, 500, 1599, 500, $rink);
+// A crate: three planks, the middle one the wall's very colour; a gap in its outline on the left.
+imagefilledellipse($room, 240, 562, 230, 34, $shade);
+imagefilledrectangle($room, 150, 380, 330, 560, $rc(170, 120, 60));
+imagefilledrectangle($room, 152, 440, 328, 500, $wallColour);
+imagerectangle($room, 150, 380, 330, 560, $rink);
+imageline($room, 150, 440, 330, 440, $rink);
+imageline($room, 150, 500, 330, 500, $rink);
+imagesetthickness($room, 1);
+imagefilledrectangle($room, 150, 470, 153, 472, $wallColour);
+// A table: a top, four legs drawn as nothing but ink (the wall's base line crosses them), its shadow beneath.
+imagefilledellipse($room, 600, 640, 320, 40, $shade);
+imagefilledrectangle($room, 450, 420, 750, 450, $rc(120, 80, 50));
+imagesetthickness($room, 3);
+imagerectangle($room, 450, 420, 750, 450, $rink);
+imagesetthickness($room, 4);
+foreach ([[472, 640], [728, 640], [520, 610], [680, 610]] as [$lx, $ly]) {
+    imageline($room, $lx, 450, $lx, $ly, $rink);
+}
+// A railing running across the floor from the front (x 900, y 860) towards the back (x 1396, y 564).
+imagesetthickness($room, 6);
+for ($k = 0; $k <= 8; $k++) {
+    imageline($room, 900 + $k * 62, 860 - $k * 37, 900 + $k * 62, 710 - $k * 31, $rink);
+}
+imageline($room, 900, 710, 1396, 512, $rink);
+imageline($room, 900, 790, 1396, 556, $rink);
+// A tree with a gap in its canopy showing the wall.
+imagesetthickness($room, 3);
+imagefilledrectangle($room, 1508, 330, 1532, 600, $rc(110, 70, 40));
+imagerectangle($room, 1508, 330, 1532, 600, $rink);
+imagefilledellipse($room, 1520, 240, 150, 240, $rc(60, 140, 70));
+imageellipse($room, 1520, 240, 150, 240, $rink);
+imagefilledellipse($room, 1500, 220, 40, 50, $wallColour);
+imageellipse($room, 1500, 220, 40, 50, $rink);
+imagesetthickness($room, 1);
+imagefilter($room, IMG_FILTER_SMOOTH, 6);
+$alphaAt = function (array $cut, int $x, int $y): int {
+    $x -= $cut['x'];
+    $y -= $cut['y'];
+    if ($x < 0 || $y < 0 || $x >= $cut['width'] || $y >= $cut['height']) {
+        return 0;
+    }
+
+    return 127 - ((imagecolorat($cut['image'], $x, $y) >> 24) & 0x7F);
+};
+$crate = ObjectCutter::cut($room, [148, 378, 332, 565], [[148, 378], [332, 378], [332, 562], [148, 562]], 'none');
+same([$alphaAt($crate, 240, 470), $alphaAt($crate, 151, 471), $alphaAt($crate, 200, 410)], [127, 127, 127], 'a crate is solid all through: a plank the wall\'s colour, and where its outline has a gap');
+same([$alphaAt($crate, 340, 563), $crate['opened']], [0, 0], 'and its shadow on the floor is left on the floor');
+$tableOutline = [[448, 418], [752, 418], [752, 450], [735, 642], [465, 642], [455, 450]];
+$table = ObjectCutter::cut($room, [445, 415, 755, 645], $tableOutline, 'under');
+same([$alphaAt($table, 600, 435), $alphaAt($table, 472, 600), $alphaAt($table, 728, 600), $alphaAt($table, 520, 590), $alphaAt($table, 680, 590)], [127, 127, 127, 127, 127], 'a table keeps its top and all four legs, though they are only lines and the wall\'s base crosses them');
+same([$alphaAt($table, 472, 500), $alphaAt($table, 520, 500)], [127, 127], 'where the wall\'s base crosses a leg, the leg goes on');
+same([$alphaAt($table, 600, 550), $alphaAt($table, 600, 475), $alphaAt($table, 600, 500), $alphaAt($table, 600, 636)], [0, 0, 0, 0], 'the floor and the wall between its legs, the wall\'s base passing behind, and its shadow stay in the background');
+check($table['y'] + $table['height'] >= 640 && $table['open'] > 0.2, 'all of it, down to its front feet: '.json_encode([$table['y'], $table['height'], $table['open']]));
+$tight = ObjectCutter::cut($room, [445, 415, 755, 560], [], 'under');
+check($tight['y'] + $tight['height'] >= 640 && $alphaAt($tight, 472, 630) === 127, 'a box that stops short of the feet is looked past: the legs are cut out whole ('.($tight['y'] + $tight['height']).')');
+$tableLine = SortLine::forCutout($table['image'], 1.0, 'under');
+check(count($tableLine) === 2 && min(array_column($tableLine, 1)) >= 0.97, 'its sort line runs from foot to foot, not along the underside of its top over the gaps: '.json_encode($tableLine));
+$railing = ObjectCutter::cut($room, [895, 360, 1405, 865], [[895, 860], [895, 705], [1400, 505], [1400, 565], [905, 865]], 'lattice');
+same([$alphaAt($railing, 1000, 700), $alphaAt($railing, 1150, 560), $alphaAt($railing, 1360, 505)], [0, 0, 0], 'a railing\'s gaps show the floor and the wall behind, and the wall\'s base passing behind it is not taken');
+same([$alphaAt($railing, 962, 760), $alphaAt($railing, 900, 850), $alphaAt($railing, 1148, 680), $alphaAt($railing, 1024, 652)], [127, 127, 127, 127], 'its posts and rails are all there');
+same($alphaAt($railing, 1396, 475), 127, 'even the top of its last post, beyond the wall\'s base and the outline the surveyor drew');
+check($railing['opened'] >= 6, 'every gap between its posts is open: '.$railing['opened']);
+$railLine = SortLine::forCutout($railing['image'], 0.1, 'lattice');
+check($railLine[0][1] > 0.95 && end($railLine)[1] < 0.3, 'its sort line climbs across the picture with its base: '.json_encode($railLine));
+$tree2 = ObjectCutter::cut($room, [1440, 115, 1600, 602], [], 'leafy');
+same([$alphaAt($tree2, 1500, 220), $alphaAt($tree2, 1520, 300), $alphaAt($tree2, 1560, 200), $alphaAt($tree2, 1520, 500), $alphaAt($tree2, 1470, 500), $alphaAt($tree2, 1580, 500)], [0, 127, 127, 127, 0, 0], 'a tree: the wall through the gap in its canopy and the wall\'s base beside its trunk stay behind; its leaves and trunk come out');
+// Its edge: the same lamp post painted over two different scenes; cut from one and laid over the other, it
+// must look like the other (no ring of the first scene's colours around it).
+$lampOn = function (array $wall, array $floor, bool $lamp): GdImage {
+    $im = imagecreatetruecolor(400, 400);
+    imagefilledrectangle($im, 0, 0, 399, 249, imagecolorallocate($im, ...$wall));
+    imagefilledrectangle($im, 0, 250, 399, 399, imagecolorallocate($im, ...$floor));
+    if ($lamp) {
+        imagefilledellipse($im, 200, 120, 90, 90, imagecolorallocate($im, 230, 200, 90));
+        imagesetthickness($im, 3);
+        imageellipse($im, 200, 120, 90, 90, imagecolorallocate($im, 40, 30, 45));
+        imagefilledrectangle($im, 192, 165, 208, 330, imagecolorallocate($im, 90, 90, 100));
+        imagerectangle($im, 192, 165, 208, 330, imagecolorallocate($im, 40, 30, 45));
+    }
+    imagefilter($im, IMG_FILTER_SMOOTH, 6);
+
+    return $im;
+};
+$lamp = ObjectCutter::cut($lampOn([120, 170, 220], [100, 160, 90], true), [140, 60, 260, 335], [], 'none');
+$over = $lampOn([240, 120, 140], [70, 60, 50], false);
+$truth = $lampOn([240, 120, 140], [70, 60, 50], true);
+imagealphablending($over, true);
+imagecopy($over, $lamp['image'], $lamp['x'], $lamp['y'], 0, 0, $lamp['width'], $lamp['height']);
+$off = 0;
+for ($y = 50; $y < 345; $y++) {
+    for ($x = 130; $x < 270; $x++) {
+        [$p, $q] = [imagecolorat($over, $x, $y), imagecolorat($truth, $x, $y)];
+        $off += max(abs((($p >> 16) & 255) - (($q >> 16) & 255)), abs((($p >> 8) & 255) - (($q >> 8) & 255)), abs(($p & 255) - ($q & 255))) > 40 ? 1 : 0;
+    }
+}
+check($off <= 10, "a cut-out's edge carries none of the scene it was cut from: laid over another, $off pixels are off");
+
 // The surveyor, as a language model that can see: answers like one would.
 final class ScriptedSurveyor implements LanguageModel
 {
@@ -156,6 +268,8 @@ check(abs(SortLine::yAt($survey['floor'], 400) - 766) <= 4 && abs(SortLine::yAt(
 same(array_column($survey['standing'], 'name'), ['apple tree'], 'a thing standing in the scenery behind the floor is not something to walk around');
 $tree = $survey['standing'][0];
 check(is_file($tree['path'] ?? '') && $tree['sort_line'] !== null && isset($tree['footprint']), 'the tree is cut out, with its sort line and footprint');
+same([$tree['openings'], $model->asked[0]['schema']['properties']['standing']['items']['properties']['openings']['enum']], ['leafy', ObjectCutter::OPENINGS], 'the surveyor says how each thing is seen through (a tree it does not say about is leafy)');
+check(in_array('railing', SceneSurveyor::KINDS, true), 'railings running across the floor are among the things to walk around');
 same(array_keys($survey['found']), ['light:0'], 'only what was asked for is found');
 $glow = $survey['glows']['light:0'];
 check(abs($glow[0] - 2000) <= 12 && abs($glow[1] - 520) <= 14, 'a lantern painted on the wall glows from its brightest part: '.json_encode($glow));
@@ -258,6 +372,26 @@ $closeBuilder = new class extends MissionBuilder
     }
 };
 [$cp, $ci, $ca] = $closeBuilder->cutInCloseUp(['survey:close' => ['floor' => [[0, 800], [2250, 800]], 'standing' => [['name' => 'tree', 'kind' => 'tree']]], 'cutout:close:0' => ['path' => "$work/bg.png", 'x' => 1000, 'y' => 500, 'width' => 200, 'height' => 500, 'footprint' => [1080, 1120]]]);
+// A railing running across the floor is blocked all along its base, not just at its front foot.
+file_put_contents("$work/assets/railing.png", ImageTools::png($railing['image']));
+$fenced = (new class extends MissionBuilder
+{
+    public function blockedFor(array $assets): array
+    {
+        $this->rows = ['media' => [], 'items' => []];
+        [$this->width, $this->ground, $this->shot] = [1600, 500, 1];
+        $this->blocked = [];
+        $this->surveyed('room', $assets, 500, 900);
+
+        return $this->blocked;
+    }
+})->blockedFor(['survey:room' => ['floor' => [[0, 506], [1600, 506]], 'standing' => [['name' => 'iron railing', 'kind' => 'railing']]], 'cutout:room:0' => [
+    'path' => "$work/assets/railing.png", 'x' => $railing['x'], 'y' => $railing['y'], 'width' => $railing['width'], 'height' => $railing['height'],
+    'footprint' => $railing['footprint'], 'sort_line' => $railLine, 'openings' => 'lattice',
+]]);
+$inPatch = fn (int $x, int $y) => (bool) array_filter($fenced, fn ($r) => $x >= $r[0] && $x <= $r[1] && $y >= $r[2] && $y <= $r[3]);
+check(count($fenced) >= 8 && $inPatch(902, 856) && $inPatch(1150, 710) && $inPatch(1390, 565), 'a railing across the floor is blocked along the whole of its base: '.count($fenced).' patches');
+check(! $inPatch(1150, 800) && ! $inPatch(1150, 620), 'and only there: the floor either side of it is open');
 $cd = ($ca['scale_top'] + ($ca['scale_bottom'] - $ca['scale_top']) * (($cp['position_y'] - $ca['y']) / $ca['height'])) / 100;
 check($cd > 1.5 && abs($ci['settings']['scale'] * $cd - 1) < 1e-4, 'a thing cut out of a close-up is drawn at its own size, not twice it (depth '.round($cd, 3).', scale '.$ci['settings']['scale'].')');
 foreach ($closeCuts as $p) {

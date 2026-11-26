@@ -1128,7 +1128,11 @@ class MissionBuilder
             // Its base: nobody walks through a trunk or a fountain's rim.
             [$fx0, $fx1] = $asset['footprint'] ?? [$cx - 20, $cx + 20];
             $depth = (int) max(14, min(70, ($fx1 - $fx0) * 0.25));
-            if ($base > $top && $base < $bottom) {
+            $along = $this->alongBase($asset);
+            if ($along) {
+                // A railing or fence running across the floor: nobody walks through it anywhere along it.
+                array_push($this->blocked, ...array_values(array_filter($along, fn ($r) => $r[3] > $top && $r[2] < $bottom)));
+            } elseif ($base > $top && $base < $bottom) {
                 $this->blocked[] = [(int) $fx0 + 4, (int) $fx1 - 4, $base - $depth, $base + 4];
             }
             $top_ = (int) $asset['y'];
@@ -1176,6 +1180,41 @@ class MissionBuilder
         $t = ($y - $this->scaleTop) / max(1, self::HEIGHT - $this->scaleTop);
 
         return max(0.05, ($top + ($bottom - $top) * $t) / 100);
+    }
+
+    /**
+     * Patches of floor along the whole base of a see-through thing that runs across the floor, front to
+     * back (a railing, a fence: ObjectCutter's "lattice", whose sort line climbs across the picture), a
+     * patch every 48 pixels of its line, in [x0, x1, y0, y1]. Empty for anything else, which is blocked
+     * at its footprint.
+     *
+     * @return list<array{0: int, 1: int, 2: int, 3: int}>
+     */
+    protected function alongBase(array $asset): array
+    {
+        $line = $asset['sort_line'] ?? null;
+        if (($asset['openings'] ?? null) !== 'lattice' || ! is_array($line) || count($line) < 2) {
+            $line = null;
+        }
+        $w = (float) ($asset['width'] ?? 0);
+        $h = (float) ($asset['height'] ?? 0);
+        $pts = $line ? array_map(fn ($p) => [(float) $asset['x'] + $p[0] * $w, (float) $asset['y'] + $p[1] * $h], $line) : [];
+        if (! $pts || abs(max(array_column($pts, 1)) - min(array_column($pts, 1))) < 40) {
+            return []; // level: it stands across the view, and its footprint does
+        }
+        $out = [];
+        for ($i = 1; $i < count($pts); $i++) {
+            [$ax, $ay] = $pts[$i - 1];
+            [$bx, $by] = $pts[$i];
+            $length = hypot($bx - $ax, $by - $ay);
+            for ($t = $i === 1 ? 0.0 : 48.0; $t <= $length; $t += 48.0) {
+                $x = $ax + ($bx - $ax) * $t / max(1.0, $length);
+                $y = $ay + ($by - $ay) * $t / max(1.0, $length);
+                $out[] = [(int) round($x - 30), (int) round($x + 30), (int) round($y - 14), (int) round($y + 6)];
+            }
+        }
+
+        return $out;
     }
 
     /** The scene's blocked areas: each patch nobody walks on (this->blocked), as a flat ellipse lying on the floor. */
