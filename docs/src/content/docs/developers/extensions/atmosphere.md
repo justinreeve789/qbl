@@ -35,9 +35,12 @@ color | string | #ffc46b | `#rrggbb`.
 radius | decimal | 90 | How far the glow reaches, in pixels.
 strength | decimal | 70 | How bright, 0 to 100.
 period | decimal | 4 (glow), 1.4 (blink) | Seconds for one breath or one blink.
+conditions | [Condition](/docs/developers/condition/)[] | | On only while all of these hold. None: always on.
 name | string | | For the editor.
 
 With a `sky`, lights shine at a third of their strength in full daylight and fully at night; without one (indoors, a cave) always fully.
+
+A light with `conditions` is checked again whenever a variable changes. It fades in or out over 0.4 seconds (straight away for players who ask for reduced motion), and a campfire that goes out stops sending up embers. When a player arrives, each light is already on or off, with no fade. A beacon that comes on once the ship is repaired: `{ "x": 820, "y": 310, "kind": "blink", "color": "#ff4040", "conditions": [{ "variable": "ship_repaired", "operator": "=", "operand": 1 }] }`.
 
 **`atmosphere`**: a list of things in the air, drawn over the scene wherever the player is looking: `{ "kind": "fireflies", "amount": "few" }`. `kind` is `fireflies` (they wander and glow, more in the dark), `leaves` (tumbling down), `snow`, `rain`, `dust` (floating slowly in the light) or `bubbles` (rising, under water); `amount` is `few`, `some` (default) or `many`; `color` (`#rrggbb`) replaces their own colours.
 

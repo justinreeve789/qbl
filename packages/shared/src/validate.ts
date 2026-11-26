@@ -682,6 +682,8 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (light.kind != null && !['flicker', 'fire', 'glow', 'blink', 'twinkle'].includes(light.kind)) err(`${p}.kind`, 'kind is flicker, fire, glow, blink or twinkle');
       if (light.strength != null && (light.strength < 0 || light.strength > 100)) err(`${p}.strength`, 'strength is a percentage from 0 to 100');
       if (light.period != null && !(light.period > 0)) err(`${p}.period`, 'period is a number of seconds greater than 0');
+      if (light.conditions != null && !Array.isArray(light.conditions)) err(`${p}.conditions`, 'conditions is a list');
+      else checkConditions(light.conditions ?? undefined, p);
     });
     (scene.atmosphere ?? []).forEach((a, i) => {
       const p = `${sp}.atmosphere[${i}]`;

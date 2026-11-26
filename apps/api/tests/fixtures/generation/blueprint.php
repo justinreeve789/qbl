@@ -31,7 +31,7 @@ return [
     'scenes' => [
         ['key' => 'landing', 'title' => 'Orchard Landing', 'description' => 'Where the students meet the orchard keeper.', 'background' => 'a grassy landing area at the foot of terraced orchard hills, a small shuttle pad on the left, a glass greenhouse on the right', 'ground_line' => 0.68, 'indoor' => false,
             'sky' => ['time' => 'morning', 'clouds' => 'few'],
-            'lights' => [['x' => 0.12, 'kind' => 'beacon', 'look' => 'a small red landing beacon on a short pole', 'placement' => 'ground'], ['x' => 0.5, 'kind' => 'disco', 'look' => 'dropped: no such kind']],
+            'lights' => [['x' => 0.12, 'kind' => 'beacon', 'look' => 'a small red landing beacon on a short pole', 'placement' => 'ground', 'on_after' => 'power'], ['x' => 0.5, 'kind' => 'disco', 'look' => 'dropped: no such kind']],
             'exits' => [
                 ['edge' => 'right', 'to' => 'orchard'],
                 ['via' => 'door', 'x' => 0.62, 'to' => 'greenhouse', 'look' => 'a round glass door with a brass frame in the side of the greenhouse', 'label' => 'Enter the greenhouse'],
@@ -61,7 +61,7 @@ return [
             'details' => [['x' => 0.62, 'label' => 'Scarecrow', 'look' => 'a scarecrow in a patched coat with a crow sitting on its hat', 'text' => 'The crow does not look scared at all.'], ['x' => 2, 'label' => '', 'look' => 'nothing', 'text' => 'dropped: no label']]],
         ['key' => 'greenhouse', 'title' => 'The Greenhouse', 'description' => 'Warm, wet and full of seedlings.', 'background' => 'inside a glass greenhouse: shelves of seedlings along the back wall, misty glass panes, hanging vines', 'ground_line' => 0.7, 'kind' => 'indoor', 'exits' => [], 'sky' => ['time' => 'night']],
         ['key' => 'burrow', 'title' => 'Root Burrow', 'description' => 'Under the orchard, where the pipes run.', 'background' => 'an earthy burrow under the orchard with thick roots hanging from the ceiling and glowing mushrooms', 'ground_line' => 0.66, 'kind' => 'underground', 'exits' => [],
-            'lights' => [['x' => 0.3, 'kind' => 'crystal', 'look' => 'a cluster of glowing blue mushrooms', 'placement' => 'wall']], 'atmosphere' => [['kind' => 'dust']],
+            'lights' => [['x' => 0.3, 'kind' => 'crystal', 'look' => 'a cluster of glowing blue mushrooms', 'placement' => 'wall', 'off_after' => 'burst', 'on_after' => '']], 'atmosphere' => [['kind' => 'dust']],
             'foreground' => ['look' => 'thick twisted tree roots', 'where' => 'bottom'],
             'ambient' => [['key' => 'beetle', 'look' => 'a shiny green beetle', 'motion' => 'walks_by', 'size_cm' => 6]]],
     ],

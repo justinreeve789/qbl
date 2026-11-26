@@ -1,9 +1,10 @@
-import { mainLayerIndex } from '@qbl/shared';
+import { mainLayerIndex, type Condition, type SceneLight } from '@qbl/shared';
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
 import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, FLOW_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS, WEATHER_FIELDS } from '../../schema';
 import { duplicateScene } from '../../clipboard';
+import { inlineConditions, type ConditionValue } from '../conditions';
 import { eventPanel } from '../eventPanel';
 import { benchSettingsPanel, benchToolPanel, benchVesselPanel } from './benchPanels';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
@@ -51,8 +52,8 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
         SHADOW_SPOT_FIELDS, host);
     case 'light':
       return listPanel(model, ctx, 'lights', selection.index, 'Light',
-        'A soft glow drawn over the scene: put it on a lantern, a campfire, a lit window or a beacon in the picture. It flickers, burns with embers rising, breathes slowly, blinks or twinkles. With a living sky it shines fully at night and only a little by day. Drag it to move it and its handle to change how far it reaches.',
-        LIGHT_FIELDS, host);
+        'A soft glow drawn over the scene: put it on a lantern, a campfire, a lit window or a beacon in the picture. It flickers, burns with embers rising, breathes slowly, blinks or twinkles. With a living sky it shines fully at night and only a little by day. Give it conditions to switch it on and off as the story goes: it fades in and out as they start or stop holding. Drag it to move it and its handle to change how far it reaches.',
+        LIGHT_FIELDS, host, lightConditions(model, ctx, selection.index));
     case 'flow':
       return listPanel(model, ctx, 'flows', selection.index, 'Flowing water',
         'Water that moves: a river or stream carried along, a waterfall pouring down, the sea or a lake lapping. Behind the picture, it shows wherever the scene’s last background layer is see-through: cut the water out of the picture and it flows between the painted banks. Over the picture, only ripples and glints move. Drag the box to move it and its corners to resize it.',
@@ -285,7 +286,26 @@ function layerPanel(model: SceneModel, ctx: FormContext, which: LayerList, index
 }
 
 /** Spawn points and placed items and characters: entries of a JSON list in the scene's layout. */
-function listPanel(model: SceneModel, ctx: FormContext, key: LayoutList, index: number, title: string, about: string, fields: Field[], host: InspectorHost): HTMLElement {
+/**
+ * When a light is on (`conditions` inline in the scene's layout): a beacon that comes on once the ship
+ * is repaired, a campfire that goes out in the rain.
+ */
+function lightConditions(model: SceneModel, ctx: FormContext, index: number): HTMLElement {
+  const now = () => model.layout<SceneLight>('lights')[index];
+  return h('div', { 'data-section': 'conditions' }, inlineConditions(
+    ctx,
+    () => (now()?.conditions ?? undefined) as ConditionValue[] | undefined,
+    (list, structural) => void model.setLayout('lights', model.layout<SceneLight>('lights').map((l, i) => {
+      if (i !== index) return l;
+      const { conditions: _, ...rest } = l;
+      return list.length ? { ...rest, conditions: list as Condition[] } : rest;
+    }), structural),
+    'On only when',
+    'Always on.',
+  ));
+}
+
+function listPanel(model: SceneModel, ctx: FormContext, key: LayoutList, index: number, title: string, about: string, fields: Field[], host: InspectorHost, extra?: HTMLElement): HTMLElement {
   const entry = model.layout(key)[index];
   if (!entry) return gone();
   const commit = (name: string, value: unknown, field: Field) =>
@@ -295,6 +315,7 @@ function listPanel(model: SceneModel, ctx: FormContext, key: LayoutList, index: 
     { class: 'panel' },
     h('div', { class: 'panel-head' }, h('h2', null, title, help(about))),
     form(fields, entry, commit, ctx),
+    extra ?? null,
     h(
       'div',
       { class: 'row-actions' },

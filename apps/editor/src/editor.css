@@ -230,6 +230,7 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 .light-glow { pointer-events: none; mix-blend-mode: screen; }
 .light-spot { fill: transparent; stroke: #ffd36b; stroke-width: 1.5; stroke-dasharray: 3 4; cursor: pointer; }
 .light-spot.selected { stroke-width: 3; stroke-dasharray: none; cursor: move; }
+.light-switch { pointer-events: none; fill: #ffd36b; stroke: #3a2a00; stroke-width: 0.6; paint-order: stroke; font-weight: 700; }
 .sky-preview { position: absolute; pointer-events: none; }
 .flow-area { fill: color-mix(in srgb, var(--flow, #3f86c4) 22%, transparent); stroke: var(--flow, #3f86c4); stroke-width: 1.5; stroke-dasharray: 6 4; cursor: pointer; }
 .flow-area.selected { stroke-width: 3; cursor: move; fill: color-mix(in srgb, var(--flow, #3f86c4) 32%, transparent); }

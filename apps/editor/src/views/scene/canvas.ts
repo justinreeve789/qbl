@@ -487,7 +487,10 @@ export class SceneCanvas {
 
   // ------------------------------------------------------------------ lights
 
-  /** Lights, drawn as soft glows in their colour. The selected one can be dragged, and its reach changed. */
+  /**
+   * Lights, drawn as soft glows in their colour. The selected one can be dragged, and its reach changed.
+   * One with conditions (on only some of the time) has a switch badge beside it.
+   */
   private drawLights(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
     const lights = this.model.layout<SceneLight>('lights');
     lights.forEach((light, index) => {
@@ -503,13 +506,17 @@ export class SceneCanvas {
       }
       const name = light.name || `Light ${index + 1}`;
       const spotR = Math.max(12 * u, radius * 0.25);
+      const switched = (light.conditions ?? []).length > 0;
       shapes.push(
         this.body(s('circle', {
-          class: `light-spot${isSelected ? ' selected' : ''}`, cx: light.x, cy: light.y, r: spotR,
+          class: `light-spot${isSelected ? ' selected' : ''}${switched ? ' switched' : ''}`, cx: light.x, cy: light.y, r: spotR,
           onpointerdown: (e: PointerEvent) =>
             this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(light, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
-        }, s('title', null, `${name} (${light.kind ?? 'flicker'})`)), Math.PI * spotR * spotR),
+        }, s('title', null, `${name} (${light.kind ?? 'flicker'})${switched ? ': on only when its conditions hold' : ''}`)), Math.PI * spotR * spotR),
       );
+      if (switched) {
+        top.push(s('text', { class: 'light-switch', x: light.x + spotR * 0.75, y: light.y - spotR * 0.75, 'font-size': 16 * u, 'data-light-switch': String(index) }, '⏻'));
+      }
       if (!isSelected) return;
       top.push(s('rect', {
         class: 'handle', x: light.x + radius - 6 * u, y: light.y - 6 * u, width: 12 * u, height: 12 * u,
