@@ -42,6 +42,13 @@ export class CameraSystem implements SceneSystem {
   /** The zoom that fills the window with the scene, and the usual view's zoom. */
   private cover = 1;
   private base = 1;
+  /**
+   * How far (world pixels) the view's centre sits above what it follows. A window wider than the
+   * usual view (an ultrawide monitor) has to zoom in to fill its width, so less height fits; the
+   * view is raised by half the height lost, so its top edge stays where the usual view's would be
+   * and the cut comes off the bottom instead.
+   */
+  private lift = 0;
 
   constructor(private rt: SceneRuntime) {}
 
@@ -63,10 +70,10 @@ export class CameraSystem implements SceneSystem {
     if (def.story) {
       this.mode = { kind: 'auto' };
       this.focus = this.autoTarget() ?? { x: player.x, y: player.y };
-      cam.centerOn(this.focus.x, this.focus.y);
+      cam.centerOn(this.focus.x, this.focus.y - this.lift);
     } else {
-      cam.centerOn(player.x, player.y);
-      cam.startFollow(player, true, 0.12, 0.12);
+      cam.centerOn(player.x, player.y - this.lift);
+      this.followPlayer();
     }
   }
 
@@ -78,7 +85,6 @@ export class CameraSystem implements SceneSystem {
   /** A camera action. */
   point(action: CameraAction): ActionHandle | null {
     if (this.whole) return null;
-    const cam = this.rt.scene.cameras.main;
     const target = action.target ?? (action.character_id != null ? 'character' : action.position_x != null ? 'point' : 'player');
     const ms = Math.max(0, action.duration ?? 1200);
     const from = this.centre();
@@ -91,10 +97,9 @@ export class CameraSystem implements SceneSystem {
     this.glide = null;
     switch (target) {
       case 'player': {
-        const player = this.rt.system(LocalPlayerSystem).avatar;
         this.mode = { kind: 'player' };
         this.focus = null;
-        cam.startFollow(player, true, 0.12, 0.12);
+        this.followPlayer();
         return this.after(ms);
       }
       case 'character':
@@ -130,7 +135,6 @@ export class CameraSystem implements SceneSystem {
       if (z.t >= 1) this.zooming = null;
     }
     if (this.mode.kind === 'player' || !this.focus) return;
-    const cam = this.rt.scene.cameras.main;
     if (this.glide) {
       const g = this.glide;
       g.t = Math.min(1, g.t + dt / g.ms);
@@ -147,7 +151,7 @@ export class CameraSystem implements SceneSystem {
         this.focus = { x: this.focus.x + (target.x - this.focus.x) * k, y: this.focus.y + (target.y - this.focus.y) * k };
       }
     }
-    cam.centerOn(this.focus.x, this.focus.y);
+    this.rt.scene.cameras.main.centerOn(this.focus.x, this.focus.y - this.lift);
   }
 
   destroy() {
@@ -187,7 +191,13 @@ export class CameraSystem implements SceneSystem {
   private centre(): Point {
     if (this.focus) return this.focus;
     const v = this.rt.scene.cameras.main.worldView;
-    return { x: v.x + v.width / 2, y: v.y + v.height / 2 };
+    return { x: v.x + v.width / 2, y: v.y + v.height / 2 + this.lift };
+  }
+
+  /** Follow the local player, with the view raised by `lift`. */
+  private followPlayer() {
+    const cam = this.rt.scene.cameras.main;
+    cam.startFollow(this.rt.system(LocalPlayerSystem).avatar, true, 0.12, 0.12, 0, this.lift);
   }
 
   /** Stop following the player, keeping the view where it is. */
@@ -231,6 +241,13 @@ export class CameraSystem implements SceneSystem {
   /** The usual view times how close it is, never so far out that the scene stops filling the window. */
   private applyZoom() {
     if (this.whole) return;
-    this.rt.scene.cameras.main.setZoom(Math.max(this.cover, this.base * this.closeness));
+    const cam = this.rt.scene.cameras.main;
+    const zoom = Math.max(this.cover, this.base * this.closeness);
+    cam.setZoom(zoom);
+    // The height the usual view would show at this closeness, against what fits in this window.
+    const usual = Math.min(this.rt.size.height, VIEW_HEIGHT) / this.closeness;
+    const shown = this.rt.scene.scale.gameSize.height / zoom;
+    this.lift = Math.max(0, (usual - shown) / 2);
+    if (this.mode.kind === 'player') cam.setFollowOffset(0, this.lift);
   }
 }
