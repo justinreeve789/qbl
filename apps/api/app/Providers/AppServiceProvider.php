@@ -27,6 +27,7 @@ use App\Qbl\Library\AssetLibrary;
 use App\Qbl\Library\ContentAdmins;
 use App\Qbl\Library\LibraryApi;
 use App\Qbl\ProgressStore;
+use App\Qbl\ExportLinks;
 use App\Qbl\ScenarioStore;
 use App\Qbl\Speech\SpeechFactory;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -47,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
             config('qbl.media_url'),
             (bool) config('qbl.png_to_webp', true),
         ));
+        // Signed links the editor downloads exported ZIPs from (EditorApi::exportByLink), keyed by the app key.
+        $this->app->singleton(ExportLinks::class, fn () => new ExportLinks('qbl-export|'.(string) config('app.key')));
         // Walks made from standing pictures (php artisan qbl:walk), drawn by Node with packages/shared's walkCycle.ts.
         $this->app->singleton(WalkMaker::class, fn () => new WalkMaker(
             (string) config('qbl.walk_script'), (string) config('qbl.node'), config('qbl.media_dir'), (string) config('qbl.media_url'), config('qbl.assets_dir'),

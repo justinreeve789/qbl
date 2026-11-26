@@ -6,11 +6,12 @@
  *
  *   php apps/api/tests/porting.php
  */
-foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi', 'ActivityStore', 'Api/Sql', 'Api/Reports'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'ExportLinks', 'EditorApi', 'ActivityStore', 'Api/Sql', 'Api/Reports'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 
 use App\Qbl\EditorApi;
+use App\Qbl\ExportLinks;
 use App\Qbl\ScenarioArchive;
 use App\Qbl\ScenarioCompiler;
 use App\Qbl\ScenarioDecompiler;
@@ -415,6 +416,26 @@ if (class_exists(ZipArchive::class)) {
     $store->deleteScenario($labCopy);
     $store->deleteScenario($labId);
 }
+
+// ---- exporting by signed link: the browser downloads the ZIP itself, with no token -----------
+$links = new ExportLinks('test-secret');
+$linked = new EditorApi($store, exportLinks: $links);
+[$status, $body] = $linked->handle('POST', "scenarios/$mine/export-link", [], $teacher);
+same($status, 200, 'export-link answers');
+check(str_starts_with($body['url'] ?? '', '/api/editor-export/'), 'with a link under /api/editor-export/');
+$ticket = substr($body['url'], strlen('/api/editor-export/'));
+[$status, $out] = $linked->exportByLink($ticket);
+same($status, 200, 'the link downloads');
+check(is_file($out['download']['path'] ?? '') && (new ZipArchive)->open($out['download']['path']) === true, 'a real ZIP');
+same($out['download']['type'], 'application/zip', 'as a ZIP');
+@unlink($out['download']['path']);
+same($linked->exportByLink($ticket.'x')[0], 410, 'a changed ticket is refused');
+same($linked->exportByLink((new ExportLinks('other-secret'))->make($mine, 1))[0], 410, 'a ticket signed with another secret is refused');
+same($linked->exportByLink($links->make($mine, 1, time() - 3600))[0], 410, 'an expired ticket is refused');
+same($linked->exportByLink($links->make($mine, 2))[0], 404, 'a ticket for someone who cannot edit the scenario gets nothing');
+same($linked->exportByLink($links->make($mine, 999))[0], 401, 'nor for a user who does not exist');
+same($api->handle('POST', "scenarios/$mine/export-link", [], $teacher)[0], 503, 'without links set up, export-link says so');
+same($linked->handle('POST', "scenarios/$mine/export-link", [], ['id' => 2, 'name' => 'Mr Ito', 'role' => 'teacher'])[0], 404, 'and only who can export the scenario gets a link');
 
 // tidy up
 exec('rm -rf '.escapeshellarg($dir));

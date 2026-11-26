@@ -528,26 +528,22 @@ export class Api {
     return (await this.call<{ scenario: Row }>('POST', '/editor/scenarios/import', form)).scenario;
   }
 
-  /** Download the whole scenario as a ZIP file: its JSON and the files uploaded for it. */
+  /**
+   * Download the whole scenario as a ZIP file: its JSON and the files uploaded for it. The API
+   * signs a short-lived link (the same checks as the export itself) and the browser downloads
+   * from it like any file: streamed to disk with its own progress bar. Fetching the ZIP with
+   * script instead held it all in the page's memory, and large scenarios failed there
+   * (Chrome: "net::ERR_FAILED 200").
+   */
   async exportZip(id: number): Promise<void> {
-    this.onBusy(++this.pending > 0);
-    try {
-      const res = await fetch(`/api/editor/scenarios/${id}/export`, { headers: { Accept: 'application/zip, application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) } });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { message?: string } | null;
-        throw new ApiError(res.status, data?.message ?? `Request failed (${res.status})`);
-      }
-      const name = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `scenario-${id}.zip`;
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(await res.blob());
-      link.download = name;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
-    } finally {
-      this.onBusy(--this.pending > 0);
-    }
+    const { url } = await this.call<{ url: string }>('POST', `/editor/scenarios/${id}/export-link`);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '';
+    link.style.display = 'none';
+    document.body.append(link);
+    link.click();
+    link.remove();
   }
   bundle = (id: number) => this.call<Bundle>('GET', `/editor/scenarios/${id}`);
   patchScenario = async (id: number, attrs: object) => (await this.call<{ scenario: Row }>('PATCH', `/editor/scenarios/${id}`, attrs)).scenario;

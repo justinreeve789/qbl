@@ -27,6 +27,7 @@ use App\Qbl\Speech\SpeechFactory;
  *   POST   scenarios/import                       multipart `file`: a ZIP with scenario.json and assets/; creates a new scenario
  *   POST   scenarios/{id}/duplicate               {title?}: a copy of the scenario as a new draft of the caller's
  *   GET    scenarios/{id}/export                  the scenario as a ZIP file (scenario.json and the uploaded files)
+ *   POST   scenarios/{id}/export-link             {url}: a link that downloads that ZIP for a few minutes, without a token (see exportByLink)
  *   GET    scenarios/{id}/preview                 the scenario JSON generated from the tables as they are now
  *   POST   scenarios/{id}/publish                 generate the JSON and make it what players get
  *   GET    scenarios/{id}/voices                  the voices characters can be given, and how many lines are recorded
@@ -45,7 +46,31 @@ class EditorApi
         private ?Entitlements $entitlements = null,
         /** Recorded voices (config/qbl_speech.php); the voice routes answer 503 without it. */
         private ?SpeechFactory $speech = null,
+        /** Signed download links for exports; the export-link route answers 503 without them. */
+        private ?ExportLinks $exportLinks = null,
     ) {}
+
+    /** Where a ticket from export-link is downloaded (outside /api/editor: the browser sends no token there). */
+    public const EXPORT_LINK_PATH = '/api/editor-export/';
+
+    /**
+     * GET /api/editor-export/{ticket}: the ZIP that POST scenarios/{id}/export-link signed for.
+     * The browser downloads it like any file, so nothing holds it in the page's memory. Whoever
+     * signed for it must still be able to export the scenario now (the same checks as export).
+     */
+    public function exportByLink(string $ticket): array
+    {
+        $read = $this->exportLinks?->read($ticket);
+        if ($read === null) {
+            return [410, ['message' => 'This download link has expired. Press Export again.']];
+        }
+        [$scenarioId, $userId] = $read;
+        $statement = $this->store->pdo()->prepare('SELECT `id`, `name`, `role` FROM `users` WHERE `id` = ?');
+        $statement->execute([$userId]);
+        $user = $statement->fetch(\PDO::FETCH_ASSOC) ?: null;
+
+        return $this->handle('GET', "scenarios/$scenarioId/export", [], $user ? ['id' => (int) $user['id'], 'name' => (string) $user['name'], 'role' => $user['role']] : null);
+    }
 
     /**
      * @param  array|null  $user  ['id' => int, 'name' => string, 'role' => string], or null if not signed in
@@ -147,6 +172,13 @@ class EditorApi
             [$path, $name] = (new ScenarioArchive($this->store))->export($id);
 
             return [200, ['download' => ['path' => $path, 'name' => $name, 'type' => 'application/zip']]];
+        }
+        if ($rest === ['export-link'] && $method === 'POST') {
+            if (! $this->exportLinks) {
+                throw new StoreError(503, 'Download links are not set up on this server.');
+            }
+
+            return [200, ['url' => self::EXPORT_LINK_PATH.$this->exportLinks->make($id, (int) $user['id'])]];
         }
         if ($rest === ['publish'] && $method === 'POST') {
             $this->store->publish($id);
