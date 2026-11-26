@@ -78,7 +78,8 @@ function labelList(ctx: FormContext, event: Row): HTMLElement {
     return h(
       'div',
       { class: 'card flat' },
-      form(LABEL_FIELDS, values, commit, ctx),
+      // Text is always drawn in front of everything, so only pictures say where they stand.
+      form(type === 'text' ? LABEL_FIELDS.filter((f) => f.key !== 'placement') : LABEL_FIELDS, values, commit, ctx),
       type === 'text' ? form([LABEL_TEXT], values, commit, ctx) : form([LABEL_MEDIA], values, commit, ctx),
       type === 'spritemap' ? form(LABEL_SPRITEMAP, values, commit, ctx) : null,
       // A picture can be something players walk around.

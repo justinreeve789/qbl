@@ -75,6 +75,10 @@ test('a label is behind the players unless it says otherwise', () => {
   assert.equal(labelPlacement({ placement: 'background' }), 'background');
   assert.equal(labelPlacement({ placement: 'object' }), 'object');
   assert.equal(labelPlacement({ placement: 'front' }), 'front');
+  // Text is always in front, whatever it asks for.
+  assert.equal(labelPlacement({ type: 'text' }), 'front');
+  assert.equal(labelPlacement({ type: 'text', placement: 'background' }), 'front');
+  assert.equal(labelPlacement({ type: 'image', placement: 'object' }), 'object');
 });
 
 test('the glossary holds the starting words and those the player has been given', () => {

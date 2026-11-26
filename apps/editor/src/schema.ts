@@ -754,7 +754,7 @@ export const LABEL_FIELDS: Field[] = [
       ['object', 'Object: players walk behind it and in front of it'],
       ['front', 'In front of everything, players included'],
     ],
-    hint: 'A label is behind the players unless you choose otherwise, wherever they walk. An object stands on its bottom edge: a player lower on the screen is drawn in front of it, one higher up behind it.',
+    hint: 'A picture is behind the players unless you choose otherwise, wherever they walk. An object stands on its bottom edge: a player lower on the screen is drawn in front of it, one higher up behind it. Text labels are always in front of everything.',
   },
 ];
 /** For pictures that are objects: whether players have to walk around them. Kept in the label's params. */
