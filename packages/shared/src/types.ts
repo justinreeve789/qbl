@@ -783,9 +783,10 @@ export interface Label extends Spritemap {
   /** A media id, or an inline media object. */
   media?: Id | Media | null;
   /**
-   * [ext] Where the label stands relative to the players. Default: `background`, so players are
-   * always drawn in front of it, wherever they walk. `object` sorts it among the players by its
-   * bottom edge; `front` draws it over everything.
+   * [ext] Where a picture label stands relative to the players. Default: `background`, so players
+   * are always drawn in front of it, wherever they walk. `object` sorts it among the players by its
+   * bottom edge; `front` draws it over everything. Ignored for text labels: text is always drawn in
+   * front of everything else in the scene.
    */
   placement?: Placement;
   /**

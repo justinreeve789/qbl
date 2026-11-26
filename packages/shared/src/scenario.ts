@@ -138,7 +138,9 @@ export function sceneTeamOnly(scenario: Pick<Scenario, 'scene_groups'>, scene: P
  * Where a hotspot label stands relative to the players. Unless it says otherwise a label is part
  * of the background: players are always drawn in front of it, wherever they walk.
  */
-export function labelPlacement(label: Pick<Label, 'placement'>): Placement {
+export function labelPlacement(label: Pick<Label, 'placement'> & Partial<Pick<Label, 'type'>>): Placement {
+  // Text is always in front of everything, so it can be read wherever players stand.
+  if (label.type === 'text') return 'front';
   if (label.placement === 'object' || label.placement === 'front') return label.placement;
   return 'background';
 }

@@ -8,5 +8,7 @@ export const Depth = {
   fixed: 160_000,
   name: 170_000,
   bubble: 180_000,
+  /** Text labels: in front of everything else in the scene, so they can always be read. */
+  text: 185_000,
   debug: 190_000,
 } as const;

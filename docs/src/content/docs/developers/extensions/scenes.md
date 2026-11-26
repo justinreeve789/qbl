@@ -37,7 +37,7 @@ Place | Drawn | Use it for
 
 What decides it:
 
-* **Hotspot labels**: `placement` on the label. Default: `background`, for pictures and text alike, so **players are always drawn in front of a hotspot's labels, wherever they walk**. A label that should be walked behind says `object`; it then stands on its **bottom edge**, the line players are sorted against. `front` draws it over everything.
+* **Hotspot labels**: **text labels are always drawn in front of everything else in the scene** (players, names, speech bubbles, foregrounds, weather), so they can always be read; `placement` is ignored for them. Picture labels take `placement`. Default: `background`, so **players are always drawn in front of a hotspot's picture labels, wherever they walk**. A picture that should be walked behind says `object`; it then stands on its **bottom edge**, the line players are sorted against. `front` draws it over everything except text.
 * **Items**: `placement` on the item, `object` (default) or `background`. An item stands at its position, the middle of its bottom edge. An object item that runs into the room at an angle (a counter) can have a `sort_line` along its base: figures in front of the line where they stand are drawn in front of it, those behind it behind (see [Items](/docs/developers/extensions/items/)).
 * **Characters and avatars** are always objects.
 * **`image_fixed` and `spritemap` actions**: `layer`, which is `above` (default: over everything), `sorted` (among the players, by `position_y`) or `behind` (part of the background).
@@ -47,7 +47,7 @@ A label can also be **solid**: players cannot walk through it and are led around
 
 Parameter | Applies to | Default | Description
 --------- | ---------- | ------- | -----------
-placement | label | background | `background`, `object` or `front`.
+placement | picture label | background | `background`, `object` or `front`. Text labels are always in front.
 solid | picture label | false | Players walk around it. This does not change how it is drawn: add `"placement": "object"` if players should also pass behind it.
 solid_radius | picture label | 35% of its width | Radius of the obstacle, a circle at the picture's base.
 show_near | label | | A hint: the label shows only while the player's avatar is within this many scene pixels of the hotspot, or the pointer is over the hotspot. For a thing's name over a small marker, so a scene is not covered in words. Absent: always shown.

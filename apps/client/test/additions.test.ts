@@ -89,20 +89,22 @@ const labelsOf = (g: Game, hotspotId: number) => ((g.scene.system(HotspotSystem)
 const local = (g: Game) => g.scene.system(LocalPlayerSystem);
 const offline = (g: Game) => g.ctx.connection as OfflineConnection;
 
-test('hotspot labels are behind the player wherever the player walks, unless a label asks otherwise', async () => {
+test('picture labels are behind the player wherever the player walks, unless a label asks otherwise; text is always in front', async () => {
   const g = await play();
   const [rock, crate] = labelsOf(g, 10);
   const [marking, caption, sign] = labelsOf(g, 20);
   const me = (local(g).avatar as any).sprite;
-  // Pictures, text and even a solid rock: all part of the background by default.
-  for (const label of [rock, marking, caption]) {
+  // Pictures and even a solid rock: part of the background by default.
+  for (const label of [rock, marking]) {
     assert.ok(label.depth < 0 && label.depth > Depth.background + 100, 'above the background layers, below every figure');
   }
   // From the top of the walkable floor to the bottom, and right on top of each label, the player is in front.
   for (const y of [250, 300, 400, 464, 500, 600]) {
     for (const x of [600, 1000]) {
       local(g).avatar.setPosition(x, y);
-      for (const label of [rock, marking, caption]) assert.ok(me.depth > label.depth, `in front at ${x},${y}`);
+      for (const label of [rock, marking]) assert.ok(me.depth > label.depth, `in front at ${x},${y}`);
+      // Text is in front of everything else: the player, its name and its speech bubble.
+      assert.ok(caption.depth > me.depth, `text in front at ${x},${y}`);
     }
   }
 
@@ -112,7 +114,10 @@ test('hotspot labels are behind the player wherever the player walks, unless a l
   assert.ok(me.depth > crate.depth);
   local(g).avatar.setPosition(640, 300);
   assert.ok(me.depth < crate.depth);
-  assert.equal(sign.depth, Depth.label);
+  // Text that asks for the front, or for nothing: in front of everything either way.
+  assert.equal(sign.depth, Depth.text);
+  assert.equal(caption.depth, Depth.text);
+  for (const above of [Depth.foreground, Depth.label, Depth.fixed, Depth.name, Depth.bubble]) assert.ok(caption.depth > above);
 });
 
 test('a solid object is walked around, and no longer in the way once it is gone', async () => {

@@ -94,10 +94,12 @@ export class HotspotSystem implements SceneSystem {
    * background: every player is drawn in front of it, wherever they stand. A label that asks to
    * be an object stands on its bottom edge (whoever is lower on the screen is in front of it,
    * whoever is higher behind it), and one that asks for the front floats over the whole scene.
+   * Text is always in front of everything else, names and speech bubbles included.
    */
   private stand<T extends LabelObject>(object: T, label: Label): T {
     const placement = labelPlacement(label);
-    if (placement === 'front') object.setDepth(Depth.label);
+    if (label.type === 'text') object.setDepth(Depth.text);
+    else if (placement === 'front') object.setDepth(Depth.label);
     else if (placement === 'background') object.setDepth(Depth.floor + 20);
     else object.setDepth(label.position_y + object.displayHeight / 2);
     return object;
