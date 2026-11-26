@@ -2,7 +2,7 @@ import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Ci
 import { isShownToScene } from './engine.js';
 import type { AnimateMessage, AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage, WalkMessage } from './protocol.js';
 import { Roamers, type NpcRec, type SavedNpc, type WalkSpec } from './roaming.js';
-import { forEachAction, sceneSize, sceneTeamOnly, ScenarioIndex } from './scenario.js';
+import { forEachAction, sceneCompany, sceneSize, ScenarioIndex, type SceneCompany } from './scenario.js';
 import { ANIMATION_NAME, type Id, type Item, type Scenario, type Scene, type Session, type VarValue, type VariableOperator } from './types.js';
 import { applyOperator } from './variables.js';
 
@@ -348,17 +348,17 @@ export class World {
 
   /**
    * The other players who can see this one: those in the same scene, and, where the scene is
-   * limited to teams, in the same team. They are who a chat message or a shown event reaches.
+   * limited to teams, in the same team. Nobody, where each player is alone in the scene. They are who a chat message or a shown event reaches.
    * A teacher is in one team's game at a time (the one they follow), so this holds for them too.
    */
   audience(sessionId: string): string[] {
     const p = this.deps.state.players.get(sessionId);
     const scene = p ? this.index.scene(p.scene_id) : undefined;
     if (!p || !scene) return [];
-    const teamOnly = sceneTeamOnly(this.scenario, scene);
+    const company = sceneCompany(this.scenario, scene);
     const others: string[] = [];
     this.deps.state.players.forEach((other, id) => {
-      if (id !== sessionId && canSee(other, p, teamOnly)) others.push(id);
+      if (id !== sessionId && canSee(other, p, company)) others.push(id);
     });
     return others;
   }
@@ -588,13 +588,16 @@ function blocksForEveryone(item: Item): boolean {
 
 
 /**
- * Whether `viewer` is shown `subject`: they are in the same scene and, where the scene is
- * limited to teams, in the same team. The same for everyone: each team's scene can hold
+ * Whether `viewer` is shown `subject`, another player: they are in the same scene and, where the
+ * scene is limited to teams, in the same team. In a scene where each player is alone, nobody else
+ * is shown. `company` is what `sceneCompany` says (or, as before, whether it is limited to teams). The same for everyone: each team's scene can hold
  * different items, hotspots and events, so seeing another team's players there would show
  * them in a world that is not theirs. A teacher sees the team they follow, as a member of it.
  */
-export function canSee(viewer: Pick<PlayerRec, 'scene_id' | 'team'>, subject: Pick<PlayerRec, 'scene_id' | 'team'>, teamOnly: boolean): boolean {
-  return viewer.scene_id === subject.scene_id && (!teamOnly || (viewer.team ?? '') === (subject.team ?? ''));
+export function canSee(viewer: Pick<PlayerRec, 'scene_id' | 'team'>, subject: Pick<PlayerRec, 'scene_id' | 'team'>, company: boolean | SceneCompany): boolean {
+  const limit = company === true ? 'team' : company === false ? 'everyone' : company;
+  if (limit === 'alone' || viewer.scene_id !== subject.scene_id) return false;
+  return limit === 'everyone' || (viewer.team ?? '') === (subject.team ?? '');
 }
 
 const SCOPE_SEPARATOR = '|';

@@ -253,9 +253,12 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
       return wrap(select(f.options ?? [], current, (v) => set(v === '' ? null : v), f.placeholder));
     }
     case 'tristate': {
+      // Yes and no are kept as true and false. Any further option is kept as its own word.
       const [yes, no] = [f.options?.[0]?.[1] ?? 'Yes', f.options?.[1]?.[1] ?? 'No'];
-      const current = value == null || value === '' ? '' : String(value === true || value === 'true' || value === 1);
-      return wrap(select([['true', yes], ['false', no]], current, (v) => set(v === '' ? null : v === 'true'), f.placeholder));
+      const more = (f.options ?? []).slice(2);
+      const word = typeof value === 'string' && more.some(([v]) => v === value) ? value : null;
+      const current = value == null || value === '' ? '' : word ?? String(value === true || value === 'true' || value === 1);
+      return wrap(select([['true', yes], ['false', no], ...more], current, (v) => set(v === '' ? null : more.some(([m]) => m === v) ? v : v === 'true'), f.placeholder));
     }
     case 'bench': {
       const scene = ctx.sceneId != null ? ctx.store.byId('scenes', ctx.sceneId) : undefined;

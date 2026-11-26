@@ -79,6 +79,8 @@ same([$meadow['team_only'], $meadow['shadow_spots'][0]['radius'], isset($meadow[
 same($meadow['indirect_events'][0]['actions'][1]['type'], 'glossary', 'a glossary action is an action like any other');
 $plain = ScenarioCompiler::compile(['scenario' => ['id' => 1, 'shortname' => 'x', 'title' => 'X', 'start_scene_id' => 1], 'scenes' => [['id' => 1, 'sequence' => 1]]]);
 check(! array_key_exists('team_only', $plain['scenes'][0]) && ! array_key_exists('shadow_spots', $plain['scenes'][0]), 'a scene that sets neither says nothing about them');
+$company = fn ($v) => ScenarioCompiler::compile(['scenario' => ['id' => 1, 'shortname' => 'x', 'title' => 'X', 'start_scene_id' => 1], 'scenes' => [['id' => 1, 'sequence' => 1, 'params' => ['team_only' => $v]]]])['scenes'][0]['team_only'];
+same([$company('alone'), $company(true), $company(false), $company('true')], ['alone', true, false, true], 'a scene where each player is alone stays "alone"; true and false stay as they were');
 $sky = ['time' => 'afternoon', 'until' => 'dusk', 'minutes' => 6];
 $lit = ScenarioCompiler::compile(['scenario' => ['id' => 1, 'shortname' => 'x', 'title' => 'X', 'start_scene_id' => 1], 'scenes' => [['id' => 1, 'sequence' => 1,
     'layout' => json_encode(['lights' => [['x' => 10, 'y' => 20, 'kind' => 'fire']]]), 'params' => json_encode(['sky' => $sky, 'atmosphere' => [['kind' => 'fireflies']], 'music_volume' => 0.4])]]]);

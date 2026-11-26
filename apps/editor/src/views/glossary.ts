@@ -1,4 +1,4 @@
-import { sceneTeamOnly } from '@qbl/shared';
+import { sceneCompany } from '@qbl/shared';
 import { mediaUrl } from '../describe';
 import { confirmDelete, h, help } from '../dom';
 import { form, withValue, type Field, type FormContext } from '../fields';
@@ -161,8 +161,8 @@ export function sceneGroupsCard(ctx: FormContext): HTMLElement {
 export function sceneGroupControl(ctx: FormContext, scene: { id: number; group_id?: unknown; params?: unknown }): HTMLElement {
   const { store } = ctx;
   const groups = (store.settings.scene_groups as Group[] | undefined) ?? [];
-  const own = (scene.params as { team_only?: boolean | null } | null)?.team_only;
-  const teamOnly = sceneTeamOnly({ scene_groups: groups.map((g) => ({ id: g.id, name: g.name ?? '', team_only: g.team_only })) }, { team_only: own, group_id: scene.group_id as number | undefined });
+  const own = (scene.params as { team_only?: boolean | 'alone' | null } | null)?.team_only;
+  const company = sceneCompany({ scene_groups: groups.map((g) => ({ id: g.id, name: g.name ?? '', team_only: g.team_only })) }, { team_only: own, group_id: scene.group_id as number | undefined });
   const select = h('select', {
     'aria-label': 'Scene group',
     onchange: () => void store.patch('scenes', scene.id, { group_id: select.value === '' ? null : Number(select.value) }, true),
@@ -170,5 +170,5 @@ export function sceneGroupControl(ctx: FormContext, scene: { id: number; group_i
   const index = groups.findIndex((g) => g.id === scene.group_id);
   return h('div', { class: 'scene-group', style: index >= 0 ? `--tone: ${groupTone(index)}` : null },
     groups.length ? select : null,
-    h('span', { class: `badge${teamOnly ? ' team' : ''}`, title: own != null ? 'Set on the scene itself' : 'From the scene’s group' }, teamOnly ? '🛡️ Own team only' : '👥 Everyone'));
+    h('span', { class: `badge${company !== 'everyone' ? ' team' : ''}`, title: own != null ? 'Set on the scene itself' : 'From the scene’s group' }, company === 'alone' ? '🚪 Alone' : company === 'team' ? '🛡️ Own team only' : '👥 Everyone'));
 }

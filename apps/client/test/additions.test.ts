@@ -270,6 +270,15 @@ test('in a scene limited to teams a player sees only their own team', async () =
   assert.deepEqual(playerRows(g.ctx).map((p) => [p.name, p.here]), [['Tester', false], ['Ben', true], ['Dee', false]], 'though the players list still says where they are');
 });
 
+test('in a scene where each player is alone, nobody else is shown, not even a teammate', async () => {
+  const g = await play({ scenes: mission().scenes.map((s) => (s.id === 1 ? { ...s, team_only: 'alone' as const } : s)) });
+  const room = offline(g);
+  room.addPlayer('ben', { name: 'Ben', scene_id: 1, x: 500, y: 450, team: '' });
+  await g.wait(50);
+  assert.equal(g.scene.system(RemotePlayersSystem).get('ben'), undefined, 'the teammate in the same scene is not drawn');
+  assert.deepEqual(playerRows(g.ctx).map((p) => [p.name, p.here]), [['Tester', false], ['Ben', false]]);
+});
+
 test('a teacher follows one team, sees what it sees, and can switch to another where it is', async () => {
   const g = new Game(mission(), { id: 'u9', name: 'Ms T', role: 'teacher' });
   const followed: Array<[string, number | undefined]> = [];
