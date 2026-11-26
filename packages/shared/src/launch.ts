@@ -83,6 +83,16 @@ export function leavesForLaunch(scene: Scene): boolean {
 export const LAUNCH_URL_PLACEHOLDER = /\{\{\s*QL_SCENARIO_LAUNCH_URL\s*\}\}/;
 
 /**
+ * Whether an Open URL's address is the launched scenario and nothing else. It always opens in the
+ * same tab: a new tab would leave the student in this scenario's room as well, and a browser
+ * may block a tab opened at the end of a cutscene. The editor unticks "Open in new tab" and
+ * won't let it be ticked until the address is something else.
+ */
+export function isLaunchUrlOnly(url: unknown): boolean {
+  return /^\s*\{\{\s*QL_SCENARIO_LAUNCH_URL\s*\}\}\s*$/.test(String(url ?? ''));
+}
+
+/**
  * Whether a scene is a scenario launcher scene: one a teacher can send their class to before the
  * scenario they launch opens. Its own setting says so ("Use as a scenario launcher scene"); a scene
  * without the setting is one when it has a travel action, as departure scenes were before it.

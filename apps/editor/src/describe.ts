@@ -56,7 +56,7 @@ export function actionSummary(store: Store, type: string, values: Record<string,
     case 'open_url': {
       const url = String(values.url ?? '').trim();
       const where = /\{\{\s*QL_SCENARIO_LAUNCH_URL\s*\}\}/.test(url) && url.replace(/\{\{\s*QL_SCENARIO_LAUNCH_URL\s*\}\}/, '').trim() === '' ? 'the launched scenario' : clip(url || '(no address)');
-      return `Open ${where}${values.new_tab === false ? '' : ' in a new tab'}`;
+      return `Open ${where}${values.new_tab === false || where === 'the launched scenario' ? '' : ' in a new tab'}`;
     }
     case 'dialogue':
       return `${values.speaker === 'character' ? String(store.byId('characters', values.character_id as number | null)?.name ?? 'Character') : 'Player'} ${values.style === 'portrait' ? 'says, in a story box' : 'says'}: ${clip(String(values.text ?? ''))}`;

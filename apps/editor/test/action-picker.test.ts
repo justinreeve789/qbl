@@ -130,11 +130,25 @@ test('Open URL takes an address with variables, and opens it in a new tab unless
   const card = page.locator('.inspector details.action[open]').last();
   const tab = card.locator('[data-field=new_tab] input[type=checkbox]');
   assert.equal(await tab.isChecked(), true, 'open in new tab is ticked to start with');
-  await card.locator('[data-field=url] input').fill('{{QL_SCENARIO_LAUNCH_URL}}');
-  await card.locator('[data-field=url] input').press('Tab');
-  await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Open the launched scenario in a new tab/.test(s.textContent ?? '')));
-  await tab.uncheck();
+  const url = card.locator('[data-field=url] input');
+  await url.fill('https://example.org');
+  await url.press('Tab');
+  await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Open https:\/\/example\.org in a new tab/.test(s.textContent ?? '')));
+  // The launched scenario on its own: unticked, and it can't be ticked until the address changes.
+  await url.fill('{{QL_SCENARIO_LAUNCH_URL}}');
+  await url.press('Tab');
+  await page.waitForFunction(() => (document.querySelector('.inspector details.action[open]:last-of-type [data-field=new_tab] input') as HTMLInputElement | null)?.disabled === true);
+  assert.equal(await tab.isChecked(), false, 'unticked automatically');
+  assert.equal(await tab.isDisabled(), true, 'and cannot be ticked');
+  await card.locator('[data-field=new_tab]').scrollIntoViewIfNeeded();
+  await shot('open-url-locked');
   await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Open the launched scenario$/.test((s.textContent ?? '').trim())));
+  await url.fill('{{QL_SCENARIO_LAUNCH_URL}}&from=hub');
+  await url.press('Tab');
+  await page.waitForFunction(() => (document.querySelector('.inspector details.action[open]:last-of-type [data-field=new_tab] input') as HTMLInputElement | null)?.disabled === false);
+  assert.equal(await tab.isChecked(), true, 'edited to something else, it is free again, as it was');
+  await tab.uncheck();
+  await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /&from=hub$/.test((s.textContent ?? '').trim())));
 });
 
 test('no page errors', () => {

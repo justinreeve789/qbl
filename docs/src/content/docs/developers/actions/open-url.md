@@ -10,13 +10,14 @@ The `open_url` action opens a web address. Its `url` may hold `{{variable}}` pla
 Parameter | Type | Description
 --------- | ---- | -----------
 url | string | **Required.** The address. It starts with `https://`, `http://` or `/` (a page of this site), or is made of placeholders that fill in to one. Anything else (`javascript:`, `mailto:`) is never opened.
-new_tab | bool | Open it in a new browser tab. Default `true`.
+new_tab | bool | Open it in a new browser tab. Default `true`. Ignored when `url` is `{{QL_SCENARIO_LAUNCH_URL}}` and nothing else: that always opens in the same tab.
 
 ```json
 { "type": "open_url", "url": "{{QL_SCENARIO_LAUNCH_URL}}", "new_tab": false }
 ```
 
 * **In a new tab** (the default) the game stays open where it is, and the event goes on to its next action. Browsers often block a tab that opens without a click (at the end of a cutscene, say); the player then gets a button that opens it.
+* **The launched scenario on its own** (`url` is just `{{QL_SCENARIO_LAUNCH_URL}}`) always opens in the same tab. In a new tab the student would stay in this scenario's room as well, and a browser may block the tab at the end of a cutscene. The editor unticks **Open in new tab** and greys it out until the URL is edited to something else.
 * **In the same tab** (`new_tab: false`) the player leaves the game: like `jump`, it ends the event, this scene's end events run, and the player's progress is saved before the page changes. To the launched scenario this is the same as a [`travel`](/docs/developers/actions/travel/) action.
 * With an address that fills in empty (`{{QL_SCENARIO_LAUNCH_URL}}` with nothing launched) nothing opens and the event carries on, so put what to say then after it.
 * In a preview the editor is never left: the same tab opens a new tab instead, and with nothing launched a toast says what would happen.

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  departureScenes, isDepartureScene, isLauncherScene, launcherScenes, launchPath, leavesForLaunch, normalizeActionType, normalizeScenario, planLaunch, ScenarioIndex, SceneEngine, SYSTEM_VARIABLES, validateScenario, VariableStore, World,
+  departureScenes, isDepartureScene, isLaunchUrlOnly, isLauncherScene, launcherScenes, launchPath, leavesForLaunch, normalizeActionType, normalizeScenario, planLaunch, ScenarioIndex, SceneEngine, SYSTEM_VARIABLES, validateScenario, VariableStore, World,
   type Action, type ActionHandle, type EngineHost, type GameEvent, type ItemRec, type LaunchPlan, type PlayerRec, type OpenUrlAction, type Scenario, type TravelAction, type WorldState,
 } from '../src/index.js';
 
@@ -89,6 +89,7 @@ test('two system variables say where a launch is taking the player: its title an
   const names = SYSTEM_VARIABLES.map((v) => v.name as string);
   assert.deepEqual(names.filter((n) => /Mission|launch/i.test(n)), ['QL_NextMission', 'QL_SCENARIO_LAUNCH_URL']);
   assert.equal(launchPath('time portal', 't 7'), '/time%20portal?group=t%207');
+  assert.deepEqual(['{{QL_SCENARIO_LAUNCH_URL}}', ' {{ QL_SCENARIO_LAUNCH_URL }} ', '{{QL_SCENARIO_LAUNCH_URL}}&x=1', 'https://a.b', '', null].map(isLaunchUrlOnly), [true, true, false, false, false, false]);
 });
 
 // ------------------------------------------------------------- the Open URL action

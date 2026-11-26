@@ -1,4 +1,4 @@
-import { BENCH_OPS, BUILT_IN_SOUNDS, BUILT_IN_SOUND_NAMES, type ActionType } from '@qbl/shared';
+import { BENCH_OPS, BUILT_IN_SOUNDS, BUILT_IN_SOUND_NAMES, isLaunchUrlOnly, type ActionType } from '@qbl/shared';
 import type { Field } from './fields';
 
 /**
@@ -222,12 +222,13 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     about: 'Open a web address. {{QL_SCENARIO_LAUNCH_URL}} opens the scenario the teacher launched: the last step of a scenario launcher scene.',
     fields: [
       {
-        key: 'url', label: 'URL', kind: 'text', wide: true, placeholder: '{{QL_SCENARIO_LAUNCH_URL}}',
+        key: 'url', label: 'URL', kind: 'text', wide: true, structural: true, placeholder: '{{QL_SCENARIO_LAUNCH_URL}}',
         hint: 'A web address starting with https:// (or / for a page of this site). Variables fill in as {{variable_name}}: {{QL_SCENARIO_LAUNCH_URL}} is the scenario the player’s teacher just launched for them, and is empty when nothing is launched, so then nothing opens and the event carries on.',
       },
       {
         key: 'new_tab', label: 'Open in new tab', kind: 'bool', default: true, wide: true,
-        hint: 'In a new tab the game stays open here and the event carries on. Untick it to leave the game for the address: like a jump, the event ends, this scene’s end events run and the player’s progress is saved first. Browsers often block a tab that opens without a click; then the player gets a button to open it.',
+        hint: 'In a new tab the game stays open here and the event carries on. Untick it to leave the game for the address: like a jump, the event ends, this scene’s end events run and the player’s progress is saved first. Browsers often block a tab that opens without a click; then the player gets a button to open it. {{QL_SCENARIO_LAUNCH_URL}} on its own always opens in this tab.',
+        locked: (v) => (isLaunchUrlOnly(v.url) ? { value: false, why: 'The launched scenario always opens in this tab, so students leave this scenario for it.' } : null),
       },
     ],
   },

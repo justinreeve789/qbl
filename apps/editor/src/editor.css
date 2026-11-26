@@ -152,6 +152,7 @@ p.small { font-size: 13px; }
 .field small { font-size: 11px; color: var(--muted); }
 .field.check { flex-direction: row; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .field.check small { flex-basis: 100%; }
+.field.check.locked > span { opacity: 0.6; }
 .media-pick { display: flex; gap: 6px; align-items: center; }
 /* A slider with its number box: drag for a rough value, type for an exact one. */
 .slider { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

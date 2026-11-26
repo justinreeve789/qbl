@@ -91,7 +91,7 @@ function fakeWindow(blocked = false) {
 }
 
 /** The control room as a launcher scene that ends with Open URL to the launched scenario. */
-function urlGame(newTab: boolean) {
+function urlGame(newTab: boolean, url = '{{QL_SCENARIO_LAUNCH_URL}}') {
   const s = scenario();
   const room = s.scenes.find((sc) => sc.id === CONTROL_ROOM)!;
   room.launcher = true;
@@ -99,7 +99,7 @@ function urlGame(newTab: boolean) {
     id: 9001,
     actions: [
       { id: 9002, type: 'text_overlay', text: 'Boarding for {{QL_SCENARIO_LAUNCH_URL}}', duration: 100, conditions: [{ variable: 'QL_SCENARIO_LAUNCH_URL', operator: '!=', operand: '' }] },
-      { id: 9003, type: 'open_url', url: '{{QL_SCENARIO_LAUNCH_URL}}', ...(newTab ? {} : { new_tab: false }) },
+      { id: 9003, type: 'open_url', url, ...(newTab ? {} : { new_tab: false }) },
       { id: 9004, type: 'text_overlay', text: 'Still here.', duration: 100 },
     ] as Action[],
   }];
@@ -132,17 +132,30 @@ test('a launcher scene: QL_SCENARIO_LAUNCH_URL is the student’s own game of th
   assert.equal(g.var('QL_SCENARIO_LAUNCH_URL'), '', 'and once they have gone, there is nowhere left to go');
 });
 
+test('the launched scenario on its own always opens in the same tab, even when new_tab is left on', async (t) => {
+  const win = fakeWindow();
+  t.after(win.restore);
+  const { g, gone, connection, stop } = urlGame(true, ' {{ QL_SCENARIO_LAUNCH_URL }} ');
+  t.after(stop);
+  await g.wait(100);
+  connection.launched(portal({ scene_id: CONTROL_ROOM }));
+  await g.hold([], () => g.scene.def.id === CONTROL_ROOM, 5000);
+  await g.wait(300);
+  assert.deepEqual(win.opened, []);
+  assert.deepEqual(gone.map((l) => l.code), ['timeportal']);
+});
+
 test('Open URL in a new tab opens it there and the scene goes on; a blocked tab becomes a button', async (t) => {
   for (const blocked of [false, true]) {
     const win = fakeWindow(blocked);
-    const { g, gone, connection, stop } = urlGame(true);
+    const { g, gone, connection, stop } = urlGame(true, '{{QL_SCENARIO_LAUNCH_URL}}&from=hub');
     await g.wait(100);
     connection.launched(portal({ scene_id: CONTROL_ROOM }));
     await g.hold([], () => g.scene.def.id === CONTROL_ROOM, 5000);
     await g.wait(300);
-    assert.deepEqual(win.opened, ['https://qbl.test/timeportal?group=t7'], 'without a url from the server, the same address is made from the code and group');
+    assert.deepEqual(win.opened, ['https://qbl.test/timeportal?group=t7&from=hub'], 'without a url from the server, the same address is made from the code and group');
     assert.deepEqual(gone, []);
-    assert.deepEqual(g.ui.links.map((l) => l.href), blocked ? ['https://qbl.test/timeportal?group=t7'] : []);
+    assert.deepEqual(g.ui.links.map((l) => l.href), blocked ? ['https://qbl.test/timeportal?group=t7&from=hub'] : []);
     stop();
     win.restore();
   }
