@@ -2,7 +2,7 @@ import { Bag } from './Bag';
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
-  canSee, escapeHtml, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
+  canSee, escapeHtml, launchPath, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
   type GlossaryEntry, type Id, type LaunchBroadcast, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
 } from '@qbl/shared';
 import type { Action, AwardAction } from '@qbl/shared';
@@ -98,6 +98,7 @@ export class GameContext {
 
     // A teacher's launch: whether one is waiting for this player to go, and where to.
     this.vars.provide('QL_NextMission', () => this.launched?.title ?? '');
+    this.vars.provide('QL_SCENARIO_LAUNCH_URL', () => this.launchUrl);
 
     this.bag = new Bag(scenario, this.vars.get);
     this.bag.say = (text) => ui.toast(text, 2600);
@@ -148,6 +149,24 @@ export class GameContext {
 
   /** The launch this player has left for, once they have. */
   departed: LaunchBroadcast | null = null;
+
+  /**
+   * QL_SCENARIO_LAUNCH_URL: the full address of the player's own instance of the scenario their
+   * teacher launched, until they go to it; empty otherwise.
+   */
+  get launchUrl(): string {
+    const launch = this.launched;
+    if (!launch || this.departed) return '';
+    const path = launch.url ?? launchPath(launch.code, launch.group);
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    return new URL(path, base).href;
+  }
+
+  /**
+   * Set at start-up when the game may be left for another page (not in a preview): save, leave
+   * the game server, and go there.
+   */
+  leavePage: ((href: string) => void) | null = null;
 
   /** Go to a launched mission, once. */
   leaveFor(launch: LaunchBroadcast): void {

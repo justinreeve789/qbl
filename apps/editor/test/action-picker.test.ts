@@ -116,11 +116,25 @@ test('Cancel event sits beside Cancel action and offers the events of this scene
 
 test('Go to the launched mission sits with the jumps, and needs nothing filled in', async () => {
   const group = (await groupsOf('.inspector .add-action')).find((g) => g.group === 'scene')!;
-  assert.deepEqual(group.types, ['jump', 'travel', 'camera', 'weather', 'bench']);
+  assert.deepEqual(group.types, ['jump', 'travel', 'open_url', 'camera', 'weather', 'bench']);
   const text = await page.locator('.inspector .add-action option[value=travel]').evaluate((o) => (o as HTMLOptionElement).text);
   assert.match(text, /^🚀 Go to the launched mission: Leave for the mission the teacher launched/);
   await page.locator('.inspector .add-action').selectOption('travel');
   await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Go to the mission the teacher launched/.test(s.textContent ?? '')));
+});
+
+test('Open URL takes an address with variables, and opens it in a new tab unless told otherwise', async () => {
+  const text = await page.locator('.inspector .add-action option[value=open_url]').evaluate((o) => (o as HTMLOptionElement).text);
+  assert.match(text, /^🔗 Open URL: Open a web address/);
+  await page.locator('.inspector .add-action').selectOption('open_url');
+  const card = page.locator('.inspector details.action[open]').last();
+  const tab = card.locator('[data-field=new_tab] input[type=checkbox]');
+  assert.equal(await tab.isChecked(), true, 'open in new tab is ticked to start with');
+  await card.locator('[data-field=url] input').fill('{{QL_SCENARIO_LAUNCH_URL}}');
+  await card.locator('[data-field=url] input').press('Tab');
+  await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Open the launched scenario in a new tab/.test(s.textContent ?? '')));
+  await tab.uncheck();
+  await page.waitForFunction(() => [...document.querySelectorAll('.inspector details.action summary')].some((s) => /Open the launched scenario$/.test((s.textContent ?? '').trim())));
 });
 
 test('no page errors', () => {

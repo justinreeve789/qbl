@@ -127,8 +127,8 @@ It is the simplest honest measure of change that the report offers. See [Maximiz
 
 *Into the time portal, aboard the shuttle, through the library's magic door: a short scene that plays as the teacher launches the next mission.*
 
-1. Make a **scene** for the departure in the mission the class gathers in (the hub). It needs no door: the teacher's launch takes everyone there.
-2. Give it a **start event**, condition **`QL_NextMission` != (leave the value empty)**, so it plays only when a mission has been launched for the player. In it: **Freeze** the player; **Walk** them to the portal; **Show or hide avatar** to step inside; a sound, **Weather** for the lightning, a **Translate** for the doors closing; a **Narration** such as `Next stop: {{QL_NextMission}}`; and last, **🚀 Go to the launched mission**.
+1. Make a **scene** for the departure in the mission the class gathers in (the hub), and tick **Use as a scenario launcher scene** in its settings (🚀 Scenario launcher). It needs no door: the teacher's launch takes everyone there.
+2. Give it a **start event**, condition **`QL_NextMission` != (leave the value empty)**, so it plays only when a mission has been launched for the player. In it: **Freeze** the player; **Walk** them to the portal; **Show or hide avatar** to step inside; a sound, **Weather** for the lightning, a **Translate** for the doors closing; a **Narration** such as `Next stop: {{QL_NextMission}}`; and last, **🔗 Open URL** with the URL `{{QL_SCENARIO_LAUNCH_URL}}`. Untick **Open in new tab** so the class leaves the hub for the mission (a new tab would leave the hub open behind it, and a browser may block a tab that opens by itself). **🚀 Go to the launched mission** does the same.
 3. Give it a second start event, condition **`QL_NextMission` = (an empty value)**, with a **Jump** back to the main room, for anyone who comes back to this scene another day. (Players launched through it are saved where they were before it, so this is rare.)
 4. Keep the event's **Who sees it** on *the player*: everyone plays the departure at once, each on their own screen.
 

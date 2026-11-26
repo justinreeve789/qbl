@@ -62,13 +62,13 @@ There are two ways to launch it:
 
 <Steps>
 
-1. **From the game, with the class.** While you are playing another mission with your students (the starship hub, say), open the **🚀 Launch a mission** tab at the side of the game. It lists your assignments of other missions, those waiting for you first, with how many of each one's students are in the game with you. Choose **Launch**, then **Launch now**. Every student of that assignment who is in the game is sent into it, each into their own team's copy, and you go with them (untick **Go with them** to stay behind for stragglers). Students who are not in the game find it on their missions page from now on.
+1. **From the game, with the class.** While you are playing another mission with your students (the starship hub, say), open the **🚀 Launch a mission** tab at the side of the game. It lists your assignments of other missions, those waiting for you first, with how many of each one's students are in the game with you. Choose **Launch**. If this mission has scenario launcher scenes you are asked where the class goes first: one of them, or **None** to open the mission straight away (see below). Then **Launch now**. Every student of that assignment who is in the game is sent into it, each into their own team's copy, and you go with them (untick **Go with them** to stay behind for stragglers). Students who are not in the game find it on their missions page from now on.
 
 2. **From the Classes page.** **Show it to them now**, on the assignment's card, opens it to the students without moving anyone. **Hide it again** puts it back to waiting (students already playing are not sent away, but cannot come back in until it is launched again).
 
 </Steps>
 
-**On the way** lets you send the class **through a scene of this mission first**, one that plays the departure: they walk into the time portal and the doors close and the lightning flashes; they board the shuttle and it lifts off; they step into the library's reading-room VR booth. Every student is taken there at once, from wherever they are, its events play, and its last action, **Go to the launched mission**, takes them on. Only scenes with that action are offered. How to build one is in [Patterns](/docs/editor/patterns/#9-a-departure-the-whole-class-takes-together).
+**Before it opens, take them to** lets you send the class **to a scene of this mission first**, one that plays the departure: they walk into the time portal and the doors close and the lightning flashes; they board the shuttle and it lifts off; they step into the library's reading-room VR booth. Every student is taken there at once, from wherever they are, its events play, and its last action, **Open URL** to `{{QL_SCENARIO_LAUNCH_URL}}` (or **Go to the launched mission**), takes them on. Only scenes ticked **Use as a scenario launcher scene** in their settings are offered (and, from before that setting, scenes with a Go to the launched mission action). How to build one is in [Patterns](/docs/editor/patterns/#9-a-departure-the-whole-class-takes-together).
 
 A mission that does not wait can be launched too: it is a way to send everyone into it together.
 

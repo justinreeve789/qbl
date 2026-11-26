@@ -137,7 +137,8 @@ An action's card takes its group's colour. The Type picker on each card, a butto
 | Action | What it does |
 | ------ | ------------ |
 | 🚪 **Jump** | Go to another **Scene**, and **Arrive at** one of its spawn points |
-| 🚀 **Go to the launched mission** | Leave this mission for the one the teacher has just launched: the last action of a *departure scene*. Like a jump it ends the event, after this scene's end events. With nothing launched (a player wandering in another day) nothing happens and the event goes on, so put what to say then after it. See [Launch a mission](/docs/editor/classes/#launch-a-mission-when-the-class-is-ready) |
+| 🔗 **Open URL** | Open a web address, **in a new tab** (ticked to start with: the game and the event go on) or in this one (the player leaves, after this scene's end events, and their progress is saved). Variables fill in: **`{{QL_SCENARIO_LAUNCH_URL}}`** is the scenario the teacher just launched, the last action of a *scenario launcher scene*. With nothing launched it is empty: nothing opens and the event goes on. See [Open URL](/docs/developers/actions/open-url/) |
+| 🚀 **Go to the launched mission** | Leave this mission for the one the teacher has just launched: the last action of a *scenario launcher scene*, like Open URL to `{{QL_SCENARIO_LAUNCH_URL}}` in the same tab. Like a jump it ends the event, after this scene's end events. With nothing launched (a player wandering in another day) nothing happens and the event goes on, so put what to say then after it. See [Launch a mission](/docs/editor/classes/#launch-a-mission-when-the-class-is-ready) |
 | ⏳ **Wait** | Pause for a **Duration** in milliseconds |
 | ▶️ **Run event** | Run another event, usually an indirect one. An event that is already running is not started again |
 | 🔁 **Repeat** | Start this event again from its first action, usually with a condition so it can end |

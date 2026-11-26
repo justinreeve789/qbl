@@ -8,6 +8,7 @@ import { CHARACTER_POSES, isPose, normalizeNpc } from './characters.js';
 import { characterRoams, doorsOf, normalizeRoutine, routeBetween, startPlacement } from './walking.js';
 import { ScenarioIndex } from './scenario.js';
 import { placeholderVariables } from './text.js';
+import { isLauncherScene, leavesForLaunch } from './launch.js';
 import { BUTTON_MARKS, INFOBOX_SIZES, infoboxRefs } from './infobox.js';
 import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
@@ -410,6 +411,18 @@ export function validateScenario(doc: unknown): ValidationResult {
       case 'travel':
         if (a.to != null && a.to !== 'launched') err(`${path}.to`, `"${String(a.to)}" is not somewhere a travel action can go (only "launched", the mission the teacher launched)`);
         break;
+      case 'open_url': {
+        const url = typeof a.url === 'string' ? a.url.trim() : '';
+        if (!url) {
+          err(`${path}.url`, 'No web address is given to open');
+          break;
+        }
+        checkText(url, `${path}.url`);
+        // With no placeholder the address is known now: it must be one the game will open.
+        if (!/\{\{/.test(url) && !/^(https?:\/\/|\/)/i.test(url)) err(`${path}.url`, `"${url}" is not a web address the game opens: it starts with https://, http:// or / (a page of this site)`);
+        if (a.new_tab != null && typeof a.new_tab !== 'boolean') err(`${path}.new_tab`, 'new_tab is true or false');
+        break;
+      }
       case 'run_event': {
         const target = a.target_event_id ?? (inCta ? a.event_id : a.event_id);
         if (target == null) err(`${path}.target_event_id`, 'No event is chosen to run');
@@ -711,6 +724,9 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (c.sound != null && !isBuiltInSound(c.sound)) warn(`${p}.sound`, `"${c.sound}" is not a built-in sound`);
       if (c.faces != null && c.faces !== 'left' && c.faces !== 'right') err(`${p}.faces`, 'faces is "left" or "right"');
     });
+    if (isLauncherScene(scene) && !leavesForLaunch(scene)) {
+      warn(sp, 'A scenario launcher scene should end by opening the launched scenario: an Open URL action to {{QL_SCENARIO_LAUNCH_URL}} (or a travel action). Without one, students sent here stay here');
+    }
     if (scene.story) {
       if (!(scene.start_events ?? []).some((e) => (e.actions ?? []).length > 0)) warn(sp, 'A story scene plays its start events, and this one has none: nothing will happen');
       if ((scene.hotspots ?? []).some((h) => !h.activate_by_trigger && h.position_x != null)) warn(`${sp}.hotspots`, 'In a story scene the player does not walk, so a hotspot that is walked into never fires');

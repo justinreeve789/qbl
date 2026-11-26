@@ -211,6 +211,8 @@ export class HeadlessUi implements UiPort {
   }
   objectives(list: ObjectiveStatus[]) { this.checklist = list; }
   toast(message: string) { this.toasts.push(message); }
+  links: Array<{ message: string; href: string }> = [];
+  linkOffer(message: string, href: string) { this.links.push({ message, href }); }
   /** The bench panel, when a scene has a close-up bench: what it offers, what it shows, and its buttons. */
   bench: { spec: BenchPanelSpec; on: BenchPanelActions; view: BenchPanelView | null; open: boolean } | null = null;
   benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle {

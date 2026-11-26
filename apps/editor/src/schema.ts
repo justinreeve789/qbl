@@ -214,8 +214,22 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
   },
   travel: {
     label: 'Go to the launched mission',
-    about: 'Leave for the mission the teacher launched: the last step of a departure scene (into the portal, aboard the shuttle).',
+    about: 'Leave for the mission the teacher launched: the last step of a scenario launcher scene (into the portal, aboard the shuttle).',
     fields: [],
+  },
+  open_url: {
+    label: 'Open URL',
+    about: 'Open a web address. {{QL_SCENARIO_LAUNCH_URL}} opens the scenario the teacher launched: the last step of a scenario launcher scene.',
+    fields: [
+      {
+        key: 'url', label: 'URL', kind: 'text', wide: true, placeholder: '{{QL_SCENARIO_LAUNCH_URL}}',
+        hint: 'A web address starting with https:// (or / for a page of this site). Variables fill in as {{variable_name}}: {{QL_SCENARIO_LAUNCH_URL}} is the scenario the player’s teacher just launched for them, and is empty when nothing is launched, so then nothing opens and the event carries on.',
+      },
+      {
+        key: 'new_tab', label: 'Open in new tab', kind: 'bool', default: true, wide: true,
+        hint: 'In a new tab the game stays open here and the event carries on. Untick it to leave the game for the address: like a jump, the event ends, this scene’s end events run and the player’s progress is saved first. Browsers often block a tab that opens without a click; then the player gets a button to open it.',
+      },
+    ],
   },
   shop: {
     label: 'Open the marketplace',
@@ -404,7 +418,7 @@ export const ACTION_GROUPS: ActionGroup[] = [
   { key: 'text', label: 'Boxes and words on screen', icon: '📝', tone: '#1b8bb4', types: ['infobox', 'text_overlay'] },
   { key: 'people', label: 'Characters and the player', icon: '🧑', tone: '#d6457a', types: ['walk', 'animate', 'freeze', 'avatar'] },
   { key: 'media', label: 'Pictures, video and sound', icon: '🎞️', tone: '#8e5bd6', types: ['image_fixed', 'image_overlay', 'spritemap', 'video', 'audio', 'translate'] },
-  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'travel', 'camera', 'weather', 'bench'] },
+  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'travel', 'open_url', 'camera', 'weather', 'bench'] },
   { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel', 'cancel_event'] },
   { key: 'progress', label: 'Rewards and progress', icon: '🏆', tone: '#3b8f4a', types: ['award', 'glossary', 'variable', 'shop'] },
 ];
@@ -419,7 +433,7 @@ const ACTION_ICONS: Record<ActionType, string> = {
   infobox: '📋', text_overlay: '🔤',
   walk: '🚶', animate: '🤸', freeze: '✋', avatar: '👤',
   image_fixed: '📌', image_overlay: '🖼️', spritemap: '🎞️', video: '🎬', audio: '🔊', translate: '↔️',
-  jump: '🚪', travel: '🚀', camera: '🎥', weather: '🌧️', bench: '🧪',
+  jump: '🚪', travel: '🚀', open_url: '🔗', camera: '🎥', weather: '🌧️', bench: '🧪',
   wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️', cancel_event: '⏹️',
   award: '⭐', glossary: '📖', variable: '🔢', shop: '🛍️',
 };

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { characterPicture, isStaff, normalizeScenario, roleLabel, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { characterPicture, isStaff, launchPath, normalizeScenario, roleLabel, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
@@ -509,7 +509,13 @@ async function start() {
       ctx.saveProgress(true);
       connection.leave();
       ui.status(`🚀 Off to ${launch.title}…`);
-      window.location.assign(`/${encodeURIComponent(launch.code)}?${new URLSearchParams({ group: launch.group })}`);
+      window.location.assign(launch.url ?? launchPath(launch.code, launch.group));
+    };
+    // An Open URL action in the same tab: leaving saves first, like any way out.
+    ctx.leavePage = (href) => {
+      ctx.saveProgress(true);
+      connection.leave();
+      window.location.assign(href);
     };
     // Teachers launch their missions for the class from here.
     if (isStaff(user.role)) ctx.fetchLaunchable = () => api.launchable();

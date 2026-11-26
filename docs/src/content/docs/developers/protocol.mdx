@@ -88,7 +88,7 @@ Message | Payload | Meaning
 `emote` | `{session_id, emoji}` |
 `notice` | `{code, message}` | Something to tell the player, e.g. an item is taken.
 `show` | `{session_id, event_id, action_id}` | Another player's event is showing this action. The client presents it and changes nothing else.
-`launch` | `{code, title, group, by, scene_id?}` | A teacher launched a mission this player is in. With `scene_id`, the client jumps there (the server already moved the player) and the scene's `travel` action takes them on; without, the client runs a `travel` in the current scene. Either way the client then opens `/{code}?group={group}`.
+`launch` | `{code, title, group, by, scene_id?, url}` | A teacher launched a mission this player is in. `url` is `/{code}?group={group}` (`launchPath`); the client makes it absolute as `QL_SCENARIO_LAUNCH_URL`. With `scene_id` (a launcher scene: the server refuses any other), the client jumps there (the server already moved the player) and the scene's `open_url` or `travel` action takes them on; without, the client runs a `travel` in the current scene.
 `progress` | `{stars, xp, rank, next_rank_xp, owned, equipped, delta_stars, delta_xp, note?, rank_up?, badge?}` | The result of an award: the player's new totals, what changed, and the badge if one was earned.
 
 ## Trust model

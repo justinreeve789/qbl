@@ -162,6 +162,11 @@ export interface UiPort {
   /** Offer the read-aloud switch: the scenario has text that is read aloud. */
   narration(available: boolean): void;
   toast(message: string, ms?: number): void;
+  /**
+   * A message with a link the player presses to open `href` in a new tab: for when the browser
+   * would not open one by itself (a tab opened without a click is often blocked).
+   */
+  linkOffer(message: string, href: string, label: string): void;
   /** What stands beside a close-up bench: its readings, what is in the player's hand, its buttons and its graph. */
   benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
@@ -222,7 +227,7 @@ export interface TeamRow {
 export interface LaunchView {
   /** Their assignments of other missions, soonest due first. */
   missions: LaunchRow[];
-  /** Scenes of this mission with a travel action: a departure players can be sent through first. */
+  /** This mission's scenario launcher scenes: where players can be sent first, before the launched scenario opens. */
   departures: Array<{ sceneId: number; name: string }>;
 }
 
@@ -237,7 +242,7 @@ export interface LaunchRow {
   students: number;
 }
 
-/** What the teacher chose: the mission, the scene to go through first (if any), and whether they stay behind. */
+/** What the teacher chose: the mission, the launcher scene to go to first (none: straight there), and whether they stay behind. */
 export interface LaunchChoice {
   assignmentId: number;
   sceneId?: number;

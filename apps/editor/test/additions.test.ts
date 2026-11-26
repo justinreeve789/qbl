@@ -154,6 +154,14 @@ test('flowing water is placed and edited; the scene gets weather and plays by it
   await page.uncheck('.inspector [data-field=story] input');
   scene = (await draft()).scenes[0]!;
   assert.deepEqual([scene.weather, scene.story], [undefined, undefined]);
+  // A scenario launcher scene: ticked and unticked, it says so (unticked overrides a travel action).
+  assert.equal(await page.isChecked('.inspector [data-field=launcher] input'), false);
+  await page.check('.inspector [data-field=launcher] input');
+  await saved();
+  assert.equal((await draft()).scenes[0]!.launcher, true);
+  await page.uncheck('.inspector [data-field=launcher] input');
+  await saved();
+  assert.equal((await draft()).scenes[0]!.launcher, false);
 });
 
 test('a hotspot label can be background, or a solid object players walk around', async () => {
