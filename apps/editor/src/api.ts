@@ -85,6 +85,14 @@ export type RestoreStep =
   | { op: 'delete'; table: Table; id: number }
   | { op: 'scenario'; attrs: Record<string, unknown> };
 
+/** Tables whose rows can be copied and pasted within a scenario (see ScenarioStore::copyRows), parents first. */
+export type CopyTable = 'scenes' | 'events' | 'actions' | 'conditions' | 'labels';
+export const COPY_TABLES: readonly CopyTable[] = ['scenes', 'events', 'actions', 'conditions', 'labels'];
+/** Rows to copy, by table. */
+export type CopyRows = Partial<Record<CopyTable, Row[]>>;
+/** The copies made: for each table, the id of a row copied → the id of its copy (JSON keys are strings). */
+export type CopyMap = Partial<Record<CopyTable, Record<string, number>>>;
+
 export interface User {
   id: number;
   name: string;
@@ -550,6 +558,8 @@ export class Api {
   deleteRow = (id: number, table: Table, rowId: number) => this.call<void>('DELETE', `/editor/scenarios/${id}/rows/${table}/${rowId}`);
   /** Undo or redo: put rows back as they were, all at once. Answers with the whole scenario. */
   restore = (id: number, steps: RestoreStep[]) => this.call<Bundle>('POST', `/editor/scenarios/${id}/restore`, { steps });
+  /** Copies of rows in the scenario (copy and paste, Duplicate scene). Answers with what each became, and the whole scenario. */
+  copy = (id: number, rows: CopyRows) => this.call<{ map: CopyMap; bundle: Bundle }>('POST', `/editor/scenarios/${id}/copy`, { rows });
   preview = async (id: number) => (await this.call<{ scenario: Scenario }>('GET', `/editor/scenarios/${id}/preview`)).scenario;
   /** Give the scenario a new player code; the old one stops working. Refused with a message when the code is not allowed or is taken. */
   changeCode = async (id: number, code: string) => (await this.call<{ scenario: Row }>('PUT', `/editor/scenarios/${id}/code`, { code })).scenario;

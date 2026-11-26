@@ -10,6 +10,7 @@ import { icon } from '../icons';
 import { sceneGroupControl, sceneGroupsCard } from './glossary';
 import { chip, deleteIcon, groupTone, pick, tileTitle } from './kit';
 import { sceneMap } from './sceneMap/sceneMap';
+import { duplicateScene } from '../clipboard';
 import { generateSceneButton } from './sceneGenerate';
 
 /** The scenario's own pages: its scenes, its settings, and checking and publishing it. */
@@ -63,6 +64,13 @@ export function scenesPage(ctx: FormContext, open: (sceneId: number) => void): H
         { class: 'row-actions tile-actions' },
         h('button', { type: 'button', class: 'primary', onclick: () => open(scene.id) }, '✏️ Edit'),
         h('a', { class: 'button', href: previewUrl(store.scenarioId, scene.id), target: 'qbl-preview' }, '▶ Test'),
+        h('button', {
+          type: 'button', class: 'icon', 'data-duplicate-scene': '', title: 'Duplicate: a copy of this scene and everything in it', 'aria-label': `Duplicate ${sceneLabel(scene)}`,
+          onclick: async () => {
+            const id = await duplicateScene(store, scene.id);
+            if (id != null) toast(`Made “${sceneLabel(store.byId('scenes', id))}”, a copy of “${sceneLabel(scene)}”.`, 'info', { label: 'Open it', run: () => open(id) });
+          },
+        }, '📄'),
         h('span', { class: 'spacer' }),
         h('button', { type: 'button', class: 'icon', disabled: index === 0, title: 'Move earlier', 'aria-label': 'Move earlier', onclick: () => move(index, -1) }, '←'),
         h('button', { type: 'button', class: 'icon', disabled: index === scenes.length - 1, title: 'Move later', 'aria-label': 'Move later', onclick: () => move(index, 1) }, '→'),

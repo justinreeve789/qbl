@@ -8,6 +8,7 @@ import '../../../packages/shared/assets/twemoji-awesome.css';
 import './editor.css';
 import { Store } from './store';
 import { undoKey } from './history';
+import { handleShortcut } from './shortcuts';
 import { classesView } from './views/classes';
 import { districtView } from './views/district';
 import { generateView, prefillGenerator } from './views/generate';
@@ -315,6 +316,11 @@ window.addEventListener('keydown', (e) => {
     saving.textContent = did ? (which === 'undo' ? 'Undone' : 'Redone') : which === 'undo' ? 'Nothing to undo' : 'Nothing to redo';
     hideTurned = window.setTimeout(() => (saving.textContent = ''), 1500);
   });
+});
+
+/** Delete, Ctrl+C, Ctrl+X and Ctrl+V for what is selected in the scene editor and on the scene map (see shortcuts.ts). */
+window.addEventListener('keydown', (e) => {
+  if (store && /^#\/s\/\d+/.test(window.location.hash)) handleShortcut(e);
 });
 
 api.me().then(

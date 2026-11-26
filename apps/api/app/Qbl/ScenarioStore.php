@@ -710,6 +710,83 @@ class ScenarioStore
         return $map;
     }
 
+    /** What the editor can copy and paste within a scenario (copyRows), parents before children. */
+    public const COPYABLE = ['scenes', 'events', 'actions', 'conditions', 'labels'];
+
+    /**
+     * Copies of rows of the scenario, in the scenario: the editor's Duplicate scene, and its copy
+     * and paste of hotspots and actions. A reference to a row that is copied too (a parent column, an
+     * action's target, a jump to the scene being duplicated) follows it to its copy; any other keeps
+     * pointing where it did (the scene a pasted hotspot goes into, another scene a jump goes to, the
+     * scenario's media, items and characters). Every row must already be valid in this scenario.
+     * All or none. Ids in `$rows` are only used to follow references; the copies get new ones.
+     *
+     * @param  array<string, list<array>>  $rows  table => rows, in COPYABLE tables only
+     * @return array<string, array<int, int>> table => [id in $rows => id of its copy]
+     */
+    public function copyRows(int $scenarioId, array $rows): array
+    {
+        foreach (array_keys($rows) as $table) {
+            if (! in_array($table, self::COPYABLE, true)) {
+                throw new StoreError(422, "Rows of \"$table\" cannot be copied.");
+            }
+        }
+        $map = $this->transaction(function () use ($scenarioId, $rows) {
+            $map = array_fill_keys(self::CONTENT, []);
+            $new = [];
+            $now = self::now();
+            foreach (self::COPYABLE as $table) {
+                foreach ($rows[$table] ?? [] as $content) {
+                    if (! is_array($content)) {
+                        continue;
+                    }
+                    $old = (int) ($content['id'] ?? 0);
+                    unset($content['id']);
+                    if (isset(self::SCHEMA[$table]['scenario_id'])) {
+                        $content['scenario_id'] = $scenarioId;
+                    }
+                    foreach (self::PARENTS[$table] ?? [] as $column => $parent) {
+                        if (isset($content[$column])) {
+                            $content[$column] = $map[$parent][(int) $content[$column]] ?? (int) $content[$column];
+                        }
+                    }
+                    $content += $this->defaults($scenarioId, $table, $content);
+                    $encoded = $this->encode($table, $this->cleanCharacter($scenarioId, $table, $content));
+                    $this->assertValid($scenarioId, $table, $encoded, true);
+                    $newId = $this->insert($table, $encoded + ['created_at' => $now, 'updated_at' => $now]);
+                    if ($old > 0) {
+                        $map[$table][$old] = $newId;
+                    }
+                    $new[$table][$newId] = $content;
+                }
+            }
+            // References kept inside JSON: those to rows copied with it go to the copies.
+            foreach ($new as $table => $list) {
+                $json = array_keys(array_filter(self::SCHEMA[$table], fn ($type) => $type === 'json'));
+                foreach ($list as $newId => $content) {
+                    $changed = [];
+                    foreach ($json as $column) {
+                        if (is_array($content[$column] ?? null)) {
+                            $layers = $table === 'scenes' && in_array($column, ['background_media', 'foreground_media'], true);
+                            $value = self::follow($content[$column], $map, $layers, true);
+                            if ($value !== $content[$column]) {
+                                $changed[$column] = $value;
+                            }
+                        }
+                    }
+                    if ($changed) {
+                        $this->update($table, $newId, $this->encode($table, $changed));
+                    }
+                }
+            }
+
+            return $map;
+        });
+        $this->touch($scenarioId);
+
+        return array_filter($map);
+    }
+
     /**
      * Insert content rows into a scenario: first every row, with the columns that point at a parent
      * following the parent's new id, then the references kept inside JSON. Media rows get their files
@@ -794,9 +871,10 @@ class ScenarioStore
 
     /**
      * Point every reference in a JSON value at the row's new id. One whose row was not imported
-     * becomes null. `{{media:ID}}` in text (an infobox's content) is pointed at the new media too.
+     * becomes null, or with `$keep` stays as it was. `{{media:ID}}` in text (an infobox's content)
+     * is pointed at the new media too.
      */
-    private static function follow(array $value, array $map, bool $layers = false): array
+    private static function follow(array $value, array $map, bool $layers = false, bool $keep = false): array
     {
         foreach ($value as $key => $inner) {
             $table = is_string($key) ? (self::REFERENCES[$key] ?? null) : null;
@@ -805,7 +883,7 @@ class ScenarioStore
                 $table = 'media';
             }
             if ($table !== null && (is_int($inner) || (is_string($inner) && ctype_digit($inner)))) {
-                $value[$key] = $map[$table][(int) $inner] ?? null;
+                $value[$key] = $map[$table][(int) $inner] ?? ($keep ? $inner : null);
             } elseif (is_string($inner) && str_contains($inner, '{{')) {
                 // Pictures, videos and sounds placed in text: an infobox's {{media:ID}}.
                 $value[$key] = preg_replace_callback(
@@ -814,7 +892,7 @@ class ScenarioStore
                     $inner,
                 );
             } elseif (is_array($inner)) {
-                $value[$key] = self::follow($inner, $map, $layers && is_int($key));
+                $value[$key] = self::follow($inner, $map, $layers && is_int($key), $keep);
             }
         }
 

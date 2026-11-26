@@ -380,6 +380,13 @@ details.action.dragging { opacity: 0.45; }
 details.action.drop-before { box-shadow: 0 -4px 0 0 var(--warn); }
 details.action.drop-after { box-shadow: 0 4px 0 0 var(--warn); }
 .step { background: #111215; border: 1px solid var(--line); }
+/* Ticks to copy, cut or delete several actions together, and what can be done with them. */
+details.action > summary > input.pick, .actions .sub-head input.pick-all { margin: 0; flex: none; width: 15px; height: 15px; accent-color: var(--accent-solid); cursor: pointer; }
+.actions .sub-head .inline { display: inline-flex; align-items: center; gap: 8px; }
+details.action.picked > summary { background: #34507a; box-shadow: inset 0 0 0 2px var(--accent); }
+.action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; padding: 6px 8px; border-radius: 8px; background: var(--accent-soft); }
+.action-bar[hidden] { display: none; }
+.action-bar button { padding: 3px 10px; }
 
 /* Portraits, shown as they will look beside what is said. */
 .portrait-pick { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }

@@ -8,6 +8,8 @@ import { freshBenchId } from './benchPanels';
 import { inspector, startBench } from './inspector';
 import { SceneModel, type LayerList, type Point, type Selection, type Side } from './model';
 import { outline, type Addable } from './outline';
+import { sceneShortcuts } from './sceneClipboard';
+import { useShortcuts } from '../../shortcuts';
 
 const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['hotspot-click', 'Hotspot players click'],
@@ -52,7 +54,7 @@ export function selectOnOpen(sceneId: number, selection: Selection) {
  * The scene editor: a list of what is in the scene, the scene itself, and a form for whatever
  * is selected. Returns the element and a function that stops it listening to the store.
  */
-export function sceneEditor(store: Store, sceneId: number, leave: () => void): { element: HTMLElement; dispose(): void } {
+export function sceneEditor(store: Store, sceneId: number, leave: () => void, openScene: (sceneId: number) => void = () => undefined): { element: HTMLElement; dispose(): void } {
   const model = new SceneModel(store, sceneId);
   let selection: Selection = opening?.sceneId === sceneId ? opening.selection : { kind: 'scene' };
   opening = null;
@@ -95,7 +97,7 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
   const drawOutline = () => redraw(outlineHost, outline(model, { selection: () => selection, select: select_, add, moveLayer }));
   const drawInspector = () => {
     refreshers = [];
-    redraw(inspectorHost, inspector(model, selection, { select: select_, natural, closed: leave, pickSpot: (request) => canvas.pick(request) }, refreshers));
+    redraw(inspectorHost, inspector(model, selection, { select: select_, natural, closed: leave, openScene, pickSpot: (request) => canvas.pick(request) }, refreshers));
   };
   const drawCanvas = () => {
     canvas.draw();
@@ -277,6 +279,9 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
     inspectorHost,
   );
 
+  // Delete, Ctrl+C, Ctrl+X and Ctrl+V for what is selected (see sceneClipboard.ts).
+  const stopKeys = useShortcuts(element, sceneShortcuts(model, { selection: () => selection, select: select_, open: openScene }));
+
   const stop = store.onChange((structural) => {
     if (!model.exists) return;
     drawOutline();
@@ -287,5 +292,11 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void): {
   // The canvas measures itself, so it is first drawn once it is in the page.
   queueMicrotask(drawAll);
 
-  return { element, dispose: stop };
+  return {
+    element,
+    dispose() {
+      stop();
+      stopKeys();
+    },
+  };
 }
