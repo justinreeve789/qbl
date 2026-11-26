@@ -1,4 +1,4 @@
-import { departureScenes, type LaunchBroadcast, type Scene } from '@qbl/shared';
+import { launcherScenes, type LaunchBroadcast, type Scene } from '@qbl/shared';
 import type { GameContext, LaunchableAssignment } from '../core/GameContext';
 import type { GameFeature } from '../core/GameFeature';
 import type { LaunchRow, LaunchView } from '../ui/UiPort';
@@ -37,21 +37,22 @@ export function launchRows(ctx: GameContext, assignments: LaunchableAssignment[]
     }));
 }
 
-/** What the tab shows: the missions, and this mission's departure scenes (those with a travel action). */
+/** What the tab shows: the missions, and this mission's scenario launcher scenes (isLauncherScene). */
 export function launchView(ctx: GameContext, assignments: LaunchableAssignment[]): LaunchView {
   return {
     missions: launchRows(ctx, assignments),
-    departures: departureScenes(ctx.scenario).map((s) => ({ sceneId: s.id, name: sceneName(s) })),
+    departures: launcherScenes(ctx.scenario).map((s) => ({ sceneId: s.id, name: sceneName(s) })),
   };
 }
 
 /**
  * Launching missions. A teacher playing with their class launches one of their assignments from
  * the "Launch a mission" tab; the game server opens it to its students and sends those who are
- * here into it. For every player, this is where that arrives: they are told, and either taken to
- * the departure scene the teacher chose (whose events play the departure and end with a travel
- * action) or straight to the mission, by a travel action run in the scene they are in, so that
- * scene's end events run first, as they do for any way out of it.
+ * here into it. For every player, this is where that arrives: they are told, QL_SCENARIO_LAUNCH_URL
+ * and QL_NextMission are set (GameContext.launched), and they are either taken to the launcher
+ * scene the teacher chose (whose events play the departure and end with an Open URL action to
+ * `{{QL_SCENARIO_LAUNCH_URL}}`, or a travel action) or straight to the mission, by a travel action
+ * run in the scene they are in, so that scene's end events run first, as they do for any way out.
  */
 export class LaunchFeature implements GameFeature {
   /** Bring the teacher's tab up to date now (and read their assignments again). */

@@ -137,6 +137,12 @@ function livingPanel(model: SceneModel, ctx: FormContext): HTMLElement {
   };
   const story = { story: current().story === true };
   const setStory = (_key: string, value: unknown, field: Field) => save(withValue(current(), 'story', value === true ? true : null, field), true);
+  // Stored as true or false. Before the setting, a scene with a travel action was one: it shows ticked.
+  const own = current().launcher;
+  const events = new Set(store.rows('events').filter((e) => e.scene_id === model.sceneId).map((e) => e.id));
+  const travels = store.rows('actions').some((a) => a.type === 'travel' && events.has(a.event_id as number));
+  const launcher = { launcher: own != null ? own === true : travels };
+  const setLauncher = (_key: string, value: unknown) => save({ ...current(), launcher: value === true }, true);
   const setAir = (key: string, value: unknown, field: Field) => {
     const first = withValue({ ...((((current().atmosphere as Bag[] | undefined) ?? [])[0]) ?? {}) }, key, value, field);
     const rest = ((current().atmosphere as Bag[] | undefined) ?? []).slice(1);
@@ -154,6 +160,8 @@ function livingPanel(model: SceneModel, ctx: FormContext): HTMLElement {
     form(WEATHER_FIELDS, weather, setWeather, ctx),
     h('div', { class: 'sub-head' }, h('span', null, '📖 Story', help('A story scene plays by itself, like a page of a picture book: put what happens in its start events (characters walk on, talk, the rain starts) and end them with a jump to the next scene. Avatars are hidden, players do not walk, the view follows whoever acts, and a bar offers to skip ahead or watch it again. Characters can wait off stage: place them beyond the left or right edge and walk them on.'))),
     form([{ key: 'story', label: 'This scene plays by itself (a story)', kind: 'bool', wide: true }], story, setStory, ctx),
+    h('div', { class: 'sub-head' }, h('span', null, '🚀 Scenario launcher', help('When a teacher launches another scenario for their class from this one, they choose one of these scenes (or none): every student of theirs here is taken to it first, so it can play the departure (into the time portal, aboard the shuttle). End its events with an Open URL action to {{QL_SCENARIO_LAUNCH_URL}}, which opens the launched scenario. A story scene suits it well.'))),
+    form([{ key: 'launcher', label: 'Use as a scenario launcher scene', kind: 'bool', wide: true }], launcher, setLauncher, ctx),
   );
 }
 

@@ -72,6 +72,11 @@ export interface Field {
   /** Shown only when this says so, given the form's values: a field that only means something for some choices. */
   when?: (values: Values) => boolean;
   /**
+   * bool: fixed by another field. Given the form's values, the value it is held at and why (shown
+   * beside it), or null when it can be changed. The stored value is left as it is.
+   */
+  locked?: (values: Values) => { value: boolean; why: string } | null;
+  /**
    * number: the X of a spot in the scene, whose Y is the field named `y`. Where the form can pick
    * spots (`FormContext.pickSpot`), a button after the two lets the spot be chosen by clicking the
    * scene. `prompt` says what the click chooses ("Click where the walker should go").
@@ -189,8 +194,9 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
 
   switch (f.kind) {
     case 'bool': {
-      const input = h('input', { type: 'checkbox', checked: value == null ? f.default === true : value === true || value === 1, onchange: () => set(input.checked) });
-      return h('label', { class: `field check${f.wide ? ' wide' : ''}`, 'data-field': f.key }, input, h('span', null, f.label), help(f.hint));
+      const lock = f.locked?.(values) ?? null;
+      const input = h('input', { type: 'checkbox', checked: lock ? lock.value : value == null ? f.default === true : value === true || value === 1, disabled: lock != null, onchange: () => set(input.checked) });
+      return h('label', { class: `field check${f.wide ? ' wide' : ''}${lock ? ' locked' : ''}`, 'data-field': f.key, title: lock?.why }, input, h('span', null, f.label), help(f.hint), lock ? h('small', { class: 'muted field-why' }, lock.why) : null);
     }
     case 'number': {
       if (f.slider) return wrap(slider(f, f.slider, value, set, ctx));

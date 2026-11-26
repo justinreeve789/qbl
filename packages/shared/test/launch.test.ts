@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  departureScenes, isDepartureScene, normalizeActionType, normalizeScenario, planLaunch, ScenarioIndex, SceneEngine, SYSTEM_VARIABLES, validateScenario, VariableStore, World,
-  type Action, type ActionHandle, type EngineHost, type GameEvent, type ItemRec, type LaunchPlan, type PlayerRec, type Scenario, type TravelAction, type WorldState,
+  departureScenes, isDepartureScene, isLaunchUrlOnly, isLauncherScene, launcherScenes, launchPath, leavesForLaunch, normalizeActionType, normalizeScenario, planLaunch, ScenarioIndex, SceneEngine, SYSTEM_VARIABLES, validateScenario, VariableStore, World,
+  type Action, type ActionHandle, type EngineHost, type GameEvent, type ItemRec, type LaunchPlan, type PlayerRec, type OpenUrlAction, type Scenario, type TravelAction, type WorldState,
 } from '../src/index.js';
 
 // ------------------------------------------------------------- the travel action
@@ -28,6 +28,12 @@ class Host implements EngineHost {
     this.log.push(`asked:${action.to ?? 'launched'}`);
     const where = this.destination;
     return where ? () => this.log.push(`travel:${where}`) : null;
+  }
+  /** Open URL: a new tab opens and the event goes on; the same tab leaves, like travel. */
+  openUrl(action: OpenUrlAction) {
+    this.log.push(`open:${action.url}:${action.new_tab === false ? 'here' : 'tab'}`);
+    if (!action.url) return null;
+    return action.new_tab === false ? () => this.log.push(`left:${action.url}`) : null;
   }
   warn(m: string) {
     this.log.push(`warn:${m}`);
@@ -79,9 +85,80 @@ test('travel is an action type of its own, checked by the validator', () => {
   assert.ok(!bad.ok && bad.errors.some((x) => x.path.endsWith('.to')), 'it only goes to the launched mission');
 });
 
-test('one system variable says where a launch is taking the player', () => {
+test('two system variables say where a launch is taking the player: its title and its address', () => {
   const names = SYSTEM_VARIABLES.map((v) => v.name as string);
-  assert.deepEqual(names.filter((n) => /Mission|Launch/.test(n)), ['QL_NextMission']);
+  assert.deepEqual(names.filter((n) => /Mission|launch/i.test(n)), ['QL_NextMission', 'QL_SCENARIO_LAUNCH_URL']);
+  assert.equal(launchPath('time portal', 't 7'), '/time%20portal?group=t%207');
+  assert.deepEqual(['{{QL_SCENARIO_LAUNCH_URL}}', ' {{ QL_SCENARIO_LAUNCH_URL }} ', '{{QL_SCENARIO_LAUNCH_URL}}&x=1', 'https://a.b', '', null].map(isLaunchUrlOnly), [true, true, false, false, false, false]);
+});
+
+// ------------------------------------------------------------- the Open URL action
+
+function urlEngine(actions: Array<Record<string, unknown>>) {
+  const scenario = normalizeScenario({
+    id: 1, shortname: 't', title: 'T', start_scene_id: 1,
+    scenes: [{
+      id: 1, width: 100, height: 100,
+      start_events: [ev(1, [...actions, { id: 13, type: 'text_overlay', text: 'After', duration: 1 }])],
+      end_events: [ev(2, [{ id: 21, type: 'text_overlay', text: 'Goodbye', duration: 1 }])],
+    }],
+  });
+  const index = new ScenarioIndex(scenario);
+  const host = new Host();
+  return { host, engine: new SceneEngine(index.scene(1)!, index, new VariableStore([]), host) };
+}
+
+test('Open URL in a new tab (the default) opens it and the event carries on', async () => {
+  const { host, engine: e } = urlEngine([{ id: 12, type: 'open_url', url: 'https://example.org' }]);
+  e.start();
+  await flush();
+  assert.deepEqual(host.log, ['open:https://example.org:tab', 'present:13']);
+});
+
+test('Open URL in the same tab leaves like a jump: the end events run, and nothing after it', async () => {
+  const { host, engine: e } = urlEngine([{ id: 12, type: 'open_url', url: '{{QL_SCENARIO_LAUNCH_URL}}', new_tab: false }]);
+  e.start();
+  await flush();
+  assert.deepEqual(host.log, ['open:{{QL_SCENARIO_LAUNCH_URL}}:here', 'present:21', 'left:{{QL_SCENARIO_LAUNCH_URL}}']);
+});
+
+test('Open URL is checked by the validator: an address is needed, and one the game opens', () => {
+  assert.equal(normalizeActionType('Open URL'), 'open_url');
+  const doc = (action: Record<string, unknown>) => ({
+    id: 1, shortname: 't', title: 't', start_scene_id: 1,
+    scenes: [{ id: 1, width: 100, height: 100, start_events: [ev(1, [{ id: 2, type: 'open_url', ...action }])] }],
+  });
+  const ok = (action: Record<string, unknown>) => validateScenario(doc(action) as never);
+  assert.ok(ok({ url: '{{QL_SCENARIO_LAUNCH_URL}}' }).ok);
+  assert.ok(!ok({ url: '{{QL_SCENARIO_LAUNCH_URL}}' }).warnings.some((w) => w.message.includes('QL_SCENARIO_LAUNCH_URL')), 'a system variable');
+  assert.ok(ok({ url: 'https://example.org', new_tab: false }).ok);
+  assert.ok(ok({ url: '/sciencelab' }).ok, 'a page of this site');
+  for (const url of ['', '   ', 'javascript:alert(1)', 'example.org']) {
+    const bad = ok({ url });
+    assert.ok(!bad.ok && bad.errors.some((x) => x.path.endsWith('.url')), `"${url}" is refused`);
+  }
+  assert.ok(!ok({ url: 'https://example.org', new_tab: 'yes' }).ok);
+});
+
+// ------------------------------------------------------------- launcher scenes
+
+test('a launcher scene is one its setting says is, and without the setting one with a travel action', () => {
+  const scenario = normalizeScenario({
+    id: 1, shortname: 't', title: 'T', start_scene_id: 1,
+    scenes: [
+      { id: 1, width: 10, height: 10 },
+      { id: 2, width: 10, height: 10, launcher: true, start_events: [ev(1, [{ id: 2, type: 'open_url', url: '{{ QL_SCENARIO_LAUNCH_URL }}' }])] },
+      { id: 3, width: 10, height: 10, start_events: [ev(3, [{ id: 4, type: 'travel' }])] },
+      { id: 4, width: 10, height: 10, launcher: false, start_events: [ev(5, [{ id: 6, type: 'travel' }])] },
+      { id: 5, width: 10, height: 10, start_events: [ev(7, [{ id: 8, type: 'open_url', url: '{{QL_SCENARIO_LAUNCH_URL}}' }])] },
+    ],
+  });
+  assert.deepEqual(launcherScenes(scenario).map((s) => s.id), [2, 3], 'the setting, then the old rule; an Open URL alone does not make one');
+  assert.equal(isLauncherScene(scenario.scenes[3]!), false, 'unticked, a travel action does not make it one');
+  assert.deepEqual(scenario.scenes.map(leavesForLaunch), [false, true, true, true, true]);
+  const warned = validateScenario({ ...scenario, scenes: [...scenario.scenes, { id: 6, width: 10, height: 10, launcher: true }] } as never).warnings;
+  assert.ok(warned.some((w) => w.path === 'scenes[5]' && w.message.includes('{{QL_SCENARIO_LAUNCH_URL}}')), 'a launcher scene that never leaves is flagged');
+  assert.ok(!warned.some((w) => w.path === 'scenes[1]' && w.message.includes('launcher')));
 });
 
 // ------------------------------------------------------------- departure scenes

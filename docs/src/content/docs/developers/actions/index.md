@@ -71,6 +71,7 @@ Action | What it does
 [`camera`](/docs/developers/actions/camera/) | Points the player's view
 [`weather`](/docs/developers/actions/weather/) | Changes the weather
 [`travel`](/docs/developers/actions/travel/) | Takes the player to the mission their teacher launched
+[`open_url`](/docs/developers/actions/open-url/) | Opens a web address, such as `{{QL_SCENARIO_LAUNCH_URL}}`
 
 ## Timing and flow
 

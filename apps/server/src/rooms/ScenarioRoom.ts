@@ -1,6 +1,6 @@
 import { Room, type AuthContext, type Client } from 'colyseus';
 import {
-  C2S, CloseCodes, isStaff, normalizeScenario, planLaunch, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
+  C2S, CloseCodes, isLauncherScene, isStaff, launchPath, normalizeScenario, planLaunch, S2C, scopedMap, TRACK_TYPES, validateScenario, World,
   type ActivityEntry, type ChatBroadcast, type LaunchBroadcast, type LaunchMessage, type EmoteBroadcast, type AnimateMessage, type AvatarMessage, type AwardMessage, type ItemMessage, type JoinOptions,
   type MessageEntry, type MoveMessage, type NoticeMessage, type ProgressMessage, type Scenario, type SceneMessage, type ShowBroadcast, type ShowMessage,
   type SnapMessage, type TrackMessage, type VariableMessage, type WalkMessage, type WelcomeMessage, type WhisperBroadcast, type WhisperMessage,
@@ -285,9 +285,10 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
   /**
    * A teacher launched a mission from this game. The API opens the assignment to its students and
    * says which instance each plays in; the students of it who are here are sent there (planLaunch),
-   * with the teacher unless they stay. With a departure scene, everyone sent is first put in that
+   * with the teacher unless they stay. With a launcher scene, everyone sent is first put in that
    * scene of this scenario, from wherever they are: their game follows them there, and the scene's
-   * travel action takes them on. Without one, their game takes them straight there.
+   * Open URL action (to QL_SCENARIO_LAUNCH_URL) or travel action takes them on. Without one, their
+   * game takes them straight there.
    */
   private async launch(client: Client, msg: LaunchMessage) {
     const world = this.world(client);
@@ -296,7 +297,11 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
     const assignmentId = Number(msg?.assignment_id);
     if (!Number.isInteger(assignmentId) || assignmentId <= 0) return;
     const via = msg.scene_id == null ? undefined : Number(msg.scene_id);
-    if (via !== undefined && !world.index.scene(via)) return this.notice(client, 'launch_failed', 'That scene is not in this mission.');
+    if (via !== undefined) {
+      const scene = world.index.scene(via);
+      if (!scene) return this.notice(client, 'launch_failed', 'That scene is not in this mission.');
+      if (!isLauncherScene(scene)) return this.notice(client, 'launch_failed', 'That scene is not a scenario launcher scene.');
+    }
     const answer = await services.backend.launch(teacher.id, assignmentId).catch((err: unknown) => ({ ok: false as const, message: `The mission could not be launched: ${String(err)}` }));
     if (!answer.ok) return this.notice(client, 'launch_failed', answer.message);
     const { plan } = answer;
@@ -313,7 +318,8 @@ export class ScenarioRoom extends Room<{ state: RoomState }> {
       const c = this.clients.find((x: Client) => x.sessionId === sessionId);
       const w = this.ready.get(this.teamOf.get(sessionId) ?? '');
       if (!c || !w) continue;
-      const out: LaunchBroadcast = { code: plan.code, title: plan.title, group, by: teacher.name };
+      // QL_SCENARIO_LAUNCH_URL, for each of them: their own instance of the launched scenario.
+      const out: LaunchBroadcast = { code: plan.code, title: plan.title, group, by: teacher.name, url: launchPath(plan.code, group) };
       if (via !== undefined && w.sendToScene(sessionId, via)) {
         out.scene_id = via;
         this.log(c, { type: 'scene', ref: String(via), label: w.index.scene(via)?.shortname });

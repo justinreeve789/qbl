@@ -69,16 +69,55 @@ export function planLaunch(plan: LaunchPlan, seats: LaunchSeat[], teacher: strin
   return { go, report };
 }
 
-/** Whether a scene has a travel action in any of its events: it can be a launch's departure scene. */
-export function isDepartureScene(scene: Scene): boolean {
+/** Whether a scene has an action that leaves for the launched scenario: a travel action, or an Open URL to it. */
+export function leavesForLaunch(scene: Scene): boolean {
   let found = false;
   forEachAction(scene, (a) => {
     if (a.type === 'travel') found = true;
+    if (a.type === 'open_url' && LAUNCH_URL_PLACEHOLDER.test(String(a.url ?? ''))) found = true;
   });
   return found;
 }
 
-/** The scenes a teacher can send their class through on the way to a launched mission. */
-export function departureScenes(scenario: Scenario): Scene[] {
-  return scenario.scenes.filter(isDepartureScene);
+/** `{{QL_SCENARIO_LAUNCH_URL}}` in an address, however it is spaced. */
+export const LAUNCH_URL_PLACEHOLDER = /\{\{\s*QL_SCENARIO_LAUNCH_URL\s*\}\}/;
+
+/**
+ * Whether an Open URL's address is the launched scenario and nothing else. It always opens in the
+ * same tab: a new tab would leave the student in this scenario's room as well, and a browser
+ * may block a tab opened at the end of a cutscene. The editor unticks "Open in new tab" and
+ * won't let it be ticked until the address is something else.
+ */
+export function isLaunchUrlOnly(url: unknown): boolean {
+  return /^\s*\{\{\s*QL_SCENARIO_LAUNCH_URL\s*\}\}\s*$/.test(String(url ?? ''));
 }
+
+/**
+ * Whether a scene is a scenario launcher scene: one a teacher can send their class to before the
+ * scenario they launch opens. Its own setting says so ("Use as a scenario launcher scene"); a scene
+ * without the setting is one when it has a travel action, as departure scenes were before it.
+ */
+export function isLauncherScene(scene: Scene): boolean {
+  if (scene.launcher != null) return scene.launcher === true;
+  let travel = false;
+  forEachAction(scene, (a) => {
+    if (a.type === 'travel') travel = true;
+  });
+  return travel;
+}
+
+/** The scenes a teacher can send their class to on the way to a launched scenario. */
+export function launcherScenes(scenario: Scenario): Scene[] {
+  return scenario.scenes.filter(isLauncherScene);
+}
+
+/** @deprecated The old names: a departure scene is now a launcher scene. */
+export const isDepartureScene = isLauncherScene;
+/** @deprecated See launcherScenes. */
+export const departureScenes = launcherScenes;
+
+/** Where a launched scenario is played on this site, in the student's instance of it. */
+export function launchPath(code: string, group: string): string {
+  return `/${encodeURIComponent(code)}?group=${encodeURIComponent(group)}`;
+}
+

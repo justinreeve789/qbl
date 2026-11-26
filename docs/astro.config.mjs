@@ -179,6 +179,7 @@ export default defineConfig({
                       { label: 'Camera', slug: 'developers/actions/camera' },
                       { label: 'Weather', slug: 'developers/actions/weather' },
                       { label: 'Travel', slug: 'developers/actions/travel' },
+                      { label: 'Open URL', slug: 'developers/actions/open-url' },
                     ] },
                     { label: 'Timing and flow', collapsed: true, items: [
                       { label: 'Wait', slug: 'developers/actions/wait' },

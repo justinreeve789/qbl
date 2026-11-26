@@ -1,12 +1,13 @@
 import type * as Phaser from 'phaser';
 import {
-  resolvedHandle,
-  type Action, type ActionHandle, type CameraAction, type ChoiceHandle, type TravelAction, type WeatherAction, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
+  isLaunchUrlOnly, LAUNCH_URL_PLACEHOLDER, resolvedHandle,
+  type Action, type ActionHandle, type CameraAction, type ChoiceHandle, type TravelAction, type OpenUrlAction, type WeatherAction, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
 } from '@qbl/shared';
 import type { AnimateAction, AwardAction, BenchAction, GlossaryAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
 import { deferred, type Presenter, type PresenterContext, type PresenterMap, type Target } from './Presenter';
 import { stopMusic } from './presenters/audio';
+import { openableUrl } from './openUrl';
 import { conversationLine } from './presenters/conversation';
 import { presenters as defaultPresenters } from './presenters';
 import type { Voice } from '../audio/synth';
@@ -199,6 +200,56 @@ export class ActionHost implements EngineHost, PresenterContext {
       return null;
     }
     return () => this.ctx.leaveFor(launch);
+  }
+
+  /**
+   * An Open URL action. Its address is filled in first, so `{{QL_SCENARIO_LAUNCH_URL}}` is the
+   * scenario the teacher launched. A new tab opens now and the event carries on; if the browser
+   * will not open one by itself (it often blocks a tab not opened by a click), the player is
+   * offered a button that opens it. An address that is `{{QL_SCENARIO_LAUNCH_URL}}` alone always
+   * opens in the same tab. The same tab leaves the game once the end events have run,
+   * saving first; to the launched scenario that is the same as a travel action. A preview never
+   * leaves the editor: it opens a new tab instead.
+   */
+  openUrl(action: OpenUrlAction): (() => void) | null {
+    const template = String(action.url ?? '');
+    // The game sets leavePage only where the page may be left: not in a preview, not offline.
+    const preview = !this.ctx.leavePage;
+    const raw = this.ctx.text(template).trim();
+    if (!raw) {
+      if (LAUNCH_URL_PLACEHOLDER.test(template)) {
+        if (preview) this.ctx.ui.toast('Here players open the scenario their teacher launched. Nothing is launched in a preview, so the event carries on.', 5000);
+        else this.warn('open_url: no scenario has been launched for this player');
+      } else this.warn('open_url: the address is empty');
+      return null;
+    }
+    const href = openableUrl(raw, window.location.href);
+    if (!href) {
+      this.warn(`open_url: "${raw}" is not a web address that can be opened (http or https)`);
+      if (preview) this.ctx.ui.toast(`“${raw}” is not a web address that can be opened.`, 4000);
+      return null;
+    }
+    const launch = this.ctx.launched;
+    const toLaunch = !!launch && href === this.ctx.launchUrl;
+    // The launched scenario on its own always opens here (isLaunchUrlOnly), whatever new_tab says.
+    const newTab = action.new_tab !== false && !isLaunchUrlOnly(template);
+    if (newTab || preview) {
+      if (!newTab) this.ctx.ui.toast('In the game this opens in the same tab. A preview opens it in a new one.', 4000);
+      const tab = window.open(href, '_blank');
+      if (tab) {
+        try {
+          tab.opener = null;
+        } catch {
+          // Another origin: it has no hold on this page anyway.
+        }
+      } else {
+        this.ctx.ui.linkOffer(toLaunch && launch ? `🚀 ${launch.title} is ready.` : 'This opens in a new tab.', href, toLaunch && launch ? `Open ${launch.title}` : 'Open it');
+      }
+      return null;
+    }
+    if (toLaunch && launch) return () => this.ctx.leaveFor(launch);
+    const leave = this.ctx.leavePage!;
+    return () => leave(href);
   }
 
   /** A cancel action named something this scene did not start: the background music from an earlier scene. */

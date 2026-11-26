@@ -243,7 +243,8 @@ export type ActionType =
   | 'weather'
   | 'camera'
   | 'bench'
-  | 'travel';
+  | 'travel'
+  | 'open_url';
 
 export type Alignment =
   | 'top left' | 'top center' | 'top right'
@@ -735,7 +736,8 @@ export interface BenchAction extends ActionBase {
  * Like a jump, it ends the event, and this scene's end events run before the player goes. With no
  * mission launched for the player (they walked into the departure scene some other day), nothing
  * happens and the event goes on to its next action: `QL_NextMission` (the launched mission's title, empty when there is none) tells the two apart.
- * A teacher chooses as departure scenes only those with a travel action in their events.
+ * A teacher chooses among this scenario's launcher scenes (`Scene.launcher`; see isLauncherScene).
+ * An Open URL action with `{{QL_SCENARIO_LAUNCH_URL}}` does the same, and can open it in a new tab.
  */
 export interface TravelAction extends ActionBase {
   type: 'travel';
@@ -743,8 +745,25 @@ export interface TravelAction extends ActionBase {
   to?: 'launched';
 }
 
+/**
+ * [ext] Open a web address. `url` may hold `{{variable}}` placeholders: `{{QL_SCENARIO_LAUNCH_URL}}`
+ * is the scenario a teacher has just launched, which makes this the last step of a launcher scene.
+ * Only http and https addresses (or a path on this site) open.
+ *
+ * In a new tab (the default) the game goes on here and so does the event. In the same tab the
+ * player leaves the game: like a jump, it ends the event, this scene's end events run, and their
+ * progress is saved before the page changes. With an empty address (nothing launched yet) nothing
+ * happens and the event goes on.
+ */
+export interface OpenUrlAction extends ActionBase {
+  type: 'open_url';
+  url: string;
+  /** Open it in a new browser tab. Default true. */
+  new_tab?: boolean;
+}
+
 export type Action =
-  | BenchAction | TravelAction
+  | BenchAction | TravelAction | OpenUrlAction
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | NarrationAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | CancelEventAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
@@ -1457,6 +1476,13 @@ export interface Scene {
    * offers to skip ahead (to where its start events jump) or to watch it again.
    */
   story?: boolean;
+  /**
+   * [ext] Use as a scenario launcher scene: when a teacher launches another scenario from this one,
+   * they can send their students here first (into the time portal, aboard the shuttle). Its events
+   * play the departure and end with an Open URL action to `{{QL_SCENARIO_LAUNCH_URL}}` (or a travel
+   * action). Absent: a scene with a travel action is one, as before this setting existed.
+   */
+  launcher?: boolean | null;
   /**
    * [ext] Show a player only the members of their own team in this scene. Absent: as the scene's
    * group says (`scene_groups`), and failing that everyone playing is shown.

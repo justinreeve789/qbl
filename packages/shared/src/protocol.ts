@@ -105,7 +105,16 @@ export interface LaunchMessage { assignment_id: number; scene_id?: Id; stay?: bo
  * they play in), who sent them, and the departure scene, if any. The game server has already put
  * them in that scene; the player's game follows, and a travel action there takes them on.
  */
-export interface LaunchBroadcast { code: string; title: string; group: string; by: string; scene_id?: Id }
+export interface LaunchBroadcast {
+  code: string;
+  title: string;
+  group: string;
+  by: string;
+  /** The launcher scene the player was sent to first, if the teacher chose one. */
+  scene_id?: Id;
+  /** Where the launched scenario is played, on this site: `/{code}?group=…` (launchPath). */
+  url?: string;
+}
 
 /** Show or hide the sender's avatar for everyone in their scene. */
 export interface AvatarMessage { visible: boolean }

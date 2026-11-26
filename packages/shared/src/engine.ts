@@ -3,7 +3,7 @@ import { ScenarioIndex } from './scenario.js';
 import {
   SHOWN_TO_SCENE,
   type Action, type AnimateAction, type AwardAction, type BenchAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
-  type CameraAction, type TranslateAction, type TravelAction, type WalkAction, type WeatherAction,
+  type CameraAction, type TranslateAction, type TravelAction, type OpenUrlAction, type WalkAction, type WeatherAction,
 } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
@@ -81,6 +81,12 @@ export interface EngineHost {
    * launched for them), in which case the event carries on.
    */
   travel?(action: TravelAction): (() => void) | null;
+  /**
+   * An Open URL action. A new tab opens at once and null is returned: the event carries on. For
+   * the same tab, a function that leaves the page (called once this scene's end events have
+   * finished), like travel. Null too when there is nothing to open (an empty or unsafe address).
+   */
+  openUrl?(action: OpenUrlAction): (() => void) | null;
   /** A cancel action named something this scene's engine did not start (persistent audio from an earlier scene). */
   cancelPersistent?(actionId: Id): void;
   warn?(message: string): void;
@@ -408,6 +414,13 @@ export class SceneEngine {
         case 'travel': {
           // Like a jump, out of the scenario: the end events run, and this sequence ends here.
           const go = this.host.travel?.(action) ?? null;
+          if (!go) break;
+          void this.depart(go);
+          return;
+        }
+        case 'open_url': {
+          // A new tab: the game, and this event, go on. The same tab: like travel, the player leaves.
+          const go = this.host.openUrl?.(action) ?? null;
           if (!go) break;
           void this.depart(go);
           return;

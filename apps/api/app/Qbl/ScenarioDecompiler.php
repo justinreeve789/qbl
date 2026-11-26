@@ -94,7 +94,7 @@ class ScenarioDecompiler
         foreach (array_values($d['scenes']) as $index => $s) {
             $sceneId = $this->id($s);
             $params = (array) ($s['params'] ?? []);
-            foreach (['music_media_id', 'music_volume', 'team_only', 'sky', 'atmosphere', 'weather', 'story'] as $key) {
+            foreach (['music_media_id', 'music_volume', 'team_only', 'sky', 'atmosphere', 'weather', 'story', 'launcher'] as $key) {
                 if (isset($s[$key])) {
                     $params[$key] = $s[$key];
                 }

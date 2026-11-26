@@ -70,8 +70,11 @@ export class Sidebar {
   private onFollow: (group: string) => void = () => {};
   private launchView: LaunchView | null = null;
   private onLaunch: (choice: LaunchChoice) => void = () => {};
-  /** The teacher's choices on the launch tab, kept across redraws: the way there, staying behind, the mission being confirmed. */
-  private launchVia = '';
+  /**
+   * The teacher's choices on the launch tab, kept across redraws: the launcher scene picked in the
+   * prompt ('' for none, null before they pick), staying behind, the mission being confirmed.
+   */
+  private launchVia: string | null = null;
   private launchStay = false;
   private launchArmed: number | null = null;
   private onPlayer: { profile(id: string): void; message?(id: string): void } = { profile() {} };
@@ -229,7 +232,7 @@ export class Sidebar {
   setLaunches(view: LaunchView | null, launch: (choice: LaunchChoice) => void) {
     this.launchView = view;
     this.onLaunch = launch;
-    if (view && this.launchVia && !view.departures.some((d) => String(d.sceneId) === this.launchVia)) this.launchVia = '';
+    if (view && this.launchVia && !view.departures.some((d) => String(d.sceneId) === this.launchVia)) this.launchVia = null;
     this.offer('launch', view != null);
     this.draw('launch');
   }
@@ -314,13 +317,15 @@ export class Sidebar {
     this.heading.textContent = TABS.find((t) => t.key === tab)!.label;
     // Keep what the player is typing, and where they have scrolled to, across a redraw.
     const typing = this.body.querySelector('input:focus') as HTMLInputElement | null;
-    const draft = typing ? { name: typing.name, value: typing.value } : null;
+    const draft = typing ? { name: typing.name, value: typing.value, choice: typing.type === 'radio' || typing.type === 'checkbox' } : null;
     this.body.dataset.tab = tab;
     this.body.replaceChildren(...this.content(tab));
     if (draft) {
-      const again = this.body.querySelector(`input[name="${draft.name}"]`) as HTMLInputElement | null;
+      // A radio or a checkbox gets its focus back (the same one of its group); typed text its text too.
+      const inputs = [...this.body.querySelectorAll<HTMLInputElement>('input')].filter((i) => i.name === draft.name);
+      const again = draft.choice ? inputs.find((i) => i.value === draft.value) : inputs[0];
       if (again) {
-        again.value = draft.value;
+        if (!draft.choice) again.value = draft.value;
         again.focus();
       }
     }
@@ -481,30 +486,15 @@ export class Sidebar {
     const intro = el('p', 'qbl-sidebar-note', 'Send the students here into one of your missions. A mission that waits for you appears on their missions page once you launch it.');
     const out: HTMLElement[] = [intro];
 
-    // The way there: straight into the mission, or through a scene of this one that plays the departure.
-    if (view.departures.length) {
-      const label = el('label', 'qbl-launch-field');
-      const via = el('select');
-      via.name = 'launch-via';
-      const straight = el('option', '', 'Straight there');
-      straight.value = '';
-      via.append(straight);
-      for (const d of view.departures) {
-        const option = el('option', '', `Through ${d.name}`);
-        option.value = String(d.sceneId);
-        via.append(option);
-      }
-      via.value = this.launchVia;
-      via.addEventListener('change', () => (this.launchVia = via.value));
-      label.append(el('span', '', 'On the way'), via);
-      out.push(label);
-    }
     const stay = el('label', 'qbl-launch-check');
     const box = el('input');
     box.type = 'checkbox';
     box.name = 'launch-go';
     box.checked = !this.launchStay;
-    box.addEventListener('change', () => (this.launchStay = !box.checked));
+    box.addEventListener('change', () => {
+      this.launchStay = !box.checked;
+      this.draw('launch');
+    });
     stay.append(box, el('span', '', 'Go with them'));
     out.push(stay);
 
@@ -512,6 +502,8 @@ export class Sidebar {
       out.push(el('p', 'qbl-sidebar-empty', 'You have no other missions assigned. Assign one on the Classes page, then launch it from here.'));
       return out;
     }
+    // With launcher scenes in this mission, the first press asks where the class goes first.
+    const asks = view.departures.length > 0;
     const list = el('ul', 'qbl-launches');
     for (const m of view.missions) {
       const li = el('li', m.waiting ? 'waiting' : '');
@@ -527,30 +519,68 @@ export class Sidebar {
       go.dataset.launch = String(m.assignmentId);
       go.append(icon('launch', { size: 18 }), el('span', '', armed ? 'Launch now' : 'Launch'));
       go.setAttribute('aria-label', armed ? `Launch ${m.title} now` : `Launch ${m.title}`);
+      // Until a launcher scene (or none) is picked there is nothing to launch yet.
+      if (armed && asks && this.launchVia == null) go.disabled = true;
       // Two presses: the first asks, the second launches. A launch moves the whole class.
       go.addEventListener('click', () => {
         if (this.launchArmed !== m.assignmentId) {
           this.launchArmed = m.assignmentId;
+          this.launchVia = null;
           this.draw('launch');
           return;
         }
+        if (asks && this.launchVia == null) return;
         this.launchArmed = null;
         this.onLaunch({ assignmentId: m.assignmentId, sceneId: this.launchVia ? Number(this.launchVia) : undefined, stay: this.launchStay });
+        this.launchVia = null;
         this.draw('launch');
       });
       li.append(what, go);
       if (armed) {
+        if (asks) li.append(this.launcherPrompt(view));
         const where = view.departures.find((d) => String(d.sceneId) === this.launchVia);
-        const way = where ? `through ${where.name}` : 'straight there';
+        const way = where ? `to ${where.name} first, and on from there` : 'straight there';
         const plan = m.here
           ? `${m.here === 1 ? 'Its 1 student here goes' : `Its ${m.here} students here go`} ${way}${this.launchStay ? '; you stay here' : ', and you go with them'}.`
           : `Nobody here is in it: it opens on its students’ missions page${this.launchStay ? '' : ', and you go to it'}.`;
-        li.append(el('p', 'qbl-launch-confirm', `${plan} Press again to launch.`));
+        const confirm = el('p', 'qbl-launch-confirm', asks && this.launchVia == null ? 'Choose where they go first, then press Launch now.' : `${plan} Press again to launch.`);
+        const cancel = el('button', 'qbl-link', 'Cancel');
+        cancel.type = 'button';
+        cancel.addEventListener('click', () => {
+          this.launchArmed = null;
+          this.launchVia = null;
+          this.draw('launch');
+        });
+        confirm.append(' ', cancel);
+        li.append(confirm);
       }
       list.append(li);
     }
     out.push(list);
     return out;
+  }
+
+  /** The prompt of an armed launch: one of this mission's scenario launcher scenes, or none. */
+  private launcherPrompt(view: LaunchView): HTMLElement {
+    const ways = el('fieldset', 'qbl-launch-ways');
+    ways.append(el('legend', '', 'Before it opens, take them to'));
+    const choice = (value: string, text: string) => {
+      const label = el('label', '');
+      const radio = el('input');
+      radio.type = 'radio';
+      radio.name = 'launch-via';
+      radio.value = value;
+      radio.checked = this.launchVia === value;
+      radio.addEventListener('change', () => {
+        this.launchVia = value;
+        this.draw('launch');
+      });
+      label.append(radio, el('span', '', text));
+      return label;
+    };
+    for (const d of view.departures) ways.append(choice(String(d.sceneId), d.name));
+    ways.append(choice('', 'None: open the mission straight away'));
+    return ways;
   }
 
   private messages(): HTMLElement[] {

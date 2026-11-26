@@ -1057,6 +1057,23 @@ export class Ui implements UiPort {
     window.setTimeout(() => node.remove(), ms);
   }
 
+  linkOffer(message: string, href: string, label: string) {
+    const node = el('div', 'qbl-toast qbl-toast-link');
+    node.setAttribute('role', 'status');
+    const link = el('a', 'qbl-button primary', label);
+    link.href = href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.addEventListener('click', () => node.remove());
+    const close = el('button', 'qbl-toast-close', '✕');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', () => node.remove());
+    node.append(el('span', '', message), link, close);
+    this.toasts.appendChild(node);
+    window.setTimeout(() => node.remove(), 30000);
+  }
+
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null) {
     this.banner.hidden = message == null;

@@ -80,6 +80,105 @@ test('a travel action with nothing launched does nothing, and the event goes on'
   stop();
 });
 
+// ------------------------------------------------------------- a launcher scene with Open URL
+
+/** A browser window, as much as Open URL uses: where the game is, and the tabs it opens (null: blocked). */
+function fakeWindow(blocked = false) {
+  const opened: string[] = [];
+  const w = { location: { href: 'https://qbl.test/starship?group=t7', origin: 'https://qbl.test' }, open: (href: string) => (opened.push(href), blocked ? null : {}) };
+  (globalThis as { window?: unknown }).window = w;
+  return { opened, restore: () => delete (globalThis as { window?: unknown }).window };
+}
+
+/** The control room as a launcher scene that ends with Open URL to the launched scenario. */
+function urlGame(newTab: boolean, url = '{{QL_SCENARIO_LAUNCH_URL}}') {
+  const s = scenario();
+  const room = s.scenes.find((sc) => sc.id === CONTROL_ROOM)!;
+  room.launcher = true;
+  room.start_events = [{
+    id: 9001,
+    actions: [
+      { id: 9002, type: 'text_overlay', text: 'Boarding for {{QL_SCENARIO_LAUNCH_URL}}', duration: 100, conditions: [{ variable: 'QL_SCENARIO_LAUNCH_URL', operator: '!=', operand: '' }] },
+      { id: 9003, type: 'open_url', url, ...(newTab ? {} : { new_tab: false }) },
+      { id: 9004, type: 'text_overlay', text: 'Still here.', duration: 100 },
+    ] as Action[],
+  }];
+  const g = new Game(s, { id: 'u1', name: 'Sam', role: 'student' });
+  const gone: LaunchBroadcast[] = [];
+  const left: string[] = [];
+  g.ctx.goToMission = (launch) => gone.push(launch);
+  g.ctx.leavePage = (href) => left.push(href);
+  const stop = new LaunchFeature().start(g.ctx);
+  return { g, gone, left, stop, connection: g.ctx.connection as OfflineConnection };
+}
+
+test('a launcher scene: QL_SCENARIO_LAUNCH_URL is the student’s own game of the launched scenario, and Open URL in the same tab takes them there', async (t) => {
+  const win = fakeWindow();
+  t.after(win.restore);
+  const { g, gone, left, connection, stop } = urlGame(false);
+  t.after(stop);
+  await g.wait(100);
+  assert.equal(g.var('QL_SCENARIO_LAUNCH_URL'), '', 'empty before anything is launched');
+  connection.launched(portal({ scene_id: CONTROL_ROOM, url: '/timeportal?group=t7' }));
+  assert.equal(g.var('QL_SCENARIO_LAUNCH_URL'), 'https://qbl.test/timeportal?group=t7');
+  await g.hold([], () => g.scene.def.id === CONTROL_ROOM, 5000);
+  await g.wait(30);
+  assert.deepEqual(g.ui.texts, ['Boarding for https://qbl.test/timeportal?group=t7']);
+  await g.wait(200);
+  assert.deepEqual(gone.map((l) => [l.code, l.group]), [['timeportal', 't7']], 'the launched scenario, saved and left as a travel action does');
+  assert.deepEqual(left, []);
+  assert.deepEqual(win.opened, [], 'no new tab');
+  assert.ok(!g.ui.texts.includes('Still here.'), 'like a jump, nothing after it runs');
+  assert.equal(g.var('QL_SCENARIO_LAUNCH_URL'), '', 'and once they have gone, there is nowhere left to go');
+});
+
+test('the launched scenario on its own always opens in the same tab, even when new_tab is left on', async (t) => {
+  const win = fakeWindow();
+  t.after(win.restore);
+  const { g, gone, connection, stop } = urlGame(true, ' {{ QL_SCENARIO_LAUNCH_URL }} ');
+  t.after(stop);
+  await g.wait(100);
+  connection.launched(portal({ scene_id: CONTROL_ROOM }));
+  await g.hold([], () => g.scene.def.id === CONTROL_ROOM, 5000);
+  await g.wait(300);
+  assert.deepEqual(win.opened, []);
+  assert.deepEqual(gone.map((l) => l.code), ['timeportal']);
+});
+
+test('Open URL in a new tab opens it there and the scene goes on; a blocked tab becomes a button', async (t) => {
+  for (const blocked of [false, true]) {
+    const win = fakeWindow(blocked);
+    const { g, gone, connection, stop } = urlGame(true, '{{QL_SCENARIO_LAUNCH_URL}}&from=hub');
+    await g.wait(100);
+    connection.launched(portal({ scene_id: CONTROL_ROOM }));
+    await g.hold([], () => g.scene.def.id === CONTROL_ROOM, 5000);
+    await g.wait(300);
+    assert.deepEqual(win.opened, ['https://qbl.test/timeportal?group=t7&from=hub'], 'without a url from the server, the same address is made from the code and group');
+    assert.deepEqual(gone, []);
+    assert.deepEqual(g.ui.links.map((l) => l.href), blocked ? ['https://qbl.test/timeportal?group=t7&from=hub'] : []);
+    stop();
+    win.restore();
+  }
+});
+
+test('Open URL never opens a script address, and in a preview never leaves the editor', async (t) => {
+  const win = fakeWindow();
+  t.after(win.restore);
+  const g = new Game(scenario(), { id: 'u1', name: 'Sam', role: 'student' });
+  await g.wait(50);
+  void g.scene.engine.runAction({ type: 'open_url', url: 'javascript:alert(1)', new_tab: false } as Action);
+  await g.wait(20);
+  assert.deepEqual(win.opened, []);
+  assert.ok(g.ui.toasts.some((m) => m.includes('not a web address')));
+  void g.scene.engine.runAction({ type: 'open_url', url: 'https://example.org/a', new_tab: false } as Action);
+  await g.wait(20);
+  assert.deepEqual(win.opened, ['https://example.org/a'], 'no leavePage (a preview): a new tab instead');
+  void g.scene.engine.runAction({ type: 'open_url', url: '{{QL_SCENARIO_LAUNCH_URL}}' } as Action);
+  await g.wait(20);
+  assert.equal(win.opened.length, 1, 'nothing launched: nothing opens');
+  assert.ok(g.ui.toasts.some((m) => m.startsWith('Here players open the scenario their teacher launched')));
+});
+
 // ------------------------------------------------------------- the teacher's tab
 
 const assignments: LaunchableAssignment[] = [
