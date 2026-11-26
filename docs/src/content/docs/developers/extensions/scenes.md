@@ -22,7 +22,7 @@ lights | array | | Glows that flicker, burn, breathe, blink or twinkle. See the 
 atmosphere | array | | What is in the air: fireflies, leaves, snow, rain, dust, bubbles. See the same section.
 critters | array | | Birds, squirrels, rabbits, cats, cars: little life that comes and goes, and scatters. See [Critters](/docs/developers/extensions/atmosphere/#critters).
 launcher | bool | a scene with a `travel` action is one | Use as a scenario launcher scene: a teacher launching another scenario can send their class here first. Kept in the scene's `params`. See [Open URL](/docs/developers/actions/open-url/#launcher-scenes).
-team_only | bool | the group's | Show a player only their own team in this scene. See [Teams in a scene](#teams-in-a-scene).
+team_only | bool or `"alone"` | the group's | `true`: show a player only their own team in this scene. `"alone"`: show them nobody else; each player has the scene to themselves. See [Teams in a scene](#teams-in-a-scene).
 params.editor_map | `{x, y}` | | Where the scene's box sits on the editor's scene map (Scenes page › Map), in map pixels. The editor writes it; the game ignores it. A scene without one is placed by the map itself.
 
 ## What stands in front of what
@@ -88,6 +88,7 @@ When a teacher puts students into teams (see [Classes, missions and teams](/docs
 
 * A scene **limited to teams** shows a player only their own team. Use it for small rooms and for anywhere a team should feel on its own: a laboratory, a planet. A teacher is a member of the team they follow, so the same holds for them; they switch teams from the game's side panel.
 * A scene that is **not** shows everyone playing. Use it for meeting places: an observation deck for briefings.
+* A scene where each player is **alone** (`"team_only": "alone"`) shows a player nobody else, not even their teammates. Their chat, emotes and scene-audience events reach no one. Use it for a quiz, a test or a quiet place to think. Only a scene can say this; a group cannot. Each player still has their team's shared variables and items, and characters that roam are still shared.
 
 A scene's `team_only` decides; if it does not say, its group's `team_only` does; with neither, everyone is shown. Groups are `scene_groups` on the scenario, and a scene belongs to one through `group_id`:
 

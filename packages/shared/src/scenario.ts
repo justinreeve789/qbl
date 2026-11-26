@@ -124,14 +124,27 @@ export function normalizeScenario(input: Scenario): Scenario {
   return out;
 }
 
+/** Who a player is shown in a scene: everyone playing, their own team, or nobody else. */
+export type SceneCompany = 'everyone' | 'team' | 'alone';
+
+/**
+ * Who a scene shows a player: what the scene says, or else its group, or else everyone playing.
+ * A scene can also leave each player alone in it, which a group cannot.
+ */
+export function sceneCompany(scenario: Pick<Scenario, 'scene_groups'>, scene: Pick<Scene, 'team_only' | 'group_id'>): SceneCompany {
+  if (scene.team_only === 'alone') return 'alone';
+  if (scene.team_only != null) return scene.team_only === true ? 'team' : 'everyone';
+  const group = scene.group_id != null ? (scenario.scene_groups ?? []).find((g) => g.id === scene.group_id) : undefined;
+  return group?.team_only === true ? 'team' : 'everyone';
+}
+
 /**
  * Whether a scene shows a player only their own team: what the scene says, or else its group,
- * or else no (everyone playing is shown).
+ * or else no (everyone playing is shown). A scene where each player is alone is limited further
+ * still, so it counts as limited too.
  */
 export function sceneTeamOnly(scenario: Pick<Scenario, 'scene_groups'>, scene: Pick<Scene, 'team_only' | 'group_id'>): boolean {
-  if (scene.team_only != null) return scene.team_only === true;
-  const group = scene.group_id != null ? (scenario.scene_groups ?? []).find((g) => g.id === scene.group_id) : undefined;
-  return group?.team_only === true;
+  return sceneCompany(scenario, scene) !== 'everyone';
 }
 
 /**

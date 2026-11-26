@@ -2,7 +2,7 @@ import { Bag } from './Bag';
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
-  canSee, escapeHtml, launchPath, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneTeamOnly, ScenarioIndex, VariableStore,
+  canSee, escapeHtml, launchPath, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneCompany, ScenarioIndex, VariableStore,
   type GlossaryEntry, type Id, type LaunchBroadcast, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
 } from '@qbl/shared';
 import type { Action, AwardAction } from '@qbl/shared';
@@ -116,12 +116,13 @@ export class GameContext {
 
   /**
    * Whether another player is shown to this one: they are in the same scene, and, where the
-   * scene is limited to teams (by itself or by its group), in the same team.
+   * scene is limited to teams (by itself or by its group), in the same team. Nobody else is shown
+   * in a scene where each player is alone.
    */
   sees(other: Pick<PlayerRec, 'scene_id' | 'team'>): boolean {
     const me = this.connection.me;
     const scene = me ? this.index.scene(me.scene_id) : undefined;
-    return !!me && !!scene && canSee(me, other, sceneTeamOnly(this.scenario, scene));
+    return !!me && !!scene && canSee(me, other, sceneCompany(this.scenario, scene));
   }
 
   /** A teacher or admin: they follow one team at a time and can switch to another (see TeamsFeature). */

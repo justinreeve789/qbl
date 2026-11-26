@@ -98,6 +98,10 @@ test('scene groups: a group limited to teams, and a scene that says otherwise', 
   await page.locator('.inspector [data-field=team_only] select').selectOption('false');
   d = await draft();
   assert.equal(d.scenes[0]!.team_only, false);
+  // Or nobody else at all: each player has the scene to themselves.
+  await page.locator('.inspector [data-field=team_only] select').selectOption('alone');
+  assert.equal((await draft()).scenes[0]!.team_only, 'alone');
+  assert.equal(await page.locator('.inspector [data-field=team_only] select').inputValue(), 'alone', 'and the setting reads it back');
   await page.locator('.inspector [data-field=team_only] select').selectOption('');
   assert.equal((await draft()).scenes[0]!.team_only, undefined, 'and back to what the group says');
 });

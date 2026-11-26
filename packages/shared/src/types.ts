@@ -1490,10 +1490,12 @@ export interface Scene {
    */
   launcher?: boolean | null;
   /**
-   * [ext] Show a player only the members of their own team in this scene. Absent: as the scene's
-   * group says (`scene_groups`), and failing that everyone playing is shown.
+   * [ext] Who a player is shown in this scene. `true`: only the members of their own team.
+   * `false`: everyone playing. `"alone"`: nobody; each player has the scene to themselves (no
+   * other avatars, and chat and shown events reach no one). Absent: as the scene's group says
+   * (`scene_groups`), and failing that everyone playing is shown.
    */
-  team_only?: boolean | null;
+  team_only?: boolean | 'alone' | null;
   items?: ItemPlacement[];
   characters?: CharacterPlacement[];
   /** [ext] A close-up bench in the scene: containers to pour between, and what happens when they mix. See bench.ts. */

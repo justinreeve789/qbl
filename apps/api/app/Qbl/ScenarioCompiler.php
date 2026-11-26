@@ -149,8 +149,8 @@ class ScenarioCompiler
                 'story' => ! empty(self::json($sc['params'] ?? null)['story']) ? true : null,
                 // Use as a scenario launcher scene: true or false; absent, a scene with a travel action is one.
                 'launcher' => array_key_exists('launcher', self::json($sc['params'] ?? null)) && self::json($sc['params'] ?? null)['launcher'] !== null ? self::bool(self::json($sc['params'] ?? null)['launcher']) : null,
-                // Whether the scene shows a player only their own team. Absent: as its group says.
-                'team_only' => array_key_exists('team_only', self::json($sc['params'] ?? null)) && self::json($sc['params'] ?? null)['team_only'] !== null ? self::bool(self::json($sc['params'] ?? null)['team_only']) : null,
+                // Who the scene shows a player: own team (true), everyone (false), nobody ("alone"). Absent: as its group says.
+                'team_only' => self::company(self::json($sc['params'] ?? null)['team_only'] ?? null),
                 'items' => $layout['items'] ?? [],
                 'characters' => $layout['characters'] ?? [],
                 // A close-up bench: its substances, containers, tools, reactions, readouts, watches and graph.
@@ -332,6 +332,16 @@ class ScenarioCompiler
     private static function numOrNull(mixed $v): int|float|null
     {
         return $v === null || $v === '' ? null : self::num($v);
+    }
+
+    /** Who a scene shows a player: true (own team), false (everyone), "alone", or null (as its group says). */
+    private static function company(mixed $v): bool|string|null
+    {
+        if ($v === null) {
+            return null;
+        }
+
+        return is_string($v) && strtolower($v) === 'alone' ? 'alone' : self::bool($v);
     }
 
     private static function bool(mixed $v): bool

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  canSee, estimateWordTimes, glossaryFlag, glossaryOf, isNarrated, labelPlacement, normalizeScenario, sceneTeamOnly, scopedMap, shadeAt, shadeTint,
+  canSee, estimateWordTimes, sceneCompany, glossaryFlag, glossaryOf, isNarrated, labelPlacement, normalizeScenario, sceneTeamOnly, scopedMap, shadeAt, shadeTint,
   speechWords, validateScenario, wordAt, World,
   type ItemRec, type PlayerRec, type Scenario, type User, type WorldState,
 } from '../src/index.js';
@@ -49,6 +49,24 @@ test('the document with groups, a glossary and shadow spots is valid', () => {
 test('a scene is limited to teams by itself, or else by its group', () => {
   const by = (id: number) => sceneTeamOnly(scenario, scenario.scenes.find((s) => s.id === id)!);
   assert.deepEqual([by(1), by(2), by(3), by(4)], [false, true, true, false]);
+});
+
+test('a scene can leave each player alone in it: nobody else is seen, and chat reaches no one', () => {
+  const alone = { ...scenario.scenes[0]!, team_only: 'alone' as const };
+  assert.equal(sceneCompany(scenario, alone), 'alone');
+  assert.equal(sceneTeamOnly(scenario, alone), true, 'it is limited further than a team-only scene');
+  assert.deepEqual(scenario.scenes.map((s) => sceneCompany(scenario, s)), ['everyone', 'team', 'team', 'everyone']);
+  const me = { scene_id: 1, team: 't1' };
+  assert.equal(canSee(me, { scene_id: 1, team: 't1' }, 'alone'), false, 'not even a teammate');
+  assert.equal(canSee(me, { scene_id: 1, team: 't2' }, 'team'), false);
+  assert.equal(canSee(me, { scene_id: 1, team: 't2' }, 'everyone'), true);
+  assert.equal(canSee(me, { scene_id: 1, team: 't1' }, true), true, 'the old true/false still works');
+
+  const world = new World({ ...scenario, scenes: [alone, ...scenario.scenes.slice(1)] } as never, {
+    state: { players: new Map(), items: new Map(), vars: new Map() }, newPlayer: () => ({}) as never, newItem: () => ({}) as never, now: () => 0,
+  });
+  for (const id of ['a', 'b']) world.addPlayer(id, { id, name: id, role: 'student' } as never, { scene_id: 1 } as never);
+  assert.deepEqual(world.audience('a'), [], 'chat, emotes and shown events go to no one else');
 });
 
 test('shade is deepest at the centre of a spot and gone at its edge', () => {

@@ -586,8 +586,8 @@ export const SCENE_MUSIC_FIELDS: Field[] = [
   { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'The scenario’s', slider: { min: 0, max: 1 } },
   {
     key: 'team_only', label: 'Who players see here', kind: 'tristate', wide: true, placeholder: 'As the scene’s group says (everyone, if it has none)',
-    options: [['true', 'Only their own team'], ['false', 'Everyone playing, whatever their team']],
-    hint: 'When a teacher puts students into teams, a scene limited to teams shows each player only their teammates, so a small room does not feel crowded. A meeting place such as an observation deck shows everyone. Shared variables and items are always the team’s own.',
+    options: [['true', 'Only their own team'], ['false', 'Everyone playing, whatever their team'], ['alone', 'Nobody else: each player has the scene to themselves']],
+    hint: 'When a teacher puts students into teams, a scene limited to teams shows each player only their teammates, so a small room does not feel crowded. A meeting place such as an observation deck shows everyone. “Nobody else” suits a quiz, a test or a quiet place to think: each player sees only their own avatar there, and their chat and shown events reach no one. Shared variables and items are always the team’s own.',
   },
 ];
 
