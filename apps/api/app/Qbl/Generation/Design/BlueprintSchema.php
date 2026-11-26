@@ -256,6 +256,8 @@ final class BlueprintSchema
                                 'placement' => ['type' => 'string', 'enum' => ['ground', 'back', 'wall'], 'description' => 'ground: out on the floor. back: at the back of the floor. wall: hung on the back wall (indoors, underground).'],
                                 'color' => ['type' => 'string', 'pattern' => '^#[0-9a-fA-F]{6}$', 'description' => 'Optional: its light\'s colour, if not the usual for its kind.'],
                                 'height_cm' => ['type' => 'integer', 'minimum' => 10, 'maximum' => 600, 'description' => 'Optional: how tall it is, with what holds it.'],
+                                'on_after' => ['type' => 'string', 'pattern' => self::KEY, 'description' => 'Optional: the key of an interaction, combination, step or twist. The light is out until that is done (or has happened), then comes on: the beacon once the ship\'s power is fixed, the lighthouse lamp once it is relit, the lamps when the generator starts. Its fixture is there all along, unlit.'],
+                                'off_after' => ['type' => 'string', 'pattern' => self::KEY, 'description' => 'Optional: the key of an interaction, combination, twist, or a step with a single interaction. The light shines until that is done (or has happened), then goes out: the campfire put out by the storm, the alarm light once the leak is fixed.'],
                             ],
                         ]],
                         'atmosphere' => ['type' => 'array', 'maxItems' => 2, 'description' => 'Optional: what is in the air: fireflies at dusk, leaves falling in an autumn wood, snow, rain, dust floating in a sunbeam in an old barn, bubbles rising under water.', 'items' => [

@@ -634,6 +634,11 @@ class MissionBuilder
             if ($placement) {
                 $layoutItems[] = $placement;
             }
+            // On only after something is done, or until it is (read live, so a teammate's work counts at once).
+            $when = $this->lightConditions($l);
+            if ($when) {
+                $light['conditions'] = $when;
+            }
             $lights[] = $light;
         }
 
@@ -1011,6 +1016,20 @@ class MissionBuilder
             // Without a hole to show through, it moves over the painted water.
             'layer' => $hole ? null : 'over',
         ], fn ($v) => $v !== null)];
+    }
+
+    /** When a light is on: after its on_after is done, and until its off_after is. */
+    protected function lightConditions(array $l): array
+    {
+        $out = [];
+        if (! empty($l['on_after'])) {
+            array_push($out, ...$this->requirement($l['on_after']));
+        }
+        if (! empty($l['off_after'])) {
+            array_push($out, ...($this->negation($l['off_after']) ?? throw new GenerationError("A light cannot go out after \"{$l['off_after']}\", a step of several interactions.")));
+        }
+
+        return $out;
     }
 
     /**

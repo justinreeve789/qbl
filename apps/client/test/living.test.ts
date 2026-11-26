@@ -66,3 +66,31 @@ test('without a sky, lights are always fully lit', async () => {
   await g.wait(100);
   assert.equal(g.scene.system(SkySystem).light, 1);
 });
+
+test('a light with conditions is on only while they hold, fading in and out', async () => {
+  const s = camp();
+  delete (s.scenes[0] as any).sky;
+  (s as any).global_variables = [{ variable_name: 'repaired', variable_type: 'number', default_value: 0 }];
+  // The beacon comes on once the ship is repaired; the campfire goes out then.
+  (s.scenes[0] as any).lights[1].conditions = [{ variable: 'repaired', operator: '=', operand: 1 }];
+  (s.scenes[0] as any).lights[0].conditions = [{ variable: 'repaired', operator: '=', operand: 0 }];
+  const g = new Game(s);
+  await g.wait(100);
+  const [fire, beacon, glow] = (g.scene.system(LightSystem) as any).lights;
+  assert.equal(beacon.on, false, 'the beacon starts off');
+  assert.equal(beacon.shown, 0, 'and is not drawn at all');
+  assert.equal(beacon.halo.visible, false);
+  assert.equal(fire.shown, 1, 'the fire starts lit, without fading in');
+  assert.equal(glow.shown, 1, 'a light without conditions is always on');
+  await g.ctx.vars.apply('repaired', 'set', 1);
+  assert.equal(beacon.on, true);
+  assert.equal(fire.on, false);
+  await g.wait(150);
+  assert.ok(beacon.shown > 0 && beacon.shown < 1, `the beacon is fading in (${beacon.shown})`);
+  assert.ok(fire.shown > 0 && fire.shown < 1, `the fire is fading out (${fire.shown})`);
+  await g.wait(400);
+  assert.equal(beacon.shown, 1, 'the beacon is fully on');
+  assert.equal(fire.shown, 0, 'the fire is out');
+  assert.equal(fire.halo.visible, false);
+  assert.equal(glow.shown, 1);
+});

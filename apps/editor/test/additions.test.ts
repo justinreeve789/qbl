@@ -120,6 +120,19 @@ test('a light is placed and edited; the scene gets a living sky and fireflies', 
   await type('.inspector [data-field=radius] input[type=number]', '150');
   let scene = (await draft()).scenes[0]!;
   assert.deepEqual([scene.lights![0]!.kind, scene.lights![0]!.radius, scene.lights![0]!.name], ['fire', 150, 'lantern']);
+  // Conditions switch it on and off; with none it is always on, and the canvas says which are switched.
+  assert.match(await page.innerText('.inspector [data-section=conditions]'), /Always on/);
+  assert.equal(await page.locator('svg [data-light-switch]').count(), 0);
+  await page.click('.inspector [data-section=conditions] button:has-text("Add condition")');
+  await page.waitForSelector('.inspector [data-section=conditions] .condition');
+  await page.locator('.inspector [data-section=conditions] .condition select').nth(1).selectOption('>=');
+  scene = (await draft()).scenes[0]!;
+  assert.equal(scene.lights![0]!.conditions!.length, 1);
+  assert.equal(scene.lights![0]!.conditions![0]!.operator, '>=');
+  await page.waitForSelector('svg [data-light-switch]');
+  await page.click('.inspector [data-section=conditions] button[title="Remove condition"]');
+  await page.waitForFunction(() => !document.querySelector('svg [data-light-switch]'));
+  assert.equal((await draft()).scenes[0]!.lights![0]!.conditions, undefined, 'no conditions left: the key is gone');
   assert.match(await page.innerText('.outline'), /Lights/);
   await page.click('.outline >> text=Scene settings');
   await page.locator('.inspector [data-field=time] select').selectOption('golden');

@@ -113,6 +113,23 @@ final class BlueprintValidator
                     $e[] = "scenes.$key.exits[$i].requires: \"{$x['requires']}\" is not an interaction, step or twist key.";
                 }
             }
+            // Lights that come on or go out as the story goes.
+            foreach (array_values((array) ($scene['lights'] ?? [])) as $i => $l) {
+                foreach (['on_after', 'off_after'] as $when) {
+                    $k = $l[$when] ?? null;
+                    if ($k === null || $k === '') {
+                        continue;
+                    }
+                    if (! isset($doneKeys[$k])) {
+                        $e[] = "scenes.$key.lights[$i].$when: \"$k\" is not an interaction, combination, step or twist key.";
+                    } elseif ($when === 'off_after' && isset($steps[$k]) && count((array) ($steps[$k]['done_when'] ?? [])) > 1) {
+                        $e[] = "scenes.$key.lights[$i].off_after: \"$k\" is a step of several interactions; name the interaction (or twist) that puts the light out.";
+                    }
+                }
+                if (! empty($l['on_after']) && ($l['on_after'] ?? null) === ($l['off_after'] ?? null)) {
+                    $e[] = "scenes.$key.lights[$i]: on_after and off_after are the same; a light cannot come on and go out at once.";
+                }
+            }
         }
 
         // ---- characters

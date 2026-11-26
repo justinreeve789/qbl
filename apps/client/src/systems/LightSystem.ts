@@ -1,11 +1,13 @@
 import type * as Phaser from 'phaser';
-import { colorNumber, type SceneLight } from '@qbl/shared';
+import { colorNumber, testConditions, type SceneLight } from '@qbl/shared';
 import { Depth } from '../core/depth';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { SkySystem } from './SkySystem';
 
 const GLOW = 'qbl-glow';
 const ADD = 1; // Phaser.BlendModes.ADD
+/** How long a light takes to come on or go out when its conditions change, in ms. */
+export const LIGHT_FADE_MS = 400;
 
 /** Whether the player's system asks for less motion: lights then glow steadily, without embers. */
 export function moving(): boolean {
@@ -21,6 +23,9 @@ interface Lit {
   level: number;
   next: number;
   phase: number;
+  /** Whether its conditions hold, and how far it has faded in (0 out, 1 fully on). */
+  on: boolean;
+  shown: number;
 }
 
 interface Ember { x: number; y: number; vx: number; vy: number; life: number; age: number; color: number }
@@ -28,7 +33,8 @@ interface Ember { x: number; y: number; vx: number; vy: number; life: number; ag
 /**
  * Lights (Scene.lights): soft glows over the scene that flicker like a flame, burn like a campfire
  * with embers rising, breathe slowly, blink or twinkle. They shine fully in the dark and only a little
- * in daylight (SkySystem.light).
+ * in daylight (SkySystem.light). A light with conditions is on only while they hold, fading in and out
+ * as variables change (straight away for players who ask for less motion).
  */
 export class LightSystem implements SceneSystem {
   private lights: Lit[] = [];
@@ -61,13 +67,24 @@ export class LightSystem implements SceneSystem {
       halo.setBlendMode?.(ADD);
       const core = scene.add.image(def.x, def.y, GLOW).setDepth(Depth.label - 4).setTint(0xffffff).setDisplaySize(radius * 0.45, radius * 0.45);
       core.setBlendMode?.(ADD);
-      this.lights.push({ def, halo, core, target: 1, level: 1, next: 0, phase: i * 1.7 });
+      // Lit or not as the player arrives, without fading.
+      const on = this.holds(def);
+      this.lights.push({ def, halo, core, target: 1, level: 1, next: 0, phase: i * 1.7, on, shown: on ? 1 : 0 });
     });
     if (defs.some((d) => d.kind === 'fire') && this.motion) {
       this.sparks = scene.add.graphics().setDepth(Depth.label - 3);
       this.sparks.setBlendMode?.(ADD);
     }
     this.update(0, 0);
+  }
+
+  private holds(def: SceneLight): boolean {
+    return testConditions(def.conditions, this.rt.ctx.vars.get);
+  }
+
+  /** Lights whose conditions have started or stopped holding come on or go out. */
+  variablesChanged() {
+    for (const l of this.lights) l.on = this.holds(l.def);
   }
 
   /** How bright a light is at this moment, before its strength and the daylight. */
@@ -98,6 +115,14 @@ export class LightSystem implements SceneSystem {
     const daylight = this.rt.system(SkySystem).light;
     for (const l of this.lights) {
       const kind = l.def.kind ?? 'flicker';
+      const goal = l.on ? 1 : 0;
+      if (l.shown !== goal) {
+        const step = this.motion ? delta / LIGHT_FADE_MS : 1;
+        l.shown = goal > l.shown ? Math.min(goal, l.shown + step) : Math.max(goal, l.shown - step);
+      }
+      l.halo.setVisible(l.shown > 0);
+      l.core.setVisible(l.shown > 0);
+      if (l.shown <= 0) continue;
       if ((kind === 'flicker' || kind === 'fire') && this.motion) {
         // A flame: the brightness heads for a new value every tenth of a second or so.
         if (time >= l.next) {
@@ -108,7 +133,7 @@ export class LightSystem implements SceneSystem {
         l.level += (l.target - l.level) * Math.min(1, delta / 70);
       }
       const b = LightSystem.brightness(l, time, this.motion);
-      const alpha = Math.max(0, Math.min(1, ((l.def.strength ?? 70) / 100) * b * daylight));
+      const alpha = Math.max(0, Math.min(1, ((l.def.strength ?? 70) / 100) * b * daylight * l.shown));
       const radius = l.def.radius ?? 90;
       const swell = kind === 'blink' ? 1 : 0.94 + 0.06 * b;
       l.halo.setAlpha(alpha).setDisplaySize(radius * 2 * swell, radius * 2 * swell);
@@ -121,7 +146,8 @@ export class LightSystem implements SceneSystem {
   private burn(time: number, delta: number) {
     this.emberClock += delta;
     for (const l of this.lights) {
-      if (l.def.kind !== 'fire') continue;
+      // A fire that is out sends up no more embers; those already rising burn out.
+      if (l.def.kind !== 'fire' || !l.on || l.shown < 0.5) continue;
       if (this.emberClock > 110 && this.embers.length < 40) {
         const r = (l.def.radius ?? 90) * 0.18;
         this.embers.push({

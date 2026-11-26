@@ -1293,6 +1293,11 @@ export interface SceneLight {
   strength?: number;
   /** Seconds for one breath (glow) or one blink. Default 4 and 1.4. */
   period?: number;
+  /**
+   * On only while all of these hold (a beacon that comes on once the ship is repaired, a lantern
+   * that goes out when the wind blows). It fades in and out as variables change. None: always on.
+   */
+  conditions?: Condition[] | null;
 }
 
 /**

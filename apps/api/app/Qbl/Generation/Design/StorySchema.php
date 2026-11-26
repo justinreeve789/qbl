@@ -58,6 +58,8 @@ final class StorySchema
         $ambient['properties']['cue'] = ['type' => 'boolean', 'description' => 'true: it only passes when the script says (a pass beat): the bus that splashes Mo, the cat that steals the fish. Otherwise it comes and goes now and then by itself, as life in the background.'];
         $ambient['description'] = 'Life in the place: birds that land and fly off, a cat that strolls by, fish swimming past, cars or carts driving by.';
         unset($ambient);
+        // A story has no interactions, steps or twists for a light to wait for.
+        unset($sceneParts['lights']['items']['properties']['on_after'], $sceneParts['lights']['items']['properties']['off_after']);
         $key = ['type' => 'string', 'pattern' => BlueprintSchema::KEY];
         $text = fn (string $d, int $max = 400) => ['type' => 'string', 'description' => $d, 'maxLength' => $max];
         $voice = $mission['properties']['characters']['items']['properties']['voice'];

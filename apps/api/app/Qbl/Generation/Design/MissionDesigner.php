@@ -366,7 +366,11 @@ class MissionDesigner
           ship has beacons still blinking inside and out; a cave has glowing crystals; an autumn wood has falling
           leaves; a mission that ends at the close of day can have its sun set while students work. Give most
           outdoor scenes a living sky at a time that suits the story, with clouds unless it is clear or night.
-          Keep it subtle: a few lights where there would be lights, not everywhere. In most scenes add one or two
+          Keep it subtle: a few lights where there would be lights, not everywhere. A light can be part of the
+          story: one that comes on once students have done something (on_after: the beacon once the power is
+          fixed, the lighthouse relit) or goes out when something happens (off_after: the campfire the storm
+          puts out). Use this where switching the light on or off is the reward or the sign of a change, now
+          and then, not for every light. In most scenes add one or two
           ambient creatures, and use a ready-made one from the asset library (ambient library) whenever one fits
           the place: a bluebird or two that land (lands, count 2-3), a squirrel that runs up a tree (climbs: then
           the background must show a tree standing out on the floor), a cat strolling by, a car or a horse and
@@ -843,6 +847,15 @@ class MissionDesigner
                     }
                     if (! in_array($l['placement'] ?? '', ['ground', 'back', 'wall'], true)) {
                         unset($l['placement']);
+                    }
+                    // When it comes on or goes out: keys only, and not the same moment for both.
+                    foreach (['on_after', 'off_after'] as $when) {
+                        if (isset($l[$when]) && (! is_string($l[$when]) || trim($l[$when]) === '')) {
+                            unset($l[$when]);
+                        }
+                    }
+                    if (isset($l['on_after'], $l['off_after']) && $l['on_after'] === $l['off_after']) {
+                        unset($l['off_after']);
                     }
                     $lights[] = $l;
                 }

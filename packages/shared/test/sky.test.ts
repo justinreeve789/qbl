@@ -43,3 +43,21 @@ test('sky, lights and what is in the air are checked', () => {
   }
   assert.ok(!problems.some((p: string) => p.startsWith('scenes[0].lights[1]')));
 });
+
+test('a light\'s conditions are checked like any others', () => {
+  const scenario = {
+    id: 1, name: 's', start_scene_id: 1, assets: [], items: [], global_variables: [{ variable_name: 'repaired', default_value: 0 }],
+    scenes: [{
+      id: 1, width: 100, height: 100,
+      lights: [
+        { x: 1, y: 2, conditions: [{ variable: 'repaired', operator: '=', operand: 1 }] },
+        { x: 5, y: 5, conditions: [{ variable: 'nowhere', operator: '=', operand: 1 }] },
+        { x: 9, y: 9, conditions: [{ variable: 'repaired', operator: '~', operand: 1 }] },
+      ],
+    }],
+  } as any;
+  const problems = validateScenario(scenario).errors.map((e: { path: string }) => e.path);
+  assert.ok(!problems.some((p: string) => p.startsWith('scenes[0].lights[0]')), problems.join(', '));
+  assert.ok(problems.includes('scenes[0].lights[1].conditions[0]'), problems.join(', '));
+  assert.ok(problems.includes('scenes[0].lights[2].conditions[0]'), problems.join(', '));
+});
