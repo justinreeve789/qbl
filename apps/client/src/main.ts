@@ -15,6 +15,7 @@ import { PlayScene } from './scenes/PlayScene';
 import { setUpApp } from './pwa';
 import { Ui } from './ui/Ui';
 import { rolePicker } from './ui/rolePicker';
+import { setSoundPrompt } from './audio/soundLock';
 // Twemoji Awesome: the one set every icon in the interface is drawn from (see ui/icons.ts).
 import '../../../packages/shared/assets/twemoji-awesome.css';
 import './ui/ui.css';
@@ -579,6 +580,8 @@ async function start() {
 
   if (config.preview != null) ui.toast('Preview of your draft. You are playing alone and nothing is saved.', 6000);
 
+  // A page opened by a launch has had no click yet, and the browser keeps it silent until it has.
+  setSoundPrompt((ms) => ui.toast('🔊 Click or tap anywhere to turn the sound on.', ms));
   gate.hidden = true;
   const game = new Phaser.Game({
     type: Phaser.AUTO,

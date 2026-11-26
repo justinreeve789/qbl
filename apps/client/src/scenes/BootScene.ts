@@ -11,6 +11,10 @@ export class BootScene extends Phaser.Scene {
 
   preload() {
     const ctx = getContext(this);
+    // Keep sounds playing when the window loses focus. In class a launch, or another player's
+    // event, can start a cutscene in a window that is open but not focused (a second window, a
+    // shared screen), and Phaser would otherwise hold its sound until that window was clicked.
+    this.sound.pauseOnBlur = false;
     const { width, height } = this.scale.gameSize;
     const track = this.add.rectangle(width / 2, height / 2, 320, 14, 0xffffff, 0.15);
     const bar = this.add.rectangle(track.x - 160, track.y, 0, 14, 0x7aa2ff).setOrigin(0, 0.5);
