@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { queueScene } from '../core/assets';
+import { queueScene, reportLoadErrors } from '../core/assets';
 import { getContext } from '../core/GameContext';
 import type { PlaySceneData } from '../core/SceneRuntime';
 
@@ -18,9 +18,7 @@ export class BootScene extends Phaser.Scene {
       .text(width / 2, height / 2 - 40, ctx.scenario.title, { fontFamily: 'Montserrat, system-ui, sans-serif', fontSize: '24px', color: '#ffffff' })
       .setOrigin(0.5);
     this.load.on(Phaser.Loader.Events.PROGRESS, (p: number) => (bar.width = 320 * p));
-    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
-      console.warn(`[qbl] could not load ${file.key} from ${String(file.url)}`);
-    });
+    reportLoadErrors(this, ctx);
 
     const sceneId = ctx.connection.me?.scene_id ?? ctx.scenario.start_scene_id;
     const scene = ctx.index.scene(sceneId) ?? ctx.index.startScene();

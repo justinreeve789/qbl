@@ -480,7 +480,7 @@ async function start() {
   }
 
   const ui = new Ui(app);
-  const ctx = new GameContext(scenario, user, connection, ui, { debug: config.debug });
+  const ctx = new GameContext(scenario, user, connection, ui, { debug: config.debug, preview: config.preview != null });
   // Stars, XP and the marketplace belong to an account. A preview gets a pretend account with
   // stars to try the shop with, so testing a draft never spends or earns anything real.
   const key = scenario.code ?? scenario.shortname ?? config.scenario;

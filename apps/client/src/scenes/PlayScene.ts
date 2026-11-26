@@ -5,7 +5,7 @@ import {
 } from '@qbl/shared';
 import { ActionHost } from '../actions/ActionHost';
 import { playSceneMusic } from '../actions/presenters/audio';
-import { mediaKey, queueScene } from '../core/assets';
+import { mediaKey, queueScene, reportLoadErrors } from '../core/assets';
 import { getContext, type GameContext } from '../core/GameContext';
 import type { PlaySceneData, SceneRuntime, SceneSystem, SceneSystemClass } from '../core/SceneRuntime';
 import { sceneSystems } from '../systems';
@@ -60,6 +60,8 @@ export class PlayScene extends Phaser.Scene {
 
   create(data: PlaySceneData) {
     const ctx = (this.ctx = getContext(this));
+    // Pictures loaded on the way to another scene: say if one cannot be.
+    reportLoadErrors(this, ctx);
     this.def = ctx.index.scene(data.sceneId) ?? ctx.index.startScene();
     this.zoom = this.def.zoom ?? 1;
     this.size = sceneSize(ctx.scenario, this.def) ?? this.sizeFromTexture() ?? DEFAULT_SIZE;

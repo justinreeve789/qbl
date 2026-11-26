@@ -40,6 +40,9 @@ return [
     // Where files uploaded in the editor are written, and the URL prefix the web server serves them under.
     'media_dir' => env('QBL_MEDIA_DIR', storage_path('app/media')),
     'media_url' => env('QBL_MEDIA_URL', '/media'),
+    // PNG pictures uploaded in the editor are kept as WebP (App\Qbl\PngToWebp): the same picture,
+    // see-through parts included, far smaller. On unless QBL_PNG_TO_WEBP is false (or 0, off, no).
+    'png_to_webp' => ! in_array(strtolower(trim((string) env('QBL_PNG_TO_WEBP', ''))), ['false', '0', 'off', 'no'], true),
 
     // The asset library's shipped pack (library.json and its pictures, from scenarios/assets/library):
     // where the API reads it, and the URL the web server serves it under. In the containers the

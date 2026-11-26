@@ -1,7 +1,7 @@
 import type * as Phaser from 'phaser';
 import {
-  animationDuration, animationFrames, animationRepeats, apngFrameImages, characterAnimationRepeats, collectGlobalMediaIds, collectSceneMediaIds, findAnimation, readApng, resolveMediaUrl,
-  type CharacterAnimation, type Id, type Media, type Scene, type Spritemap, type ShopItem } from '@qbl/shared';
+  animationDuration, animationFrames, animationRepeats, apngFrameImages, characterAnimationRepeats, collectGlobalMediaIds, collectSceneMediaIds, findAnimation, layerMediaId, readApng, resolveMediaUrl,
+  type CharacterAnimation, type Id, type Media, type Scenario, type Scene, type Spritemap, type ShopItem } from '@qbl/shared';
 import type { GameContext } from './GameContext';
 
 export const mediaKey = (id: Id) => `media-${id}`;
@@ -29,6 +29,49 @@ export function queueMedia(scene: Phaser.Scene, ctx: GameContext, ids: Id[]): nu
     queued++;
   }
   return queued;
+}
+
+// ------------------------------------------------------------- failed loads
+
+/** Phaser.Loader.Events.FILE_LOAD_ERROR (this file imports Phaser's types only). */
+const FILE_LOAD_ERROR = 'loaderror';
+
+/** Media whose failed load has been shown on screen already: once per file per game. */
+const reported = new Set<string>();
+
+/** What in the scenario uses a media file, for a message: "background layer 2 of “Crew quarters”". */
+export function mediaUses(scenario: Scenario, id: Id): string[] {
+  const uses: string[] = [];
+  for (const scene of scenario.scenes ?? []) {
+    const name = scene.subtitle || scene.shortname || `scene ${scene.id}`;
+    for (const [which, list] of [['background', scene.background_media], ['foreground', scene.foreground_media]] as const) {
+      (list ?? []).forEach((layer, i) => {
+        if (layerMediaId(layer) === id) uses.push(`${which} layer ${i + 1} of “${name}”`);
+      });
+    }
+  }
+  return uses;
+}
+
+/**
+ * Say when one of the scenario's files cannot be loaded, instead of leaving it out without a word:
+ * in the console always, and on screen in a preview, so whoever is testing a draft sees which
+ * picture is missing and where it is used. Listeners go when the scene shuts down, so this is
+ * called each time a scene starts.
+ */
+export function reportLoadErrors(scene: Phaser.Scene, ctx: GameContext): void {
+  scene.load.on(FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
+    const match = /^media-(\d+)$/.exec(file.key);
+    const media = match ? ctx.index.media.get(Number(match[1])) : undefined;
+    const uses = media ? mediaUses(ctx.scenario, media.id) : [];
+    const what = media ? `“${media.filename ?? file.key}”` : file.key;
+    const where = uses.length ? ` (${uses.join(', ')})` : '';
+    console.warn(`[qbl] could not load ${what}${where} from ${String(file.url)}`);
+    if (!ctx.options.preview || reported.has(file.key)) return;
+    reported.add(file.key);
+    const kind = media?.type === 'audio' ? 'sound' : media?.type === 'video' ? 'video' : 'picture';
+    ctx.ui.toast(`Could not load the ${kind} ${what}${where}. It is left out. Check that the file opens, and try uploading it again.`, 9000);
+  });
 }
 
 // ------------------------------------------------------------ animated PNGs

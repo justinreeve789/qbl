@@ -28,6 +28,8 @@ import type { UiPort } from '../ui/UiPort';
 export interface GameOptions {
   /** Draw walkable areas, spawn points and hotspot areas over the art. */
   debug: boolean;
+  /** A draft being tried from the editor: problems with the scenario are shown on screen too. */
+  preview?: boolean;
 }
 
 /**

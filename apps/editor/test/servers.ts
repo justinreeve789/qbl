@@ -41,7 +41,9 @@ export async function startSite(env: Record<string, string> = {}): Promise<TestS
   const page = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>QuestLab Editor</title><link rel="stylesheet" href="/editor/main.css"></head><body><div id="app"></div><script type="module" src="/editor/main.js"></script></body></html>';
 
   const apiPort = await freePort();
-  const php = spawn('php', ['-S', `127.0.0.1:${apiPort}`, join(repo, 'apps/api/dev/server.php')], { env: { ...process.env, QBL_DEV_DATA: join(data, 'api'), ...env }, stdio: 'ignore' });
+  // Tests pick uploaded pictures by their names, so PNGs stay PNGs here unless a test asks
+  // (`QBL_PNG_TO_WEBP: 'true'`, as webp-uploads.test.ts does).
+  const php = spawn('php', ['-S', `127.0.0.1:${apiPort}`, join(repo, 'apps/api/dev/server.php')], { env: { ...process.env, QBL_DEV_DATA: join(data, 'api'), QBL_PNG_TO_WEBP: 'false', ...env }, stdio: 'ignore' });
   await waitFor(`http://127.0.0.1:${apiPort}/api/me`);
 
   const types: Record<string, string> = { '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };

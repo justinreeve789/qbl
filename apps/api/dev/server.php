@@ -15,7 +15,7 @@ if (PHP_SAPI !== 'cli-server') {
     http_response_code(500);
     exit("This is a development server. Run it with php -S.\n");
 }
-foreach (['StoreError', 'Roles', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ClassApi', 'ScenarioStore', 'ScenarioDecompiler', 'ScenarioArchive', 'EditorApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
 }
 // The rest (the voices, the HTTP client they use) as they are needed.
@@ -62,7 +62,9 @@ if (str_starts_with($path, '/scenario-assets/')) {
 }
 
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");
-$store = new ScenarioStore($pdo, "$dataDir/media", '/media');
+// PNG uploads are kept as WebP unless QBL_PNG_TO_WEBP is false (as in config/qbl.php).
+$pngToWebp = ! in_array(strtolower(trim((string) getenv('QBL_PNG_TO_WEBP'))), ['false', '0', 'off', 'no'], true);
+$store = new ScenarioStore($pdo, "$dataDir/media", '/media', $pngToWebp);
 foreach (array_merge(ScenarioStore::sqliteSchema(), App\Qbl\ActivityStore::sqliteSchema(), App\Qbl\Api\Clients::sqliteSchema(), App\Qbl\Billing\Credits::sqliteSchema(),
     App\Qbl\District\Integrations::sqliteSchema(), App\Qbl\Generation\GenerationRuns::sqliteSchema(), App\Qbl\Generation\GenerationEvents::sqliteSchema(), App\Qbl\Library\AssetLibrary::sqliteSchema()) as $sql) {
     $pdo->exec($sql);

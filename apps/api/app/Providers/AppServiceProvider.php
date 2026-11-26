@@ -45,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
             DB::connection()->getPdo(),
             config('qbl.media_dir'),
             config('qbl.media_url'),
+            (bool) config('qbl.png_to_webp', true),
         ));
         // Walks made from standing pictures (php artisan qbl:walk), drawn by Node with packages/shared's walkCycle.ts.
         $this->app->singleton(WalkMaker::class, fn () => new WalkMaker(
