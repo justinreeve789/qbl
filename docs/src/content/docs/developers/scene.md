@@ -29,7 +29,7 @@ is_intro_scene | bool   | false | Indicates if this is designated as an introduc
 background_media | array  |  | An array of media objects describing the background images for the scene.
 foreground_media | array  |  | An array of media objects describing the foreground images for the scene.
 zoom | decimal | 1.0 | A scale factor for avatars and objects on the scene.
-show_avatars | bool | true | If true, display avatars on the scene.
+show_avatars | bool | true | If true, display avatars on the scene. If false, no avatars are drawn, the player cannot walk by clicking or with the keys (walk actions aimed at the player still move them), and the camera stays where the player arrived unless a camera action moves it.
 params | array |  | A list of arbitrary parameters that may further define the scene.
 start_events | array |  | A list of events which describe actions that occur when the scene first loads.
 end_events | array |  | A list of events which describe actions that occur immediately before a jump action to another scene.

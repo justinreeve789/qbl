@@ -134,6 +134,14 @@ export class Avatar extends CharacterFigure {
     return this.hidden || this.fade <= 0;
   }
 
+  /**
+   * True while the figure is meant to be out of sight: the scene hides avatars, or an avatar action
+   * has hidden this one (from the moment it starts to fade out).
+   */
+  get concealed(): boolean {
+    return this.hidden || this.fadeTarget === 0;
+  }
+
   /** Show or hide the figure (an avatar action), fading over `duration` ms. Call tick() each frame. */
   setShown(shown: boolean, duration = 250) {
     this.fadeTarget = shown ? 1 : 0;
