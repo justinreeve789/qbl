@@ -218,6 +218,21 @@ $bad = $valid;
 $bad['steps'][2]['done_when'][] = 'q_report';
 check($has(BlueprintValidator::errors($bad, $lo), 'is a debrief question'), 'a debrief question listed in a step is caught');
 
+// Let students make (Papert): one scene where students build, with a task, known tools and the mission's items as pieces.
+$gh = $at('greenhouse', 'scenes');
+same($valid['scenes'][$gh]['build'], ['prompt' => 'Plan a new flower bed the bees will love, and label why each flower is there.', 'tools' => ['place', 'label'], 'pieces' => ['flower', 'crate']], 'tidy keeps a build\'s known tools once each');
+same(MissionDesigner::tidyScene(['key' => 'x', 'build' => ['prompt' => ' ', 'tools' => ['dance']]])['build'] ?? null, null, 'a half-filled build is dropped');
+$bad = $valid;
+$bad['scenes'][$at('orchard', 'scenes')]['build'] = $valid['scenes'][$gh]['build'];
+check($has(BlueprintValidator::errors($bad, $lo), 'more than one scene'), 'building in two scenes is caught');
+$bad = $valid;
+$bad['scenes'][$gh]['build']['pieces'] = ['flower', 'unicorn'];
+check($has(BlueprintValidator::errors($bad, $lo), '"unicorn" is not an item key'), 'a piece that is not an item is caught');
+$bad['scenes'][$gh]['build'] = ['prompt' => 'Make it nice', 'tools' => ['place']];
+check($has(BlueprintValidator::errors($bad, $lo), 'place needs pieces'), 'place with nothing to place is caught');
+$bad['scenes'][$gh]['build'] = ['prompt' => '', 'tools' => ['label']];
+check($has(BlueprintValidator::errors($bad, $lo), 'say what students are to make'), 'a build with no task is caught');
+
 // The design rules that can be counted (DesignRules), only for blueprints designed under them (approach).
 $ruled = ['approach' => DesignRules::approach([])] + $valid;
 same(BlueprintValidator::errors($ruled, $lo), [], 'the fixture follows the design rules');
@@ -255,6 +270,15 @@ same(DesignRules::approach(['opening' => 'story', 'focus' => 'nonsense']), ['ope
 same(DesignRules::approach(['opening' => 'story'], ['opening' => 'action', 'freedom' => 'open']), ['opening' => 'story', 'focus' => 'balanced', 'freedom' => 'open'], 'the teacher\'s choice wins over the aligner\'s, which wins over the default');
 same(count(DesignRules::briefLines(['opening' => 'action'], story: true)), 1, 'a story is told only how it leans between rigor and play');
 same(DesignRules::chosen(['opening' => 'action', 'focus' => 'nonsense', 'freedom' => null, 'grade' => '4']), ['opening' => 'action'], 'only known settings are kept from a form');
+
+// The constructivist mindset (Piaget, Papert): in the rules, the critic, and a thinking stage for the grade.
+check(str_contains(DesignRules::missionRules(), 'QuestLab is constructivist') && str_contains(DesignRules::missionRules(), 'Explore before explaining') && str_contains(DesignRules::missionRules(), 'Let students make (Papert)'), 'the mission rules start from the constructivist mindset and include Piaget\'s and Papert\'s rules');
+check(str_contains(DesignRules::storyRules(), 'Surprise that changes minds') && str_contains(DesignRules::criticChecklist(), 'constructivist'), 'so do the story rules and the critic\'s checklist');
+check(str_contains((string) DesignRules::stage('K'), 'ages about 4 to 7') && str_contains((string) DesignRules::stage('grade 1'), 'ages about 4 to 7'), 'kindergarten and grade 1: concrete and visible');
+check(str_contains((string) DesignRules::stage('4'), 'concrete operational') && str_contains((string) DesignRules::stage('2'), 'concrete operational'), 'grades 2 to 5: concrete operational');
+check(str_contains((string) DesignRules::stage('middle school'), 'formal thinking emerging') && str_contains((string) DesignRules::stage('HS'), 'formal operational'), 'middle school: formal thinking emerging; high school: formal operational');
+check(str_contains((string) DesignRules::stage('K-5'), 'ages about 4 to 7') && str_contains((string) DesignRules::stage('K-5'), 'more than one stage') && ! str_contains((string) DesignRules::stage('3-5'), 'more than one stage'), 'a range is designed for its youngest, and says so when it spans stages');
+same([DesignRules::stage(null), DesignRules::stage(''), DesignRules::stage('elementary')], [null, null, null], 'no stage when the grade is not given or not understood');
 $bad = $valid;
 foreach ($bad['interactions'] as &$it) {
     unset($it['resolves']);
@@ -826,6 +850,10 @@ $roots = $burrow['foreground_media'][0];
 same([$roots['position_x'], $roots['display_width'], $roots['position_y'] + $roots['display_height']], [0, 2250, 1200], 'roots run along the bottom of the burrow');
 $burrowBottom = max(array_column($burrow['walkable_areas'][0], 'y'));
 check($burrowBottom < 1200 && $burrowBottom > $roots['position_y'], 'students can walk behind them, but not out of sight');
+$built = $scenesByName['greenhouse']['building'] ?? null;
+same([$built['enabled'] ?? null, $built['tools'] ?? null, count($built['pieces'] ?? []), $built['prompt'] ?? null], [true, ['place', 'label'], 2, 'Plan a new flower bed the bees will love, and label why each flower is there.'], 'students can build in the greenhouse: the game\'s building settings, with the items\' pictures as pieces');
+same(array_map(fn ($p) => isset($assetById[$p['media_id']]), $built['pieces'] ?? []), [true, true], 'each piece is one of the mission\'s pictures');
+check(! array_filter($scenesByName, fn ($sc, $k) => $k !== 'greenhouse' && ! empty($sc['building']), ARRAY_FILTER_USE_BOTH), 'and nowhere else');
 $hive = $scenesByName['hive'];
 same($hive['foreground_media'][0]['position_x'] + $hive['foreground_media'][0]['display_width'], 2250, 'a bush stands in the hive\'s right corner');
 $door = $byShort['landing/way-greenhouse'];

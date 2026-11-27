@@ -11,7 +11,9 @@ import { Aside, Steps } from '@astrojs/starlight/components';
 
 [Designing missions that teach](/docs/educators/design-for-learning/) starts from the debrief and works backwards: objectives, questions and wrong answers. This page adds the *game* side: how a mission starts, what students do in it, how it helps them when they are stuck, and how teams work together. The rules draw on research into educational games and simulations (see [where they come from](#where-these-rules-come-from)).
 
-The 24 rules are grouped by theme, and you do not need to follow every one in every mission. Use the [checklist](#a-pre-publish-checklist) at the end as a last pass.
+All of them serve one mindset. QuestLab is **constructivist**: students build their own understanding by acting on a world and making sense of what happens (Jean Piaget), and they learn most when they make something of their own that others can see (Seymour Papert's constructionism). [How students learn](/docs/educators/how-students-learn/) explains both. When two rules seem to pull apart, choose the version that lets students find out for themselves.
+
+The 27 rules are grouped by theme, and you do not need to follow every one in every mission. Use the [checklist](#a-pre-publish-checklist) at the end as a last pass.
 
 ## The first five minutes
 
@@ -139,7 +141,37 @@ Watching real play turns accidents into choices. Ask a mix of students to play e
 
 ### 24. Let students make
 
-Helping others and changing a game is part of deep engagement. In scenes that allow it, students can add pieces, words and their own pictures, and you approve what they build before others see it. See [Student building](/docs/editor/student-building/). Remixing whole scenarios is still to come.
+Students learn most when they make something real that others can see, use or play. Papert called this constructionism. Helping others and changing a game is part of deep engagement, too. In scenes that allow it, students can add pieces, words and their own pictures, and you approve what they build before others see it. See [Student building](/docs/editor/student-building/).
+
+Give the build a task that **uses the idea**, not one that only decorates: *"Build a habitat that keeps a desert fox cool, and label what each part does."* Put it near the end, once students have met the idea. When a build doesn't work, treat it as a bug to fix, not a failure. Remixing whole scenarios is still to come.
+
+## How students build ideas
+
+These three rules come from Piaget's constructivism. See [How students learn](/docs/educators/how-students-learn/) for the theory behind them.
+
+### 25. Explore before you explain
+
+Students meet each idea by doing something with it first: handling, trying, sorting or watching it happen. Only then does a character, an observation or a glossary word give it a name. A word makes sense once there is an experience for it to stick to, so never define a word before students have met the thing it names.
+
+### 26. Let a surprise change their minds
+
+Students change their ideas when what they see doesn't fit what they expected. For each common misconception, set up a moment where the wrong idea predicts the wrong result:
+
+<Steps>
+1. Ask for a **prediction** first. Teammates may disagree, which is good.
+2. Let students **see or measure** something that doesn't fit the wrong idea.
+3. Have a character help them **build a better explanation**, by asking, not telling.
+</Steps>
+
+Feedback on an answer that comes from the misconception should point at the evidence they just saw.
+
+<Aside type="tip" title="Check it">
+For each misconception you listed, find the moment in the mission where students see it fail.
+</Aside>
+
+### 27. Ask for the reasoning the grade can do
+
+What students can reason about grows with age. Younger students reason from what they can see and touch, one feature at a time. In grades 2 to 5 they reason logically about real things they can handle and measure. From about grade 6, they start to handle hypotheses, variables and what-ifs, but many still need something concrete first. Build the puzzles, experiments and questions for your students' stage, and let a **Bonus** objective reach beyond it. The table in [How students learn](/docs/educators/how-students-learn/#thinking-grows-in-stages) gives each stage and what fits.
 
 ## A pre-publish checklist
 
@@ -150,6 +182,9 @@ Run this list before you launch. Add it to the one in <em>Designing missions tha
 - [ ] The first interactive thing appears within two minutes.
 - [ ] Scene 1 is a safe on-ramp.
 - [ ] Every scene has a verb tied to a learning goal.
+- [ ] Students do something with each idea before it is named.
+- [ ] Each misconception meets a surprise that students see for themselves.
+- [ ] Puzzles and questions fit the reasoning my students' grade can do.
 - [ ] Rewards come from mastery, not from clicking.
 - [ ] Key facts live in the world, not in walls of text.
 - [ ] Someone who knows the subject has checked the experiments and formulas.
@@ -160,6 +195,7 @@ Run this list before you launch. Add it to the one in <em>Designing missions tha
 - [ ] There is a shared goal and a payoff moment.
 - [ ] A debrief moment ends the mission, and at least one question asks students to explain why.
 - [ ] I have checked the values in my design.
+- [ ] Where it fits, students make something that uses the idea.
 - [ ] Real, varied students have played it, early and more than once.
 
 ## In the AI generator
@@ -169,6 +205,8 @@ The [AI mission generator](/docs/editor/plans-and-generator/#the-ai-mission-gene
 - **Its designer** gets the rules with its instructions. A story students watch gets the ones that fit a story: a fast start, simple first then layers, the lesson in the world, accuracy, characters who work like practitioners and make mistakes they recover from, a shared goal and a payoff, a varied cast and a closing discussion that asks why.
 - **Before anything is drawn**, it checks the rules a program can count, where they apply to every mission: something to click in the first scene from the start, an opening that is not too long, at least one optional bonus step, a debrief question, no stars for just talking to someone, and a prediction question before any experiment. A mission that breaks one goes back to be fixed.
 - **Its reviewer** (in the `critic` and `best-of` [generation methods](/docs/developers/generation-methods/)) checks the mission against the whole list and names any rule it breaks that it could reasonably have followed.
+- **The constructivist rules.** It is told QuestLab is constructivist before any rule. The brief for each mission says what thinking stage fits the grade (a range is designed for its youngest). Its designer has students do before it names, sets up a surprise for each misconception it is asked to confront, and asks for reasoning that fits the stage.
+- **A scene to build in.** Where it fits, it gives one scene, usually near the end, **Student building** with a task that uses the idea ("Plan a flower bed the bees will love, and label why each flower is there"), the tools that suit it, and the mission's own items as pieces to place. You still approve what students build. Nothing in the mission waits on a build, so it is never needed to finish. You can change or turn off the build in the scene's settings.
 - **Teamwork without roles.** Every player can do anything the others can; if you want crew roles, hand them out in class. To make teammates need each other (rule 16), it spreads clues, things to collect and measurements across scenes, so the group has to pool what it finds, and adds team tasks where they fit.
 
 **A single scene** made on its own (**✨ Generate a scene**, outside the scenario generator) is not held to these rules: it is a place to build in, and the rules are about a scenario as a whole.
@@ -186,6 +224,8 @@ Tension | Setting | Choices
 **Teacher control, or student choice?** Students steer play their own way whatever we plan. | **Student freedom** | **Guided, one path**, each step opening the next. **Some choice of order** inside a clear goal. **Open to explore**: most of it in any order, more to discover. Missions only.
 
 ## Where these rules come from
+
+The mindset behind them comes from Jean Piaget (constructivism: how children build their understanding, and how their reasoning develops) and Seymour Papert (constructionism: learning by making). See [How students learn](/docs/educators/how-students-learn/).
 
 The rules draw on research and writing about educational games and simulations by Clark Aldrich (simulations and virtual worlds), Jane McGonigal (what makes games motivating), James Paul Gee (learning principles in good games), Karl Kapp (building the content itself into the game), Kurt Squire (games as designed experiences in classrooms), Constance Steinkuehler (learning in online game communities), David Williamson Shaffer (learning to think like a professional), Ian Bogost (how a game's rules make an argument) and Mary Flanagan (human values in design).
 

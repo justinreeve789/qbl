@@ -60,6 +60,7 @@ class BlueprintCritic
         $content = [
             "The teacher asked for: $prompt",
             'Grade: '.($options['grade'] ?? 'not given').'. Subject: '.($options['subject'] ?? 'not given').'.',
+            ...(($stage = DesignRules::stage($options['grade'] ?? null)) ? [$stage] : []),
             "The mission's settings:\n- ".implode("\n- ", DesignRules::briefLines($blueprint['approach'] ?? $options)),
             "Learning objectives:\n".implode("\n", array_map(fn ($o) => "- {$o['id']}: {$o['text']}", $alignment['learning_objectives'] ?? [])),
             "Misconceptions to confront:\n- ".implode("\n- ", $alignment['misconceptions'] ?? ['(none given)']),

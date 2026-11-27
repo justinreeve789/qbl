@@ -148,6 +148,8 @@ final class BlueprintValidator
             $e[] = "Exactly one character must have guide: true (found $guides).";
         }
 
+        array_push($e, ...self::buildProblems($scenes, $items));
+
         foreach ($scenes as $key => $scene) {
             array_push($e, ...self::sceneProblems($key, $scene, Connections::ends($b)[$key] ?? []));
             if (! empty($scene['arrival'])) {
@@ -951,6 +953,49 @@ final class BlueprintValidator
                     $e[] = "$p[$i]: the guide never leaves: students report to them at the end.";
                 }
                 $gone[$who] = true;
+            }
+        }
+
+        return $e;
+    }
+
+    /**
+     * A scene where students build (Let students make, Papert): at most one per mission, with a task,
+     * tools the game knows, and pieces that are the mission's items. Nothing can wait on a build: the
+     * game's events never see one (see packages/shared/src/builds.ts).
+     */
+    public static function buildProblems(array $scenes, array $items): array
+    {
+        $e = [];
+        $building = array_filter($scenes, fn ($s) => ! empty($s['build']));
+        if (count($building) > 1) {
+            $e[] = 'Students build in more than one scene ('.implode(', ', array_keys($building)).'); keep build in the one scene where making something fits best.';
+        }
+        foreach ($building as $key => $scene) {
+            $p = "scenes.$key.build";
+            $build = (array) $scene['build'];
+            if (trim((string) ($build['prompt'] ?? '')) === '') {
+                $e[] = "$p.prompt: say what students are to make, as a task that uses the idea.";
+            } elseif (mb_strlen(trim((string) $build['prompt'])) > 300) {
+                $e[] = "$p.prompt: at most 300 characters.";
+            }
+            $tools = (array) ($build['tools'] ?? []);
+            if (! $tools) {
+                $e[] = "$p.tools: choose at least one of ".implode(', ', BlueprintSchema::BUILD_TOOLS).'.';
+            }
+            foreach ($tools as $i => $tool) {
+                if (! in_array($tool, BlueprintSchema::BUILD_TOOLS, true)) {
+                    $e[] = "$p.tools[$i]: \"$tool\" is not one of ".implode(', ', BlueprintSchema::BUILD_TOOLS).'.';
+                }
+            }
+            $pieces = array_values((array) ($build['pieces'] ?? []));
+            foreach ($pieces as $i => $piece) {
+                if (! isset($items[$piece])) {
+                    $e[] = "$p.pieces[$i]: \"$piece\" is not an item key.";
+                }
+            }
+            if (in_array('place', $tools, true) && ! $pieces) {
+                $e[] = "$p: place needs pieces (keys of the mission's items students can put down), or leave place out of tools.";
             }
         }
 
