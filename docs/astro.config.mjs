@@ -260,6 +260,7 @@ export default defineConfig({
             { label: 'The API (PHP)', slug: 'codebase/api' },
             { label: 'The data model', slug: 'codebase/data-model' },
             { label: 'Other API subsystems', slug: 'codebase/subsystems' },
+            { label: 'Curriculum standards library', slug: 'codebase/standards-library' },
             { label: 'Infrastructure and tooling', slug: 'codebase/infrastructure' },
             { label: 'Testing', slug: 'codebase/testing' },
             { label: 'Recipes', slug: 'codebase/recipes' },
