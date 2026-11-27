@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { after, before, test } from 'node:test';
 import { chromium, type Browser, type Page } from 'playwright';
 import type { Scenario } from '@qbl/shared';
@@ -7,8 +9,13 @@ import { png, startSite, type TestSite } from './servers';
 /**
  * Student building, in a real browser against the real backend classes: an author lets students
  * build in a scene and chooses a piece; a student builds there (through the API, as the game does);
- * their teacher sees the build on the Classes page, drawn in its scene, and approves it.
+ * their teacher sees the build on the Classes page, drawn in its scene, and approves it. What a
+ * hotspot has the narrator say is recorded by a stand-in for Kokoro.
  */
+let tts: Server;
+const asked: string[] = [];
+/** A few frames of MP3 that file type detection accepts. */
+const mp3 = Buffer.concat([Buffer.from('ID3\x04\x00\x00\x00\x00\x00\x00', 'latin1'), ...Array.from({ length: 6 }, () => Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x64]), Buffer.alloc(413)]))]);
 let site: TestSite;
 let browser: Browser;
 let page: Page;
@@ -33,7 +40,20 @@ async function draft(): Promise<Scenario> {
 }
 
 before(async () => {
-  site = await startSite();
+  // Kokoro-FastAPI's captioned speech: base64 audio and each word's start and end in seconds.
+  tts = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      if (req.url !== '/dev/captioned_speech') return void res.writeHead(404).end();
+      const q = JSON.parse(body) as { input: string };
+      asked.push(q.input);
+      const timestamps = q.input.split(/\s+/).map((w, i) => ({ word: w, start_time: i * 0.4, end_time: i * 0.4 + 0.3 }));
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ audio: mp3.toString('base64'), audio_format: 'mp3', timestamps }));
+    });
+  });
+  await new Promise<void>((resolve) => tts.listen(0, '127.0.0.1', resolve));
+  site = await startSite({ QL_TTS_URL: `http://127.0.0.1:${(tts.address() as AddressInfo).port}` });
   browser = await chromium.launch();
   page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   page.on('dialog', (d) => void d.accept());
@@ -58,6 +78,7 @@ before(async () => {
 after(async () => {
   await browser?.close();
   await site?.close();
+  tts?.close();
 });
 
 test('an author lets students build in a scene, with a piece to place', async () => {
@@ -115,18 +136,26 @@ test('a student builds; the teacher sees it in its scene and approves it', async
     { id: 'l1', kind: 'label', x: 600, y: 200, text: 'Bee garden', color: '#fde047' },
     { id: 'p1', kind: 'picture', x: 900, y: 500, upload_id: upload.id },
     { id: 'h1', kind: 'hotspot', x: 1200, y: 500, opens: { text: 'Bees like\npurple flowers.', upload_id: upload.id } },
+    { id: 'h2', kind: 'hotspot', x: 1500, y: 500, opens: { say: 'Long ago, bees and flowers grew up together.' } },
   ] });
   assert.equal(build.status, 200);
   assert.equal(build.body.build.status, 'pending');
+  assert.deepEqual(asked, ['Long ago, bees and flowers grew up together.'], 'what the hotspot has the narrator say is recorded when it is kept');
+  const voice = build.body.build.voices.h2 as { url: string; speech: { line: string; voice: string; words: unknown[] } };
+  assert.deepEqual([voice.speech.line, voice.speech.voice, voice.speech.words.length], ['Long ago, bees and flowers grew up together.', 'storyteller', 8], 'in the narrator’s voice, with its word times');
+  const heard = await fetch(`${site.url}${voice.url}`);
+  assert.deepEqual([heard.status, heard.headers.get('content-type')], [200, 'audio/mpeg'], 'and served by its key');
 
   await page.click('.top-nav >> text=Classes');
   await page.waitForSelector('[data-card=builds] [data-build]');
   assert.match(await page.innerText('[data-card=builds] [data-builds-filter=pending]'), /Waiting \(1\)/);
   const item = page.locator('[data-card=builds] [data-build]');
   assert.match(await item.innerText(), /Garden/);
-  assert.match(await item.innerText(), /4 things/);
-  assert.equal(await item.locator('.build-preview-box').count(), 1, 'an invisible hotspot is drawn as a marked box');
-  assert.equal(await item.locator('.build-hotspots li').innerText(), 'Bees like\npurple flowers.', 'the teacher reads what the hotspot opens');
+  assert.match(await item.innerText(), /5 things/);
+  assert.equal(await item.locator('.build-preview-box').count(), 2, 'an invisible hotspot is drawn as a marked box');
+  assert.equal(await item.locator('.build-hotspots li').first().innerText(), 'Bees like\npurple flowers.', 'the teacher reads what the hotspot opens');
+  assert.match(await item.locator('.build-hotspots li').nth(1).innerText(), /The narrator says: Long ago, bees and flowers grew up together\./, 'and what it has the narrator say');
+  assert.equal(await item.locator('.build-hotspots li').nth(1).locator('audio').getAttribute('src'), voice.url, 'with the recording to listen to');
   assert.equal(await item.locator('.build-hotspots img').count(), 1, 'and sees its picture');
   const change = new URL((await item.locator('[data-build-change]').getAttribute('href'))!);
   assert.deepEqual([change.pathname, change.searchParams.get('group'), change.searchParams.get('scene'), change.searchParams.get('edit_build')], [`/${code}`, group, String(sceneId), String(build.body.build.id)], 'Change in the game opens the build in its scene');

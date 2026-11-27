@@ -265,7 +265,13 @@ if (preg_match('#^/api/(missions|avatars|me/avatar|me/progress/reset|players/\d+
 }
 // Student building, with the same rules as the Laravel app (App\Qbl\Builds\BuildApi).
 if (str_starts_with($path, '/api/builds/')) {
-    $builds = new App\Qbl\Builds\BuildStore($pdo, '/api/builds/files');
+    // What students' hotspots have the narrator say is recorded with the same voices as the editor's (below).
+    $builds = new App\Qbl\Builds\BuildStore($pdo, '/api/builds/files', voicer: fn () => (new App\Qbl\Speech\SpeechFactory([
+        'driver' => getenv('QL_TTS_DRIVER') ?: getenv('QBL_TTS_DRIVER') ?: 'kokoro',
+        'engines' => ['kokoro' => ['class' => App\Qbl\Speech\Engines\KokoroEngine::class, 'url' => getenv('QL_TTS_URL') ?: getenv('QBL_TTS_URL') ?: 'http://localhost:8880']],
+        'voices' => __DIR__.'/../resources/speech/voices.json',
+        'cache_dir' => "$dataDir/speech",
+    ]))->voicer());
     if ($method === 'GET' && preg_match('#^/api/builds/files/([a-f0-9]{24})$#', $path, $m)) {
         $file = $builds->file($m[1]);
         if (! $file) {

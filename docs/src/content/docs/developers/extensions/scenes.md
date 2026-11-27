@@ -191,7 +191,7 @@ The spawn point a jump arrives at must not be inside a walk-in hotspot that jump
 Field | Type | Default | Notes
 ----- | ---- | ------- | -----
 enabled | boolean | false | Off: nobody builds, and nothing built is shown.
-tools | string[] | `["place", "label"]` | `place`: the pictures in `pieces`. `label`: words, up to 60 letters, in one of eight colours. `picture`: pictures the student uploads. `hotspot`: things to click that open words, a picture or both (students may upload pictures for them).
+tools | string[] | `["place", "label"]` | `place`: the pictures in `pieces`. `label`: words, up to 60 letters, in one of eight colours. `picture`: pictures the student uploads. `hotspot`: things to click that open words, a picture or both, or have the narrator speak (students may upload pictures for them).
 pieces | `{ media_id }[]` | | Images students may place, and that hotspots may look like or open. Loaded with the scene.
 max_pieces | integer | 12 | How many things one student may add here, 1 to 50.
 approve | boolean | true | A build waits for the teacher before others see it.
@@ -200,12 +200,14 @@ prompt | string | | What to make, shown when the palette opens. Up to 300 letter
 
 Students cannot build in a `story` scene. A build is a list of pieces, each with an `id`, a `kind` (`sticker`, `label`, `picture` or `hotspot`), its centre `x` and `y` in scene pixels, and optional `scale` (0.2 to 4) and `angle` (degrees, -180 to 180); a sticker names its `media_id`, a picture its `upload_id`, and a label its `text` and `color`. A sticker is drawn at its picture's size times `scale` and the scene's `zoom`; a picture is fitted into a 360-pixel square times `scale`; a label's letters are 30 pixels high times `scale` (`BUILD_LOOK`).
 
-A hotspot has a `look`: `sticker` (with `media_id`), `picture` (with `upload_id`), `label` (with `text` and `color`), or `none` (the default), an invisible square of 120 pixels times `scale`. Its `opens` says what clicking it shows: `text` (up to 500 letters; lines are kept, `<` and `>` are not) and at most one picture, `media_id` (one of `pieces`) or `upload_id` (one of the student's), and at least one of the two. Clicking it in the game opens an infobox with the words and the picture; it is not a click to walk, and it runs nothing.
+A hotspot has a `look`: `sticker` (with `media_id`), `picture` (with `upload_id`), `label` (with `text` and `color`), or `none` (the default), an invisible square of 120 pixels times `scale`. Its `opens` says what clicking it shows: `text` (up to 500 letters; lines are kept, `<` and `>` are not) at most one picture, `media_id` (one of `pieces`) or `upload_id` (one of the student's), and `say`, what the narrator says (up to 300 letters on one line, with no `<`, `>`, `{` or `}`: it is never filled in like `{{QL_PlayerName}}`); at least one of them. Clicking it in the game first shows `say` in the story box as a [`narration`](/docs/developers/actions/narration/) action would, then opens an infobox with the words and the picture; it is not a click to walk, and it runs nothing.
+
+The server records each hotspot's `say` in the scenario's narrator's voice when the build is kept (`App\Qbl\Builds\BuildVoices`, with the configured text-to-speech service), and hands the recordings to the game with the build as `voices`: `{ "<piece id>": { "url", "speech": MediaSpeech } }`. The game plays a recording only when its `speech.line` is the hotspot's `say`; otherwise, and with no narrator (`narrator_voice: "none"`) or no service, the browser's voice reads it. A save records for at most 20 seconds, stops at the first failure of the service, and leaves the rest to the next save or to the teacher's approval.
 
 ```json
 { "id": "k3p9x2ab", "kind": "hotspot", "x": 820, "y": 410, "look": "label", "text": "Read me", "color": "#fde047",
-  "opens": { "text": "Bees see purple better than red.", "upload_id": 57 } }
+  "opens": { "say": "Long ago, bees and flowers grew up together.", "text": "Bees see purple better than red.", "upload_id": 57 } }
 ```
 
-Removing an upload takes out the pictures and the hotspots that look like it; a hotspot that opened it keeps its words, or goes if it had none (`withoutUpload`).
+Removing an upload takes out the pictures and the hotspots that look like it; a hotspot that opened it keeps its words and what the narrator says, or goes if it had neither (`withoutUpload`).
 

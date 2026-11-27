@@ -6,8 +6,11 @@
  *
  *   php apps/api/tests/builds.php
  */
-foreach (['StoreError', 'Roles', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ClassApi', 'ScenarioStore', 'Builds/BuildRules', 'Builds/BuildStore', 'Builds/BuildApi'] as $class) {
+foreach (['StoreError', 'Roles', 'ProgressStore', 'ActivityStore', 'ScenarioCompiler', 'ClassStore', 'Characters/Character', 'Characters/NpcCharacter', 'Characters/AvatarCharacter', 'Apng', 'PngToWebp', 'Avatars', 'ClassApi', 'ScenarioStore', 'Builds/BuildRules', 'Builds/BuildStore', 'Builds/BuildVoices', 'Builds/BuildApi'] as $class) {
     require __DIR__."/../app/Qbl/$class.php";
+}
+foreach (['SpeechError', 'Speech', 'SpeechEngine', 'VoiceCatalog', 'Voicer'] as $class) {
+    require __DIR__."/../app/Qbl/Speech/$class.php";
 }
 
 use App\Qbl\Builds\BuildApi;
@@ -15,6 +18,11 @@ use App\Qbl\Builds\BuildRules;
 use App\Qbl\Builds\BuildStore;
 use App\Qbl\ClassStore;
 use App\Qbl\ScenarioStore;
+use App\Qbl\Speech\Speech;
+use App\Qbl\Speech\SpeechEngine;
+use App\Qbl\Speech\SpeechError;
+use App\Qbl\Speech\VoiceCatalog;
+use App\Qbl\Speech\Voicer;
 use App\Qbl\StoreError;
 
 $checks = 0;
@@ -258,12 +266,97 @@ same([$edit[0], count($edit[1]['build']['pieces'] ?? [])], [200, 1], 'PUT teach/
 same($api->handle('GET', 'teach/x/y', [], $tan)[0], 404, 'an unknown teacher route');
 same($api->handle('GET', 'files', [], $tan)[0], 404, 'files are not served here');
 
+// ------------------------------------------------------------------ hotspots the narrator reads
+
+/** A voice service that says what it was asked, with a word every 300 ms, or is down. */
+final class FakeVoices implements SpeechEngine
+{
+    public array $said = [];
+
+    public bool $down = false;
+
+    public function name(): string
+    {
+        return 'kokoro';
+    }
+
+    public function synthesize(string $text, array $voice, ?string $lang = null): Speech
+    {
+        if ($this->down) {
+            throw new SpeechError('The text-to-speech service cannot be reached.');
+        }
+        $this->said[] = [$text, $voice];
+        $words = [];
+        foreach (preg_split('/\s+/', $text) as $i => $w) {
+            $words[] = [$w, $i * 0.3, $i * 0.3 + 0.25];
+        }
+
+        return new Speech("ID3-$text", 'mp3', Speech::words($words), count($words) * 300);
+    }
+    public function voices(): array
+    {
+        return [];
+    }
+}
+
+$say = 'Long ago, a river ran here.';
+same(BuildRules::cleanSay("  Long ago,\n a <river> {ran}  here. "), 'Long ago, a river ran here.', 'what the narrator says is one plain line, with no < > { }');
+same((array) BuildRules::tidy(['id' => 's1', 'kind' => 'hotspot', 'x' => 1, 'y' => 2, 'opens' => ['say' => $say, 'zap' => 1]])['opens'], ['say' => $say], 'a hotspot may only have the narrator say something');
+same(BuildRules::withoutUpload([['id' => 's1', 'kind' => 'hotspot', 'x' => 1, 'y' => 1, 'opens' => ['say' => $say, 'upload_id' => 5]]], 5)[0]['opens'], ['say' => $say], 'removing its picture leaves what the narrator says');
+
+$engine = new FakeVoices;
+$catalog = VoiceCatalog::load(__DIR__.'/../resources/speech/voices.json');
+$voiced = new BuildStore($pdo, '/api/builds/files', $classes, fn () => new Voicer($engine, $catalog));
+$talk = ['id' => 'n1', 'kind' => 'hotspot', 'x' => 300, 'y' => 300, 'opens' => ['say' => $say]];
+$both = ['id' => 'n2', 'kind' => 'hotspot', 'x' => 500, 'y' => 300, 'look' => 'label', 'text' => 'Listen', 'opens' => ['say' => 'Frogs sing at night.', 'text' => 'Frogs sing.']];
+refused(fn () => $voiced->save($ann, $code, $group, $pond, [['opens' => ['say' => str_repeat('a', 301)]] + $talk]), 422, 'what the narrator says is not too long', 'up to 300');
+refused(fn () => $voiced->save($ann, $code, $group, $pond, [['opens' => ['say' => 'Hi {{QL_PlayerName}}']] + $talk]), 422, 'and is never filled in', '{ or }');
+$saved = $voiced->save($ann, $code, $group, $pond, [$talk, $both]);
+same($saved['pieces'][0]['opens'], ['say' => $say], 'a hotspot can have only the narrator say something');
+$voices = json_decode(json_encode($saved['voices']), true);
+same(array_keys($voices), ['n1', 'n2'], 'each is recorded when the build is kept');
+$narrator = $catalog->narrator('en');
+same([$voices['n1']['speech']['line'], $voices['n1']['speech']['voice'], $voices['n1']['speech']['engine']], [$say, $narrator, 'kokoro'], 'in the narrator\'s voice, from the hotspot\'s words');
+same(count($voices['n1']['speech']['words']), 6, 'with when each word is said');
+same($engine->said[0][1], $catalog->specFor($narrator, 'kokoro')['spec'], 'the service is asked for the narrator\'s voice');
+check((bool) preg_match('#^/api/builds/files/[a-f0-9]{24}$#', $voices['n1']['url']), 'a recording is served by an unguessable key');
+same($voiced->file(substr($voices['n1']['url'], -24)), ["ID3-$say", 'audio/mpeg'], 'and is the recording itself');
+same(count($engine->said), 2, 'two lines, two recordings');
+$voiced->save($ann, $code, $group, $pond, [$talk, $both]);
+same(count($engine->said), 2, 'keeping it again records nothing again');
+$again = $voiced->save($ann, $code, $group, $pond, [['opens' => ['say' => 'A river ran here.']] + $talk]);
+$voices2 = json_decode(json_encode($again['voices']), true);
+same([array_keys($voices2), $voices2['n1']['speech']['line'], count($engine->said)], [['n1'], 'A river ran here.', 3], 'changed words are recorded again, and a hotspot that is gone loses its recording');
+same((int) $pdo->query('SELECT COUNT(*) FROM build_voices')->fetchColumn(), 1, 'the old recordings are deleted');
+same(isset(json_decode(json_encode($voiced->forPlayer($ann, $code, $group)['builds'][0]['voices']), true)['n1']), true, 'the game is given the recordings with the builds');
+
+$engine->down = true;
+$down = $voiced->save($ann, $code, $group, $pond, [$talk]);
+same([$down['pieces'][0]['opens']['say'] ?? null, json_decode(json_encode($down['voices']), true)], [$say, []], 'with the service down the build is still kept (the browser reads it), with no stale recording');
+$engine->down = false;
+$approved = $voiced->review($tan, $down['id'], 'approved');
+same(array_keys(json_decode(json_encode($approved['voices']), true)), ['n1'], 'approving it tries the recording again');
+$voicedTeacher = $voiced->edit($tan, $down['id'], [['opens' => ['say' => 'Fish swim here.']] + $talk]);
+same(json_decode(json_encode($voicedTeacher['voices']), true)['n1']['speech']['line'], 'Fish swim here.', 'a teacher\'s change is recorded too');
+$queuedVoices = array_values(array_filter($voiced->queue($tan, 'all'), fn ($b) => $b['id'] === $down['id']))[0]['voices'] ?? null;
+same(isset(json_decode(json_encode($queuedVoices), true)['n1']), true, 'the teacher\'s list has the recording, to listen to');
+
+$pdo->exec("UPDATE scenarios SET document = json_set(document, '$.narrator_voice', 'none') WHERE code = ".$pdo->quote($code));
+$none = $voiced->save($ann, $code, $group, $pond, [['opens' => ['say' => 'No narrator.']] + $talk]);
+same(json_decode(json_encode($none['voices']), true), [], 'a scenario with no narrator records nothing (the browser reads it)');
+$pdo->exec("UPDATE scenarios SET document = json_remove(document, '$.narrator_voice') WHERE code = ".$pdo->quote($code));
+$noService = new BuildStore($pdo, '/api/builds/files', $classes, null);
+same(json_decode(json_encode($noService->save($ann, $code, $group, $pond, [$talk])['voices']), true), [], 'nor does a server with no voice service');
+$voiced->save($ann, $code, $group, $pond, [$talk]);
+same((int) $pdo->query('SELECT COUNT(*) FROM build_voices')->fetchColumn(), 1, 'its recording, again');
+
 // ------------------------------------------------------------------ starting again
 
 $classes->resetProgress(1, (int) $a['id'], 11);
 $after = $builds->forPlayer($ann, $code, $group);
 same([$after['builds'], $after['uploads']], [[], []], "starting a student's game again removes what they built and uploaded there");
 same((int) $pdo->query('SELECT COUNT(*) FROM build_uploads')->fetchColumn(), 0, 'the pictures themselves are gone');
+same((int) $pdo->query('SELECT COUNT(*) FROM build_voices')->fetchColumn(), 0, 'and the narrator\'s recordings of their hotspots');
 $builds->save($ben, $code, $group, $pond, [['id' => 'b1', 'kind' => 'label', 'x' => 1, 'y' => 1, 'text' => 'Mine']]);
 $classes->resetProgress(1, (int) $a['id'], 11);
 same(count($builds->forPlayer($ben, $code, $group)['builds']), 1, 'and leaves classmates\' builds alone');

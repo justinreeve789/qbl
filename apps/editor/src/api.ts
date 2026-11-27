@@ -1,4 +1,4 @@
-import type { BuildPiece, BuildStatus, Scenario } from '@qbl/shared';
+import type { BuildPiece, BuildStatus, BuildVoice, Scenario } from '@qbl/shared';
 
 /** A row of one of the scenario tables, as the editor API returns it. */
 export interface Row {
@@ -429,6 +429,8 @@ export interface StudentBuild {
   where: string;
   /** The instance it is in, as the game's address carries it (?group=). */
   group?: string;
+  /** The narrator's recordings of what its hotspots say, by piece id. */
+  voices?: Record<string, BuildVoice>;
   preview: {
     scene: string;
     width: number;

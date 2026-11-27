@@ -1,12 +1,12 @@
 import type * as Phaser from 'phaser';
 import {
-  BUILD_LIMITS, BUILD_LOOK, LABEL_COLORS, buildingRules, buildProblems, cleanLabel, cleanNote, newPieceId, resolveMediaUrl, tidyPiece, withoutUpload,
-  type BuildingRules, type BuildPiece, type SceneBuild,
+  BUILD_LIMITS, BUILD_LOOK, LABEL_COLORS, buildingRules, buildProblems, cleanLabel, cleanNote, cleanSay, hotspotSay, newPieceId, resolveMediaUrl,
+  tidyPiece, withoutUpload, type BuildingRules, type BuildPiece, type SceneBuild,
 } from '@qbl/shared';
 import { mediaKey } from '../core/assets';
 import { Depth } from '../core/depth';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
-import type { BuildPanelHandle, HotspotFields } from '../ui/UiPort';
+import type { BuildPanelHandle, HotspotFields, SpeakOptions } from '../ui/UiPort';
 
 type Drawn = Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Rectangle;
 
@@ -39,7 +39,8 @@ interface Editing {
  * dragged, resized and turned; walking and hotspots wait until the palette closes.
  *
  * A hotspot a student added opens its words and picture when anyone clicks it (outside build
- * mode); a click on one is not a click to walk. A teacher sees all their students' builds and can
+ * mode), after the narrator says what it has them say, in the story box (in the narrator's
+ * recorded voice once the server has recorded it); a click on one is not a click to walk. A teacher sees all their students' builds and can
  * change any of them from the same palette (`whose`).
  */
 export class BuildSystem implements SceneSystem {
@@ -177,7 +178,7 @@ export class BuildSystem implements SceneSystem {
       object.setInteractive({ useHandCursor: true });
       object.on('pointerover', () => this.pointerOver++);
       object.on('pointerout', () => (this.pointerOver = Math.max(0, this.pointerOver - 1)));
-      object.on(POINTER_DOWN, () => this.openHotspot(piece));
+      object.on(POINTER_DOWN, () => this.openHotspot(piece, build));
     }
     this.drawn.push(object);
   }
@@ -207,14 +208,42 @@ export class BuildSystem implements SceneSystem {
     return box;
   }
 
-  /** Open what a hotspot shows: its words and picture, in a box. */
-  openHotspot(piece: BuildPiece) {
+  /** Open what a hotspot shows: what the narrator says, in the story box, then its words and picture, in a box. */
+  openHotspot(piece: BuildPiece, build: SceneBuild | null = null) {
     const { ctx } = this.rt;
-    if (this.editing || ctx.ui.capturesInput || this.rt.leaving) return;
+    if (this.editing || ctx.ui.capturesInput || this.rt.leaving || this.showing) return;
+    void this.show(piece, build);
+  }
+
+  /** A hotspot's narration and box are on screen (or on their way). */
+  private showing = false;
+
+  private async show(piece: BuildPiece, build: SceneBuild | null) {
+    const { ctx } = this.rt;
     const url = this.openedPicture(piece);
     const text = piece.opens?.text ?? '';
-    if (!text && !url) return;
-    ctx.ui.infobox(noteHtml(text), [], { dismissible: true, hero: url ? { url, type: 'image' } : null, size: text ? null : 'large' });
+    const say = hotspotSay(piece);
+    if (!text && !url && !say) return;
+    this.showing = true;
+    try {
+      if (say) await ctx.ui.portraitDialogue(say, { narrator: true, duration: 0, speak: this.narratorSpeech(piece, build) }).done;
+      if ((text || url) && !this.rt.leaving) {
+        await ctx.ui.infobox(noteHtml(text), [], { dismissible: true, hero: url ? { url, type: 'image' } : null, size: text ? null : 'large' }).choice;
+      }
+    } finally {
+      this.showing = false;
+    }
+  }
+
+  /**
+   * How the narrator reads a hotspot's words: the server's recording of them when it has one of
+   * these very words (a hotspot changed since it was kept has none yet), else the browser's voice.
+   */
+  private narratorSpeech(piece: BuildPiece, build: SceneBuild | null): SpeakOptions {
+    const { scenario } = this.rt.ctx;
+    const voice = build?.voices?.[piece.id];
+    const current = voice && voice.speech.line === hotspotSay(piece);
+    return { lang: scenario.default_language, ...(current ? { audioUrl: voice.url, timings: voice.speech } : {}) };
   }
 
   private openedPicture(piece: BuildPiece): string | null {
@@ -333,9 +362,11 @@ export class BuildSystem implements SceneSystem {
         const e = this.editing;
         const picked = e?.pieces.find((p) => p.id === e.selected);
         if (!picked || picked.kind !== 'hotspot') return;
-        const url = this.openedPicture(picked);
-        // The palette is modal, so this opens over it rather than through openHotspot.
-        ctx.ui.infobox(noteHtml(picked.opens?.text ?? ''), [], { dismissible: true, hero: url ? { url, type: 'image' } : null });
+        // The palette is modal, so this opens over it rather than through openHotspot. The build
+        // as it was kept may have the narrator's recording of these words already.
+        if (this.showing) return;
+        const saved = e!.target ?? ctx.builds?.mine(this.rt.def.id) ?? null;
+        void this.show(picked, saved);
       },
       switchTo: (id) => this.switchTo(id),
       remove: () => {
@@ -380,8 +411,8 @@ export class BuildSystem implements SceneSystem {
       this.rt.ctx.ui.toast(`You can add up to ${this.rules?.maxPieces} things here.`);
       return;
     }
-    if (fields.kind === 'hotspot' && !fields.opens?.text && fields.opens?.media_id == null && fields.opens?.upload_id == null) {
-      this.rt.ctx.ui.toast('Give the hotspot words or a picture to show.');
+    if (fields.kind === 'hotspot' && !fields.opens?.text && !fields.opens?.say && fields.opens?.media_id == null && fields.opens?.upload_id == null) {
+      this.rt.ctx.ui.toast('Give the hotspot words or a picture to show, or something for the narrator to say.');
       return;
     }
     const view = this.rt.scene.cameras.main.worldView;
@@ -562,6 +593,8 @@ function hotspotFields(f: HotspotFields): Omit<BuildPiece, 'id' | 'x' | 'y' | 'k
   if (text) out.opens!.text = text;
   if (f.opens.media_id != null) out.opens!.media_id = f.opens.media_id;
   else if (f.opens.upload_id != null) out.opens!.upload_id = f.opens.upload_id;
+  const say = cleanSay(f.opens.say ?? '');
+  if (say) out.opens!.say = say;
   return out;
 }
 

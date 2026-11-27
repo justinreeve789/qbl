@@ -246,7 +246,7 @@ class Roster
         }
         $gone('teacher_student', 'DELETE FROM teacher_student WHERE student_id = ?', [$id]);
         $gone('assignment_student', 'DELETE FROM assignment_student WHERE student_id = ?', [$id]);
-        foreach (['activity_log', 'chat_messages', 'user_badges', 'progress_ledger', 'user_items', 'scenario_sessions', 'launch_tokens', 'scene_builds', 'build_uploads'] as $table) {
+        foreach (['activity_log', 'chat_messages', 'user_badges', 'progress_ledger', 'user_items', 'scenario_sessions', 'launch_tokens', 'scene_builds', 'build_uploads', 'build_voices'] as $table) {
             $gone($table, "DELETE FROM `$table` WHERE user_id = ?", [$id]);
         }
         // Messages others sent them stay (they are the senders' records), without naming them.

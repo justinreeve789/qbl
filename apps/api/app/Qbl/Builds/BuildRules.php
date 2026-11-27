@@ -4,7 +4,7 @@ namespace App\Qbl\Builds;
 
 /**
  * What students may build in a scene, and whether a build keeps to it: the server's copy of
- * packages/shared/src/builds.ts (buildingRules, buildProblems, cleanLabel, cleanNote, tidyPiece, piecePictures,
+ * packages/shared/src/builds.ts (buildingRules, buildProblems, cleanLabel, cleanNote, cleanSay, tidyPiece, piecePictures,
  * withoutUpload). The two must agree.
  */
 final class BuildRules
@@ -15,6 +15,9 @@ final class BuildRules
 
     /** The words a hotspot opens. */
     public const NOTE_LENGTH = 500;
+
+    /** The words a hotspot has the narrator say. */
+    public const SAY_LENGTH = 300;
 
     public const DEFAULT_PIECES = 12;
 
@@ -70,6 +73,22 @@ final class BuildRules
         $text = preg_replace('/[\x00-\x1f\x7f<>]/u', ' ', $text) ?? '';
 
         return mb_substr(trim(preg_replace('/\s+/u', ' ', $text) ?? ''), 0, self::LABEL_LENGTH);
+    }
+
+    /** The words a hotspot has the narrator say, as they are kept: one line, no control or markup characters and no { }, at most SAY_LENGTH. */
+    public static function cleanSay(string $text): string
+    {
+        $text = preg_replace('/[\x00-\x1f\x7f<>{}]/u', ' ', $text) ?? '';
+
+        return trim(mb_substr(trim(preg_replace('/ +/u', ' ', $text) ?? ''), 0, self::SAY_LENGTH));
+    }
+
+    /** The words a hotspot has the narrator say, or '' when it has them say nothing. */
+    public static function say(array $p): string
+    {
+        $say = ($p['kind'] ?? '') === 'hotspot' && is_array($p['opens'] ?? null) ? ($p['opens']['say'] ?? '') : '';
+
+        return is_string($say) ? $say : '';
     }
 
     /** The words a hotspot opens as they are kept: lines kept (at most two blank in a row), no other control or markup characters, at most NOTE_LENGTH. */
@@ -132,7 +151,7 @@ final class BuildRules
                 }
                 if (isset($p['opens']['upload_id']) && (int) $p['opens']['upload_id'] === $uploadId) {
                     unset($p['opens']['upload_id']);
-                    if (($p['opens']['text'] ?? '') === '') {
+                    if (($p['opens']['text'] ?? '') === '' && ($p['opens']['say'] ?? '') === '') {
                         continue;
                     }
                 }
@@ -252,9 +271,10 @@ final class BuildRules
         } elseif ($look !== 'none') {
             $problems[] = "$which has a look that is not offered.";
         }
+        $nothing = "$which needs words or a picture to open, or something for the narrator to say.";
         $o = $p['opens'] ?? null;
         if (! is_array($o) || ($o !== [] && array_is_list($o))) {
-            return [...$problems, "$which needs words or a picture to open."];
+            return [...$problems, $nothing];
         }
         $text = $o['text'] ?? null;
         if ($text !== null && (! is_string($text) || self::cleanNote($text) !== $text)) {
@@ -269,8 +289,12 @@ final class BuildRules
         } elseif ($upload !== null && ! $own($upload)) {
             $problems[] = "$which opens a picture that is not one of yours.";
         }
-        if (($text === null || $text === '') && $media === null && $upload === null) {
-            $problems[] = "$which needs words or a picture to open.";
+        $say = $o['say'] ?? null;
+        if ($say !== null && (! is_string($say) || self::cleanSay($say) !== $say)) {
+            $problems[] = "$which has the narrator say words that are too long (up to ".self::SAY_LENGTH.' letters) or have < > { or } in them.';
+        }
+        if (($text === null || $text === '') && ($say === null || $say === '') && $media === null && $upload === null) {
+            $problems[] = $nothing;
         }
 
         return $problems;
@@ -326,6 +350,10 @@ final class BuildRules
                 $opens['media_id'] = (int) $p['opens']['media_id'];
             } elseif (isset($p['opens']['upload_id'])) {
                 $opens['upload_id'] = (int) $p['opens']['upload_id'];
+            }
+            $say = self::cleanSay((string) ($p['opens']['say'] ?? ''));
+            if ($say !== '') {
+                $opens['say'] = $say;
             }
             // An object, so it reads back as one (an empty PHP array would be written as []).
             $out['opens'] = (object) $opens;

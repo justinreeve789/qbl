@@ -197,6 +197,47 @@ test('a hotspot is added, saved tidied, and opens its words and picture when cli
   assert.equal(opened.dismissible, true);
 });
 
+test('a hotspot can have the narrator say something in the story box, in the recorded voice once there is one', async () => {
+  const say = 'Long ago, a river ran here.';
+  const recorded: SceneBuild = {
+    id: 5, scene_id: 3, mine: false, author: 'Calm Heron', status: 'approved',
+    pieces: [{ id: 'n1', kind: 'hotspot', x: 300, y: 300, opens: { say, text: 'Rivers carve valleys.' } }],
+    voices: { n1: { url: 'voice-n1.mp3', speech: { text: say, line: say, voice: 'storyteller', engine: 'kokoro', words: [{ w: 'Long', s: 0, e: 200 }] } } },
+  };
+  const { g, api, system } = await game({ enabled: true, tools: ['hotspot'] }, [recorded]);
+
+  // Someone else's hotspot: the narrator first, in the story box, with the recording; then the box.
+  const spot = g.world.objects.filter((o) => o.kind === 'rectangle' && (o as { input?: unknown }).input).at(-1)!;
+  spot.emit('pointerdown');
+  const story = g.ui.stories.at(-1)!;
+  assert.deepEqual([story.text, story.narrator, story.name, story.portrait], [say, true, undefined, undefined], 'the narrator says it, with no name or close-up');
+  const spoken = g.ui.spoken.at(-1)!;
+  assert.deepEqual([spoken.text, spoken.speak.audioUrl, spoken.speak.timings?.line], [say, 'voice-n1.mp3', say], 'in the narrator’s recorded voice');
+  assert.equal(g.ui.boxes.length, 0, 'the box waits for the narrator');
+  spot.emit('pointerdown');
+  assert.equal(g.ui.stories.length, 1, 'clicking again does not start it twice');
+  story.next();
+  await settle();
+  assert.equal(g.ui.boxes.at(-1)?.html, '<p>Rivers carve valleys.</p>', 'then the words it opens');
+  g.ui.boxes.at(-1)!.choose(null as never);
+  await settle();
+
+  // Making one: what the narrator says alone is enough; it is cleaned and kept.
+  g.ui.build!.open();
+  const panel = g.ui.builder!;
+  panel.on.addHotspot({ look: 'none', opens: { say: '  Frogs {{sing}}\n at <night.  ' } });
+  const mine = system.pieces![0]!;
+  assert.deepEqual(mine.opens, { say: 'Frogs sing at night.' }, 'one plain line, with no < > { }');
+  panel.on.tryHotspot();
+  assert.deepEqual([g.ui.stories.at(-1)?.text, g.ui.spoken.at(-1)?.speak.audioUrl], ['Frogs sing at night.', undefined], 'Try it: the browser’s voice reads it until it is recorded');
+  g.ui.stories.at(-1)!.next();
+  await settle();
+  assert.equal(g.ui.boxes.length, 0, 'with nothing else to open, no box follows');
+  panel.on.done();
+  await settle();
+  assert.deepEqual(api.saved[0]!.pieces[0]!.opens, { say: 'Frogs sing at night.' });
+});
+
 test('a teacher changes a student’s build in the game, with the student’s pictures', async () => {
   const theirs: SceneBuild = {
     id: 40, scene_id: 3, mine: false, author: 'Brave Otter', status: 'pending', editable: true,

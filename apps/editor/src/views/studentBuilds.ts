@@ -58,7 +58,10 @@ export function buildPreview(build: StudentBuild): HTMLElement {
   return box;
 }
 
-/** What each of a build's hotspots opens, numbered as the preview marks them, for the teacher to read. */
+/**
+ * What each of a build's hotspots opens, numbered as the preview marks them, for the teacher to read:
+ * what it has the narrator say (with the recording to listen to, once made), its words and its picture.
+ */
 export function hotspotList(build: StudentBuild): HTMLElement | null {
   const spots = build.pieces.filter((p) => p.kind === 'hotspot');
   if (!spots.length) return null;
@@ -66,9 +69,20 @@ export function hotspotList(build: StudentBuild): HTMLElement | null {
   return h('ol', { class: 'build-hotspots' }, ...spots.map((s) => {
     const o = s.opens ?? {};
     const pic = o.media_id != null ? p.media[String(o.media_id)] : o.upload_id != null ? p.pictures[String(o.upload_id)] : null;
+    const voice = o.say ? build.voices?.[s.id] : undefined;
+    const recorded = voice && voice.speech.line === o.say;
+    const said = o.say
+      ? h('div', { class: 'build-hotspot-say' },
+        h('span', null, `🗣️ The narrator says: ${o.say}`),
+        recorded
+          ? h('audio', { controls: '', preload: 'none', src: voice.url, 'aria-label': 'What the narrator says' })
+          : h('span', { class: 'muted' }, 'Not recorded yet: the browser’s voice reads it.'))
+      : null;
     return h('li', null,
       pic?.url ? h('img', { src: pic.url, alt: o.upload_id != null ? 'A picture the student uploaded' : '' }) : null,
-      h('span', { class: o.text ? '' : 'muted' }, o.text ?? 'Only a picture.'));
+      h('div', { class: 'build-hotspot-opens' },
+        said,
+        o.text ? h('span', null, o.text) : pic ? h('span', { class: 'muted' }, 'Only a picture.') : null));
   }));
 }
 
