@@ -1,13 +1,14 @@
 import { BUILT_IN_MOVES, isPose } from '@qbl/shared';
 import type { Row } from './api';
 import { characterOf } from './characters';
-import { actionLabel, eventLabel, EVENT_KINDS, mediaLabel, mediaUrl, params, sceneLabel } from './describe';
-import { h, help, toast } from './dom';
+import { actionLabel, eventLabel, EVENT_KINDS, params, sceneLabel } from './describe';
+import { h, help } from './dom';
 import type { Store } from './store';
 import { richEditor } from './rich/editor';
 import { narratorPicker } from './views/voices';
 import type { MediaTab } from './mediaCategories';
 import { mediaChoiceButton } from './mediaPicker';
+import { soundChoiceButton, type SoundTab } from './soundPicker';
 
 /**
  * Forms are described as lists of fields and drawn by `form()`. Adding an attribute to an
@@ -44,6 +45,16 @@ export interface Field {
    * (backgrounds for a scene layer, sprites for a spritemap). Default: every file of the type.
    */
   mediaCategory?: MediaTab | ((values: Values) => MediaTab);
+  /**
+   * media (sounds): what the sound is for (music, a sound effect, a recorded voice), which the
+   * picker opens on. Default: every sound.
+   */
+  soundGroup?: SoundTab | ((values: Values) => SoundTab);
+  /**
+   * media (sounds): the sibling key that holds one of the game's own sounds (an Audio action's
+   * `sound`). The picker then offers those too; choosing one clears the file, and the reverse.
+   */
+  soundKey?: string;
   /**
    * spawn: the sibling field that holds the scene whose spawn points are listed. `here`: the scene
    * being edited, or, where there is none (a character's routine), every scene's.
@@ -329,35 +340,41 @@ function control(f: Field, values: Values, commit: Commit, ctx: FormContext): HT
     }
     case 'media': {
       const type = f.mediaType ?? 'image';
-      // Pictures and videos are chosen by looking at them, in a pop-up; sounds from a list.
+      const label = h('span', { class: 'field-label' }, f.label, help(f.hint));
+      // Pictures and videos are chosen by looking at them, sounds by listening to them: both in a pop-up.
       if (type !== 'audio') {
         const category = typeof f.mediaCategory === 'function' ? f.mediaCategory(values) : f.mediaCategory;
         return h('div', { class: `field${wide ? ' wide' : ''}`, 'data-field': f.key },
-          h('span', { class: 'field-label' }, f.label, help(f.hint)),
+          label,
           mediaChoiceButton(ctx.store, {
             label: f.label, types: type === 'visual' ? ['image', 'video'] : [type], category, selected: (value as number | null) ?? null,
             none: f.placeholder ?? (type === 'visual' ? 'None' : `No ${type === 'image' ? 'picture' : type}`),
             onChoose: (id) => set(id),
           }));
       }
-      // Sounds: a list, with an upload at the end.
-      const rows = ctx.store.rows('media').filter((m) => m.type === 'audio');
-      const file = h('input', { type: 'file', hidden: true, accept: 'audio/*' });
-      const node = idSelect(rows.map((m) => [m.id, mediaLabel(m)]), value, (v) => set(v), f.placeholder ?? 'No audio', [[NEW, 'Upload an audio file…']], () => file.click());
-      file.addEventListener('change', async () => {
-        const picked = file.files?.[0];
-        if (!picked) return;
-        try {
-          const row = await ctx.store.api.upload(ctx.store.scenarioId, picked);
-          if (row.type !== 'audio') toast(`That file is ${row.type}, not audio. It was added to the media library.`, 'error');
-          ctx.store.bundle.media.push(row);
-          if (row.type === 'audio') set(row.id);
-          ctx.store.emit(true);
-        } catch (err) {
-          toast(err instanceof Error ? err.message : 'Upload failed.', 'error');
-        }
+      const group = typeof f.soundGroup === 'function' ? f.soundGroup(values) : f.soundGroup;
+      const soundField: Field | null = f.soundKey ? { key: f.soundKey, label: f.label, kind: 'select', structural: true } : null;
+      // Drawn again here when a sound is chosen, as not every form is redrawn after a change.
+      const draw = (selected: number | null, sound: string | null): HTMLElement => soundChoiceButton(ctx.store, {
+        label: f.label, group, selected, sound, builtIn: soundField != null,
+        none: f.placeholder ?? 'No sound',
+        onChoose: (pick) => {
+          const media = pick && 'media' in pick ? pick.media : null;
+          const game = pick && 'sound' in pick ? pick.sound : null;
+          // The one being cleared first, so the last change is the one that stays.
+          if (soundField && sound && !game) commit(soundField.key, null, soundField);
+          if (selected != null && media == null) set(null);
+          if (media != null) set(media);
+          if (soundField && game) commit(soundField.key, game, soundField);
+          if (button.isConnected) {
+            const next = draw(media, game);
+            button.replaceWith(next);
+            button = next;
+          }
+        },
       });
-      return wrap(h('div', { class: 'media-pick' }, node, file));
+      let button = draw((value as number | null) ?? null, soundField ? ((values[soundField.key] as string | null | undefined) ?? null) : null);
+      return h('div', { class: `field${wide ? ' wide' : ''}`, 'data-field': f.key }, label, button);
     }
     default: {
       const input = h('input', { type: 'text', value: value ?? '', placeholder: f.placeholder, onchange: () => set(input.value) });

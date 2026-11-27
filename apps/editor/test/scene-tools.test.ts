@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
-import { png, startSite, wav, type TestSite, chooseMedia } from './servers';
+import { png, startSite, wav, type TestSite, chooseMedia, chooseSound } from './servers';
 
 /**
  * The rest of what a scene and a scenario can hold, each checked in the JSON the editor's
@@ -395,12 +395,12 @@ test('media sub-tabs, scenario music and scene music', async () => {
   await page.waitForFunction(() => document.querySelectorAll('[data-media]').length === 2);
 
   await page.click('.tabs >> text=Settings');
-  await page.locator('[data-field=music_media_id] select').selectOption({ label: 'theme.wav' });
+  await chooseSound(page.locator('[data-field=music_media_id]'), 'theme.wav');
   await type('[data-field=music_volume] input[type=number]', '0.4');
   await page.click('.tabs >> text=Scenes');
   await page.click('.scene-card >> text=Edit');
   await page.waitForSelector('.stage-overlay polygon');
-  await inspector('[data-field=music_media_id] select').selectOption({ label: 'cave.wav' });
+  await chooseSound(inspector('[data-field=music_media_id]'), 'cave.wav');
   const doc = await draft();
   const id = (name: string) => doc.assets!.find((m) => m.filename === name)!.id;
   assert.deepEqual([doc.music_media_id, doc.music_volume, doc.scenes[0]!.music_media_id], [id('theme.wav'), 0.4, id('cave.wav')]);

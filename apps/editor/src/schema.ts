@@ -1,4 +1,4 @@
-import { BENCH_OPS, BUILT_IN_SOUNDS, BUILT_IN_SOUND_NAMES, isLaunchUrlOnly, type ActionType } from '@qbl/shared';
+import { BENCH_OPS, isLaunchUrlOnly, type ActionType } from '@qbl/shared';
 import type { Field } from './fields';
 
 /**
@@ -34,7 +34,7 @@ const narration: Field[] = [
     key: 'narrate', label: 'Read aloud', kind: 'tristate', placeholder: 'As the scenario’s setting says', options: [['true', 'Yes: read this aloud'], ['false', 'No: never read this aloud']],
     hint: 'The browser’s voice reads the text and each word lights up as it is spoken. Players can switch reading aloud off for themselves. A character’s voice (pitch, pace) is set on the Characters page.',
   },
-  { key: 'narration_media_id', label: 'Recording to play instead', kind: 'media', mediaType: 'audio', placeholder: 'The browser’s voice', hint: 'A recording of this text. Recordings made with a character’s voice (Characters, “Record voices”) light each word as it is said; others light the words at an even pace over their length.' },
+  { key: 'narration_media_id', label: 'Recording to play instead', kind: 'media', mediaType: 'audio', soundGroup: 'voice', placeholder: 'The browser’s voice', hint: 'A recording of this text. Recordings made with a character’s voice (Characters, “Record voices”) light each word as it is said; others light the words at an even pace over their length.' },
 ];
 
 const spritemap: Field[] = [
@@ -137,11 +137,9 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
     label: 'Audio',
     about: 'Play a sound, or background music.',
     fields: [
-      { key: 'media_id', label: 'Sound', kind: 'media', mediaType: 'audio', wide: true, when: (v) => !v.sound },
       {
-        key: 'sound', label: 'Or one of the game’s own sounds', kind: 'select', wide: true, structural: true, placeholder: 'None: play the sound file',
-        options: BUILT_IN_SOUND_NAMES.map((n) => [n, `${BUILT_IN_SOUNDS[n].icon} ${BUILT_IN_SOUNDS[n].label}${BUILT_IN_SOUNDS[n].loop ? ' (goes on: loop it)' : ''}`] as const),
-        hint: 'Made by the game as it plays, with no file: thunder, a car going by, a door, birds. Sounds that go on by themselves (rain, a river) play for a few seconds, or until stopped with Loop ticked.',
+        key: 'media_id', label: 'Sound', kind: 'media', mediaType: 'audio', wide: true, soundKey: 'sound', soundGroup: (v) => (v.persist ? 'music' : 'effect'), placeholder: 'No sound',
+        hint: 'A sound file of the scenario, or one of the game’s own sounds (thunder, a car going by, a door, birds), made as it plays with no file. Sounds that go on by themselves (rain, a river) play for a few seconds, or until stopped with Loop ticked.',
       },
       { key: 'volume', label: 'Volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '1', slider: { min: 0, max: 1 } },
       { key: 'repeat', label: 'Loop', kind: 'bool' },
@@ -533,7 +531,7 @@ export const SCENARIO_FIELDS: Field[] = [
 
 /** Kept in the scenario's `settings` column. */
 export const SCENARIO_SETTINGS_FIELDS: Field[] = [
-  { key: 'music_media_id', label: 'Background music', kind: 'media', mediaType: 'audio', hint: 'Plays in every scene that does not have its own. Events can change it with an Audio action marked as background music.' },
+  { key: 'music_media_id', label: 'Background music', kind: 'media', mediaType: 'audio', soundGroup: 'music', placeholder: 'No music', hint: 'Plays in every scene that does not have its own. Events can change it with an Audio action marked as background music.' },
   { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: '0.5', slider: { min: 0, max: 1 } },
   {
     key: 'visibility', label: 'Who can play it', kind: 'select', placeholder: 'Everyone: it is on every player’s missions page', wide: true,
@@ -582,7 +580,7 @@ export const SCENE_FIELDS: Field[] = [
 
 /** Kept in the scene's `params` column. */
 export const SCENE_MUSIC_FIELDS: Field[] = [
-  { key: 'music_media_id', label: 'Background music for this scene', kind: 'media', mediaType: 'audio', hint: 'Leave empty to use the scenario’s music (Settings).' },
+  { key: 'music_media_id', label: 'Background music for this scene', kind: 'media', mediaType: 'audio', soundGroup: 'music', placeholder: 'The scenario’s music', hint: 'Leave empty to use the scenario’s music (Settings).' },
   { key: 'music_volume', label: 'Music volume (0 to 1)', kind: 'number', min: 0, max: 1, step: 0.05, placeholder: 'The scenario’s', slider: { min: 0, max: 1 } },
   {
     key: 'team_only', label: 'Who players see here', kind: 'tristate', wide: true, placeholder: 'As the scene’s group says (everyone, if it has none)',

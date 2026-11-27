@@ -4,7 +4,7 @@ import { after, before, test } from 'node:test';
 import { normalizeScenario, validateScenario, type Scenario } from '@qbl/shared';
 import { chromium, type Browser, type Page } from 'playwright';
 import { Game } from '../../client/test/harness';
-import { png, startSite, wav, type TestSite, chooseMedia } from './servers';
+import { png, startSite, wav, type TestSite, chooseMedia, chooseSound } from './servers';
 
 /**
  * The editor, end to end, in a real browser against the real backend classes:
@@ -176,7 +176,7 @@ test('add a start event with background music; edit and delete actions', async (
   await type('[data-field=shortname] input', 'arrive');
   await inspector('.add-action').selectOption('audio');
   await page.waitForSelector('details.action[open]');
-  await inspector('[data-field=media_id] select').selectOption({ label: 'music.wav' });
+  await chooseSound(inspector('[data-field=media_id]'), 'music.wav');
   await inspector('[data-field=repeat] input').check();
   await inspector('[data-field=persist] input').check();
   await inspector('.add-action').selectOption('text_overlay');
