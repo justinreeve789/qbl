@@ -92,6 +92,8 @@ The generator paints a scene's water as a flat chroma colour, cuts it out and pu
 
 **`water_lights`** (kept in the scene's `layout`): light under water, in a box of the scene, drawn live on the GPU (`WaterLightSystem` in the client; the shaders are `packages/shared/src/waterLightShaders.ts`, which the editor's canvas also runs to preview it). Nothing is downloaded, and it never visibly repeats. `ripples` is the bright web of light dancing on the floor of a pool: cells whose walls light up, two webs moving different ways, bent by a slow wave, in a true perspective (smaller toward the top of the box). It is drawn just above the floor art, behind every figure. `shafts` are beams of light slanting down from the surface, drifting, brightening and fading, drawn in front of the figures. Both are added to what is under them (the ADD blend), so they only brighten.
 
+Rippling light also falls on the people and things standing in it: every picture between the floor and the foreground (avatars, characters, items, critters) whose bounds overlap the light's box gets a Phaser filter on its own picture (`systems/waterLightFilter.ts`, shader `RIPPLES_ON_FIGURE_FRAG`), so only the picture is lit, never the air around it. It runs the floor's own pattern (`ripplesAt`), at the same moment. Someone standing up is lit by the light where their feet are (the bottom of the picture), carried up the body and stretched as on a wall, with the pattern moved so it is not mistaken for the floor behind them, and the light brightens their own colours with a little white, plus an even wash. Something lying on the floor (depth below `Depth.floor + 100`: background-placed items and hotspots) is lit as the floor is, so the pattern carries on across it. Who stands in the light is looked at again every 120 ms. A filter is only drawn while it is on, so figures out of the light cost nothing. Only with WebGL.
+
 Parameter | Type | Default | Description
 --------- | ---- | ------- | -----------
 x, y, width, height | decimal | | The box.
@@ -104,6 +106,7 @@ tilt | decimal | 60 | Ripples: how far the floor leans away, 0 (seen from above)
 spread | decimal | 35 | Shafts: how much they fan out from above, 0 (side by side) to 100.
 edge | string | soft | `soft`: fades out at the box's edges. `oval`: in an oval.
 shape | array | | Ripples only: an outline of its own, `[{x, y}, ...]` in scene pixels, 3 to 16 corners. The light fades out softly inside it and `edge` does not apply; the box is kept as its bounds (the game draws over the outline's bounds either way). The shader takes the corners as `uPoly` (two to a vec4) and `uCorners`.
+figures | decimal | 100 | Ripples only: how strongly they light the people and things standing in them, in percent of their brightness on the floor. 0: only the floor. Shafts are in front of everyone and light them anyway.
 conditions | array | | On only while all of these hold; it fades in and out (as a light does). None: always on.
 name | string | | For the editor.
 

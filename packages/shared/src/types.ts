@@ -1440,6 +1440,12 @@ export interface SceneWaterLight {
    * at its edges, and `edge` does not apply. The box (x, y, width, height) is the outline's bounds.
    */
   shape?: Point[] | null;
+  /**
+   * Ripples: how strongly they light the people and things standing in them (avatars, characters,
+   * items, critters), in percent of their brightness on the floor. 0 lights only the floor. Default 100.
+   * Shafts are drawn in front of everyone, so they light them anyway.
+   */
+  figures?: number;
   /** On only while all of these hold. It fades in and out as variables change. None: always on. */
   conditions?: Condition[] | null;
 }

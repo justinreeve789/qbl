@@ -22,6 +22,8 @@ export interface WaterLightSettings {
   /** Shafts: 0 to 1. */
   spread: number;
   edge: 'soft' | 'oval';
+  /** Ripples: how strongly they light the people and things standing in them, 0 to 1 (of strength). */
+  figures: number;
 }
 
 const DEFAULTS: Record<WaterLightKind, { strength: number; size: number }> = {
@@ -44,6 +46,7 @@ export function waterLightSettings(w: SceneWaterLight): WaterLightSettings {
     tilt: clamp(num(w.tilt, 60), 0, 100) / 100,
     spread: clamp(num(w.spread, 35), 0, 100) / 100,
     edge: w.edge === 'oval' ? 'oval' : 'soft',
+    figures: kind === 'ripples' ? clamp(num(w.figures, 100), 0, 100) / 100 : 0,
   };
 }
 

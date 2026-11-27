@@ -51,8 +51,15 @@ float edgeFade(float u, float v) {
  * where two cells meet. Two webs of different sizes moving different ways, their walls bent by a
  * slow wave, make the light merge and split as real caustics do. The floor leans away: cells grow
  * smaller toward the top of the box (a true perspective, so the far floor is not stretched).
+ *
+ * `ripplesAt(u, v, lift, shift)` is the light at a point of the floor (u, v from 0 to 1 across the box, v 0
+ * at its top), before its strength: both the floor (RIPPLES_FRAG) and the people and things standing
+ * on it (RIPPLES_ON_FIGURE_FRAG) are lit by it, so the light on them is the light on the floor.
+ * `lift` is how far above the floor, in scene pixels, a point of someone standing there is, and
+ * `shift` moves the pattern (in ripples): on a body it is moved, so the light on it is not the floor
+ * behind it carried on, which would make it look see-through.
  */
-export const RIPPLES_FRAG = `${HEAD}
+const RIPPLES_LIB = `
 vec2 hash2(vec2 p) {
   p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
   return fract(sin(p) * 43758.5453);
@@ -109,13 +116,11 @@ float walls(vec2 p, float t) {
   return d2 - d1;
 }
 
-void main() {
-  float u = outTexCoord.x;
-  float v = 1.0 - outTexCoord.y; // 0 at the top (far), 1 at the bottom (near)
+float ripplesAt(float u, float v, float lift, vec2 shift) {
   float lean = uShape * 0.75;
   float depth = (1.0 - lean) + lean * v; // 1 at the front, smaller further off
   float z = 1.0 / depth;
-  vec2 p = vec2((u - 0.5) * uBox.x * z, (v - 1.0) * uBox.y * z) / uSize;
+  vec2 p = vec2((u - 0.5) * uBox.x * z, ((v - 1.0) * uBox.y - lift) * z) / uSize + shift;
   float t = uTime;
   // Bend the walls with two slow waves: real caustics are never straight.
   p += 0.32 * vec2(sin(p.y * 1.7 + t * 0.7), sin(p.x * 1.5 - t * 0.6));
@@ -134,8 +139,67 @@ void main() {
 
   float far = mix(1.0, 0.55 + 0.45 * v, uShape);
   float edge = uCorners >= 3.0 ? shapeFade(vec2(u, v) * uBox) : edgeFade(u, v);
-  float alpha = clamp(light, 0.0, 1.0) * edge * far * uColor.a;
+  return clamp(light, 0.0, 1.0) * edge * far;
+}
+`;
+
+export const RIPPLES_FRAG = `${HEAD}${RIPPLES_LIB}
+void main() {
+  float u = outTexCoord.x;
+  float v = 1.0 - outTexCoord.y; // 0 at the top (far), 1 at the bottom (near)
+  float alpha = ripplesAt(u, v, 0.0, vec2(0.0)) * uColor.a;
   gl_FragColor = vec4(uColor.rgb * alpha, alpha);
+}
+`;
+
+/**
+ * The rippling light on someone or something standing in it: a Phaser filter (apps/client
+ * waterLightFilter.ts) on a figure's own picture, so only the picture is lit, never the air around it.
+ * The floor's light is behind every figure, so without this they would stand in it unlit.
+ *
+ * Someone standing up is lit by the light where their feet are, carried up their body and stretched
+ * as light is on an upright surface, and brightening their own colours; something lying on the floor
+ * (uFlat) by the floor's light under each point of it, so it carries on the floor's pattern. A little
+ * of the light washes evenly over whoever stands in it, so they look lit between the bright lines too.
+ *
+ * Uniforms, besides those of the ripples (uColor.a is the strength on figures):
+ * - uMainSampler: the figure's picture, premultiplied.
+ * - uArea: the top left of the light's box, in scene pixels.
+ * - uRect: the figure's picture in the scene (x, y, width, height); uFlipX 1 when it is mirrored.
+ * - uFeet: where its feet are (the bottom of its picture), in scene pixels.
+ * - uFlat: 1 for something lying on the floor, 0 for someone standing.
+ */
+export const RIPPLES_ON_FIGURE_FRAG = `${HEAD}
+uniform sampler2D uMainSampler;
+uniform vec2 uArea;
+uniform vec4 uRect;
+uniform float uFeet;
+uniform float uFlat;
+uniform float uFlipX;
+${RIPPLES_LIB}
+void main() {
+  vec4 picture = texture2D(uMainSampler, outTexCoord);
+  float across = uFlipX > 0.5 ? 1.0 - outTexCoord.x : outTexCoord.x;
+  vec2 at = vec2(uRect.x + across * uRect.z, uRect.y + (1.0 - outTexCoord.y) * uRect.w);
+  float u = (at.x - uArea.x) / uBox.x;
+  float lift = uFeet - at.y;
+  float v = (uFlat > 0.5 ? at.y : uFeet) - uArea.y;
+  v /= uBox.y;
+  vec3 added = vec3(0.0);
+  if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0) {
+    if (uFlat > 0.5) {
+      // Lying on the floor: lit just as the floor is, so it carries the floor's light on.
+      added = uColor.rgb * (ripplesAt(u, v, 0.0, vec2(0.0)) * uColor.a * picture.a);
+    } else {
+      // Standing up: the light runs up the body slower than across, stretched as on a wall, with an
+      // even wash so they look lit between the bright lines too. It brightens their own colours, as
+      // light on a coloured surface does, with only a little white, so they never look pale or ghostly.
+      float wash = uCorners >= 3.0 ? shapeFade(vec2(u, v) * uBox) : edgeFade(u, v);
+      float light = (ripplesAt(u, v, lift * 0.6, vec2(13.7, 7.9)) + 0.15 * wash) * uColor.a;
+      added = uColor.rgb * light * (1.1 * picture.rgb + 0.1 * picture.a);
+    }
+  }
+  gl_FragColor = vec4(picture.rgb + added, picture.a);
 }
 `;
 
