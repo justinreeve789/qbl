@@ -321,10 +321,18 @@ export class SceneEngine {
    */
   cancelEvent(eventId: Id): void {
     const run = this.runs.get(eventId);
-    if (!run) return;
-    this.runs.delete(eventId);
-    this.cancelRun(run);
+    if (run) {
+      this.runs.delete(eventId);
+      this.cancelRun(run);
+    }
+    // What it left up after its actions ran out: a looping spritemap or sound, a picture with no
+    // duration. The event has finished, but these are still its own.
+    for (const h of [...(this.shownBy.get(eventId) ?? [])]) h.cancel();
+    this.shownBy.delete(eventId);
   }
+
+  /** What each event has put up that is still showing or playing, whether or not the event is still running. */
+  private shownBy = new Map<Id, Set<ActionHandle>>();
 
   /** Run end events, then ask the host to change scene. */
   leave(sceneId: Id, spawnPoint?: string): Promise<void> {
@@ -348,6 +356,7 @@ export class SceneEngine {
     for (const h of [...this.actions.values()]) h.cancel();
     this.actions.clear();
     this.runs.clear();
+    this.shownBy.clear();
   }
 
   private cancelRun(run: Run): void {
@@ -361,8 +370,14 @@ export class SceneEngine {
     this.actions.get(action.id)?.cancel();
     this.actions.set(action.id, handle);
     run.handles.add(handle);
+    const eventId = run.event.id;
+    let shown = this.shownBy.get(eventId);
+    if (!shown) this.shownBy.set(eventId, (shown = new Set()));
+    shown.add(handle);
     void handle.done.finally(() => {
       run.handles.delete(handle);
+      const still = this.shownBy.get(eventId);
+      if (still?.delete(handle) && still.size === 0) this.shownBy.delete(eventId);
       if (this.actions.get(action.id) === handle) this.actions.delete(action.id);
     });
   }

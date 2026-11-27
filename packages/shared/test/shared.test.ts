@@ -851,6 +851,24 @@ test('cancel_event naming its own event ends it there; a stopped event frees the
   assert.ok(!engine.hotspotsBlocked);
 });
 
+test('cancel_event takes down a looping spritemap and sound an event left playing after it finished', async () => {
+  const { engine, host } = setup({
+    indirect_events: [
+      ev(10, [
+        { id: 11, type: 'spritemap', media_id: 1, position_x: 0, position_y: 0 },
+        { id: 12, type: 'audio', media_id: 1, repeat: true },
+      ]),
+      ev(20, [{ id: 21, type: 'cancel_event', target_event_id: 10 }]),
+    ],
+  });
+  await engine.triggerById(10);
+  assert.ok(!engine.isRunning(10), 'nothing holds the event up: it has finished');
+  assert.ok(!host.log.includes('cancel:11') && !host.log.includes('cancel:12'), 'but both are still going');
+  await engine.triggerById(20);
+  assert.ok(host.log.includes('cancel:11'), 'the spritemap is taken away');
+  assert.ok(host.log.includes('cancel:12'), 'the sound stops');
+});
+
 test('a shared cancel_event takes down only what the watcher is shown of that event', async () => {
   const scene = {
     indirect_events: [
