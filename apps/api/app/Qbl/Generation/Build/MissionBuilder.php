@@ -988,7 +988,39 @@ class MissionBuilder
             ], fn ($v) => $v !== null) : null,
             'atmosphere' => $scene['atmosphere'] ?? null,
             'weather' => $weather ? ['kind' => $weather['kind'], 'intensity' => BlueprintSchema::INTENSITY[$weather['intensity'] ?? 'steady'] ?? 0.6] : null,
+            'building' => $this->building($scene),
         ]) ?: null;
+    }
+
+    /**
+     * Where students build something of their own (Let students make, Papert): the game's scene.building
+     * (packages/shared/src/builds.ts), with the mission's item pictures as the pieces to place. The
+     * teacher approves builds before others see them. Place without a piece that has a picture is left
+     * out, and a build with no tool left is no build.
+     */
+    protected function building(array $scene): ?array
+    {
+        $build = $scene['build'] ?? null;
+        if (! is_array($build)) {
+            return null;
+        }
+        $pieces = [];
+        foreach (array_unique((array) ($build['pieces'] ?? [])) as $key) {
+            if ($mediaId = $this->itemMedia[$key][0] ?? null) {
+                $pieces[] = ['media_id' => $mediaId];
+            }
+        }
+        $tools = array_values(array_filter(array_unique((array) ($build['tools'] ?? [])), fn ($t) => in_array($t, BlueprintSchema::BUILD_TOOLS, true) && ($t !== 'place' || $pieces)));
+        if (! $tools) {
+            return null;
+        }
+
+        return array_filter([
+            'enabled' => true,
+            'tools' => $tools,
+            'pieces' => $pieces ?: null,
+            'prompt' => mb_substr(trim((string) ($build['prompt'] ?? '')), 0, 300),
+        ], fn ($v) => $v !== null && $v !== '');
     }
 
     /**

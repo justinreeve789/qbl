@@ -47,6 +47,7 @@ final class OutlineStep extends Step
                 "The teacher asked for: $run->prompt",
                 'Grade: '.($run->options['grade'] ?? 'not given').'. Players together: '.($run->options['min_players'] ?? 2).'-'.($run->options['max_players'] ?? 6).'. '
                     .(isset($run->options['scenes']) ? "Scenes: {$run->options['scenes']}. " : '').(isset($run->options['minutes']) ? "About {$run->options['minutes']} minutes. " : ''),
+                ...(($stage = DesignRules::stage($run->options['grade'] ?? null)) ? [$stage] : []),
                 "Learning objectives:\n".implode("\n", array_map(fn ($o) => "- {$o['id']}: {$o['text']}", $run->alignment['learning_objectives'] ?? [])),
                 "Misconceptions to confront:\n- ".implode("\n- ", $run->alignment['misconceptions'] ?? ['(none given)']),
                 ...(! empty($run->options['notes']) ? ["The teacher's notes: {$run->options['notes']}"] : []),
@@ -92,7 +93,9 @@ final class OutlineStep extends Step
     what happens there and what is learned; 2 to 4 puzzles that can only be solved by using the idea being
     taught (not by reading about it); one twist that raises the stakes; a moment where a common
     misconception is tried and seen to fail; and a finale where the players' understanding saves the day.
-    Keep it playful, concrete and right for the grade.
+    Students find each idea out by doing something before anyone names it. Where it fits, one scene near
+    the end lets them build something of their own that uses the idea (a habitat, a labelled diagram, a
+    poster). Keep it playful, concrete and right for the grade and its thinking stage.
     TXT;
 
     private const SCHEMA = [

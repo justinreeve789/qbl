@@ -86,6 +86,9 @@ final class BlueprintSchema
 
     public const WIDTHS = ['normal', 'wide'];
 
+    /** What a mission's build scene can let students use (the game's BUILD_TOOLS, packages/shared/src/builds.ts). */
+    public const BUILD_TOOLS = ['place', 'label', 'picture', 'hotspot'];
+
     public const ITEM_KINDS = ['collectible', 'tool', 'evidence', 'prop', 'vehicle'];
 
     public const EDGES = ['left', 'right', 'top', 'bottom'];
@@ -229,6 +232,11 @@ final class BlueprintSchema
                             'text' => $text('What the student notices, as their own thought: "Someone lost a boot. Something is growing in it!"', 160),
                             'placement' => ['type' => 'string', 'enum' => ['back', 'ground']],
                         ]]],
+                        'build' => ['type' => 'object', 'required' => ['prompt', 'tools'], 'description' => 'Optional, in at most one scene, usually near the end (Let students make): students build something of their own here that uses what they learned, from a Build button. What they build is shown to others once the teacher approves it; no step can wait on it.', 'properties' => [
+                            'prompt' => $text('What to make, as a task that uses the idea: "Build a habitat that keeps a desert fox cool, and label what each part does."', 300),
+                            'tools' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 4, 'items' => ['type' => 'string', 'enum' => self::BUILD_TOOLS], 'description' => 'place: put down pieces chosen from the mission\'s items (pieces). label: write short signs and labels. picture: hang pictures they made in another app. hotspot: add something to click that opens their own words (clues for classmates, a guided tour).'],
+                            'pieces' => ['type' => 'array', 'maxItems' => 12, 'items' => $key, 'description' => 'For place: keys of the mission\'s items students can put down here.'],
+                        ]],
                         'ambient' => ['type' => 'array', 'maxItems' => 3, 'description' => 'Optional: a little life that has nothing to do with the lesson, coming and going now and then on each student\'s screen: birds that land, peck about and fly off; a squirrel that darts about and runs up a tree; a rabbit that pops out of a bush, sits twitching its nose and hops into another; a cat that strolls by; fish that swim past; a car driving by. Shy animals scatter early when anyone comes near (birds take off, the squirrel bolts up its tree, the rabbit dives into the nearest bush). One or two in most outdoor scenes.', 'items' => [
                             'type' => 'object', 'required' => ['key', 'look', 'motion', 'size_cm'],
                             'properties' => [

@@ -56,6 +56,7 @@ export default defineConfig({
           label: 'For educators',
           items: [
             { label: 'Why teach with QuestLab', slug: 'educators' },
+            { label: 'How students learn', slug: 'educators/how-students-learn' },
             { label: 'You are in the room: facilitating', slug: 'educators/facilitation' },
             { label: 'A class period, step by step', slug: 'educators/lesson-plan' },
             { label: 'Maximizing learning', slug: 'educators/maximize-learning' },

@@ -409,6 +409,9 @@ class MissionDesigner
                 $lines[] = "$label: {$options[$k]}";
             }
         }
+        if ($stage = DesignRules::stage($options['grade'] ?? null)) {
+            $lines[] = $stage;
+        }
         $min = (int) ($options['min_players'] ?? 2);
         $lines[] = sprintf('Players: %d to %d students together.', $min, $options['max_players'] ?? 6);
         if ($min < 2) {
@@ -808,6 +811,17 @@ class MissionDesigner
                 unset($s[$k]);
             }
         }
+        // A place to build: known tools, once each; pieces as keys. Half-filled (no task) is no build.
+        if (isset($s['build'])) {
+            $build = is_array($s['build']) ? $s['build'] : [];
+            $tools = array_values(array_unique(array_filter((array) ($build['tools'] ?? []), fn ($t) => in_array($t, BlueprintSchema::BUILD_TOOLS, true))));
+            $pieces = array_values(array_unique(array_filter((array) ($build['pieces'] ?? []), fn ($p) => is_string($p) && trim($p) !== '')));
+            if (trim((string) ($build['prompt'] ?? '')) === '' && ! $tools) {
+                unset($s['build']);
+            } else {
+                $s['build'] = ['prompt' => trim((string) ($build['prompt'] ?? '')), 'tools' => $tools] + ($pieces ? ['pieces' => $pieces] : []);
+            }
+        }
         if (isset($s['ambient'])) {
             $s['ambient'] = array_values(array_filter((array) $s['ambient'], fn ($a) => is_array($a) && ! empty($a['look'])));
             if (! $s['ambient']) {
@@ -1033,6 +1047,9 @@ class MissionDesigner
             if (! empty($options[$k])) {
                 $lines[] = "$label: {$options[$k]}";
             }
+        }
+        if ($stage = DesignRules::stage($options['grade'] ?? null)) {
+            $lines[] = $stage;
         }
         if (! empty($options['scenes'])) {
             $lines[] = "Number of scenes: exactly {$options['scenes']}.";

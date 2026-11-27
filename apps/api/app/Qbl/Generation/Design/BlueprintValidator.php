@@ -148,6 +148,8 @@ final class BlueprintValidator
             $e[] = "Exactly one character must have guide: true (found $guides).";
         }
 
+        array_push($e, ...self::buildProblems($scenes, $items));
+
         foreach ($scenes as $key => $scene) {
             array_push($e, ...self::sceneProblems($key, $scene, Connections::ends($b)[$key] ?? []));
             if (! empty($scene['arrival'])) {
@@ -611,8 +613,11 @@ final class BlueprintValidator
      */
     /**
      * The design rules that a program can check (the rest are in the designer's instructions and the
-     * critic's checklist): something to do in the start scene from the first moment, an opening no
-     * longer than the mission's setting allows, and an optional bonus step.
+     * critic's checklist, applied with judgement): something to do in the start scene from the first
+     * moment, an opening no longer than the mission's setting allows, an optional bonus step, a debrief
+     * question, no stars for conversations, and a prediction question where there is an experiment.
+     * Each is one that fits every mission it is asked of; rules that only fit some topics are left to
+     * the designer's and the critic's judgement.
      *
      * @return string[]
      */
@@ -634,6 +639,22 @@ final class BlueprintValidator
         }
         if ($steps && ! array_filter($steps, fn ($s) => ! empty($s['optional']))) {
             $e[] = 'Hard but learnable: add one optional bonus step (optional: true) that is genuinely harder than the rest: a tougher challenge, a hidden discovery or a deeper question.';
+        }
+        // Only where the rule clearly applies: every mission ends with a debrief, so it has a debrief question.
+        if (! array_filter($interactions, fn ($it) => ! empty($it['at_report']))) {
+            $e[] = 'End with an after-action review: add at least one debrief question (a question with at_report: true) that asks students why, or where they would see this in real life, not to recall a word.';
+        }
+        // Rewards come from mastery: never stars for a conversation.
+        foreach ($interactions as $key => $it) {
+            if (($it['type'] ?? '') === 'talk' && (int) ($it['award']['stars'] ?? 0) > 0) {
+                $e[] = "Rewards come from mastery, not clicking: interactions.$key is a conversation and gives stars. Give its stars to a puzzle, an experiment or a question instead (or set them to 0).";
+            }
+        }
+        // Shared sense-making, where there is something to predict: a mission with an experiment asks the crew what they expect first.
+        $experiments = array_filter($interactions, fn ($it) => ($it['type'] ?? '') === 'experiment');
+        $predicts = array_filter($interactions, fn ($it) => ($it['type'] ?? '') === 'question' && ($it['question']['purpose'] ?? 'check') === 'predict');
+        if ($experiments && ! $predicts) {
+            $e[] = 'Shared sense-making: this mission has an experiment ('.implode(', ', array_keys($experiments)).') but no prediction question. Before it, add a question with purpose: predict that asks the crew what they think will happen.';
         }
 
         return $e;
@@ -932,6 +953,49 @@ final class BlueprintValidator
                     $e[] = "$p[$i]: the guide never leaves: students report to them at the end.";
                 }
                 $gone[$who] = true;
+            }
+        }
+
+        return $e;
+    }
+
+    /**
+     * A scene where students build (Let students make, Papert): at most one per mission, with a task,
+     * tools the game knows, and pieces that are the mission's items. Nothing can wait on a build: the
+     * game's events never see one (see packages/shared/src/builds.ts).
+     */
+    public static function buildProblems(array $scenes, array $items): array
+    {
+        $e = [];
+        $building = array_filter($scenes, fn ($s) => ! empty($s['build']));
+        if (count($building) > 1) {
+            $e[] = 'Students build in more than one scene ('.implode(', ', array_keys($building)).'); keep build in the one scene where making something fits best.';
+        }
+        foreach ($building as $key => $scene) {
+            $p = "scenes.$key.build";
+            $build = (array) $scene['build'];
+            if (trim((string) ($build['prompt'] ?? '')) === '') {
+                $e[] = "$p.prompt: say what students are to make, as a task that uses the idea.";
+            } elseif (mb_strlen(trim((string) $build['prompt'])) > 300) {
+                $e[] = "$p.prompt: at most 300 characters.";
+            }
+            $tools = (array) ($build['tools'] ?? []);
+            if (! $tools) {
+                $e[] = "$p.tools: choose at least one of ".implode(', ', BlueprintSchema::BUILD_TOOLS).'.';
+            }
+            foreach ($tools as $i => $tool) {
+                if (! in_array($tool, BlueprintSchema::BUILD_TOOLS, true)) {
+                    $e[] = "$p.tools[$i]: \"$tool\" is not one of ".implode(', ', BlueprintSchema::BUILD_TOOLS).'.';
+                }
+            }
+            $pieces = array_values((array) ($build['pieces'] ?? []));
+            foreach ($pieces as $i => $piece) {
+                if (! isset($items[$piece])) {
+                    $e[] = "$p.pieces[$i]: \"$piece\" is not an item key.";
+                }
+            }
+            if (in_array('place', $tools, true) && ! $pieces) {
+                $e[] = "$p: place needs pieces (keys of the mission's items students can put down), or leave place out of tools.";
             }
         }
 
