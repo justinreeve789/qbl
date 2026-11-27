@@ -86,6 +86,8 @@ test('an author lets students build in a scene, with a piece to place', async ()
   await page.uncheck('[data-panel-section=building] [data-field=tool_label] input');
   assert.deepEqual((await draft()).scenes[0]!.building?.tools, ['place', 'picture']);
   await page.check('[data-panel-section=building] [data-field=tool_label] input');
+  await page.check('[data-panel-section=building] [data-field=tool_hotspot] input');
+  assert.deepEqual((await draft()).scenes[0]!.building?.tools, ['place', 'label', 'picture', 'hotspot'], 'hotspots are a tool of their own');
   assert.deepEqual(errors, []);
 });
 
@@ -112,6 +114,7 @@ test('a student builds; the teacher sees it in its scene and approves it', async
     { id: 'f1', kind: 'sticker', x: 300, y: 400, media_id: flower.id, scale: 2 },
     { id: 'l1', kind: 'label', x: 600, y: 200, text: 'Bee garden', color: '#fde047' },
     { id: 'p1', kind: 'picture', x: 900, y: 500, upload_id: upload.id },
+    { id: 'h1', kind: 'hotspot', x: 1200, y: 500, opens: { text: 'Bees like\npurple flowers.', upload_id: upload.id } },
   ] });
   assert.equal(build.status, 200);
   assert.equal(build.body.build.status, 'pending');
@@ -121,7 +124,12 @@ test('a student builds; the teacher sees it in its scene and approves it', async
   assert.match(await page.innerText('[data-card=builds] [data-builds-filter=pending]'), /Waiting \(1\)/);
   const item = page.locator('[data-card=builds] [data-build]');
   assert.match(await item.innerText(), /Garden/);
-  assert.match(await item.innerText(), /3 things/);
+  assert.match(await item.innerText(), /4 things/);
+  assert.equal(await item.locator('.build-preview-box').count(), 1, 'an invisible hotspot is drawn as a marked box');
+  assert.equal(await item.locator('.build-hotspots li').innerText(), 'Bees like\npurple flowers.', 'the teacher reads what the hotspot opens');
+  assert.equal(await item.locator('.build-hotspots img').count(), 1, 'and sees its picture');
+  const change = new URL((await item.locator('[data-build-change]').getAttribute('href'))!);
+  assert.deepEqual([change.pathname, change.searchParams.get('group'), change.searchParams.get('scene'), change.searchParams.get('edit_build')], [`/${code}`, group, String(sceneId), String(build.body.build.id)], 'Change in the game opens the build in its scene');
   assert.equal(await item.locator('.build-preview-label').innerText(), 'Bee garden', 'the build is drawn in its scene');
   assert.equal(await item.locator('img.build-preview-piece').count(), 2, 'with its piece and its picture');
 

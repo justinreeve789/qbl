@@ -762,6 +762,16 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
 .qbl-build-picture-remove { position: absolute; top: 4px; right: 4px; min-height: 32px; min-width: 32px; padding: 2px; background: rgba(0, 0, 0, 0.55); }
 .qbl-build-upload { display: grid; place-items: center; align-content: center; gap: 6px; border: 2px dashed rgba(255, 255, 255, 0.4); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
 .qbl-build-upload:hover, .qbl-build-upload:focus-visible { border-color: #fde047; outline: none; }
+.qbl-build-piece[aria-pressed='true'] { border-color: #fde047; background-color: rgba(253, 224, 71, 0.22); }
+.qbl-build-piece.qbl-build-upload { font-size: 0.75rem; }
+.qbl-build-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.qbl-build-choices .qbl-build-button[aria-checked='true'] { border-color: #fde047; background: rgba(253, 224, 71, 0.22); }
+.qbl-build-note-input { width: 100%; box-sizing: border-box; min-height: 88px; padding: 8px 10px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px; background: rgba(0, 0, 0, 0.25); color: #fff; font: inherit; line-height: 1.4; resize: vertical; }
+.qbl-build-note-input:focus { outline: none; border-color: #fde047; }
+.qbl-build-hotspot { gap: 14px; }
+.qbl-build-hotspot-foot { justify-content: flex-end; }
+.qbl-build-whose { display: grid; gap: 4px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.72); }
+.qbl-build-whose select { min-height: 40px; padding: 6px 10px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px; background: rgba(0, 0, 0, 0.35); color: #fff; font: inherit; font-size: 0.95rem; text-transform: none; letter-spacing: 0; }
 @media (max-width: 900px), (orientation: portrait) {
   .qbl-build { top: auto; left: calc(var(--qbl-edge) + var(--safe-l)); right: calc(var(--qbl-edge) + var(--safe-r)); bottom: calc(var(--qbl-dock) + 12px + var(--safe-b)); width: auto; max-height: 46vh; }
   .qbl-build-open { bottom: calc(var(--qbl-dock) + 76px + var(--safe-b)); }

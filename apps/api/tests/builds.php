@@ -87,7 +87,7 @@ $frog = $scenarios->createRow($mid, 'media', ['type' => 'image', 'url' => 'frog.
 $first = $scenarios->rows($mid)['scenes'][0];
 $scenarios->updateRow($mid, 'scenes', (int) $first['id'], [
     'background_media' => [['media_id' => (int) $bg['id']]],
-    'params' => ['building' => ['enabled' => true, 'tools' => ['place', 'label', 'picture'], 'pieces' => [['media_id' => (int) $frog['id']]], 'max_pieces' => 3, 'prompt' => 'Make a home for a frog']],
+    'params' => ['building' => ['enabled' => true, 'tools' => ['place', 'label', 'picture', 'hotspot'], 'pieces' => [['media_id' => (int) $frog['id']]], 'max_pieces' => 3, 'prompt' => 'Make a home for a frog']],
 ]);
 $second = $scenarios->createRow($mid, 'scenes', ['shortname' => 'diary', 'width' => 800, 'height' => 500, 'params' => ['building' => ['enabled' => true, 'tools' => ['label'], 'approve' => false, 'share' => 'own']]]);
 $third = $scenarios->createRow($mid, 'scenes', ['shortname' => 'plain', 'width' => 800, 'height' => 500]);
@@ -197,6 +197,51 @@ refused(fn () => $builds->removeUpload($ben, $up['id']), 404, 'only its owner re
 $builds->removeUpload($ann, $up['id']);
 same($builds->forPlayer($ann, $code, $group)['builds'], [], 'removing a picture takes it out of the builds that showed it');
 
+// ------------------------------------------------------------------ hotspots
+
+$up2 = $builds->upload($ann, $code, $group, $png);
+$spot = ['id' => 'h1', 'kind' => 'hotspot', 'x' => 400, 'y' => 300, 'opens' => ['text' => "Frogs eat flies.\n\nThey jump!", 'upload_id' => $up2['id']]];
+$label = ['id' => 'h2', 'kind' => 'hotspot', 'x' => 600, 'y' => 300, 'look' => 'label', 'text' => 'Read me', 'color' => '#fde047', 'opens' => ['text' => 'Hello']];
+$piece = ['id' => 'h3', 'kind' => 'hotspot', 'x' => 700, 'y' => 300, 'look' => 'sticker', 'media_id' => (int) $frog['id'], 'scale' => 1.5, 'opens' => ['upload_id' => $up2['id']]];
+$spots = $builds->save($ann, $code, $group, $pond, [$spot, $label, $piece]);
+same($spots['pieces'], [
+    ['id' => 'h1', 'kind' => 'hotspot', 'x' => 400, 'y' => 300, 'opens' => ['text' => "Frogs eat flies.\n\nThey jump!", 'upload_id' => $up2['id']]],
+    ['id' => 'h2', 'kind' => 'hotspot', 'x' => 600, 'y' => 300, 'look' => 'label', 'text' => 'Read me', 'color' => '#fde047', 'opens' => ['text' => 'Hello']],
+    ['id' => 'h3', 'kind' => 'hotspot', 'x' => 700, 'y' => 300, 'scale' => 1.5, 'look' => 'sticker', 'media_id' => (int) $frog['id'], 'opens' => ['upload_id' => $up2['id']]],
+], 'hotspots look like nothing, words or a piece, and open words, a picture or both');
+same($spots['status'], 'pending', 'and wait for the teacher like anything else');
+refused(fn () => $builds->save($ann, $code, $group, $pond, [['opens' => []] + $spot]), 422, 'a hotspot opens something', 'needs words or a picture');
+refused(fn () => $builds->save($ann, $code, $group, $pond, [['opens' => ['text' => '<b>hi</b>']] + $spot]), 422, 'its words are plain', 'have < or >');
+refused(fn () => $builds->save($ann, $code, $group, $pond, [['opens' => ['text' => str_repeat('a', 501)]] + $spot]), 422, 'and not too long', 'up to 500');
+refused(fn () => $builds->save($ann, $code, $group, $pond, [['opens' => ['media_id' => (int) $frog['id'], 'upload_id' => $up2['id']]] + $spot]), 422, 'it opens one picture', 'one picture');
+refused(fn () => $builds->save($ann, $code, $group, $pond, [['look' => 'glow'] + $spot]), 422, 'its look is one of those offered', 'look');
+refused(fn () => $builds->save($ben, $code, $group, $pond, [$spot]), 422, 'a student opens only their own pictures', 'not one of yours');
+refused(fn () => $builds->save($ann, $code, $group, $diary, [['id' => 'x', 'kind' => 'hotspot', 'x' => 1, 'y' => 1, 'opens' => ['text' => 'hi']]]), 422, 'only where the scene allows hotspots', 'Hotspots are not allowed');
+$queued = array_values(array_filter($builds->queue($tan), fn ($b) => $b['id'] === $spots['id']))[0] ?? null;
+same([isset($queued['preview']['pictures'][(string) $up2['id']]), isset($queued['preview']['media'][(string) $frog['id']])], [true, true], 'the teacher is given the pictures hotspots look like and open');
+same([$queued['group'] ?? null, $queued['editable'] ?? null], [$group, true], 'and where the build is, to change it in the game');
+
+// ------------------------------------------------------------------ a teacher changes a student's build
+
+$tanView = $builds->forPlayer($tan, $code, $group);
+$annBuild = array_values(array_filter($tanView['builds'], fn ($b) => $b['id'] === $spots['id']))[0] ?? null;
+same([$annBuild['status'] ?? null, $annBuild['editable'] ?? null, count($annBuild['uploads'] ?? [])], ['pending', true, 1], 'their teacher sees a waiting build in the game, may change it, and has its maker\'s pictures');
+same(isset($tanView['pictures'][(string) $up2['id']]), true, 'and the pictures it shows');
+same(array_filter($builds->forPlayer($ben, $code, $group)['builds'], fn ($b) => ! empty($b['editable'])), [], 'classmates may change nothing of it');
+$edited = $builds->edit($tan, $spots['id'], [['x' => 100] + $spot, $label]);
+same([$edited['status'], count($edited['pieces']), $edited['pieces'][0]['x']], ['pending', 2, 100], 'the teacher changes it; it keeps its state');
+same(count($builds->forPlayer($ann, $code, $group)['builds'][0]['pieces']), 2, 'and its maker sees the change');
+refused(fn () => $builds->edit($ito, $spots['id'], [$label]), 404, 'another teacher cannot change it');
+refused(fn () => $builds->edit($ben, $spots['id'], [$label]), 404, 'nor can a classmate');
+refused(fn () => $builds->edit($tan, $spots['id'], [['id' => 'x', 'kind' => 'picture', 'x' => 1, 'y' => 1, 'upload_id' => 9999]]), 422, 'it keeps to the scene\'s rules, with the student\'s pictures', 'the student’s pictures');
+$builds->removeUpload($ann, $up2['id']);
+same($builds->forPlayer($ann, $code, $group)['builds'][0]['pieces'], [
+    ['id' => 'h1', 'kind' => 'hotspot', 'x' => 100, 'y' => 300, 'opens' => ['text' => "Frogs eat flies.\n\nThey jump!"]],
+    ['id' => 'h2', 'kind' => 'hotspot', 'x' => 600, 'y' => 300, 'look' => 'label', 'text' => 'Read me', 'color' => '#fde047', 'opens' => ['text' => 'Hello']],
+], 'removing a picture a hotspot opened leaves its words');
+same($builds->edit($tan, $spots['id'], []), null, 'a teacher\'s empty build deletes it');
+same($builds->forPlayer($ann, $code, $group)['builds'], [], 'and it is gone');
+
 // ------------------------------------------------------------------ the API
 
 $api = new BuildApi($builds);
@@ -208,6 +253,8 @@ same($api->handle('POST', "$code/uploads", [], $ann, ['group' => $group], [])[0]
 same($api->handle('POST', "$code/uploads", [], $ann, ['group' => $group], ['file' => ['tmp_name' => $png]])[0], 201, 'POST {scenario}/uploads');
 same(count($api->handle('GET', 'teach', [], $tan)[1]['builds']), 1, 'GET teach');
 same($api->handle('PUT', 'teach/'.$answer['build']['id'], ['status' => 'approved'], $tan)[1]['build']['status'] ?? null, 'approved', 'PUT teach/{id}');
+$edit = $api->handle('PUT', 'teach/'.$answer['build']['id'].'/pieces', ['pieces' => [$pieces[1]]], $tan);
+same([$edit[0], count($edit[1]['build']['pieces'] ?? [])], [200, 1], 'PUT teach/{id}/pieces');
 same($api->handle('GET', 'teach/x/y', [], $tan)[0], 404, 'an unknown teacher route');
 same($api->handle('GET', 'files', [], $tan)[0], 404, 'files are not served here');
 

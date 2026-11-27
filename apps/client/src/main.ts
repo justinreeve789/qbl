@@ -498,7 +498,9 @@ async function start() {
       save: (sceneId, pieces) => api.saveBuild(String(key), group, Number(sceneId), pieces),
       upload: (file) => api.uploadBuildPicture(String(key), group, file),
       removeUpload: (id) => api.removeBuildPicture(id),
+      saveOther: (buildId, pieces) => api.editStudentBuild(buildId, pieces),
     });
+    if (config.editBuild != null && config.preview == null) ctx.builds.openOnArrival = config.editBuild;
   }
   // Other players' profiles come from the API, which a preview and the standalone game server do not have.
   if (!config.offline) ctx.fetchProfile = (userId) => api.profile(userId);

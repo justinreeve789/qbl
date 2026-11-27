@@ -179,7 +179,7 @@ The spawn point a jump arrives at must not be inside a walk-in hotspot that jump
 ```json
 "building": {
   "enabled": true,
-  "tools": ["place", "label", "picture"],
+  "tools": ["place", "label", "picture", "hotspot"],
   "pieces": [{ "media_id": 41 }, { "media_id": 42 }],
   "max_pieces": 12,
   "approve": true,
@@ -191,12 +191,21 @@ The spawn point a jump arrives at must not be inside a walk-in hotspot that jump
 Field | Type | Default | Notes
 ----- | ---- | ------- | -----
 enabled | boolean | false | Off: nobody builds, and nothing built is shown.
-tools | string[] | `["place", "label"]` | `place`: the pictures in `pieces`. `label`: words, up to 60 letters, in one of eight colours. `picture`: pictures the student uploads.
-pieces | `{ media_id }[]` | | Images students may place. Loaded with the scene.
+tools | string[] | `["place", "label"]` | `place`: the pictures in `pieces`. `label`: words, up to 60 letters, in one of eight colours. `picture`: pictures the student uploads. `hotspot`: things to click that open words, a picture or both (students may upload pictures for them).
+pieces | `{ media_id }[]` | | Images students may place, and that hotspots may look like or open. Loaded with the scene.
 max_pieces | integer | 12 | How many things one student may add here, 1 to 50.
 approve | boolean | true | A build waits for the teacher before others see it.
 share | string | `instance` | `instance`: approved builds are shown to everyone in the same game. `own`: only to their maker and their teacher.
 prompt | string | | What to make, shown when the palette opens. Up to 300 letters.
 
-Students cannot build in a `story` scene. A build is a list of pieces, each with an `id`, a `kind` (`sticker`, `label` or `picture`), its centre `x` and `y` in scene pixels, and optional `scale` (0.2 to 4) and `angle` (degrees, -180 to 180); a sticker names its `media_id`, a picture its `upload_id`, and a label its `text` and `color`. A sticker is drawn at its picture's size times `scale` and the scene's `zoom`; a picture is fitted into a 360-pixel square times `scale`; a label's letters are 30 pixels high times `scale` (`BUILD_LOOK`).
+Students cannot build in a `story` scene. A build is a list of pieces, each with an `id`, a `kind` (`sticker`, `label`, `picture` or `hotspot`), its centre `x` and `y` in scene pixels, and optional `scale` (0.2 to 4) and `angle` (degrees, -180 to 180); a sticker names its `media_id`, a picture its `upload_id`, and a label its `text` and `color`. A sticker is drawn at its picture's size times `scale` and the scene's `zoom`; a picture is fitted into a 360-pixel square times `scale`; a label's letters are 30 pixels high times `scale` (`BUILD_LOOK`).
+
+A hotspot has a `look`: `sticker` (with `media_id`), `picture` (with `upload_id`), `label` (with `text` and `color`), or `none` (the default), an invisible square of 120 pixels times `scale`. Its `opens` says what clicking it shows: `text` (up to 500 letters; lines are kept, `<` and `>` are not) and at most one picture, `media_id` (one of `pieces`) or `upload_id` (one of the student's), and at least one of the two. Clicking it in the game opens an infobox with the words and the picture; it is not a click to walk, and it runs nothing.
+
+```json
+{ "id": "k3p9x2ab", "kind": "hotspot", "x": 820, "y": 410, "look": "label", "text": "Read me", "color": "#fde047",
+  "opens": { "text": "Bees see purple better than red.", "upload_id": 57 } }
+```
+
+Removing an upload takes out the pictures and the hotspots that look like it; a hotspot that opened it keeps its words, or goes if it had none (`withoutUpload`).
 

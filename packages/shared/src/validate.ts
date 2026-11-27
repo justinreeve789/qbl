@@ -749,7 +749,7 @@ export function validateScenario(doc: unknown): ValidationResult {
       const tools = scene.building.tools ?? ['place', 'label'];
       for (const t of tools) if (!BUILD_TOOLS.includes(t)) err(`${p}.tools`, `"${t}" is not a building tool (${BUILD_TOOLS.join(', ')})`);
       if (scene.story) warn(p, 'Students cannot build in a story scene: nobody walks there');
-      else if (!buildingRules(scene)) warn(p, 'Students can build here, but have nothing to build with: choose pieces for Place, or allow labels or pictures');
+      else if (!buildingRules(scene)) warn(p, 'Students can build here, but have nothing to build with: choose pieces for Place, or allow labels, pictures or hotspots');
       if (scene.building.max_pieces != null && !(Number.isInteger(scene.building.max_pieces) && scene.building.max_pieces >= 1 && scene.building.max_pieces <= BUILD_LIMITS.maxPieces)) {
         err(`${p}.max_pieces`, `max_pieces is 1 to ${BUILD_LIMITS.maxPieces}`);
       }

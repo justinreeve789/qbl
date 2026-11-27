@@ -21,7 +21,8 @@ use PDO;
  * `approved` only its maker and their teacher see it. `hidden`: the teacher took it down.
  *
  * Who reviews: the teacher of the assignment the instance belongs to; for a scenario's public
- * game, the scenario's owner; admins, any.
+ * game, the scenario's owner; admins, any. Whoever reviews a build may also change it (edit): in
+ * the game, where they see every build of the instance, whatever its state.
  *
  * Uploaded pictures are re-encoded here (which drops what a camera writes into a photo, such as
  * where it was taken), made no larger than MAX_SIDE, and kept in the database, so that deleting the
@@ -50,6 +51,9 @@ class BuildStore
     {
         [$scenario, $document] = $this->joined($user, $key, $group);
         $me = (int) $user['id'];
+        // Their teacher sees every build here, and may change them.
+        $reviews = Roles::isStaff((string) ($user['role'] ?? ''))
+            && $this->reviewable($user, ['group_key' => $group, 'scenario_id' => $scenario['id'], 'scenario_owner' => $scenario['user_id']]) !== null;
         $shared = [];
         foreach ($document['scenes'] ?? [] as $scene) {
             $rules = BuildRules::of($scene);
@@ -64,18 +68,20 @@ class BuildStore
         $builds = [];
         foreach ($rows as $row) {
             $mine = (int) $row['user_id'] === $me;
-            if ($mine || ($row['status'] === 'approved' && in_array((int) $row['scene_id'], $shared, true))) {
-                $builds[] = $this->present($row, $mine);
+            if ($mine) {
+                $builds[] = $this->present($row, true);
+            } elseif ($reviews) {
+                $builds[] = $this->present($row, false) + ['editable' => true, 'uploads' => $this->uploadsOf($scenario['id'], (int) $row['user_id'], $group)];
+            } elseif ($row['status'] === 'approved' && in_array((int) $row['scene_id'], $shared, true)) {
+                $builds[] = $this->present($row, false);
             }
         }
-        // The pictures others' approved builds show, so the game can load them.
+        // The pictures others' builds show, so the game can load them.
         $shownUploads = [];
         foreach ($builds as $b) {
             if (! $b['mine']) {
                 foreach ($b['pieces'] as $p) {
-                    if (($p['kind'] ?? '') === 'picture') {
-                        $shownUploads[] = (int) $p['upload_id'];
-                    }
+                    array_push($shownUploads, ...BuildRules::piecePictures($p));
                 }
             }
         }
@@ -163,7 +169,7 @@ class BuildStore
         [$scenario, $document] = $this->joined($user, $key, $group);
         $allowed = false;
         foreach ($document['scenes'] ?? [] as $scene) {
-            $allowed = $allowed || in_array('picture', BuildRules::of($scene)['tools'] ?? [], true);
+            $allowed = $allowed || array_intersect(['picture', 'hotspot'], BuildRules::of($scene)['tools'] ?? []) !== [];
         }
         if (! $allowed) {
             throw new StoreError(422, 'This mission does not take pictures.');
@@ -200,8 +206,8 @@ class BuildStore
         }
         foreach ($this->all('SELECT * FROM scene_builds WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$row['scenario_id'], (int) $user['id'], $row['group_key']]) as $build) {
             $pieces = json_decode((string) $build['pieces'], true) ?: [];
-            $kept = array_values(array_filter($pieces, fn ($p) => ! (($p['kind'] ?? '') === 'picture' && (int) ($p['upload_id'] ?? 0) === $uploadId)));
-            if (count($kept) !== count($pieces)) {
+            $kept = BuildRules::withoutUpload($pieces, $uploadId);
+            if ($kept !== $pieces) {
                 $kept
                     ? $this->run('UPDATE scene_builds SET pieces = ?, updated_at = ? WHERE id = ?', [json_encode($kept, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), self::now(), $build['id']])
                     : $this->run('DELETE FROM scene_builds WHERE id = ?', [$build['id']]);
@@ -269,6 +275,9 @@ class BuildStore
             }
             $doc = $documents[$row['scenario_id']] ??= (json_decode((string) $row['document'], true) ?: []);
             $out[] = $this->present($row, false) + [
+                'editable' => true,
+                // The instance, as the game's address carries it (?group=), to change the build there.
+                'group' => (string) $row['group_key'],
                 'student' => ['id' => (int) $row['user_id'], 'name' => (string) $row['author']],
                 'scenario' => ['id' => (int) $row['scenario_id'], 'title' => (string) $row['scenario_title'], 'code' => (string) $row['scenario_code']],
                 'where' => $where,
@@ -292,6 +301,47 @@ class BuildStore
         $this->run('UPDATE scene_builds SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?', [$status, (int) $user['id'], self::now(), $buildId]);
 
         return $this->present(['status' => $status] + $row, false);
+    }
+
+    /**
+     * A teacher changes a student's build: the whole list of its pieces, kept to the scene's rules,
+     * with the student's own pictures. It keeps its state (the teacher has seen it); an empty list deletes it.
+     */
+    public function edit(array $user, int $buildId, mixed $pieces): ?array
+    {
+        $row = $this->one('SELECT b.*, u.name AS author, s.user_id AS scenario_owner, s.document AS document FROM scene_builds b JOIN users u ON u.id = b.user_id JOIN scenarios s ON s.id = b.scenario_id WHERE b.id = ?', [$buildId]);
+        if (! $row || ! Roles::isStaff((string) ($user['role'] ?? '')) || ! $this->reviewable($user, $row)) {
+            throw new StoreError(404, 'No such build.');
+        }
+        $document = json_decode((string) $row['document'], true) ?: [];
+        $scene = null;
+        foreach ($document['scenes'] ?? [] as $s) {
+            if ((int) ($s['id'] ?? 0) === (int) $row['scene_id']) {
+                $scene = $s;
+            }
+        }
+        $rules = $scene ? BuildRules::of($scene) : null;
+        $size = $scene ? BuildRules::size($document, $scene) : null;
+        if (! $rules || ! $size) {
+            throw new StoreError(422, 'Students can no longer build in this scene, so its builds cannot be changed. You can still delete it.');
+        }
+        if (! is_array($pieces)) {
+            throw new StoreError(422, 'A build is a list of things.');
+        }
+        $uploads = array_map(fn ($u) => (int) $u['id'], $this->uploadsOf((int) $row['scenario_id'], (int) $row['user_id'], (string) $row['group_key']));
+        $problems = BuildRules::problems($rules, $size, $pieces, $uploads);
+        if ($problems) {
+            throw new StoreError(422, str_replace(['your pictures', 'one of yours'], ['the student’s pictures', 'one of the student’s'], implode(' ', $problems)));
+        }
+        if (! $pieces) {
+            $this->run('DELETE FROM scene_builds WHERE id = ?', [$buildId]);
+
+            return null;
+        }
+        $json = json_encode(array_map(fn ($p) => BuildRules::tidy($p), $pieces), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->run('UPDATE scene_builds SET pieces = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ? WHERE id = ?', [$json, (int) $user['id'], self::now(), self::now(), $buildId]);
+
+        return $this->present(['pieces' => $json] + $row, false) + ['editable' => true];
     }
 
     /** A teacher deletes a build. */
@@ -413,12 +463,13 @@ class BuildStore
         };
         $first = $scene['background_media'][0] ?? null;
         $media = [];
+        $uploads = [];
         foreach ($pieces as $p) {
-            if (($p['kind'] ?? '') === 'sticker') {
-                $media[(string) $p['media_id']] = ['url' => $url((int) $p['media_id']), 'width' => (int) ($assets[(int) $p['media_id']]['width'] ?? 0), 'height' => (int) ($assets[(int) $p['media_id']]['height'] ?? 0)];
+            foreach (BuildRules::pieceMedia($p) as $id) {
+                $media[(string) $id] = ['url' => $url($id), 'width' => (int) ($assets[$id]['width'] ?? 0), 'height' => (int) ($assets[$id]['height'] ?? 0)];
             }
+            array_push($uploads, ...BuildRules::piecePictures($p));
         }
-        $uploads = array_map(fn ($p) => (int) $p['upload_id'], array_filter($pieces, fn ($p) => ($p['kind'] ?? '') === 'picture'));
         $size = $scene ? BuildRules::size($document, $scene) : null;
 
         return [

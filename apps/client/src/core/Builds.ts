@@ -1,4 +1,4 @@
-import type { BuildPiece, BuildUpload, Id, SceneBuild } from '@qbl/shared';
+import { withoutUpload, type BuildPiece, type BuildUpload, type Id, type SceneBuild } from '@qbl/shared';
 
 /** Where builds are kept: the API (App\Qbl\Builds), or in memory for a preview or offline play. */
 export interface BuildBackend {
@@ -6,6 +6,8 @@ export interface BuildBackend {
   save(sceneId: Id, pieces: BuildPiece[]): Promise<SceneBuild | null>;
   upload(file: File): Promise<BuildUpload>;
   removeUpload(id: number): Promise<void>;
+  /** A teacher changes a student's build (absent: no one here can). */
+  saveOther?(buildId: number, pieces: BuildPiece[]): Promise<SceneBuild | null>;
 }
 
 /** How long what was fetched is trusted before entering a scene asks again (approvals come in meanwhile). */
@@ -18,9 +20,11 @@ const FRESH_MS = 15_000;
  */
 export class Builds {
   mayBuild = false;
+  /** For a teacher: a student's build to open for changing once its scene is entered (then cleared). */
+  openOnArrival: number | null = null;
   private list: SceneBuild[] = [];
   private own: BuildUpload[] = [];
-  private others = new Map<number, Omit<BuildUpload, 'id'>>();
+  private shownPictures = new Map<number, Omit<BuildUpload, 'id'>>();
   private fetchedAt = 0;
   private fetching: Promise<void> | null = null;
   private listeners = new Set<() => void>();
@@ -36,7 +40,7 @@ export class Builds {
         this.mayBuild = data.may_build;
         this.list = data.builds;
         this.own = data.uploads;
-        this.others = new Map(Object.entries(data.pictures ?? {}).map(([id, p]) => [Number(id), p]));
+        this.shownPictures = new Map(Object.entries(data.pictures ?? {}).map(([id, p]) => [Number(id), p]));
         this.fetchedAt = performance.now();
         this.fetching = null;
         this.changed();
@@ -58,13 +62,31 @@ export class Builds {
     return this.list.find((b) => b.mine && String(b.scene_id) === String(sceneId));
   }
 
+  /** Others' builds in a scene that this player may change: they are their makers' teacher. */
+  others(sceneId: Id): SceneBuild[] {
+    return this.shown(sceneId).filter((b) => !b.mine && b.editable);
+  }
+
+  byId(id: number): SceneBuild | undefined {
+    return this.list.find((b) => b.id === id);
+  }
+
   get uploads(): readonly BuildUpload[] {
     return this.own;
   }
 
   /** An uploaded picture by id: one of this player's, or one an approved build shows. */
   picture(id: number): Omit<BuildUpload, 'id'> | undefined {
-    return this.own.find((u) => u.id === id) ?? this.others.get(id);
+    return this.own.find((u) => u.id === id) ?? this.shownPictures.get(id) ?? this.list.flatMap((b) => b.uploads ?? []).find((u) => u.id === id);
+  }
+
+  /** A teacher keeps their change to a student's build. */
+  async saveOther(build: SceneBuild, pieces: BuildPiece[]): Promise<SceneBuild | null> {
+    if (!this.backend.saveOther) throw new Error('Builds cannot be changed here.');
+    const saved = await this.backend.saveOther(build.id, pieces);
+    this.list = this.list.flatMap((b) => (b.id !== build.id ? [b] : saved ? [{ ...b, ...saved, mine: false, editable: true, uploads: b.uploads }] : []));
+    this.changed();
+    return saved;
   }
 
   async save(sceneId: Id, pieces: BuildPiece[]): Promise<SceneBuild | null> {
@@ -88,7 +110,7 @@ export class Builds {
     // The server takes the picture out of this player's builds; do the same here.
     this.list = this.list.flatMap((b) => {
       if (!b.mine) return [b];
-      const pieces = b.pieces.filter((p) => !(p.kind === 'picture' && p.upload_id === id));
+      const pieces = withoutUpload(b.pieces, id);
       return pieces.length ? [{ ...b, pieces }] : [];
     });
     this.changed();

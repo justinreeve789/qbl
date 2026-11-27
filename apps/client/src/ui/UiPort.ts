@@ -1,5 +1,5 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, Badge, BuildPiece, BuildStatus, BuildTool, BuildUpload, Id, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, OverlayMotion, SiteLink } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, BuildPiece, BuildStatus, BuildTool, BuildUpload, HotspotLook, HotspotOpens, Id, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, OverlayMotion, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
 
 export type { SpeakOptions };
@@ -339,32 +339,59 @@ export interface BuildPanelSpec {
   approve: boolean;
   /** Others in the game see approved builds here (`own`: only the player and their teacher). */
   shared: boolean;
+  /**
+   * For a teacher: whose build to change here, theirs (`id` null) or one of their students'. Absent
+   * or only one: no choice is offered.
+   */
+  whose?: Array<{ id: number | null; name: string; status: BuildStatus | null }>;
+}
+
+/** What a hotspot looks like and opens: the fields of a hotspot piece the player chooses. */
+export interface HotspotFields {
+  look: HotspotLook;
+  media_id?: Id;
+  upload_id?: number;
+  text?: string;
+  color?: string;
+  opens: HotspotOpens;
 }
 
 /** How the player's build stands, redrawn as it changes. */
 export interface BuildPanelView {
   count: number;
   /** What is picked, or null. */
-  selected: { kind: BuildPiece['kind']; text?: string; color?: string } | null;
+  selected: BuildPiece | null;
   canUndo: boolean;
   canRedo: boolean;
   saving: boolean;
   /** The state of what was saved before: shown so the player knows whether others see it. */
   status: BuildStatus | null;
-  /** The player's own pictures, for the picture chooser. */
+  /** The pictures the build may show: the player's own, or the student's whose build a teacher changes. */
   pictures: readonly BuildUpload[];
+  /** Pictures can be uploaded (not while a teacher changes a student's build). */
+  canUpload: boolean;
+  /** A teacher changes this build: the student's name, or null for their own. */
+  editingFor: { id: number; name: string } | null;
 }
 
 export interface BuildPanelActions {
   addSticker(mediaId: Id): void;
   addLabel(text: string, color: string): void;
   addPicture(uploadId: number): void;
-  upload(file: File): Promise<void>;
+  addHotspot(fields: HotspotFields): void;
+  /** Upload a picture for building; it is not added anywhere by itself. */
+  upload(file: File): Promise<BuildUpload>;
   removePicture(uploadId: number): Promise<void>;
   /** Change the picked thing: grow or shrink by a factor, turn by degrees, re-word or re-colour a label. */
   resize(factor: number): void;
   turn(degrees: number): void;
   relabel(text: string, color: string): void;
+  /** Change what the picked hotspot looks like and opens. */
+  rehotspot(fields: HotspotFields): void;
+  /** Open the picked hotspot, as players will see it. */
+  tryHotspot(): void;
+  /** For a teacher: change another build here instead (null: their own). */
+  switchTo(buildId: number | null): void;
   remove(): void;
   undo(): void;
   redo(): void;
