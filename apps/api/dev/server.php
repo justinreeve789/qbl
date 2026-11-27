@@ -42,9 +42,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // Uploaded media (and the files given to library assets, under library/, and the platform's own, under platform/: walks qbl:walk made).
 if (preg_match('#^/media/((?:library/)?\d+/[a-f0-9]{24}\.[a-z0-9]{2,4}|platform/[a-f0-9]{24}\.png)$#', $path, $m) && is_file("$dataDir/media/$m[1]")) {
-    header('Content-Type: '.(mime_content_type("$dataDir/media/$m[1]") ?: 'application/octet-stream'));
     header('X-Content-Type-Options: nosniff');
-    readfile("$dataDir/media/$m[1]");
+    sendFile("$dataDir/media/$m[1]");
     exit;
 }
 
@@ -53,12 +52,43 @@ if (str_starts_with($path, '/scenario-assets/')) {
     $root = realpath(dirname(__DIR__, 3).'/scenarios/assets');
     $file = realpath($root.substr($path, strlen('/scenario-assets')));
     if ($root && $file && str_starts_with($file, $root.DIRECTORY_SEPARATOR) && is_file($file)) {
-        header('Content-Type: '.(mime_content_type($file) ?: 'application/octet-stream'));
-        readfile($file);
+        sendFile($file);
         exit;
     }
     http_response_code(404);
     exit;
+}
+
+/**
+ * Send a file, or the part a Range header asks for, as Apache does: a browser playing a sound
+ * can then start it part of the way in (a cropped sound) instead of only from the start.
+ */
+function sendFile(string $file): void
+{
+    $size = (int) filesize($file);
+    header('Content-Type: '.(mime_content_type($file) ?: 'application/octet-stream'));
+    header('Accept-Ranges: bytes');
+    if (preg_match('/^bytes=(\d*)-(\d*)$/', (string) ($_SERVER['HTTP_RANGE'] ?? ''), $r) && ($r[1] !== '' || $r[2] !== '')) {
+        $from = $r[1] === '' ? max(0, $size - (int) $r[2]) : (int) $r[1];
+        $to = $r[1] === '' || $r[2] === '' ? $size - 1 : min($size - 1, (int) $r[2]);
+        if ($from > $to || $from >= $size) {
+            http_response_code(416);
+            header("Content-Range: bytes */$size");
+
+            return;
+        }
+        http_response_code(206);
+        header("Content-Range: bytes $from-$to/$size");
+        header('Content-Length: '.($to - $from + 1));
+        $h = fopen($file, 'rb');
+        fseek($h, $from);
+        echo fread($h, $to - $from + 1);
+        fclose($h);
+
+        return;
+    }
+    header("Content-Length: $size");
+    readfile($file);
 }
 
 $pdo = new PDO("sqlite:$dataDir/qbl.sqlite");

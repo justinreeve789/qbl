@@ -1,4 +1,4 @@
-import { alignWordTimes, estimateWordTimes, speechDuration, speechWords, wordAt, wordAtTime, type MediaSpeech } from '@qbl/shared';
+import { alignWordTimes, croppedLength, estimateWordTimes, speechDuration, speechWords, wordAt, wordAtTime, type CropRange, type MediaSpeech } from '@qbl/shared';
 import { askForSound } from '../audio/soundLock';
 
 /** How a line should sound. All optional: the browser's default voice reads at its own pace. */
@@ -15,6 +15,8 @@ export interface SpeakOptions {
   audioUrl?: string;
   /** When the recording says each word (its media's `speech`): the words are lit as they are said. */
   timings?: MediaSpeech;
+  /** The part of the recording to play, when its media is cropped (seconds). */
+  crop?: CropRange | null;
 }
 
 const PREFERENCE = 'qbl.narration';
@@ -111,12 +113,32 @@ export class Narrator {
     if (o.audioUrl) {
       const audio = new Audio(o.audioUrl);
       const said = alignWordTimes(text, o.timings);
+      const crop = o.crop ?? null;
       let frame = 0;
+      let watch = 0;
       release = () => {
         cancelAnimationFrame(frame);
+        cancelAnimationFrame(watch);
         audio.pause();
         audio.removeAttribute('src');
       };
+      if (crop) {
+        // Only the part kept: start there, and stop (as if it had ended) where the part ends.
+        // Word timings are from the start of the file, so they still match the recording.
+        if (crop.start > 0) audio.currentTime = crop.start;
+        if (crop.end !== null) {
+          const end = crop.end;
+          const check = () => {
+            if (over) return;
+            if (audio.currentTime >= end) return finish();
+            watch = requestAnimationFrame(check);
+          };
+          audio.addEventListener('playing', () => {
+            cancelAnimationFrame(watch);
+            watch = requestAnimationFrame(check);
+          });
+        }
+      }
       if (said) {
         // Each frame, the word the recording has reached.
         let lit = -1;
@@ -134,7 +156,7 @@ export class Narrator {
           frame = requestAnimationFrame(follow);
         });
       } else {
-        audio.addEventListener('loadedmetadata', () => pace(Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration * 1000 : speechDuration(text)), { once: true });
+        audio.addEventListener('loadedmetadata', () => pace(Number.isFinite(audio.duration) && audio.duration > 0 ? croppedLength(crop, audio.duration) * 1000 : speechDuration(text)), { once: true });
       }
       audio.addEventListener('ended', finish, { once: true });
       audio.addEventListener('error', finish, { once: true });

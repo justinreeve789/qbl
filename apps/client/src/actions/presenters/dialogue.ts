@@ -1,4 +1,4 @@
-import { characterPicture, dialogueDuration, isNarrated, resolveMediaUrl, type CharacterPicture, type Id, type Narrated } from '@qbl/shared';
+import { audioCrop, characterPicture, dialogueDuration, isNarrated, resolveMediaUrl, type CharacterPicture, type Id, type Narrated } from '@qbl/shared';
 import type { SpeakOptions } from '../../ui/UiPort';
 import type { BubbleAnchor } from '../../ui/bubble';
 import type { Presenter, PresenterContext } from '../Presenter';
@@ -32,6 +32,7 @@ export function speech(pc: PresenterContext, action: Narrated, characterId?: Id)
     voice: character?.voice_name,
     audioUrl: (action.narration_media_id != null && pc.ctx.mediaUrl(action.narration_media_id)) || undefined,
     timings: recording?.speech,
+    crop: audioCrop(recording),
   };
 }
 

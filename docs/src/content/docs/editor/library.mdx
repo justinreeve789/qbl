@@ -20,8 +20,9 @@ PNG pictures are kept as **WebP** when they are uploaded: the same picture, see-
 
 Media is filed under sub-tabs by what it is used for: **Backgrounds**, **NPCs**, **Items**, **Vehicles**, **Sounds and music**, **Video**, **Shop items** and **Other images**. A file follows how you use it; one uploaded while a sub-tab is open is filed there until its use says otherwise, and **Details → Filed under** overrides it.
 
-Each card previews the file, says what it is filed under and its size, and marks a sprite sheet or an animated PNG. Each kind has a colour, on its card and on its sub-tab. Click a picture or **✏️ Details** to open the file in a panel over the page; **🎞️ Sprite sheet** opens the same panel at its sprite sheet. Press Escape, the ×, or click outside the panel to close it. The panel has two parts:
+Each card previews the file, says what it is filed under and its size, and marks a sprite sheet, an animated PNG or a cropped sound. Each kind has a colour, on its card and on its sub-tab. Click a picture or **✏️ Details** to open the file in a panel over the page; **🎞️ Sprite sheet** opens the same panel at its sprite sheet, and **✂️ Crop** (sounds) at its crop. Press Escape, the ×, or click outside the panel to close it. The panel has two parts:
 
+* **✂️ Crop** (sounds): see [Cropping a sound](#cropping-a-sound).
 * **📝 Details**: a large preview, then name, address, type, load order, scale, size and **Filed under**.
 * **🎞️ Sprite sheet and animations** (images). A sprite sheet is one picture holding frames in a grid. Say how many **Frames across** and **Frames down**. This is where every animation is made, for characters, items, vehicles and pictures alike: **+ Add animation**, then click frames on the sheet to put them in order (shift-click adds every frame up to the one you click), or type them in **Frames** (`0 1 2`, `0-3`, or a frame more than once: `0 1 1 2`). Set **One pass (ms)** and **Repeats**; a small preview plays the one being edited. Under each animation, 🎭 says which characters play it; they take any change you make here, a new name included. For an item or vehicle, `idle` and `walk` play by themselves, and `jump`, `spin`, `crouch`, `wave` and `dance` are built-in moves.
 
@@ -32,6 +33,14 @@ The 🗑 on a card deletes the file, as does **Delete** in its panel.
 :::caution
 Deleting media leaves anything that used it without a picture.
 :::
+
+### Cropping a sound
+
+A sound's panel opens on **✂️ Crop**, to keep only part of the sound: the bit of birdsong you want, without the silence before it or the cough at the end. The sound is drawn as a wave with a handle at each end. Drag a handle, or click the wave to bring the nearer handle there. For exact times type **Start** and **End** in seconds, or click a handle and use the arrow keys: a tenth of a second at a time, a whole second with Shift, Home and End for the ends of the sound. The line below says what plays: *Plays 0:01.5 to 0:05.8: 0:04.3 of the sound's 0:08.0.* **▶ Play the part kept** plays just that part, with a line showing where it has got to, and stops where the part ends.
+
+Wherever the sound is used it plays only that part: an Audio action, the scenario's or a scene's background music, a line's recording and a sound in a box. A sound set to loop loops that part. Its card says **✂️ 0:01.5–0:05.8**, and the sound chooser gives the length of the part kept.
+
+The file itself is not changed, so a crop can be widened again later: **Keep the whole sound** takes it off. Changing the sound's **Address** (pointing it at another file) takes the crop off too.
 
 ### Choosing a picture
 

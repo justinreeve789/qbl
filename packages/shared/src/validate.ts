@@ -13,6 +13,7 @@ import { BUTTON_MARKS, INFOBOX_SIZES, infoboxRefs } from './infobox.js';
 import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
 import { isBuiltInSound } from './sounds.js';
+import { audioCrop, type AudioCrop } from './audioCrop.js';
 import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
 import { WATER_LIGHT_KINDS, WATER_LIGHT_MAX_CORNERS } from './waterLight.js';
 import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES, toNumber } from './variables.js';
@@ -162,9 +163,15 @@ export function validateScenario(doc: unknown): ValidationResult {
       });
     }
   }
-  // Sprite sheets and the animations defined on them.
+  // Sprite sheets and the animations defined on them; a sound's crop.
   (s.assets ?? []).forEach((m, i) => {
     const p = `assets[${i}]`;
+    const crop = (m.params as { crop?: AudioCrop } | undefined)?.crop;
+    if (crop != null) {
+      if (m.type !== 'audio') warn(`${p}.params.crop`, 'Only a sound can be cropped; this crop is not used');
+      else if (typeof crop !== 'object' || (crop.start != null && !(Number(crop.start) >= 0)) || (crop.end != null && !(Number(crop.end) >= 0))) warn(`${p}.params.crop`, 'A crop starts and ends at a number of seconds, 0 or more; the whole sound plays');
+      else if (crop.end != null && !audioCrop(m)) warn(`${p}.params.crop`, 'The crop ends before it starts, so the whole sound plays');
+    }
     if (m.animations?.length && !m.sheet) err(`${p}.animations`, 'Animations need a sprite sheet: say how many frames across and down');
     if (!m.sheet) return;
     if (m.type !== 'image') err(`${p}.sheet`, 'Only an image can be a sprite sheet');

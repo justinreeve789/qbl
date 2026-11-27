@@ -1,4 +1,4 @@
-import { BUILT_IN_SOUND_NAMES, BUILT_IN_SOUNDS, isBuiltInSound, type BuiltInSound } from '@qbl/shared';
+import { audioCrop, BUILT_IN_SOUND_NAMES, BUILT_IN_SOUNDS, croppedLength, isBuiltInSound, type BuiltInSound, type CropRange } from '@qbl/shared';
 import { Synth, type Voice } from '../../client/src/audio/synth';
 import type { Row } from './api';
 import { mediaLabel, mediaUrl, params } from './describe';
@@ -93,11 +93,26 @@ export function soundGroup(row: Row, used: Map<number, Set<SoundGroup>>): Exclud
 const lengths = new Map<string, number>();
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
+/** How long a sound plays: the part kept when it is cropped. */
 function lengthOf(row: Row, url: string | null): number | null {
+  const crop = audioCrop(row);
+  // A crop with both ends says how long it is without the file.
+  if (crop?.end != null) return crop.end - crop.start;
   const ms = Number((params(row).speech as { duration?: number } | undefined)?.duration);
-  if (ms > 0) return ms / 1000;
-  return url ? lengths.get(url) ?? null : null;
+  const full = ms > 0 ? ms / 1000 : url ? lengths.get(url) ?? null : null;
+  return full == null ? null : croppedLength(crop, full);
 }
+
+/** The part of a file to play, by address, for the players here (set as rows are drawn). */
+const parts = new Map<string, CropRange>();
+const playFrom = (audio: HTMLAudioElement, key: string) => {
+  audio.currentTime = parts.get(key)?.start ?? 0;
+};
+/** Whether a player has reached the end of the part it plays. */
+const pastEnd = (audio: HTMLAudioElement, key: string | null) => {
+  const end = key ? parts.get(key)?.end : null;
+  return end != null && audio.currentTime >= end;
+};
 
 /** What a recording says, for a voice. */
 const saying = (row: Row): string => {
@@ -129,7 +144,12 @@ class Player {
     this.audio.preload = 'none';
     this.audio.addEventListener('ended', () => this.stop());
     this.audio.addEventListener('timeupdate', () => {
-      if (this.playing && this.audio.duration > 0) this.progress(this.playing, this.audio.currentTime / this.audio.duration);
+      if (!this.playing || !(this.audio.duration > 0)) return;
+      if (pastEnd(this.audio, this.playing)) return this.stop();
+      const part = parts.get(this.playing);
+      const from = part?.start ?? 0;
+      const to = part?.end ?? this.audio.duration;
+      this.progress(this.playing, to > from ? (this.audio.currentTime - from) / (to - from) : 0);
     });
     this.audio.addEventListener('loadedmetadata', () => {
       if (this.playing && Number.isFinite(this.audio.duration)) lengths.set(this.playing, this.audio.duration);
@@ -155,7 +175,7 @@ class Player {
       if (BUILT_IN_SOUNDS[name].loop) this.timer = setTimeout(() => this.stop(), 5000);
     } else {
       this.audio.src = key;
-      this.audio.currentTime = 0;
+      playFrom(this.audio, key);
       this.audio.play().catch(() => {
         if (this.playing === key) this.stop();
       });
@@ -241,6 +261,9 @@ export function chooseSound(store: Store, o: SoundChoice): Promise<SoundPick | u
     const fileRow = (row: Row, group: SoundGroup, showGroup: boolean) => {
       const url = mediaUrl(store, row);
       const key = url ?? `missing:${row.id}`;
+      const crop = audioCrop(row);
+      if (url && crop) parts.set(url, crop);
+      else if (url) parts.delete(url);
       const current = row.id === o.selected && !o.sound;
       const length = lengthOf(row, url);
       const words = group === 'voice' ? saying(row) : '';
@@ -254,7 +277,7 @@ export function chooseSound(store: Store, o: SoundChoice): Promise<SoundPick | u
           if (!Number.isFinite(probe.duration)) return;
           lengths.set(url, probe.duration);
           // Every row of this file, in case the list was drawn again meanwhile.
-          for (const n of list.querySelectorAll<HTMLElement>('.sp-length')) if (n.dataset.key === url) n.textContent = clock(probe.duration);
+          for (const n of list.querySelectorAll<HTMLElement>('.sp-length')) if (n.dataset.key === url) n.textContent = clock(croppedLength(crop, probe.duration));
           probe.removeAttribute('src');
         }, { once: true });
         probe.src = url;
@@ -448,10 +471,13 @@ export function soundChoiceButton(store: Store, o: SoundChoice & { label: string
       listen.textContent = '■';
       listen.classList.add('playing');
       if (url) {
+        const crop = chosen ? audioCrop(chosen) : null;
         preview ??= new Audio(url);
-        preview.currentTime = 0;
-        preview.onended = stop;
-        preview.play().catch(stop);
+        const player = preview;
+        player.currentTime = crop?.start ?? 0;
+        player.onended = stop;
+        player.ontimeupdate = () => (crop?.end != null && player.currentTime >= crop.end ? stop() : undefined);
+        player.play().catch(stop);
       } else if (game && isBuiltInSound(o.sound)) {
         const name = o.sound;
         const synth = new Synth(() => {

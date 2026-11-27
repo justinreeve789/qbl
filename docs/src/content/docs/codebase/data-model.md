@@ -91,7 +91,7 @@ Nested actions **are not rows**: an infobox button's action (`params.call_to_act
 
 ### `media`
 
-`id`, `type` (`image`, `audio`, `video`), `filename`, `filepath`, `url`, `scale_x`, `scale_y`, `width`, `height`, `priority` (the document's `assets` are sorted by it). `params` holds `sheet` (a sprite sheet's grid), `animations` (its named animations), `apng` (an animated PNG's frames and timing) and `speech` (a recording's words and their times), which the compiler lifts out to the top of the media entry; anything else stays under `params`. Uploaded files are stored under the media folder, one folder per scenario, with random names; `filepath` points there.
+`id`, `type` (`image`, `audio`, `video`), `filename`, `filepath`, `url`, `scale_x`, `scale_y`, `width`, `height`, `priority` (the document's `assets` are sorted by it). `params` holds `sheet` (a sprite sheet's grid), `animations` (its named animations), `apng` (an animated PNG's frames and timing) and `speech` (a recording's words and their times), which the compiler lifts out to the top of the media entry; anything else stays under `params`, such as `crop` (the part of a sound that plays, in seconds: read it with `audioCrop()` in `packages/shared/src/audioCrop.ts`, never by hand). Uploaded files are stored under the media folder, one folder per scenario, with random names; `filepath` points there.
 
 ### `variables`
 
