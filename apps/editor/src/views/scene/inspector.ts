@@ -1,4 +1,4 @@
-import { mainLayerIndex, type Condition, type SceneLight, type SceneWaterLight } from '@qbl/shared';
+import { mainLayerIndex, waterLightShaped, waterLightStartShape, WATER_LIGHT_MAX_CORNERS, type Condition, type SceneLight, type SceneWaterLight } from '@qbl/shared';
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
@@ -62,7 +62,7 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
     case 'water_light':
       return listPanel(model, ctx, 'water_lights', selection.index, 'Underwater light',
         'Light under water, drawn live by the game. Rippling light is the bright web that dances on the floor of a pool or the sea bed: put its box on the floor, and it lies behind everyone standing there. Shafts are beams of light slanting down from the surface, in front of everyone. It fades out softly at the edges of its box (or in an oval). Give it conditions to switch it on and off as the story goes. Drag the box to move it and its corners to resize it; “Test this scene” shows it moving.',
-        WATER_LIGHT_FIELDS, host, layoutConditions(model, ctx, 'water_lights', selection.index));
+        WATER_LIGHT_FIELDS, host, h('div', null, waterLightShape(model, selection.index), layoutConditions(model, ctx, 'water_lights', selection.index)));
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
     case 'bench':
@@ -298,6 +298,31 @@ function layerPanel(model: SceneModel, ctx: FormContext, which: LayerList, index
  */
 function lightConditions(model: SceneModel, ctx: FormContext, index: number): HTMLElement {
   return layoutConditions(model, ctx, 'lights', index);
+}
+
+/**
+ * Rippling light's shape: its box, or an outline of its own, edited on the canvas by its corners.
+ * Shafts always fill their box, so they have no choice here.
+ */
+function waterLightShape(model: SceneModel, index: number): HTMLElement | null {
+  const light = model.layout<SceneWaterLight>('water_lights')[index];
+  if (!light || light.kind === 'shafts') return null;
+  const set = (change: (l: SceneWaterLight) => SceneWaterLight) =>
+    void model.setLayout('water_lights', model.layout<SceneWaterLight>('water_lights').map((l, i) => (i === index ? change(l) : l)), true);
+  const shaped = waterLightShaped(light);
+  return h(
+    'div',
+    { class: 'conditions', 'data-section': 'shape' },
+    h(
+      'div',
+      { class: 'sub-head' },
+      h('span', null, 'Shape', help(`The light fills its box, fading out at the edges (or in an oval). Give it its own shape to fit a floor that is not a rectangle: a round pool, a path, the sea bed between rocks. Drag its corners on the canvas; drag the small handle half way along a side to add a corner (up to ${WATER_LIGHT_MAX_CORNERS}); double-click a corner to remove it. The light fades out softly inside the outline.`)),
+      shaped
+        ? h('button', { type: 'button', class: 'link', 'data-water-shape': 'box', onclick: () => set(({ shape: _, ...rest }) => rest) }, '▭ Back to a box')
+        : h('button', { type: 'button', class: 'link', 'data-water-shape': 'own', onclick: () => set((l) => ({ ...l, shape: waterLightStartShape(l) })) }, '✏️ Give it its own shape'),
+    ),
+    h('p', { class: 'muted' }, shaped ? `Its own shape, with ${light.shape!.length} corners: drag them on the canvas.` : 'Its box.'),
+  );
 }
 
 /** The conditions of something placed in the scene that is on only while they hold (a light, underwater light). */

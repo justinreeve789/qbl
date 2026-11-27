@@ -20,6 +20,7 @@ function pool(): Scenario {
         { kind: 'shafts', x: 240, y: 0, width: 800, height: 560, conditions: [{ variable: 'sunny', operator: '=', operand: 1 }] },
         { kind: 'ripples', x: 0, y: 0, width: 100, height: 100, speed: 0 },
         { kind: 'ripples', x: 0, y: 0, width: 0, height: 100 },
+        { kind: 'ripples', x: 0, y: 0, width: 5, height: 5, shape: [{ x: 100, y: 450 }, { x: 600, y: 430 }, { x: 500, y: 700 }] },
       ],
     }],
   } as unknown as Scenario);
@@ -29,8 +30,9 @@ test('underwater light runs at its own speed, and comes on and goes out with its
   const g = new Game(pool());
   await g.wait(100);
   const lights = g.scene.system(WaterLightSystem).lights;
-  assert.equal(lights.length, 3, 'a light with no box is left out');
-  const [ripples, shafts, still] = lights;
+  assert.equal(lights.length, 4, 'a light with no box is left out');
+  const [ripples, shafts, still, shaped] = lights;
+  assert.deepEqual([shaped!.area.x, shaped!.area.y, shaped!.area.width, shaped!.area.height, shaped!.area.corners?.length], [100, 430, 500, 270, 3], 'an outline is drawn over its own bounds');
   // The test's Phaser has no WebGL: nothing is drawn, but the light keeps its state.
   assert.equal(ripples!.shader, null);
   assert.equal(ripples!.on, true);

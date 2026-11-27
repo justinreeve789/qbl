@@ -14,7 +14,7 @@ import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
 import { isBuiltInSound } from './sounds.js';
 import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
-import { WATER_LIGHT_KINDS } from './waterLight.js';
+import { WATER_LIGHT_KINDS, WATER_LIGHT_MAX_CORNERS } from './waterLight.js';
 import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES, toNumber } from './variables.js';
 import { BUILD_LIMITS, BUILD_TOOLS, buildingRules } from './builds.js';
 
@@ -721,6 +721,11 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (w.size != null && !(typeof w.size === 'number' && w.size > 0)) err(`${p}.size`, 'size is a number of pixels greater than 0');
       if (w.speed != null && !(typeof w.speed === 'number' && w.speed >= 0)) err(`${p}.speed`, 'speed is a percentage, 0 or more');
       if (w.edge != null && w.edge !== 'soft' && w.edge !== 'oval') err(`${p}.edge`, 'edge is "soft" or "oval"');
+      if (w.shape != null) {
+        if (!Array.isArray(w.shape) || w.shape.length < 3 || w.shape.length > WATER_LIGHT_MAX_CORNERS) err(`${p}.shape`, `shape is a list of 3 to ${WATER_LIGHT_MAX_CORNERS} corners`);
+        else w.shape.forEach((c, ci) => (typeof c?.x !== 'number' || typeof c?.y !== 'number') && err(`${p}.shape[${ci}]`, 'A corner needs x and y'));
+        if (w.kind === 'shafts') warn(`${p}.shape`, 'Only rippling light takes the shape of its outline; shafts fill their box');
+      }
       if (w.conditions != null && !Array.isArray(w.conditions)) err(`${p}.conditions`, 'conditions is a list');
       else checkConditions(w.conditions ?? undefined, p);
     });

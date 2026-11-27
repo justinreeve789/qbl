@@ -1,4 +1,4 @@
-import { flowSettings, pictureScale, placeSortLine, sortLineOf, type Item, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneWaterLight, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
+import { flowSettings, pictureScale, placeSortLine, sortLineOf, type Item, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneWaterLight, waterLightArea, waterLightShaped, WATER_LIGHT_MAX_CORNERS, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -616,36 +616,105 @@ export class SceneCanvas {
   private drawWaterLights(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
     const lights = this.model.layout<SceneWaterLight>('water_lights');
     lights.forEach((light, index) => {
-      if (!(light.width > 0) || !(light.height > 0)) return;
+      const area = waterLightArea(light);
+      if (!(area.width > 0) || !(area.height > 0)) return;
       const selection: Selection = { kind: 'water_light', index };
       const isSelected = sameSelection(selection, selected);
-      const commit = () => void this.model.setLayout('water_lights', lights);
-      const start = { x: light.x, y: light.y, width: light.width, height: light.height };
+      // An outline keeps the box as its bounds, so the game and the fields agree on where it is.
+      const commit = () => {
+        if (waterLightShaped(light)) Object.assign(light, boxOf(light.shape!));
+        void this.model.setLayout('water_lights', lights);
+      };
       const preview = waterLightPreview(`${this.model.sceneId}:${index}`, light);
       if (preview) {
-        shapes.push(s('foreignObject', { class: 'water-light-view', x: light.x, y: light.y, width: light.width, height: light.height }, preview));
+        shapes.push(s('foreignObject', { class: 'water-light-view', x: area.x, y: area.y, width: area.width, height: area.height }, preview));
       }
-      shapes.push(
-        this.body(s('rect', {
-          class: `water-light-area${isSelected ? ' selected' : ''}`, x: light.x, y: light.y, width: light.width, height: light.height,
-          onpointerdown: (e: PointerEvent) =>
-            this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(light, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
-        }), light.width * light.height),
-      );
       const label = light.kind === 'shafts' ? '☀ ' : '〰 ';
       const switched = light.conditions?.length ? ' ⏻' : '';
-      shapes.push(s('text', { class: 'shape-name', x: light.x + 8 * u, y: light.y + 16 * u, 'font-size': 12 * u }, `${label}${light.name || (light.kind === 'shafts' ? 'light shafts' : 'rippling light')}${switched}`));
-      if (!isSelected) return;
-      const corners: Array<[number, number, (to: Point) => void]> = [
-        [light.x, light.y, (to) => Object.assign(light, { x: Math.min(to.x, start.x + start.width - 20), y: Math.min(to.y, start.y + start.height - 20), width: Math.max(20, start.x + start.width - to.x), height: Math.max(20, start.y + start.height - to.y) })],
-        [light.x + light.width, light.y + light.height, (to) => Object.assign(light, { width: Math.max(20, to.x - start.x), height: Math.max(20, to.y - start.y) })],
-      ];
-      for (const [hx, hy, resize] of corners) {
-        top.push(s('rect', {
-          class: 'handle', x: hx - 6 * u, y: hy - 6 * u, width: 12 * u, height: 12 * u,
-          onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => resize(to), end: commit }),
-        }, s('title', null, 'Drag to resize')));
-      }
+      const name = `${label}${light.name || (light.kind === 'shafts' ? 'light shafts' : 'rippling light')}${switched}`;
+      if (area.corners) this.drawWaterLightShape(light, area.corners, selection, isSelected, u, shapes, top, commit);
+      else this.drawWaterLightBox(light, selection, isSelected, u, shapes, top, commit);
+      shapes.push(s('text', { class: 'shape-name', x: area.x + 8 * u, y: area.y + 16 * u, 'font-size': 12 * u }, name));
+    });
+  }
+
+  private drawWaterLightBox(light: SceneWaterLight, selection: Selection, isSelected: boolean, u: number, shapes: SVGElement[], top: SVGElement[], commit: () => void) {
+    const start = { x: light.x, y: light.y, width: light.width, height: light.height };
+    shapes.push(
+      this.body(s('rect', {
+        class: `water-light-area${isSelected ? ' selected' : ''}`, x: light.x, y: light.y, width: light.width, height: light.height,
+        onpointerdown: (e: PointerEvent) =>
+          this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(light, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
+      }), light.width * light.height),
+    );
+    if (!isSelected) return;
+    const corners: Array<[number, number, (to: Point) => void]> = [
+      [light.x, light.y, (to) => Object.assign(light, { x: Math.min(to.x, start.x + start.width - 20), y: Math.min(to.y, start.y + start.height - 20), width: Math.max(20, start.x + start.width - to.x), height: Math.max(20, start.y + start.height - to.y) })],
+      [light.x + light.width, light.y + light.height, (to) => Object.assign(light, { width: Math.max(20, to.x - start.x), height: Math.max(20, to.y - start.y) })],
+    ];
+    for (const [hx, hy, resize] of corners) {
+      top.push(s('rect', {
+        class: 'handle', x: hx - 6 * u, y: hy - 6 * u, width: 12 * u, height: 12 * u,
+        onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => resize(to), end: commit }),
+      }, s('title', null, 'Drag to resize')));
+    }
+  }
+
+  /**
+   * Rippling light with an outline of its own: dragged as a whole, its corners moved, added (from the
+   * handle half way along a side) and removed (double-click), as walkable areas are.
+   */
+  private drawWaterLightShape(light: SceneWaterLight, corners: Point[], selection: Selection, isSelected: boolean, u: number, shapes: SVGElement[], top: SVGElement[], commit: () => void) {
+    const polygon = light.shape!;
+    const start = polygon.map((p) => ({ ...p }));
+    shapes.push(
+      this.body(s('polygon', {
+        class: `water-light-area${isSelected ? ' selected' : ''}`,
+        points: corners.map((p) => `${p.x},${p.y}`).join(' '),
+        onpointerdown: (e: PointerEvent) =>
+          this.begin(e, selection, isSelected
+            ? { move: (to, from) => polygon.forEach((p, i) => Object.assign(p, { x: round(start[i]!.x + to.x - from.x), y: round(start[i]!.y + to.y - from.y) })), end: commit }
+            : undefined),
+      }), polygonArea(corners)),
+    );
+    if (!isSelected) return;
+    if (polygon.length < WATER_LIGHT_MAX_CORNERS) {
+      polygon.forEach((p, i) => {
+        const next = polygon[(i + 1) % polygon.length]!;
+        top.push(
+          s('circle', {
+            class: 'handle add', cx: (p.x + next.x) / 2, cy: (p.y + next.y) / 2, r: 4 * u,
+            onpointerdown: (e: PointerEvent) => {
+              const at = { x: round((p.x + next.x) / 2), y: round((p.y + next.y) / 2) };
+              polygon.splice(i + 1, 0, at);
+              this.begin(e, null, { move: (to) => Object.assign(at, to), end: commit });
+              if (this.drag) this.drag.moved = true;
+              this.draw();
+            },
+          }, s('title', null, 'Drag to add a corner')),
+        );
+      });
+    }
+    polygon.forEach((p, i) => {
+      top.push(
+        s('circle', {
+          class: 'handle', cx: p.x, cy: p.y, r: 6 * u,
+          onpointerdown: (e: PointerEvent) =>
+            this.begin(e, null, {
+              move: (to) => Object.assign(p, to),
+              end: commit,
+              double: {
+                key: `water_lights-${selection.kind === 'water_light' ? selection.index : 0}-${i}`,
+                run: () => {
+                  if (polygon.length <= 3) return;
+                  polygon.splice(i, 1);
+                  commit();
+                  this.host.dragged();
+                },
+              },
+            }),
+        }, s('title', null, 'Drag to move. Double-click to remove this corner.')),
+      );
     });
   }
 
@@ -999,6 +1068,15 @@ export class SceneCanvas {
 }
 
 /** The area enclosed by a polygon, in square pixels. */
+/** The box around some corners, in whole pixels. */
+function boxOf(points: ReadonlyArray<Point>): { x: number; y: number; width: number; height: number } {
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const x = Math.round(Math.min(...xs));
+  const y = Math.round(Math.min(...ys));
+  return { x, y, width: Math.round(Math.max(...xs)) - x, height: Math.round(Math.max(...ys)) - y };
+}
+
 function polygonArea(points: ReadonlyArray<{ x: number; y: number }>): number {
   let sum = 0;
   for (let i = 0; i < points.length; i++) {

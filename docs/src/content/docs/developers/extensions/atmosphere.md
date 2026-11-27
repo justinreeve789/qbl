@@ -103,6 +103,7 @@ speed | decimal | 100 | Percent of the usual pace. 0 holds it still.
 tilt | decimal | 60 | Ripples: how far the floor leans away, 0 (seen from above) to 100.
 spread | decimal | 35 | Shafts: how much they fan out from above, 0 (side by side) to 100.
 edge | string | soft | `soft`: fades out at the box's edges. `oval`: in an oval.
+shape | array | | Ripples only: an outline of its own, `[{x, y}, ...]` in scene pixels, 3 to 16 corners. The light fades out softly inside it and `edge` does not apply; the box is kept as its bounds (the game draws over the outline's bounds either way). The shader takes the corners as `uPoly` (two to a vec4) and `uCorners`.
 conditions | array | | On only while all of these hold; it fades in and out (as a light does). None: always on.
 name | string | | For the editor.
 
