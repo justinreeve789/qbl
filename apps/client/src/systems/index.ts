@@ -16,6 +16,7 @@ import { SkySystem } from './SkySystem';
 import { SpeechSystem } from './SpeechSystem';
 import { WeatherSystem } from './WeatherSystem';
 import { FlowSystem } from './FlowSystem';
+import { WaterLightSystem } from './WaterLightSystem';
 import { StorySystem } from './StorySystem';
 
 /**
@@ -28,6 +29,7 @@ import { StorySystem } from './StorySystem';
 export const sceneSystems: SceneSystemClass[] = [
   LayerSystem,
   FlowSystem,
+  WaterLightSystem,
   SkySystem,
   LightSystem,
   AtmosphereSystem,

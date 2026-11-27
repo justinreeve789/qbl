@@ -145,6 +145,7 @@ class ScenarioCompiler
                 // The weather and whether the scene plays by itself (a story) are settings too; its water is placed.
                 'weather' => is_array(self::json($sc['params'] ?? null)['weather'] ?? null) ? self::json($sc['params'] ?? null)['weather'] : null,
                 'flows' => ($layout['flows'] ?? []) ?: null,
+                'water_lights' => ($layout['water_lights'] ?? []) ?: null,
                 'critters' => ($layout['critters'] ?? []) ?: null,
                 'story' => ! empty(self::json($sc['params'] ?? null)['story']) ? true : null,
                 // Use as a scenario launcher scene: true or false; absent, a scene with a travel action is one.

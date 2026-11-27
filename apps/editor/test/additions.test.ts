@@ -181,6 +181,36 @@ test('flowing water is placed and edited; the scene gets weather and plays by it
   assert.equal((await draft()).scenes[0]!.launcher, false);
 });
 
+test('underwater light is placed, moves on the canvas, and shows the settings for its kind', async () => {
+  await page.locator('select:has(option[value=flows])').selectOption('water-ripples');
+  await page.waitForSelector('svg .water-light-area.selected');
+  // Ripples lie on a floor that leans away; shafts fan out. Each shows only its own.
+  assert.equal(await page.locator('.inspector [data-field=tilt]').count(), 1);
+  assert.equal(await page.locator('.inspector [data-field=spread]').count(), 0);
+  // The canvas runs the game's shader, where the browser has WebGL.
+  if (await page.evaluate(() => !!document.createElement('canvas').getContext('webgl'))) {
+    await page.waitForSelector('svg .water-light-view canvas.water-light-preview');
+  }
+  await type('.inspector [data-field=strength] input[type=number]', '75');
+  await page.locator('.inspector [data-field=edge] select').selectOption('oval');
+  let light = (await draft()).scenes[0]!.water_lights![0]!;
+  assert.deepEqual([light.kind, light.strength, light.edge, light.name], ['ripples', 75, 'oval', 'rippling light']);
+
+  await page.locator('.inspector [data-field=kind] select').selectOption('shafts');
+  await page.waitForSelector('.inspector [data-field=spread]');
+  assert.equal(await page.locator('.inspector [data-field=tilt]').count(), 0);
+  await type('.inspector [data-field=spread] input[type=number]', '60');
+  light = (await draft()).scenes[0]!.water_lights![0]!;
+  assert.deepEqual([light.kind, light.spread], ['shafts', 60]);
+  assert.match(await page.innerText('.outline'), /Underwater light/);
+
+  await page.locator('select:has(option[value=flows])').selectOption('water-shafts');
+  await page.waitForFunction(() => document.querySelectorAll('svg .water-light-area').length === 2);
+  assert.deepEqual((await draft()).scenes[0]!.water_lights!.map((w) => w.kind), ['shafts', 'shafts']);
+  await page.click('.inspector button.danger:has-text("Delete")');
+  await page.waitForFunction(() => document.querySelectorAll('svg .water-light-area').length === 1);
+});
+
 test('a hotspot label can be background, or a solid object players walk around', async () => {
   await page.locator('select:has(option[value=shadow_spots])').selectOption('hotspot-click');
   await page.click('text=+ Add label');

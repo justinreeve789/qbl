@@ -16,6 +16,7 @@ export type Selection =
   | { kind: 'shadow'; index: number }
   | { kind: 'light'; index: number }
   | { kind: 'flow'; index: number }
+  | { kind: 'water_light'; index: number }
   /** The scene's close-up bench: its settings, substances, reactions, readouts, watches and graph. */
   | { kind: 'bench' }
   | { kind: 'bench-vessel'; index: number }
@@ -23,7 +24,7 @@ export type Selection =
 
 export type LayerList = 'background_media' | 'foreground_media';
 export type AreaList = 'walkable_areas' | 'blocked_areas';
-export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | AreaList;
+export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | 'water_lights' | AreaList;
 
 export interface Point { x: number; y: number }
 export type Side = 'left' | 'right' | 'top' | 'bottom';
@@ -116,6 +117,7 @@ export class SceneModel {
         shadow_spots: this.layout('shadow_spots').map((a) => ({ ...a, x: x(a.x), y: y(a.y), radius: x(a.radius), ...(a.radius_y != null ? { radius_y: y(a.radius_y) } : {}) })),
         lights: this.layout('lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), ...(a.radius != null ? { radius: x(a.radius) } : {}) })),
         flows: this.layout('flows').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
+        water_lights: this.layout('water_lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
         items: this.layout('items').map(moved),
         characters: this.layout('characters').map(moved),
         // A bench's containers and tools move with the scene; their sizes stay: a beaker stays a beaker.

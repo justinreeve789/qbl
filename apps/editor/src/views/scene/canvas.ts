@@ -1,10 +1,11 @@
-import { flowSettings, pictureScale, placeSortLine, sortLineOf, type Item, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
+import { flowSettings, pictureScale, placeSortLine, sortLineOf, type Item, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneWaterLight, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
 import type { SpotRequest } from '../../fields';
 import { sortedActions } from '../actions';
 import { standingOf } from '../../characters';
+import { waterLightPreview } from './waterLightPreview';
 import { sameSelection, type AreaList, type Bag, type LayerList, type Point, type SceneModel, type Selection } from './model';
 
 interface Host {
@@ -334,6 +335,7 @@ export class SceneCanvas {
 
     this.drawScaleAreas(selected, u, shapes, top);
     this.drawFlows(selected, u, shapes, top);
+    this.drawWaterLights(selected, u, shapes, top);
     this.drawShadowSpots(selected, u, shapes, top);
     this.drawLights(selected, u, shapes, top);
     this.drawAreas('walkable_areas', selected, u, shapes, top);
@@ -595,6 +597,48 @@ export class SceneCanvas {
       const corners: Array<[number, number, (to: Point) => void]> = [
         [flow.x, flow.y, (to) => Object.assign(flow, { x: Math.min(to.x, start.x + start.width - 20), y: Math.min(to.y, start.y + start.height - 20), width: Math.max(20, start.x + start.width - to.x), height: Math.max(20, start.y + start.height - to.y) })],
         [flow.x + flow.width, flow.y + flow.height, (to) => Object.assign(flow, { width: Math.max(20, to.x - start.x), height: Math.max(20, to.y - start.y) })],
+      ];
+      for (const [hx, hy, resize] of corners) {
+        top.push(s('rect', {
+          class: 'handle', x: hx - 6 * u, y: hy - 6 * u, width: 12 * u, height: 12 * u,
+          onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => resize(to), end: commit }),
+        }, s('title', null, 'Drag to resize')));
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------- underwater light
+
+  /**
+   * Underwater light: its box, with the light itself moving inside it (the game's own shader, in a
+   * small WebGL canvas that lets presses through to the box). Where there is no WebGL, just the box.
+   */
+  private drawWaterLights(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
+    const lights = this.model.layout<SceneWaterLight>('water_lights');
+    lights.forEach((light, index) => {
+      if (!(light.width > 0) || !(light.height > 0)) return;
+      const selection: Selection = { kind: 'water_light', index };
+      const isSelected = sameSelection(selection, selected);
+      const commit = () => void this.model.setLayout('water_lights', lights);
+      const start = { x: light.x, y: light.y, width: light.width, height: light.height };
+      const preview = waterLightPreview(`${this.model.sceneId}:${index}`, light);
+      if (preview) {
+        shapes.push(s('foreignObject', { class: 'water-light-view', x: light.x, y: light.y, width: light.width, height: light.height }, preview));
+      }
+      shapes.push(
+        this.body(s('rect', {
+          class: `water-light-area${isSelected ? ' selected' : ''}`, x: light.x, y: light.y, width: light.width, height: light.height,
+          onpointerdown: (e: PointerEvent) =>
+            this.begin(e, selection, isSelected ? { move: (to, from) => Object.assign(light, { x: Math.round(start.x + to.x - from.x), y: Math.round(start.y + to.y - from.y) }), end: commit } : undefined),
+        }), light.width * light.height),
+      );
+      const label = light.kind === 'shafts' ? '☀ ' : '〰 ';
+      const switched = light.conditions?.length ? ' ⏻' : '';
+      shapes.push(s('text', { class: 'shape-name', x: light.x + 8 * u, y: light.y + 16 * u, 'font-size': 12 * u }, `${label}${light.name || (light.kind === 'shafts' ? 'light shafts' : 'rippling light')}${switched}`));
+      if (!isSelected) return;
+      const corners: Array<[number, number, (to: Point) => void]> = [
+        [light.x, light.y, (to) => Object.assign(light, { x: Math.min(to.x, start.x + start.width - 20), y: Math.min(to.y, start.y + start.height - 20), width: Math.max(20, start.x + start.width - to.x), height: Math.max(20, start.y + start.height - to.y) })],
+        [light.x + light.width, light.y + light.height, (to) => Object.assign(light, { width: Math.max(20, to.x - start.x), height: Math.max(20, to.y - start.y) })],
       ];
       for (const [hx, hy, resize] of corners) {
         top.push(s('rect', {

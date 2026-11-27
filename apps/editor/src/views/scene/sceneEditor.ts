@@ -30,6 +30,8 @@ const ADD_MENU: ReadonlyArray<readonly [Addable, string]> = [
   ['shadow_spots', 'Shadow spot (shade)'],
   ['lights', 'Light (a glow that flickers, breathes or blinks)'],
   ['flows', 'Flowing water (a river, a waterfall, the sea)'],
+  ['water-ripples', 'Underwater light: rippling on the floor'],
+  ['water-shafts', 'Underwater light: shafts from above'],
   ['bench-vessel', 'Bench: a beaker to mix in'],
   ['bench-supply', 'Bench: a stock bottle to pour from'],
   ['bench-dropper', 'Bench: a dropper (a drop at a time)'],
@@ -127,7 +129,7 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void, op
     toast(target ? `Players who walk off the ${side} edge go to “${sceneLabel(target)}”. Change the scene and arrival point in the jump action.` : 'Add another scene, then choose it in the jump action.');
   }
 
-  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows', entry: unknown, kind: Selection['kind']) {
+  async function addToLayout(key: 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | 'water_lights', entry: unknown, kind: Selection['kind']) {
     const list = model.layout(key);
     await model.setLayout(key, [...list, entry], true);
     const index = list.length;
@@ -189,6 +191,17 @@ export function sceneEditor(store: Store, sceneId: number, leave: () => void, op
         // By default: a river across the bottom fifth of the scene.
         const { width, height } = canvas.size();
         return void addToLayout('flows', { name: 'river', kind: 'river', x: 0, y: Math.round(height * 0.8), width, height: Math.round(height * 0.2) }, 'flow');
+      }
+      case 'water-ripples': {
+        // By default: the bottom third of the scene, where the floor usually is.
+        const { width, height } = canvas.size();
+        const top = Math.round(height * 0.62);
+        return void addToLayout('water_lights', { name: 'rippling light', kind: 'ripples', x: 0, y: top, width, height: height - top }, 'water_light');
+      }
+      case 'water-shafts': {
+        // By default: beams from the top of the scene, down over its middle.
+        const { width, height } = canvas.size();
+        return void addToLayout('water_lights', { name: 'light shafts', kind: 'shafts', x: Math.round(width * 0.2), y: 0, width: Math.round(width * 0.6), height: Math.round(height * 0.8) }, 'water_light');
       }
       case 'background_media':
       case 'foreground_media': {

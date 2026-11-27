@@ -14,6 +14,7 @@ import { SKY_TIMES } from './sky.js';
 import { LINE_ID, reachableLines } from './conversation.js';
 import { isBuiltInSound } from './sounds.js';
 import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
+import { WATER_LIGHT_KINDS } from './waterLight.js';
 import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES, toNumber } from './variables.js';
 import { BUILD_LIMITS, BUILD_TOOLS, buildingRules } from './builds.js';
 
@@ -707,6 +708,21 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (f.color != null && !COLOR.test(f.color)) err(`${p}.color`, 'color is #rrggbb');
       if (f.layer != null && f.layer !== 'behind' && f.layer !== 'over') err(`${p}.layer`, 'layer is "behind" or "over"');
       if ((f.layer ?? 'behind') === 'behind' && (scene.background_media ?? []).length === 0) warn(p, 'The water is drawn behind the scene\'s picture, but the scene has none');
+    });
+    (scene.water_lights ?? []).forEach((w, i) => {
+      const p = `${sp}.water_lights[${i}]`;
+      if (typeof w.x !== 'number' || typeof w.y !== 'number' || !(w.width > 0) || !(w.height > 0)) err(p, 'Underwater light needs x, y, a width and a height');
+      if (w.kind != null && !(WATER_LIGHT_KINDS as readonly string[]).includes(w.kind)) err(`${p}.kind`, `kind is one of ${WATER_LIGHT_KINDS.join(', ')}`);
+      if (w.color != null && !COLOR.test(w.color)) err(`${p}.color`, 'color is #rrggbb');
+      for (const key of ['strength', 'tilt', 'spread'] as const) {
+        const v = w[key];
+        if (v != null && !(typeof v === 'number' && v >= 0 && v <= 100)) err(`${p}.${key}`, `${key} is a percentage from 0 to 100`);
+      }
+      if (w.size != null && !(typeof w.size === 'number' && w.size > 0)) err(`${p}.size`, 'size is a number of pixels greater than 0');
+      if (w.speed != null && !(typeof w.speed === 'number' && w.speed >= 0)) err(`${p}.speed`, 'speed is a percentage, 0 or more');
+      if (w.edge != null && w.edge !== 'soft' && w.edge !== 'oval') err(`${p}.edge`, 'edge is "soft" or "oval"');
+      if (w.conditions != null && !Array.isArray(w.conditions)) err(`${p}.conditions`, 'conditions is a list');
+      else checkConditions(w.conditions ?? undefined, p);
     });
     (scene.critters ?? []).forEach((c, i) => {
       const p = `${sp}.critters[${i}]`;
