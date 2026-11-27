@@ -1,5 +1,5 @@
 import type { BubbleAnchor } from './bubble';
-import type { ActionHandle, Alignment, Badge, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, OverlayMotion, SiteLink } from '@qbl/shared';
+import type { ActionHandle, Alignment, Badge, BuildPiece, BuildStatus, BuildTool, BuildUpload, Id, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, OverlayMotion, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
 
 export type { SpeakOptions };
@@ -169,6 +169,13 @@ export interface UiPort {
   linkOffer(message: string, href: string, label: string): void;
   /** What stands beside a close-up bench: its readings, what is in the player's hand, its buttons and its graph. */
   benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle;
+  /**
+   * The Build button, for a scene where students may build: shown with a label, or hidden with null.
+   * Pressing it calls `onOpen`.
+   */
+  buildButton(label: string | null, onOpen: () => void): void;
+  /** The build palette: open while the player builds. The game ignores walking and hotspots meanwhile. */
+  buildPanel(spec: BuildPanelSpec, on: BuildPanelActions): BuildPanelHandle;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null): void;
 }
@@ -314,5 +321,61 @@ export interface BenchPanelActions {
 
 export interface BenchPanelHandle {
   update(view: BenchPanelView): void;
+  close(): void;
+}
+
+// ------------------------------------------------------------------ student building
+
+/** What the build palette offers, fixed while it is open. */
+export interface BuildPanelSpec {
+  /** What the scene's author asks students to make. */
+  prompt: string;
+  tools: BuildTool[];
+  /** What Place offers: the scene's pieces, with their pictures. */
+  pieces: Array<{ mediaId: Id; url: string; name: string }>;
+  colors: readonly string[];
+  maxPieces: number;
+  /** The teacher looks before others see it. */
+  approve: boolean;
+  /** Others in the game see approved builds here (`own`: only the player and their teacher). */
+  shared: boolean;
+}
+
+/** How the player's build stands, redrawn as it changes. */
+export interface BuildPanelView {
+  count: number;
+  /** What is picked, or null. */
+  selected: { kind: BuildPiece['kind']; text?: string; color?: string } | null;
+  canUndo: boolean;
+  canRedo: boolean;
+  saving: boolean;
+  /** The state of what was saved before: shown so the player knows whether others see it. */
+  status: BuildStatus | null;
+  /** The player's own pictures, for the picture chooser. */
+  pictures: readonly BuildUpload[];
+}
+
+export interface BuildPanelActions {
+  addSticker(mediaId: Id): void;
+  addLabel(text: string, color: string): void;
+  addPicture(uploadId: number): void;
+  upload(file: File): Promise<void>;
+  removePicture(uploadId: number): Promise<void>;
+  /** Change the picked thing: grow or shrink by a factor, turn by degrees, re-word or re-colour a label. */
+  resize(factor: number): void;
+  turn(degrees: number): void;
+  relabel(text: string, color: string): void;
+  remove(): void;
+  undo(): void;
+  redo(): void;
+  clear(): void;
+  /** Keep what was built. */
+  done(): void;
+  /** Put things back as they were and close. */
+  cancel(): void;
+}
+
+export interface BuildPanelHandle {
+  update(view: BuildPanelView): void;
   close(): void;
 }

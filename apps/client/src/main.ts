@@ -1,8 +1,9 @@
 import * as Phaser from 'phaser';
-import { characterPicture, isLauncherScene, isStaff, launchPath, parseLaunchParam, normalizeScenario, roleLabel, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
+import { buildingRules, characterPicture, isLauncherScene, isStaff, launchPath, parseLaunchParam, normalizeScenario, roleLabel, resolveMediaUrl, siteLinks, validateScenario, type Id, type Scenario, type User } from '@qbl/shared';
 import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
+import { Builds, pretendBuilds } from './core/Builds';
 import { gameFeatures } from './features';
 import { buildHome, restartQuestion } from './home';
 import { Api, ApiError, takeSignInProblem, type SignUpRole } from './net/Api';
@@ -489,6 +490,16 @@ async function start() {
     await ctx.rewards.connect({ shop: () => api.shop(key), buy: (id) => api.buy(id, key), equip: (id, on) => api.equip(id, on) });
   }
   if (config.preview != null) ctx.rewards.pretend(500);
+  // Student building: only where a scene allows it. A preview (and offline play) builds in memory.
+  if (scenario.scenes.some((s) => buildingRules(s))) {
+    const group = scenario.instance?.group ?? config.group ?? 'public';
+    ctx.builds = new Builds(config.preview != null || config.offline ? pretendBuilds(user.name) : {
+      load: () => api.builds(String(key), group),
+      save: (sceneId, pieces) => api.saveBuild(String(key), group, Number(sceneId), pieces),
+      upload: (file) => api.uploadBuildPicture(String(key), group, file),
+      removeUpload: (id) => api.removeBuildPicture(id),
+    });
+  }
   // Other players' profiles come from the API, which a preview and the standalone game server do not have.
   if (!config.offline) ctx.fetchProfile = (userId) => api.profile(userId);
   // A teacher follows one team of an assignment at a time, as a member of its game, and can

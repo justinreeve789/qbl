@@ -11,6 +11,7 @@ import type { MediaSpeech } from './speech.js';
 
 import type { ButtonMark, InfoboxSize } from './infobox.js';
 import type { BuiltInSound } from './sounds.js';
+import type { SceneBuilding } from './builds.js';
 
 export type Id = number;
 export type VarValue = string | number;
@@ -1500,6 +1501,8 @@ export interface Scene {
   characters?: CharacterPlacement[];
   /** [ext] A close-up bench in the scene: containers to pour between, and what happens when they mix. See bench.ts. */
   bench?: SceneBench | null;
+  /** [ext] Students may add things of their own on top of the scene, from a Build button. See builds.ts. */
+  building?: SceneBuilding | null;
 }
 
 // ------------------------------------------------------------- scenario

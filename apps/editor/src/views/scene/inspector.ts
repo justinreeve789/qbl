@@ -7,6 +7,7 @@ import { duplicateScene } from '../../clipboard';
 import { inlineConditions, type ConditionValue } from '../conditions';
 import { eventPanel } from '../eventPanel';
 import { benchSettingsPanel, benchToolPanel, benchVesselPanel } from './benchPanels';
+import { buildingPanel } from './buildingPanel';
 import type { Bag, LayerList, LayoutList, Point, SceneModel, Selection } from './model';
 
 export interface InspectorHost {
@@ -90,6 +91,7 @@ function scenePanel(model: SceneModel, ctx: FormContext, host: InspectorHost): H
     form(SCENE_FIELDS, scene, commit, ctx),
     form(SCENE_MUSIC_FIELDS, params(scene), (key, value, field) => void store.patch('scenes', scene.id, { params: withValue(params(store.byId('scenes', scene.id)!), key, value, field) }, key === 'music_media_id'), ctx),
     livingPanel(model, ctx),
+    buildingPanel(model, ctx),
     mismatch
       ? h(
           'p',

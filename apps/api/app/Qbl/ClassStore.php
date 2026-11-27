@@ -444,7 +444,8 @@ class ClassStore
 
     /**
      * Start a student's game in an assignment again: their save in the instance they play in
-     * (their team's, or the assignment's) is deleted, so the next visit begins at the start.
+     * (their team's, or the assignment's) is deleted, so the next visit begins at the start, and
+     * so is what they built in its scenes and the pictures they uploaded for that.
      * For the assignment's teacher, or an admin.
      *
      * What is kept: the activity and message logs (a `reset` line marks the moment, and the
@@ -507,6 +508,9 @@ class ClassStore
         }
         try {
             $this->run('DELETE FROM scenario_sessions WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$scenarioId, $userId, $group]);
+            // What they built and uploaded there goes too (App\Qbl\Builds\BuildStore): it belongs with their game.
+            $this->run('DELETE FROM scene_builds WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$scenarioId, $userId, $group]);
+            $this->run('DELETE FROM build_uploads WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$scenarioId, $userId, $group]);
             $this->run(
                 'INSERT INTO activity_log (scenario_id, user_id, group_key, scene_id, type, ref, label, value, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, NULL, ?)',
                 [$scenarioId, $userId, $group, ActivityStore::RESET, (string) $byId, mb_substr($by, 0, 200) ?: null, $at],
@@ -531,6 +535,10 @@ class ClassStore
             'CREATE TABLE IF NOT EXISTS `assignments` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `teacher_id` INTEGER, `scenario_id` INTEGER, `due_at`, `note`, `external_id`, `launched_at`, `created_at`, `updated_at`)',
             'CREATE TABLE IF NOT EXISTS `teams` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `assignment_id` INTEGER, `name`, `created_at`, `updated_at`)',
             'CREATE TABLE IF NOT EXISTS `assignment_student` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `assignment_id` INTEGER, `student_id` INTEGER, `team_id` INTEGER, `created_at`, `updated_at`, UNIQUE (`assignment_id`, `student_id`))',
+            // What students build in scenes, and the pictures they upload for it (App\Qbl\Builds\BuildStore). Here
+            // because resetting a student's game deletes them.
+            'CREATE TABLE IF NOT EXISTS `scene_builds` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `scenario_id` INTEGER, `scene_id` INTEGER, `user_id` INTEGER, `group_key`, `status`, `pieces`, `reviewed_by` INTEGER, `reviewed_at`, `created_at`, `updated_at`, UNIQUE (`scenario_id`, `scene_id`, `user_id`, `group_key`))',
+            'CREATE TABLE IF NOT EXISTS `build_uploads` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `scenario_id` INTEGER, `user_id` INTEGER, `group_key`, `file_key` UNIQUE, `mime`, `width` INTEGER, `height` INTEGER, `bytes` BLOB, `created_at`, `updated_at`)',
         ];
     }
 

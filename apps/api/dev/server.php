@@ -263,6 +263,23 @@ if (preg_match('#^/api/(missions|avatars|me/avatar|me/progress/reset|players/\d+
     }
     respond(...(new App\Qbl\ClassApi($pdo))->handle($method, $m[1], $body, $user));
 }
+// Student building, with the same rules as the Laravel app (App\Qbl\Builds\BuildApi).
+if (str_starts_with($path, '/api/builds/')) {
+    $builds = new App\Qbl\Builds\BuildStore($pdo, '/api/builds/files');
+    if ($method === 'GET' && preg_match('#^/api/builds/files/([a-f0-9]{24})$#', $path, $m)) {
+        $file = $builds->file($m[1]);
+        if (! $file) {
+            respond(404, null);
+        }
+        header('Content-Type: '.$file[1]);
+        echo $file[0];
+        exit;
+    }
+    if ($user && $user['role'] === 'guest') {
+        $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `role`) VALUES (?, ?, ?)')->execute([$user['id'], $user['name'], 'guest']);
+    }
+    respond(...(new App\Qbl\Builds\BuildApi($builds))->handle($method, substr($path, strlen('/api/builds/')), $body, $user, $_GET, $_FILES));
+}
 if (preg_match('#^/api/scenarios/([A-Za-z][A-Za-z0-9_-]*)/play$#', $path, $m)) {
     $document = $store->findPublished($m[1]);
     if (! $document) {

@@ -1,0 +1,131 @@
+import { BUILD_LOOK, LABEL_COLORS } from '@qbl/shared';
+import { ApiError, type Api, type StudentBuild } from '../api';
+import { clear, confirmDelete, h, help, toast } from '../dom';
+
+type Filter = 'pending' | 'approved' | 'hidden';
+const FILTERS: Array<[Filter, string]> = [['pending', 'Waiting'], ['approved', 'Approved'], ['hidden', 'Hidden']];
+
+const fail = (err: unknown, fallback: string) => toast(err instanceof ApiError || err instanceof Error ? err.message : fallback, 'error');
+
+/** When, in a few words: "today 14:05", "3 Dec". */
+function when(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const today = new Date();
+  return d.toDateString() === today.toDateString()
+    ? `today ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+}
+
+/**
+ * A build drawn where it is in its scene: the scene's main picture, and each piece placed and
+ * sized as the game draws it (BUILD_LOOK), in percentages of the scene so it scales to the card.
+ */
+export function buildPreview(build: StudentBuild): HTMLElement {
+  const p = build.preview;
+  const width = p.width || 1;
+  const height = p.height || 1;
+  const pct = (n: number, of: number) => `${(n / of) * 100}%`;
+  const box = h('div', { class: 'build-preview', style: `aspect-ratio: ${width} / ${height}` });
+  if (p.background_url) box.append(h('img', { class: 'build-preview-bg', src: p.background_url, alt: '' }));
+  for (const piece of build.pieces) {
+    const scale = piece.scale ?? 1;
+    const place = `left: ${pct(piece.x, width)}; top: ${pct(piece.y, height)}; transform: translate(-50%, -50%) rotate(${piece.angle ?? 0}deg);`;
+    if (piece.kind === 'label') {
+      const color = piece.color ?? LABEL_COLORS[0]!;
+      box.append(h('span', { class: 'build-preview-label', style: `${place} color: ${color}; font-size: ${((BUILD_LOOK.labelSize * scale) / width) * 100}cqw;` }, piece.text ?? ''));
+      continue;
+    }
+    const pic = piece.kind === 'sticker' ? p.media[String(piece.media_id)] : p.pictures[String(piece.upload_id)];
+    if (!pic?.url) continue;
+    const w = piece.kind === 'sticker'
+      ? (pic.width || 64) * scale * (p.zoom ?? 1)
+      : (pic.width * BUILD_LOOK.pictureBox * scale) / Math.max(1, pic.width, pic.height);
+    box.append(h('img', { class: 'build-preview-piece', src: pic.url, alt: piece.kind === 'picture' ? 'A picture the student uploaded' : '', style: `${place} width: ${pct(w, width)};` }));
+  }
+  return box;
+}
+
+/**
+ * Students' builds: what they added to scenes that let them build, for their teacher to approve
+ * before classmates see it (or to hide again). On the Classes page.
+ */
+export function studentBuildsCard(api: Api): HTMLElement {
+  let filter: Filter = 'pending';
+  let builds: StudentBuild[] = [];
+  let waiting = 0;
+  const list = h('div', { class: 'build-list' }, h('p', { class: 'muted' }, 'Loading…'));
+  const tabs = h('div', { class: 'build-tabs', role: 'tablist' });
+  const card = h(
+    'div',
+    { class: 'card', 'data-card': 'builds' },
+    h('h2', null, '🛠️ Student builds ', help('In scenes whose author lets students build, students add pieces, words and their own pictures. A build waits here until you approve it; until then only its maker sees it. Hiding takes an approved build down again. Starting a student’s game again removes what they built.')),
+    tabs,
+    list,
+  );
+
+  const drawTabs = () => clear(tabs, ...FILTERS.map(([key, label]) => h('button', {
+    type: 'button', role: 'tab', class: key === filter ? 'current' : '', 'aria-selected': String(key === filter), 'data-builds-filter': key,
+    onclick: () => { filter = key; void load(); },
+  }, key === 'pending' && waiting ? `${label} (${waiting})` : label)));
+
+  const act = async (b: StudentBuild, status: 'approved' | 'hidden') => {
+    try {
+      await api.reviewBuild(b.id, status);
+      toast(status === 'approved' ? `${b.student.name}’s build is shown now.` : `${b.student.name}’s build is hidden.`);
+      await load();
+    } catch (err) {
+      fail(err, 'Could not change that build.');
+    }
+  };
+
+  const draw = () => {
+    drawTabs();
+    if (!builds.length) {
+      clear(list, h('p', { class: 'empty' }, filter === 'pending' ? 'Nothing is waiting for you.' : filter === 'approved' ? 'No approved builds.' : 'No hidden builds.'));
+      return;
+    }
+    clear(list, ...builds.map((b) => h(
+      'article',
+      { class: 'build-item', 'data-build': b.id },
+      buildPreview(b),
+      h('div', { class: 'build-about' },
+        h('strong', null, b.student.name),
+        h('span', { class: 'muted' }, ` · ${b.scenario.title} · ${b.preview.scene} · ${b.where}`),
+        h('span', { class: 'muted' }, ` · ${b.pieces.length} ${b.pieces.length === 1 ? 'thing' : 'things'} · ${when(b.updated_at)}`)),
+      h('div', { class: 'build-actions' },
+        b.status !== 'approved' ? h('button', { type: 'button', class: 'primary', onclick: () => void act(b, 'approved') }, 'Approve') : null,
+        b.status !== 'hidden' ? h('button', { type: 'button', onclick: () => void act(b, 'hidden') }, b.status === 'pending' ? 'Not now' : 'Hide') : null,
+        h('button', {
+          type: 'button', class: 'danger',
+          onclick: async () => {
+            if (!confirmDelete(`${b.student.name}’s build`)) return;
+            try {
+              await api.deleteBuild(b.id);
+              await load();
+            } catch (err) {
+              fail(err, 'Could not delete that build.');
+            }
+          },
+        }, 'Delete')),
+    )));
+  };
+
+  const load = async () => {
+    try {
+      const [shown, pending] = await Promise.all([api.studentBuilds(filter), filter === 'pending' ? null : api.studentBuilds('pending')]);
+      builds = shown;
+      waiting = (pending ?? shown).length;
+      draw();
+    } catch (err) {
+      // An API without building (an older server) shows nothing rather than an error.
+      if (err instanceof ApiError && err.status === 404) {
+        card.hidden = true;
+        return;
+      }
+      clear(list, h('p', { class: 'issue error' }, err instanceof Error ? err.message : 'Could not load the builds.'));
+    }
+  };
+  void load();
+  return card;
+}

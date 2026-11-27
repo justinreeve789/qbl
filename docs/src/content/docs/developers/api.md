@@ -155,6 +155,23 @@ Only the assignment's teacher (or an admin) may read them.
 
 `GET /api/players/{id}/profile`, for any signed-in player, returns `{ "profile": { "user_id", "name", "avatar_media_id", "look", "stars", "xp", "rank", "next_rank_xp", "badges" } }`: what other players may see of a player. 404 for a guest.
 
+### Student building
+
+What students add to scenes that allow it ([`building`](/docs/developers/extensions/scenes/#student-building)). The rules are in `App\Qbl\Builds\BuildRules` and `packages/shared/src/builds.ts`, which must agree. All need a token except the pictures. `group` names the instance, as for `/play`; `public` if absent.
+
+Endpoint | Body | Returns
+-------- | ---- | -------
+`GET /api/builds/{code}?group=` | | `{ "may_build", "builds": SceneBuild[], "uploads": BuildUpload[], "pictures": { id: { url, width, height } } }`: the player's own builds (any status) and others' approved ones in scenes whose builds are shared; the player's uploads; the pictures others' builds show. Guests see builds, and `may_build` is false. 404 for an instance the player may not join
+`PUT /api/builds/{code}/scenes/{id}?group=` | `{ "pieces": BuildPiece[] }` | `{ "build": SceneBuild or null }`. Replaces the player's build there; an empty list removes it. A change waits for the teacher again (`pending`) unless the scene says builds need no approval. 422 with the problems as sentences
+`POST /api/builds/{code}/uploads?group=` | multipart `file` | 201 `{ "upload": BuildUpload }`. PNG, JPEG, WebP or GIF up to 8 MB; saved again as WebP (or PNG), at most 1600 pixels across. At most 20 per player per instance
+`DELETE /api/builds/uploads/{id}` | | 204. The player's own; the pictures in their builds that showed it go too
+`GET /api/builds/files/{key}` | | The picture. No token: the key is unguessable
+`GET /api/builds/teach?status=pending` | | `{ "builds": [...] }`: for staff, the builds in their assignments' instances and in the public game of scenarios they own (admins: all), with `student`, `scenario`, `where` and a `preview` (scene name, size, zoom, main picture, and the pictures the pieces show). `status`: `pending`, `approved`, `hidden` or `all`
+`PUT /api/builds/teach/{id}` | `{ "status": "approved" }` | `{ "build": SceneBuild }`. `approved`, `hidden` or `pending`
+`DELETE /api/builds/teach/{id}` | | 204
+
+Resetting a student's game in an instance deletes their builds and uploads there; deleting a student deletes all of theirs.
+
 ### Stars, XP and the marketplace
 
 All need a token except `GET /api/shop`. Guests are answered 403: stars and XP need an account.

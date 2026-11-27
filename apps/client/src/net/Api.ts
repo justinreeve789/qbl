@@ -1,4 +1,4 @@
-import type { PlayerProfile, Progress, Scenario, ShopItem, User } from '@qbl/shared';
+import type { BuildPiece, BuildUpload, PlayerProfile, Progress, Scenario, SceneBuild, ShopItem, User } from '@qbl/shared';
 import { config } from '../config';
 import type { AvatarChoice, Mission } from '../home';
 import type { TeachAssignment, TeachScenario, TeacherDesk } from '../teach';
@@ -203,6 +203,36 @@ export class Api {
 
   async equip(itemId: number, equipped: boolean): Promise<Progress> {
     return (await this.call<{ progress: Progress }>('POST', `/shop/${itemId}/equip`, { equipped })).progress;
+  }
+
+  // ----------------------------------------------------------- student building (App\Qbl\Builds\BuildApi)
+
+  /** What is built in an instance of a scenario that this player sees, and their own pictures. */
+  async builds(scenarioKey: string, group: string): Promise<{ may_build: boolean; builds: SceneBuild[]; uploads: BuildUpload[]; pictures: Record<string, Omit<BuildUpload, 'id'>> }> {
+    return this.call('GET', `/builds/${encodeURIComponent(scenarioKey)}?group=${encodeURIComponent(group)}`);
+  }
+
+  /** Keep this player's build in one scene. An empty list removes it (null comes back). */
+  async saveBuild(scenarioKey: string, group: string, sceneId: number, pieces: BuildPiece[]): Promise<SceneBuild | null> {
+    return (await this.call<{ build: SceneBuild | null }>('PUT', `/builds/${encodeURIComponent(scenarioKey)}/scenes/${sceneId}?group=${encodeURIComponent(group)}`, { pieces })).build;
+  }
+
+  /** Upload a picture for this player's builds in an instance. */
+  async uploadBuildPicture(scenarioKey: string, group: string, file: File): Promise<BuildUpload> {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${config.apiUrl}/api/builds/${encodeURIComponent(scenarioKey)}/uploads?group=${encodeURIComponent(group)}`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
+      body: form,
+    });
+    const data = (await res.json().catch(() => null)) as { upload?: BuildUpload; message?: string } | null;
+    if (!res.ok || !data?.upload) throw new ApiError(res.status, data?.message ?? `Upload failed (${res.status})`);
+    return data.upload;
+  }
+
+  async removeBuildPicture(uploadId: number): Promise<void> {
+    await this.call('DELETE', `/builds/uploads/${uploadId}`);
   }
 
   /** The scenario document, with this player's save data for that instance (group) of it in `session`. */

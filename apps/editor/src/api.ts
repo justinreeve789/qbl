@@ -1,4 +1,4 @@
-import type { Scenario } from '@qbl/shared';
+import type { BuildPiece, BuildStatus, Scenario } from '@qbl/shared';
 
 /** A row of one of the scenario tables, as the editor API returns it. */
 export interface Row {
@@ -416,6 +416,29 @@ export interface OrgOverview {
   roster_columns?: string[];
 }
 
+/** A student's build in one scene, as their teacher reviews it (App\Qbl\Builds\BuildStore::queue). */
+export interface StudentBuild {
+  id: number;
+  scene_id: number;
+  status: BuildStatus;
+  pieces: BuildPiece[];
+  updated_at: string | null;
+  student: { id: number; name: string };
+  scenario: { id: number; title: string; code: string };
+  /** "Your class", "Team Otters", "The public game". */
+  where: string;
+  preview: {
+    scene: string;
+    width: number;
+    height: number;
+    /** Scene zoom: stickers are drawn at their picture's size times it. */
+    zoom?: number;
+    background_url: string | null;
+    media: Record<string, { url: string | null; width: number; height: number }>;
+    pictures: Record<string, { url: string; width: number; height: number }>;
+  };
+}
+
 export class ApiError extends Error {
   /** `fromProxy`: the answer was not the API's own (no JSON), e.g. a proxy that gave up waiting (504). */
   constructor(readonly status: number, message: string, readonly fromProxy = false) {
@@ -567,6 +590,10 @@ export class Api {
   removeStudent = (id: number) => this.call<void>('DELETE', `/teach/students/${id}`);
   assignable = async () => (await this.call<{ scenarios: MissionSummary[] }>('GET', '/teach/scenarios')).scenarios;
   assignments = async () => (await this.call<{ assignments: Assignment[] }>('GET', '/teach/assignments')).assignments;
+  /** What students built in scenes, for their teacher to approve (App\Qbl\Builds\BuildApi). */
+  studentBuilds = async (status: 'pending' | 'approved' | 'hidden' | 'all' = 'pending') => (await this.call<{ builds: StudentBuild[] }>('GET', `/builds/teach?status=${status}`, undefined, true)).builds;
+  reviewBuild = async (id: number, status: 'approved' | 'hidden' | 'pending') => (await this.call<{ build: StudentBuild }>('PUT', `/builds/teach/${id}`, { status })).build;
+  deleteBuild = (id: number) => this.call<void>('DELETE', `/builds/teach/${id}`);
   assign = async (attrs: AssignmentDraft & { scenario_id: number }) => (await this.call<{ assignment: Assignment }>('POST', '/teach/assignments', attrs)).assignment;
   updateAssignment = async (id: number, attrs: Partial<AssignmentDraft>) => (await this.call<{ assignment: Assignment }>('PUT', `/teach/assignments/${id}`, attrs)).assignment;
   unassign = (id: number) => this.call<void>('DELETE', `/teach/assignments/${id}`);

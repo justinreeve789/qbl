@@ -1,4 +1,5 @@
 import { Bag } from './Bag';
+import type { Builds } from './Builds';
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
@@ -192,6 +193,12 @@ export class GameContext {
 
   /** Set by the players feature: open the profile of the player with this session id. */
   showProfile: ((sessionId: string) => void) | null = null;
+
+  /**
+   * Set at start-up when a scene of this scenario lets students build: what is built here, as this
+   * player sees it (see core/Builds.ts and BuildSystem). Null: nobody builds in this scenario.
+   */
+  builds: Builds | null = null;
 
   /** Set at start-up when there is an API to ask: another player's profile by their user id. Null: not available. */
   fetchProfile: ((userId: string) => Promise<PlayerProfile | null>) | null = null;
