@@ -1680,3 +1680,47 @@ dialog.modal.panel[data-panel='media-choose'] .panel-body { padding-top: 0; }
 .build-preview-label { position: absolute; white-space: nowrap; font-family: Fredoka, system-ui, sans-serif; font-weight: 600; line-height: 1.1; paint-order: stroke; -webkit-text-stroke: 0.12em #1f2937; pointer-events: none; }
 .build-about { font-size: 0.9rem; }
 .build-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ------------------------------------------------------------------ choosing a sound */
+/* The field: ▶ to hear the one chosen, its name and length, and a × to clear it. */
+.sound-choice { align-items: center; }
+.sound-choice-open { padding-left: 10px; }
+.sound-choice-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: var(--surface); font-size: 18px; }
+.sound-choice-open.empty .sound-choice-icon { opacity: 0.6; }
+
+/* The pop-up: the media picker's head and tabs, over a list of rows grouped under headings. */
+.sp-list { display: flex; flex-direction: column; gap: 6px; }
+.sp-section { display: flex; flex-direction: column; gap: 6px; }
+.sp-section + .sp-section { margin-top: 8px; }
+.sp-heading { display: flex; align-items: center; gap: 4px; margin: 4px 2px 0; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.sp-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 8px; text-align: left; cursor: pointer;
+  background: var(--surface); border: 2px solid transparent; border-radius: 10px; transition: border-color 0.12s ease, background 0.12s ease;
+}
+.sp-row:hover, .sp-row:focus-visible { border-color: var(--accent); outline: none; }
+.sp-row.current { border-color: var(--ok); }
+.sp-row.playing { background: color-mix(in srgb, var(--tone, #c98a2e) 14%, var(--surface)); }
+.sp-row.uploading { opacity: 0.7; cursor: default; }
+.sp-upload, .sp-none { background: transparent; border: 2px dashed var(--line); }
+.sp-none.current { border-style: solid; border-color: var(--ok); }
+.sp-play {
+  flex: none; display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border-radius: 50%;
+  background: var(--tone, #c98a2e); border: none; color: #1b1205; font-size: 14px; font-weight: 700;
+}
+.sp-play:hover { filter: brightness(1.12); }
+.sp-play.playing { background: var(--ok); color: #0b2415; box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 30%, transparent); }
+.sp-play.none, .sp-play.missing { background: transparent; border: 2px solid var(--line); color: var(--muted); font-size: 16px; }
+.sp-upload .sp-play.none { color: var(--accent); border-color: var(--accent); }
+.sp-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sp-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-says { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-bar { display: block; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.sp-row:not(.playing) .sp-bar { visibility: hidden; }
+.sp-upload .sp-bar, .sp-none .sp-bar { display: none; }
+.sp-progress { display: block; height: 100%; width: 0; background: var(--ok); transition: width 0.25s linear; }
+.sp-group { flex: none; font-size: 12px; color: var(--muted); }
+.sp-length { flex: none; min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); }
+.sp-current, .sp-choose { flex: none; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.sp-current { background: var(--ok); color: #0b2415; }
+.sp-choose { color: var(--accent); opacity: 0; transition: opacity 0.12s ease; }
+.sp-row:hover .sp-choose, .sp-row:focus-visible .sp-choose { opacity: 1; }

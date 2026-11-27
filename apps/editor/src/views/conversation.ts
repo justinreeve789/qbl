@@ -342,7 +342,7 @@ function conversationBody(ctx: FormContext, actionId: number, draw: () => void):
     { key: 'speaker', label: 'Who says it', kind: 'select', placeholder: 'The player', options: [['character', 'A character']], structural: true },
     { key: 'character_id', label: 'Character', kind: 'character', structural: true, when: (v) => v.speaker === 'character', hint: 'In a story box any character can speak. As a bubble, the character must be placed in this scene.' },
     { key: 'text', label: 'What they say', kind: 'textarea', wide: true, hint: 'Use {{variable_name}} to show a variable, and {{QL_PlayerName}} for the player’s name (see “Built in” under 🔢 Variable in an infobox for the rest).' },
-    { key: 'narration_media_id', label: 'Recording of this line', kind: 'media', mediaType: 'audio', placeholder: 'The browser’s voice', hint: 'Played when lines are read aloud, instead of the browser’s voice.' },
+    { key: 'narration_media_id', label: 'Recording of this line', kind: 'media', mediaType: 'audio', soundGroup: 'voice', placeholder: 'The browser’s voice', hint: 'Played when lines are read aloud, instead of the browser’s voice.' },
   ];
   const lineForm = form(lineFields, current as unknown as Values, (key, value, field) => {
     talk.change(id, (l) => withValue(l as unknown as Values, key, value, field) as unknown as Line, field.structural === true || key === 'narration_media_id');

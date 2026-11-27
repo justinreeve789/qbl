@@ -153,3 +153,16 @@ export async function chooseMedia(field: import('playwright').Locator, name: str
   await popup.locator(`[data-media-pick][data-name="${name}"]`).click();
   await popup.waitFor({ state: 'detached' });
 }
+
+/**
+ * Choose a sound for a field the way an author does: open its sound pop-up, show every sound, and
+ * click the row with this name (a file's name, or a game sound's label).
+ */
+export async function chooseSound(field: import('playwright').Locator, name: string): Promise<void> {
+  const page = field.page();
+  await field.locator('.sound-choice-open').first().click();
+  const popup = page.locator('dialog[data-panel=sound-choose]');
+  await popup.locator('[data-sound-tab=all]').click();
+  await popup.locator(`[data-sound-pick][data-name="${name}"]`).click();
+  await popup.waitFor({ state: 'detached' });
+}
