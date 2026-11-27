@@ -1,4 +1,4 @@
-import { RIPPLES_FRAG, SHAFTS_FRAG, waterLightSettings, type SceneWaterLight, type WaterLightSettings } from '@qbl/shared';
+import { RIPPLES_FRAG, SHAFTS_FRAG, waterLightArea, waterLightCornerData, waterLightSettings, type SceneWaterLight, type WaterLightArea, type WaterLightSettings } from '@qbl/shared';
 
 /**
  * Underwater light (layout.water_lights) moving on the scene canvas, with the game's own shaders
@@ -25,6 +25,7 @@ interface Preview {
   programs: Partial<Record<'ripples' | 'shafts', WebGLProgram>>;
   light: SceneWaterLight;
   s: WaterLightSettings;
+  area: WaterLightArea;
   time: number;
 }
 
@@ -64,7 +65,7 @@ function rgb(hex: string): [number, number, number] {
 }
 
 function draw(p: Preview) {
-  const { gl, s, light } = p;
+  const { gl, s, area } = p;
   let program = p.programs[s.kind];
   if (program === undefined) {
     program = compile(gl, s.kind === 'shafts' ? SHAFTS_FRAG : RIPPLES_FRAG) ?? undefined;
@@ -77,11 +78,15 @@ function draw(p: Preview) {
   gl.useProgram(program);
   const u = (name: string) => gl.getUniformLocation(program!, name);
   gl.uniform1f(u('uTime'), p.time);
-  gl.uniform2f(u('uBox'), light.width, light.height);
+  gl.uniform2f(u('uBox'), area.width, area.height);
   gl.uniform1f(u('uSize'), s.size);
   gl.uniform1f(u('uShape'), s.kind === 'shafts' ? s.spread : s.tilt);
   gl.uniform1f(u('uOval'), s.edge === 'oval' ? 1 : 0);
   gl.uniform4f(u('uColor'), ...rgb(s.color), s.strength);
+  if (s.kind === 'ripples') {
+    gl.uniform4fv(u('uPoly'), waterLightCornerData(area));
+    gl.uniform1f(u('uCorners'), area.corners?.length ?? 0);
+  }
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
@@ -120,14 +125,15 @@ export function waterLightPreview(key: string, light: SceneWaterLight): HTMLCanv
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    p = { canvas, gl, programs: {}, light, s: waterLightSettings(light), time: 7.3 + previews.size * 11.3 };
+    p = { canvas, gl, programs: {}, light, s: waterLightSettings(light), area: waterLightArea(light), time: 7.3 + previews.size * 11.3 };
     previews.set(key, p);
   }
   p.light = light;
   p.s = waterLightSettings(light);
-  const scale = Math.min(1, MAX_SIDE / Math.max(light.width, light.height, 1));
-  const w = Math.max(1, Math.round(light.width * scale));
-  const h = Math.max(1, Math.round(light.height * scale));
+  p.area = waterLightArea(light);
+  const scale = Math.min(1, MAX_SIDE / Math.max(p.area.width, p.area.height, 1));
+  const w = Math.max(1, Math.round(p.area.width * scale));
+  const h = Math.max(1, Math.round(p.area.height * scale));
   if (p.canvas.width !== w || p.canvas.height !== h) {
     p.canvas.width = w;
     p.canvas.height = h;

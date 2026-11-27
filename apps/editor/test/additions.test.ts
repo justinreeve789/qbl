@@ -211,6 +211,47 @@ test('underwater light is placed, moves on the canvas, and shows the settings fo
   await page.waitForFunction(() => document.querySelectorAll('svg .water-light-area').length === 1);
 });
 
+test('rippling light gets a shape of its own, edited by its corners, and can be a box again', async () => {
+  await page.locator('select:has(option[value=flows])').selectOption('water-ripples');
+  await page.waitForFunction(() => document.querySelectorAll('svg .water-light-area').length === 2);
+  await page.click('.inspector [data-water-shape=own]');
+  await page.waitForSelector('svg polygon.water-light-area.selected');
+  // Moved by its corners now: no box fields, and it fades out inside its outline.
+  for (const key of ['x', 'width', 'edge']) assert.equal(await page.locator(`.inspector [data-field=${key}]`).count(), 0, key);
+  let light = (await draft()).scenes[0]!.water_lights![1]!;
+  assert.equal(light.shape!.length, 8);
+
+  // Drag a corner up and left: the outline changes, and the box follows it.
+  const corner = page.locator('svg circle.handle:not(.add)').first();
+  const at = (await corner.boundingBox())!;
+  await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(at.x - 30, at.y - 40, { steps: 5 });
+  await page.mouse.up();
+  await saved();
+  const moved = (await draft()).scenes[0]!.water_lights![1]!;
+  assert.notDeepEqual(moved.shape![0], light.shape![0]);
+  assert.equal(moved.x, Math.min(...moved.shape!.map((p) => p.x)), 'the box is the outline\'s bounds');
+  assert.equal(moved.y + moved.height, Math.max(...moved.shape!.map((p) => p.y)));
+
+  // Pull a new corner out of the middle of a side.
+  const middle = (await page.locator('svg circle.handle.add').first().boundingBox())!;
+  await page.mouse.move(middle.x + middle.width / 2, middle.y + middle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(middle.x + 20, middle.y + 30, { steps: 5 });
+  await page.mouse.up();
+  await saved();
+  light = (await draft()).scenes[0]!.water_lights![1]!;
+  assert.equal(light.shape!.length, 9);
+  assert.match(await page.innerText('.inspector [data-section=shape]'), /9 corners/);
+
+  await page.click('.inspector [data-water-shape=box]');
+  await page.waitForSelector('svg rect.water-light-area.selected');
+  light = (await draft()).scenes[0]!.water_lights![1]!;
+  assert.equal(light.shape, undefined);
+  assert.equal(await page.locator('.inspector [data-field=width]').count(), 1);
+});
+
 test('a hotspot label can be background, or a solid object players walk around', async () => {
   await page.locator('select:has(option[value=shadow_spots])').selectOption('hotspot-click');
   await page.click('text=+ Add label');

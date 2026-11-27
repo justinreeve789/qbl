@@ -1434,6 +1434,12 @@ export interface SceneWaterLight {
   spread?: number;
   /** How the light fades out at the box's edges: `soft` (a rectangle with soft edges) or `oval`. Default soft. */
   edge?: 'soft' | 'oval';
+  /**
+   * Ripples: an outline of its own instead of the box, as corners in scene pixels (3 to 16): the
+   * floor of a pool that is not square, a patch of sea bed between rocks. The light fades out softly
+   * at its edges, and `edge` does not apply. The box (x, y, width, height) is the outline's bounds.
+   */
+  shape?: Point[] | null;
   /** On only while all of these hold. It fades in and out as variables change. None: always on. */
   conditions?: Condition[] | null;
 }

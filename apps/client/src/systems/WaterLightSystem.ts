@@ -1,5 +1,5 @@
 import type * as Phaser from 'phaser';
-import { RIPPLES_FRAG, SHAFTS_FRAG, testConditions, waterLightSettings, type SceneWaterLight, type WaterLightSettings } from '@qbl/shared';
+import { RIPPLES_FRAG, SHAFTS_FRAG, testConditions, waterLightArea, waterLightCornerData, waterLightSettings, type SceneWaterLight, type WaterLightArea, type WaterLightSettings } from '@qbl/shared';
 import { Depth } from '../core/depth';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { LIGHT_FADE_MS, moving } from './LightSystem';
@@ -14,6 +14,8 @@ const STILL_AT = 7.3;
 interface Lit {
   def: SceneWaterLight;
   s: WaterLightSettings;
+  /** Where it is drawn: its box, or its outline's bounds with the outline. */
+  area: WaterLightArea;
   rgb: [number, number, number];
   /** Drawn by the GPU; null where the renderer cannot run shaders (then nothing is drawn). */
   shader: Phaser.GameObjects.Shader | null;
@@ -38,7 +40,8 @@ function rgb(hex: string): [number, number, number] {
 /**
  * Light under water (Scene.water_lights), drawn live on the GPU (shared waterLightShaders.ts): rippling
  * light dancing on the floor, behind every figure, and shafts of light slanting down from the surface,
- * in front of them. A light with conditions is on only while they hold, fading in and out as
+ * in front of them. Ripples may have an outline of their own (SceneWaterLight.shape) instead of a box.
+ * A light with conditions is on only while they hold, fading in and out as
  * variables change. With less motion it is held still. Without WebGL nothing is drawn.
  */
 export class WaterLightSystem implements SceneSystem {
@@ -54,10 +57,12 @@ export class WaterLightSystem implements SceneSystem {
     this.motion = moving();
     const shade = canShade(scene);
     defs.forEach((def, i) => {
-      if (!(def.width > 0) || !(def.height > 0)) return;
+      const area = waterLightArea(def);
+      if (!(area.width > 0) || !(area.height > 0)) return;
       const s = waterLightSettings(def);
       const on = this.holds(def);
-      const lit: Lit = { def, s, rgb: rgb(s.color), shader: null, on, shown: on ? 1 : 0, time: this.motion ? i * 11.3 : STILL_AT + i * 11.3 };
+      const corners = waterLightCornerData(area);
+      const lit: Lit = { def, s, area, rgb: rgb(s.color), shader: null, on, shown: on ? 1 : 0, time: this.motion ? i * 11.3 : STILL_AT + i * 11.3 };
       if (shade) {
         const shafts = s.kind === 'shafts';
         lit.shader = scene.add
@@ -67,17 +72,21 @@ export class WaterLightSystem implements SceneSystem {
               fragmentSource: shafts ? SHAFTS_FRAG : RIPPLES_FRAG,
               setupUniforms: (set: (name: string, value: unknown) => void) => {
                 set('uTime', lit.time);
-                set('uBox', [def.width, def.height]);
+                set('uBox', [area.width, area.height]);
                 set('uSize', lit.s.size);
                 set('uShape', shafts ? lit.s.spread : lit.s.tilt);
                 set('uOval', lit.s.edge === 'oval' ? 1 : 0);
                 set('uColor', [...lit.rgb, lit.s.strength * lit.shown]);
+                if (!shafts) {
+                  set('uPoly[0]', corners);
+                  set('uCorners', area.corners?.length ?? 0);
+                }
               },
             },
-            def.x,
-            def.y,
-            def.width,
-            def.height,
+            area.x,
+            area.y,
+            area.width,
+            area.height,
           )
           .setOrigin(0, 0)
           // Ripples lie on the floor, behind every figure; shafts hang in the water in front of them.

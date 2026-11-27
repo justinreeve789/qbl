@@ -674,7 +674,10 @@ export const FLOW_FIELDS: Field[] = [
   { key: 'sound', label: 'Its sound', kind: 'bool', default: true },
 ];
 
-/** Light under water (layout.water_lights): rippling light on the floor, or shafts from above, in a box. */
+/** Whether an underwater light is a box (shafts always are; ripples unless they have a shape of their own). */
+const boxed = (values: Record<string, unknown>) => values.kind === 'shafts' || !(Array.isArray(values.shape) && values.shape.length >= 3);
+
+/** Light under water (layout.water_lights): rippling light on the floor, or shafts from above, in a box or (ripples) an outline. */
 export const WATER_LIGHT_FIELDS: Field[] = [
   { key: 'name', label: 'Name', kind: 'text', wide: true },
   {
@@ -698,11 +701,12 @@ export const WATER_LIGHT_FIELDS: Field[] = [
     hint: '0: the beams fall side by side. Higher: they spread out from a point above, wider at the bottom.',
     when: (values) => values.kind === 'shafts',
   },
-  { key: 'edge', label: 'Fades out', kind: 'select', placeholder: 'At the edges of the box', options: [['soft', 'At the edges of the box'], ['oval', 'In an oval (a round room, a pool)']] },
-  { key: 'x', label: 'X', kind: 'number' },
-  { key: 'y', label: 'Y', kind: 'number' },
-  { key: 'width', label: 'Width (px)', kind: 'number', min: 1 },
-  { key: 'height', label: 'Height (px)', kind: 'number', min: 1 },
+  // A rippling light with a shape of its own fades out inside its outline, and is moved by its corners.
+  { key: 'edge', label: 'Fades out', kind: 'select', placeholder: 'At the edges of the box', options: [['soft', 'At the edges of the box'], ['oval', 'In an oval (a round room, a pool)']], when: boxed },
+  { key: 'x', label: 'X', kind: 'number', when: boxed },
+  { key: 'y', label: 'Y', kind: 'number', when: boxed },
+  { key: 'width', label: 'Width (px)', kind: 'number', min: 1, when: boxed },
+  { key: 'height', label: 'Height (px)', kind: 'number', min: 1, when: boxed },
 ];
 
 /** A background or foreground layer (docs/src/content/docs/developers/extensions/scenes.md). */

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { RIPPLES_FRAG, SHAFTS_FRAG, validateScenario, waterLightSettings, type Scenario } from '../src/index.js';
+import { RIPPLES_FRAG, SHAFTS_FRAG, validateScenario, waterLightArea, waterLightCornerData, waterLightSettings, waterLightShaped, waterLightStartShape, type Scenario } from '../src/index.js';
 
 const pool: Scenario = {
   id: 1, shortname: 'pool', title: 'Under the Sea', start_scene_id: 1,
@@ -42,4 +42,35 @@ test('the shaders are WebGL 1 fragment shaders that write premultiplied colour f
     assert.match(frag, /gl_FragColor = vec4\(uColor\.rgb \* alpha, alpha\);/);
     assert.doesNotMatch(frag, /#version 300|texture\(|out vec4/, 'GLSL ES 1.0 only, for WebGL 1');
   }
+  assert.match(RIPPLES_FRAG, /uniform vec4 uPoly\[9\];/, 'room for 16 corners, and one past the end');
+});
+
+test('rippling light can have an outline of its own; the box is its bounds, and shafts ignore it', () => {
+  const shape = [{ x: 100, y: 500 }, { x: 400, y: 420 }, { x: 900, y: 460 }, { x: 800, y: 700 }, { x: 150, y: 690 }];
+  const light = { kind: 'ripples' as const, x: 0, y: 0, width: 10, height: 10, shape };
+  assert.equal(waterLightShaped(light), true);
+  const area = waterLightArea(light);
+  assert.deepEqual([area.x, area.y, area.width, area.height, area.corners!.length], [100, 420, 800, 280, 5]);
+  const data = waterLightCornerData(area);
+  assert.equal(data.length, 36, 'nine vec4s, two corners to each');
+  assert.deepEqual([...data.slice(0, 4)], [0, 80, 300, 0], 'corners relative to the top left of the bounds');
+  assert.equal(waterLightShaped({ ...light, kind: 'shafts' }), false);
+  assert.deepEqual(waterLightArea({ ...light, kind: 'shafts' }).corners, null);
+  assert.equal(waterLightShaped({ ...light, shape: shape.slice(0, 2) }), false, 'two corners are not an outline');
+  // A first outline: eight corners inside the box.
+  const start = waterLightStartShape({ x: 0, y: 400, width: 1000, height: 300 });
+  assert.equal(start.length, 8);
+  assert.ok(start.every((p) => p.x >= 0 && p.x <= 1000 && p.y >= 400 && p.y <= 700));
+
+  const bad = structuredClone(pool);
+  bad.scenes[0]!.water_lights = [
+    { x: 0, y: 0, width: 10, height: 10, shape: [{ x: 0, y: 0 }, { x: 5, y: 5 }] },
+    { x: 0, y: 0, width: 10, height: 10, shape: [{ x: 0, y: 0 }, { x: 5, y: 5 }, { x: 'a' as never, y: 1 }] },
+    { kind: 'shafts', x: 0, y: 0, width: 10, height: 10, shape },
+  ];
+  const check = validateScenario(bad);
+  const errors = check.errors.map((e) => e.path);
+  assert.ok(errors.includes('scenes[0].water_lights[0].shape'), errors.join(', '));
+  assert.ok(errors.includes('scenes[0].water_lights[1].shape[2]'), errors.join(', '));
+  assert.ok(check.warnings.some((w) => w.path === 'scenes[0].water_lights[2].shape'));
 });

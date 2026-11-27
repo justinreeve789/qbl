@@ -117,7 +117,7 @@ export class SceneModel {
         shadow_spots: this.layout('shadow_spots').map((a) => ({ ...a, x: x(a.x), y: y(a.y), radius: x(a.radius), ...(a.radius_y != null ? { radius_y: y(a.radius_y) } : {}) })),
         lights: this.layout('lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), ...(a.radius != null ? { radius: x(a.radius) } : {}) })),
         flows: this.layout('flows').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
-        water_lights: this.layout('water_lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
+        water_lights: this.layout('water_lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height), ...(Array.isArray(a.shape) ? { shape: (a.shape as Point[]).map((p) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) })) } : {}) })),
         items: this.layout('items').map(moved),
         characters: this.layout('characters').map(moved),
         // A bench's containers and tools move with the scene; their sizes stay: a beaker stays a beaker.

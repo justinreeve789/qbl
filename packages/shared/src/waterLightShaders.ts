@@ -11,6 +11,8 @@
  * - uShape: ripples, how far the floor leans away (0 to 1); shafts, how much they fan out (0 to 1).
  * - uOval: 1 fades the light out in an oval, 0 at the box's edges.
  * - uColor: the light's colour (rgb, 0 to 1) and its strength now (a).
+ * - Ripples only, uPoly and uCorners: an outline of its own (SceneWaterLight.shape), its corners in
+ *   pixels from the box's top left, two to a vec4 (waterLightCornerData); uCorners 0 for the box.
  *
  * outTexCoord runs 0 to 1 across the box, with y = 1 at its top.
  */
@@ -56,6 +58,39 @@ vec2 hash2(vec2 p) {
   return fract(sin(p) * 43758.5453);
 }
 
+uniform vec4 uPoly[9];
+uniform float uCorners;
+
+float segmentDistance(vec2 p, vec2 a, vec2 b) {
+  vec2 ab = b - a;
+  float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 0.0001), 0.0, 1.0);
+  return length(p - a - ab * t);
+}
+
+// One side of the outline: how near p is to it, and whether a ray from p to the right crosses it.
+void side(vec2 p, vec2 a, vec2 b, inout float near, inout bool inside) {
+  near = min(near, segmentDistance(p, a, b));
+  if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+}
+
+// Inside the outline, rising from 0 at its edge to 1 a little way in; 0 outside. p in box pixels.
+float shapeFade(vec2 p) {
+  float near = 1.0e9;
+  bool inside = false;
+  vec2 first = uPoly[0].xy;
+  for (int k = 0; k < 8; k++) {
+    float i = float(2 * k);
+    if (i >= uCorners) break;
+    vec2 a = uPoly[k].xy;
+    bool more = i + 1.0 < uCorners;
+    vec2 b = more ? uPoly[k].zw : first;
+    side(p, a, b, near, inside);
+    if (more) side(p, b, i + 2.0 < uCorners ? uPoly[k + 1].xy : first, near, inside);
+  }
+  if (!inside) return 0.0;
+  return smoothstep(0.0, min(80.0, 0.25 * min(uBox.x, uBox.y)), near);
+}
+
 // How far p is from the nearest wall between two cells: 0 on a wall.
 float walls(vec2 p, float t) {
   vec2 g = floor(p);
@@ -98,7 +133,8 @@ void main() {
   float light = a * a * (0.55 + 0.45 * swell) + 0.22 * b * b + 0.14 * glow;
 
   float far = mix(1.0, 0.55 + 0.45 * v, uShape);
-  float alpha = clamp(light, 0.0, 1.0) * edgeFade(u, v) * far * uColor.a;
+  float edge = uCorners >= 3.0 ? shapeFade(vec2(u, v) * uBox) : edgeFade(u, v);
+  float alpha = clamp(light, 0.0, 1.0) * edge * far * uColor.a;
   gl_FragColor = vec4(uColor.rgb * alpha, alpha);
 }
 `;
