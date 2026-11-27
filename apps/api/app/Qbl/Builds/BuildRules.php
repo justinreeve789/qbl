@@ -4,11 +4,17 @@ namespace App\Qbl\Builds;
 
 /**
  * What students may build in a scene, and whether a build keeps to it: the server's copy of
- * packages/shared/src/builds.ts (buildingRules, buildProblems, cleanLabel, tidyPiece). The two must agree.
+ * packages/shared/src/builds.ts (buildingRules, buildProblems, cleanLabel, cleanNote, tidyPiece, piecePictures,
+ * withoutUpload). The two must agree.
  */
 final class BuildRules
 {
-    public const TOOLS = ['place', 'label', 'picture'];
+    public const TOOLS = ['place', 'label', 'picture', 'hotspot'];
+
+    public const HOTSPOT_LOOKS = ['sticker', 'picture', 'label', 'none'];
+
+    /** The words a hotspot opens. */
+    public const NOTE_LENGTH = 500;
 
     public const DEFAULT_PIECES = 12;
 
@@ -64,6 +70,77 @@ final class BuildRules
         $text = preg_replace('/[\x00-\x1f\x7f<>]/u', ' ', $text) ?? '';
 
         return mb_substr(trim(preg_replace('/\s+/u', ' ', $text) ?? ''), 0, self::LABEL_LENGTH);
+    }
+
+    /** The words a hotspot opens as they are kept: lines kept (at most two blank in a row), no other control or markup characters, at most NOTE_LENGTH. */
+    public static function cleanNote(string $text): string
+    {
+        $text = preg_replace('/\r\n?/u', "\n", $text) ?? '';
+        $text = preg_replace('/[\x00-\x09\x0b-\x1f\x7f<>]/u', ' ', $text) ?? '';
+        $text = preg_replace('/[ \t]+/u', ' ', $text) ?? '';
+        $text = preg_replace('/ *\n */u', "\n", $text) ?? '';
+        $text = preg_replace('/\n{3,}/u', "\n\n", $text) ?? '';
+
+        return trim(mb_substr(trim($text), 0, self::NOTE_LENGTH));
+    }
+
+    /** The uploads a piece shows: its own picture, and a hotspot's opened one. @return int[] */
+    public static function piecePictures(array $p): array
+    {
+        $kind = $p['kind'] ?? '';
+        $out = [];
+        if (($kind === 'picture' || ($kind === 'hotspot' && ($p['look'] ?? '') === 'picture')) && isset($p['upload_id'])) {
+            $out[] = (int) $p['upload_id'];
+        }
+        if ($kind === 'hotspot' && isset($p['opens']['upload_id'])) {
+            $out[] = (int) $p['opens']['upload_id'];
+        }
+
+        return $out;
+    }
+
+    /** The building's pieces a piece shows: a sticker's, and a hotspot's look and opened picture. @return int[] */
+    public static function pieceMedia(array $p): array
+    {
+        $kind = $p['kind'] ?? '';
+        $out = [];
+        if (($kind === 'sticker' || ($kind === 'hotspot' && ($p['look'] ?? '') === 'sticker')) && isset($p['media_id'])) {
+            $out[] = (int) $p['media_id'];
+        }
+        if ($kind === 'hotspot' && isset($p['opens']['media_id'])) {
+            $out[] = (int) $p['opens']['media_id'];
+        }
+
+        return $out;
+    }
+
+    /**
+     * A build's pieces once one of the student's pictures is removed: a picture that showed it goes;
+     * a hotspot that looked like it, too; a hotspot that opened it opens only its words, or goes when it had none.
+     */
+    public static function withoutUpload(array $pieces, int $uploadId): array
+    {
+        $out = [];
+        foreach ($pieces as $p) {
+            $kind = $p['kind'] ?? '';
+            if ($kind === 'picture' && (int) ($p['upload_id'] ?? 0) === $uploadId) {
+                continue;
+            }
+            if ($kind === 'hotspot') {
+                if (($p['look'] ?? '') === 'picture' && (int) ($p['upload_id'] ?? 0) === $uploadId) {
+                    continue;
+                }
+                if (isset($p['opens']['upload_id']) && (int) $p['opens']['upload_id'] === $uploadId) {
+                    unset($p['opens']['upload_id']);
+                    if (($p['opens']['text'] ?? '') === '') {
+                        continue;
+                    }
+                }
+            }
+            $out[] = $p;
+        }
+
+        return $out;
     }
 
     /**
@@ -134,12 +211,69 @@ final class BuildRules
                         $problems[] = "$which is not one of your pictures.";
                     }
                     break;
+                case 'hotspot':
+                    if (! in_array('hotspot', $rules['tools'], true)) {
+                        $problems[] = 'Hotspots are not allowed here.';
+                    } else {
+                        array_push($problems, ...self::hotspotProblems($rules, $p, $uploads, $which));
+                    }
+                    break;
                 default:
                     $problems[] = "$which is not something you can add.";
             }
         }
 
         return array_values(array_unique($problems));
+    }
+
+    /** @return string[] */
+    private static function hotspotProblems(array $rules, array $p, array $uploads, string $which): array
+    {
+        $problems = [];
+        $piece = fn ($id) => is_numeric($id) && in_array((int) $id, $rules['pieces'], true);
+        $own = fn ($id) => is_int($id) && in_array($id, $uploads, true);
+        $look = $p['look'] ?? 'none';
+        if ($look === 'sticker') {
+            if (! $piece($p['media_id'] ?? null)) {
+                $problems[] = "$which does not look like one of this scene's pieces.";
+            }
+        } elseif ($look === 'picture') {
+            if (! $own($p['upload_id'] ?? null)) {
+                $problems[] = "$which does not look like one of your pictures.";
+            }
+        } elseif ($look === 'label') {
+            $text = $p['text'] ?? null;
+            if (! is_string($text) || self::cleanLabel($text) === '' || self::cleanLabel($text) !== $text) {
+                $problems[] = "$which needs words (up to ".self::LABEL_LENGTH.' letters).';
+            }
+            if (isset($p['color']) && ! in_array($p['color'], self::LABEL_COLORS, true)) {
+                $problems[] = "$which has a colour that is not offered.";
+            }
+        } elseif ($look !== 'none') {
+            $problems[] = "$which has a look that is not offered.";
+        }
+        $o = $p['opens'] ?? null;
+        if (! is_array($o) || ($o !== [] && array_is_list($o))) {
+            return [...$problems, "$which needs words or a picture to open."];
+        }
+        $text = $o['text'] ?? null;
+        if ($text !== null && (! is_string($text) || self::cleanNote($text) !== $text)) {
+            $problems[] = "$which opens words that are too long (up to ".self::NOTE_LENGTH.' letters) or have < or > in them.';
+        }
+        $media = $o['media_id'] ?? null;
+        $upload = $o['upload_id'] ?? null;
+        if ($media !== null && $upload !== null) {
+            $problems[] = "$which can open one picture.";
+        } elseif ($media !== null && ! $piece($media)) {
+            $problems[] = "$which opens a picture that is not one of this scene's pieces.";
+        } elseif ($upload !== null && ! $own($upload)) {
+            $problems[] = "$which opens a picture that is not one of yours.";
+        }
+        if (($text === null || $text === '') && $media === null && $upload === null) {
+            $problems[] = "$which needs words or a picture to open.";
+        }
+
+        return $problems;
     }
 
     /** Only the fields a piece of its kind keeps, rounded: what is stored. */
@@ -165,6 +299,36 @@ final class BuildRules
             if (isset($p['color']) && $p['color'] !== self::LABEL_COLORS[0]) {
                 $out['color'] = $p['color'];
             }
+        }
+        if ($p['kind'] === 'hotspot') {
+            $look = $p['look'] ?? 'none';
+            if ($look !== 'none') {
+                $out['look'] = $look;
+            }
+            if ($look === 'sticker') {
+                $out['media_id'] = (int) $p['media_id'];
+            }
+            if ($look === 'picture') {
+                $out['upload_id'] = (int) $p['upload_id'];
+            }
+            if ($look === 'label') {
+                $out['text'] = self::cleanLabel((string) $p['text']);
+                if (isset($p['color']) && $p['color'] !== self::LABEL_COLORS[0]) {
+                    $out['color'] = $p['color'];
+                }
+            }
+            $opens = [];
+            $text = self::cleanNote((string) ($p['opens']['text'] ?? ''));
+            if ($text !== '') {
+                $opens['text'] = $text;
+            }
+            if (isset($p['opens']['media_id'])) {
+                $opens['media_id'] = (int) $p['opens']['media_id'];
+            } elseif (isset($p['opens']['upload_id'])) {
+                $opens['upload_id'] = (int) $p['opens']['upload_id'];
+            }
+            // An object, so it reads back as one (an empty PHP array would be written as []).
+            $out['opens'] = (object) $opens;
         }
 
         return $out;

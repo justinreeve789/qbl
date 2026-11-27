@@ -1,5 +1,6 @@
-import { BUILD_LOOK, LABEL_COLORS } from '@qbl/shared';
+import { BUILD_LOOK, LABEL_COLORS, type BuildPiece } from '@qbl/shared';
 import { ApiError, type Api, type StudentBuild } from '../api';
+import { config } from '../config';
 import { clear, confirmDelete, h, help, toast } from '../dom';
 
 type Filter = 'pending' | 'approved' | 'hidden';
@@ -28,9 +29,20 @@ export function buildPreview(build: StudentBuild): HTMLElement {
   const pct = (n: number, of: number) => `${(n / of) * 100}%`;
   const box = h('div', { class: 'build-preview', style: `aspect-ratio: ${width} / ${height}` });
   if (p.background_url) box.append(h('img', { class: 'build-preview-bg', src: p.background_url, alt: '' }));
-  for (const piece of build.pieces) {
+  let spots = 0;
+  for (const shown of build.pieces) {
+    // A hotspot is drawn as what it looks like, marked and numbered so the list below can say what it opens.
+    const spot = shown.kind === 'hotspot' ? ++spots : 0;
+    const look = shown.kind === 'hotspot' ? shown.look ?? 'none' : null;
+    const piece: BuildPiece = look ? { ...shown, kind: look === 'none' ? 'hotspot' : look === 'label' ? 'label' : look } : shown;
     const scale = piece.scale ?? 1;
     const place = `left: ${pct(piece.x, width)}; top: ${pct(piece.y, height)}; transform: translate(-50%, -50%) rotate(${piece.angle ?? 0}deg);`;
+    if (spot) box.append(h('span', { class: 'build-preview-spot', style: `left: ${pct(piece.x, width)}; top: ${pct(piece.y, height)};`, title: `Hotspot ${spot}` }, String(spot)));
+    if (piece.kind === 'hotspot') {
+      const side = pct(BUILD_LOOK.hotspotBox * scale, width);
+      box.append(h('span', { class: 'build-preview-box', style: `${place} width: ${side}; aspect-ratio: 1;` }));
+      continue;
+    }
     if (piece.kind === 'label') {
       const color = piece.color ?? LABEL_COLORS[0]!;
       box.append(h('span', { class: 'build-preview-label', style: `${place} color: ${color}; font-size: ${((BUILD_LOOK.labelSize * scale) / width) * 100}cqw;` }, piece.text ?? ''));
@@ -46,6 +58,26 @@ export function buildPreview(build: StudentBuild): HTMLElement {
   return box;
 }
 
+/** What each of a build's hotspots opens, numbered as the preview marks them, for the teacher to read. */
+export function hotspotList(build: StudentBuild): HTMLElement | null {
+  const spots = build.pieces.filter((p) => p.kind === 'hotspot');
+  if (!spots.length) return null;
+  const p = build.preview;
+  return h('ol', { class: 'build-hotspots' }, ...spots.map((s) => {
+    const o = s.opens ?? {};
+    const pic = o.media_id != null ? p.media[String(o.media_id)] : o.upload_id != null ? p.pictures[String(o.upload_id)] : null;
+    return h('li', null,
+      pic?.url ? h('img', { src: pic.url, alt: o.upload_id != null ? 'A picture the student uploaded' : '' }) : null,
+      h('span', { class: o.text ? '' : 'muted' }, o.text ?? 'Only a picture.'));
+  }));
+}
+
+/** The game, in the build's instance and scene, opening the build for its teacher to change. */
+export function changeInGameUrl(build: StudentBuild): string {
+  const query = new URLSearchParams({ group: build.group ?? 'public', scene: String(build.scene_id), edit_build: String(build.id) });
+  return new URL(`${config.gameUrl}${encodeURIComponent(build.scenario.code)}?${query}`, window.location.href).href;
+}
+
 /**
  * Students' builds: what they added to scenes that let them build, for their teacher to approve
  * before classmates see it (or to hide again). On the Classes page.
@@ -59,7 +91,7 @@ export function studentBuildsCard(api: Api): HTMLElement {
   const card = h(
     'div',
     { class: 'card', 'data-card': 'builds' },
-    h('h2', null, '🛠️ Student builds ', help('In scenes whose author lets students build, students add pieces, words and their own pictures. A build waits here until you approve it; until then only its maker sees it. Hiding takes an approved build down again. Starting a student’s game again removes what they built.')),
+    h('h2', null, '🛠️ Student builds ', help('In scenes whose author lets students build, students add pieces, words, their own pictures and hotspots. A build waits here until you approve it; until then only its maker sees it. Hiding takes an approved build down again. Change in the game opens the build in its scene, where you can move, change or remove anything in it. Starting a student’s game again removes what they built.')),
     tabs,
     list,
   );
@@ -89,6 +121,7 @@ export function studentBuildsCard(api: Api): HTMLElement {
       'article',
       { class: 'build-item', 'data-build': b.id },
       buildPreview(b),
+      hotspotList(b),
       h('div', { class: 'build-about' },
         h('strong', null, b.student.name),
         h('span', { class: 'muted' }, ` · ${b.scenario.title} · ${b.preview.scene} · ${b.where}`),
@@ -96,6 +129,7 @@ export function studentBuildsCard(api: Api): HTMLElement {
       h('div', { class: 'build-actions' },
         b.status !== 'approved' ? h('button', { type: 'button', class: 'primary', onclick: () => void act(b, 'approved') }, 'Approve') : null,
         b.status !== 'hidden' ? h('button', { type: 'button', onclick: () => void act(b, 'hidden') }, b.status === 'pending' ? 'Not now' : 'Hide') : null,
+        b.group ? h('a', { class: 'button', href: changeInGameUrl(b), target: '_blank', rel: 'noopener', 'data-build-change': '' }, '✏️ Change in the game') : null,
         h('button', {
           type: 'button', class: 'danger',
           onclick: async () => {

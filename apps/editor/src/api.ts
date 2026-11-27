@@ -427,6 +427,8 @@ export interface StudentBuild {
   scenario: { id: number; title: string; code: string };
   /** "Your class", "Team Otters", "The public game". */
   where: string;
+  /** The instance it is in, as the game's address carries it (?group=). */
+  group?: string;
   preview: {
     scene: string;
     width: number;

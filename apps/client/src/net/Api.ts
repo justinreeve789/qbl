@@ -231,6 +231,11 @@ export class Api {
     return data.upload;
   }
 
+  /** A teacher changes a student's build. An empty list deletes it (null comes back). */
+  async editStudentBuild(buildId: number, pieces: BuildPiece[]): Promise<SceneBuild | null> {
+    return (await this.call<{ build: SceneBuild | null }>('PUT', `/builds/teach/${buildId}/pieces`, { pieces })).build;
+  }
+
   async removeBuildPicture(uploadId: number): Promise<void> {
     await this.call('DELETE', `/builds/uploads/${uploadId}`);
   }

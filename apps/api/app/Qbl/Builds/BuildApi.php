@@ -17,6 +17,7 @@ use App\Qbl\StoreError;
  *   For teachers:
  *   GET    teach?status=pending|approved|hidden|all   the builds I review, with what is needed to see them
  *   PUT    teach/{id}                         {status: approved|hidden|pending}
+ *   PUT    teach/{id}/pieces                  {pieces}: change a student's build (an empty list deletes it)
  *   DELETE teach/{id}
  *
  *   For anyone: GET files/{key}, an uploaded picture (served by the controller, not here).
@@ -52,6 +53,7 @@ class BuildApi
                 count($parts) === 1 && $method === 'GET' => [200, ['builds' => $this->builds->queue($user, (string) ($query['status'] ?? 'pending'))]],
                 count($parts) === 2 && $id !== null && $method === 'PUT' => [200, ['build' => $this->builds->review($user, $id, (string) ($body['status'] ?? ''))]],
                 count($parts) === 2 && $id !== null && $method === 'DELETE' => $this->done(fn () => $this->builds->remove($user, $id)),
+                count($parts) === 3 && $id !== null && $parts[2] === 'pieces' && $method === 'PUT' => [200, ['build' => $this->builds->edit($user, $id, $body['pieces'] ?? null)]],
                 default => throw new StoreError(404, 'Not found.'),
             };
         }

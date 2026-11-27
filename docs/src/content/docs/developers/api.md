@@ -161,14 +161,17 @@ What students add to scenes that allow it ([`building`](/docs/developers/extensi
 
 Endpoint | Body | Returns
 -------- | ---- | -------
-`GET /api/builds/{code}?group=` | | `{ "may_build", "builds": SceneBuild[], "uploads": BuildUpload[], "pictures": { id: { url, width, height } } }`: the player's own builds (any status) and others' approved ones in scenes whose builds are shared; the player's uploads; the pictures others' builds show. Guests see builds, and `may_build` is false. 404 for an instance the player may not join
+`GET /api/builds/{code}?group=` | | `{ "may_build", "builds": SceneBuild[], "uploads": BuildUpload[], "pictures": { id: { url, width, height } } }`: the player's own builds (any status) and others' approved ones in scenes whose builds are shared; the player's uploads; the pictures others' builds show. For someone who reviews builds in that instance (see below), every build there, whatever its status, each with `"editable": true` and its maker's `uploads`. Guests see builds, and `may_build` is false. 404 for an instance the player may not join
 `PUT /api/builds/{code}/scenes/{id}?group=` | `{ "pieces": BuildPiece[] }` | `{ "build": SceneBuild or null }`. Replaces the player's build there; an empty list removes it. A change waits for the teacher again (`pending`) unless the scene says builds need no approval. 422 with the problems as sentences
 `POST /api/builds/{code}/uploads?group=` | multipart `file` | 201 `{ "upload": BuildUpload }`. PNG, JPEG, WebP or GIF up to 8 MB; saved again as WebP (or PNG), at most 1600 pixels across. At most 20 per player per instance
-`DELETE /api/builds/uploads/{id}` | | 204. The player's own; the pictures in their builds that showed it go too
+`DELETE /api/builds/uploads/{id}` | | 204. The player's own; the pictures (and hotspots) in their builds that showed it go too, as `withoutUpload` says
 `GET /api/builds/files/{key}` | | The picture. No token: the key is unguessable
-`GET /api/builds/teach?status=pending` | | `{ "builds": [...] }`: for staff, the builds in their assignments' instances and in the public game of scenarios they own (admins: all), with `student`, `scenario`, `where` and a `preview` (scene name, size, zoom, main picture, and the pictures the pieces show). `status`: `pending`, `approved`, `hidden` or `all`
+`GET /api/builds/teach?status=pending` | | `{ "builds": [...] }`: for staff, the builds in their assignments' instances and in the public game of scenarios they own (admins: all), with `student`, `scenario`, `where`, `group` (the instance, for the game's `?group=`), `"editable": true` and a `preview` (scene name, size, zoom, main picture, and the pictures the pieces and hotspots show). `status`: `pending`, `approved`, `hidden` or `all`
 `PUT /api/builds/teach/{id}` | `{ "status": "approved" }` | `{ "build": SceneBuild }`. `approved`, `hidden` or `pending`
+`PUT /api/builds/teach/{id}/pieces` | `{ "pieces": BuildPiece[] }` | `{ "build": SceneBuild or null }`. The reviewer changes the build, checked against the scene's rules with its maker's uploads. Its status stays as it was; an empty list deletes it. 404 for a build they do not review
 `DELETE /api/builds/teach/{id}` | | 204
+
+The game opens a build for its teacher to change with `/{code}?group={group}&scene={scene_id}&edit_build={id}` (the Classes page's **Change in the game**).
 
 Resetting a student's game in an instance deletes their builds and uploads there; deleting a student deletes all of theirs.
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  buildingRules, buildProblems, cleanLabel, collectSceneMediaIds, tidyPiece, validateScenario, BUILD_LIMITS,
+  buildingRules, buildProblems, cleanLabel, cleanNote, collectSceneMediaIds, pieceMedia, piecePictures, tidyPiece, validateScenario, withoutUpload, BUILD_LIMITS,
   type BuildPiece, type Scenario, type Scene,
 } from '../src/index.js';
 
@@ -64,4 +64,44 @@ test('the pieces are loaded with the scene, and the validator checks the setting
   assert.match(errors, /max_pieces is 1 to 50/);
   const off: Scenario = { ...doc, scenes: [scene({ enabled: false, pieces: [{ media_id: 7 }] })] };
   assert.equal(collectSceneMediaIds(off, off.scenes[0]!).length, 0, 'a building that is off loads nothing');
+});
+
+test('hotspots look like nothing, words, a piece or a picture, and open words, a picture or both', () => {
+  const rules = buildingRules(scene({ enabled: true, tools: ['hotspot'], pieces: [{ media_id: 5 }] }))!;
+  assert.deepEqual(rules.tools, ['hotspot'], 'hotspots alone are something to build with');
+  const size = { width: 1000, height: 600 };
+  const spot = (extra: Partial<BuildPiece>): BuildPiece => ({ id: 'h1', kind: 'hotspot', x: 10, y: 10, opens: { text: 'Hi' }, ...extra });
+  assert.deepEqual(buildProblems(rules, size, [
+    spot({}),
+    spot({ id: 'h2', look: 'label', text: 'Read me', color: '#fde047', opens: { upload_id: 9 } }),
+    spot({ id: 'h3', look: 'sticker', media_id: 5, opens: { text: 'Two\n\nlines', media_id: 5 } }),
+    spot({ id: 'h4', look: 'picture', upload_id: 9 }),
+  ], [9]), []);
+  const problem = (p: BuildPiece) => buildProblems(rules, size, [p], [9]).join(' ');
+  assert.match(problem(spot({ opens: {} })), /needs words or a picture/);
+  assert.match(problem(spot({ opens: { text: '<b>' } })), /< or >/);
+  assert.match(problem(spot({ opens: { media_id: 5, upload_id: 9 } })), /one picture/);
+  assert.match(problem(spot({ opens: { upload_id: 8 } })), /not one of yours/);
+  assert.match(problem(spot({ look: 'sticker', media_id: 6 })), /look like one of this scene's pieces/);
+  assert.match(problem(spot({ look: 'glow' as never })), /look/);
+  assert.match(buildProblems(buildingRules(scene({ enabled: true, tools: ['label'] }))!, size, [spot({})], []).join(' '), /Hotspots are not allowed/);
+  assert.deepEqual(
+    tidyPiece(spot({ look: 'none', text: 'gone', media_id: 5, opens: { text: '  Hi \n\n\n\n there ', upload_id: 9 } })),
+    { id: 'h1', kind: 'hotspot', x: 10, y: 10, opens: { text: 'Hi\n\nthere', upload_id: 9 } },
+  );
+});
+
+test('a hotspot’s words keep their lines, and removing a picture changes the hotspots that showed it', () => {
+  assert.equal(cleanNote(' One <two>\r\nthree\n\n\n\nfour\t\tfive '), 'One two\nthree\n\nfour five');
+  assert.equal(cleanNote('x'.repeat(600)).length, BUILD_LIMITS.noteLength);
+  const pieces: BuildPiece[] = [
+    { id: 'a', kind: 'picture', x: 1, y: 1, upload_id: 9 },
+    { id: 'b', kind: 'hotspot', x: 1, y: 1, look: 'picture', upload_id: 9, opens: { text: 'x' } },
+    { id: 'c', kind: 'hotspot', x: 1, y: 1, opens: { text: 'kept', upload_id: 9 } },
+    { id: 'd', kind: 'hotspot', x: 1, y: 1, opens: { upload_id: 9 } },
+    { id: 'e', kind: 'hotspot', x: 1, y: 1, opens: { upload_id: 8 } },
+  ];
+  assert.deepEqual(withoutUpload(pieces, 9).map((p) => [p.id, p.opens]), [['c', { text: 'kept' }], ['e', { upload_id: 8 }]]);
+  assert.deepEqual(piecePictures(pieces[1]!), [9]);
+  assert.deepEqual(pieceMedia({ id: 'f', kind: 'hotspot', x: 1, y: 1, look: 'sticker', media_id: 5, opens: { media_id: 6 } }), [5, 6]);
 });

@@ -34,6 +34,8 @@ export const config = {
   launch: params.get('launch'),
   /** Start in this scene instead of the start scene or the saved one. */
   startScene: number(params.get('scene')),
+  /** For a teacher: open this student's build to change it, once in its scene (the Classes page's Change in the game). */
+  editBuild: number(params.get('edit_build')),
   /** Which instance of the scenario to join: the public one, an assignment's ("a12") or a team's ("t7"). */
   group: params.get('group') || 'public',
   /**

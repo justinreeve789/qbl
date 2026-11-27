@@ -1,13 +1,13 @@
 ---
 title: Student building
-description: Let students add things of their own to a scene (pieces you choose, signs, and pictures they made), and approve what they build.
+description: Let students add things of their own to a scene (pieces you choose, signs, pictures they made, and hotspots that open words or a picture), and approve or change what they build.
 host:
   who: lucy
   says: "Students learn by making things. Give them a corner of a scene to build in!"
 ---
 import Host from '../../../components/Host.astro';
 
-**Student building** lets students add things of their own to a scene: pieces you choose, words, and pictures they made in another app. A class can build a garden, label the parts of a cell, put up posters about the water cycle, or plan a landing pad.
+**Student building** lets students add things of their own to a scene: pieces you choose, words, pictures they made in another app, and hotspots that open words or a picture when clicked. A class can build a garden, label the parts of a cell, put up posters about the water cycle, hide facts around a museum for classmates to find, or plan a landing pad.
 
 What students build is an **extra layer** on top of the scene. It never changes the scene you wrote, and your events cannot see it or depend on it. If you remove the setting, the builds stop showing; nothing in the scene breaks.
 
@@ -20,6 +20,7 @@ In the scene editor, select **Scene settings** and find **🛠️ Student buildi
 | **Place pieces you choose** | Students add pictures you pick under **Pieces to place**: plants, furniture, animals, signs. Any picture in the scenario can be a piece |
 | **Add words** | Students write short signs and labels, up to 60 letters, in a few colours |
 | **Hang their own pictures** | Students upload pictures: a poster made in Canva or Google Slides, a drawing, a photo of their work |
+| **Add hotspots that open words or a picture** | Students add something to click that opens words (up to 500 letters), a picture, or both. See [Hotspots](#hotspots) |
 | **What to make** | The task, shown when they start building ("Build a habitat that keeps a desert fox cool") |
 | **Most things one student adds** | 12 unless you say otherwise, at most 50 |
 | **Who sees a build** | Everyone in the same game, or only its maker and their teacher |
@@ -43,6 +44,17 @@ In a scene that allows it, a **🛠️ Build here** button appears in the corner
 
 Under **My pictures…** they upload pictures and choose one to hang. The game asks them not to show faces, names or where they live. Uploaded pictures are made smaller (at most 1600 pixels across) and saved again, which removes hidden details such as where a photo was taken.
 
+### Hotspots
+
+Under **Add a hotspot**, **New hotspot…** opens a small window with two parts:
+
+- **What people click on:** **Nothing** (an invisible spot people find when they point at it), **Words** (a sign in one of the label colours), **A piece** (one of your pieces, if you chose any), or **My picture** (one they uploaded).
+- **What it shows when clicked:** words, and a picture (one of your pieces, or one they uploaded), or both.
+
+A hotspot moves, resizes, turns and is removed like anything else. When one is picked, **Change…** opens the window again and **Try it** shows what players will see. Outside the Build palette, clicking a hotspot opens a box with its words and picture; it does not make the player walk.
+
+Students' hotspots are not your scene's [hotspots](/docs/editor/scene-editor/#hotspots): they cannot run events, give items or change variables. They only show words and pictures.
+
 Each student has one build per scene in each game (the public game, a class's or a team's). Pressing **Build** again (the button now says **Change what you built**) opens it to change.
 
 ## Approve students' builds
@@ -53,9 +65,23 @@ On the **Classes** page, the **🛠️ Student builds** card lists them. Each bu
 
 - **Approve** shows it to everyone in that game (or only to its maker, if the scene says so).
 - **Not now** or **Hide** takes it out of view. The student sees that it was taken down, and can change it and press Done to ask again.
+- **✏️ Change in the game** opens the build in its scene (see below).
 - **Delete** removes it.
 
-Builds in your assignments come to you. Builds in a scenario's public game go to the scenario's owner.
+Under a build with hotspots, each hotspot is numbered and listed with the words and picture it opens, so you can read everything before you approve it.
+
+Builds in your assignments come to you.
+
+## Change a student's build
+
+You can change any build of a student in your classes: fix a typo, move something out of the way, or remove something that should not be there.
+
+- On the **Classes** page, press **✏️ Change in the game** on the build. The game opens in that scene with the student's build in the Build palette.
+- Or, while you play in one of your classes' games, press **🛠️ Builds here** in a scene with students' builds, and choose the student under **Whose build**.
+
+Change it as a student would and press **Done**. The build keeps its state: one that was waiting still waits for you, and an approved one stays approved. You can use the pictures the student uploaded, but only the student can upload or remove their pictures. Clearing everything and pressing Done deletes the build.
+
+When you play one of your classes' games, you see all of your students' builds, including ones that wait for you or that you hid. Builds in a scenario's public game go to the scenario's owner.
 
 ## Starting again
 

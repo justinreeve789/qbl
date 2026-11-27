@@ -1682,6 +1682,12 @@ dialog.modal.panel[data-panel='media-choose'] .panel-body { padding-top: 0; }
 .build-preview-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .build-preview-piece { position: absolute; height: auto; pointer-events: none; }
 .build-preview-label { position: absolute; white-space: nowrap; font-family: Fredoka, system-ui, sans-serif; font-weight: 600; line-height: 1.1; paint-order: stroke; -webkit-text-stroke: 0.12em #1f2937; pointer-events: none; }
+.build-preview-box { position: absolute; box-sizing: border-box; border: 2px dashed #fde047; border-radius: 4px; background: rgba(253, 224, 71, 0.15); pointer-events: none; }
+.build-preview-spot { position: absolute; z-index: 1; transform: translate(-50%, -50%); min-width: 1.4em; height: 1.4em; padding: 0 0.2em; border-radius: 999px; background: #fde047; color: #1f2937; font-size: 0.75rem; font-weight: 700; line-height: 1.4em; text-align: center; box-shadow: 0 0 0 2px #1f2937; pointer-events: none; }
+.build-hotspots { margin: 0; padding-left: 1.6em; display: grid; gap: 6px; font-size: 0.9rem; }
+.build-hotspots li { display: flex; gap: 8px; align-items: flex-start; }
+.build-hotspots li span { white-space: pre-wrap; overflow-wrap: anywhere; }
+.build-hotspots img { width: 64px; height: 48px; object-fit: contain; flex: none; border-radius: 4px; background: #0e1014; }
 .build-about { font-size: 0.9rem; }
 .build-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 

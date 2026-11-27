@@ -2,7 +2,8 @@ import type { Id, Scene } from './types.js';
 
 /**
  * Student building: a scene whose author allows it lets players add things of their own on top of
- * it (stickers, labels, their own pictures), from a Build button in the game.
+ * it (stickers, labels, their own pictures, and hotspots that open words or a picture when clicked),
+ * from a Build button in the game. Their teacher can change any of their builds, in the game.
  *
  * What a student builds is an extra layer, never part of the scene: the scenario's tables and its
  * compiled document are not changed. Each student has one build per scene in each instance (the
@@ -14,13 +15,16 @@ import type { Id, Scene } from './types.js';
  */
 
 /** What a scene's author can let students use. */
-export type BuildTool = 'place' | 'label' | 'picture';
-export const BUILD_TOOLS: readonly BuildTool[] = ['place', 'label', 'picture'];
+export type BuildTool = 'place' | 'label' | 'picture' | 'hotspot';
+export const BUILD_TOOLS: readonly BuildTool[] = ['place', 'label', 'picture', 'hotspot'];
 
 /** `scene.building`: the author's settings, kept in the scene's params. */
 export interface SceneBuilding {
   enabled?: boolean;
-  /** Default: place and label. `picture`: students may hang pictures they upload. */
+  /**
+   * Default: place and label. `picture`: students may hang pictures they upload. `hotspot`: students
+   * may add spots that open words, a picture or both when clicked (and upload pictures for them).
+   */
   tools?: BuildTool[] | null;
   /** The scenario's pictures that Place offers (the author chooses them). */
   pieces?: Array<{ media_id: Id }> | null;
@@ -44,24 +48,43 @@ export interface BuildingRules {
   prompt: string;
 }
 
+/**
+ * What a hotspot looks like: one of the building's pieces (`media_id`), one of the student's
+ * pictures (`upload_id`), words (`text`, `color`), or nothing: an invisible square people find by
+ * pointing at it (HOTSPOT_LOOK.box pixels times `scale`).
+ */
+export type HotspotLook = 'sticker' | 'picture' | 'label' | 'none';
+export const HOTSPOT_LOOKS: readonly HotspotLook[] = ['sticker', 'picture', 'label', 'none'];
+
+/** What a hotspot opens when clicked: words, a picture (a piece or one of the student's), or both. */
+export interface HotspotOpens {
+  text?: string;
+  media_id?: Id;
+  upload_id?: number;
+}
+
 /** One thing a student added. Positions are in scene pixels; `x, y` is the thing's centre. */
 export interface BuildPiece {
   id: string;
-  kind: 'sticker' | 'label' | 'picture';
+  kind: 'sticker' | 'label' | 'picture' | 'hotspot';
   x: number;
   y: number;
   /** 1: the picture's own size (a label: its normal size). */
   scale?: number;
   /** Degrees, clockwise. */
   angle?: number;
-  /** sticker: one of the building's pieces. */
+  /** hotspot: what is drawn (default `none`), with the fields of that kind below. */
+  look?: HotspotLook;
+  /** sticker (and a hotspot that looks like one): one of the building's pieces. */
   media_id?: Id;
-  /** picture: one of the student's own uploads. */
+  /** picture (and a hotspot that looks like one): one of the student's own uploads. */
   upload_id?: number;
-  /** label: its words. */
+  /** label (and a hotspot that looks like one): its words. */
   text?: string;
-  /** label: one of LABEL_COLORS. */
+  /** label (and a hotspot that looks like one): one of LABEL_COLORS. */
   color?: string;
+  /** hotspot: what clicking it opens. */
+  opens?: HotspotOpens;
 }
 
 export type BuildStatus = 'pending' | 'approved' | 'hidden';
@@ -77,6 +100,13 @@ export interface SceneBuild {
   status: BuildStatus;
   pieces: BuildPiece[];
   updated_at?: string | null;
+  /**
+   * Someone else's build that this player may change: they are its maker's teacher. Their teacher
+   * sees it whatever its state.
+   */
+  editable?: boolean;
+  /** With `editable`: the maker's pictures, which their build may show. */
+  uploads?: BuildUpload[];
 }
 
 /** A picture a student uploaded for their builds in one instance. */
@@ -98,6 +128,8 @@ export const BUILD_LIMITS = {
   /** Bytes, before the server re-encodes it. */
   uploadBytes: 8 * 1024 * 1024,
   promptLength: 300,
+  /** The words a hotspot opens. */
+  noteLength: 500,
 } as const;
 
 /**
@@ -105,7 +137,7 @@ export const BUILD_LIMITS = {
  * picture's own size times `scale` (and the scene's zoom), an uploaded picture fitted into a square
  * of `pictureBox` pixels times `scale`, and a label's letters `labelSize` pixels high times `scale`.
  */
-export const BUILD_LOOK = { pictureBox: 360, labelSize: 30 } as const;
+export const BUILD_LOOK = { pictureBox: 360, labelSize: 30, hotspotBox: 120 } as const;
 
 /** The colours a label can be written in. */
 export const LABEL_COLORS: readonly string[] = ['#ffffff', '#1f2937', '#fde047', '#fb923c', '#f87171', '#60a5fa', '#4ade80', '#c084fc'];
@@ -133,6 +165,54 @@ export function buildingRules(scene: Pick<Scene, 'building' | 'story'> | null | 
 /** A label's words as they are kept: one line, no markup characters, at most labelLength. */
 export function cleanLabel(text: string): string {
   return text.replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, BUILD_LIMITS.labelLength);
+}
+
+/**
+ * The words a hotspot opens as they are kept: lines kept (at most two blank in a row), no other
+ * control or markup characters, at most noteLength.
+ */
+export function cleanNote(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f<>]/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, BUILD_LIMITS.noteLength)
+    .trim();
+}
+
+/** The uploads a piece shows: its own picture, and a hotspot's opened one. */
+export function piecePictures(p: BuildPiece): number[] {
+  const out: number[] = [];
+  if ((p.kind === 'picture' || (p.kind === 'hotspot' && p.look === 'picture')) && p.upload_id != null) out.push(p.upload_id);
+  if (p.kind === 'hotspot' && p.opens?.upload_id != null) out.push(p.opens.upload_id);
+  return out;
+}
+
+/** The building's pieces a piece shows: a sticker's, and a hotspot's look and opened picture. */
+export function pieceMedia(p: BuildPiece): Id[] {
+  const out: Id[] = [];
+  if ((p.kind === 'sticker' || (p.kind === 'hotspot' && p.look === 'sticker')) && p.media_id != null) out.push(p.media_id);
+  if (p.kind === 'hotspot' && p.opens?.media_id != null) out.push(p.opens.media_id);
+  return out;
+}
+
+/**
+ * A build's pieces once one of the student's pictures is removed: a picture that showed it goes;
+ * a hotspot that looked like it, too; a hotspot that opened it opens only its words, or goes when
+ * it had none.
+ */
+export function withoutUpload(pieces: BuildPiece[], uploadId: number): BuildPiece[] {
+  return pieces.flatMap((p) => {
+    if (p.kind === 'picture' && p.upload_id === uploadId) return [];
+    if (p.kind !== 'hotspot') return [p];
+    if (p.look === 'picture' && p.upload_id === uploadId) return [];
+    if (p.opens?.upload_id !== uploadId) return [p];
+    const { upload_id: _gone, ...opens } = p.opens;
+    return opens.text ? [{ ...p, opens }] : [];
+  });
 }
 
 /** A new piece id: 8 lowercase letters and digits. */
@@ -171,10 +251,38 @@ export function buildProblems(rules: BuildingRules, size: { width: number; heigh
     } else if (p.kind === 'picture') {
       if (!rules.tools.includes('picture')) problems.push('Pictures are not allowed here.');
       else if (p.upload_id == null || !own.has(p.upload_id)) problems.push(`${which} is not one of your pictures.`);
+    } else if (p.kind === 'hotspot') {
+      if (!rules.tools.includes('hotspot')) problems.push('Hotspots are not allowed here.');
+      else problems.push(...hotspotProblems(rules, p, own, which));
     } else {
       problems.push(`${which} is not something you can add.`);
     }
   });
+  return [...new Set(problems)];
+}
+
+function hotspotProblems(rules: BuildingRules, p: BuildPiece, own: Set<number>, which: string): string[] {
+  const problems: string[] = [];
+  const piece = (id: unknown) => id != null && rules.pieces.some((m) => String(m) === String(id));
+  const look = p.look ?? 'none';
+  if (look === 'sticker') {
+    if (!piece(p.media_id)) problems.push(`${which} does not look like one of this scene's pieces.`);
+  } else if (look === 'picture') {
+    if (p.upload_id == null || !own.has(p.upload_id)) problems.push(`${which} does not look like one of your pictures.`);
+  } else if (look === 'label') {
+    if (typeof p.text !== 'string' || !cleanLabel(p.text) || cleanLabel(p.text) !== p.text) problems.push(`${which} needs words (up to ${BUILD_LIMITS.labelLength} letters).`);
+    if (p.color != null && !LABEL_COLORS.includes(p.color)) problems.push(`${which} has a colour that is not offered.`);
+  } else if (look !== 'none') {
+    problems.push(`${which} has a look that is not offered.`);
+  }
+  const o = p.opens;
+  if (!o || typeof o !== 'object') return [...problems, `${which} needs words or a picture to open.`];
+  const text = o.text;
+  if (text != null && (typeof text !== 'string' || cleanNote(text) !== text)) problems.push(`${which} opens words that are too long (up to ${BUILD_LIMITS.noteLength} letters) or have < or > in them.`);
+  if (o.media_id != null && o.upload_id != null) problems.push(`${which} can open one picture.`);
+  else if (o.media_id != null && !piece(o.media_id)) problems.push(`${which} opens a picture that is not one of this scene's pieces.`);
+  else if (o.upload_id != null && !own.has(o.upload_id)) problems.push(`${which} opens a picture that is not one of yours.`);
+  if (!text && o.media_id == null && o.upload_id == null) problems.push(`${which} needs words or a picture to open.`);
   return problems;
 }
 
@@ -190,6 +298,22 @@ export function tidyPiece(p: BuildPiece): BuildPiece {
   if (p.kind === 'label') {
     out.text = cleanLabel(p.text ?? '');
     if (p.color && p.color !== LABEL_COLORS[0]) out.color = p.color;
+  }
+  if (p.kind === 'hotspot') {
+    const look = p.look ?? 'none';
+    if (look !== 'none') out.look = look;
+    if (look === 'sticker') out.media_id = p.media_id;
+    if (look === 'picture') out.upload_id = p.upload_id;
+    if (look === 'label') {
+      out.text = cleanLabel(p.text ?? '');
+      if (p.color && p.color !== LABEL_COLORS[0]) out.color = p.color;
+    }
+    const opens: HotspotOpens = {};
+    const text = cleanNote(p.opens?.text ?? '');
+    if (text) opens.text = text;
+    if (p.opens?.media_id != null) opens.media_id = p.opens.media_id;
+    else if (p.opens?.upload_id != null) opens.upload_id = p.opens.upload_id;
+    out.opens = opens;
   }
   return out;
 }

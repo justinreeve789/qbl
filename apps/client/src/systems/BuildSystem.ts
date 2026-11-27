@@ -1,12 +1,14 @@
 import type * as Phaser from 'phaser';
 import {
-  BUILD_LIMITS, BUILD_LOOK, LABEL_COLORS, buildingRules, buildProblems, cleanLabel, newPieceId, resolveMediaUrl, tidyPiece,
+  BUILD_LIMITS, BUILD_LOOK, LABEL_COLORS, buildingRules, buildProblems, cleanLabel, cleanNote, newPieceId, resolveMediaUrl, tidyPiece, withoutUpload,
   type BuildingRules, type BuildPiece, type SceneBuild,
 } from '@qbl/shared';
 import { mediaKey } from '../core/assets';
 import { Depth } from '../core/depth';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
-import type { BuildPanelHandle } from '../ui/UiPort';
+import type { BuildPanelHandle, HotspotFields } from '../ui/UiPort';
+
+type Drawn = Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Rectangle;
 
 /** Texture key of a picture a student uploaded. */
 export const uploadKey = (id: number) => `build-upload-${id}`;
@@ -15,6 +17,8 @@ export const uploadKey = (id: number) => `build-upload-${id}`;
 const POINTER_DOWN = 'pointerdown';
 
 interface Editing {
+  /** A teacher changes a student's build (null: the player's own). */
+  target: SceneBuild | null;
   pieces: BuildPiece[];
   /** Earlier lists of pieces, for undo, and undone ones, for redo. */
   past: BuildPiece[][];
@@ -33,14 +37,20 @@ interface Editing {
  * The layer is an extra: nothing in it is part of the scene, nothing in the scene's events can
  * see it, and it never blocks walking. In build mode the player's own pieces can be picked,
  * dragged, resized and turned; walking and hotspots wait until the palette closes.
+ *
+ * A hotspot a student added opens its words and picture when anyone clicks it (outside build
+ * mode); a click on one is not a click to walk. A teacher sees all their students' builds and can
+ * change any of them from the same palette (`whose`).
  */
 export class BuildSystem implements SceneSystem {
   /** A failure to load builds has been shown on screen in this game already. */
   private static told = false;
   private rules: BuildingRules | null = null;
-  private drawn: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Text> = [];
-  /** The player's own pieces while they build, by piece id. */
-  private editable = new Map<string, Phaser.GameObjects.Image | Phaser.GameObjects.Text>();
+  private drawn: Drawn[] = [];
+  /** The pieces being edited while the palette is open, by piece id. */
+  private editable = new Map<string, Drawn>();
+  /** How many hotspots the pointer is over: a click there opens one instead of walking. */
+  private pointerOver = 0;
   private outline: Phaser.GameObjects.Graphics | null = null;
   private editing: Editing | null = null;
   private unlisten: (() => void) | null = null;
@@ -58,13 +68,33 @@ export class BuildSystem implements SceneSystem {
     this.redraw();
     // Entering a scene asks again, so approvals that came in meanwhile show. Where the scene lets
     // the player build, a failure is said once, rather than the Build button silently not coming.
-    builds.refresh().catch((err) => {
+    builds.refresh().then(() => this.arrive(), (err) => {
       console.warn('[qbl] could not load what students built here:', err);
       if (this.rules && !BuildSystem.told) {
         BuildSystem.told = true;
         this.rt.ctx.ui.toast(`Building is not available right now${err instanceof Error && err.message ? `: ${err.message}` : '.'}`, 5000);
       }
     });
+  }
+
+  /** A teacher came to change a student's build here (?edit_build=): open it. */
+  private arrive() {
+    const builds = this.rt.ctx.builds;
+    const id = builds?.openOnArrival;
+    if (!builds || id == null) return;
+    const build = builds.byId(id);
+    if (!build || String(build.scene_id) !== String(this.rt.def.id)) return;
+    builds.openOnArrival = null;
+    if (!build.editable) {
+      this.rt.ctx.ui.toast('You cannot change that build here.', 4000);
+      return;
+    }
+    this.open(build.id);
+  }
+
+  /** True while the pointer is over a hotspot someone built; a click is then left to it. */
+  get hovering(): boolean {
+    return this.pointerOver > 0 && !this.editing;
   }
 
   /** True while the player builds: the palette is open. */
@@ -87,10 +117,13 @@ export class BuildSystem implements SceneSystem {
     for (const o of this.drawn) o.destroy();
     this.drawn = [];
     this.editable.clear();
+    this.pointerOver = 0;
     const builds = this.rt.ctx.builds;
     if (!builds) return;
+    const e = this.editing;
     for (const build of builds.shown(this.rt.def.id)) {
-      if (build.mine && this.editing) continue;
+      // The build being changed is drawn from the palette's pieces instead.
+      if (e && (e.target ? build.id === e.target.id : build.mine)) continue;
       for (const piece of build.pieces) this.draw(piece, build, false);
     }
     if (this.editing) for (const piece of this.editing.pieces) this.draw(piece, null, true);
@@ -100,9 +133,11 @@ export class BuildSystem implements SceneSystem {
 
   private draw(piece: BuildPiece, build: SceneBuild | null, editable: boolean) {
     const { scene } = this.rt;
-    let object: Phaser.GameObjects.Image | Phaser.GameObjects.Text | null = null;
+    let object: Drawn | null = null;
     const scale = piece.scale ?? 1;
-    if (piece.kind === 'sticker' && piece.media_id != null) {
+    if (piece.kind === 'hotspot') {
+      object = this.drawHotspot(piece, editable);
+    } else if (piece.kind === 'sticker' && piece.media_id != null) {
       const key = mediaKey(piece.media_id);
       if (!scene.textures.exists(key)) return;
       object = scene.add.image(piece.x, piece.y, key).setOrigin(0.5, 0.5).setScale(scale * this.rt.zoom).setDepth(piece.y);
@@ -130,16 +165,67 @@ export class BuildSystem implements SceneSystem {
     }
     if (!object) return;
     object.setAngle(piece.angle ?? 0);
-    // A build the teacher took down is shown faintly to its maker, so they know.
-    if (build?.mine && build.status === 'hidden') object.setAlpha(0.45);
+    // A build the teacher took down is shown faintly to its maker (and the teacher), so they know.
+    if ((build?.mine || build?.editable) && build.status === 'hidden') object.setAlpha(0.45);
     if (editable) {
       this.editable.set(piece.id, object);
       object.setInteractive({ draggable: true, useHandCursor: true });
       object.on(POINTER_DOWN, () => this.select(piece.id));
       object.on('drag', (_p: unknown, x: number, y: number) => this.move(piece.id, x, y, false));
       object.on('dragend', () => this.move(piece.id, object!.x, object!.y, true));
+    } else if (piece.kind === 'hotspot') {
+      object.setInteractive({ useHandCursor: true });
+      object.on('pointerover', () => this.pointerOver++);
+      object.on('pointerout', () => (this.pointerOver = Math.max(0, this.pointerOver - 1)));
+      object.on(POINTER_DOWN, () => this.openHotspot(piece));
     }
     this.drawn.push(object);
+  }
+
+  /**
+   * A hotspot as it looks: a piece, a picture or words like the other kinds, or for one that looks
+   * like nothing, an invisible square (in build mode a dashed one, so it can be found and dragged).
+   */
+  private drawHotspot(piece: BuildPiece, editable: boolean): Drawn | null {
+    const { scene } = this.rt;
+    const look = piece.look ?? 'none';
+    if (look !== 'none') {
+      const kind = look === 'sticker' ? 'sticker' : look === 'picture' ? 'picture' : 'label';
+      // Drawn as its look, by the same code; the object comes back as the last one drawn.
+      const before = this.drawn.length;
+      this.draw({ ...piece, kind, look: undefined, opens: undefined }, null, false);
+      const object = this.drawn.length > before ? this.drawn.pop()! : null;
+      // A look that cannot be drawn (a picture still loading) leaves an invisible hotspot meanwhile.
+      if (object) return object;
+    }
+    const side = BUILD_LOOK.hotspotBox * (piece.scale ?? 1);
+    const box = scene.add.rectangle(piece.x, piece.y, side, side).setOrigin(0.5, 0.5).setDepth(Depth.label - 1);
+    if (editable) {
+      box.setFillStyle(0xfde047, 0.18);
+      box.setStrokeStyle(3, 0xfde047, 0.9);
+    }
+    return box;
+  }
+
+  /** Open what a hotspot shows: its words and picture, in a box. */
+  openHotspot(piece: BuildPiece) {
+    const { ctx } = this.rt;
+    if (this.editing || ctx.ui.capturesInput || this.rt.leaving) return;
+    const url = this.openedPicture(piece);
+    const text = piece.opens?.text ?? '';
+    if (!text && !url) return;
+    ctx.ui.infobox(noteHtml(text), [], { dismissible: true, hero: url ? { url, type: 'image' } : null, size: text ? null : 'large' });
+  }
+
+  private openedPicture(piece: BuildPiece): string | null {
+    const { ctx } = this.rt;
+    const o = piece.opens;
+    if (o?.media_id != null) {
+      const media = ctx.index.media.get(o.media_id);
+      return media ? resolveMediaUrl(ctx.scenario, media) : null;
+    }
+    if (o?.upload_id != null) return ctx.builds?.picture(o.upload_id)?.url ?? null;
+    return null;
   }
 
   /** A box around what is picked. */
@@ -176,18 +262,26 @@ export class BuildSystem implements SceneSystem {
       ctx.ui.buildButton(null, () => undefined);
       return;
     }
-    ctx.ui.buildButton(ctx.builds.mine(this.rt.def.id) ? 'Change what you built' : 'Build here', () => this.open());
+    const label = ctx.builds.others(this.rt.def.id).length ? 'Builds here'
+      : ctx.builds.mine(this.rt.def.id) ? 'Change what you built' : 'Build here';
+    ctx.ui.buildButton(label, () => this.open());
   }
 
   // --------------------------------------------------------------- build mode
 
-  /** Open the palette, starting from what the player built here before. */
-  open() {
+  /**
+   * Open the palette, starting from what the player built here before; for a teacher, `buildId`
+   * opens one of their students' builds instead.
+   */
+  open(buildId: number | null = null) {
     const { ctx } = this.rt;
     const rules = this.rules;
     if (!rules || !ctx.builds?.mayBuild || this.editing || this.rt.leaving) return;
-    const saved = ctx.builds.mine(this.rt.def.id);
+    const others = ctx.builds.others(this.rt.def.id);
+    const target = buildId != null ? others.find((b) => b.id === buildId) ?? null : null;
+    const saved = target ?? ctx.builds.mine(this.rt.def.id);
     const pieces = (saved?.pieces ?? []).map((p) => ({ ...p }));
+    const mine = ctx.builds.mine(this.rt.def.id);
     const panel = ctx.ui.buildPanel({
       prompt: rules.prompt,
       tools: rules.tools,
@@ -200,6 +294,12 @@ export class BuildSystem implements SceneSystem {
       maxPieces: rules.maxPieces,
       approve: rules.approve,
       shared: rules.share === 'instance',
+      ...(others.length ? {
+        whose: [
+          { id: null, name: 'Yours', status: mine?.status ?? null },
+          ...others.map((b) => ({ id: b.id, name: b.author, status: b.status })),
+        ],
+      } : {}),
     }, {
       addSticker: (mediaId) => this.add({ kind: 'sticker', media_id: mediaId }),
       addLabel: (text, color) => {
@@ -207,14 +307,19 @@ export class BuildSystem implements SceneSystem {
         if (words) this.add({ kind: 'label', text: words, ...(color !== LABEL_COLORS[0] ? { color } : {}) });
       },
       addPicture: (uploadId) => this.add({ kind: 'picture', upload_id: uploadId }),
+      addHotspot: (fields) => this.add({ kind: 'hotspot', ...hotspotFields(fields) }),
       upload: async (file) => {
+        if (this.editing?.target) throw new Error('Only the student can upload pictures for their build.');
         if (file.size > BUILD_LIMITS.uploadBytes) throw new Error(`That picture is too big. Pictures can be up to ${BUILD_LIMITS.uploadBytes >> 20} MB.`);
         const up = await ctx.builds!.upload(file);
-        this.add({ kind: 'picture', upload_id: up.id });
+        this.refresh();
+        return up;
       },
       removePicture: async (uploadId) => {
+        if (this.editing?.target) throw new Error('Only the student can remove their pictures.');
         await ctx.builds!.removeUpload(uploadId);
-        if (this.editing) this.editing.pieces = this.editing.pieces.filter((p) => p.upload_id !== uploadId);
+        if (this.editing) this.editing.pieces = withoutUpload(this.editing.pieces, uploadId);
+        this.redraw();
         this.refresh();
       },
       resize: (factor) => this.change((p) => ({ ...p, scale: clamp((p.scale ?? 1) * factor, BUILD_LIMITS.minScale, BUILD_LIMITS.maxScale) })),
@@ -223,6 +328,16 @@ export class BuildSystem implements SceneSystem {
         const words = cleanLabel(text);
         if (words) this.change((p) => (p.kind === 'label' ? { ...p, text: words, color } : p));
       },
+      rehotspot: (fields) => this.change((p) => (p.kind === 'hotspot' ? { id: p.id, kind: p.kind, x: p.x, y: p.y, scale: p.scale, angle: p.angle, ...hotspotFields(fields) } : p)),
+      tryHotspot: () => {
+        const e = this.editing;
+        const picked = e?.pieces.find((p) => p.id === e.selected);
+        if (!picked || picked.kind !== 'hotspot') return;
+        const url = this.openedPicture(picked);
+        // The palette is modal, so this opens over it rather than through openHotspot.
+        ctx.ui.infobox(noteHtml(picked.opens?.text ?? ''), [], { dismissible: true, hero: url ? { url, type: 'image' } : null });
+      },
+      switchTo: (id) => this.switchTo(id),
       remove: () => {
         const id = this.editing?.selected;
         if (id) this.commit(this.editing!.pieces.filter((p) => p.id !== id), null);
@@ -233,7 +348,26 @@ export class BuildSystem implements SceneSystem {
       done: () => void this.done(),
       cancel: () => this.close(),
     });
-    this.editing = { pieces, past: [], future: [], selected: null, panel, saving: false, added: 0 };
+    this.editing = { target, pieces, past: [], future: [], selected: null, panel, saving: false, added: 0 };
+    this.redraw();
+    this.refresh();
+  }
+
+  /** For a teacher: change another build here (null: their own), once what was changed is kept or undone. */
+  switchTo(buildId: number | null) {
+    const e = this.editing;
+    const builds = this.rt.ctx.builds;
+    if (!e || !builds || e.saving) return;
+    if ((e.target?.id ?? null) === buildId) return;
+    if (e.past.length) {
+      this.rt.ctx.ui.toast('Press Done to keep your changes, or Undo them, before you change another build.', 4000);
+      this.refresh();
+      return;
+    }
+    const target = buildId != null ? builds.others(this.rt.def.id).find((b) => b.id === buildId) ?? null : null;
+    if (buildId != null && !target) return;
+    const saved = target ?? builds.mine(this.rt.def.id);
+    Object.assign(e, { target, pieces: (saved?.pieces ?? []).map((p) => ({ ...p })), past: [], future: [], selected: null, added: 0 });
     this.redraw();
     this.refresh();
   }
@@ -244,6 +378,10 @@ export class BuildSystem implements SceneSystem {
     if (!e) return;
     if (e.pieces.length >= (this.rules?.maxPieces ?? 0)) {
       this.rt.ctx.ui.toast(`You can add up to ${this.rules?.maxPieces} things here.`);
+      return;
+    }
+    if (fields.kind === 'hotspot' && !fields.opens?.text && fields.opens?.media_id == null && fields.opens?.upload_id == null) {
+      this.rt.ctx.ui.toast('Give the hotspot words or a picture to show.');
       return;
     }
     const view = this.rt.scene.cameras.main.worldView;
@@ -273,7 +411,8 @@ export class BuildSystem implements SceneSystem {
     if (!settle) {
       const object = this.editable.get(id);
       object?.setPosition(nx, ny);
-      if (object && e.pieces.find((p) => p.id === id)?.kind !== 'label') object.setDepth(ny);
+      const piece = e.pieces.find((p) => p.id === id);
+      if (object && piece && piece.kind !== 'label' && !(piece.kind === 'hotspot' && (piece.look ?? 'none') !== 'sticker' && piece.look !== 'picture')) object.setDepth(ny);
       this.outline?.destroy();
       this.outline = null;
       return;
@@ -328,15 +467,24 @@ export class BuildSystem implements SceneSystem {
     const e = this.editing;
     if (!e) return;
     const picked = e.pieces.find((p) => p.id === e.selected);
+    const builds = this.rt.ctx.builds;
     e.panel.update({
       count: e.pieces.length,
-      selected: picked ? { kind: picked.kind, text: picked.text, color: picked.color } : null,
+      selected: picked ? { ...picked } : null,
       canUndo: e.past.length > 0,
       canRedo: e.future.length > 0,
       saving: e.saving,
-      status: this.rt.ctx.builds?.mine(this.rt.def.id)?.status ?? null,
-      pictures: this.rt.ctx.builds?.uploads ?? [],
+      status: e.target ? (builds?.byId(e.target.id)?.status ?? e.target.status) : (builds?.mine(this.rt.def.id)?.status ?? null),
+      pictures: this.pictures(),
+      canUpload: !e.target,
+      editingFor: e.target ? { id: e.target.id, name: e.target.author } : null,
     });
+  }
+
+  /** The pictures the build being changed may show: the player's own, or its student's. */
+  private pictures() {
+    const e = this.editing;
+    return (e?.target ? e.target.uploads : this.rt.ctx.builds?.uploads) ?? [];
   }
 
   /** Keep what was built, if it keeps to the scene's rules, and close the palette. */
@@ -346,7 +494,7 @@ export class BuildSystem implements SceneSystem {
     const rules = this.rules;
     if (!e || !builds || !rules || e.saving) return;
     const pieces = e.pieces.map(tidyPiece);
-    const problems = buildProblems(rules, this.rt.size, pieces, builds.uploads.map((u) => u.id));
+    const problems = buildProblems(rules, this.rt.size, pieces, this.pictures().map((u) => u.id));
     if (problems.length) {
       this.rt.ctx.ui.toast(problems[0]!, 4000);
       return;
@@ -354,6 +502,12 @@ export class BuildSystem implements SceneSystem {
     e.saving = true;
     this.refresh();
     try {
+      if (e.target) {
+        const saved = await builds.saveOther(e.target, pieces);
+        this.close();
+        this.rt.ctx.ui.toast(saved ? `Saved your changes to ${e.target.author}’s build.` : `${e.target.author}’s build is deleted.`, 4000);
+        return;
+      }
       const saved = await builds.save(this.rt.def.id, pieces);
       this.close();
       this.rt.ctx.ui.toast(
@@ -390,8 +544,31 @@ export class BuildSystem implements SceneSystem {
     this.editable.clear();
     this.outline?.destroy();
     this.outline = null;
+    this.pointerOver = 0;
     this.rt.ctx.ui.buildButton(null, () => undefined);
   }
+}
+
+/** A hotspot's look and what it opens, with only the fields its look keeps. */
+function hotspotFields(f: HotspotFields): Omit<BuildPiece, 'id' | 'x' | 'y' | 'kind'> {
+  const out: Omit<BuildPiece, 'id' | 'x' | 'y' | 'kind'> = { look: f.look, opens: {} };
+  if (f.look === 'sticker') out.media_id = f.media_id;
+  if (f.look === 'picture') out.upload_id = f.upload_id;
+  if (f.look === 'label') {
+    out.text = cleanLabel(f.text ?? '');
+    if (f.color && f.color !== LABEL_COLORS[0]) out.color = f.color;
+  }
+  const text = cleanNote(f.opens.text ?? '');
+  if (text) out.opens!.text = text;
+  if (f.opens.media_id != null) out.opens!.media_id = f.opens.media_id;
+  else if (f.opens.upload_id != null) out.opens!.upload_id = f.opens.upload_id;
+  return out;
+}
+
+/** A hotspot's words as the box shows them: paragraphs at blank lines, line breaks kept, nothing else. */
+export function noteHtml(text: string): string {
+  const escape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return text.split(/\n{2,}/).filter((p) => p.trim()).map((p) => `<p>${escape(p).replace(/\n/g, '<br>')}</p>`).join('');
 }
 
 function clamp(v: number, lo: number, hi: number): number {

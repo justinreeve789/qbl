@@ -40,12 +40,12 @@ class StudentBuildsTest extends TestCase
         $this->as($teacher)->postJson('/api/teach/students', ['email' => 'ben@example.test'])->assertCreated();
         $scenarioId = (int) collect($this->as($teacher)->getJson('/api/teach/scenarios')->assertOk()->json('scenarios'))->firstWhere('code', 'starshipexplorer')['id'];
 
-        // The starship's first scene lets students add words and pictures.
+        // The starship's first scene lets students add words, pictures and hotspots.
         $store = app(ScenarioStore::class);
         $doc = $store->compile($scenarioId);
         $sceneId = (int) $doc['start_scene_id'];
         $scene = $store->decode('scenes', (array) $store->pdo()->query("SELECT * FROM scenes WHERE id = $sceneId")->fetch(\PDO::FETCH_ASSOC));
-        $store->updateRow($scenarioId, 'scenes', $sceneId, ['params' => ['building' => ['enabled' => true, 'tools' => ['label', 'picture']]] + ($scene['params'] ?? [])]);
+        $store->updateRow($scenarioId, 'scenes', $sceneId, ['params' => ['building' => ['enabled' => true, 'tools' => ['label', 'picture', 'hotspot']]] + ($scene['params'] ?? [])]);
         $store->publish($scenarioId);
 
         $group = 'a'.$this->as($teacher)->postJson('/api/teach/assignments', ['scenario_id' => $scenarioId, 'student_ids' => [$ann->id, $ben->id]])->assertCreated()->json('assignment.id');
@@ -64,7 +64,8 @@ class StudentBuildsTest extends TestCase
         $this->as($ann)->putJson("$base/scenes/$sceneId?group=$group", ['pieces' => [
             ['id' => 'l1', 'kind' => 'label', 'x' => 100, 'y' => 100, 'text' => 'Landing pad'],
             ['id' => 'p1', 'kind' => 'picture', 'x' => 400, 'y' => 300, 'upload_id' => $picture['id']],
-        ]])->assertOk()->assertJsonPath('build.status', 'pending');
+            ['id' => 'h1', 'kind' => 'hotspot', 'x' => 500, 'y' => 300, 'opens' => ['text' => 'Hello', 'upload_id' => $picture['id']]],
+        ]])->assertOk()->assertJsonPath('build.status', 'pending')->assertJsonPath('build.pieces.2.opens.text', 'Hello');
         $this->as($ann)->putJson("$base/scenes/$sceneId?group=$group", ['pieces' => [['id' => 'x', 'kind' => 'sticker', 'x' => 1, 'y' => 1, 'media_id' => 1]]])->assertStatus(422);
         $this->as($ben)->getJson("$base?group=$group")->assertJsonPath('builds', []);
 
@@ -72,6 +73,16 @@ class StudentBuildsTest extends TestCase
         $this->assertCount(1, $queue);
         $this->assertSame(['Ann', 'Your class'], [$queue[0]['student']['name'], $queue[0]['where']]);
         $this->as($ann)->getJson('/api/builds/teach')->assertForbidden();
+
+        // Her teacher sees it in the game, and changes it.
+        $mine = $this->as($teacher)->getJson("$base?group=$group")->assertOk();
+        $mine->assertJsonPath('builds.0.editable', true)->assertJsonPath('builds.0.uploads.0.id', $picture['id']);
+        $this->as($ben)->putJson("/api/builds/teach/{$queue[0]['id']}/pieces", ['pieces' => []])->assertNotFound();
+        $this->as($teacher)->putJson("/api/builds/teach/{$queue[0]['id']}/pieces", ['pieces' => [
+            ['id' => 'l1', 'kind' => 'label', 'x' => 120, 'y' => 100, 'text' => 'Landing pad'],
+            ['id' => 'p1', 'kind' => 'picture', 'x' => 400, 'y' => 300, 'upload_id' => $picture['id']],
+        ]])
+            ->assertOk()->assertJsonPath('build.status', 'pending')->assertJsonPath('build.pieces.0.x', 120);
         $this->as($teacher)->putJson("/api/builds/teach/{$queue[0]['id']}", ['status' => 'approved'])->assertOk()->assertJsonPath('build.status', 'approved');
         $seen = $this->as($ben)->getJson("$base?group=$group")->assertOk();
         $seen->assertJsonPath('builds.0.author', 'Ann');
