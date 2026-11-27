@@ -180,7 +180,7 @@ A presenter is a function `(action, pc, actor?) => ActionHandle`. `PresenterMap`
 
 Type | File | How it ends
 ---- | ---- | -----------
-`audio` | `presenters/audio.ts` | When the sound ends; a `persist` audio becomes the background music (`playSceneMusic`, `stopMusic`); `sound` plays a built-in synthesised sound
+`audio` | `presenters/audio.ts` | When the sound ends; a `persist` audio becomes the background music (`playSceneMusic`, `stopMusic`); `sound` plays a built-in synthesised sound. Files are started with `playMedia`, which plays a cropped sound (`params.crop`) as a Phaser marker over the part kept
 `dialogue` | `presenters/dialogue.ts` | A bubble over the speaker (for its duration, or `dialogueDuration(text)`), or a portrait story box the player clicks on from. Speech can be read aloud or play a recording with word timings
 `narration` | `presenters/narration.ts` | The story box with no close-up or name
 `infobox` | `presenters/infobox.ts` | Only once the box is closed **and** the chosen button's action has run to its end (`engine.runAction`), so "ask, then show the next step" waits for the feedback. Typed answers are written to variables; the choice is tracked. A `try_again` button runs while the box stays open

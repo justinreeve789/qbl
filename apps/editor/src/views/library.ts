@@ -11,6 +11,8 @@ import { sheetEditor } from './sheet';
 import { isCategory, isSprite, mediaCategory, MEDIA_TABS, type MediaTab } from '../mediaCategories';
 import { emojiIcon } from '../icons';
 import { emptyState, listPage } from './kit';
+import { audioCropper, cropSummary } from './audioCrop';
+import { audioCrop, cropFragment } from '@qbl/shared';
 
 export { charactersPage } from './characters';
 export { itemsPage } from './items';
@@ -79,14 +81,15 @@ export function mediaPage(ctx: FormContext): HTMLElement {
     const url = mediaUrl(store, media);
     const category = categories.get(id)!;
     const [, categoryLabel, categoryIcon] = MEDIA_TABS.find(([key]) => key === category)!;
-    const open = (part?: 'sheet') => openMedia(ctx, id, part);
+    const open = (part?: 'sheet' | 'crop') => openMedia(ctx, id, part);
     // An image opens its panel when clicked; a sound or video keeps its player, which needs the clicks.
     const preview =
       !url ? h('div', { class: 'preview none' }, 'No address')
       : media.type === 'image' ? h('button', { type: 'button', class: 'media-thumb', title: 'Open its details', 'aria-label': `Open ${mediaLabel(media)}`, onclick: () => open() }, h('img', { src: url, alt: '', loading: 'lazy' }))
-      : media.type === 'audio' ? h('audio', { class: 'preview', src: url, controls: true, preload: 'none' })
+      : media.type === 'audio' ? h('audio', { class: 'preview', src: url + cropFragment(audioCrop(media)), controls: true, preload: 'none' })
       : h('video', { class: 'preview', src: url, controls: true, preload: 'none' });
     const p = params(media);
+    const cropped = media.type === 'audio' ? cropSummary(media) : null;
     const sheet = p.sheet as { columns: number; rows: number } | undefined;
     const apng = p.apng as { frames: number; duration: number } | undefined;
     const sheetAnimations = ((p.animations as unknown[] | undefined) ?? []).length;
@@ -98,10 +101,12 @@ export function mediaPage(ctx: FormContext): HTMLElement {
       h('div', { class: 'chips' },
         h('span', { class: 'chip tone' }, emojiIcon(categoryIcon), categoryLabel),
         media.width && media.height ? h('span', { class: 'chip' }, `${media.width}×${media.height}`) : null,
+        cropped ? h('span', { class: 'chip media-cropped', title: 'Only this part of the sound plays' }, cropped) : null,
         apng ? h('span', { class: 'chip anim media-apng' }, `🎞️ Animated PNG: ${apng.frames} frames, ${apng.duration} ms${sheetAnimations ? ` · ${sheetAnimations} animation${sheetAnimations === 1 ? '' : 's'}` : ''}`) : null,
         sheet ? h('span', { class: 'chip anim' }, `🎞️ Sheet ${sheet.columns}×${sheet.rows} · ${sheetAnimations} animation${sheetAnimations === 1 ? '' : 's'}`) : null),
       h('div', { class: 'row-actions' },
         h('button', { type: 'button', 'data-open': 'details', onclick: () => open() }, '✏️ Details'),
+        media.type === 'audio' && url ? h('button', { type: 'button', 'data-open': 'crop', title: 'Keep only part of the sound', onclick: () => open('crop') }, '✂️ Crop') : null,
         media.type === 'image' ? h('button', { type: 'button', 'data-open': 'sheet', title: apng ? 'Make animations of its frames, for characters to play' : 'Cut the picture into frames and make animations of them, for characters, items and vehicles', onclick: () => open('sheet') }, apng ? '🎞️ Animations' : '🎞️ Sprite sheet') : null,
         h('span', { class: 'spacer' }),
         h('button', { type: 'button', class: 'danger icon media-delete', title: 'Delete', 'aria-label': `Delete ${mediaLabel(media)}`, onclick: () => confirmDelete(`“${mediaLabel(media)}”. Anything using it will be left without it`) && void store.remove('media', id) }, '🗑')),
@@ -110,7 +115,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
 
   return page(
     'Media',
-    'The images, sounds and videos the scenario uses. Upload files, or point at files already on the web. Click a picture, or Details, to change it; Sprite sheet cuts a picture into frames and makes its animations, which characters, items and vehicles play.',
+    'The images, sounds and videos the scenario uses. Upload files, or point at files already on the web. Click a picture, or Details, to change it; Sprite sheet cuts a picture into frames and makes its animations, which characters, items and vehicles play; Crop keeps only part of a sound.',
     [h('button', { type: 'button', class: 'primary', onclick: () => file.click() }, 'Upload files'), h('button', { type: 'button', onclick: addByAddress }, 'Add by address'), file],
     h('div', null, tabs, cards.length ? h('div', { class: 'grid media-grid' }, ...cards) : none(mediaTab === 'all' ? 'No media yet. Upload a background image to get started.' : mediaTab === 'sprites' ? 'No sprites yet. Upload an animated PNG, or open a picture and use Sprite sheet to cut it into frames.' : 'Nothing here yet. Upload a file while this tab is open and it is filed here.')),
     categories.size,
@@ -121,7 +126,7 @@ export function mediaPage(ctx: FormContext): HTMLElement {
  * One media file in a pop-up: a large preview and its details on one side, and for a picture
  * the sprite sheet tool on the other, with room for the sheet's grid and its animations.
  */
-export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
+export function openMedia(ctx: FormContext, id: number, part?: 'sheet' | 'crop') {
   const { store } = ctx;
   const category = (media: Row) => mediaCategory(ctx.store, media);
   openPanel({
@@ -141,12 +146,23 @@ export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
       const preview =
         !url ? h('div', { class: 'preview none' }, 'No address')
         : media.type === 'image' ? h('img', { class: 'preview large checker', src: url, alt: '' })
-        : media.type === 'audio' ? h('audio', { class: 'preview', src: url, controls: true, preload: 'metadata' })
+        // A sound is heard (and cropped) in its own section.
+        : media.type === 'audio' ? null
         : h('video', { class: 'preview large', src: url, controls: true, preload: 'metadata' });
       const details = h('section', { class: 'panel-section', 'data-section': 'details', style: '--tone: var(--tone-details)' },
         h('h3', { class: 'section-head' }, '📝 Details'),
         preview,
-        form(MEDIA_FIELDS, media, (key, value, field) => void store.patch('media', id, { [key]: value }, key === 'url' || field.structural === true), ctx),
+        form(MEDIA_FIELDS, media, (key, value, field) => {
+          // A crop is of the file it was made on: another address (another file) plays whole.
+          const row = store.byId('media', id);
+          const p = row ? params(row) : {};
+          if (key === 'url' && row?.type === 'audio' && p.crop) {
+            const { crop: _, ...rest } = p;
+            void store.patch('media', id, { [key]: value, params: rest }, true);
+            return;
+          }
+          void store.patch('media', id, { [key]: value }, key === 'url' || field.structural === true);
+        }, ctx),
         media.type === 'image'
           ? h('label', { class: 'field wide' }, h('span', { class: 'field-label' }, 'Filed under'),
               select(MEDIA_TABS.filter(([key]) => !['all', 'sprites', 'audio', 'video'].includes(key)).map(([key, label]) => [key, label] as const), String(params(media).category ?? ''),
@@ -154,6 +170,7 @@ export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
           : null,
         mediaCredit(media),
         h('div', { class: 'row-actions' }, removeButton(ctx, 'media', media, `“${mediaLabel(media)}”. Anything using it will be left without it`)));
+      if (media.type === 'audio') return h('div', { class: 'media-panel single' }, audioCropper(ctx, media), details);
       if (media.type !== 'image') return h('div', { class: 'media-panel single' }, details);
       const animation = h('section', { class: 'panel-section', 'data-section': 'sheet', style: '--tone: var(--tone-move)' },
         h('h3', { class: 'section-head' }, apng ? '🎞️ Animated PNG and animations' : '🎞️ Sprite sheet and animations'),
@@ -161,7 +178,7 @@ export function openMedia(ctx: FormContext, id: number, part?: 'sheet') {
       return h('div', { class: 'media-panel' }, details, animation);
     },
     opened: (dialog) => {
-      if (part === 'sheet') dialog.querySelector('[data-section=sheet]')?.scrollIntoView({ block: 'start' });
+      if (part) dialog.querySelector(`[data-section=${part}]`)?.scrollIntoView({ block: 'start' });
     },
   });
 }

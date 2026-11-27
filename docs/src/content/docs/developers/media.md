@@ -32,6 +32,6 @@ params | array     |  | A list of arbitrary parameters that may further define t
 ## Media Types
 Value | Description
 ----- | -----------
-audio | An audio file (MP3/WAV) that can be played via actions.
+audio | An audio file (MP3/WAV) that can be played via actions. `params.crop` (`{ "start": 1.5, "end": 5.8 }`, seconds; either end may be left out) keeps only part of it: everything that plays the sound plays only that part, and a looping sound loops it.
 image | An image that can be displayed via an action or in a label. Sprite sheets are categorized as images within the media object.
 video | A video file (MP4/WEBM) that can be displayed via an action.

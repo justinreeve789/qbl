@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { resolvedHandle, type Id } from '@qbl/shared';
+import { audioCrop, resolvedHandle, type Id } from '@qbl/shared';
 import { mediaKey } from '../../core/assets';
 import type { GameContext } from '../../core/GameContext';
 import { deferred, type Presenter } from '../Presenter';
@@ -15,6 +15,27 @@ export function stopMusic(ctx: GameContext): void {
   music.sound.destroy();
 }
 
+type SoundConfig = { volume?: number; loop?: boolean };
+
+/**
+ * Play a sound, or only the part of it its media keeps when the sound is cropped: a marker over
+ * that part, which a looping sound loops. Phaser knows the file's length once it is decoded, which
+ * it is by the time it is in the audio cache.
+ */
+export function playMedia(sound: Phaser.Sound.BaseSound, ctx: GameContext, mediaId: Id, config: SoundConfig): void {
+  const crop = audioCrop(ctx.index.media.get(mediaId));
+  const total = sound.totalDuration;
+  if (crop && total > 0) {
+    const start = Math.min(crop.start, total);
+    const end = crop.end === null ? total : Math.min(crop.end, total);
+    if (end - start > 0.01 && sound.addMarker({ name: 'crop', start, duration: end - start, config })) {
+      sound.play('crop', config);
+      return;
+    }
+  }
+  sound.play(config);
+}
+
 /**
  * Start the music a scene begins with. The same track carries on if it is already playing;
  * anything else playing as background music is replaced.
@@ -25,10 +46,11 @@ export function playSceneMusic(scene: Phaser.Scene, ctx: GameContext, mediaId: I
   const current = ctx.music;
   if (current && current.mediaId === mediaId && current.sound.isPlaying) return;
   stopMusic(ctx);
-  const sound = scene.sound.add(key, { volume, loop: true });
+  const config = { volume, loop: true };
+  const sound = scene.sound.add(key, config);
   ctx.music = { sound, mediaId, actionIds: new Set() };
   askForSound(scene.sound);
-  sound.play();
+  playMedia(sound, ctx, mediaId, config);
 }
 
 export const audio: Presenter<'audio'> = (action, pc) => {
@@ -59,7 +81,7 @@ export const audio: Presenter<'audio'> = (action, pc) => {
     sound.once(Phaser.Sound.Events.COMPLETE, () => {
       if (pc.ctx.music === music) stopMusic(pc.ctx);
     });
-    sound.play();
+    playMedia(sound, pc.ctx, action.media_id!, config);
     // Not tied to this scene: leaving does not stop it. A cancel action reaches it through ActionHost.cancelPersistent().
     return resolvedHandle();
   }
@@ -76,7 +98,7 @@ export const audio: Presenter<'audio'> = (action, pc) => {
     sound.destroy();
   });
   sound.once(Phaser.Sound.Events.DESTROY, end);
-  sound.play();
+  playMedia(sound, pc.ctx, action.media_id!, config);
   return {
     done: d.done,
     cancel: () => {

@@ -102,7 +102,7 @@ File | What it does
 Page | File | Where its data is kept
 ---- | ---- | ----------------------
 Scenes (cards and map) | `pages.ts` `scenesPage`, `sceneMap/` | `scenes` rows; start scene on the scenario
-Media | `library.ts` `mediaPage`, `openMedia`; `sheet.ts` (sprite sheets: frames across and down, named animations, frames picked by clicking) | `media` rows; grid and animations in `params`
+Media | `library.ts` `mediaPage`, `openMedia`; `sheet.ts` (sprite sheets: frames across and down, named animations, frames picked by clicking); `audioCrop.ts` `audioCropper` (a sound's wave with crop handles) | `media` rows; grid, animations and a sound's `crop` in `params`
 Variables | `variables.ts` `variablesPage`, `variableUses`; renaming follows every use (`renameVariable`) | `variables` rows
 Items | `items.ts` `itemsPage`, `openItem`; `sortLine.ts` (where an item meets the floor) | `items` rows; most fields in `settings` (`sort_line` there too)
 Characters | `characters.ts` `charactersPage`, `openCharacter`, `openAnimation`; `routine.ts`; `voices.ts` | `characters` rows; animations, size, voice, routine in `settings`

@@ -23,6 +23,7 @@ export * from './bench.js';
 export * from './bench-sim.js';
 export * from './sky.js';
 export * from './sounds.js';
+export * from './audioCrop.js';
 export * from './weather.js';
 export * from './waterLight.js';
 export * from './waterLightShaders.js';

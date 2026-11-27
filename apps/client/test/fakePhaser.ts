@@ -92,8 +92,21 @@ class FakeSprite extends FakeObject {}
 
 export class FakeSound extends Emitter {
   isPlaying = false;
+  /** Every file is ten seconds long here. */
+  totalDuration = 10;
+  readonly markers: Record<string, { name: string; start: number; duration: number; config?: object }> = {};
+  /** What the last play() played: a marker's name, or '' for the whole file, and with what. */
+  played: { marker: string; config?: object } | null = null;
   constructor(readonly key: string, readonly config: { loop?: boolean; volume?: number }) { super(); }
-  play() { this.isPlaying = true; }
+  addMarker(m: { name: string; start: number; duration: number; config?: object }) {
+    if (this.markers[m.name]) return false;
+    this.markers[m.name] = m;
+    return true;
+  }
+  play(marker?: unknown, config?: object) {
+    this.isPlaying = true;
+    this.played = typeof marker === 'string' ? { marker, config } : { marker: '', config: (marker as object | undefined) ?? config };
+  }
   stop() { this.isPlaying = false; }
   destroy() { this.isPlaying = false; this.emit('destroy'); this.removeAllListeners(); }
 }

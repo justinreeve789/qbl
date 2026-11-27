@@ -3,7 +3,7 @@ import type { Builds } from './Builds';
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
 import {
-  canSee, escapeHtml, launchPath, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneCompany, ScenarioIndex, VariableStore,
+  audioCrop, canSee, cropFragment, escapeHtml, launchPath, isStaff, glossaryFlag, glossaryOf, interpolate, resolveMediaUrl, sceneCompany, ScenarioIndex, VariableStore,
   type GlossaryEntry, type Id, type LaunchBroadcast, type PlayerRec, type PlayerProfile, type Scenario, type TrackMessage, type User, type VarValue,
 } from '@qbl/shared';
 import type { Action, AwardAction } from '@qbl/shared';
@@ -250,9 +250,17 @@ export class GameContext {
     return interpolate(template, this.vars.get, { mediaUrl: this.mediaUrl });
   }
 
-  /** Fill placeholders in HTML. Variable values are escaped; {{media:ID}} becomes the media's URL. */
+  /**
+   * Fill placeholders in HTML. Variable values are escaped; {{media:ID}} becomes the media's URL,
+   * and a cropped sound's URL ends with a media fragment (#t=start,end), so the box's player
+   * plays only the part kept.
+   */
   html(template: string): string {
-    return interpolate(template, this.vars.get, { mediaUrl: this.mediaUrl, escape: escapeHtml });
+    const mediaUrl = (id: Id): string | null => {
+      const url = this.mediaUrl(id);
+      return url && !url.includes('#') ? url + cropFragment(audioCrop(this.index.media.get(id))) : url;
+    };
+    return interpolate(template, this.vars.get, { mediaUrl, escape: escapeHtml });
   }
 
   /** Copy room-scoped values from the synchronized state into the variable store. */
