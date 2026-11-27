@@ -77,6 +77,7 @@ export default defineConfig({
             { label: 'Close-up experiments (the bench)', slug: 'editor/bench' },
             { label: 'Conversations', slug: 'editor/conversations' },
             { label: 'Student building', slug: 'editor/student-building' },
+            { label: 'The student notebook', slug: 'editor/student-notebook' },
             { label: 'The library', slug: 'editor/library' },
             { label: 'Patterns that work', slug: 'editor/patterns' },
             { label: 'Settings, testing and publishing', slug: 'editor/settings-and-publishing' },

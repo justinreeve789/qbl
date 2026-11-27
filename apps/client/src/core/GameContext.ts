@@ -1,4 +1,5 @@
 import { Bag } from './Bag';
+import type { NotebookModel } from './Notebook';
 import type { Builds } from './Builds';
 import { Rewards } from './Rewards';
 import type * as Phaser from 'phaser';
@@ -199,6 +200,12 @@ export class GameContext {
    * player sees it (see core/Builds.ts and BuildSystem). Null: nobody builds in this scenario.
    */
   builds: Builds | null = null;
+
+  /**
+   * Set at start-up unless the scenario turns it off (`notebook: false`): the player's own notes on
+   * this scenario (see core/Notebook.ts and NotebookFeature). Null: no notebook here.
+   */
+  notebook: NotebookModel | null = null;
 
   /** Set at start-up when there is an API to ask: another player's profile by their user id. Null: not available. */
   fetchProfile: ((userId: string) => Promise<PlayerProfile | null>) | null = null;

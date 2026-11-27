@@ -316,6 +316,13 @@ if (str_starts_with($path, '/api/builds/')) {
     }
     respond(...(new App\Qbl\Builds\BuildApi($builds))->handle($method, substr($path, strlen('/api/builds/')), $body, $user, $_GET, $_FILES));
 }
+// Players' notebooks, with the same rules as the Laravel app (App\Qbl\Notebooks\NotebookApi).
+if (str_starts_with($path, '/api/notebooks/')) {
+    if ($user && $user['role'] === 'guest') {
+        $pdo->prepare('INSERT OR IGNORE INTO `users` (`id`, `name`, `role`) VALUES (?, ?, ?)')->execute([$user['id'], $user['name'], 'guest']);
+    }
+    respond(...(new App\Qbl\Notebooks\NotebookApi(new App\Qbl\Notebooks\NotebookStore($pdo)))->handle($method, substr($path, strlen('/api/notebooks/')), $body, $user, $_GET));
+}
 if (preg_match('#^/api/scenarios/([A-Za-z][A-Za-z0-9_-]*)/play$#', $path, $m)) {
     $document = $store->findPublished($m[1]);
     if (! $document) {

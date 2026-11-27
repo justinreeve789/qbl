@@ -1,3 +1,4 @@
+import type { NotebookModel } from '../core/Notebook';
 import type { BubbleAnchor } from './bubble';
 import type { ActionHandle, Alignment, Badge, BuildPiece, BuildStatus, BuildTool, BuildUpload, HotspotLook, HotspotOpens, Id, ButtonMark, CharacterPicture, ChatMode, InfoboxSize, ObjectiveStatus, OverlayMotion, SiteLink } from '@qbl/shared';
 import type { SpeakOptions } from './Narrator';
@@ -159,6 +160,11 @@ export interface UiPort {
    * be opened with what is known at once and filled in when the rest arrives (`update`).
    */
   profile(view: ProfileView, on?: { message?(): void }): { update(view: ProfileView): void; close(): void };
+  /**
+   * The notebook button on the side rail, which opens the player's notebook for this scenario
+   * (see core/Notebook.ts). Null takes it away (and closes the notebook if it is open).
+   */
+  notebook(book: NotebookModel | null, o?: { title: string; owner: string }): void;
   /** Offer the read-aloud switch: the scenario has text that is read aloud. */
   narration(available: boolean): void;
   toast(message: string, ms?: number): void;

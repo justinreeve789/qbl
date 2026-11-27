@@ -290,12 +290,16 @@ same($call('DELETE', 'avatars/1', [], [], [], $theirAuth)[0], 404, "nobody can r
 same($call('PATCH', 'students/'.$ann['id'], ['status' => 'inactive'])[1]['data']['status'], 'inactive', 'a student can be deactivated');
 same((int) $pdo->query("SELECT COUNT(*) FROM personal_access_tokens WHERE tokenable_id = {$ann['id']}")->fetchColumn(), 0, 'which signs them out everywhere');
 same($call('POST', 'students/'.$ann['id'].'/launch')[0], 409, 'and stops launch links');
+$pdo->prepare("INSERT INTO notebooks (scenario_id, user_id, group_key, pages, created_at, updated_at) VALUES (1, ?, 'public', ?, '2026-11-27 20:00:00', '2026-11-27 20:00:00')")
+    ->execute([$ann['id'], json_encode([['id' => 'p1', 'parent' => null, 'title' => 'My notes', 'text' => 'Frogs', 'cards' => []]])]);
 [, $export] = $call('GET', 'students/'.$ann['id'].'/export');
+same($export['data']['notebooks'][0]['pages'][0]['text'] ?? null, 'Frogs', 'and what they wrote in their notebooks');
 same([count($export['data']['activity']), count($export['data']['saved_games']), $export['data']['saved_games'][0]['data']['time_elapsed']], [7, 1, 900], 'an export has everything kept about a student');
 check(count($export['data']['disclosures']) > 0, 'including who was given their records');
 [$status, $deleted] = $call('DELETE', 'students/'.$ann['id']);
 same([$status, $deleted['data']['deleted']['activity_log'], $deleted['data']['deleted']['users']], [200, 7, 1], 'deleting a student removes them and their data');
 same((int) $pdo->query("SELECT COUNT(*) FROM chat_messages WHERE to_user_id = {$ann['id']}")->fetchColumn(), 0, 'messages to them no longer name them');
+same($deleted['data']['deleted']['notebooks'] ?? null, 1, 'their notebooks go too');
 same($call('GET', 'students/'.$ann['id'])[0], 404, 'they are gone');
 same($call('DELETE', "teachers/$tan", [], ['transfer_to' => 'ext:staff-18'])[1]['data']['deleted']['users'], 1, 'a teacher can be deleted, handing their classes on');
 same([$call('GET', 'assignments/'.$asg['id'])[1]['data']['teacher_id'], $call('GET', "students/$ben")[1]['data']['teacher_ids']], [$ito, [$ito]], 'to the teacher named');

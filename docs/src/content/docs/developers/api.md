@@ -175,6 +175,19 @@ The game opens a build for its teacher to change with `/{code}?group={group}&sce
 
 Resetting a student's game in an instance deletes their builds and uploads there; deleting a student deletes all of theirs.
 
+### Notebooks
+
+Each player's own notes on a scenario ([The student notebook](/docs/editor/student-notebook/)): one notebook per player per instance, kept whole. The format is `Notebook` in `packages/shared/src/notebook.ts`; `cleanNotebook` there and `App\Qbl\Notebooks\NotebookStore::clean` apply the same limits and must agree (both are tested against `packages/shared/test/fixtures/notebook-*.json`). Anyone signed in, guests too; only the player reads or writes theirs. `group` names the instance, as for `/play`; `public` if absent.
+
+Endpoint | Body | Returns
+-------- | ---- | -------
+`GET /api/notebooks/{code}?group=` | | `{ "notebook": { "pages": NotebookPage[] }, "updated_at" }`: the player's notebook there, cleaned; `{ "pages": [] }` and `null` when they have none. 404 for an instance the player may not join
+`PUT /api/notebooks/{code}?group=` | `{ "notebook": { "pages": NotebookPage[] } }` | `{ "notebook", "updated_at" }`: what was kept, after cleaning (anything over a limit, or not in the format, is dropped or put right, never refused). A notebook with no pages is deleted. 422 when `notebook` is missing
+
+A page is `{ id, parent, title, icon, color, text, cards, created_at, updated_at }`: `parent` is the id of the page it is under (null for a page of its own; three levels at most), and the order of `pages` is the order of the contents. A card is `{ id, kind, text, color, created_at, updated_at }` with `back` for a `flash` card and `done` for a `check` card. Times are ISO 8601 and written by the game; a time more than a day ahead is replaced with the time it was kept.
+
+Resetting a student's game in an instance deletes their notebook there; deleting a student deletes all of theirs, and their export (`/api/v1/students/{id}/export`) lists them under `notebooks`. With the file backend, the game server stands in for these two routes and keeps each notebook as a JSON file beside the saves.
+
 ### Stars, XP and the marketplace
 
 All need a token except `GET /api/shop`. Guests are answered 403: stars and XP need an account.

@@ -1,4 +1,4 @@
-import type { BuildPiece, BuildUpload, PlayerProfile, Progress, Scenario, SceneBuild, ShopItem, User } from '@qbl/shared';
+import type { BuildPiece, BuildUpload, Notebook, PlayerProfile, Progress, Scenario, SceneBuild, ShopItem, User } from '@qbl/shared';
 import { config } from '../config';
 import type { AvatarChoice, Mission } from '../home';
 import type { TeachAssignment, TeachScenario, TeacherDesk } from '../teach';
@@ -238,6 +238,31 @@ export class Api {
 
   async removeBuildPicture(uploadId: number): Promise<void> {
     await this.call('DELETE', `/builds/uploads/${uploadId}`);
+  }
+
+  // ----------------------------------------------------------- notebooks (App\Qbl\Notebooks\NotebookApi)
+
+  /** This player's notebook in an instance of a scenario: empty when they have written none. */
+  async notebook(scenarioKey: string, group: string): Promise<Notebook> {
+    return (await this.call<{ notebook: Notebook }>('GET', `/notebooks/${encodeURIComponent(scenarioKey)}?group=${encodeURIComponent(group)}`)).notebook;
+  }
+
+  /**
+   * Keep this player's whole notebook there. `leaving`: the page is being left, so the request is
+   * sent to outlive it (a browser allows that only for a small body: a big notebook is sent as usual).
+   */
+  async saveNotebook(scenarioKey: string, group: string, notebook: Notebook, leaving = false): Promise<void> {
+    const body = JSON.stringify({ notebook });
+    const res = await fetch(`${config.apiUrl}/api/notebooks/${encodeURIComponent(scenarioKey)}?group=${encodeURIComponent(group)}`, {
+      method: 'PUT',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}) },
+      body,
+      keepalive: leaving && body.length < 60_000,
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { message?: string } | null;
+      throw new ApiError(res.status, data?.message ?? `Saving the notebook failed (${res.status})`);
+    }
   }
 
   /** The scenario document, with this player's save data for that instance (group) of it in `session`. */

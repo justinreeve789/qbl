@@ -11,7 +11,7 @@ import { TWEMOJI } from './twemoji.js';
  */
 export const ICONS = {
   // the game's side panel
-  mission: '🎯', bag: '🎒', moves: '🤸', emotes: '😀', players: '👥', messages: '💬', glossary: '📖', narration: '🔊', 'narration-off': '🔇',
+  mission: '🎯', bag: '🎒', moves: '🤸', emotes: '😀', players: '👥', messages: '💬', glossary: '📖', notebook: '📒', narration: '🔊', 'narration-off': '🔇',
   // the heads-up display
   star: '⭐', account: '👤', restart: '🔄', badge: '🏅', rank: '🎖️', shop: '🛍️', close: '❌', send: '📨', check: '✔️', team: '🛡️', profile: '📇', lock: '🔒',
   // built-in moves

@@ -1,7 +1,8 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { defineRoom, defineServer } from 'colyseus';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
-import { normalizeScenario, ROOM_NAME, validateScenario } from '@qbl/shared';
+import { cleanNotebook, normalizeScenario, ROOM_NAME, validateScenario } from '@qbl/shared';
 import { ApiBackend } from './backend/ApiBackend.js';
 import { withScenarioCache } from './backend/Backend.js';
 import { FileBackend } from './backend/FileBackend.js';
@@ -20,7 +21,7 @@ services.chat = new ChatFilter(config.blocklistFile || undefined);
 function cors(req: Request, res: Response, next: NextFunction) {
   res.setHeader('Access-Control-Allow-Origin', config.corsOrigin);
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
     return;
@@ -75,6 +76,33 @@ function mountFileApi(app: Express) {
     } catch {
       res.status(404).json({ message: 'Scenario not found.' });
     }
+  });
+
+  // Players' notebooks (App\Qbl\Notebooks in the API), one JSON file each beside the saves.
+  const notebookFile = async (req: Request, res: Response): Promise<string | null> => {
+    const token = bearer(req);
+    const user = token ? await services.backend.verifyToken(token) : null;
+    if (!user) {
+      res.status(401).json({ message: 'Unauthenticated.' });
+      return null;
+    }
+    const safe = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64);
+    const group = String(req.query.group ?? 'public').slice(0, 64) || 'public';
+    return path.join(config.saveDir, 'notebooks', `${safe(String(req.params.key))}.${safe(group)}.${safe(String(user.id))}.json`);
+  };
+  app.get('/api/notebooks/:key', async (req, res) => {
+    const file = await notebookFile(req, res);
+    if (!file) return;
+    const raw = await readFile(file, 'utf8').then((t) => JSON.parse(t) as unknown, () => null);
+    res.json({ notebook: cleanNotebook(raw), updated_at: null });
+  });
+  app.put('/api/notebooks/:key', express.json({ limit: '2mb' }), async (req, res) => {
+    const file = await notebookFile(req, res);
+    if (!file) return;
+    const notebook = cleanNotebook(req.body?.notebook);
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, JSON.stringify(notebook));
+    res.json({ notebook, updated_at: new Date().toISOString() });
   });
 }
 

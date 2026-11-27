@@ -212,6 +212,7 @@ Feature | What it does
 `TeamsFeature` | For staff: the team being followed, and switching to another
 `LaunchFeature` | For staff: launching an assignment for the class. For everyone: receiving a launch and going
 `GlossaryFeature` | The glossary panel
+`NotebookFeature` | The 📒 button for the player's notebook (`core/Notebook.ts` keeps it, `ui/notebook/` draws it), and keeping it when the page is hidden or left
 
 ## The UI layer
 

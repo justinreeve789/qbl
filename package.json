@@ -30,11 +30,12 @@
     "test:library": "php apps/api/tests/library.php",
     "test:walk": "php apps/api/tests/walk.php",
     "test:builds": "php apps/api/tests/builds.php",
+    "test:notebooks": "php apps/api/tests/notebooks.php",
     "test:scenes": "php -d memory_limit=2G apps/api/tests/scenes.php",
     "test:scene-generation": "php -d memory_limit=2G apps/api/tests/scene_generation.php",
     "make:hub": "php tools/make-hub.php",
     "test:editor": "npm run test -w @qbl/editor",
-    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:billing && npm run test:district && npm run test:generation && npm run test:story-generation && npm run test:scenes && npm run test:scene-generation && npm run test:speech && npm run test:library && npm run test:walk && npm run test:builds && npm run test:editor",
+    "test:all": "npm test && npm run test:api && npm run test:progress && npm run test:classes && npm run test:porting && npm run test:activity && npm run test:billing && npm run test:district && npm run test:generation && npm run test:story-generation && npm run test:scenes && npm run test:scene-generation && npm run test:speech && npm run test:library && npm run test:walk && npm run test:builds && npm run test:notebooks && npm run test:editor",
     "test:laravel": "cd apps/api && php artisan test",
     "test:story-generation": "php -d memory_limit=2G apps/api/tests/story_generation.php"
   },
