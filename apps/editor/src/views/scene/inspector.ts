@@ -1,8 +1,8 @@
-import { mainLayerIndex, type Condition, type SceneLight } from '@qbl/shared';
+import { mainLayerIndex, type Condition, type SceneLight, type SceneWaterLight } from '@qbl/shared';
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
-import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, FLOW_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS, WEATHER_FIELDS } from '../../schema';
+import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, FLOW_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, WATER_LIGHT_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS, WEATHER_FIELDS } from '../../schema';
 import { duplicateScene } from '../../clipboard';
 import { inlineConditions, type ConditionValue } from '../conditions';
 import { eventPanel } from '../eventPanel';
@@ -59,6 +59,10 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
       return listPanel(model, ctx, 'flows', selection.index, 'Flowing water',
         'Water that moves: a river or stream carried along, a waterfall pouring down, the sea or a lake lapping. Behind the picture, it shows wherever the scene’s last background layer is see-through: cut the water out of the picture and it flows between the painted banks. Over the picture, only ripples and glints move. Drag the box to move it and its corners to resize it.',
         FLOW_FIELDS, host);
+    case 'water_light':
+      return listPanel(model, ctx, 'water_lights', selection.index, 'Underwater light',
+        'Light under water, drawn live by the game. Rippling light is the bright web that dances on the floor of a pool or the sea bed: put its box on the floor, and it lies behind everyone standing there. Shafts are beams of light slanting down from the surface, in front of everyone. It fades out softly at the edges of its box (or in an oval). Give it conditions to switch it on and off as the story goes. Drag the box to move it and its corners to resize it; “Test this scene” shows it moving.',
+        WATER_LIGHT_FIELDS, host, layoutConditions(model, ctx, 'water_lights', selection.index));
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
     case 'bench':
@@ -293,11 +297,16 @@ function layerPanel(model: SceneModel, ctx: FormContext, which: LayerList, index
  * is repaired, a campfire that goes out in the rain.
  */
 function lightConditions(model: SceneModel, ctx: FormContext, index: number): HTMLElement {
-  const now = () => model.layout<SceneLight>('lights')[index];
+  return layoutConditions(model, ctx, 'lights', index);
+}
+
+/** The conditions of something placed in the scene that is on only while they hold (a light, underwater light). */
+function layoutConditions(model: SceneModel, ctx: FormContext, key: 'lights' | 'water_lights', index: number): HTMLElement {
+  const now = () => model.layout<SceneLight | SceneWaterLight>(key)[index];
   return h('div', { 'data-section': 'conditions' }, inlineConditions(
     ctx,
     () => (now()?.conditions ?? undefined) as ConditionValue[] | undefined,
-    (list, structural) => void model.setLayout('lights', model.layout<SceneLight>('lights').map((l, i) => {
+    (list, structural) => void model.setLayout(key, model.layout<SceneLight | SceneWaterLight>(key).map((l, i) => {
       if (i !== index) return l;
       const { conditions: _, ...rest } = l;
       return list.length ? { ...rest, conditions: list as Condition[] } : rest;
@@ -311,7 +320,7 @@ function listPanel(model: SceneModel, ctx: FormContext, key: LayoutList, index: 
   const entry = model.layout(key)[index];
   if (!entry) return gone();
   const commit = (name: string, value: unknown, field: Field) =>
-    void model.setLayout(key, model.layout(key).map((e, i) => (i === index ? withValue(e, name, value, field) : e)), field.kind === 'item' || field.kind === 'character');
+    void model.setLayout(key, model.layout(key).map((e, i) => (i === index ? withValue(e, name, value, field) : e)), field.kind === 'item' || field.kind === 'character' || !!field.structural);
   return h(
     'div',
     { class: 'panel' },

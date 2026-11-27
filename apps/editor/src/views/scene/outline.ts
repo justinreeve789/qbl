@@ -16,7 +16,7 @@ export type Addable =
   | 'background_media' | 'foreground_media'
   | 'start' | 'end' | 'indirect' | 'hotspot-click' | 'hotspot-walk'
   | 'edge-left' | 'edge-right' | 'edge-top' | 'edge-bottom'
-  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows'
+  | 'spawn' | 'item' | 'character' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | 'water-ripples' | 'water-shafts'
   | 'bench-vessel' | 'bench-supply' | 'bench-dropper' | 'bench-burner' | 'bench-stirrer' | 'bench-sink';
 
 /** An icon and a colour for each kind of thing a scene holds. */
@@ -25,7 +25,7 @@ const LOOK: Record<string, readonly [icon: string, tone: string]> = {
   'Start events': ['▶️', '#c77b12'], 'Hotspots': ['🎯', '#2f6fed'], 'Indirect events': ['🔁', '#c77b12'], 'End events': ['⏹️', '#c77b12'],
   'Spawn points': ['🚩', '#d9a400'], 'Items here': ['🎒', '#d6457a'], 'Characters here': ['🧑‍🚀', '#d6457a'],
   'Containers': ['🧪', '#0f7a9d'], 'Tools': ['🔥', '#0f7a9d'],
-  'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Shadow spots': ['🌑', '#5b6b8c'], 'Blocked areas': ['🟥', '#c0392b'],
+  'Walkable areas': ['🟩', '#3b8f4a'], 'Scale areas': ['📐', '#d9a400'], 'Shadow spots': ['🌑', '#5b6b8c'], 'Underwater light': ['🌊', '#1f8fb8'], 'Blocked areas': ['🟥', '#c0392b'],
 };
 
 /** Sections the author has folded away. Kept outside the view so a redraw does not open them again. */
@@ -153,6 +153,7 @@ export function outline(model: SceneModel, host: OutlineHost): HTMLElement {
     section('Shadow spots', 'shadow_spots', model.layout('shadow_spots').map((a, index) => entry({ kind: 'shadow', index }, String(a.name || `Shadow ${index + 1}`), `${a.strength ?? 60}%`))),
     section('Lights', 'lights', model.layout('lights').map((a, index) => entry({ kind: 'light', index }, String(a.name || `Light ${index + 1}`), String(a.kind ?? 'flicker')))),
     section('Flowing water', 'flows', model.layout('flows').map((a, index) => entry({ kind: 'flow', index }, String(a.name || `Water ${index + 1}`), String(a.kind ?? 'river')))),
+    section('Underwater light', 'water-ripples', model.layout('water_lights').map((a, index) => entry({ kind: 'water_light', index }, String(a.name || `Underwater light ${index + 1}`), a.kind === 'shafts' ? 'shafts' : 'ripples'))),
     section('Blocked areas', 'blocked_areas', model.layout<Point[]>('blocked_areas').map((a, index) => entry({ kind: 'area', which: 'blocked_areas', index }, `Area ${index + 1}`, `${a.length} corners`))),
   );
 }

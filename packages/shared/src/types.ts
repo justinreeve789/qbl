@@ -1408,6 +1408,37 @@ export interface SceneFlow {
 }
 
 /**
+ * [ext] Light under water, drawn live by the game (a shader): `ripples` is the bright web of light that
+ * dances on the floor of a pool or the sea bed; `shafts` are beams of light slanting down from the
+ * surface, slowly brightening and fading. A box of the scene, faded out softly at its edges (or in an
+ * oval). Ripples lie on the floor, behind every figure; shafts hang in the water in front of them.
+ */
+export interface SceneWaterLight {
+  name?: string;
+  kind?: 'ripples' | 'shafts';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** The light's colour, #rrggbb. Default a pale aqua #e1f6ff. */
+  color?: string;
+  /** How bright, from 0 to 100. Default 60 (ripples), 40 (shafts). */
+  strength?: number;
+  /** How big the pattern is at the front of the box, in pixels: a ripple's cell, the gap between beams. Default 120 (ripples), 90 (shafts). */
+  size?: number;
+  /** How fast it moves, in percent of its usual pace. 0 holds it still. Default 100. */
+  speed?: number;
+  /** Ripples: how far the floor leans away from the viewer, from 0 (seen from straight above) to 100. The ripples grow smaller toward the top of the box. Default 60. */
+  tilt?: number;
+  /** Shafts: how much they fan out from above, from 0 (side by side) to 100 (spreading wide). Default 35. */
+  spread?: number;
+  /** How the light fades out at the box's edges: `soft` (a rectangle with soft edges) or `oval`. Default soft. */
+  edge?: 'soft' | 'oval';
+  /** On only while all of these hold. It fades in and out as variables change. None: always on. */
+  conditions?: Condition[] | null;
+}
+
+/**
  * [ext] Scenes that belong together: the rooms of the starship, the places on one planet. A group
  * can say that its scenes show a player only their own team, which a scene may still override.
  */
@@ -1474,6 +1505,8 @@ export interface Scene {
   weather?: SceneWeather | null;
   /** [ext] Rivers, streams, waterfalls and the sea, flowing (see SceneFlow). */
   flows?: SceneFlow[] | null;
+  /** [ext] Light under water: rippling light on the floor, shafts of light from above (see SceneWaterLight). */
+  water_lights?: SceneWaterLight[] | null;
   /** [ext] Birds, squirrels, rabbits and other little life that come and go, and scatter (see SceneCritter). */
   critters?: SceneCritter[] | null;
   /**

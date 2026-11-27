@@ -674,6 +674,37 @@ export const FLOW_FIELDS: Field[] = [
   { key: 'sound', label: 'Its sound', kind: 'bool', default: true },
 ];
 
+/** Light under water (layout.water_lights): rippling light on the floor, or shafts from above, in a box. */
+export const WATER_LIGHT_FIELDS: Field[] = [
+  { key: 'name', label: 'Name', kind: 'text', wide: true },
+  {
+    key: 'kind', label: 'Light', kind: 'select', placeholder: 'Rippling on the floor', wide: true, structural: true,
+    options: [['ripples', 'Rippling on the floor (the light at the bottom of a pool)'], ['shafts', 'Shafts from above (beams slanting down from the surface)']],
+  },
+  { key: 'color', label: 'Colour', kind: 'color', placeholder: '#e1f6ff' },
+  // Each kind has its own usual brightness and size, so each shows its own.
+  { key: 'strength', label: 'Brightness (%)', kind: 'number', min: 0, max: 100, placeholder: '60', slider: { min: 0, max: 100 }, when: (values) => values.kind !== 'shafts' },
+  { key: 'strength', label: 'Brightness (%)', kind: 'number', min: 0, max: 100, placeholder: '40', slider: { min: 0, max: 100 }, when: (values) => values.kind === 'shafts' },
+  { key: 'size', label: 'Ripple size (px)', kind: 'number', min: 8, placeholder: '120', slider: { min: 20, max: 400 }, hint: 'How wide one ripple is at the front (the bottom) of the box.', when: (values) => values.kind !== 'shafts' },
+  { key: 'size', label: 'Gap between beams (px)', kind: 'number', min: 8, placeholder: '90', slider: { min: 20, max: 400 }, when: (values) => values.kind === 'shafts' },
+  { key: 'speed', label: 'Speed (%)', kind: 'number', min: 0, placeholder: '100', slider: { min: 0, max: 300 }, hint: '100 is the usual pace. 0 holds it still.' },
+  {
+    key: 'tilt', label: 'Floor leans away (%)', kind: 'number', min: 0, max: 100, placeholder: '60', slider: { min: 0, max: 100 },
+    hint: 'How far the floor leans away from the viewer. 0: seen from straight above. Higher: the ripples grow smaller toward the top of the box, as a floor seen at an angle does.',
+    when: (values) => values.kind !== 'shafts',
+  },
+  {
+    key: 'spread', label: 'Fan out (%)', kind: 'number', min: 0, max: 100, placeholder: '35', slider: { min: 0, max: 100 },
+    hint: '0: the beams fall side by side. Higher: they spread out from a point above, wider at the bottom.',
+    when: (values) => values.kind === 'shafts',
+  },
+  { key: 'edge', label: 'Fades out', kind: 'select', placeholder: 'At the edges of the box', options: [['soft', 'At the edges of the box'], ['oval', 'In an oval (a round room, a pool)']] },
+  { key: 'x', label: 'X', kind: 'number' },
+  { key: 'y', label: 'Y', kind: 'number' },
+  { key: 'width', label: 'Width (px)', kind: 'number', min: 1 },
+  { key: 'height', label: 'Height (px)', kind: 'number', min: 1 },
+];
+
 /** A background or foreground layer (docs/src/content/docs/developers/extensions/scenes.md). */
 export const LAYER_FIELDS: Field[] = [
   { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', mediaCategory: 'background', wide: true },

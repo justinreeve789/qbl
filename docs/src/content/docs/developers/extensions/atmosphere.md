@@ -1,6 +1,6 @@
 ---
 title: "Skies, weather, water and story scenes"
-description: "Living skies, lights and the air, weather, flowing water, and story scenes."
+description: "Living skies, lights and the air, weather, flowing water, underwater light, and story scenes."
 host:
   who: mallory
   says: "A scene that is never quite still: skies, weather and water, and scenes that tell a story."
@@ -87,6 +87,33 @@ name | string | | For the editor.
 ```
 
 The generator paints a scene's water as a flat chroma colour, cuts it out and puts a `flows` box where the see-through part is, so the water always flows between the banks it painted.
+
+## Underwater light
+
+**`water_lights`** (kept in the scene's `layout`): light under water, in a box of the scene, drawn live on the GPU (`WaterLightSystem` in the client; the shaders are `packages/shared/src/waterLightShaders.ts`, which the editor's canvas also runs to preview it). Nothing is downloaded, and it never visibly repeats. `ripples` is the bright web of light dancing on the floor of a pool: cells whose walls light up, two webs moving different ways, bent by a slow wave, in a true perspective (smaller toward the top of the box). It is drawn just above the floor art, behind every figure. `shafts` are beams of light slanting down from the surface, drifting, brightening and fading, drawn in front of the figures. Both are added to what is under them (the ADD blend), so they only brighten.
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+x, y, width, height | decimal | | The box.
+kind | string | ripples | `ripples` or `shafts`.
+color | string | #e1f6ff | `#rrggbb`.
+strength | decimal | 60 (ripples), 40 (shafts) | Brightness, 0 to 100.
+size | decimal | 120 (ripples), 90 (shafts) | Pixels: a ripple's width at the front of the box; the gap between beams.
+speed | decimal | 100 | Percent of the usual pace. 0 holds it still.
+tilt | decimal | 60 | Ripples: how far the floor leans away, 0 (seen from above) to 100.
+spread | decimal | 35 | Shafts: how much they fan out from above, 0 (side by side) to 100.
+edge | string | soft | `soft`: fades out at the box's edges. `oval`: in an oval.
+conditions | array | | On only while all of these hold; it fades in and out (as a light does). None: always on.
+name | string | | For the editor.
+
+```json
+{ "water_lights": [
+  { "kind": "ripples", "x": 0, "y": 420, "width": 1280, "height": 300, "edge": "oval" },
+  { "kind": "shafts", "x": 240, "y": 0, "width": 800, "height": 560 }
+] }
+```
+
+Without WebGL (Phaser's canvas renderer) nothing is drawn. With reduced motion it is held still.
 
 ## Critters
 
