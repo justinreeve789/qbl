@@ -148,3 +148,17 @@ test('leaving the scene while building closes the palette without saving', async
   assert.equal(g.ui.build, null);
   assert.equal(api.saved.length, 0);
 });
+
+test('when what is built cannot be loaded, the player is told once instead of the button silently missing', async () => {
+  const scenario = loadScenario();
+  scenario.scenes.find((s) => s.id === scenario.start_scene_id)!.building = { enabled: true, tools: ['label'] };
+  const api = backend();
+  api.load = async () => { throw new Error('Server Error'); };
+  const g = new Game(scenario, undefined, (ctx) => {
+    ctx.builds = new Builds(api);
+  });
+  await settle();
+  await g.wait(16);
+  assert.equal(g.ui.build, null);
+  assert.equal(g.ui.toasts.filter((t) => t.startsWith('Building is not available right now: Server Error')).length, 1);
+});

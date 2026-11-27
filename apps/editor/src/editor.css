@@ -633,9 +633,8 @@ button.link.danger { color: #ff9a9a; }
 .help-button { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; padding: 0; gap: 0; border-radius: 50%; border: 1.5px solid #8fa3c7; background: transparent; color: #c6d4ee; line-height: 0; cursor: pointer; }
 .help-button svg { display: block; pointer-events: none; }
 .help-button:hover, .help-button:focus-visible, .help-button[aria-expanded='true'] { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; outline: none; }
-.help-text { position: absolute; z-index: 40; top: 24px; left: -8px; width: min(290px, calc(100vw - 32px)); padding: 10px 12px; border-radius: 8px; background: #0f1524; border: 1px solid #5d7099; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); color: #eef2f8; font: 400 13px/1.45 system-ui, sans-serif; text-transform: none; letter-spacing: 0; white-space: normal; cursor: default; }
+.help-text { position: fixed; z-index: 1000; overflow: auto; top: 24px; left: -8px; width: min(290px, calc(100vw - 32px)); padding: 10px 12px; border-radius: 8px; background: #0f1524; border: 1px solid #5d7099; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); color: #eef2f8; font: 400 13px/1.45 system-ui, sans-serif; text-transform: none; letter-spacing: 0; white-space: normal; cursor: default; }
 .help-text[hidden] { display: none; }
-.help.left .help-text { left: auto; right: -8px; }
 h1 .help, h2 .help { margin-left: 8px; }
 
 /* ---------- dialogs ---------- */

@@ -102,6 +102,7 @@ export function buildingPanel(model: SceneModel, ctx: FormContext): HTMLElement 
     { 'data-panel-section': 'building' },
     h('div', { class: 'sub-head' }, h('span', null, '🛠️ Student building', help('Let students add things of their own to this scene from a Build button in the game: pieces you choose, words, and pictures they upload. What they build sits on top of the scene as an extra layer: it never changes the scene, and its events cannot see it. Their teacher approves a build on the Classes page before others see it, unless you turn that off. Starting a student\'s game again removes what they built.'))),
     form(BUILDING_FIELDS, values, commit, ctx),
+    values.enabled ? h('p', { class: 'muted', 'data-building-publish': '' }, 'Students get these settings when you publish the scenario. Test this scene to try building yourself first.') : null,
     pieceList,
   );
 }
