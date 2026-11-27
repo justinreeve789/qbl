@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { sceneBench, type ActionHandle, type CameraAction, type Id, type Point } from '@qbl/shared';
+import { sceneBench, shakeAmount, type ActionHandle, type CameraAction, type Id, type Point, type ShakeAction } from '@qbl/shared';
 import { deferred } from '../actions/Presenter';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
@@ -134,6 +134,20 @@ export class CameraSystem implements SceneSystem {
       default:
         return null;
     }
+  }
+
+  /**
+   * A shake action: the view jolts about where it is, then settles. A player whose system asks for
+   * reduced motion is not shaken, but the handle still lasts as long, so the event keeps its timing.
+   */
+  shake(action: ShakeAction): ActionHandle {
+    const ms = Math.max(0, action.duration ?? 500);
+    const cam = this.rt.scene.cameras.main as Phaser.Cameras.Scene2D.Camera;
+    const still = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // force: a shake already under way gives way to this one.
+    if (ms > 0 && !still) cam.shake?.(ms, shakeAmount(action.intensity), true);
+    const handle = this.after(ms);
+    return { done: handle.done, cancel: () => (cam.shakeEffect?.reset(), handle.cancel()) };
   }
 
   update(_time: number, delta: number) {

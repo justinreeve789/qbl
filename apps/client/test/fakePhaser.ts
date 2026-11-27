@@ -236,6 +236,15 @@ export class FakeWorld {
       centerOn(x: number, y: number) { camera.centre = { x, y }; },
       fadeOut: (ms: number) => world.schedule(ms, () => camera.emit('camerafadeoutcomplete')),
       getWorldPoint: (x: number, y: number) => ({ x, y }),
+      /** Each shake asked of the view, as [ms, intensity]; `shaking` until it is over or reset. */
+      shakes: [] as Array<[number, number]>,
+      shaking: false,
+      shake(ms: number, intensity: number) {
+        camera.shakes.push([ms, intensity]);
+        camera.shaking = true;
+        world.schedule(ms, () => (camera.shaking = false));
+      },
+      shakeEffect: { reset: () => (camera.shaking = false) },
       worldView: { x: 0, y: 0, width: 1280, height: 720 },
     });
     scene.cameras = { main: camera };

@@ -96,6 +96,12 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       return values.target === 'character' ? `The view follows ${String(store.byId('characters', values.character_id as number | null)?.name ?? 'a character')}`
         : values.target === 'point' ? `The view glides to ${values.position_x ?? '?'}, ${values.position_y ?? '?'}`
         : values.target === 'auto' ? 'The view follows whoever is acting' : 'The view follows the player';
+    case 'shake': {
+      const n = Number(values.intensity ?? 3);
+      const how = n <= 2 ? 'trembles' : n <= 4 ? 'shakes' : n <= 7 ? 'shakes hard' : 'quakes';
+      const who = values.audience === 'scene' ? ' for everyone in the scene' : values.audience === 'player' ? ' for this player only' : '';
+      return `The screen ${how} (${n}/10) for ${Number(values.duration ?? 500) / 1000}s${who}`;
+    }
     case 'cancel':
       return `Cancel action ${values.action_id ?? '?'}`;
     case 'cancel_event':

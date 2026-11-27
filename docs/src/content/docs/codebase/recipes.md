@@ -31,7 +31,7 @@ If the generator should use it, also teach `MissionBuilder` (and the blueprint s
 
 ## A new action type
 
-Example: `shake` (shake the camera). This touches every program.
+Example: `shake` (shake the screen; it is in the code, so follow it through with `rg "shake"`). This touches every program.
 
 **Shared**
 

@@ -179,6 +179,7 @@ export default defineConfig({
                     { label: 'Scenes, camera and weather', collapsed: true, items: [
                       { label: 'Jump', slug: 'developers/actions/jump' },
                       { label: 'Camera', slug: 'developers/actions/camera' },
+                      { label: 'Shake', slug: 'developers/actions/shake' },
                       { label: 'Weather', slug: 'developers/actions/weather' },
                       { label: 'Travel', slug: 'developers/actions/travel' },
                       { label: 'Open URL', slug: 'developers/actions/open-url' },

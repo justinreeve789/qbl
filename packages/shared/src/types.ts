@@ -243,6 +243,7 @@ export type ActionType =
   | 'walk'
   | 'weather'
   | 'camera'
+  | 'shake'
   | 'bench'
   | 'travel'
   | 'open_url';
@@ -711,6 +712,32 @@ export interface CameraAction extends ActionBase {
 }
 
 /**
+ * [ext] Shake the screen: a rockfall, an explosion, a door slammed, a wrong answer. The view jolts
+ * about where it is for `duration` and settles back; nothing in the scene moves. A player whose
+ * system asks for reduced motion is not shaken (the action still takes as long).
+ *
+ * `audience` says who feels it. It is the one action that may differ from its event: a shake for
+ * `scene` reaches everyone in the scene (those who can see this player, as for an event whose
+ * audience is the scene) even from an event that is the player's own, and one for `player` stays
+ * on this player's screen even in an event shown to the whole scene. Absent: as the event's audience.
+ */
+export interface ShakeAction extends ActionBase {
+  type: 'shake';
+  /** How hard, from 1 (a tremble) to 10 (an earthquake). Default 3. */
+  intensity?: number;
+  /** Milliseconds it lasts. Default 500. With `blocking`, the next action waits for it. */
+  duration?: number;
+  /** Who feels it: `player`, the one whose event it is; `scene`, everyone in the scene. Default: as the event's audience. */
+  audience?: EventAudience;
+}
+
+/** ShakeAction.intensity, 1 to 10, as a share of the view's size (Phaser's camera shake intensity). */
+export function shakeAmount(intensity: number | undefined): number {
+  const n = typeof intensity === 'number' && Number.isFinite(intensity) ? Math.min(10, Math.max(1, intensity)) : 3;
+  return n * 0.003;
+}
+
+/**
  * [ext] Work the scene's close-up bench from an event: put it back as it started, add something
  * to a container, empty one, stir one, light a burner or put it out.
  */
@@ -768,7 +795,7 @@ export type Action =
   | AnimateAction | AwardAction | GlossaryAction | ShopAction | DialogueAction | NarrationAction | ConversationAction | FreezeAction | AvatarAction | AudioAction | CancelAction | CancelEventAction | ImageFixedAction | ImageOverlayAction
   | InfoboxAction | JumpAction | RepeatAction | RunEventAction
   | SpritemapAction | TextOverlayAction | TranslateAction
-  | VariableAction | VideoAction | WaitAction | WalkAction | WeatherAction | CameraAction;
+  | VariableAction | VideoAction | WaitAction | WalkAction | WeatherAction | CameraAction | ShakeAction;
 
 // --------------------------------------------------------------- labels
 
@@ -832,7 +859,7 @@ export interface GameEvent {
 export type EventAudience = 'player' | 'scene';
 
 /** The action types other players are shown when an event's audience is the scene. */
-export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'narration', 'translate', 'cancel', 'cancel_event', 'animate', 'walk', 'weather'] as const;
+export const SHOWN_TO_SCENE = ['audio', 'image_fixed', 'image_overlay', 'text_overlay', 'spritemap', 'video', 'dialogue', 'narration', 'translate', 'cancel', 'cancel_event', 'animate', 'walk', 'weather', 'shake'] as const;
 
 export interface Hotspot extends GameEvent {
   position_x?: number | null;

@@ -96,7 +96,7 @@ For each action, in order:
 
 1. Stop if the run was cancelled, the engine stopped, or (nested) the scene is being left.
 2. **Skip the action if its own `conditions` fail.** Conditions are tested when the action is reached, not when the event started.
-3. If the event's `audience` is `scene` and `isShownToScene(action)`, call `host.share(event, action)` first, so other players see it at the same moment.
+3. If `sharesWithScene(event, action)` (the event's `audience` is `scene` and `isShownToScene(action)`, or the action is a `shake` whose own `audience` says so), call `host.share(event, action)` first, so other players see it at the same moment.
 4. Handle it by type (below).
 5. If it is **blocking** (the default; normalising sets `blocking: true`), await its handle, raced against `run.woken`.
 
@@ -177,7 +177,7 @@ On the client, `ActionHost.converse` calls `conversationLine` in `actions/presen
 
 An event's `audience` is `player` (default) or `scene`. With `scene`, **what the event shows** is seen by every player who can see the one who set it off; **what it does** (variables, awards, jumps, infoboxes, the player's progress) stays the player's own.
 
-`SHOWN_TO_SCENE` in `types.ts` lists the shareable types: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `narration`, `translate`, `cancel`, `cancel_event`, `animate`, `walk`, `weather`. `isShownToScene` removes two cases that already reach everyone through the room state: an `animate` of the player's own avatar, and a `walk` of the player.
+`SHOWN_TO_SCENE` in `types.ts` lists the shareable types: `audio`, `image_fixed`, `image_overlay`, `text_overlay`, `spritemap`, `video`, `dialogue`, `narration`, `translate`, `cancel`, `cancel_event`, `animate`, `walk`, `weather`, `shake`. `isShownToScene` removes two cases that already reach everyone through the room state: an `animate` of the player's own avatar, and a `walk` of the player. `sharesWithScene(event, action)` is the rule the engine, `SceneEngine.watch` and `World.show` all use: it adds that a `shake` with its own `audience` follows that instead of its event's (shown to the scene from a player's event, or kept to the player in a scene event).
 
 The round trip:
 

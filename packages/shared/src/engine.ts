@@ -3,7 +3,7 @@ import { ScenarioIndex } from './scenario.js';
 import {
   SHOWN_TO_SCENE,
   type Action, type AnimateAction, type AwardAction, type BenchAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
-  type CameraAction, type TranslateAction, type TravelAction, type OpenUrlAction, type WalkAction, type WeatherAction,
+  type CameraAction, type ShakeAction, type TranslateAction, type TravelAction, type OpenUrlAction, type WalkAction, type WeatherAction,
 } from './types.js';
 import { testConditions, VariableStore } from './variables.js';
 
@@ -56,6 +56,8 @@ export interface EngineHost {
   weather?(action: WeatherAction): ActionHandle | null;
   /** Point the player's view. The handle finishes when the view gets there. Null: nothing to do. */
   camera?(action: CameraAction): ActionHandle | null;
+  /** Shake the player's view. The handle finishes when the shaking does. Null: nothing to shake. */
+  shake?(action: ShakeAction): ActionHandle | null;
   /**
    * Say one line of a conversation and offer the player `choices` (already filtered by their
    * conditions; may be empty). `choice` settles with the index into `choices` of the one picked,
@@ -114,6 +116,16 @@ export function isShownToScene(action: Action): boolean {
   // So does a player walked by an action: their position is in the room state.
   if (action.type === 'walk' && action.target === 'player') return false;
   return (SHOWN_TO_SCENE as readonly string[]).includes(action.type);
+}
+
+/**
+ * Do the other players in the scene see this action of this event? Those shown to the scene, of an
+ * event whose audience is the scene; but a shake says for itself, and follows its event only when
+ * it does not (ShakeAction.audience).
+ */
+export function sharesWithScene(event: Pick<GameEvent, 'audience'>, action: Action): boolean {
+  if (action.type === 'shake' && action.audience != null) return action.audience === 'scene';
+  return event.audience === 'scene' && isShownToScene(action);
 }
 
 /** A repeat with no wait in its loop is paced at roughly one pass per frame. */
@@ -267,9 +279,9 @@ export class SceneEngine {
   watch(eventId: Id, actionId: Id, actor: string): void {
     if (this.stopped || this.leaving) return;
     const found = this.index.events.get(eventId);
-    if (!found || found.scene.id !== this.scene.id || found.event.audience !== 'scene') return;
+    if (!found || found.scene.id !== this.scene.id) return;
     const action = found.event.actions.find((a) => a.id === actionId);
-    if (!action || !isShownToScene(action)) return;
+    if (!action || !sharesWithScene(found.event, action)) return;
     if (action.type === 'cancel') {
       this.cancelAction(action.action_id);
       return;
@@ -290,6 +302,7 @@ export class SceneEngine {
     else if (action.type === 'animate') handle = this.host.animate?.(action, actor) ?? null;
     else if (action.type === 'walk') handle = this.host.walk?.(action, actor) ?? null;
     else if (action.type === 'weather') handle = this.host.weather?.(action) ?? null;
+    else if (action.type === 'shake') handle = this.host.shake?.(action) ?? null;
     else handle = this.host.present(action as PresentedAction, this, actor);
     if (!handle) return;
     this.actions.get(action.id)?.cancel();
@@ -402,7 +415,7 @@ export class SceneEngine {
       const action = actions[i]!;
       i++;
       if (!testConditions(action.conditions, this.vars.get)) continue;
-      if (!nested && run.event.audience === 'scene' && isShownToScene(action)) this.host.share?.(run.event, action);
+      if (!nested && sharesWithScene(run.event, action)) this.host.share?.(run.event, action);
 
       switch (action.type) {
         case 'repeat': {
@@ -494,6 +507,14 @@ export class SceneEngine {
         case 'weather':
         case 'camera': {
           const h = (action.type === 'weather' ? this.host.weather?.(action) : this.host.camera?.(action)) ?? null;
+          if (h) {
+            this.track(run, action, h);
+            if (action.blocking !== false) await this.wait(run, h);
+          }
+          break;
+        }
+        case 'shake': {
+          const h = this.host.shake?.(action) ?? null;
           if (h) {
             this.track(run, action, h);
             if (action.blocking !== false) await this.wait(run, h);

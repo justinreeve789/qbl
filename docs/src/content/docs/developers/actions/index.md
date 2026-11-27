@@ -69,6 +69,7 @@ Action | What it does
 ------ | ------------
 [`jump`](/docs/developers/actions/jump/) | Goes to another scene
 [`camera`](/docs/developers/actions/camera/) | Points the player's view
+[`shake`](/docs/developers/actions/shake/) | Shakes the screen, for this player or everyone in the scene
 [`weather`](/docs/developers/actions/weather/) | Changes the weather
 [`travel`](/docs/developers/actions/travel/) | Takes the player to the mission their teacher launched
 [`open_url`](/docs/developers/actions/open-url/) | Opens a web address, such as `{{QL_SCENARIO_LAUNCH_URL}}`
