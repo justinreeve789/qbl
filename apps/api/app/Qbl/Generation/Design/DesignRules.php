@@ -15,7 +15,12 @@ namespace App\Qbl\Generation\Design;
  * - MissionDesigner::brief() and storyBrief(): briefLines() says which way this run leans.
  * - BlueprintCritic: criticChecklist() is what the reviewer checks the blueprint against.
  * - BlueprintValidator: openingLines() and the checks that can be counted (something to do in the
- *   start scene, a short opening, an optional bonus step).
+ *   start scene, a short opening, an optional bonus step, a debrief question, no stars for talking,
+ *   a prediction before an experiment).
+ *
+ * Every generated scenario (mission or story, whatever the method) is designed under these rules,
+ * applied with judgement: each where it reasonably fits, not every rule in every scenario. A single
+ * scene made outside the scenario generator (SceneDesigner) is not held to them.
  *
  * Each setting starts as "Choose for me": the teacher picks one, or the aligner chooses what fits the
  * request (StandardsAligner, saved in the alignment as `approach`), or, if neither says, DEFAULTS.
@@ -153,8 +158,13 @@ final class DesignRules
     public static function missionRules(): string
     {
         return <<<'TXT'
-        Rules from research on educational games. Follow them; the brief says which way this mission leans
-        where they pull against each other (its opening, rigor or play, and student freedom).
+        Rules from research on educational games. Every mission you design follows them as far as they fit
+        it: apply each rule wherever it reasonably can be, and use your judgement where one does not fit
+        this topic or this kind of mission (a history mission may have no instrument to tune, so its place
+        to try things is a reconstruction, a sorting or a what-if conversation instead). Leave a rule out
+        only when it truly does not apply or would make this mission worse, never because it is more work.
+        The brief says which way this mission leans where the rules pull against each other (its opening,
+        rigor or play, and student freedom).
         - Real action fast. The start scene has something to click from the first moment, and students are
           doing something within two minutes. No wall of reading or long speech before the first action.
         - A safe on-ramp. The start scene teaches the controls one at a time (walk, talk, pick up, the
@@ -204,15 +214,35 @@ final class DesignRules
         TXT;
     }
 
-    /** The rules that apply to a story students watch, for the story designer's brief. */
+    /**
+     * The rules that apply to a story students watch, for the story designer's brief. Fewer than a
+     * mission's: a story has no instruments, steps or bonus objectives, so the rules about play are
+     * left to judgement.
+     */
     public static function storyRules(): string
     {
         return <<<'TXT'
-        Rules from research on educational games, for a story: the lesson lives inside the world (what
-        characters do, say and discover), not in narration that lectures. Get the science and history
-        right; if the story simplifies on purpose, say so at the end. A varied cast with no stereotypes,
-        women and men, young and old, in expert and leading roles; reading level right for the grade. End
-        with things to talk about that ask what happened, why, and where students would see it in real life.
+        Rules from research on educational games, for a story. Follow each one as far as it fits this
+        story, and use your judgement where one does not (a story has no instruments or bonus steps).
+        - A fast start. Something happens in the first scene within a minute: a problem, a mystery, a
+          surprise. No long narration or backstory before it; let the background come out along the way.
+        - Start simple, then add layers. Early scenes show the idea in one plain case; later scenes build on
+          it, so each scene needs only what earlier ones showed.
+        - The lesson lives inside the world: what characters do, say, try and discover, and how things
+          behave. Narration does not lecture.
+        - The rules are the argument. Get the science and history right: real values, causes and
+          consequences. If the story simplifies on purpose, say so at the end.
+        - Characters work like real practitioners (a field biologist, a ship engineer, a historian): their
+          tools, their questions, how they show evidence. They make a prediction and check it.
+        - Mistakes are part of it. A character gets something wrong, finds out why, and tries again, so
+          failing looks normal and fixable.
+        - A shared goal and a payoff: the characters work together toward something that matters, and the
+          story has a moment of triumph or awe before it ends.
+        - Audit the values. A varied cast with no stereotypes: women and men, young and old, different
+          backgrounds, in expert and leading roles; whose knowledge counts is not one group's. Reading level
+          right for the grade.
+        - End with an after-action review: things to talk about that ask what happened, why, and where
+          students would see it in real life, at least one of them a "why" question.
         TXT;
     }
 
@@ -229,6 +259,9 @@ final class DesignRules
         from characters; teammates needing each other's finds; a shared goal and a payoff moment; room to
         explore without points; a debrief that asks why and where it shows up in real life; a varied cast
         with no stereotypes. Judge it by the mission's own settings (its opening, rigor or play, freedom).
+        A rule only counts where it reasonably fits this mission: one that does not fit its topic or kind
+        (no instrument in a mission about a poem, say) is not a problem, but one it could follow and does
+        not is, even when the rest of the mission is good.
         TXT;
     }
 }
