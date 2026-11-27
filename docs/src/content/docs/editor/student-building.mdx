@@ -1,13 +1,13 @@
 ---
 title: Student building
-description: Let students add things of their own to a scene (pieces you choose, signs, pictures they made, and hotspots that open words or a picture), and approve or change what they build.
+description: Let students add things of their own to a scene (pieces you choose, signs, pictures they made, and hotspots that open words or a picture or have the narrator speak), and approve or change what they build.
 host:
   who: lucy
   says: "Students learn by making things. Give them a corner of a scene to build in!"
 ---
 import Host from '../../../components/Host.astro';
 
-**Student building** lets students add things of their own to a scene: pieces you choose, words, pictures they made in another app, and hotspots that open words or a picture when clicked. A class can build a garden, label the parts of a cell, put up posters about the water cycle, hide facts around a museum for classmates to find, or plan a landing pad.
+**Student building** lets students add things of their own to a scene: pieces you choose, words, pictures they made in another app, and hotspots that open words or a picture, or have the narrator say something, when clicked. A class can build a garden, label the parts of a cell, put up posters about the water cycle, hide facts around a museum for classmates to find, or plan a landing pad.
 
 What students build is an **extra layer** on top of the scene. It never changes the scene you wrote, and your events cannot see it or depend on it. If you remove the setting, the builds stop showing; nothing in the scene breaks.
 
@@ -20,7 +20,7 @@ In the scene editor, select **Scene settings** and find **🛠️ Student buildi
 | **Place pieces you choose** | Students add pictures you pick under **Pieces to place**: plants, furniture, animals, signs. Any picture in the scenario can be a piece |
 | **Add words** | Students write short signs and labels, up to 60 letters, in a few colours |
 | **Hang their own pictures** | Students upload pictures: a poster made in Canva or Google Slides, a drawing, a photo of their work |
-| **Add hotspots that open words or a picture** | Students add something to click that opens words (up to 500 letters), a picture, or both. See [Hotspots](#hotspots) |
+| **Add hotspots that open words or a picture** | Students add something to click that opens words (up to 500 letters), a picture, or both, and can have the narrator say something first. See [Hotspots](#hotspots) |
 | **What to make** | The task, shown when they start building ("Build a habitat that keeps a desert fox cool") |
 | **Most things one student adds** | 12 unless you say otherwise, at most 50 |
 | **Who sees a build** | Everyone in the same game, or only its maker and their teacher |
@@ -46,14 +46,26 @@ Under **My pictures…** they upload pictures and choose one to hang. The game a
 
 ### Hotspots
 
-Under **Add a hotspot**, **New hotspot…** opens a small window with two parts:
+Under **Add a hotspot**, **New hotspot…** opens a small window with three parts:
 
 - **What people click on:** **Nothing** (an invisible spot people find when they point at it), **Words** (a sign in one of the label colours), **A piece** (one of your pieces, if you chose any), or **My picture** (one they uploaded).
-- **What it shows when clicked:** words, and a picture (one of your pieces, or one they uploaded), or both.
+- **What the narrator says:** words (up to 300 letters, one line) that the narrator reads aloud in the story box when someone clicks, like a [Narration](/docs/editor/events-and-actions/) action. Leave it empty for no narrator.
+- **What it shows when clicked:** words, and a picture (one of your pieces, or one they uploaded), or both. It opens after the narrator has finished.
 
-A hotspot moves, resizes, turns and is removed like anything else. When one is picked, **Change…** opens the window again and **Try it** shows what players will see. Outside the Build palette, clicking a hotspot opens a box with its words and picture; it does not make the player walk.
+A hotspot needs at least one of these: something for the narrator to say, words or a picture.
 
-Students' hotspots are not your scene's [hotspots](/docs/editor/scene-editor/#hotspots): they cannot run events, give items or change variables. They only show words and pictures.
+### The narrator's voice
+
+Students don't record anything. When a student presses **Done**, the server records what each of their hotspots has the narrator say, in your scenario's narrator's voice (**Settings › 💬 Talking and reading**; the default narrator if you chose none). Each word lights up as it is said, as in your own narration.
+
+- Until a recording is made, the browser's own voice reads the words. **Try it** in the Build palette uses the browser's voice for words that have not been kept yet.
+- If your scenario's narrator is **None**, or the server has no voice service, nothing is recorded and the browser always reads them.
+- If the voice service is down when the student presses Done, the server tries again when you approve the build, or the next time the student presses Done.
+- Changing the words records them again. Recordings are deleted with the build, when you start a student's game again, and when the student is deleted.
+
+A hotspot moves, resizes, turns and is removed like anything else. When one is picked, **Change…** opens the window again and **Try it** shows what players will see. Outside the Build palette, clicking a hotspot has the narrator say its words, then opens a box with its words and picture; it does not make the player walk.
+
+Students' hotspots are not your scene's [hotspots](/docs/editor/scene-editor/#hotspots): they cannot run events, give items or change variables. They only show words and pictures, and have the narrator speak.
 
 Each student has one build per scene in each game (the public game, a class's or a team's). Pressing **Build** again (the button now says **Change what you built**) opens it to change.
 
@@ -68,7 +80,7 @@ On the **Classes** page, the **🛠️ Student builds** card lists them. Each bu
 - **✏️ Change in the game** opens the build in its scene (see below).
 - **Delete** removes it.
 
-Under a build with hotspots, each hotspot is numbered and listed with the words and picture it opens, so you can read everything before you approve it.
+Under a build with hotspots, each hotspot is numbered and listed with what it has the narrator say (with the recording to listen to, once it is made), and the words and picture it opens, so you can read and hear everything before you approve it.
 
 Builds in your assignments come to you.
 

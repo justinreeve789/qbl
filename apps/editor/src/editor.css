@@ -1687,6 +1687,9 @@ dialog.modal.panel[data-panel='media-choose'] .panel-body { padding-top: 0; }
 .build-hotspots { margin: 0; padding-left: 1.6em; display: grid; gap: 6px; font-size: 0.9rem; }
 .build-hotspots li { display: flex; gap: 8px; align-items: flex-start; }
 .build-hotspots li span { white-space: pre-wrap; overflow-wrap: anywhere; }
+.build-hotspot-opens { display: grid; gap: 4px; min-width: 0; }
+.build-hotspot-say { display: grid; gap: 4px; font-style: italic; }
+.build-hotspot-say audio { height: 32px; max-width: 100%; font-style: normal; }
 .build-hotspots img { width: 64px; height: 48px; object-fit: contain; flex: none; border-radius: 4px; background: #0e1014; }
 .build-about { font-size: 0.9rem; }
 .build-actions { display: flex; flex-wrap: wrap; gap: 6px; }

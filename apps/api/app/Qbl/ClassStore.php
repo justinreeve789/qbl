@@ -511,6 +511,7 @@ class ClassStore
             // What they built and uploaded there goes too (App\Qbl\Builds\BuildStore): it belongs with their game.
             $this->run('DELETE FROM scene_builds WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$scenarioId, $userId, $group]);
             $this->run('DELETE FROM build_uploads WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$scenarioId, $userId, $group]);
+            $this->run('DELETE FROM build_voices WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$scenarioId, $userId, $group]);
             $this->run(
                 'INSERT INTO activity_log (scenario_id, user_id, group_key, scene_id, type, ref, label, value, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, NULL, ?)',
                 [$scenarioId, $userId, $group, ActivityStore::RESET, (string) $byId, mb_substr($by, 0, 200) ?: null, $at],
@@ -539,6 +540,8 @@ class ClassStore
             // because resetting a student's game deletes them.
             'CREATE TABLE IF NOT EXISTS `scene_builds` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `scenario_id` INTEGER, `scene_id` INTEGER, `user_id` INTEGER, `group_key`, `status`, `pieces`, `reviewed_by` INTEGER, `reviewed_at`, `created_at`, `updated_at`, UNIQUE (`scenario_id`, `scene_id`, `user_id`, `group_key`))',
             'CREATE TABLE IF NOT EXISTS `build_uploads` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `scenario_id` INTEGER, `user_id` INTEGER, `group_key`, `file_key` UNIQUE, `mime`, `width` INTEGER, `height` INTEGER, `bytes` BLOB, `created_at`, `updated_at`)',
+            // The narrator's recordings of what students' hotspots say (App\Qbl\Builds\BuildVoices).
+            'CREATE TABLE IF NOT EXISTS `build_voices` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `build_id` INTEGER, `scenario_id` INTEGER, `user_id` INTEGER, `group_key`, `piece_id`, `file_key` UNIQUE, `mime`, `speech`, `bytes` BLOB, `created_at`, `updated_at`)',
         ];
     }
 

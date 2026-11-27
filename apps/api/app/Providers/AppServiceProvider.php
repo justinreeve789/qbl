@@ -75,7 +75,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ClassStore::class, fn ($app) => new ClassStore(DB::connection()->getPdo(), $app->make(Entitlements::class)));
         $this->app->singleton(ClassApi::class, fn ($app) => new ClassApi(DB::connection()->getPdo(), config('qbl.ranks'), $app->make(Entitlements::class)));
         // Student building (App\Qbl\Builds): what students add to scenes, beside their saves.
-        $this->app->singleton(BuildStore::class, fn ($app) => new BuildStore(DB::connection()->getPdo(), '/api/builds/files', $app->make(ClassStore::class)));
+        $this->app->singleton(BuildStore::class, fn ($app) => new BuildStore(DB::connection()->getPdo(), '/api/builds/files', $app->make(ClassStore::class), fn () => $app->make(SpeechFactory::class)->voicer()));
         $this->app->singleton(BuildApi::class, fn ($app) => new BuildApi($app->make(BuildStore::class)));
         $this->app->singleton(ActivityStore::class, fn () => new ActivityStore(DB::connection()->getPdo()));
         $this->app->singleton(ProgressStore::class, fn () => new ProgressStore(DB::connection()->getPdo(), config('qbl.ranks')));

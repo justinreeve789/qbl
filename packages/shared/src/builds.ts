@@ -1,8 +1,10 @@
+import type { MediaSpeech } from './speech.js';
 import type { Id, Scene } from './types.js';
 
 /**
  * Student building: a scene whose author allows it lets players add things of their own on top of
- * it (stickers, labels, their own pictures, and hotspots that open words or a picture when clicked),
+ * it (stickers, labels, their own pictures, and hotspots that open words or a picture, or have the
+ * narrator say something in the story box, when clicked),
  * from a Build button in the game. Their teacher can change any of their builds, in the game.
  *
  * What a student builds is an extra layer, never part of the scene: the scenario's tables and its
@@ -56,11 +58,17 @@ export interface BuildingRules {
 export type HotspotLook = 'sticker' | 'picture' | 'label' | 'none';
 export const HOTSPOT_LOOKS: readonly HotspotLook[] = ['sticker', 'picture', 'label', 'none'];
 
-/** What a hotspot opens when clicked: words, a picture (a piece or one of the student's), or both. */
+/**
+ * What a hotspot opens when clicked: words, a picture (a piece or one of the student's), or both, in
+ * a box; and/or `say`, words the narrator says in the story box (as a `narration` action does)
+ * first. The server records `say` in the scenario's narrator's voice when the build is kept
+ * (SceneBuild.voices); until then, or with no narrator, the browser's voice reads it.
+ */
 export interface HotspotOpens {
   text?: string;
   media_id?: Id;
   upload_id?: number;
+  say?: string;
 }
 
 /** One thing a student added. Positions are in scene pixels; `x, y` is the thing's centre. */
@@ -107,6 +115,19 @@ export interface SceneBuild {
   editable?: boolean;
   /** With `editable`: the maker's pictures, which their build may show. */
   uploads?: BuildUpload[];
+  /**
+   * The narrator's recordings of what its hotspots say (`opens.say`), by piece id. A hotspot with
+   * none here (not recorded yet, the voice service is off, or the scenario has no narrator) is read
+   * by the browser's voice.
+   */
+  voices?: Record<string, BuildVoice>;
+}
+
+/** A recording of what a student's hotspot has the narrator say. */
+export interface BuildVoice {
+  url: string;
+  /** What it says and when each word is said; `line` is the hotspot's `say` it was recorded from. */
+  speech: MediaSpeech;
 }
 
 /** A picture a student uploaded for their builds in one instance. */
@@ -130,6 +151,8 @@ export const BUILD_LIMITS = {
   promptLength: 300,
   /** The words a hotspot opens. */
   noteLength: 500,
+  /** The words a hotspot has the narrator say. */
+  sayLength: 300,
 } as const;
 
 /**
@@ -183,6 +206,21 @@ export function cleanNote(text: string): string {
     .trim();
 }
 
+/**
+ * The words a hotspot has the narrator say, as they are kept: one line, no control or markup
+ * characters and no { } (they are never filled in), at most sayLength.
+ */
+export function cleanSay(text: string): string {
+  // Only plain spaces are trimmed, as PHP's trim does (String.trim would take no-break spaces too).
+  const ends = (t: string) => t.replace(/^ +| +$/g, '');
+  return ends(ends(text.replace(/[\u0000-\u001f\u007f<>{}]/g, ' ').replace(/ +/g, ' ')).slice(0, BUILD_LIMITS.sayLength));
+}
+
+/** The words a hotspot has the narrator say, or '' when it has them say nothing. */
+export function hotspotSay(p: BuildPiece): string {
+  return p.kind === 'hotspot' && typeof p.opens?.say === 'string' ? p.opens.say : '';
+}
+
 /** The uploads a piece shows: its own picture, and a hotspot's opened one. */
 export function piecePictures(p: BuildPiece): number[] {
   const out: number[] = [];
@@ -211,7 +249,7 @@ export function withoutUpload(pieces: BuildPiece[], uploadId: number): BuildPiec
     if (p.look === 'picture' && p.upload_id === uploadId) return [];
     if (p.opens?.upload_id !== uploadId) return [p];
     const { upload_id: _gone, ...opens } = p.opens;
-    return opens.text ? [{ ...p, opens }] : [];
+    return opens.text || opens.say ? [{ ...p, opens }] : [];
   });
 }
 
@@ -276,13 +314,16 @@ function hotspotProblems(rules: BuildingRules, p: BuildPiece, own: Set<number>, 
     problems.push(`${which} has a look that is not offered.`);
   }
   const o = p.opens;
-  if (!o || typeof o !== 'object') return [...problems, `${which} needs words or a picture to open.`];
+  const nothing = `${which} needs words or a picture to open, or something for the narrator to say.`;
+  if (!o || typeof o !== 'object') return [...problems, nothing];
   const text = o.text;
   if (text != null && (typeof text !== 'string' || cleanNote(text) !== text)) problems.push(`${which} opens words that are too long (up to ${BUILD_LIMITS.noteLength} letters) or have < or > in them.`);
   if (o.media_id != null && o.upload_id != null) problems.push(`${which} can open one picture.`);
   else if (o.media_id != null && !piece(o.media_id)) problems.push(`${which} opens a picture that is not one of this scene's pieces.`);
   else if (o.upload_id != null && !own.has(o.upload_id)) problems.push(`${which} opens a picture that is not one of yours.`);
-  if (!text && o.media_id == null && o.upload_id == null) problems.push(`${which} needs words or a picture to open.`);
+  const say = o.say;
+  if (say != null && (typeof say !== 'string' || cleanSay(say) !== say)) problems.push(`${which} has the narrator say words that are too long (up to ${BUILD_LIMITS.sayLength} letters) or have < > { or } in them.`);
+  if (!text && !say && o.media_id == null && o.upload_id == null) problems.push(nothing);
   return problems;
 }
 
@@ -313,6 +354,8 @@ export function tidyPiece(p: BuildPiece): BuildPiece {
     if (text) opens.text = text;
     if (p.opens?.media_id != null) opens.media_id = p.opens.media_id;
     else if (p.opens?.upload_id != null) opens.upload_id = p.opens.upload_id;
+    const say = cleanSay(p.opens?.say ?? '');
+    if (say) opens.say = say;
     out.opens = opens;
   }
   return out;

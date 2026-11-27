@@ -186,7 +186,7 @@ export function buildPanel(root: HTMLElement, spec: BuildPanelSpec, on: BuildPan
   if (spec.tools.includes('hotspot')) {
     const group = el('div', 'qbl-build-group');
     group.append(el('h3', '', 'Add a hotspot'));
-    group.append(el('p', 'qbl-build-tip', 'Something people click to read words or see a picture.'));
+    group.append(el('p', 'qbl-build-tip', 'Something people click to hear the narrator, read words or see a picture.'));
     group.append(button('New hotspot…', '🔍', () => openHotspot(null)));
     add.append(group);
   }
@@ -421,6 +421,26 @@ export function buildPanel(root: HTMLElement, spec: BuildPanelSpec, on: BuildPan
       drawOpens();
     }), openDetail);
 
+    // What the narrator says first, in the story box: recorded in the narrator's voice once it is kept.
+    const sayGroup = el('div', 'qbl-build-group');
+    sayGroup.dataset.hotspot = 'say';
+    const say = el('textarea', 'qbl-build-note-input');
+    say.maxLength = BUILD_LIMITS.sayLength;
+    say.rows = 3;
+    say.placeholder = 'Words the narrator reads aloud, like “Long ago, a river ran here…”';
+    say.setAttribute('aria-label', 'What the narrator says');
+    say.value = f.opens.say ?? '';
+    const sayLeft = el('span', 'qbl-build-tip');
+    const sayCounted = () => (sayLeft.textContent = `${say.value.length} of ${BUILD_LIMITS.sayLength}`);
+    say.addEventListener('input', sayCounted);
+    sayCounted();
+    sayGroup.append(
+      el('h3', '', 'What the narrator says'),
+      el('p', 'qbl-build-tip', 'The narrator reads it aloud in the story box when someone clicks, before the words or picture below open. Leave it empty for no narrator.'),
+      say,
+      sayLeft,
+    );
+
     const status = el('p', 'qbl-build-tip');
     status.setAttribute('role', 'status');
     const file = el('input');
@@ -504,17 +524,18 @@ export function buildPanel(root: HTMLElement, spec: BuildPanelSpec, on: BuildPan
         out.upload_id = f.upload_id;
       }
       if (words.value.trim()) out.opens.text = words.value;
+      if (say.value.trim()) out.opens.say = say.value;
       if (openWith === 'piece' && f.opens.media_id != null) out.opens.media_id = f.opens.media_id;
       if (openWith === 'picture' && f.opens.upload_id != null && view?.pictures.some((p) => p.id === f.opens.upload_id)) out.opens.upload_id = f.opens.upload_id;
       if (openWith !== 'none' && out.opens.media_id == null && out.opens.upload_id == null) return void (status.textContent = 'Choose the picture it shows, or pick No picture.');
-      if (!out.opens.text && out.opens.media_id == null && out.opens.upload_id == null) return void (status.textContent = 'Write some words or choose a picture for it to show.');
+      if (!out.opens.text && !out.opens.say && out.opens.media_id == null && out.opens.upload_id == null) return void (status.textContent = 'Write some words or choose a picture for it to show, or words for the narrator to say.');
       if (initial) on.rehotspot(out);
       else on.addHotspot(out);
       closeHotspot();
     }, { className: 'primary' });
     const foot = el('div', 'qbl-build-row qbl-build-hotspot-foot');
     foot.append(button('Cancel', null, () => closeHotspot()), save);
-    card.append(top, lookGroup, opensGroup, status, foot, file);
+    card.append(top, lookGroup, sayGroup, opensGroup, status, foot, file);
     shade.append(card);
     root.append(shade);
     // New pictures (an upload) redraw the grids that show them.

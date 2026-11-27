@@ -4,6 +4,7 @@ namespace App\Qbl\Builds;
 
 use App\Qbl\ClassStore;
 use App\Qbl\Roles;
+use App\Qbl\Speech\Voicer;
 use App\Qbl\StoreError;
 use PDO;
 
@@ -28,6 +29,9 @@ use PDO;
  * where it was taken), made no larger than MAX_SIDE, and kept in the database, so that deleting the
  * row deletes the picture. They are served by an unguessable key (fileUrl), so the game can load
  * them as it loads any picture.
+ *
+ * What a hotspot has the narrator say is recorded when the build is kept (BuildVoices), in the
+ * scenario's narrator's voice, and served the same way.
  */
 class BuildStore
 {
@@ -35,10 +39,16 @@ class BuildStore
 
     private ClassStore $classes;
 
-    /** `$filesUrl`: where uploads are served, the key appended (the API's /api/builds/files). */
-    public function __construct(private PDO $pdo, private string $filesUrl = '/api/builds/files', ?ClassStore $classes = null)
+    private BuildVoices $voices;
+
+    /**
+     * `$filesUrl`: where uploads and recordings are served, the key appended (the API's /api/builds/files).
+     * `$voicer`: what records what hotspots have the narrator say (or makes it when first needed); null: nothing is recorded.
+     */
+    public function __construct(private PDO $pdo, private string $filesUrl = '/api/builds/files', ?ClassStore $classes = null, \Closure|Voicer|null $voicer = null)
     {
         $this->classes = $classes ?? new ClassStore($pdo);
+        $this->voices = new BuildVoices($pdo, $voicer, fn (string $key) => $this->fileUrl($key));
     }
 
     // ------------------------------------------------------------------ players
@@ -66,7 +76,9 @@ class BuildStore
             [$scenario['id'], $group],
         );
         $builds = [];
+        $voices = $this->voices->of(array_column($rows, 'id'));
         foreach ($rows as $row) {
+            $row['voices'] = $voices[(int) $row['id']] ?? [];
             $mine = (int) $row['user_id'] === $me;
             if ($mine) {
                 $builds[] = $this->present($row, true);
@@ -133,6 +145,7 @@ class BuildStore
         if (! $pieces) {
             if ($existing) {
                 $this->run('DELETE FROM scene_builds WHERE id = ?', [$existing['id']]);
+                $this->voices->forget((int) $existing['id']);
             }
 
             return null;
@@ -140,8 +153,11 @@ class BuildStore
         $status = $rules['approve'] ? 'pending' : 'approved';
         $json = json_encode($pieces, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($existing) {
-            // Nothing changed: it keeps its state (an approved build stays approved).
+            // Nothing changed: it keeps its state (an approved build stays approved). What its
+            // hotspots say that could not be recorded last time is tried again.
             if ($existing['pieces'] === $json) {
+                $this->voices->record($existing, $document);
+
                 return $this->present($existing + ['author' => $user['name'] ?? ''], true);
             }
             $this->run('UPDATE scene_builds SET pieces = ?, status = ?, reviewed_by = NULL, reviewed_at = NULL, updated_at = ? WHERE id = ?', [$json, $status, $now, $existing['id']]);
@@ -153,8 +169,10 @@ class BuildStore
             );
             $id = (int) $this->pdo->lastInsertId();
         }
+        $saved = $this->one('SELECT b.*, u.name AS author FROM scene_builds b JOIN users u ON u.id = b.user_id WHERE b.id = ?', [$id]);
+        $this->voices->record($saved, $document);
 
-        return $this->present($this->one('SELECT b.*, u.name AS author FROM scene_builds b JOIN users u ON u.id = b.user_id WHERE b.id = ?', [$id]), true);
+        return $this->present($saved, true);
     }
 
     /**
@@ -208,15 +226,18 @@ class BuildStore
             $pieces = json_decode((string) $build['pieces'], true) ?: [];
             $kept = BuildRules::withoutUpload($pieces, $uploadId);
             if ($kept !== $pieces) {
-                $kept
-                    ? $this->run('UPDATE scene_builds SET pieces = ?, updated_at = ? WHERE id = ?', [json_encode($kept, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), self::now(), $build['id']])
-                    : $this->run('DELETE FROM scene_builds WHERE id = ?', [$build['id']]);
+                if ($kept) {
+                    $this->run('UPDATE scene_builds SET pieces = ?, updated_at = ? WHERE id = ?', [json_encode($kept, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), self::now(), $build['id']]);
+                } else {
+                    $this->run('DELETE FROM scene_builds WHERE id = ?', [$build['id']]);
+                    $this->voices->forget((int) $build['id']);
+                }
             }
         }
         $this->run('DELETE FROM build_uploads WHERE id = ?', [$uploadId]);
     }
 
-    /** An upload's picture by its key: [bytes, mime], or null. */
+    /** An upload's picture, or a hotspot's recording, by its key: [bytes, mime], or null. */
     public function file(string $fileKey): ?array
     {
         if (! preg_match('/^[a-f0-9]{24}$/', $fileKey)) {
@@ -224,7 +245,7 @@ class BuildStore
         }
         $row = $this->one('SELECT bytes, mime FROM build_uploads WHERE file_key = ?', [$fileKey]);
 
-        return $row ? [is_resource($row['bytes']) ? stream_get_contents($row['bytes']) : (string) $row['bytes'], (string) $row['mime']] : null;
+        return $row ? [is_resource($row['bytes']) ? stream_get_contents($row['bytes']) : (string) $row['bytes'], (string) $row['mime']] : $this->voices->file($fileKey);
     }
 
     // ------------------------------------------------------------------ teachers
@@ -268,7 +289,9 @@ class BuildStore
         );
         $out = [];
         $documents = [];
+        $voices = $this->voices->of(array_column($rows, 'id'));
         foreach ($rows as $row) {
+            $row['voices'] = $voices[(int) $row['id']] ?? [];
             $where = $this->reviewable($user, $row);
             if (! $where) {
                 continue;
@@ -294,11 +317,15 @@ class BuildStore
         if (! in_array($status, ['approved', 'hidden', 'pending'], true)) {
             throw new StoreError(422, 'A build can be approved, hidden, or put back to wait.');
         }
-        $row = $this->one('SELECT b.*, u.name AS author, s.user_id AS scenario_owner FROM scene_builds b JOIN users u ON u.id = b.user_id JOIN scenarios s ON s.id = b.scenario_id WHERE b.id = ?', [$buildId]);
+        $row = $this->one('SELECT b.*, u.name AS author, s.user_id AS scenario_owner, s.document AS document FROM scene_builds b JOIN users u ON u.id = b.user_id JOIN scenarios s ON s.id = b.scenario_id WHERE b.id = ?', [$buildId]);
         if (! $row || ! Roles::isStaff((string) ($user['role'] ?? '')) || ! $this->reviewable($user, $row)) {
             throw new StoreError(404, 'No such build.');
         }
         $this->run('UPDATE scene_builds SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?', [$status, (int) $user['id'], self::now(), $buildId]);
+        // Before others hear it: what could not be recorded when it was kept is tried again.
+        if ($status === 'approved') {
+            $this->voices->record($row, json_decode((string) $row['document'], true) ?: []);
+        }
 
         return $this->present(['status' => $status] + $row, false);
     }
@@ -335,11 +362,13 @@ class BuildStore
         }
         if (! $pieces) {
             $this->run('DELETE FROM scene_builds WHERE id = ?', [$buildId]);
+            $this->voices->forget($buildId);
 
             return null;
         }
         $json = json_encode(array_map(fn ($p) => BuildRules::tidy($p), $pieces), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->run('UPDATE scene_builds SET pieces = ?, reviewed_by = ?, reviewed_at = ?, updated_at = ? WHERE id = ?', [$json, (int) $user['id'], self::now(), self::now(), $buildId]);
+        $this->voices->record(['pieces' => $json] + $row, $document);
 
         return $this->present(['pieces' => $json] + $row, false) + ['editable' => true];
     }
@@ -352,6 +381,7 @@ class BuildStore
             throw new StoreError(404, 'No such build.');
         }
         $this->run('DELETE FROM scene_builds WHERE id = ?', [$buildId]);
+        $this->voices->forget($buildId);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -402,8 +432,11 @@ class BuildStore
         return null;
     }
 
+    /** A build as the game has it. `voices` in $row: its recordings, when already looked up (else they are). */
     private function present(array $row, bool $mine): array
     {
+        $voices = $row['voices'] ?? ($this->voices->of([(int) $row['id']])[(int) $row['id']] ?? []);
+
         return [
             'id' => (int) $row['id'],
             'scene_id' => (int) $row['scene_id'],
@@ -412,6 +445,8 @@ class BuildStore
             'status' => (string) $row['status'],
             'pieces' => json_decode((string) $row['pieces'], true) ?: [],
             'updated_at' => isset($row['updated_at']) ? gmdate('Y-m-d\TH:i:sP', strtotime($row['updated_at'].' UTC')) : null,
+            // An object, so it reads back as one when there are none.
+            'voices' => (object) $voices,
         ];
     }
 

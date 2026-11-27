@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  cleanSay, hotspotSay,
   buildingRules, buildProblems, cleanLabel, cleanNote, collectSceneMediaIds, pieceMedia, piecePictures, tidyPiece, validateScenario, withoutUpload, BUILD_LIMITS,
   type BuildPiece, type Scenario, type Scene,
 } from '../src/index.js';
@@ -104,4 +105,20 @@ test('a hotspot’s words keep their lines, and removing a picture changes the h
   assert.deepEqual(withoutUpload(pieces, 9).map((p) => [p.id, p.opens]), [['c', { text: 'kept' }], ['e', { upload_id: 8 }]]);
   assert.deepEqual(piecePictures(pieces[1]!), [9]);
   assert.deepEqual(pieceMedia({ id: 'f', kind: 'hotspot', x: 1, y: 1, look: 'sticker', media_id: 5, opens: { media_id: 6 } }), [5, 6]);
+});
+
+test('a hotspot can have the narrator say something: one plain line, kept with or without anything else', () => {
+  assert.equal(cleanSay('  Long ago,\n a <river> {{ran}}\there.  '), 'Long ago, a river ran here.');
+  assert.equal(cleanSay('x'.repeat(400)).length, BUILD_LIMITS.sayLength);
+  const rules = buildingRules(scene({ enabled: true, tools: ['hotspot'] }))!;
+  const size = { width: 1000, height: 600 };
+  const spot = (opens: BuildPiece['opens']): BuildPiece => ({ id: 's1', kind: 'hotspot', x: 10, y: 10, opens });
+  assert.deepEqual(buildProblems(rules, size, [spot({ say: 'The river.' })], []), [], 'the narrator saying something is enough');
+  assert.match(buildProblems(rules, size, [spot({ say: 'Hi {{QL_PlayerName}}' })], [])[0] ?? '', /< > \{ or \}/);
+  assert.match(buildProblems(rules, size, [spot({ say: 'x'.repeat(301) })], [])[0] ?? '', /up to 300/);
+  assert.match(buildProblems(rules, size, [spot({})], [])[0] ?? '', /something for the narrator to say/);
+  assert.deepEqual(tidyPiece(spot({ say: '  The   river. ', text: 'Words' })).opens, { text: 'Words', say: 'The river.' });
+  assert.deepEqual(withoutUpload([spot({ say: 'Kept.', upload_id: 9 })], 9).map((p) => p.opens), [{ say: 'Kept.' }], 'removing its picture leaves what the narrator says');
+  assert.equal(hotspotSay(spot({ say: 'The river.' })), 'The river.');
+  assert.equal(hotspotSay({ id: 'l', kind: 'label', x: 1, y: 1, text: 'x' }), '');
 });
