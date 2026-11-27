@@ -168,6 +168,34 @@ const closeHelp = () => {
   openHelp = null;
 };
 document.addEventListener('click', closeHelp);
+// The note is placed against the window (placeHelp), so it would be left behind by scrolling.
+document.addEventListener('scroll', (e) => {
+  if (openHelp && !(e.target instanceof Node && openHelp.contains(e.target))) closeHelp();
+}, true);
+window.addEventListener('resize', closeHelp);
+
+/**
+ * Put an open help note beside its button, placed against the window rather than its panel, so
+ * a panel that scrolls or clips (the side panels, the inspector) cannot cut it off or hide it
+ * under the panel next to it. Below the button, or above it when there is no room below; kept
+ * inside the window from side to side.
+ */
+function placeHelp(button: HTMLElement, note: HTMLElement) {
+  const b = button.getBoundingClientRect();
+  const margin = 8;
+  note.style.position = 'fixed';
+  note.style.right = 'auto';
+  note.style.left = '0px';
+  note.style.top = '0px';
+  const w = note.offsetWidth;
+  const ht = note.offsetHeight;
+  const left = Math.min(Math.max(margin, b.left - 8), window.innerWidth - w - margin);
+  const below = b.bottom + 6;
+  const top = below + ht + margin <= window.innerHeight || b.top - ht - 6 < margin ? below : b.top - ht - 6;
+  note.style.left = `${Math.round(left)}px`;
+  note.style.top = `${Math.round(Math.max(margin, top))}px`;
+  note.style.maxHeight = `${window.innerHeight - 2 * margin}px`;
+}
 document.addEventListener('keydown', (e) => e.key === 'Escape' && closeHelp());
 
 /**
@@ -191,8 +219,7 @@ export function help(text: string | null | undefined): HTMLElement | null {
     note.hidden = false;
     button.setAttribute('aria-expanded', 'true');
     openHelp = wrap;
-    // Keep the note on the screen: open leftwards when the button is near the right edge.
-    wrap.classList.toggle('left', button.getBoundingClientRect().left > window.innerWidth - 320);
+    placeHelp(button, note);
   });
   note.addEventListener('click', (e) => {
     e.preventDefault();

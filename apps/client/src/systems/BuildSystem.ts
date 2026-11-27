@@ -35,6 +35,8 @@ interface Editing {
  * dragged, resized and turned; walking and hotspots wait until the palette closes.
  */
 export class BuildSystem implements SceneSystem {
+  /** A failure to load builds has been shown on screen in this game already. */
+  private static told = false;
   private rules: BuildingRules | null = null;
   private drawn: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Text> = [];
   /** The player's own pieces while they build, by piece id. */
@@ -54,8 +56,15 @@ export class BuildSystem implements SceneSystem {
     // Clicking where there is nothing of the player's lets go of what is picked.
     this.rt.scene.input.on(POINTER_DOWN, this.onPointerDown, this);
     this.redraw();
-    // Entering a scene asks again, so approvals that came in meanwhile show.
-    builds.refresh().catch(() => undefined);
+    // Entering a scene asks again, so approvals that came in meanwhile show. Where the scene lets
+    // the player build, a failure is said once, rather than the Build button silently not coming.
+    builds.refresh().catch((err) => {
+      console.warn('[qbl] could not load what students built here:', err);
+      if (this.rules && !BuildSystem.told) {
+        BuildSystem.told = true;
+        this.rt.ctx.ui.toast(`Building is not available right now${err instanceof Error && err.message ? `: ${err.message}` : '.'}`, 5000);
+      }
+    });
   }
 
   /** True while the player builds: the palette is open. */
