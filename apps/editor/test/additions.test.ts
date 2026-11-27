@@ -187,6 +187,9 @@ test('underwater light is placed, moves on the canvas, and shows the settings fo
   // Ripples lie on a floor that leans away; shafts fan out. Each shows only its own.
   assert.equal(await page.locator('.inspector [data-field=tilt]').count(), 1);
   assert.equal(await page.locator('.inspector [data-field=spread]').count(), 0);
+  // Ripples light the people and things standing in them; how strongly is a setting of their own.
+  await type('.inspector [data-field=figures] input[type=number]', '40');
+  assert.equal((await draft()).scenes[0]!.water_lights![0]!.figures, 40);
   // The canvas runs the game's shader, where the browser has WebGL.
   if (await page.evaluate(() => !!document.createElement('canvas').getContext('webgl'))) {
     await page.waitForSelector('svg .water-light-view canvas.water-light-preview');
@@ -199,6 +202,7 @@ test('underwater light is placed, moves on the canvas, and shows the settings fo
   await page.locator('.inspector [data-field=kind] select').selectOption('shafts');
   await page.waitForSelector('.inspector [data-field=spread]');
   assert.equal(await page.locator('.inspector [data-field=tilt]').count(), 0);
+  assert.equal(await page.locator('.inspector [data-field=figures]').count(), 0, 'shafts are in front of everyone: no setting');
   await type('.inspector [data-field=spread] input[type=number]', '60');
   light = (await draft()).scenes[0]!.water_lights![0]!;
   assert.deepEqual([light.kind, light.spread], ['shafts', 60]);

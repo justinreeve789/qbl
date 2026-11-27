@@ -714,7 +714,7 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (typeof w.x !== 'number' || typeof w.y !== 'number' || !(w.width > 0) || !(w.height > 0)) err(p, 'Underwater light needs x, y, a width and a height');
       if (w.kind != null && !(WATER_LIGHT_KINDS as readonly string[]).includes(w.kind)) err(`${p}.kind`, `kind is one of ${WATER_LIGHT_KINDS.join(', ')}`);
       if (w.color != null && !COLOR.test(w.color)) err(`${p}.color`, 'color is #rrggbb');
-      for (const key of ['strength', 'tilt', 'spread'] as const) {
+      for (const key of ['strength', 'tilt', 'spread', 'figures'] as const) {
         const v = w[key];
         if (v != null && !(typeof v === 'number' && v >= 0 && v <= 100)) err(`${p}.${key}`, `${key} is a percentage from 0 to 100`);
       }
@@ -726,6 +726,7 @@ export function validateScenario(doc: unknown): ValidationResult {
         else w.shape.forEach((c, ci) => (typeof c?.x !== 'number' || typeof c?.y !== 'number') && err(`${p}.shape[${ci}]`, 'A corner needs x and y'));
         if (w.kind === 'shafts') warn(`${p}.shape`, 'Only rippling light takes the shape of its outline; shafts fill their box');
       }
+      if (w.figures != null && w.kind === 'shafts') warn(`${p}.figures`, 'Only rippling light has a setting for how it lights people and things; shafts are in front of them and light them anyway');
       if (w.conditions != null && !Array.isArray(w.conditions)) err(`${p}.conditions`, 'conditions is a list');
       else checkConditions(w.conditions ?? undefined, p);
     });

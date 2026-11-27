@@ -697,6 +697,11 @@ export const WATER_LIGHT_FIELDS: Field[] = [
     when: (values) => values.kind !== 'shafts',
   },
   {
+    key: 'figures', label: 'On people and things (%)', kind: 'number', min: 0, max: 100, placeholder: '100', slider: { min: 0, max: 100 },
+    hint: 'How strongly the ripples light the avatars, characters and items standing in them, as a share of their brightness on the floor. 0: only the floor.',
+    when: (values) => values.kind !== 'shafts',
+  },
+  {
     key: 'spread', label: 'Fan out (%)', kind: 'number', min: 0, max: 100, placeholder: '35', slider: { min: 0, max: 100 },
     hint: '0: the beams fall side by side. Higher: they spread out from a point above, wider at the bottom.',
     when: (values) => values.kind === 'shafts',
