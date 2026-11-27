@@ -1659,3 +1659,24 @@ dialog.modal.panel[data-panel='media-choose'] .panel-body { padding-top: 0; }
 .mp-upload .media-preview-icon { font-size: 34px; color: var(--accent); }
 .mp-none.current { border-style: solid; border-color: var(--ok); }
 .mp-tile.uploading { opacity: 0.7; }
+
+/* Student building: the scene's pieces to place (views/scene/buildingPanel.ts). */
+.building-pieces { display: grid; gap: 6px; margin-top: 6px; }
+.building-piece-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.building-piece { display: flex; align-items: center; gap: 8px; padding: 4px; border-radius: 8px; background: #16181c; }
+.building-piece-thumb { width: 40px; height: 40px; flex: none; border-radius: 6px; }
+.building-piece-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Students' builds on the Classes page (views/studentBuilds.ts). */
+.build-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.build-tabs button { padding: 4px 10px; border-radius: 999px; font-size: 0.85rem; }
+.build-tabs button.current { border-color: var(--warn); color: var(--text); font-weight: 600; background: var(--surface-2); }
+.build-list { display: grid; gap: 10px; }
+.build-list .empty { padding: 16px; }
+.build-item { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.build-preview { position: relative; width: 100%; overflow: hidden; border-radius: 6px; background: #0e1014; container-type: inline-size; }
+.build-preview-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.build-preview-piece { position: absolute; height: auto; pointer-events: none; }
+.build-preview-label { position: absolute; white-space: nowrap; font-family: Fredoka, system-ui, sans-serif; font-weight: 600; line-height: 1.1; paint-order: stroke; -webkit-text-stroke: 0.12em #1f2937; pointer-events: none; }
+.build-about { font-size: 0.9rem; }
+.build-actions { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -15,6 +15,7 @@ import { LINE_ID, reachableLines } from './conversation.js';
 import { isBuiltInSound } from './sounds.js';
 import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
 import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES, toNumber } from './variables.js';
+import { BUILD_LIMITS, BUILD_TOOLS, buildingRules } from './builds.js';
 
 export interface Issue {
   level: 'error' | 'warning';
@@ -726,6 +727,17 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (c.sound != null && !isBuiltInSound(c.sound)) warn(`${p}.sound`, `"${c.sound}" is not a built-in sound`);
       if (c.faces != null && c.faces !== 'left' && c.faces !== 'right') err(`${p}.faces`, 'faces is "left" or "right"');
     });
+    if (scene.building?.enabled) {
+      const p = `${sp}.building`;
+      (scene.building.pieces ?? []).forEach((piece, pi) => needMedia(piece?.media_id, `${p}.pieces[${pi}]`, 'image'));
+      const tools = scene.building.tools ?? ['place', 'label'];
+      for (const t of tools) if (!BUILD_TOOLS.includes(t)) err(`${p}.tools`, `"${t}" is not a building tool (${BUILD_TOOLS.join(', ')})`);
+      if (scene.story) warn(p, 'Students cannot build in a story scene: nobody walks there');
+      else if (!buildingRules(scene)) warn(p, 'Students can build here, but have nothing to build with: choose pieces for Place, or allow labels or pictures');
+      if (scene.building.max_pieces != null && !(Number.isInteger(scene.building.max_pieces) && scene.building.max_pieces >= 1 && scene.building.max_pieces <= BUILD_LIMITS.maxPieces)) {
+        err(`${p}.max_pieces`, `max_pieces is 1 to ${BUILD_LIMITS.maxPieces}`);
+      }
+    }
     if (isLauncherScene(scene) && !leavesForLaunch(scene)) {
       warn(sp, 'A scenario launcher scene should end by opening the launched scenario: an Open URL action to {{QL_SCENARIO_LAUNCH_URL}} (or a travel action). Without one, students sent here stay here');
     }

@@ -10,7 +10,7 @@ import { MovesFeature } from '../src/features/MovesFeature';
 import { BagFeature } from '../src/features/BagFeature';
 import { RewardsFeature } from '../src/features/RewardsFeature';
 import type {
-  BagSlot, BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BenchPanelView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, LaunchChoice, LaunchView, OverlayHandle, PlayerRow, TeamRow,
+  BagSlot, BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BenchPanelView, BuildPanelActions, BuildPanelHandle, BuildPanelSpec, BuildPanelView, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, LaunchChoice, LaunchView, OverlayHandle, PlayerRow, TeamRow,
   ProfileView, ShopView, SpeakOptions, UiPort,
 } from '../src/ui/UiPort';
 import { FakeWorld, settle } from './fakePhaser';
@@ -40,7 +40,7 @@ export class HeadlessUi implements UiPort {
   constructor(private world: FakeWorld) {}
 
   get capturesInput() {
-    return this.boxes.length > 0 || this.asks.length > 0;
+    return this.boxes.length > 0 || this.asks.length > 0 || !!this.builder?.open;
   }
 
   private overlay(list: string[], value: string, duration?: number): OverlayHandle {
@@ -219,6 +219,15 @@ export class HeadlessUi implements UiPort {
     const panel = (this.bench = { spec, on, view: null as BenchPanelView | null, open: true });
     return { update: (view) => (panel.view = view), close: () => (panel.open = false) };
   }
+  /** The Build button's label while it is shown, and what pressing it does. */
+  build: { label: string; open: () => void } | null = null;
+  buildButton(label: string | null, onOpen: () => void) { this.build = label ? { label, open: onOpen } : null; }
+  /** The build palette while it is open: what it offers, what it shows, and its actions. */
+  builder: { spec: BuildPanelSpec; on: BuildPanelActions; view: BuildPanelView | null; open: boolean } | null = null;
+  buildPanel(spec: BuildPanelSpec, on: BuildPanelActions): BuildPanelHandle {
+    const panel = (this.builder = { spec, on, view: null as BuildPanelView | null, open: true });
+    return { update: (view) => (panel.view = view), close: () => (panel.open = false) };
+  }
   status(message: string | null) { this.statusText = message; }
 }
 
@@ -235,7 +244,8 @@ export class Game {
   readonly scene = new PlayScene();
   private objectives = new ObjectivesFeature();
 
-  constructor(readonly scenario: Scenario = loadScenario(), user: User = { id: 'u1', name: 'Tester', role: 'student' }) {
+  /** `setup`: change the context before the first scene starts (what main.ts sets up at start-up). */
+  constructor(readonly scenario: Scenario = loadScenario(), user: User = { id: 'u1', name: 'Tester', role: 'student' }, setup?: (ctx: GameContext) => void) {
     const connection = new OfflineConnection(scenario, user, scenario.avatars?.[0]?.id, () => this.world.now);
     this.ctx = new GameContext(scenario, user, connection, this.ui);
     // Like a preview: an account to try awards and the marketplace with, kept only in memory.
@@ -243,6 +253,7 @@ export class Game {
     new RewardsFeature().start(this.ctx);
     new MovesFeature().start(this.ctx);
     new BagFeature().start(this.ctx);
+    setup?.(this.ctx);
     this.world.registry.set('ctx', this.ctx);
     this.world.mount(this.scene as never);
     this.ctx.vars.onChange(() => this.objectives.refresh(this.ctx));

@@ -11,6 +11,8 @@ use App\Qbl\Billing\Entitlements;
 use App\Qbl\Billing\Plans;
 use App\Qbl\Billing\Stripe;
 use App\Qbl\Billing\Subscriptions;
+use App\Qbl\Builds\BuildApi;
+use App\Qbl\Builds\BuildStore;
 use App\Qbl\Characters\WalkMaker;
 use App\Qbl\ClassApi;
 use App\Qbl\ClassStore;
@@ -20,6 +22,7 @@ use App\Qbl\District\GoogleClassroomClient;
 use App\Qbl\District\Integrations;
 use App\Qbl\District\RosterSync;
 use App\Qbl\District\Sso;
+use App\Qbl\ExportLinks;
 use App\Qbl\Generation\GenerationFactory;
 use App\Qbl\Generation\Http\CurlHttpClient;
 use App\Qbl\Generation\Http\HttpClient;
@@ -27,7 +30,6 @@ use App\Qbl\Library\AssetLibrary;
 use App\Qbl\Library\ContentAdmins;
 use App\Qbl\Library\LibraryApi;
 use App\Qbl\ProgressStore;
-use App\Qbl\ExportLinks;
 use App\Qbl\ScenarioStore;
 use App\Qbl\Speech\SpeechFactory;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -72,6 +74,9 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(ClassStore::class, fn ($app) => new ClassStore(DB::connection()->getPdo(), $app->make(Entitlements::class)));
         $this->app->singleton(ClassApi::class, fn ($app) => new ClassApi(DB::connection()->getPdo(), config('qbl.ranks'), $app->make(Entitlements::class)));
+        // Student building (App\Qbl\Builds): what students add to scenes, beside their saves.
+        $this->app->singleton(BuildStore::class, fn ($app) => new BuildStore(DB::connection()->getPdo(), '/api/builds/files', $app->make(ClassStore::class)));
+        $this->app->singleton(BuildApi::class, fn ($app) => new BuildApi($app->make(BuildStore::class)));
         $this->app->singleton(ActivityStore::class, fn () => new ActivityStore(DB::connection()->getPdo()));
         $this->app->singleton(ProgressStore::class, fn () => new ProgressStore(DB::connection()->getPdo(), config('qbl.ranks')));
         // The public API for schools and districts (/api/v1). Plain PHP as well.

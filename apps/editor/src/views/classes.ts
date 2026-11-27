@@ -2,6 +2,7 @@ import { ApiError, type Api, type Assignment, type MissionSummary, type Student,
 import { playUrl } from '../config';
 import { clear, confirmDelete, h, help, toast } from '../dom';
 import { reportView } from './reports';
+import { studentBuildsCard } from './studentBuilds';
 
 /** A due date as the API keeps it (UTC, "2026-12-01 15:00:00") to and from a date-and-time field's local value. */
 export function toLocalInput(utc: string | null): string {
@@ -25,6 +26,8 @@ export function classesView(api: Api): HTMLElement {
   let students: Student[] = [];
   let scenarios: MissionSummary[] = [];
   let assignments: Assignment[] = [];
+  // Students' builds load on their own, and stay as they are while the rest of the page is redrawn.
+  const builds = studentBuildsCard(api);
   const body = h('div', null, h('p', { class: 'muted' }, 'Loading…'));
 
   const load = async () => {
@@ -247,7 +250,7 @@ export function classesView(api: Api): HTMLElement {
     clear(
       body,
       h('div', { class: 'classes' },
-        h('div', null, studentsCard()),
+        h('div', null, studentsCard(), builds),
         h('div', null,
           h('div', { class: 'page-head' }, h('div', null, h('h2', null, `Assigned missions (${assignments.length})`),
             !scenarios.length ? h('p', { class: 'muted' }, 'There is nothing to assign yet: publish a scenario first.')

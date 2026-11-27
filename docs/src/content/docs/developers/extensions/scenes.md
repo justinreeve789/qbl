@@ -171,3 +171,32 @@ A hotspot whose `position_x` or `position_y` is null covers that entire axis, so
 This fires when an avatar comes within 35 pixels of x = 2250, at any height. Use `position_y` with a null `position_x` for a top or bottom edge. Because it is an ordinary hotspot it can have conditions (a locked door), and the jump can be preceded by other actions (a sound, a line of text). The scene's end events run before the jump, as always.
 
 The spawn point a jump arrives at must not be inside a walk-in hotspot that jumps, or arriving players would leave again at once. The validator rejects this.
+
+## Student building
+
+`building` lets students add things of their own on top of a scene, from a Build button in the game. What they build is kept by the API beside their save (see [Student building](/docs/developers/api/#student-building)), never in the scenario, and is drawn as a layer of its own: events cannot see it and it never blocks walking. The editor keeps it in the scene's `params`.
+
+```json
+"building": {
+  "enabled": true,
+  "tools": ["place", "label", "picture"],
+  "pieces": [{ "media_id": 41 }, { "media_id": 42 }],
+  "max_pieces": 12,
+  "approve": true,
+  "share": "instance",
+  "prompt": "Plant a garden that bees will visit."
+}
+```
+
+Field | Type | Default | Notes
+----- | ---- | ------- | -----
+enabled | boolean | false | Off: nobody builds, and nothing built is shown.
+tools | string[] | `["place", "label"]` | `place`: the pictures in `pieces`. `label`: words, up to 60 letters, in one of eight colours. `picture`: pictures the student uploads.
+pieces | `{ media_id }[]` | | Images students may place. Loaded with the scene.
+max_pieces | integer | 12 | How many things one student may add here, 1 to 50.
+approve | boolean | true | A build waits for the teacher before others see it.
+share | string | `instance` | `instance`: approved builds are shown to everyone in the same game. `own`: only to their maker and their teacher.
+prompt | string | | What to make, shown when the palette opens. Up to 300 letters.
+
+Students cannot build in a `story` scene. A build is a list of pieces, each with an `id`, a `kind` (`sticker`, `label` or `picture`), its centre `x` and `y` in scene pixels, and optional `scale` (0.2 to 4) and `angle` (degrees, -180 to 180); a sticker names its `media_id`, a picture its `upload_id`, and a label its `text` and `color`. A sticker is drawn at its picture's size times `scale` and the scene's `zoom`; a picture is fitted into a 360-pixel square times `scale`; a label's letters are 30 pixels high times `scale` (`BUILD_LOOK`).
+

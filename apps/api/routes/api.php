@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApiV1Controller;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\BuildController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\EditorController;
@@ -43,6 +44,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Missions, avatars and the teacher's classes. One controller hands these to App\Qbl\ClassApi, which lists the routes.
 Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|me/avatar|me/progress/reset|players/[0-9]+/profile|teach(/.*)?')->middleware('auth:sanctum');
+
+// Student building: what students add to scenes that allow it (App\Qbl\Builds\BuildApi lists the routes).
+// Their uploaded pictures are served by an unguessable key, without a token, so the game can load them.
+Route::get('/builds/files/{key}', [BuildController::class, 'file'])->where('key', '[a-f0-9]{24}')->middleware('throttle:600,1');
+Route::any('/builds/{path}', BuildController::class)->where('path', '.+')->middleware(['auth:sanctum', 'throttle:120,1']);
 
 // Auth is optional here: scenarios with require_login=false can be played without a token.
 Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');

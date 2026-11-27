@@ -7,7 +7,8 @@ import { narratable, Narrator, type SpeakOptions } from './Narrator';
 import { Sidebar } from './Sidebar';
 import { infoboxView, type BoxView } from './infobox/view';
 import { benchPanel } from './benchPanel';
-import type { BenchPanelActions, BenchPanelHandle, BenchPanelSpec } from './UiPort';
+import { buildPanel } from './buildPanel';
+import type { BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BuildPanelActions, BuildPanelHandle, BuildPanelSpec } from './UiPort';
 import type { AccountActions, AccountView, BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, LaunchChoice, LaunchView, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -1048,6 +1049,37 @@ export class Ui implements UiPort {
 
   benchPanel(spec: BenchPanelSpec, on: BenchPanelActions): BenchPanelHandle {
     return benchPanel(this.root, spec, on);
+  }
+
+  private buildBtn: HTMLButtonElement | null = null;
+
+  buildButton(label: string | null, onOpen: () => void) {
+    if (!label) {
+      this.buildBtn?.remove();
+      this.buildBtn = null;
+      return;
+    }
+    if (!this.buildBtn) {
+      this.buildBtn = el('button', 'qbl-build-open');
+      this.buildBtn.type = 'button';
+      this.buildBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+      this.root.append(this.buildBtn);
+    }
+    this.buildBtn.replaceChildren(emojiIcon('🛠️', { size: 22 }), el('span', '', label));
+    this.buildBtn.onclick = (e) => {
+      e.stopPropagation();
+      onOpen();
+    };
+  }
+
+  buildPanel(spec: BuildPanelSpec, on: BuildPanelActions): BuildPanelHandle {
+    // While the palette is open the game ignores walking and hotspots (capturesInput).
+    this.modals++;
+    let open = true;
+    return buildPanel(this.root, spec, on, () => {
+      if (open) this.modals--;
+      open = false;
+    });
   }
 
   toast(message: string, ms = 3000) {

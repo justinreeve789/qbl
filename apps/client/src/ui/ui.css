@@ -713,3 +713,56 @@ img.qbl-face-frame { aspect-ratio: auto; height: auto; object-fit: contain; }
   .qbl-bench-readings { font-size: 0.85rem; }
   .qbl-bench-bar { bottom: calc(var(--qbl-dock) + 12px + var(--safe-b)); }
 }
+
+/* ------------------------------------------------------------------ student building (BuildSystem, buildPanel.ts) */
+.qbl-build-open { position: absolute; left: calc(var(--qbl-edge) + var(--safe-l)); bottom: calc(76px + var(--safe-b)); display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 999px; background: #e8741c; color: #fff; font: inherit; font-weight: 700; box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.55); cursor: pointer; pointer-events: auto; z-index: 12; animation: qbl-build-in 0.25s ease; }
+.qbl-build-open:hover { background: #f08a33; }
+.qbl-build-open:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+@keyframes qbl-build-in { from { opacity: 0; transform: translateY(8px); } }
+.qbl-build { position: absolute; top: calc(var(--qbl-edge) + var(--safe-t) + 72px); left: calc(var(--qbl-edge) + var(--safe-l)); bottom: calc(16px + var(--safe-b)); width: min(320px, 42vw); display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 0; overflow: hidden auto; border-radius: 16px; background: rgba(12, 23, 78, 0.92); border: 2px solid rgba(255, 255, 255, 0.25); box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.7); pointer-events: auto; z-index: 13; animation: qbl-build-in 0.2s ease; }
+.qbl-build h2, .qbl-build h3 { margin: 0; }
+.qbl-build-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qbl-build-title { display: flex; align-items: center; gap: 8px; font-size: 1.15rem; }
+.qbl-build-count { font-size: 0.85rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); font-variant-numeric: tabular-nums; }
+.qbl-build-prompt { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(253, 224, 71, 0.16); border-left: 3px solid #fde047; font-weight: 600; line-height: 1.35; }
+.qbl-build-note { margin: 0; font-size: 0.85rem; line-height: 1.35; color: rgba(255, 255, 255, 0.8); }
+.qbl-build-tip { margin: 0; font-size: 0.8rem; color: rgba(255, 255, 255, 0.7); }
+.qbl-build-tip[hidden], .qbl-build-picked[hidden], .qbl-build-picked > div[hidden] { display: none; }
+.qbl-build-add { display: grid; gap: 12px; }
+.qbl-build-group { display: grid; gap: 6px; }
+.qbl-build-group h3, .qbl-build-picked h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.72); }
+.qbl-build-pieces { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.qbl-build-piece { aspect-ratio: 1; padding: 6px; border: 2px solid transparent; border-radius: 10px; background: rgba(255, 255, 255, 0.1) repeating-conic-gradient(rgba(255, 255, 255, 0.06) 0 25%, transparent 0 50%) 0 0 / 14px 14px; cursor: pointer; }
+.qbl-build-piece:hover, .qbl-build-piece:focus-visible { border-color: #fde047; outline: none; }
+.qbl-build-piece img { width: 100%; height: 100%; object-fit: contain; }
+.qbl-build-words { display: flex; gap: 6px; }
+.qbl-build-words input { flex: 1; min-width: 0; min-height: 40px; padding: 6px 10px; border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px; background: rgba(0, 0, 0, 0.25); color: #fff; font: inherit; }
+.qbl-build-words input:focus { outline: none; border-color: #fde047; }
+.qbl-build-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.qbl-build-swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); cursor: pointer; }
+.qbl-build-swatch[aria-checked='true'] { outline: 3px solid #fde047; outline-offset: 2px; }
+.qbl-build-picked { display: grid; gap: 8px; padding: 10px; border-radius: 12px; border: 2px solid #fde047; background: rgba(253, 224, 71, 0.08); }
+.qbl-build-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.qbl-build-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; min-width: 40px; padding: 6px 12px; border: 2px solid transparent; border-radius: 10px; background: rgba(255, 255, 255, 0.12); color: inherit; font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.qbl-build-button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); }
+.qbl-build-button:disabled { opacity: 0.45; cursor: default; }
+.qbl-build-button.primary { background: #2fa85a; }
+.qbl-build-button.danger, .qbl-build-button.armed { background: rgba(248, 113, 113, 0.3); }
+.qbl-build-button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.qbl-build > *, .qbl-build-picked > *, .qbl-build-group > * { min-width: 0; }
+/* Undo and Done stay in reach however long the palette is. */
+.qbl-build-foot { position: sticky; bottom: 0; margin: auto -14px 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid rgba(255, 255, 255, 0.18); background: rgb(12, 23, 78); }
+.qbl-build-chooser { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5, 10, 30, 0.6); pointer-events: auto; z-index: 30; }
+.qbl-build-chooser-card { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: #0c174e; border: 2px solid rgba(255, 255, 255, 0.25); }
+.qbl-build-pictures { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.qbl-build-picture { position: relative; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, 0.08) repeating-conic-gradient(rgba(255, 255, 255, 0.06) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+.qbl-build-picture-pick { width: 100%; height: 100%; padding: 6px; border: 2px solid transparent; border-radius: 12px; background: none; cursor: pointer; }
+.qbl-build-picture-pick:hover, .qbl-build-picture-pick:focus-visible { border-color: #fde047; outline: none; }
+.qbl-build-picture-pick img { width: 100%; height: 100%; object-fit: contain; }
+.qbl-build-picture-remove { position: absolute; top: 4px; right: 4px; min-height: 32px; min-width: 32px; padding: 2px; background: rgba(0, 0, 0, 0.55); }
+.qbl-build-upload { display: grid; place-items: center; align-content: center; gap: 6px; border: 2px dashed rgba(255, 255, 255, 0.4); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.qbl-build-upload:hover, .qbl-build-upload:focus-visible { border-color: #fde047; outline: none; }
+@media (max-width: 900px), (orientation: portrait) {
+  .qbl-build { top: auto; left: calc(var(--qbl-edge) + var(--safe-l)); right: calc(var(--qbl-edge) + var(--safe-r)); bottom: calc(var(--qbl-dock) + 12px + var(--safe-b)); width: auto; max-height: 46vh; }
+  .qbl-build-open { bottom: calc(var(--qbl-dock) + 76px + var(--safe-b)); }
+}
