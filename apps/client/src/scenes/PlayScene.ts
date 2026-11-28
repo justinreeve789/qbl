@@ -218,9 +218,9 @@ export class PlayScene extends Phaser.Scene {
     this.restarting = true;
     const target = this.ctx.index.scene(data.sceneId);
     if (target && (queueScene(this, this.ctx, target) > 0 || this.load.isLoading())) {
-      this.ctx.ui.status('Loading…');
+      this.ctx.ui.loading(true);
       this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-        this.ctx.ui.status(null);
+        this.ctx.ui.loading(false);
         this.scene.restart(data);
       });
       if (!this.load.isLoading()) this.load.start();

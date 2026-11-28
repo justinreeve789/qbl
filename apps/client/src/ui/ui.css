@@ -177,6 +177,9 @@ html, body { height: 100%; margin: 0; background: var(--qbl-bg); color: var(--qb
 .qbl-toast-close { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; opacity: 0.7; }
 .qbl-banner { position: absolute; top: 0; left: 0; right: 0; padding: 10px; text-align: center; background: #8a2b0b; font-weight: 600; }
 .qbl-banner[hidden] { display: none; }
+.qbl-spinner { position: absolute; top: calc(12px + var(--safe-t, 0px)); left: calc(12px + var(--safe-l, 0px)); width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.25); border-top-color: rgba(255, 255, 255, 0.85); animation: qbl-spin 0.8s linear infinite; pointer-events: none; }
+.qbl-spinner[hidden] { display: none; }
+@keyframes qbl-spin { to { transform: rotate(360deg); } }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
