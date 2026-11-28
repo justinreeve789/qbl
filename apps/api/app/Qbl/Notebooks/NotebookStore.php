@@ -3,6 +3,7 @@
 namespace App\Qbl\Notebooks;
 
 use App\Qbl\ClassStore;
+use App\Qbl\Roles;
 use App\Qbl\StoreError;
 use PDO;
 
@@ -16,8 +17,10 @@ use PDO;
  * student (Api\Roster), and a records request lists it (Api\Roster::export). The table's SQLite
  * form is in ClassStore::sqliteSchema, which owns resetting, so that every store's tests have it.
  *
- * Only the player reads and writes their notebook. Guests may keep one too: it is theirs alone,
- * and goes when their guest account does.
+ * Only the player writes their notebook. In an assigned mission's game their teacher (the
+ * assignment's, or an admin) may read it too, from the Classes page (forAssignment,
+ * studentNotebook), and the game tells the student so; notes kept anywhere else are the player's
+ * alone. Guests may keep one too: it is theirs, and goes when their guest account does.
  *
  * `clean` is the same as cleanNotebook in notebook.ts: the two must agree (tests/notebooks.php
  * checks this one against the shared package's fixtures).
@@ -92,6 +95,75 @@ class NotebookStore
         }
 
         return ['notebook' => $clean, 'updated_at' => self::iso($now)];
+    }
+
+    // ------------------------------------------------------------------ teachers
+
+    /**
+     * The notebooks of an assignment's students, for its teacher (or an admin) to read: each
+     * student, with their team, how much they have written, and when. Only the notebooks they keep
+     * in that assignment's game (their team's, or the assignment's own); their notes in other
+     * games are not their teacher's to read. The pages themselves come from studentNotebook().
+     *
+     * @return array{assignment: array{id: int, title: string}, students: array}
+     */
+    public function forAssignment(array $user, int $assignmentId): array
+    {
+        $on = $this->teaching($user, $assignmentId);
+        $rows = [];
+        if ($on['groups']) {
+            $marks = implode(',', array_fill(0, count($on['groups']), '?'));
+            foreach ($this->all("SELECT user_id, group_key, pages, updated_at FROM notebooks WHERE scenario_id = ? AND group_key IN ($marks)", [$on['scenario_id'], ...$on['groups']]) as $row) {
+                $rows[$row['user_id'].'|'.$row['group_key']] = $row;
+            }
+        }
+        $students = [];
+        foreach ($on['students'] as $s) {
+            $row = $rows[$s['id'].'|'.$s['group']] ?? null;
+            $pages = $row ? (json_decode((string) $row['pages'], true) ?: []) : [];
+            $students[] = [
+                'id' => (int) $s['id'], 'name' => (string) $s['name'], 'team' => $s['team'],
+                'pages' => count($pages),
+                'cards' => array_sum(array_map(fn ($p) => count($p['cards'] ?? []), $pages)),
+                'updated_at' => $row ? self::iso((string) $row['updated_at']) : null,
+            ];
+        }
+
+        return ['assignment' => ['id' => $assignmentId, 'title' => (string) ($on['assignment']['scenario']['title'] ?? '')], 'students' => $students];
+    }
+
+    /**
+     * One student's notebook in an assignment's game, for its teacher (or an admin) to read. Read
+     * only: a teacher does not change what a student wrote.
+     *
+     * @return array{student: array{id: int, name: string, team: ?string}, notebook: array, updated_at: ?string}
+     */
+    public function studentNotebook(array $user, int $assignmentId, int $studentId): array
+    {
+        $on = $this->teaching($user, $assignmentId);
+        foreach ($on['students'] as $s) {
+            if ((int) $s['id'] === $studentId) {
+                $row = $this->one('SELECT pages, updated_at FROM notebooks WHERE scenario_id = ? AND user_id = ? AND group_key = ?', [$on['scenario_id'], $studentId, $s['group']]);
+
+                return [
+                    'student' => ['id' => $studentId, 'name' => (string) $s['name'], 'team' => $s['team']],
+                    'notebook' => self::clean(['pages' => json_decode((string) ($row['pages'] ?? '[]'), true) ?: []]),
+                    'updated_at' => $row ? self::iso((string) $row['updated_at']) : null,
+                ];
+            }
+        }
+        throw new StoreError(404, 'That student is not in this assignment.');
+    }
+
+    /** An assignment this teacher (or admin) looks after, with its students and their instances (ClassStore::reportOn). */
+    private function teaching(array $user, int $assignmentId): array
+    {
+        $role = (string) ($user['role'] ?? '');
+        if (! Roles::isStaff($role)) {
+            throw new StoreError(403, 'This is for teachers.');
+        }
+
+        return $this->classes->reportOn((int) $user['id'], $assignmentId, $role === 'admin');
     }
 
     // ------------------------------------------------------------------ cleaning
@@ -234,6 +306,14 @@ class NotebookStore
         $row = $st->fetch(PDO::FETCH_ASSOC);
 
         return $row ?: null;
+    }
+
+    private function all(string $sql, array $args): array
+    {
+        $st = $this->pdo->prepare($sql);
+        $st->execute($args);
+
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 
     private function run(string $sql, array $args): void

@@ -1,6 +1,7 @@
 import { ApiError, type Api, type Assignment, type MissionSummary, type Student, type Team } from '../api';
 import { playUrl } from '../config';
 import { clear, confirmDelete, h, help, toast } from '../dom';
+import { notebooksView } from './notebooks';
 import { reportView } from './reports';
 import { studentBuildsCard } from './studentBuilds';
 
@@ -223,6 +224,7 @@ export function classesView(api: Api): HTMLElement {
           : h('ul', { class: 'people' }, h('li', null, h('span', null, `${a.students.length} ${a.students.length === 1 ? 'student' : 'students'}, playing together: `, a.students.map((s) => s.name).join(', ') || 'nobody yet'), link(a.group))),
         h('div', { class: 'row-actions' },
           h('button', { type: 'button', class: 'primary', 'data-action': 'report', onclick: () => clear(body, reportView(api, a, draw)) }, '📊 Report'),
+          h('button', { type: 'button', 'data-action': 'notebooks', onclick: () => clear(body, notebooksView(api, a, draw)) }, '📒 Notebooks'),
           h('button', { type: 'button', onclick: () => clear(card, h('h2', null, a.scenario?.title ?? 'Assignment'), assignmentForm(a, show)) }, 'Change'),
           h('button', {
             type: 'button', class: 'danger',

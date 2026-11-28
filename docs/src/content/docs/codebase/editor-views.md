@@ -130,7 +130,7 @@ Publish | `pages.ts` `publishPage`, `checkAndPublish`; `issues.ts` | The code, t
 Page | File | API
 ---- | ---- | ---
 Sign-in, scenario list, new scenario | `home.ts` (`loginView`, `scenarioListView`) | `/api/auth/*`, `/api/editor/scenarios`
-Classes: students, assignments, teams, reports | `classes.ts`, `reports.ts` (`reportView`, `reportCsv`), `studentBuilds.ts` | `/api/teach/*`, `/api/builds/teach`
+Classes: students, assignments, teams, reports, notebooks | `classes.ts`, `reports.ts` (`reportView`, `reportCsv`), `studentBuilds.ts`, `notebooks.ts` (`notebooksView`, `notebookReader`: students' notebooks, read only) | `/api/teach/*`, `/api/builds/teach`, `/api/notebooks/teach/*`
 The AI generator | `generate.ts`, `sceneGenerate.ts`, `../generations.ts` (the tracker that follows runs from every page) | `/api/editor/generations`
 Plan and credits | `plan.ts` | `/api/billing`
 The asset library's admin screen | `libraryAdmin.ts` | `/api/editor/library`

@@ -782,7 +782,7 @@ export class Ui implements UiPort {
   private notebookPage: string | null = null;
 
   /** The notebook's button on the side rail: it opens the notebook over the game, which then ignores walking. */
-  notebook(book: NotebookModel | null, o: { title: string; owner: string } = { title: '', owner: '' }) {
+  notebook(book: NotebookModel | null, o: { title: string; owner: string; readBy?: string } = { title: '', owner: '' }) {
     if (!book) {
       void this.notebookView?.close();
       if (this.notebookButton) this.sidebar.removeTool(this.notebookButton);
@@ -813,6 +813,7 @@ export class Ui implements UiPort {
       this.notebookView = openNotebook(this.root, book, {
         title: o.title,
         owner: o.owner,
+        readBy: o.readBy,
         pageId: this.notebookPage,
         from: button,
         onClosed: (pageId) => {

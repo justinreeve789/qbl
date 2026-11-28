@@ -163,10 +163,22 @@ test('the notebook button is on the rail when the game has a notebook, and goes 
   const book = new NotebookModel(memoryNotebook(), { delayMs: 1 });
   const ctx = { notebook: book, ui, scenario: { title: 'Pond Life' }, user: { name: 'Brave Otter' } };
   const stop = new NotebookFeature().start(ctx as never);
-  assert.deepEqual(shown, [{ title: 'Pond Life', owner: 'Brave Otter' }], 'the cover says whose it is and for which mission');
+  assert.deepEqual(shown, [{ title: 'Pond Life', owner: 'Brave Otter', readBy: undefined }], 'the cover says whose it is and for which mission');
   stop();
   assert.equal(shown.at(-1), null);
   shown.length = 0;
   new NotebookFeature().start({ ...ctx, notebook: null } as never)();
   assert.deepEqual(shown, [], 'a scenario that turns the notebook off has no button');
+});
+
+test('students are told when their teacher can read their notebook: in an assigned mission, not a public game', async () => {
+  const { notebookReader } = await import('../src/features/NotebookFeature');
+  const student = { role: 'student' } as never;
+  const at = (instance: unknown, user = student) => notebookReader({ scenario: { instance }, user } as never);
+  assert.equal(at({ group: 'a12', party: 'a12', teacher_name: 'Ms Tan' }), 'Ms Tan', "an assignment's game names its teacher");
+  assert.equal(at({ group: 't7', party: 'a12', team_name: 'Otters', teacher_name: 'Ms Tan' }), 'Ms Tan', "so does a team's");
+  assert.equal(at({ group: 'a12', party: 'a12' }), 'Your teacher', 'a teacher without a name is still said');
+  assert.equal(at({ group: 'public', party: 'public' }), undefined, 'notes in a public game are the player\'s alone');
+  assert.equal(at(null), undefined, 'and so are those in a game with no instance (a preview, offline)');
+  assert.equal(at({ group: 'a12', party: 'a12', teacher_name: 'Ms Tan' }, { role: 'teacher' } as never), undefined, 'a teacher playing is not told');
 });

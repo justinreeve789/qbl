@@ -177,16 +177,18 @@ Resetting a student's game in an instance deletes their builds and uploads there
 
 ### Notebooks
 
-Each player's own notes on a scenario ([The student notebook](/docs/editor/student-notebook/)): one notebook per player per instance, kept whole. The format is `Notebook` in `packages/shared/src/notebook.ts`; `cleanNotebook` there and `App\Qbl\Notebooks\NotebookStore::clean` apply the same limits and must agree (both are tested against `packages/shared/test/fixtures/notebook-*.json`). Anyone signed in, guests too; only the player reads or writes theirs. `group` names the instance, as for `/play`; `public` if absent.
+Each player's own notes on a scenario ([The student notebook](/docs/editor/student-notebook/)): one notebook per player per instance, kept whole. The format is `Notebook` in `packages/shared/src/notebook.ts`; `cleanNotebook` there and `App\Qbl\Notebooks\NotebookStore::clean` apply the same limits and must agree (both are tested against `packages/shared/test/fixtures/notebook-*.json`). Anyone signed in, guests too; only the player writes theirs. In an assigned mission's instance (`a{id}` or `t{id}`) the assignment's teacher, or an admin, may also read it, through the two `teach` routes. `group` names the instance, as for `/play`; `public` if absent.
 
 Endpoint | Body | Returns
 -------- | ---- | -------
 `GET /api/notebooks/{code}?group=` | | `{ "notebook": { "pages": NotebookPage[] }, "updated_at" }`: the player's notebook there, cleaned; `{ "pages": [] }` and `null` when they have none. 404 for an instance the player may not join
 `PUT /api/notebooks/{code}?group=` | `{ "notebook": { "pages": NotebookPage[] } }` | `{ "notebook", "updated_at" }`: what was kept, after cleaning (anything over a limit, or not in the format, is dropped or put right, never refused). A notebook with no pages is deleted. 422 when `notebook` is missing
+`GET /api/notebooks/teach/{assignment}` | | Teachers: `{ "assignment": { "id", "title" }, "students": [{ "id", "name", "team", "pages", "cards", "updated_at" }] }`: each of the assignment's students, with how much they wrote in their notebook in that assignment's instance (their team's, or the assignment's). 403 for students and guests, 404 for an assignment that is not the teacher's
+`GET /api/notebooks/teach/{assignment}/{student}` | | Teachers: `{ "student": { "id", "name", "team" }, "notebook": { "pages" }, "updated_at" }`: that student's notebook there, read only (other methods: 405). 404 for a student not in the assignment
 
 A page is `{ id, parent, title, icon, color, text, cards, created_at, updated_at }`: `parent` is the id of the page it is under (null for a page of its own; three levels at most), and the order of `pages` is the order of the contents. A card is `{ id, kind, text, color, created_at, updated_at }` with `back` for a `flash` card and `done` for a `check` card. Times are ISO 8601 and written by the game; a time more than a day ahead is replaced with the time it was kept.
 
-Resetting a student's game in an instance deletes their notebook there; deleting a student deletes all of theirs, and their export (`/api/v1/students/{id}/export`) lists them under `notebooks`. With the file backend, the game server stands in for these two routes and keeps each notebook as a JSON file beside the saves.
+Resetting a student's game in an instance deletes their notebook there; deleting a student deletes all of theirs, and their export (`/api/v1/students/{id}/export`) lists them under `notebooks`. With the file backend, the game server stands in for the two player routes (not the teachers' ones) and keeps each notebook as a JSON file beside the saves.
 
 ### Stars, XP and the marketplace
 

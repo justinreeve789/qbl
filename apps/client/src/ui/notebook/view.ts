@@ -46,6 +46,11 @@ export interface NotebookViewOptions {
   title: string;
   /** The player's name, on the cover's label. */
   owner: string;
+  /**
+   * Who else can read it: the teacher of the assigned mission this game is (their name, or
+   * "Your teacher"). Said on the cover and the contents, so students know. Undefined: nobody.
+   */
+  readBy?: string;
   /** The page that was open last time, to open again. */
   pageId: string | null;
   /** Where the notebook comes from and goes back to (the rail button): it grows out of it. */
@@ -105,6 +110,8 @@ export function openNotebook(parent: HTMLElement, book: NotebookModel, o: Notebo
   const front = el('div', 'qbl-nb-cover-front');
   const label = el('div', 'qbl-nb-label');
   label.append(el('span', 'qbl-nb-label-kind', 'Notebook'), el('strong', 'qbl-nb-label-name', o.owner), el('span', 'qbl-nb-label-title', o.title));
+  const readBy = () => el('p', 'qbl-nb-read-by', `👀 ${o.readBy} can read this notebook.`);
+  if (o.readBy) label.append(readBy());
   front.append(emojiIcon('✏️', { size: 44 }), label, el('div', 'qbl-nb-strap'));
   const inside = el('div', 'qbl-nb-cover-back');
   cover.append(front, inside);
@@ -262,6 +269,7 @@ export function openNotebook(parent: HTMLElement, book: NotebookModel, o: Notebo
     left.replaceChildren();
     const head = el('header', 'qbl-nb-left-head');
     head.append(el('h2', 'qbl-nb-hand', 'My notebook'), el('p', 'qbl-nb-scenario', o.title));
+    if (o.readBy) head.append(readBy());
     left.append(head);
     if (book.state === 'unloaded') return;
     const list = el('ol', 'qbl-nb-list');

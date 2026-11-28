@@ -1,4 +1,4 @@
-import type { BuildPiece, BuildStatus, BuildVoice, Scenario } from '@qbl/shared';
+import type { BuildPiece, BuildStatus, BuildVoice, Notebook, Scenario } from '@qbl/shared';
 
 /** A row of one of the scenario tables, as the editor API returns it. */
 export interface Row {
@@ -417,6 +417,24 @@ export interface OrgOverview {
 }
 
 /** A student's build in one scene, as their teacher reviews it (App\Qbl\Builds\BuildStore::queue). */
+/** A student in an assigned mission, and how much they wrote in their notebook there (GET /notebooks/teach/{assignment}). */
+export interface NotebookSummary {
+  id: number;
+  name: string;
+  team: string | null;
+  pages: number;
+  cards: number;
+  /** When they last wrote in it; null: they have not. */
+  updated_at: string | null;
+}
+
+/** One student's notebook in an assigned mission, for their teacher to read. */
+export interface StudentNotebook {
+  student: { id: number; name: string; team: string | null };
+  notebook: Notebook;
+  updated_at: string | null;
+}
+
 export interface StudentBuild {
   id: number;
   scene_id: number;
@@ -608,6 +626,9 @@ export class Api {
   activity = async (id: number, studentId?: number) => (await this.call<{ activity: ActivityLine[] }>('GET', `/teach/assignments/${id}/activity${studentId != null ? `/${studentId}` : ''}`)).activity;
   /** Start a student's game in an assignment again: their save there is deleted. */
   resetProgress = async (id: number, studentId: number) => (await this.call<{ reset: ProgressReset }>('POST', `/teach/assignments/${id}/students/${studentId}/reset`)).reset;
+  /** Students' notebooks in an assignment's game: read only, for its teacher. */
+  notebooks = async (assignmentId: number) => (await this.call<{ students: NotebookSummary[] }>('GET', `/notebooks/teach/${assignmentId}`)).students;
+  studentNotebook = (assignmentId: number, studentId: number) => this.call<StudentNotebook>('GET', `/notebooks/teach/${assignmentId}/${studentId}`);
   messageLog = async (id: number) => (await this.call<{ messages: MessageLine[] }>('GET', `/teach/assignments/${id}/messages`)).messages;
 
   // Plans, billing and credits (App\Qbl\Billing\BillingApi).

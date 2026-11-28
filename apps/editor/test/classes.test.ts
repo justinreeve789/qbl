@@ -138,6 +138,45 @@ test("from the report, a teacher resets a student's progress", async () => {
   await page.waitForSelector('[data-assignment]');
 });
 
+test("a teacher reads their students' notebooks, but cannot change them", async () => {
+  // Student.ann writes in her notebook in her team's game, with a subpage and cards.
+  const group = (await missions('student.ann@example.test'))[0]!.group;
+  const at = new Date().toISOString();
+  const page1 = { id: 'p1', parent: null, title: 'Planets', icon: '🚀', color: 'sky', text: 'Mars is red\nJupiter is big', created_at: at, updated_at: at,
+    cards: [{ id: 'c1', kind: 'flash', text: 'Closest to the sun?', back: 'Mercury', color: 'sun', created_at: at, updated_at: at },
+      { id: 'c2', kind: 'check', text: 'Find the moon', done: true, color: 'mint', created_at: at, updated_at: at }] };
+  const page2 = { ...page1, id: 'p2', parent: 'p1', title: 'Moons', text: 'Europa has ice', cards: [] };
+  const put = await fetch(`${site.url}/api/notebooks/starshipexplorer?group=${group}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokens['student.ann@example.test']}` }, body: JSON.stringify({ notebook: { pages: [page1, page2] } }),
+  });
+  assert.equal(put.status, 200);
+
+  const assignment = await page.getAttribute('[data-assignment]', 'data-assignment');
+  await page.click('[data-assignment] [data-action=notebooks]');
+  await page.waitForSelector('[data-card=notebooks] .nbr-students [data-student]');
+  const list = await page.innerText('[data-card=notebooks] .nbr-students');
+  assert.match(list, /Student.ann\s+Team Comets · 2 pages · 2 cards · just now/);
+  assert.match(list, /Student.ben\s+Team Quasars · Nothing written yet/);
+  // The first student who wrote something opens at once.
+  await page.waitForSelector('.nbr-page[data-page=p2]');
+  const book = await page.innerText('.nbr-reader');
+  assert.match(book, /Student.ann’s notebook/);
+  assert.match(book, /Mars is red\nJupiter is big/);
+  assert.match(book, /Front\s*Closest to the sun\?/i);
+  assert.match(book, /Back\s*Mercury/i);
+  assert.equal(await page.locator('.nbr-card.check.done').count(), 1, 'a to-do shows whether it is done');
+  assert.match(await page.innerText('.nbr-page[data-page=p2] .nbr-trail'), /Planets/, 'a subpage says which page it is under');
+  assert.equal(await page.locator('.nbr-reader textarea, .nbr-reader input, .nbr-reader [contenteditable]').count(), 0, 'nothing can be written here');
+
+  await page.click('.nbr-students [data-student] >> text=Student.ben');
+  await page.waitForSelector('.nbr-reader >> text=Nothing written in this notebook yet.');
+
+  const asAnn = await fetch(`${site.url}/api/notebooks/teach/${assignment}`, { headers: { Authorization: `Bearer ${tokens['student.ann@example.test']}` } });
+  assert.equal(asAnn.status, 403, 'a student cannot read classmates’ notebooks');
+  await page.click('button:has-text("Back to classes")');
+  await page.waitForSelector('[data-assignment]');
+});
+
 test('removing a student and deleting the assignment take the mission away again', async () => {
   await page.click('[data-card=students] [aria-label="Remove Student.ann"]');
   await page.waitForFunction(() => /My students \(2\)/.test(document.querySelector('[data-card=students] h2')?.textContent ?? ''));
