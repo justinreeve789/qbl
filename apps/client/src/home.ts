@@ -1,5 +1,5 @@
-import { isStaff, roleLabel, siteLinks, type CharacterPicture, type User } from '@qbl/shared';
-import { buildTeacherDesk, TEACH_PATHS, teacherMissionsHeading, type TeacherDesk } from './teach';
+import { editsAllScenarios, isStaff, roleLabel, siteLinks, type CharacterPicture, type User } from '@qbl/shared';
+import { ownScenarios, TEACH_PATHS, teacherAssignments, type TeacherDesk } from './teach';
 import { AccountMenu, type MenuAction } from './ui/AccountMenu';
 import { icon } from './ui/icons';
 import { pictureNode } from './ui/picture';
@@ -74,6 +74,44 @@ function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
+/**
+ * Where a due date puts a mission in a list: still to come first (soonest due), then those with
+ * no date, then the ones already past (most recent first). Compare the pairs in order.
+ */
+export function dueRank(dueAt: string | null | undefined, now: Date): [number, number] {
+  if (!dueAt) return [1, 0];
+  const t = parseUtc(dueAt).getTime();
+  return t >= now.getTime() ? [0, t] : [2, -t];
+}
+
+/** What the missions page lists: each scenario once, assigned ones first. */
+export interface MissionLists {
+  /** Assigned to the player, soonest due first. */
+  assigned: Mission[];
+  /** Everything else they can play, in the order the API gave. */
+  browse: Mission[];
+}
+
+/**
+ * Sorts the missions the API lists into the page's two lists, each scenario once. The API
+ * gives a mission once per way in: a scenario both assigned and open to everyone comes twice,
+ * and one assigned by two teachers (or to two of a teacher's classes) twice more. The assigned
+ * card wins, and of several assignments the one due soonest. `skip`: scenarios shown elsewhere
+ * on the page (a teacher's own assignments), left out of both lists.
+ */
+export function missionLists(missions: Mission[], now: Date, skip: ReadonlySet<number> = new Set()): MissionLists {
+  const seen = new Set(skip);
+  const byDue = (x: Mission, y: Mission) => {
+    const [a1, a2] = dueRank(x.due_at, now);
+    const [b1, b2] = dueRank(y.due_at, now);
+    return a1 - b1 || a2 - b2;
+  };
+  const once = (list: Mission[]) => list.filter((m) => !seen.has(m.id) && (seen.add(m.id), true));
+  const assigned = once(missions.filter((m) => m.kind === 'assigned').sort(byDue));
+  const browse = once(missions.filter((m) => m.kind !== 'assigned'));
+  return { assigned, browse };
+}
+
 /** What a teacher is asked before starting a mission of their own again. */
 export function restartQuestion(title: string): string {
   return `Start ${title} again from the beginning?\n\nYour saved game here is deleted. Stars, XP and badges stay. This cannot be undone.`;
@@ -132,8 +170,9 @@ export interface HomeOptions {
    */
   onProfile?(renamed: (name: string) => void): void;
   /**
-   * For teachers and admins: their assignments, scenarios and students, shown above the
-   * missions. The page is drawn at once and this part fills in when it arrives.
+   * For teachers and admins: their assignments (shown above the missions) and the scenarios
+   * they may edit (their cards get "Edit"). The page is drawn at once and the lists fill in
+   * when this arrives.
    */
   desk?: Promise<TeacherDesk>;
   /** The account is run by a school or district (rostered, or signed in through it): its plan is the school's. */
@@ -156,11 +195,11 @@ export function whoNotice(role: string): string | null {
 }
 
 /**
- * The page a user lands on after signing in. A student's lists every mission they can play:
- * assigned ones first (a teacher gave them, perhaps with a due date and a team), then the ones
- * open to everyone. A teacher's (or admin's) opens with their teaching instead: shortcuts into
- * the editor, their assignments with a way to look in on each team, and their scenarios; the
- * missions they can play come after.
+ * The page a user lands on after signing in. It lists each scenario once. A student's opens
+ * with the missions assigned to them (a teacher gave them, perhaps with a due date and a team),
+ * soonest due first, then the others to browse. A teacher's (or admin's) opens with the missions
+ * they assigned, with a way to look in on each team, then the others to browse; the editor,
+ * Classes and the docs are in the bar at the top.
  */
 export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   const { user, missions, avatars } = options;
@@ -289,40 +328,52 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
   menu.setActions(actions);
   page.appendChild(picker);
 
-  if (staff) page.appendChild(buildTeacherDesk(options.desk ?? Promise.reject(new Error('no desk')), user, now));
-
-  const section = (title: string, list: Mission[]) => {
-    if (!list.length) return;
+  const cardsSection = (title: string, list: Mission[], editable: ReadonlySet<number> = new Set()): HTMLElement => {
     const wrap = el('section', 'qbl-home-section');
     wrap.appendChild(el('h2', undefined, title));
     const cards = el('div', 'qbl-missions');
-    for (const mission of list) {
-      const card = missionCard(mission, now);
-      const a = el('a', `qbl-mission ${mission.kind}${mission.locked ? ' locked' : ''}`);
-      a.href = card.href;
-      const art = el('div', 'qbl-mission-art');
-      if (mission.image) art.style.backgroundImage = `url("${mission.image}")`;
-      const body = el('div', 'qbl-mission-body');
-      body.appendChild(el('h3', undefined, mission.title));
-      const about = mission.subtitle || mission.description;
-      if (about) body.appendChild(el('p', 'qbl-mission-about', about));
-      if (card.tags.length) {
-        const tags = el('div', 'qbl-mission-tags');
-        for (const tag of card.tags) tags.appendChild(el('span', `qbl-tag ${tag.tone}`, tag.text));
-        body.appendChild(tags);
-      }
-      if (mission.note) body.appendChild(el('p', 'qbl-mission-note', mission.note));
-      const go = el('span', 'qbl-mission-go', card.action);
-      body.appendChild(go);
-      a.append(art, body);
-      const onRestart = options.onRestart;
-      if (!staff || !onRestart || !mission.started_at || mission.locked) {
-        cards.appendChild(a);
-        continue;
-      }
-      // A button cannot sit inside the card's link, so the card and its "Start again" share a frame.
-      const frame = el('div', 'qbl-mission-frame');
-      const again = el('button', 'qbl-mission-restart');
+    for (const mission of list) cards.appendChild(missionTile(mission, editable.has(mission.id)));
+    wrap.appendChild(cards);
+    return wrap;
+  };
+
+  // One mission's card. For a teacher, a frame round it adds "Edit" (a scenario of their own) and
+  // "Start again" (one they have played): a button cannot sit inside the card's link.
+  const missionTile = (mission: Mission, editable: boolean): HTMLElement => {
+    const card = missionCard(mission, now);
+    const a = el('a', `qbl-mission ${mission.kind}${mission.locked ? ' locked' : ''}`);
+    a.href = card.href;
+    a.dataset.mission = mission.code;
+    const art = el('div', 'qbl-mission-art');
+    if (mission.image) art.style.backgroundImage = `url("${mission.image}")`;
+    const body = el('div', 'qbl-mission-body');
+    body.appendChild(el('h3', undefined, mission.title));
+    const about = mission.subtitle || mission.description;
+    if (about) body.appendChild(el('p', 'qbl-mission-about', about));
+    if (card.tags.length) {
+      const tags = el('div', 'qbl-mission-tags');
+      for (const tag of card.tags) tags.appendChild(el('span', `qbl-tag ${tag.tone}`, tag.text));
+      body.appendChild(tags);
+    }
+    if (mission.note) body.appendChild(el('p', 'qbl-mission-note', mission.note));
+    const go = el('span', 'qbl-mission-go', card.action);
+    body.appendChild(go);
+    a.append(art, body);
+    const onRestart = options.onRestart;
+    const restart = staff && onRestart && mission.started_at && !mission.locked;
+    if (!editable && !restart) return a;
+    const frame = el('div', 'qbl-mission-frame');
+    const extras = el('div', 'qbl-mission-extras');
+    if (editable) {
+      const edit = el('a', 'qbl-mission-extra');
+      edit.href = TEACH_PATHS.edit(mission.id);
+      edit.title = 'Open this scenario in the editor';
+      edit.dataset.action = 'edit';
+      edit.append(icon('editor', { size: 16 }), el('span', undefined, 'Edit'));
+      extras.appendChild(edit);
+    }
+    if (restart) {
+      const again = el('button', 'qbl-mission-extra');
       again.type = 'button';
       again.title = 'Delete your saved game in this mission, so it starts from the beginning';
       again.dataset.action = 'restart';
@@ -331,7 +382,7 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
         if (!window.confirm(restartQuestion(mission.title))) return;
         again.disabled = true;
         try {
-          await onRestart(mission);
+          await onRestart!(mission);
           mission.started_at = null;
           go.textContent = missionCard(mission, now).action;
           again.remove();
@@ -340,20 +391,35 @@ export function buildHome(options: HomeOptions, now = new Date()): HTMLElement {
           window.alert(err instanceof Error ? err.message : 'Could not start the mission again.');
         }
       });
-      frame.append(a, again);
-      cards.appendChild(frame);
+      extras.appendChild(again);
     }
-    wrap.appendChild(cards);
-    page.appendChild(wrap);
+    frame.append(a, extras);
+    return frame;
   };
+
   if (staff) {
-    // A teacher's own assignments are listed above; what follows is what they can play themselves.
-    section(teacherMissionsHeading(missions), missions);
-    if (!missions.length) page.appendChild(el('p', 'qbl-home-empty', 'No missions are published yet. Publish one from the editor to play it here.'));
+    // A teacher's page: the missions they assigned (with "Look in" per team), then every other
+    // mission to play or try. The editor, Classes and the docs are in the bar at the top.
+    const slot = el('div', 'qbl-teach');
+    slot.appendChild(el('p', 'qbl-teach-empty', 'Loading your classes…'));
+    page.appendChild(slot);
+    void (options.desk ?? Promise.reject(new Error('no desk')))
+      .catch((): TeacherDesk => ({ assignments: null, scenarios: null }))
+      .then((desk) => {
+        const theirs = new Set((desk.assignments ?? []).flatMap((a) => (a.scenario ? [a.scenario.id] : [])));
+        const editable = new Set(desk.scenarios ? ownScenarios(desk.scenarios, user.id, editsAllScenarios(user.role)).map((s) => s.id) : []);
+        const lists = missionLists(missions, now, theirs);
+        const rest = [...lists.assigned, ...lists.browse];
+        const parts: HTMLElement[] = [teacherAssignments(desk, now)];
+        if (rest.length) parts.push(cardsSection('Browse missions', rest, editable));
+        else if (!missions.length) parts.push(el('p', 'qbl-home-empty', 'No missions are published yet. Publish one from the editor to play it here.'));
+        slot.replaceChildren(...parts);
+      });
     return page;
   }
-  section('Your assignments', missions.filter((m) => m.kind === 'assigned'));
-  section('Open missions', missions.filter((m) => m.kind === 'public'));
+  const lists = missionLists(missions, now);
+  if (lists.assigned.length) page.appendChild(cardsSection('Your assignments', lists.assigned));
+  if (lists.browse.length) page.appendChild(cardsSection(lists.assigned.length ? 'Browse more missions' : 'Browse missions', lists.browse));
   if (!missions.length) page.appendChild(el('p', 'qbl-home-empty', 'There are no missions for you yet. Check back soon.'));
   return page;
 }

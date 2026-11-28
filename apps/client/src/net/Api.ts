@@ -320,12 +320,11 @@ export class Api {
   async teacherDesk(): Promise<TeacherDesk> {
     const read = <T,>(path: string, pick: (body: any) => T): Promise<T | null> =>
       this.call<unknown>('GET', path).then(pick, () => null);
-    const [assignments, scenarios, students] = await Promise.all([
+    const [assignments, scenarios] = await Promise.all([
       read('/teach/assignments', (b) => b.assignments as TeachAssignment[]),
       read('/editor/scenarios', (b) => b.scenarios as TeachScenario[]),
-      read('/teach/students', (b) => (Array.isArray(b.students) ? b.students.length : null) as number | null),
     ]);
-    return { assignments, scenarios, students };
+    return { assignments, scenarios };
   }
 
   /** What the player can play: public missions and those assigned to them. Null where the backend has no such list. */

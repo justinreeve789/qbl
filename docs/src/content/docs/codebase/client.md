@@ -255,7 +255,7 @@ The HTTP calls the player needs, with the bearer token kept in `localStorage` (`
 
 ## Other pages in the package
 
-- **`home.ts`** and **`teach.ts`**: the missions page (`buildHome`): missions to play, the avatar, the account; for staff, shortcuts into the editor, assignments with "Look in" per team, and their scenarios.
+- **`home.ts`** and **`teach.ts`**: the missions page (`buildHome`): the avatar, the account, and the missions, each scenario once (`missionLists`: assigned first by due date, then the rest to browse); for staff, their assignments grouped by scenario (`teacherAssignments`, `assignmentsByScenario`) with "Look in" per team, then the rest to browse, with **Edit** on scenarios they may edit.
 - **`plans.ts`**: `/plans`, the plans, trial and checkout, and the quote form for schools.
 - **`site/`** and `index.html`: the marketing page, plain HTML and Tailwind, no game code.
 - **`pwa.ts`**: the service worker and the install offer.
