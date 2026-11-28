@@ -1,12 +1,15 @@
 ---
 // Starlight's MarkdownContent, with the page's host (frontmatter `host:`) introducing it.
+// A mission blueprint (frontmatter `blueprint:`) gets its header first.
 import Default from '@astrojs/starlight/components/MarkdownContent.astro';
 import Host from './Host.astro';
+import BlueprintHeader from './blueprints/BlueprintHeader.astro';
 
-const host = Astro.locals.starlightRoute.entry.data.host;
+const { host, blueprint, description } = Astro.locals.starlightRoute.entry.data;
 ---
 
 <Default>
+  {blueprint && <BlueprintHeader blueprint={blueprint} lead={description} />}
   {host && <Host who={host.who} says={host.says} side={host.side} size="page" />}
   <slot />
 </Default>

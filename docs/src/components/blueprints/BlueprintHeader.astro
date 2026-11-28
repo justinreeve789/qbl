@@ -1,0 +1,117 @@
+---
+// The banner at the top of a mission blueprint page: its number, what it is in two sentences, and
+// who it is for. Drawn from the page's frontmatter by MarkdownContent.astro.
+import { BANDS, SUBJECTS, blueprints, tones, type Blueprint } from './lib';
+
+interface Props {
+  blueprint: Blueprint;
+  /** The page's description: what students do, in a sentence or two. */
+  lead?: string;
+}
+
+const { blueprint: b, lead } = Astro.props;
+const total = (await blueprints()).length;
+---
+
+<header class="bp-hero not-content" style={tones(b)}>
+  <div class="bp-hero__icon" aria-hidden="true">{b.icon}</div>
+  <div class="bp-hero__body">
+    <p class="bp-hero__eyebrow">Mission blueprint {b.number} of {total} · {BANDS[b.band]}</p>
+    {lead && <p class="bp-hero__lead">{lead}</p>}
+    <ul class="bp-hero__facts">
+      <li><span aria-hidden="true">🎓</span> {b.grades}</li>
+      {b.subjects.map((s) => (
+        <li class="bp-hero__subject" style={`--chip: ${SUBJECTS[s].color}`}>{SUBJECTS[s].label}</li>
+      ))}
+      <li><span aria-hidden="true">⏱️</span> {b.minutes} minutes</li>
+      <li><span aria-hidden="true">👥</span> {b.players} players</li>
+    </ul>
+  </div>
+</header>
+
+<style>
+  .bp-hero {
+    position: relative;
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+    margin-block: 0.25rem 1.5rem;
+    padding: 1.4rem 1.5rem;
+    border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+    border-radius: 1.1rem;
+    background:
+      radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--tone) 26%, transparent), transparent 60%),
+      radial-gradient(120% 140% at 100% 100%, color-mix(in srgb, var(--tone2) 22%, transparent), transparent 60%),
+      var(--sl-color-bg);
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--tone) 28%, transparent);
+    overflow: hidden;
+  }
+  /* A soft dot grid, as on the diagrams. */
+  .bp-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--sl-color-gray-4) 30%, transparent) 1px, transparent 0) 0 0 / 18px 18px;
+    mask-image: linear-gradient(105deg, transparent 35%, #000);
+    pointer-events: none;
+  }
+  .bp-hero__icon {
+    position: relative;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: 1.4rem;
+    font-size: 3rem;
+    line-height: 1;
+    background: color-mix(in srgb, var(--tone) 18%, var(--sl-color-bg));
+    border: 2px solid color-mix(in srgb, var(--tone) 55%, transparent);
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--tone) 35%, transparent);
+    rotate: -4deg;
+  }
+  .bp-hero__body { position: relative; min-width: 0; }
+  .bp-hero__eyebrow {
+    margin: 0;
+    font-size: var(--sl-text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--tone) 65%, var(--sl-color-white));
+  }
+  .bp-hero__lead {
+    margin: 0.35rem 0 0;
+    font-size: var(--sl-text-lg);
+    line-height: 1.5;
+    color: var(--sl-color-white);
+  }
+  .bp-hero__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.9rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .bp-hero__facts li {
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--sl-color-white);
+    background: color-mix(in srgb, var(--sl-color-gray-5) 55%, transparent);
+    border: 1px solid var(--sl-color-gray-5);
+  }
+  .bp-hero__facts .bp-hero__subject {
+    background: color-mix(in srgb, var(--chip) 20%, transparent);
+    border-color: color-mix(in srgb, var(--chip) 60%, transparent);
+  }
+  /* The page's host stands on the next card: leave their head room. */
+  .bp-hero + :global(.qbl-host) { margin-top: 3.75rem; }
+  @media (max-width: 36rem) {
+    .bp-hero { flex-direction: column; align-items: flex-start; padding: 1.1rem; }
+    .bp-hero__icon { width: 4rem; height: 4rem; font-size: 2.2rem; border-radius: 1rem; }
+    .bp-hero__lead { font-size: var(--sl-text-base); }
+  }
+</style>

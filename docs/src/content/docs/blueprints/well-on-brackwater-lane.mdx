@@ -1,0 +1,133 @@
+---
+title: "The Well on Brackwater Lane"
+description: "A sickness is spreading in an 1850s port town and the council blames bad air from the tannery. Students have time to visit only 20 of 200 households before dark. Which doors they choose decides whether the data points to the true cause, a single water pump, or sends them the wrong way."
+host:
+  who: buck
+  says: "You only get twenty doors. Choose them badly and the data points the wrong way."
+  side: right
+blueprint:
+  number: 20
+  band: "6-8"
+  grades: "Grades 6-8"
+  subjects: [maths, history]
+  about: "statistics, map reading and history of medicine"
+  minutes: 50
+  players: "2 to 4"
+  icon: "🚰"
+  mechanic: "Choose which doors to knock on; a biased sample points the wrong way"
+  edge: [C, F]
+  standards:
+    - code: "7.SP.A.1"
+      asks: "Understand that a sample supports conclusions only if it represents the population"
+      evidence: "Compares four ways of choosing 20 households and explains which can be trusted"
+    - code: "7.SP.A.2"
+      asks: "Draw inferences from a random sample; use repeated samples to gauge variation"
+      evidence: "Reruns the random sample and sees the estimate move a little, not a lot"
+    - code: "8.SP.A.4"
+      asks: "Find association in a two-way table of categorical data"
+      evidence: "Reads sick against well for each pump: 54 of 90 against 6 of 110"
+    - code: "6.SP.B.5"
+      asks: "Summarise a data set in context"
+      evidence: "Describes the spread of cases by distance from the pump"
+    - code: "RST.6-8.7"
+      asks: "Combine a map with a table"
+      evidence: "Uses the dot map and the table together to make the case"
+  alsoFits: "Also fits England Key Stage 3 statistics."
+  settings:
+    grade: "7"
+    subject: "Mathematics"
+    frameworks: [CCSS-MATH, CCSS-ELA]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Key Stage 3 statistics. These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+The town is invented, and the debrief names its real model: John Snow and the Broad Street pump in London, 1854.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Well on Brackwater Lane: generator prompt"
+Make a mission called The Well on Brackwater Lane for grades 6 to 8. Teach and assess Common Core 7.SP.A.1, 7.SP.A.2, 8.SP.A.4, 6.SP.B.5 and RST.6-8.7. Students are health investigators working with Dr. Ada Mensah in the invented port town of Brackwater in the 1850s. A stomach sickness is spreading. Alderman Pryce and most of the town blame bad air from the tannery. Scenes: a clinic with a map board, Brackwater Lane as a wide street of doors, a market square with two water pumps and the tannery nearby, a brewery yard, a hillside cottage and the council chamber. On the lane each door gives a household card: people, how many are sick, and which pump they use. Cards are spread along the street so teams split up, and each card adds a dot to a shared map at the clinic. The town has 200 households and there is time for only 20 visits. In the clinic an instrument called the survey has a chooser for how to pick the 20: the houses nearest the clinic; only houses that sent for a doctor; every tenth house on the list; or a spin of the wheel for each. It shows a two-way table of pump against sick or well, and can be rerun. The full truth for the town: 54 of 90 households on the lane pump are sick, and 6 of 110 on the square pump. Wrong ideas to surprise: any 20 houses are as good as any other 20; cases near the smell prove the smell is the cause; cases that do not fit ruin the pattern. Two cases seem not to fit: the brewery workers on the lane stay well because the brewery has its own well, and a widow far up the hill is sick because her son carries her water from the lane pump. Invent a twist around one of them. Final puzzle: persuade the alderman with the strongest evidence, fetch a wrench from the smith and take the handle off the pump. Payoff: the case chart falls. Build scene: students place and label a public notice. Debrief: why did it matter which doors you knocked on?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Clinic.** On-ramp. A blank map and a full waiting room. Dr. Mensah hands over the first household card.
+2. **Brackwater Lane.** Knock on doors. The dot map fills in at the clinic as the team works.
+3. **Market Square.** Two pumps, one smell. The alderman explains bad air, convincingly.
+4. **The survey.** The instrument. Two of the four sampling plans cannot answer the question at all.
+5. **Brewery Yard and Hillside Cottage.** The cases that do not fit, until students ask where each gets its water.
+6. **Council Chamber.** Choose the evidence. Win the order. Take off the handle.
+7. **Weeks later.** The chart falls. Build the notice and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Dr. Ada Mensah" role="Guide.">“You asked only the houses that sent for me. How many of them were well? Then what can you compare?”</Speaker>
+
+<Speaker name="Alderman Pryce" role="Honest and wrong.">“Stand by that tannery and tell me the air is not poison. I have lived here sixty years.”</Speaker>
+
+<Speaker name="Nell" role="A water carrier, gives the hints.">“I know who drinks from where. Nobody ever asks the girl with the buckets.”</Speaker>
+
+<Speaker name="Widow Larkin" role="On the hill.">“The lane water tastes sweeter. My boy fetches me a pail every morning.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Sampling: houses nearest the clinic all use the lane pump, so there is nothing to compare them with. The miss says so.
+- The table: 54 of 90 is 60 percent; 6 of 110 is about 5 percent. Students state the association in words.
+- Smell test: households beside the tannery that use the square pump are mostly well.
+- The two odd cases turn from problems into the strongest evidence of all.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Rerun the wheel sample five times, record the five estimates, and describe how much they vary.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “To find out what this school thinks of lunch, is it fine to ask the first twenty people in the queue?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Let teams pick a sampling plan without advice. Some will choose badly, and that produces the best discussion.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Compare teams' tables side by side and ask why they differ. Tell the John Snow story. The report shows each student's first sampling plan.
+  </Card>
+  <Card title="Example" icon="star">
+    Follow with a real survey of the school, where students must write down how they will choose whom to ask before they start.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A statistics worksheet arrives with the data already collected, which removes the hardest and most important decision: whom to ask. A real class survey restores that decision but has low stakes and a tiny population. Here there are 200 households, only 20 visits, and a town depending on the answer, so a biased sample has a visible cost and can be rerun to compare. Evidence is spread along a street, so the team must pool it. A lecture can define a representative sample in one sentence, and students can repeat the sentence without ever having been misled by a bad one.
+
+</BlueprintWhy>

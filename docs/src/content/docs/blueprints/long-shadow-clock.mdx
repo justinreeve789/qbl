@@ -1,0 +1,129 @@
+---
+title: "The Long Shadow Clock"
+description: "Students ring a bell to move a village day from morning to evening, mark where a flagpole's shadow falls, and set the stopped tower clock to match the sun. A second visit in winter and summer shows that days change length."
+host:
+  who: gil
+  says: "A whole day in one lesson, and two seasons after lunch. Let the first graders do the predicting."
+  side: left
+blueprint:
+  number: 1
+  band: "K-2"
+  grades: "Grade 1"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 35
+  players: "1 to 3"
+  icon: "🕰️"
+  mechanic: "Ring a bell to move the day on; mark shadows; set a clock"
+  edge: [A]
+  standards:
+    - code: "1-ESS1-1"
+      asks: "Use observations of the sun to describe patterns that can be predicted"
+      evidence: "Predicts where the evening shadow will fall, then marks it"
+    - code: "1-ESS1-2"
+      asks: "Relate the amount of daylight to the time of year"
+      evidence: "Counts lit-lamp hours in winter, spring and summer"
+    - code: "1.MD.B.3"
+      asks: "Tell time in hours and half-hours"
+      evidence: "Sets the tower clock with a slider at each bell"
+    - code: "1.MD.A.1"
+      asks: "Order three objects by length"
+      evidence: "Orders the three shadow ropes short to long"
+    - code: "1.MD.C.4"
+      asks: "Organise and read data with up to three categories"
+      evidence: "Reads the three-bar daylight chart"
+  alsoFits: "Also fits England Year 1 Seasonal changes (how day length varies) and Ontario Grade 1 Daily and Seasonal Changes."
+  settings:
+    grade: "1"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "1-3"
+    opening: action
+    focus: play
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Year 1 Seasonal changes (how day length varies) and Ontario Grade 1 Daily and Seasonal Changes. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Long Shadow Clock: generator prompt"
+Make a mission called The Long Shadow Clock for grade 1. Teach and assess NGSS 1-ESS1-1 and 1-ESS1-2 and Common Core 1.MD.B.3, 1.MD.A.1 and 1.MD.C.4. Students are junior sky-watchers helping Clockkeeper Amara fix the village clock tower, which stopped in the night. Setting: a village square with a tall flagpole and a bell. Ringing the bell moves time on. Build the square as separate scenes for morning, noon and evening, with the sky and the painted flagpole shadow different in each, then a winter noon and a summer noon. In each scene students put a marker stone on the tip of the shadow, then set the tower clock with a slider for hours and half-hours to match the sun. Wrong ideas to surprise: the shadow is longest at noon; the sun stays in one place; winter and summer days are the same length. Students order three shadow ropes from short to long, and read a three-bar chart of daylight hours for winter, spring and summer. Bag puzzles: an oil can for the stuck clock door, a ladder to reach the bell rope. Invent a small twist about a rooster that crows at the wrong time. Build scene: students place sun, shadow and label pieces to make their own sundial. Every line is very short and read aloud. Debrief: why is the noon shadow short?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Morning Square.** On-ramp. Walk, talk to Amara, pick up a marker stone, put it on the shadow tip. The clock reads 3:00 and the baker is cross.
+2. **Bell Loft.** Oil the door, climb, ring the bell. A short cutscene sweeps the sun across the sky.
+3. **Noon Square.** Predict first: will the shadow be longer or shorter? It is tiny. Mark it and set the clock to 12:00.
+4. **Evening Square.** The shadow now points the other way and is long. Lamps come on. Set the clock to 6:30.
+5. **Winter Noon and Summer Noon.** Two doors in the tower. Count the lit-lamp hours in each and fill the chart.
+6. **Sundial Garden.** Build scene, then the debrief with Amara.
+
+</Steps>
+
+<Aside type="caution" title="The twist">
+The rooster crows at noon in winter because the morning was so dark. Students use the shadow, not the rooster, to tell the time.
+</Aside>
+
+## Characters and dialogue
+
+<Speaker name="Clockkeeper Amara" role="Guide. Asks, never tells.">“The shadow was here this morning. Where will it be at lunch? Put your stone where you think.”</Speaker>
+
+<Speaker name="Tick" role="A wind-up sparrow who gives the hints.">“Peep! Look at the sun. Is it high or low?”</Speaker>
+
+<Speaker name="Baker Joon" role="Needs the clock to open on time.">“I baked at three o'clock. In the dark! Please fix it.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Three shadow ropes lie tangled. Lay them side by side and order them. The shortest is the noon rope.
+- The clock slider only rings true when the hands match the sun picture: sun at the top means 12:00.
+- The wrong guess at noon is kept on the ground as a grey stone next to the real mark, so the surprise stays visible.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+In Summer Noon, find the hour when your own avatar's shadow is shortest.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before, 5 minutes" icon="comment">
+    Ask: “Is your shadow always the same size?” Take a hand count and write it on the board. Do not correct it.
+  </Card>
+  <Card title="During" icon="laptop">
+    Pairs share one device and talk before each prediction. Pause the class after Noon Square and ask who was surprised.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Return to the hand count. In the report, look at the noon prediction and tries on the clock slider to find who needs more work on half-hours.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it on day 2 of a sun and seasons unit, then go outside the same week and chalk one real shadow at 9:00 and again at 1:00.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A real day takes a day and a real year takes a year, and first graders are in class at the same hours every day. They never see the morning, noon and evening shadows of one pole in a lesson, and never winter beside summer. A video can show a time-lapse, but the child has not put a stone where they think the shadow will land. Chalk shadows outside are excellent and should follow this mission, but they need sun on the right day and cannot show the seasons. Here every child predicts, sees the miss, and tries again in 35 minutes.
+
+</BlueprintWhy>

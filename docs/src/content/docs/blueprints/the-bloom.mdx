@@ -1,0 +1,128 @@
+---
+title: "The Bloom"
+description: "A floating fern on Lake Sedra doubles its area every week. Clearing boats remove a fixed amount each week. Students plan a season of removal, lose to the fern when they start late, and find out why timing beats boat count. Then the real lake stops following the doubling rule, and they learn what sets the ceiling."
+host:
+  who: sam
+  says: "Start a week too late and no number of boats will save the lake. Let them lose once."
+  side: left
+blueprint:
+  number: 23
+  band: "8-12"
+  grades: "Grades 8-10"
+  subjects: [maths, science]
+  about: "maths and science"
+  minutes: 50
+  players: "2 to 4"
+  icon: "🌿"
+  mechanic: "Race linear removal against a weed that doubles"
+  edge: [A, C]
+  standards:
+    - code: "HSF-LE.A.1"
+      asks: "Tell linear from exponential situations: equal differences against equal factors"
+      evidence: "Compares the boat table (add 20) with the fern table (times 2)"
+    - code: "HSF-LE.A.3"
+      asks: "See from tables and graphs that exponential growth overtakes linear"
+      evidence: "Finds the week after which no number of boats can catch up"
+    - code: "HSF-IF.B.4"
+      asks: "Interpret key features of a graph in context"
+      evidence: "Reads the planner graph: start value, fastest growth, levelling off"
+    - code: "HS-LS2-1"
+      asks: "Use mathematical representations to explain what affects carrying capacity"
+      evidence: "Changes nutrient runoff and sees the ceiling move"
+  alsoFits: "Also fits 8.F.B.5 for grade 8 and MS-LS2-1."
+  settings:
+    grade: "9"
+    subject: "Mathematics"
+    frameworks: [CCSS-MATH, NGSS]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits 8.F.B.5 for grade 8 and MS-LS2-1. These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+Numbers used: the lake is 4,096 hectares, the fern starts at 1 hectare and doubles weekly, so the simple model fills the lake in week 12. Each boat clears 20 hectares a week.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Bloom: generator prompt"
+Make a mission called The Bloom for grades 8 to 10. Teach and assess Common Core HSF-LE.A.1, HSF-LE.A.3 and HSF-IF.B.4 and NGSS HS-LS2-1. Students are lake managers working with Reservoir Manager Ana Folau at Lake Sedra, a 4,096 hectare reservoir. An invasive floating fern has appeared: 1 hectare this week, 2 next week, doubling every week. Each clearing boat removes 20 hectares a week. Scenes: a boat ramp, a ranger station, a planning room, an upstream farm, a fish market and the lake in week 12. At the boat ramp students measure the patch in two different weeks before anyone names the pattern. Ask for a prediction: if the fern covers the whole lake in week 12, in which week is it half covered? In the planning room an instrument called the season planner has a slider for the week removal starts, from 0 to 11, and a slider for boats, from 1 to 10; a graph shows fern area against week and a meter shows percent of the lake covered. The goal is to stay under half cover through week 12. Two wall tables show the boats' running total and the fern's area so students compare equal differences with equal factors. Wrong ideas to surprise: half-way in time means half covered; more boats can always make up for a late start; growth that doubles will double for ever. For the third, the station's records from another lake show growth slowing near the top, and an upstream slider for nutrient runoff from farms raises or lowers that ceiling. People around the lake want different things, a fisher, a farmer and the water company, and none is a villain. Invent a twist where one missed hectare in a side cove brings the fern back after the team thinks it has won. Build scene: students place markers on a lake map and label their plan with the evidence for it. Keep the language at a grade 7 reading level. Debrief: why does starting early matter more than working hard?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Boat Ramp.** On-ramp. Pace out the patch: 1 hectare. A week later: 2. Then 4. Ana asks for a guess at week 12.
+2. **Ranger Station.** The half-covered question. Most answers cluster around week 6.
+3. **Planning Room.** The planner. Ten boats from week 9 fail. One boat from week 3 wins.
+4. **Upstream Farm and Fish Market.** The lake's people. Runoff feeds the fern; the fishers cannot launch.
+5. **The ceiling.** Records from a lake that filled. The curve bends. Students move the runoff slider and watch where it levels.
+6. **Side Cove.** The twist. One hectare left behind is the whole problem again in twelve weeks.
+7. **Week 12.** Payoff. Open water, or a green lake, by the team's plan. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Ana Folau" role="Guide.">“Week 9, and you sent everything we have. The fern grew 512 hectares that week. How much did ten boats clear?”</Speaker>
+
+<Speaker name="Reuben" role="A fisher.">“Last month I laughed at it. A patch the size of a field. Now I cannot get my boat out.”</Speaker>
+
+<Speaker name="Mrs. Castellan" role="Upstream farmer.">“I feed my crops, not your weed. But show me the numbers and I will listen.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Half covered in week 11, one week before full. The miss shows the table for weeks 10, 11 and 12.
+- The tables: one column grows by adding 20, the other by multiplying by 2. Students name which is which and predict week 8 for each.
+- The planner: find the latest start week at which three boats still win.
+- The ceiling: at high runoff the fern levels off near the whole lake; at low runoff it stalls far lower.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Write the rule for fern area in week n under the simple model, and say in which weeks it stops matching the records.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Pose the half-covered riddle and collect answers on slips.
+  </Card>
+  <Card title="During" icon="laptop">
+    Let teams lose once on the planner before any hint. Ask each team for the reason in one sentence.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Return the slips. Sketch both curves from the class's own planner runs. The report shows each student's riddle answer and first planner settings.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it to open the unit on exponential functions, or in biology when carrying capacity comes up. Start a duckweed jar the same week as a slow, real comparison.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+People misjudge doubling even after being shown the riddle, because knowing the trick is not the same as planning against it. Here students spend a budget, start too late, and lose to the curve. Then they replay it until they can say why. A graphing activity is a strong rival for the pure maths and belongs in the unit. It does not supply the season in two minutes, the people with competing needs, or the ecology that bends the curve. A duckweed jar is real and slow, and shows one curve in three weeks.
+
+</BlueprintWhy>

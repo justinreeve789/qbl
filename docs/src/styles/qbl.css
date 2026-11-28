@@ -68,3 +68,60 @@
 .qd .qd-tone { border-color: color-mix(in srgb, var(--tone) 60%, transparent); background: color-mix(in srgb, var(--tone) 10%, var(--qd-card)); }
 .qd .qd-tone > .qd-title { color: color-mix(in srgb, var(--tone) 70%, var(--sl-color-white)); }
 .qd code { font-size: 0.85em; }
+
+/* ---- Mission blueprints (src/content/docs/blueprints/, src/components/blueprints/) --------
+   Lists written in Markdown inside a blueprint page, dressed as cards. */
+.sl-markdown-content .bp-puzzles > ul {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+.sl-markdown-content .bp-puzzles > ul > li {
+  position: relative;
+  margin: 0;
+  padding: 0.7rem 0.95rem 0.7rem 3rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--sl-color-gray-6) 55%, transparent);
+}
+.sl-markdown-content .bp-puzzles > ul > li::before {
+  content: '🧩';
+  position: absolute;
+  left: 0.9rem;
+  top: 0.6rem;
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+/* The numbered scenes of a blueprint: the place's name stands out. */
+.sl-markdown-content .sl-steps > li > strong:first-child { color: var(--sl-color-accent-high); }
+/* Tables of standards: the code column never wraps, the words get the room. */
+.sl-markdown-content table.bp-standards,
+.sl-markdown-content table.bp-index,
+.sl-markdown-content table.bp-crosswalk { display: table; width: 100%; }
+/* On a phone each row becomes a card, with the column's name over each cell. */
+@media (max-width: 40rem) {
+  .sl-markdown-content table.bp-standards,
+  .sl-markdown-content table.bp-index,
+  .sl-markdown-content table.bp-crosswalk { display: block; }
+  .sl-markdown-content :is(.bp-standards, .bp-index, .bp-crosswalk) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .sl-markdown-content :is(.bp-standards, .bp-index, .bp-crosswalk) :is(tbody, tr, th, td) { display: block; }
+  .sl-markdown-content :is(.bp-standards, .bp-index, .bp-crosswalk) tr { padding-block: 0.9rem; border-bottom: 1px solid var(--sl-color-gray-5); }
+  .sl-markdown-content :is(.bp-standards, .bp-index, .bp-crosswalk) :is(th, td) { padding: 0.2rem 0; border: 0; }
+  .sl-markdown-content :is(.bp-standards, .bp-index, .bp-crosswalk) td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-top: 0.45rem;
+    font-size: var(--sl-text-xs);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--sl-color-gray-3);
+  }
+}

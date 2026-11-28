@@ -1,0 +1,66 @@
+---
+// What to choose on the Generate page (or pass to qbl:generate) for this blueprint, from the page's
+// frontmatter: <BlueprintSettings />
+const b = Astro.locals.starlightRoute.entry.data.blueprint;
+if (!b) throw new Error('BlueprintSettings: this page has no `blueprint:` in its frontmatter');
+const s = b.settings;
+const rows: Array<[string, string]> = [
+  ['Make', 'A mission students play'],
+  ['Grade', s.grade],
+  ['Subject', s.subject],
+  ['Players', s.players],
+  ['Minutes', String(b.minutes)],
+  ['Opening', s.opening],
+  ['Focus', s.focus],
+  ['Freedom', s.freedom],
+];
+const codes = b.standards.map((x) => x.code).filter((c, i, all) => all.indexOf(c) === i);
+---
+
+<div class="bp-settings not-content">
+  <p class="bp-settings__title">Settings for the generator</p>
+  <dl>
+    {rows.map(([k, v]) => (
+      <div><dt>{k}</dt><dd>{v}</dd></div>
+    ))}
+  </dl>
+  <p class="bp-settings__cli">
+    On the command line, also pass <code>{s.frameworks.map((f) => `--framework=${f}`).join(' ')}</code>{' '}
+    and the codes{' '}
+    <code>{codes.map((c) => `--standard=${c}`).join(' ')}</code>
+  </p>
+</div>
+
+<style>
+  .bp-settings {
+    margin-block: 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.8rem;
+    background: color-mix(in srgb, var(--sl-color-gray-6) 60%, transparent);
+  }
+  .bp-settings__title {
+    margin: 0 0 0.6rem;
+    font-size: var(--sl-text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sl-color-gray-2);
+  }
+  dl { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
+  dl > div {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-bg);
+    font-size: var(--sl-text-sm);
+  }
+  dt { color: var(--sl-color-gray-3); }
+  :global([data-theme='light']) dt { color: var(--sl-color-gray-2); }
+  dd { margin: 0; font-weight: 700; color: var(--sl-color-white); }
+  .bp-settings__cli { margin: 0.7rem 0 0; font-size: var(--sl-text-xs); color: var(--sl-color-gray-2); line-height: 1.9; }
+  .bp-settings__cli code { font-size: 0.95em; overflow-wrap: anywhere; }
+</style>

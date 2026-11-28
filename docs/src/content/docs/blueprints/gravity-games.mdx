@@ -1,0 +1,131 @@
+---
+title: "Gravity Games"
+description: "An interworld school league needs one fair rulebook for a ball game played on the Moon, Mars, Earth and a heavy world called Brakka. Students drop, bounce and weigh the same balls on all four worlds and write rules that hold everywhere."
+host:
+  who: asimov
+  says: "The one thing you can never change in a classroom is gravity. Here it is a chooser."
+  side: left
+blueprint:
+  number: 17
+  band: "6-8"
+  grades: "Grades 6-8"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 50
+  players: "2 to 4"
+  icon: "🪐"
+  mechanic: "Drop, bounce and weigh the same things on four worlds"
+  edge: [D]
+  standards:
+    - code: "MS-PS2-4"
+      asks: "Argue from evidence that gravity attracts and depends on the masses involved"
+      evidence: "Links each world's pull to its mass using the drop data"
+    - code: "MS-PS3-2"
+      asks: "Model how stored energy changes when objects that attract at a distance are rearranged"
+      evidence: "Compares the landing energy of one ball lifted 2 m on each world"
+    - code: "6.RP.A.3"
+      asks: "Use unit rates and tables to solve problems"
+      evidence: "Finds newtons per kilogram on each world from the weight table"
+    - code: "6.EE.C.9"
+      asks: "Relate two quantities with an equation, table and graph"
+      evidence: "Writes weight = g x mass for each world and reads the four lines"
+  alsoFits: "Also fits 7.RP.A.2 (constant of proportionality), 5-PS2-1 for a simpler run, and England Key Stage 3 physics (weight, mass and g on other planets)."
+  settings:
+    grade: "7"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits 7.RP.A.2 (constant of proportionality), 5-PS2-1 for a simpler run, and England Key Stage 3 physics (weight, mass and g on other planets). These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+Values used: Moon 1.6, Mars 3.7, Earth 9.8 newtons per kilogram; Brakka is invented at 19.6, Earth's size with twice its mass.
+</Aside>
+
+<Aside type="caution" title="Waits on physics scenes">
+This blueprint is designed around a physics scene, and physics scenes are not part of QuestLab yet. The prompt still generates a mission, with an instrument standing in. See [Before you build](/docs/blueprints/build-notes/).
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Gravity Games: generator prompt"
+Make a mission called Gravity Games for grades 6 to 8. Teach and assess NGSS MS-PS2-4 and MS-PS3-2 and Common Core 6.RP.A.3 and 6.EE.C.9. Students are sports engineers working with Coach Ilse, a physicist, to write one fair rulebook for skyball, a school ball game played on four worlds. Scenes: a starship gym at Earth gravity, a shuttle bay with portals, a Moon dome, a Mars court, a dome on the invented heavy world Brakka, and a rulebook room. Use these values for gravity in newtons per kilogram: Moon 1.6, Mars 3.7, Earth 9.8, Brakka 19.6 (Brakka is the size of Earth with twice the mass). The domes have no air. In each world an instrument called the drop rig has a chooser for the ball (rubber, steel or foam, with different masses), a slider for drop height up to 3 metres, and a Drop button; meters show fall time, bounce height and landing energy. Each world also has a spring scale that reads weight in newtons and a balance beam that compares mass. Students explore freely first and data from all four worlds is needed for the rulebook, so teams split up. Ask for predictions. Wrong ideas to surprise: the heavy ball lands first; there is no gravity on the Moon; things have less mass on the Moon; a dropped ball bounces higher on the Moon (it bounces to the same height, more slowly). A wall table of mass against weight on each world gives the unit rate and the equation weight = g x mass. Invent a twist where the old rule says the ball must weigh 6 newtons, which is a different ball on every world, so students rewrite the rule in kilograms. Final task: choose hoop heights so a jump shot is equally hard everywhere. Build scene on the Mars court: students place a hoop and lines and label their reasons. Debrief: what stays the same on every world, and what changes?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Ship Gym.** On-ramp. Drop a ball, weigh it, balance it. Earth numbers go on the first row of the table.
+2. **Shuttle Bay.** Three portals. Teams choose who goes where.
+3. **Moon Dome, Mars Court, Brakka Dome.** Same rig, same balls. Slow falls on the Moon, hard landings on Brakka.
+4. **The 6 newton rule.** The twist. Each world's referee holds up a different ball and all of them weigh 6 N.
+5. **Rulebook Room.** The table, the four lines on one graph, the hoop heights.
+6. **Mars Court.** Build, first match, debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Coach Ilse" role="Guide.">“Steel and foam, dropped together, no air. Tell me who wins before you press it.”</Speaker>
+
+<Speaker name="Referee Tal" role="On the Moon.">“People say we have no gravity here. Then why does the ball come back down?”</Speaker>
+
+<Speaker name="Zuri" role="Brakka's team captain, gives the hints.">“My kit bag is the same bag at home and on your ship. It only feels different. Which tool agrees with me?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Steel and foam land together on every world. The fall time changes with the world, never with the ball.
+- Bounce: from 2 m the rubber ball returns to the same height on the Moon as on Earth. Only the time differs.
+- Scale against balance: the spring scale changes on every world, the balance beam never does. Which one measures mass?
+- The table gives 1.6, 3.7, 9.8 and 19.6 newtons for each kilogram. Students predict the weight of a 5 kg kit bag on Mars.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+A pendulum clock keeps the match time. Does it run true on the Moon? Test and explain.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Three quick votes: heavy ball first? Gravity on the Moon? Less mass on the Moon? Keep the tallies.
+  </Card>
+  <Card title="During" icon="laptop">
+    Teams of three or four, one world each, then pool the data. Do not confirm any vote; send students to the rig.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Revisit the votes. Teams present one rule and the evidence for it. The report shows each prediction and the unit-rate answers.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it after a real drop test with a ball and a crumpled sheet. The classroom shows air matters; the domes show what is left when the air is gone.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+Gravity is the one variable a classroom can never change. Every real drop happens at 9.8, so students cannot test their ideas about the Moon; they can only be told. Astronaut footage is the usual substitute and it helps, but it cannot be rerun with a different ball or a different height. Here students change the world itself and repeat the same fair test four times. Hands-on work still has a job: a real spring scale and balance give the feel of the two tools, and the plan starts with a real drop.
+
+</BlueprintWhy>

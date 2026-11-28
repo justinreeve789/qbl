@@ -1,0 +1,129 @@
+---
+title: "The Cartographer's Island"
+description: "A storm tore the island chart into pieces. The coordinates of the buried supply crates are in one place and the chart table that sends the digger is in another, so teammates must pass ordered pairs to each other exactly. A swapped pair digs an empty hole."
+host:
+  who: riona
+  says: "Say the pair the wrong way round and your friend digs an empty hole. Now the order matters."
+  side: left
+blueprint:
+  number: 11
+  band: "3-5"
+  grades: "Grades 5-6"
+  subjects: [maths]
+  about: "maths and map skills"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🗺️"
+  mechanic: "Relay coordinates to a teammate who digs; negatives out in the bay"
+  edge: [F, C]
+  standards:
+    - code: "5.G.A.1"
+      asks: "Understand axes, the origin and ordered pairs"
+      evidence: "Sets across then up on the chart table to reach each crate"
+    - code: "5.G.A.2"
+      asks: "Graph points to solve real problems and interpret them"
+      evidence: "Answers which crate is nearest the dock and how far apart two are"
+    - code: "5.OA.B.3"
+      asks: "Make two number patterns, pair the terms and graph them"
+      evidence: "Predicts the next buoy from the rules add 2 and add 4"
+    - code: "6.NS.C.6c"
+      bonus: true
+      asks: "Place points with negative coordinates"
+      evidence: "Finds the wreck at (-4, -3), west and south of the dock, out in the bay"
+    - code: "6.NS.C.8"
+      bonus: true
+      asks: "Find distances between points that share a coordinate"
+      evidence: "Works out how far the boat sails from (-4, 2) to (-4, -3)"
+  alsoFits: "Also fits Texas 5.8A to 5.8C and 6.11A, England Year 4 and Year 6 position and direction, and Key Stage 2 geography grid references."
+  settings:
+    grade: "5"
+    subject: "Mathematics"
+    frameworks: [CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: balanced
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits Texas 5.8A to 5.8C and 6.11A, England Year 4 and Year 6 position and direction, and Key Stage 2 geography grid references. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Cartographer's Island: generator prompt"
+Make a mission called The Cartographer's Island for grades 5 to 6. Teach and assess Common Core 5.G.A.1, 5.G.A.2 and 5.OA.B.3, with 6.NS.C.6c and 6.NS.C.8 as the optional harder objective. Students are junior surveyors helping Cartographer Mele find four supply crates after a storm tore her chart apart. Scenes: a dock with a flagpole that marks (0, 0), a lighthouse top up high, a chart tent, a palm field, tide pools and an underwater wreck reef. Torn chart pieces with the crates' ordered pairs are spread across the lighthouse and the tide pools. The chart tent holds an instrument called the chart table with a slider for across from 0 to 12 and a slider for up from 0 to 12, a marker on a grid, and a Send the digger button. The goal for each crate is its exact point, such as (3, 7). A miss says where the digger went and why, for example: you went 7 across and 3 up; the note says across first, then up. So teammates in different scenes must tell each other the pairs exactly. Add questions that read the finished chart: which crate is nearest the dock, how many squares apart two crates are. A line of buoys follows two rules, across adds 2 and up adds 4; students predict the next buoy and notice up is always double across. Wrong ideas to surprise: the order of the two numbers does not matter; a point means the same thing wherever you count from. Invent a twist where one chart piece was measured from the old flagpole, not the dock, so its points land wrong until students find its (0, 0). Optional harder objective: the wreck lies out in the bay, west and south of the dock, at (-4, -3). Build scene: students bury their own chest and label its ordered pair for classmates. Debrief: why does everyone need to agree on the order?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Dock.** On-ramp. Mele points at the flagpole. “Everything on this island is counted from here.” Take the first chart scrap.
+2. **Lighthouse and Tide Pools.** Collect the pairs. Students can write them in the notebook or call them out.
+3. **Chart Tent.** The chart table. First crate, first empty hole for anyone who swaps the numbers.
+4. **Palm Field.** The crates come up one by one on the team counter. The buoy pattern is read from here.
+5. **The old flagpole.** The twist. A correct pair digs nothing, because its zero is somewhere else.
+6. **Wreck Reef.** Bonus. Underwater light, negative numbers, a distance along one grid line.
+7. **Dock again.** Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Cartographer Mele" role="Guide.">“Your friend said three seven. Three what, then seven what? Say it so nobody can dig the wrong hole.”</Speaker>
+
+<Speaker name="Finn" role="The digger, reports every miss cheerfully.">“Seven across, three up. Lovely hole. No crate.”</Speaker>
+
+<Speaker name="Keeper Anouk" role="At the lighthouse, gives the hints.">“Stand at the flagpole. Which way do you walk first?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The swap: (7, 3) for (3, 7). The empty hole stays on the chart, so the pattern of mistakes is visible.
+- Nearest crate: students count squares from (0, 0) along both axes.
+- Buoys at (2, 4) and (4, 8). Where is the third? Then: what do you notice about each pair?
+- The old flagpole stands at (2, 1). Students shift every point on that scrap before digging.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+How far does the boat sail from (-4, 2) to (-4, -3)?
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask two students to describe a spot on a blank grid without agreeing a method first. Let it fail.
+  </Card>
+  <Card title="During" icon="laptop">
+    Seat teammates so they cannot see each other's screens. The need to say a pair exactly is the lesson. Lone players use the notebook.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Ask what Finn would say about (0, 5). The report shows how many empty holes each student dug before the first crate.
+  </Card>
+  <Card title="Example" icon="star">
+    Approve the buried-chest builds overnight. Next lesson opens with students hunting each other's chests.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A plotting worksheet marks a swapped pair with a cross and moves on. Here the same slip sends a teammate's digger to the wrong spot, and the pair has to be said aloud well enough for someone else to act on it. That turns a convention into something students need. A paper battleship game is a fair classroom rival for the first quadrant. It does not give the origin twist, a bay west and south of the dock that makes negative numbers natural, or a record of each student's misses. Lecture and video can state the rule, which is the part students already half know.
+
+</BlueprintWhy>

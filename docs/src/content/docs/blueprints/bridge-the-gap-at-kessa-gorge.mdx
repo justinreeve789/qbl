@@ -1,0 +1,130 @@
+---
+title: "Bridge the Gap at Kessa Gorge"
+description: "The rope bridge between two mountain villages has fallen, and market day is near. Students survey the gap, price the materials, then build a bridge together in a shared physics scene and load it until it holds a 100 kg cart or breaks."
+host:
+  who: asimov
+  says: "It will fall down. Good! Look for the red beam and build it again."
+  side: right
+blueprint:
+  number: 10
+  band: "3-5"
+  grades: "Grades 3-5"
+  subjects: [engineering, science, maths]
+  about: "engineering, science and maths"
+  minutes: 50
+  players: "2 to 4"
+  icon: "🌉"
+  mechanic: "Build a bridge with teammates on a budget; load it until it breaks"
+  edge: [C, E, F]
+  standards:
+    - code: "3-5-ETS1-1"
+      asks: "Define a design problem with criteria and constraints"
+      evidence: "Sorts the survey facts into must-do and limits to write the brief"
+    - code: "3-5-ETS1-2"
+      asks: "Generate and compare several solutions"
+      evidence: "Builds at least two designs and compares load held against cost"
+    - code: "3-5-ETS1-3"
+      asks: "Run fair tests and find failure points to improve a design"
+      evidence: "Changes one thing per test; uses red beams to find the weak point"
+    - code: "3-PS2-1"
+      asks: "Give evidence of the effects of balanced and unbalanced forces"
+      evidence: "Explains why the deck holds at 20 kg and falls at a higher load"
+    - code: "4.OA.A.3"
+      asks: "Solve multistep word problems"
+      evidence: "Totals an order and checks it against 3,000 coins"
+  alsoFits: "Also fits England Year 5 Forces and Key Stage 2 design and technology (strengthen and stiffen structures), and Ontario Grade 3 Strong and Stable Structures."
+  settings:
+    grade: "4"
+    subject: "Engineering"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: balanced
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Year 5 Forces and Key Stage 2 design and technology (strengthen and stiffen structures), and Ontario Grade 3 Strong and Stable Structures. These are matches by topic, not checked codes.
+
+<Aside type="caution" title="Waits on physics scenes">
+This blueprint is designed around a physics scene, and physics scenes are not part of QuestLab yet. The prompt still generates a mission, with an instrument standing in. See [Before you build](/docs/blueprints/build-notes/).
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Bridge the Gap at Kessa Gorge: generator prompt"
+Make a mission called Bridge the Gap at Kessa Gorge for grades 3 to 5. Teach and assess NGSS 3-5-ETS1-1, 3-5-ETS1-2, 3-5-ETS1-3 and 3-PS2-1 and Common Core 4.OA.A.3. Students are bridge engineers working with Engineer Tsering. The rope bridge between Upper Kessa and Lower Kessa fell in the spring melt, and the yak carts must cross before market day. Scenes: the gorge edge up high with the broken bridge, a survey camp, a timber yard, a test rig shed, a build yard at the gorge and the far village. At the survey camp students gather facts spread across the scene and its people: the gap is 6 metres, the heaviest cart is 100 kg, the village can pay 3,000 coins, and the yard sells road deck, wood beams, steel beams and rope. They sort the facts into what the bridge must do and what limits them. At the timber yard a price board drives multistep questions about totals and money left. In the test rig shed an instrument has a switch for a flat deck or a triangle frame and a slider for weight; a meter shows the load until it breaks. Ask for a prediction first. Wrong ideas to surprise: more wood always means stronger; a heavier bridge is a stronger bridge; rope can push as well as pull. The build yard is a placeholder scene that we will replace by hand with the shared physics bridge builder, so give it only an arrival line and an exit. Invent a twist where the steel is late and the team must redesign with wood and rope. Optional harder objective: the cheapest bridge that holds 100 kg. Build scene in the far village: students place a plaque and label what made their bridge strong. Debrief: why do triangles help?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Gorge Edge.** On-ramp. Look over the drop, inspect the snapped posts, take the measuring rope.
+2. **Survey Camp.** Measure the gap, weigh the cart, ask Elder Pema about the money. Sort the facts into the brief.
+3. **Timber Yard.** Prices and the maths. The steel is late: the twist lands here.
+4. **Test Rig Shed.** Flat against triangle. The triangle frame holds more than twice the load.
+5. **Build Yard.** The shared physics scene. Everyone builds on the same bridge. Test with 20 kg, then 100 kg.
+6. **Far Village.** Payoff. The cart rolls across. Plaque and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Engineer Tsering" role="Guide.">“It broke. Good. Where did it break first? Look for the red.”</Speaker>
+
+<Speaker name="Elder Pema" role="Holds the budget.">“Three thousand coins is every coin we have. Spend it like it is yours.”</Speaker>
+
+<Speaker name="Dorje" role="Timber merchant.">“Steel is stuck behind a rockslide. I have wood and I have rope. What can you do with that?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Criteria or constraint: “must hold 100 kg” is one, “3,000 coins” is the other. A wrong sort gets a reason.
+- The first flat deck sags and snaps at the middle joint. Beams turn red before they go, so students see where force gathers.
+- A rope placed as a prop goes slack. Ropes only pull, so it must hang from above.
+- Fair test: the rig refuses a second change. “You changed the shape and the material. Which one helped?”
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Hold 100 kg for under 2,000 coins.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Sketch a flat plank bridge and a triangle bridge. “Same wood. Which holds more?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Teams of three or four share one bridge. Expect the first three builds to fall; that is on plan. Ask each team what they will change and why before they rebuild.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Teams present cost and load held. Bridge designs are not saved between visits, so have teams screenshot the final build. The report shows the criteria sort and the maths.
+  </Card>
+  <Card title="Example" icon="star">
+    Follow with one real build in craft sticks, using the best design from the game. Students arrive with a plan instead of a guess.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A craft-stick bridge takes days to glue, gets one destructive test, and fails in a blink with the cause hidden. That is one cycle of the design process, and the standard asks for several. Here a team runs twenty cycles in a lesson, watches beams turn red before they break, and builds on the same structure at the same moment. The budget is enforced by the world, not by the honour system. A lecture or video can explain triangles, but cannot hand a student a failed bridge of their own to fix. The real build still matters and comes after.
+
+</BlueprintWhy>

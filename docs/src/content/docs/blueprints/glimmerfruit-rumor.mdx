@@ -1,0 +1,128 @@
+---
+title: "The Glimmerfruit Rumor"
+description: "A rumour is sweeping a harvest town: glimmerfruit juice makes you run twice as fast. Students are reporters who trace it back person by person, question six sources with different motives, run a fair test, and choose a headline. The fruit is invented, so nobody arrives with a side."
+host:
+  who: lucy
+  says: "An invented fruit means nobody has a side. All that is left is the evidence."
+  side: right
+blueprint:
+  number: 22
+  band: "6-8"
+  grades: "Grades 6-8"
+  subjects: [english]
+  about: "English: argument, sources and speaking"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🗞️"
+  mechanic: "Trace a rumour to its start; question sources with motives"
+  edge: [C, G]
+  standards:
+    - code: "RI.6.8"
+      asks: "Tell claims that are supported by reasons and evidence from those that are not"
+      evidence: "Sorts six claims into supported and unsupported"
+    - code: "RI.7.8"
+      asks: "Judge whether evidence is relevant and sufficient"
+      evidence: "Finds how many runners the fair test needs before it can be trusted"
+    - code: "RI.8.8"
+      asks: "Recognise irrelevant evidence"
+      evidence: "Flags the jam seller's story about his cousin's dog"
+    - code: "SL.8.2"
+      asks: "Evaluate the motives behind information"
+      evidence: "Matches each source to what they stand to gain"
+    - code: "W.7.8"
+      asks: "Judge the credibility of sources; quote accurately"
+      evidence: "Checks a quote against the doctor's real words; picks the accurate headline"
+  alsoFits: "Also fits England Key Stage 3 English (reading critically) and the media literacy strand of the Ontario Language curriculum."
+  settings:
+    grade: "7"
+    subject: "English Language Arts"
+    frameworks: [CCSS-ELA]
+    players: "2-4"
+    opening: action
+    focus: balanced
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Key Stage 3 English (reading critically) and the media literacy strand of the Ontario Language curriculum. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Glimmerfruit Rumor: generator prompt"
+Make a mission called The Glimmerfruit Rumor for grades 6 to 8. Teach and assess Common Core RI.6.8, RI.7.8, RI.8.8, SL.8.2 and W.7.8. Students are reporters for a school paper, The Lantern, working for their editor Ms. Odile in the invented harvest town of Pippin Hollow, days before the school relay race. A rumour says glimmerfruit juice makes you run twice as fast; a rival rumour says it rots your teeth. Scenes: a newsroom, a market row as a wide scene, a race track, a clinic, a schoolyard and a print shop. Six sources are spread across the scenes so teams split up; each can be asked who told them: Bex the juice seller, who says everyone is buying it; Coach Dunmore, whose fastest runner drank it once and won; Dr. Imani at the clinic, who timed forty runners with juice and with water and found no difference; Mr. Fenn the rival jam seller, whose cousin's dog ate one and lost a tooth; a poster claiming nine out of ten runners agree, based on ten customers at the juice stall; and eight-year-old Pim, who started it all by mishearing something harmless. Following who told whom leads back to Pim. In the clinic an instrument, the fair test, has a slider for runners per group from 2 to 50 and a Run button; it shows average times for juice and water. With 2 runners the result swings either way; with 50 there is no difference. Students sort the claims into supported, unsupported and beside the point, and match each source to a motive. Wrong ideas to surprise: if many people say it, it is true; one clear example is proof; an expert's finding cannot be twisted. Invent a twist where the doctor is misquoted as saying the juice is dangerous, and students compare the quote with her words. Final choice: a headline. Reward only the accurate one, and show that the exciting one costs readers' trust. Build scene: students make a fact-check board with a hotspot for each claim. Debrief: how did a mistake become something everyone knew?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Newsroom.** On-ramp. Ms. Odile slides a cup of juice across the desk. “Twice as fast. Says who?”
+2. **Market Row.** Bex, Mr. Fenn and the poster. Each names who told them.
+3. **Race Track and Clinic.** The coach's one example. The doctor's forty runners. The fair test instrument.
+4. **The chain.** Five steps back from the market to the schoolyard and Pim.
+5. **The misquote.** The twist. A rival paper prints words Dr. Imani never said.
+6. **Print Shop.** Headline, then the fact-check board in the square. Debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Ms. Odile" role="Guide.">“You have six people saying it. How many of them saw it?”</Speaker>
+
+<Speaker name="Bex">“I have sold four hundred cups since Monday. Four hundred people cannot be wrong, can they?”</Speaker>
+
+<Speaker name="Dr. Imani">“I said I found no difference. I did not say it was bad for you. Please write what I said.”</Speaker>
+
+<Speaker name="Pim">“I only said it was runny. Is that the same as running?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The chain: each source names another. Students draw the path and find the point where the words changed.
+- Sufficient evidence: the fair test with two runners can show juice winning. Students find the group size where the swing stops.
+- Beside the point: a dog's tooth says nothing about a runner's speed. A wrong sort explains why.
+- Motive match: who sells juice, who sells jam, who sells papers.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Rewrite the nine-out-of-ten poster so that it is true.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “How do you decide whether to believe something everyone is saying?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Split teams across the sources. Expect arguments over the coach; let the fair test settle them.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Teams present their chain. Read approved fact-check boards aloud. The report shows the claim sort and each headline choice.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it before a unit on persuasive writing or advertising. Students then bring one real advert and sort its claims the same way.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+Lessons on evaluating claims usually reach for real news, and real news brings loyalties into the room that have nothing to do with the skill. An invented fruit removes that, so the only question left is whether the evidence holds. Printed adverts and articles are fixed text. Here each source is a person who can be asked who told them and what they gain, and the rumour can be walked back to its start. Class discussion is the natural rival, but a few voices carry it. Here every student commits to a sort and a headline, and sees what the exciting headline would have cost.
+
+</BlueprintWhy>

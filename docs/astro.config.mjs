@@ -66,6 +66,48 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Mission blueprints',
+          items: [
+            { label: 'All 24 blueprints', slug: 'blueprints' },
+            { label: 'Why a mission, and when not', slug: 'blueprints/why-questlab' },
+            { label: 'Standards and objectives', slug: 'blueprints/standards' },
+            { label: 'Running the prompts', slug: 'blueprints/run-the-prompts' },
+            { label: 'Grades K to 2', collapsed: true, items: [
+              { label: '1. The Long Shadow Clock', slug: 'blueprints/long-shadow-clock' },
+              { label: '2. Signal Hill', slug: 'blueprints/signal-hill' },
+              { label: '3. Hitchhiker Seeds', slug: 'blueprints/hitchhiker-seeds' },
+            ] },
+            { label: 'Grades 3 to 5', collapsed: true, items: [
+              { label: '4. The Pier of Parts', slug: 'blueprints/pier-of-parts' },
+              { label: '5. Market Day at Three Rivers', slug: 'blueprints/market-day-at-three-rivers' },
+              { label: '6. Four Skies', slug: 'blueprints/four-skies' },
+              { label: '7. The Canyon That Kept a Diary', slug: 'blueprints/canyon-that-kept-a-diary' },
+              { label: '8. The Word Forge', slug: 'blueprints/word-forge' },
+              { label: '9. Two Sides of the Garden Wall', slug: 'blueprints/two-sides-of-the-garden-wall' },
+              { label: '10. Bridge the Gap at Kessa Gorge', slug: 'blueprints/bridge-the-gap-at-kessa-gorge' },
+              { label: "11. The Cartographer's Island", slug: 'blueprints/cartographers-island' },
+              { label: '12. The Pond That Went Quiet', slug: 'blueprints/pond-that-went-quiet' },
+              { label: '13. The Case of the Vanishing Grams', slug: 'blueprints/case-of-the-vanishing-grams' },
+            ] },
+            { label: 'Grades 6 to 8', collapsed: true, items: [
+              { label: '14. Festival Colors', slug: 'blueprints/festival-colors' },
+              { label: '15. The Moths of Ashgrove', slug: 'blueprints/moths-of-ashgrove' },
+              { label: '16. The Snapdragon Greenhouse', slug: 'blueprints/snapdragon-greenhouse' },
+              { label: '17. Gravity Games', slug: 'blueprints/gravity-games' },
+              { label: '18. One Sky, Two Views', slug: 'blueprints/one-sky-two-views' },
+              { label: '19. Drift', slug: 'blueprints/drift' },
+              { label: '20. The Well on Brackwater Lane', slug: 'blueprints/well-on-brackwater-lane' },
+              { label: '21. The Mill Fire Inquiry', slug: 'blueprints/mill-fire-inquiry' },
+              { label: '22. The Glimmerfruit Rumor', slug: 'blueprints/glimmerfruit-rumor' },
+            ] },
+            { label: 'Grades 8 to 12', collapsed: true, items: [
+              { label: '23. The Bloom', slug: 'blueprints/the-bloom' },
+              { label: '24. Titration at Tarn Lake', slug: 'blueprints/titration-at-tarn-lake' },
+            ] },
+            { label: 'Before you build', slug: 'blueprints/build-notes' },
+          ],
+        },
+        {
           label: 'Build a mission',
           items: [
             { label: 'The editor at a glance', slug: 'editor' },

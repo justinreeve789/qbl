@@ -47,6 +47,22 @@ The diagrams are Astro components in `src/components/diagrams/`, drawn in HTML a
 | `TeamsLookIn`, `SaveLayers` | Teams as copies of the world; where progress is kept | Classes, assignments API, instances |
 | `PrivacySplit`, `Architecture` | What QuestLab holds about a student; the containers | Privacy, architecture |
 
+## Mission blueprints
+
+The pages in `src/content/docs/blueprints/` are 24 missions planned from the standards outward. A blueprint page describes itself in its frontmatter (`blueprint:`, checked by `src/content.config.ts`): its number, grade band, subjects, the standards it teaches with what each asks and the evidence for it, the advantages it leans on and the generator settings. The components in `src/components/blueprints/` draw everything from that, so nothing is written twice:
+
+| Component | What it draws | Used in |
+| --------- | ------------- | ------- |
+| `BlueprintHeader` | The banner at the top of a blueprint (added by `MarkdownContent.astro`, like the host) | Every blueprint |
+| `BlueprintStandards`, `BlueprintSettings`, `BlueprintWhy`, `Speaker` | The standards table, the generator settings, the closing argument with its advantages, a character with a line | Every blueprint |
+| `BlueprintGrid`, `SubjectFilter`, `BlueprintStats` | The cards for one grade band, the subject buttons that filter them, four figures about the set | The overview |
+| `Advantages` | The seven advantages, each with the blueprints that use it | Why a mission, and when not |
+| `StandardsIndex`, `Crosswalk` | Every standard of one framework with its blueprints; what each blueprint says about other curricula | Standards and objectives |
+
+To add a blueprint, copy one of the pages, change its frontmatter and add it to the sidebar. The overview, the standards index and the counts follow by themselves.
+
+Every standard's code links to where it is published. The addresses are in `src/components/blueprints/standards.ts`: add a code there when a blueprint uses a new one (a code that is not listed is shown without a link). The subjects' colours and the advantages are in `lib.ts`. The generator prompts must stay under 2,000 characters, the limit of the Generate page, and the shared footer on `blueprints/run-the-prompts.mdx` under 1,000.
+
 ## Things to keep in step with the editor
 
 The editor guide describes the editor's own wording (button and field names). When you change a label in `apps/editor/src` (`schema.ts`, `views/`), search these pages for the old one.

@@ -1,0 +1,49 @@
+---
+// Four figures about the set, counted from the pages themselves.
+import { blueprints } from './lib';
+
+const all = await blueprints();
+const codes = new Set(all.flatMap((e) => e.data.blueprint.standards.map((s) => s.code)));
+const subjects = new Set(all.flatMap((e) => e.data.blueprint.subjects));
+const cross = all.filter((e) => e.data.blueprint.subjects.length > 1).length;
+const tiles = [
+  { figure: all.length, label: 'mission blueprints', icon: '🧭' },
+  { figure: codes.size, label: 'standards taught', icon: '🎯' },
+  { figure: subjects.size, label: 'subjects', icon: '📚' },
+  { figure: cross, label: 'cross two subjects or more', icon: '🔗' },
+];
+---
+
+<ul class="bp-stats not-content">
+  {tiles.map((t) => (
+    <li>
+      <span class="bp-stats__icon" aria-hidden="true">{t.icon}</span>
+      <span class="bp-stats__figure">{t.figure}</span>
+      <span class="bp-stats__label">{t.label}</span>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .bp-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 0.8rem;
+    margin: 1.5rem 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.7rem;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--sl-color-gray-6) 60%, transparent);
+  }
+  .bp-stats__icon { grid-row: span 2; font-size: 1.9rem; line-height: 1; }
+  .bp-stats__figure { font-size: var(--sl-text-2xl); font-weight: 800; line-height: 1.1; color: var(--sl-color-accent-high); }
+  .bp-stats__label { font-size: var(--sl-text-xs); font-weight: 600; color: var(--sl-color-gray-2); line-height: 1.3; }
+</style>

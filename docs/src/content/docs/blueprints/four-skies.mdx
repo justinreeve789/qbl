@@ -1,0 +1,125 @@
+---
+title: "Four Skies"
+description: "Students ride a balloon from a sky station to a rainforest town, a desert outpost, a polar base and a stormy coast. They collect weather readings for two seasons in each place, graph them, and then test designs to protect the coast town from a storm surge."
+host:
+  who: val
+  says: "Four climates before the bell rings, and the class collects every number itself."
+  side: right
+blueprint:
+  number: 6
+  band: "3-5"
+  grades: "Grade 3"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🎈"
+  mechanic: "Visit four climates; collect weather data; test a flood design"
+  edge: [B, A]
+  standards:
+    - code: "3-ESS2-1"
+      asks: "Represent data in tables and graphs to describe typical weather in a season"
+      evidence: "Fills the station's data wall with July and January cards"
+    - code: "3-ESS2-2"
+      asks: "Combine information to describe climates in different regions"
+      evidence: "Matches each region to its climate from the cards and local log books"
+    - code: "3-ESS3-1"
+      asks: "Make a claim about the merit of a design that reduces a weather hazard"
+      evidence: "Tests wall, stilts and sandbags against a surge, then picks a claim with evidence"
+    - code: "3.MD.B.3"
+      asks: "Draw and read scaled bar graphs; solve how-many-more problems"
+      evidence: "Reads a rainfall graph where one square is 20 mm"
+  alsoFits: "Also fits England Key Stage 2 geography (climate zones and biomes)."
+  settings:
+    grade: "3"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: balanced
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Key Stage 2 geography (climate zones and biomes). These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Four Skies: generator prompt"
+Make a mission called Four Skies for grade 3. Teach and assess NGSS 3-ESS2-1, 3-ESS2-2 and 3-ESS3-1 and Common Core 3.MD.B.3. Students are junior weather scientists working for Chief Forecaster Anahi at a sky station. From the station's balloon dock, four portals lead in any order to four invented places with real climate types: Tamba, a rainforest town with heavy rain; Qasr, a desert outpost that is hot by day and cold at night; Nuvik, a polar base with snow; and Port Ellery, a mild coast with a storm season. Use the weather for each scene. In each place students inspect a painted thermometer and rain gauge and collect two data cards, one for July and one for January, and a local keeper shows a thirty-year log book. Back at the station a data wall shows the team's cards as a table and a scaled bar graph of July rain where one square is 20 mm: Tamba 240, Qasr 0, Nuvik 20, Port Ellery 60. Ask how-many-more questions. Wrong ideas to surprise: one day's weather tells you the climate; deserts are always hot; polar places have no summer. Invent a twist where it rains in the desert on the day of the visit, and students check the log book before deciding what kind of place it is. Final problem: a storm surge is coming to Port Ellery. An instrument has a slider for surge height from 0 to 3 metres and switches for a sea wall, houses on stilts and sandbags; a meter shows how many homes flood. Students test, then choose the claim the evidence supports. Build scene: students place protections in Port Ellery and label why. Debrief: how is climate different from weather?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Sky Station.** On-ramp. Read the station's own thermometer, pick up the card case, step into a balloon.
+2. **Tamba, Qasr, Nuvik, Port Ellery.** Any order. Rain pours, heat shimmers, snow blows, wind gusts. Two cards and one log book in each.
+3. **Rain in the desert.** The twist, wherever the team visits Qasr. Siham opens thirty years of records.
+4. **Data Wall.** The table and graph fill as cards arrive from all teammates.
+5. **Surge Room.** The instrument. Free testing, then the claim.
+6. **Port Ellery, after the storm.** Payoff. The town stands or is patched up, depending on the design. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Chief Forecaster Anahi" role="Guide.">“One wet day in Qasr. Is that enough to change the map? What else could we check?”</Speaker>
+
+<Speaker name="Siham" role="Desert well-keeper.">“My grandmother wrote down every rain. Count the marks. Thirty years, eleven rainy days.”</Speaker>
+
+<Speaker name="Aput" role="Polar researcher.">“In July the sun does not set here. It is still cold, but look at the flowers.”</Speaker>
+
+<Speaker name="Olu" role="Rainforest teacher.">“We do not ask if it will rain. We ask when.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Cards are needed from all four places, so a team that splits up fills the wall four times faster.
+- A frozen rain gauge in Nuvik must be thawed with a flask from the station before it can be read.
+- On the graph, how much more rain fell in Tamba than in Port Ellery? A wrong answer highlights the two bars and counts squares aloud.
+- In the Surge Room, sandbags alone fail at 2 metres. The miss says how many homes flooded and where the water came in.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Find the design that keeps every home dry at 3 metres.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “If it snows here tomorrow, does that mean we live in a cold place?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Let teams choose their own order. Gather the class when the first team meets the desert rain and ask what they think.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Sort the words weather and climate using examples from the trip. The report shows which students changed their answer after the log book.
+  </Card>
+  <Card title="Example" icon="star">
+    Run it in week one of a weather unit and start a real class rain gauge the same day. Students compare their own month of data with the four places.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A class weather station is worth keeping, but it records one place for a few weeks, and climate is a comparison across places and decades. No class can stand in rain, desert heat and a blizzard in one lesson, or open a thirty-year record in each. A video tours the same climates but hands over the conclusions; here students collect the numbers and build the graph they are asked to read. The surge instrument adds what no model in a tray can: the same storm, repeated exactly, against each design.
+
+</BlueprintWhy>

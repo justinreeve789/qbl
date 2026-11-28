@@ -1,0 +1,123 @@
+---
+title: "The Pier of Parts"
+description: "A long pier runs from the shore post, marked 0, to the lighthouse, marked 1. Students hang lanterns at fractions of the way along so boats can find their slips in fog. The pier is the number line and the avatar's walk is the size of the fraction."
+host:
+  who: sam
+  says: "Fractions? Easy! On this pier a fraction is a place you can walk to."
+  side: right
+blueprint:
+  number: 4
+  band: "3-5"
+  grades: "Grade 3"
+  subjects: [maths]
+  about: "maths"
+  minutes: 40
+  players: "1 to 4"
+  icon: "🏮"
+  mechanic: "Walk a pier that is a number line; hang lanterns at fractions"
+  edge: [E]
+  standards:
+    - code: "3.NF.A.1"
+      asks: "Understand a/b as a parts of size 1/b"
+      evidence: "Builds 3/8 on the plank cutter by choosing parts, then counting"
+    - code: "3.NF.A.2"
+      asks: "Place fractions on a number line from 0 to 1"
+      evidence: "Hangs lanterns at 1/2, 1/4, 3/4 and 1/3 on the piers"
+    - code: "3.NF.A.3"
+      asks: "Explain equivalence and compare fractions by size"
+      evidence: "Finds 2/4 already lit at 1/2; walks 1/3 against 1/4"
+    - code: "4.NF.A.2"
+      bonus: true
+      asks: "Compare fractions with unlike parts"
+      evidence: "Orders five slips along the breakwater"
+  alsoFits: "Also fits Texas 3.3A, 3.3B, 3.3F and 3.3H, and England Year 3 fractions (equivalent fractions, comparing unit fractions)."
+  settings:
+    grade: "3"
+    subject: "Mathematics"
+    frameworks: [CCSS-MATH]
+    players: "1-4"
+    opening: action
+    focus: balanced
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits Texas 3.3A, 3.3B, 3.3F and 3.3H, and England Year 3 fractions (equivalent fractions, comparing unit fractions). These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Pier of Parts: generator prompt"
+Make a mission called The Pier of Parts for grade 3. Teach and assess Common Core 3.NF.A.1, 3.NF.A.2 and 3.NF.A.3, with 4.NF.A.2 as the optional harder objective. Students are harbour hands helping Harbourmaster Ines hang lanterns so boats can find their slips when the fog comes. Main scene: a wide scene of a long straight pier from a shore post painted 0 on the left to a lighthouse painted 1 on the right, made of 8 equal planks. A second wide scene is the East Pier of the same length with 6 equal planks. Students collect lanterns and use them at exact spots: 1/2, 1/4 and 3/4 on the first pier, 1/3 and 2/3 on the second. Then an order asks for a lantern at 2/4 and students find one already hanging there. An instrument called the plank cutter has a slider for equal parts (2, 3, 4, 6, 8) and a slider for how many parts to count; it shows a marker moving along the pier, and the goal is to land on a buoy at 3/4 using eighths. Misses name the fraction made and ask how to fix it. Wrong ideas to surprise: 1/4 is farther than 1/3 because 4 is more than 3; 2/4 and 1/2 are different places. Ask for a prediction before each. Invent a twist with a short jetty half as long as the pier, where half-way along is a different place, so the whole matters. Use fog in the finale; boats arrive when the lanterns are right. Build scene: students place a boat and label its slip with a fraction and another name for the same spot. Debrief: how can two fractions name one place?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Shore Post.** On-ramp. Pick up a lantern, walk to the middle of the pier, hang it. Ines says only: “That is half-way.”
+2. **The Long Pier.** Count planks underfoot. Hang 1/4 and 3/4. The order for 2/4 arrives.
+3. **Cutter Shed.** The plank cutter instrument. Free play first, then the buoy goal.
+4. **East Pier.** Six planks. Predict: which is farther from shore, 1/3 or 1/4? Walk both.
+5. **Short Jetty.** The twist. Half of a short thing is not half of a long thing.
+6. **Fog Night.** Payoff. Fog drifts in, lanterns glow, boats dock one by one. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Harbourmaster Ines" role="Guide.">“You say 2/4. Walk there. What do you see hanging?”</Speaker>
+
+<Speaker name="Nilo" role="A young lamp seller, voices the wrong idea as an honest question.">“Four is more than three. So 1/4 is farther out, right?”</Speaker>
+
+<Speaker name="Auntie Wren" role="Ferry pilot, gives the payoff.">“Three lights, right where you said. I can bring her in blind.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The 2/4 order cannot be filled, because the hook is taken. Students must tell Ines why, choosing from three explanations.
+- On the plank cutter, 3 parts counted out of 8 falls short of the buoy. The miss reads: “That is 3/8. The buoy is at 3/4. How many eighths fit in one quarter?”
+- A crate must be left at the same place on both piers. Students find 1/2 on one and 3/6 on the other.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+The breakwater runs past the lighthouse. Hang a lantern at 5/4.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Thumbs vote: which is bigger, 1/3 or 1/4? Record the count.
+  </Card>
+  <Card title="During" icon="laptop">
+    Let students play alone or in pairs. Circulate at the East Pier and ask them to say the prediction aloud before walking.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Repeat the vote and ask what changed their mind. In the report, sort by tries on the plank cutter; three or more tries marks a small group for tomorrow.
+  </Card>
+  <Card title="Example" icon="star">
+    Place it after fraction strips and before the first paper number line. Students arrive at the paper line already knowing a fraction is a place.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+Circles and strips teach a fraction as a share. The harder idea in this standard is that a fraction is a number with a place on a line, and teachers commonly report it as the sticking point. Here the plank count is the denominator and the walk is the size, so 1/4 is visibly a shorter walk than 1/3. A lecture or video can state this but cannot make a child's own wrong guess visible. A number line taped on the floor is the closest real activity and worth doing, but one child walks while the rest watch. Here every child walks at once, gets a reason for each miss, and leaves a record of their tries.
+
+</BlueprintWhy>

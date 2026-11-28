@@ -1,0 +1,49 @@
+---
+// A standard's code as a link to where it is published (standards.ts), with a mark for the framework.
+import { FRAMEWORKS, standard } from './standards';
+
+interface Props {
+  code: string;
+  /** Leave the framework's name off (in a table that is already about one framework). */
+  bare?: boolean;
+}
+
+const { code, bare = false } = Astro.props;
+const s = standard(code);
+const framework = s.framework ? FRAMEWORKS[s.framework] : null;
+---
+
+<span class="bp-std" style={framework ? `--chip: ${framework.color}` : undefined}>
+  {s.url ? (
+    <a class="bp-std__code" href={s.url} title={s.opens} target="_blank" rel="noopener">{code}<span class="bp-std__out" aria-hidden="true">↗</span><span class="sr-only"> (opens the standard in a new tab)</span></a>
+  ) : (
+    <span class="bp-std__code">{code}</span>
+  )}
+  {framework && !bare && <span class="bp-std__framework">{framework.short}</span>}
+</span>
+
+<style>
+  .bp-std { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+  .bp-std__code {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.12rem 0.55rem;
+    border-radius: 0.5rem;
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-sm);
+    font-weight: 700;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--sl-color-white);
+    background: color-mix(in srgb, var(--chip, var(--sl-color-gray-4)) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--chip, var(--sl-color-gray-4)) 55%, transparent);
+  }
+  a.bp-std__code:hover, a.bp-std__code:focus-visible {
+    background: color-mix(in srgb, var(--chip) 32%, transparent);
+    border-color: var(--chip);
+  }
+  .bp-std__out { font-family: var(--__sl-font); font-size: 0.85em; opacity: 0.7; }
+  .bp-std__framework { font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); white-space: nowrap; }
+  :global([data-theme='light']) .bp-std__framework { color: var(--sl-color-gray-2); }
+</style>

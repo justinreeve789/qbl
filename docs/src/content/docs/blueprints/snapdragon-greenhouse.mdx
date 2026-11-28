@@ -1,0 +1,127 @@
+---
+title: "The Snapdragon Greenhouse"
+description: "A seed company must deliver 100 pink snapdragons for the spring parade. Students clone plants from cuttings, cross red with white, then cross pink with pink and get a result almost nobody predicts. A wheel of chance decides each seed, and the team's pooled count shows a pattern that eight seeds alone never do."
+host:
+  who: val
+  says: "Eight seeds will fool you. Two hundred seeds from the whole class will not."
+  side: right
+blueprint:
+  number: 16
+  band: "6-8"
+  grades: "Grades 7-8"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🌸"
+  mechanic: "Cross flowers with a wheel of chance; pool the team's counts"
+  edge: [A, F]
+  standards:
+    - code: "MS-LS3-2"
+      asks: "Model why asexual reproduction gives identical offspring and sexual reproduction gives variation"
+      evidence: "Compares cuttings with seed-grown plants, before and after the fungus"
+    - code: "7.SP.C.8"
+      asks: "Find probabilities of compound events with tables and simulation"
+      evidence: "Completes the two-by-two table for a pink by pink cross"
+    - code: "7.SP.C.7"
+      asks: "Build a probability model and compare it with observed results"
+      evidence: "Sets 1 red : 2 pink : 1 white against their own eight seeds and the team's 200"
+    - code: "7.SP.C.6"
+      asks: "Estimate probability from long-run relative frequency"
+      evidence: "Watches the pooled pink share settle near one half"
+  alsoFits: "Also fits Texas 7.6 (experimental and theoretical probability) and England Key Stage 3 biology (heredity)."
+  settings:
+    grade: "7"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits Texas 7.6 (experimental and theoretical probability) and England Key Stage 3 biology (heredity). These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+Snapdragon colour really does work this way, which keeps the model honest.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Snapdragon Greenhouse: generator prompt"
+Make a mission called The Snapdragon Greenhouse for grades 7 to 8. Teach and assess NGSS MS-LS3-2 and Common Core 7.SP.C.6, 7.SP.C.7 and 7.SP.C.8. Students are plant breeders working for Head Grower Mateus at a seed company that must deliver 100 pink snapdragons for the spring parade. Scenes: a potting bench, a crossing house, a seedling room, a chance bench, a clone row and the parade float. Snapdragon colour is real incomplete dominance: red plants carry two red factors, white plants carry two white factors, and pink plants carry one of each. Do not explain this until students have seen the results. First students take a cutting from a red plant and grow an identical red plant. Then they use a pollen brush on a red flower and a white flower and grow the seeds: every plant is pink. Ask for a prediction: what will pink crossed with pink give? Then show it. At the chance bench an instrument has a chooser for each parent and a wheel that spins once per parent for every seed to pick which factor is passed on; a Sow 8 seeds button adds to counters for red, pink and white, and a shared team tally adds up everyone's seeds. Students fill a two-by-two table of what each parent can pass on. Wrong ideas to surprise: colours blend like paint, so pink parents give only pink; eight seeds will split exactly 2, 4 and 2; a result that misses the model means the model is wrong. Ask which cross reaches 100 pinks fastest. Invent a twist where a fungus wipes out the clone row, because every clone is the same, while the seed-grown bench has survivors. Build scene at the float: students place flowers and label a display that shows the cross. Debrief: why did the team tally match the table better than your own tray?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Potting Bench.** On-ramp. Snip, pot, grow. The cutting is a copy of its parent.
+2. **Crossing House.** Brush pollen from red to white. Collect the seed pod.
+3. **Seedling Room.** All pink. Then the prediction, then the pink by pink tray: red, pink and white together.
+4. **Chance Bench.** Wheel, counters, the two-by-two table, the team tally.
+5. **Clone Row.** The twist. Row after row of identical plants, wilted. One bench of seed-grown plants has gaps and survivors.
+6. **Parade Float.** Payoff. A hundred pinks in bloom. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Head Grower Mateus" role="Guide.">“Red and white made pink. So the red is gone for good? Cross two pinks and see.”</Speaker>
+
+<Speaker name="Ioana" role="The records clerk, gives the hints.">“Your tray says six pinks. The next tray says three. Add them all up before you argue with the table.”</Speaker>
+
+<Speaker name="Mr. Bello" role="The parade organiser.">“I ordered pink. I do not mind how you get there, but I need a hundred by Friday.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The table: each pink parent can pass red or white. Four boxes, one red, two pink, one white.
+- A tray of eight that gives 1, 6 and 1 is not broken. Students choose the best explanation from four.
+- Fastest route to 100 pinks: red by white gives all pink; pink by pink gives about half.
+- The fungus: why did every cutting die and only some seedlings?
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+How many seeds from pink by pink should you sow to expect 100 pinks, and why sow a few more?
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “A red flower and a white flower have pink babies. What will two pink ones have?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Play as one class instance so the tally pools everyone's seeds. Project the tally and narrate it as it climbs.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Compare one student's tray, one team's total and the class total with the table. The report shows the pink by pink prediction for every student.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it between the first lesson on inheritance and the first on probability models. It serves both units with one hour.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A real snapdragon generation takes months, so no class sees the second cross. The two ideas students resist, that the red was hidden rather than lost and that chance settles down only in large numbers, both need many fast trials and a shared count. Coin-flip genetics on paper is a fair classroom rival, but pooling thirty students' tallies by hand takes most of the lesson and the coins are not flowers. Here the wheel is the chance, the tray is the result, and the class total builds itself. A lecture can draw the table; it cannot make a student distrust it, test it and come back convinced.
+
+</BlueprintWhy>

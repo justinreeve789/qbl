@@ -1,0 +1,128 @@
+---
+title: "Titration at Tarn Lake"
+description: "A mountain lake below an old mine has turned acid and the fish are gone. Students sample it, titrate the samples on the close-up bench, work out how much acid the whole lake holds, and decide how many tonnes of limestone to add. A year later the lake tells them whether one dose was enough."
+host:
+  who: sam
+  says: "Overshoot ten times in ten minutes. Then scale one flask up to a whole lake."
+  side: right
+blueprint:
+  number: 24
+  band: "8-12"
+  grades: "Grades 9-11"
+  subjects: [science, maths]
+  about: "chemistry, earth science and maths"
+  minutes: 55
+  players: "1 to 4"
+  icon: "🧪"
+  mechanic: "Titrate lake samples on the bench; scale the dose to a whole lake"
+  edge: [C, B]
+  standards:
+    - code: "HS-PS1-7"
+      asks: "Use mathematical representations to show atoms are conserved in a reaction"
+      evidence: "Uses the balanced equation and the 1 to 2 mole ratio to get the acid concentration"
+    - code: "HS-ESS3-4"
+      asks: "Evaluate or refine a technological solution that reduces human impact"
+      evidence: "Judges one-off liming against treating the mine water at its source"
+    - code: "HSN-Q.A.1"
+      asks: "Use units to guide multi-step problems"
+      evidence: "Carries millilitres to litres to cubic metres, and grams to tonnes"
+    - code: "HSA-CED.A.4"
+      asks: "Rearrange formulas to highlight a quantity"
+      evidence: "Solves for concentration, then for moles, then for mass"
+  alsoFits: "Also fits HSF-IF.B.4 (reading the titration curve), a lighter grade 8 run under MS-PS1-2, and Ontario Grade 11 chemistry."
+  settings:
+    grade: "10"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "1-4"
+    opening: action
+    focus: rigor
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits HSF-IF.B.4 (reading the titration curve), a lighter grade 8 run under MS-PS1-2, and Ontario Grade 11 chemistry. These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+Worked numbers: a 25.0 mL sample of 0.000500 mol/L sulfuric acid needs 25.0 mL of 0.00100 mol/L sodium hydroxide. A 200,000 cubic metre lake then holds 100,000 mol of acid and needs 10 tonnes of limestone. A chemistry teacher should check these before publishing.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Titration at Tarn Lake: generator prompt"
+Make a mission called Titration at Tarn Lake for grades 9 to 11. Teach and assess NGSS HS-PS1-7 and HS-ESS3-4 and Common Core HSN-Q.A.1 and HSA-CED.A.4. Students are environmental chemists working with Dr. Ilona Vasquez. Tarn Lake, a 200,000 cubic metre mountain lake below an old mine, has turned acid from sulfuric acid in the mine drainage, and the fish are gone. Scenes: the lakeshore, a mine tunnel underground with an orange stream, a field lab tent, the village hall and the lake one year later. On the shore students dip test strips at three sites and get pH 3.3, 3.0 and 2.6, lowest by the mine inflow, before any theory. In the field lab tent an instrument stands in for a burette: a slider adds 0.00100 mol/L sodium hydroxide to a 25.0 mL lake sample in 0.5 mL steps up to 40 mL; it shows pH, an indicator colour and a live graph of pH against volume added. The goal is to stop within 0.5 mL of the colour change, which comes at 25.0 mL. Going past it is a cheap mistake with a Start again button. Students then calculate: the balanced equation needs two sodium hydroxide for each sulfuric acid, so the sample is 0.000500 mol/L; the whole lake holds 100,000 mol; limestone reacts one to one, so the dose is 10 tonnes. Check answers with units. Wrong ideas to surprise: acid and base always react one to one; equal volumes neutralise; pH 3 is only a little more acid than pH 4; one dose fixes a lake for good. A student who assumes one to one gets 20 tonnes, and the village hall scene shows what an overdose does. The treasurer and the anglers want different things and neither is a villain. Invent a twist one year later where the lake is turning acid again because the mine still drains, so students compare repeat dosing with a limestone channel at the tunnel mouth. Keep the language at a grade 8 reading level. Build scene: students place and label sampling points for a monitoring plan. Debrief: why was the first plan not enough?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Lakeshore.** On-ramp. Three test strips, three colours. The worst is by the orange inflow.
+2. **Mine Tunnel.** Follow the orange stream to its source. Collect a sample of the drainage itself.
+3. **Field Lab Tent.** Titrate. Overshoot. Start again. Watch the curve stand almost still, then jump.
+4. **The sums.** Sample to litre to lake. The two-for-one ratio is where most first answers go wrong.
+5. **Village Hall.** Present the dose. The treasurer asks what happens if it is doubled by mistake.
+6. **One Year Later.** The twist. Fish near the far shore, strips turning red again by the inflow.
+7. **A better plan.** Compare options, place the monitoring points, debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Dr. Ilona Vasquez" role="Guide.">“You added 25 mL of base to 25 mL of lake. So they are the same strength? Look at the equation again. Count the hydrogens.”</Speaker>
+
+<Speaker name="Mr. Abara" role="Village treasurer.">“Ten tonnes or twenty. One of those is my road budget. Which is it, and how sure are you?”</Speaker>
+
+<Speaker name="Old Petra" role="Angler, gives the hints.">“The trout went the year the mine pumps stopped. Did you think it would stop leaking because we asked nicely?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Endpoint: the colour holds for 24 mL and flips inside 1 mL. Students find it by slowing down, which the graph teaches.
+- pH 2.6 against pH 3.6: how many times more acid? Ten, not a little.
+- The ratio: two sodium hydroxide for each sulfuric acid. The one-to-one answer is accepted as an answer, then tested and seen to overshoot.
+- Units: 0.000500 mol in each litre, 1,000 litres in each cubic metre, 200,000 cubic metres.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+The tunnel stream delivers 40 mol of acid a day. How much limestone a year does a channel need?
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “A lake is too acid. How would you work out how much base to add without wrecking it?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Solo at the instrument, pairs for the sums. Let students carry a one-to-one answer to the village hall before correcting it.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Students write the calculation chain with units on one line. The report shows tries at the endpoint and each unit-checked answer.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it as the pre-lab for the first real titration. Students reach the burette knowing what the endpoint looks like and why they must slow down.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+Handling a burette is a physical skill and must be learned at a real bench. What goes wrong in that first real lab, though, is conceptual: students overshoot because they do not know the curve is flat and then steep, and each retry costs ten minutes and fresh reagent. Here ten overshoots take ten minutes and the curve draws itself as they go. No school lab can then scale the flask up to a lake, let a wrong mole ratio play out as an overdose, or come back a year later. A lecture can show the sums and a video can show the colour change; neither lets the student be responsible for the dose.
+
+</BlueprintWhy>

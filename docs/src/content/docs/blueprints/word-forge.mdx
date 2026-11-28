@@ -1,0 +1,123 @@
+---
+title: "The Word Forge"
+description: "In a mountain forge, words are made into tools. Students combine carved root stones, such as tele and scope, and the tool that comes out does exactly what its parts mean. Every obstacle is solved by working out which meanings are needed."
+host:
+  who: pinta
+  says: "Put tele and scope together and see what drops out. The words do the teaching."
+  side: right
+blueprint:
+  number: 8
+  band: "3-5"
+  grades: "Grades 4-5"
+  subjects: [english]
+  about: "English language"
+  minutes: 40
+  players: "1 to 4"
+  icon: "⚒️"
+  mechanic: "Combine root stones into tools that do what the word means"
+  edge: [E]
+  standards:
+    - code: "L.4.4b"
+      asks: "Use Greek and Latin roots and affixes as clues to a word's meaning"
+      evidence: "Chooses two roots to forge the tool each obstacle calls for"
+    - code: "L.5.4b"
+      asks: "The same at grade 5, with harder words"
+      evidence: "Predicts what telemeter and thermograph would do before forging them"
+    - code: "L.4.4a"
+      asks: "Use context as a clue to meaning"
+      evidence: "Picks the right unlabelled tool using notes pinned around the forge"
+    - code: "RF.4.3a"
+      asks: "Use morphology to read unfamiliar long words"
+      evidence: "Reads and explains new words in the debrief"
+  alsoFits: "Also fits England Years 5-6 word reading (root words, prefixes and suffixes; morphology and etymology)."
+  settings:
+    grade: "4"
+    subject: "English Language Arts"
+    frameworks: [CCSS-ELA]
+    players: "1-4"
+    opening: action
+    focus: play
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Years 5-6 word reading (root words, prefixes and suffixes; morphology and etymology). These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Word Forge: generator prompt"
+Make a mission called The Word Forge for grades 4 to 5. Teach and assess Common Core L.4.4a, L.4.4b, L.5.4b and RF.4.3a. Students are apprentice wordsmiths working for Smith Odalys in a mountain forge where words become tools. Scenes: the forge floor, a stone quarry, a lookout ledge up high, a vault corridor underground and a showroom. Students collect eight carved root stones spread across the scenes, each with its meaning cut into it: tele (far), micro (small), scope (look at), phone (sound), graph (write or draw), therm (heat), meter (measure) and photo (light). Stones are never used up. Combining two stones forges a real tool that does what the parts mean: telescope, microscope, telephone, microphone, telegraph, photograph, thermometer, phonograph, telephoto, micrometer and telemeter. Each obstacle states a need in plain words and never names the tool: read a sign on a far tower; read tiny writing on a key; hear a whisper behind the vault door; check that the forge is hot enough; copy a map using light; send written words to the valley. Students use the right tool on each. A wrong tool gets a reason based on its meaning. Pin notes around the forge that use each word in a sentence as context clues. Wrong idea to surprise: long words must be memorised whole. Invent a twist where the labels burn off the tool shelf and students must pick tools by meaning alone. Optional harder objective: the vault needs something to measure a thing that is far away, a word students have never seen. Build scene in the showroom: students invent a new tool from two stones, place it and label its name and job. Debrief: what would a thermograph do, and how do you know?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Forge Floor.** On-ramp. Two stones lie by the anvil. Put them together and a telescope drops out. Nobody has explained anything yet.
+2. **Quarry and Lookout Ledge.** Gather stones. Use the telescope on the far tower to read the first clue.
+3. **Vault Corridor.** Tiny writing, a whisper, a locked door. Three needs, three tools.
+4. **Fire trouble.** The twist. The fire sinks, the labels are ash, and the right tool must be chosen from five.
+5. **The vault.** Bonus. “Measure what is far.” Students forge a telemeter before they know the word exists.
+6. **Showroom.** Build an invented tool, then the debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Smith Odalys" role="Guide.">“Do not ask me what it is called. Tell me what you need it to do.”</Speaker>
+
+<Speaker name="Kit" role="The apprentice, gives the hints.">“Say the job out loud. Hear. Small. Which two stones say that?”</Speaker>
+
+<Speaker name="Ember" role="A forge lizard, reacts to mistakes with a puff of smoke. A microscope pointed at the far tower earns a sneeze and a reason." />
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Need to tool: “I must look at something far.” The stones say far and look at.
+- Wrong tool, useful reason: “A microscope looks at small things. The tower is not small. It is far.”
+- Context clues: “The smith held the \_\_\_ to the wall and heard the mice.” Students choose the tool that fits the sentence.
+- Joke combinations still mean something. A phonograph plays a tune, and Kit asks what graph is doing in that word.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Forge all eleven tools and sort them by shared stone.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Write telescope and microscope. “What do they share? What might that part mean?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Solo or pairs. Listen for students saying the need aloud before they combine; prompt it if they are guessing.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Give three unseen words, such as photometer, and have pairs explain them. The report shows first-try rate on tool choice and who solved the bonus.
+  </Card>
+  <Card title="Example" icon="star">
+    Run it at the start of a roots unit, then keep a class wall of root stones and add a word each time one turns up in science or reading.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+In a list or on a worksheet, a root is a fact to memorise. With word-part cards, any two cards make a word and nothing happens next. Here meaning has a consequence: the tool works only if the student understood its parts, and the wrong tool fails for a reason they can read. That turns morphology into a strategy students use on purpose, which is what the standard asks. There is no real-materials rival for this one, and a lecture or video can only present the list.
+
+</BlueprintWhy>
