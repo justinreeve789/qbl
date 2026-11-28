@@ -1,8 +1,8 @@
-import { mainLayerIndex, waterLightShaped, waterLightStartShape, WATER_LIGHT_MAX_CORNERS, type Condition, type SceneLight, type SceneWaterLight } from '@qbl/shared';
+import { fogRadial, fogSettings, FOG_MAX_CORNERS, mainLayerIndex, type SceneFog, waterLightShaped, waterLightStartShape, WATER_LIGHT_MAX_CORNERS, type Condition, type SceneLight, type SceneWaterLight } from '@qbl/shared';
 import { mediaLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { confirmDelete, h, help, toast } from '../../dom';
 import { form, withValue, type Field, type FormContext, type SpotRequest } from '../../fields';
-import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, FLOW_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, WATER_LIGHT_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS, WEATHER_FIELDS } from '../../schema';
+import { ATMOSPHERE_FIELDS, CHARACTER_PLACEMENT_FIELDS, FLOW_FIELDS, FOG_FIELDS, ITEM_PLACEMENT_FIELDS, LAYER_FIELDS, LIGHT_FIELDS, SCALE_AREA_FIELDS, WATER_LIGHT_FIELDS, SCENE_FIELDS, SCENE_MUSIC_FIELDS, SHADOW_SPOT_FIELDS, SKY_FIELDS, SPAWN_FIELDS, WEATHER_FIELDS } from '../../schema';
 import { duplicateScene } from '../../clipboard';
 import { inlineConditions, type ConditionValue } from '../conditions';
 import { eventPanel } from '../eventPanel';
@@ -63,6 +63,10 @@ export function inspector(model: SceneModel, selection: Selection, host: Inspect
       return listPanel(model, ctx, 'water_lights', selection.index, 'Underwater light',
         'Light under water, drawn live by the game. Rippling light is the bright web that dances on the floor of a pool or the sea bed: put its box on the floor, and it lies behind everyone standing there. Shafts are beams of light slanting down from the surface, in front of everyone. It fades out softly at the edges of its box (or in an oval). Give it conditions to switch it on and off as the story goes. Drag the box to move it and its corners to resize it; “Test this scene” shows it moving.',
         WATER_LIGHT_FIELDS, host, h('div', null, waterLightShape(model, selection.index), layoutConditions(model, ctx, 'water_lights', selection.index)));
+    case 'fog':
+      return listPanel(model, ctx, 'fogs', selection.index, 'Fog',
+        `Soft, see-through fog drawn live by the game, drifting across its outline or spreading out from a point in it, and fading out softly at its edges. Drag the outline to move it and its corners to reshape it; drag the small handle half way along a side to add a corner (up to ${FOG_MAX_CORNERS}); double-click a corner to remove it. Give it conditions to make it roll in and clear as the story goes. A scene can have as many as you like; “Test this scene” shows them drifting.`,
+        FOG_FIELDS, host, h('div', null, fogPoint(model, selection.index), layoutConditions(model, ctx, 'fogs', selection.index, 'Shown only when', 'Always there.')));
     case 'area':
       return areaPanel(model, selection.which, selection.index, host);
     case 'bench':
@@ -325,19 +329,46 @@ function waterLightShape(model: SceneModel, index: number): HTMLElement | null {
   );
 }
 
-/** The conditions of something placed in the scene that is on only while they hold (a light, underwater light). */
-function layoutConditions(model: SceneModel, ctx: FormContext, key: 'lights' | 'water_lights', index: number): HTMLElement {
-  const now = () => model.layout<SceneLight | SceneWaterLight>(key)[index];
+/**
+ * Fog spreading from (or gathering to) a point: where the point is, dragged on the canvas, and a way
+ * back to the middle of the outline. Nothing for fog drifting across.
+ */
+function fogPoint(model: SceneModel, index: number): HTMLElement | null {
+  const fog = model.layout<SceneFog>('fogs')[index];
+  if (!fog || !fogRadial(fog.direction ?? 'right')) return null;
+  const at = fogSettings(fog).origin;
+  const own = !!fog.origin;
+  return h(
+    'div',
+    { class: 'conditions', 'data-section': 'fog-point' },
+    h(
+      'div',
+      { class: 'sub-head' },
+      h('span', null, fog.direction === 'inward' ? 'Gathers in to' : 'Spreads out from'),
+      own
+        ? h('button', {
+          type: 'button', class: 'link', 'data-fog-point': 'middle',
+          onclick: () => void model.setLayout('fogs', model.layout<SceneFog>('fogs').map((f, i) => (i === index ? (({ origin: _, ...rest }) => rest)(f) : f)), true),
+        }, '⌖ Back to the middle')
+        : null,
+    ),
+    h('p', { class: 'muted' }, `${own ? 'The point' : 'The middle of the outline'} at ${Math.round(at.x)}, ${Math.round(at.y)}: drag the ✛ on the canvas to move it.`),
+  );
+}
+
+/** The conditions of something placed in the scene that is on only while they hold (a light, underwater light, fog). */
+function layoutConditions(model: SceneModel, ctx: FormContext, key: 'lights' | 'water_lights' | 'fogs', index: number, heading = 'On only when', none = 'Always on.'): HTMLElement {
+  const now = () => model.layout<SceneLight | SceneWaterLight | SceneFog>(key)[index];
   return h('div', { 'data-section': 'conditions' }, inlineConditions(
     ctx,
     () => (now()?.conditions ?? undefined) as ConditionValue[] | undefined,
-    (list, structural) => void model.setLayout(key, model.layout<SceneLight | SceneWaterLight>(key).map((l, i) => {
+    (list, structural) => void model.setLayout(key, model.layout<SceneLight | SceneWaterLight | SceneFog>(key).map((l, i) => {
       if (i !== index) return l;
       const { conditions: _, ...rest } = l;
       return list.length ? { ...rest, conditions: list as Condition[] } : rest;
     }), structural),
-    'On only when',
-    'Always on.',
+    heading,
+    none,
   ));
 }
 

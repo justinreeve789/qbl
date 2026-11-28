@@ -106,7 +106,7 @@ class ScenarioDecompiler
                 'background_media' => $s['background_media'] ?? [], 'foreground_media' => $s['foreground_media'] ?? [],
                 'layout' => array_filter([
                     'walkable_areas' => $s['walkable_areas'] ?? [], 'blocked_areas' => $s['blocked_areas'] ?? [], 'spawn_points' => $s['spawn_points'] ?? [],
-                    'scale_areas' => $s['scale_areas'] ?? null, 'shadow_spots' => $s['shadow_spots'] ?? null, 'lights' => $s['lights'] ?? null, 'flows' => $s['flows'] ?? null, 'water_lights' => $s['water_lights'] ?? null, 'critters' => $s['critters'] ?? null, 'items' => $s['items'] ?? [], 'characters' => $s['characters'] ?? [],
+                    'scale_areas' => $s['scale_areas'] ?? null, 'shadow_spots' => $s['shadow_spots'] ?? null, 'lights' => $s['lights'] ?? null, 'flows' => $s['flows'] ?? null, 'water_lights' => $s['water_lights'] ?? null, 'fogs' => $s['fogs'] ?? null, 'critters' => $s['critters'] ?? null, 'items' => $s['items'] ?? [], 'characters' => $s['characters'] ?? [],
                     'bench' => is_array($s['bench'] ?? null) ? $s['bench'] : null,
                 ], fn ($v) => $v !== null),
                 'params' => $params ?: null,

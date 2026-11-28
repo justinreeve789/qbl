@@ -736,6 +736,25 @@ export const WATER_LIGHT_FIELDS: Field[] = [
   { key: 'height', label: 'Height (px)', kind: 'number', min: 1, when: boxed },
 ];
 
+/** Fog (layout.fogs): drifting across an outline drawn on the canvas, or spreading from a point in it. */
+export const FOG_FIELDS: Field[] = [
+  { key: 'name', label: 'Name', kind: 'text', wide: true },
+  { key: 'color', label: 'Colour', kind: 'color', placeholder: '#e8edf2', hint: 'Pale grey for mist, white for steam, green for a swamp, dark for smoke.' },
+  { key: 'opacity', label: 'Opacity (%)', kind: 'number', min: 0, max: 100, placeholder: '60', slider: { min: 0, max: 100 }, hint: 'How much it hides where it is thickest. 100: nothing shows through.' },
+  { key: 'density', label: 'Thickness (%)', kind: 'number', min: 0, max: 100, placeholder: '55', slider: { min: 0, max: 100 }, hint: 'How much of its outline the fog covers. Low: a few thin wisps with clear air between. High: a thick bank, hardly a gap.' },
+  { key: 'size', label: 'Wisp size (px)', kind: 'number', min: 20, placeholder: '220', slider: { min: 40, max: 800 }, hint: 'How big its wisps and puffs are.' },
+  {
+    key: 'direction', label: 'Drifts', kind: 'select', placeholder: 'To the right', wide: true, structural: true,
+    options: [['right', 'To the right'], ['left', 'To the left'], ['up', 'Up'], ['down', 'Down'], ['outward', 'Outward from a point (steam from a vent, smoke from a fire)'], ['inward', 'Inward to a point (drawn into a portal, a drain)']],
+    hint: 'Outward and inward: drag the ✛ on the canvas to choose the point. It starts in the middle of the outline.',
+  },
+  { key: 'speed', label: 'Drift speed (px per second)', kind: 'number', min: 0, placeholder: '25', slider: { min: 0, max: 200 }, hint: '0: it stays where it is, only churning slowly.' },
+  {
+    key: 'layer', label: 'Drawn', kind: 'select', placeholder: 'In front of everyone', wide: true,
+    options: [['front', 'In front of everyone'], ['behind', 'On the floor, behind everyone (ground mist)']],
+  },
+];
+
 /** A background or foreground layer (docs/src/content/docs/developers/extensions/scenes.md). */
 export const LAYER_FIELDS: Field[] = [
   { key: 'media_id', label: 'Image', kind: 'media', mediaType: 'image', mediaCategory: 'background', wide: true },

@@ -239,6 +239,13 @@ details.action[open] > summary { border-bottom: 1px solid var(--line); }
 /* The light itself, moving: added to what is under it (as the game adds it), and never in the way of a press. */
 .water-light-view { pointer-events: none; mix-blend-mode: screen; }
 .water-light-preview { display: block; width: 100%; height: 100%; }
+.fog-area { fill: transparent; stroke: #b8c4d4; stroke-width: 1.5; stroke-dasharray: 10 4 2 4; cursor: pointer; }
+.fog-area.selected { stroke-width: 3; cursor: move; fill: rgba(184, 196, 212, 0.08); }
+/* The fog itself, drifting, as the game draws it; never in the way of a press. */
+.fog-view { pointer-events: none; }
+.fog-preview { display: block; width: 100%; height: 100%; }
+.fog-origin { cursor: move; }
+.fog-origin-cross { stroke: #1a1a1a; stroke-width: 2; pointer-events: none; }
 .scale-area.selected { stroke-width: 3; stroke-dasharray: 8 5; cursor: move; fill: rgba(255, 210, 74, 0.12); }
 .scale-figure { pointer-events: none; }
 .scale-figure rect, .scale-figure circle { fill: rgba(255, 210, 74, 0.55); stroke: #1a1a1a; stroke-width: 1; }

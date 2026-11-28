@@ -56,7 +56,7 @@ Column | Reaches the document as
 ------ | -----------------------
 `id`, `shortname`, `sequence`, `group_id`, `subtitle`, `description`, `is_intro_scene`, `zoom`, `show_avatars`, `width`, `height` | the same
 `background_media`, `foreground_media` (JSON) | the same: lists of layers `{media_id, …}`
-`layout` (JSON): **what is placed in the scene** | `walkable_areas`, `blocked_areas`, `spawn_points`, `scale_areas`, `shadow_spots`, `lights`, `flows`, `water_lights`, `critters`, `items` (placements), `characters` (placements), `bench`
+`layout` (JSON): **what is placed in the scene** | `walkable_areas`, `blocked_areas`, `spawn_points`, `scale_areas`, `shadow_spots`, `lights`, `flows`, `water_lights`, `fogs`, `critters`, `items` (placements), `characters` (placements), `bench`
 `params` (JSON): **the scene's settings** | `sky`, `atmosphere`, `weather`, `story`, `launcher`, `team_only`, `building` (only when enabled), `music_media_id`, `music_volume`; **everything else in `params` stays under `params`** (for example `editor_map`, the scene map's box position, which the game ignores)
 `user_id`, `locked_by` | Not used by the game
 

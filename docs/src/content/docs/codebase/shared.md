@@ -35,7 +35,7 @@ About 1,700 lines of interfaces and a few helper constants. The ones to know:
 Type | What it is
 ---- | ----------
 `Scenario` | The whole document. Original fields (`id`, `shortname`, `title`, `start_scene_id`, `global_variables`, `assets`, `scenes`, `jump_targets`...) plus extensions (`code`, `items`, `characters`, `avatars`, `objectives`, `shop_items`, `glossary`, `moves`, `scene_groups`, `combinations`, `narration`, `narrator_voice`, `chat_mode`, `move_speed`...). Also `session` and `instance`, added when the document is served
-`Scene` | One place: layers (`background_media`, `foreground_media`), events (`start_events`, `hotspots`, `indirect_events`, `end_events`), and extensions: size, `walkable_areas`, `blocked_areas`, `spawn_points`, `scale_areas`, `shadow_spots`, `sky`, `lights`, `atmosphere`, `weather`, `flows`, `water_lights`, `critters`, `items`, `characters`, `bench`, `building`, `story`, `launcher`, `team_only`, music
+`Scene` | One place: layers (`background_media`, `foreground_media`), events (`start_events`, `hotspots`, `indirect_events`, `end_events`), and extensions: size, `walkable_areas`, `blocked_areas`, `spawn_points`, `scale_areas`, `shadow_spots`, `sky`, `lights`, `atmosphere`, `weather`, `flows`, `water_lights`, `fogs`, `critters`, `items`, `characters`, `bench`, `building`, `story`, `launcher`, `team_only`, music
 `GameEvent` | `{id, shortname?, overridable?, block_hotspots?, audience?, conditions?, actions}`
 `Hotspot` | A `GameEvent` with `position_x`/`position_y` (null means "the whole axis"), `radius` (-1: default), `activate_by_trigger`, `labels`, `once`, `reveal_radius`, `reveal_full_radius`
 `Action` | The union of 30 action interfaces (`AudioAction`, `DialogueAction`, `JumpAction`...), each extending `ActionBase` `{id, event_id?, sequence?, blocking?, media_id?, conditions?}`
@@ -172,7 +172,7 @@ There is **no physics engine**. Movement is "feet inside polygons", checked by t
 
 ### The world's look
 
-`sky.ts` (time-of-day keyframes, `skyLook`, `skyHour`), `weather.ts` (`weatherSettings`, `flowSettings`, `flowSound`), `waterLight.ts` and `waterLightShaders.ts` (underwater light, with the GLSL the game and the editor preview share), `sounds.ts` (`BUILT_IN_SOUNDS`, sounds the client synthesises).
+`sky.ts` (time-of-day keyframes, `skyLook`, `skyHour`), `weather.ts` (`weatherSettings`, `flowSettings`, `flowSound`), `fog.ts` (fog: `fogSettings`, `fogArea`, the `FOG_FRAG` shader), `waterLight.ts` and `waterLightShaders.ts` (underwater light, with the GLSL the game and the editor preview share), `sounds.ts` (`BUILT_IN_SOUNDS`, sounds the client synthesises).
 
 ### Site, roles, launches, builds, the bag
 

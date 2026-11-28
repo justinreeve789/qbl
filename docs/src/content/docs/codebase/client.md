@@ -146,6 +146,7 @@ System | Responsibility
 `LayerSystem` | Background and foreground layers: stretched, tiled, drifting, parallax. Marks sky layers for `SkySystem`
 `FlowSystem` | Rivers, streams, waterfalls, the sea: moving water behind see-through parts of the picture, glints over it, sound
 `WaterLightSystem` | Underwater light on the GPU: ripples on the floor (and on figures, through a filter), shafts from above. Nothing without WebGL
+`FogSystem` | Patches of fog on the GPU (`FOG_FRAG`): drifting across their outlines or spreading from a point, in front of figures or behind them, rolling in and clearing with conditions. Nothing without WebGL
 `SkySystem` | The living sky: a time-of-day gradient behind everything, sun, moon, stars; how dark it is (`light`) for the others
 `LightSystem` | Glows that flicker, burn, breathe, blink; brighter in the dark; conditional lights fade in and out
 `AtmosphereSystem` | What is in the air: fireflies, leaves, snow, dust, bubbles

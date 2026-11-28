@@ -260,6 +260,61 @@ test('rippling light gets a shape of its own, edited by its corners, and can be 
   assert.equal(await page.locator('.inspector [data-field=width]').count(), 1);
 });
 
+test('fog is drawn as an outline, drifts outward from a point that can be dragged, and more than one can be added', async () => {
+  await page.locator('select:has(option[value=flows])').selectOption('fogs');
+  await page.waitForSelector('svg polygon.fog-area.selected');
+  let fog = (await draft()).scenes[0]!.fogs![0]!;
+  assert.deepEqual([fog.name, fog.shape.length, fog.direction, fog.speed], ['fog', 4, 'right', 25], 'a box of four corners, drifting right');
+  if (await page.evaluate(() => !!document.createElement('canvas').getContext('webgl'))) {
+    await page.waitForSelector('svg .fog-view canvas.fog-preview');
+  }
+  await type('.inspector [data-field=opacity] input[type=number]', '80');
+  await type('.inspector [data-field=density] input[type=number]', '30');
+  await type('.inspector [data-field=speed] input[type=number]', '60');
+  await page.locator('.inspector [data-field=layer] select').selectOption('behind');
+  fog = (await draft()).scenes[0]!.fogs![0]!;
+  assert.deepEqual([fog.opacity, fog.density, fog.speed, fog.layer], [80, 30, 60, 'behind']);
+  // Drifting across: no point to spread from.
+  assert.equal(await page.locator('.inspector [data-section=fog-point]').count(), 0);
+  assert.equal(await page.locator('svg .fog-origin').count(), 0);
+
+  // A corner pulled out of the middle of a side makes it any shape.
+  const middle = (await page.locator('svg circle.handle.add').first().boundingBox())!;
+  await page.mouse.move(middle.x + middle.width / 2, middle.y + middle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(middle.x + 20, middle.y - 40, { steps: 5 });
+  await page.mouse.up();
+  await saved();
+  assert.equal((await draft()).scenes[0]!.fogs![0]!.shape.length, 5);
+
+  // Outward: from the middle until the point is dragged somewhere else, and back again.
+  await page.locator('.inspector [data-field=direction] select').selectOption('outward');
+  await page.waitForSelector('.inspector [data-section=fog-point]');
+  assert.match(await page.innerText('.inspector [data-section=fog-point]'), /Spreads out from[\s\S]*middle of the outline/);
+  const point = (await page.locator('svg g.fog-origin circle').boundingBox())!;
+  await page.mouse.move(point.x + point.width / 2, point.y + point.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(point.x + 60, point.y + 30, { steps: 5 });
+  await page.mouse.up();
+  await saved();
+  fog = (await draft()).scenes[0]!.fogs![0]!;
+  assert.equal(fog.direction, 'outward');
+  assert.ok(fog.origin && typeof fog.origin.x === 'number', 'the point is kept');
+  await page.waitForSelector('.inspector [data-fog-point=middle]');
+  assert.match(await page.innerText('.inspector [data-section=fog-point]'), new RegExp(`The point at ${fog.origin!.x}, ${fog.origin!.y}`));
+  await page.click('.inspector [data-fog-point=middle]');
+  await page.waitForFunction(() => !document.querySelector('.inspector [data-fog-point=middle]'));
+  assert.equal((await draft()).scenes[0]!.fogs![0]!.origin, undefined);
+  assert.match(await page.innerText('.outline'), /Fog[\s\S]*spreads out/);
+
+  // A scene may have as many as it likes.
+  await page.locator('select:has(option[value=flows])').selectOption('fogs');
+  await page.waitForFunction(() => document.querySelectorAll('svg .fog-area').length === 2);
+  assert.equal((await draft()).scenes[0]!.fogs!.length, 2);
+  await page.click('.inspector button.danger:has-text("Delete")');
+  await page.waitForFunction(() => document.querySelectorAll('svg .fog-area').length === 1);
+});
+
 test('a hotspot label can be background, or a solid object players walk around', async () => {
   await page.locator('select:has(option[value=shadow_spots])').selectOption('hotspot-click');
   await page.click('text=+ Add label');

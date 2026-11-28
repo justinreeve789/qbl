@@ -1,4 +1,4 @@
-import { flowSettings, pictureScale, placeSortLine, sortLineOf, type Item, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneWaterLight, waterLightArea, waterLightShaped, WATER_LIGHT_MAX_CORNERS, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
+import { flowSettings, pictureScale, placeSortLine, sortLineOf, type Item, scaleAt, skyHour, skyLook, type Media, type ScaleArea, type SceneFlow, type SceneLight, type SceneWaterLight, type SceneFog, fogArea, fogRadial, fogSettings, FOG_MAX_CORNERS, waterLightArea, waterLightShaped, WATER_LIGHT_MAX_CORNERS, type SceneSky, type ShadowSpot, BENCH_TOOLS, fillHeight, outlineBand, toolSize, vesselCapacity, vesselHeight, vesselName, vesselOutline, vesselWidth, parseColor, colorText, type BenchSubstance } from '@qbl/shared';
 import type { Row } from '../../api';
 import { eventLabel, mediaUrl, params, sceneLabel } from '../../describe';
 import { h, s } from '../../dom';
@@ -6,6 +6,7 @@ import type { SpotRequest } from '../../fields';
 import { sortedActions } from '../actions';
 import { standingOf } from '../../characters';
 import { waterLightPreview } from './waterLightPreview';
+import { fogPreview } from './fogPreview';
 import { sameSelection, type AreaList, type Bag, type LayerList, type Point, type SceneModel, type Selection } from './model';
 
 interface Host {
@@ -336,6 +337,8 @@ export class SceneCanvas {
     this.drawScaleAreas(selected, u, shapes, top);
     this.drawFlows(selected, u, shapes, top);
     this.drawWaterLights(selected, u, shapes, top);
+    const fogInFront: SVGElement[] = [];
+    this.drawFogs(selected, u, shapes, top, fogInFront);
     this.drawShadowSpots(selected, u, shapes, top);
     this.drawLights(selected, u, shapes, top);
     this.drawAreas('walkable_areas', selected, u, shapes, top);
@@ -345,6 +348,7 @@ export class SceneCanvas {
     this.drawPlacements('items', selected, u, shapes);
     this.drawPlacements('characters', selected, u, shapes);
     this.drawBench(selected, u, shapes);
+    shapes.push(...fogInFront);
     if (selected.kind === 'event' && !this.picking) this.drawActionMarkers(selected.id, u, top);
     if (this.picking) this.drawPicking(u, W, H, top);
 
@@ -666,20 +670,38 @@ export class SceneCanvas {
    * handle half way along a side) and removed (double-click), as walkable areas are.
    */
   private drawWaterLightShape(light: SceneWaterLight, corners: Point[], selection: Selection, isSelected: boolean, u: number, shapes: SVGElement[], top: SVGElement[], commit: () => void) {
-    const polygon = light.shape!;
+    const index = selection.kind === 'water_light' ? selection.index : 0;
+    this.drawOutline(light.shape!, corners, 'water-light-area', `water_lights-${index}`, WATER_LIGHT_MAX_CORNERS, selection, isSelected, u, shapes, top, commit);
+  }
+
+  /**
+   * An outline that is edited by its corners (rippling light's own shape, fog): dragged as a whole
+   * (`moved` is told how far, for anything that should go with it), its corners moved, added (from the
+   * handle half way along a side, up to `most`) and removed (double-click, down to three).
+   */
+  private drawOutline(
+    polygon: Point[], corners: Point[], cls: string, key: string, most: number, selection: Selection, isSelected: boolean,
+    u: number, shapes: SVGElement[], top: SVGElement[], commit: () => void, moved?: (dx: number, dy: number) => void,
+  ) {
     const start = polygon.map((p) => ({ ...p }));
     shapes.push(
       this.body(s('polygon', {
-        class: `water-light-area${isSelected ? ' selected' : ''}`,
+        class: `${cls}${isSelected ? ' selected' : ''}`,
         points: corners.map((p) => `${p.x},${p.y}`).join(' '),
         onpointerdown: (e: PointerEvent) =>
           this.begin(e, selection, isSelected
-            ? { move: (to, from) => polygon.forEach((p, i) => Object.assign(p, { x: round(start[i]!.x + to.x - from.x), y: round(start[i]!.y + to.y - from.y) })), end: commit }
+            ? {
+              move: (to, from) => {
+                polygon.forEach((p, i) => Object.assign(p, { x: round(start[i]!.x + to.x - from.x), y: round(start[i]!.y + to.y - from.y) }));
+                moved?.(round(to.x - from.x), round(to.y - from.y));
+              },
+              end: commit,
+            }
             : undefined),
       }), polygonArea(corners)),
     );
     if (!isSelected) return;
-    if (polygon.length < WATER_LIGHT_MAX_CORNERS) {
+    if (polygon.length < most) {
       polygon.forEach((p, i) => {
         const next = polygon[(i + 1) % polygon.length]!;
         top.push(
@@ -705,7 +727,7 @@ export class SceneCanvas {
               move: (to) => Object.assign(p, to),
               end: commit,
               double: {
-                key: `water_lights-${selection.kind === 'water_light' ? selection.index : 0}-${i}`,
+                key: `${key}-${i}`,
                 run: () => {
                   if (polygon.length <= 3) return;
                   polygon.splice(i, 1);
@@ -716,6 +738,50 @@ export class SceneCanvas {
             }),
         }, s('title', null, 'Drag to move. Double-click to remove this corner.')),
       );
+    });
+  }
+
+  // ---------------------------------------------------------------- fog
+
+  /**
+   * Fog: its outline, edited by its corners, with the fog itself drifting inside it (the game's own
+   * shader, in a small WebGL canvas that lets presses through). Fog in front of everyone is shown in
+   * front of the items and characters placed here (`front`); fog on the floor behind them. Fog that
+   * spreads from a point shows the point, to drag, when selected.
+   */
+  private drawFogs(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[], front: SVGElement[]) {
+    const fogs = this.model.layout<SceneFog>('fogs');
+    fogs.forEach((fog, index) => {
+      if (!Array.isArray(fog.shape)) return;
+      const area = fogArea(fog);
+      if (!area.corners) return;
+      const selection: Selection = { kind: 'fog', index };
+      const isSelected = sameSelection(selection, selected);
+      const commit = () => void this.model.setLayout('fogs', fogs);
+      const settings = fogSettings(fog);
+      const preview = fogPreview(`${this.model.sceneId}:${index}`, fog);
+      if (preview && area.width > 0 && area.height > 0) {
+        (settings.layer === 'behind' ? shapes : front).push(s('foreignObject', { class: 'fog-view', x: area.x, y: area.y, width: area.width, height: area.height }, preview));
+      }
+      const origin = fog.origin ? { ...fog.origin } : null;
+      this.drawOutline(fog.shape, area.corners, 'fog-area', `fogs-${index}`, FOG_MAX_CORNERS, selection, isSelected, u, shapes, top, commit,
+        // A point of its own goes with the fog when the whole of it is dragged.
+        origin ? (dx, dy) => { fog.origin = { x: origin.x + dx, y: origin.y + dy }; } : undefined);
+      const radial = fogRadial(settings.direction);
+      const arrow = radial ? (settings.direction === 'outward' ? '✺ ' : '⊛ ') : ({ right: '→ ', left: '← ', up: '↑ ', down: '↓ ' } as Record<string, string>)[settings.direction] ?? '';
+      const name = `☁ ${arrow}${fog.name || 'fog'}${fog.conditions?.length ? ' ⏻' : ''}`;
+      shapes.push(s('text', { class: 'shape-name', x: area.x + 8 * u, y: area.y + 16 * u, 'font-size': 12 * u }, name));
+      if (isSelected && radial) {
+        const at = settings.origin;
+        top.push(s('g', {
+          class: 'fog-origin',
+          // Structural, so the inspector's words about where the point is follow it.
+          onpointerdown: (e: PointerEvent) => this.begin(e, null, { move: (to) => { fog.origin = { x: round(to.x), y: round(to.y) }; }, end: () => void this.model.setLayout('fogs', fogs, true) }),
+        },
+        s('circle', { class: 'handle', cx: at.x, cy: at.y, r: 9 * u }),
+        s('path', { class: 'fog-origin-cross', d: `M${at.x - 14 * u},${at.y}H${at.x + 14 * u}M${at.x},${at.y - 14 * u}V${at.y + 14 * u}` }),
+        s('title', null, settings.direction === 'outward' ? 'The fog spreads out from here. Drag to move.' : 'The fog gathers in to here. Drag to move.')));
+      }
     });
   }
 
