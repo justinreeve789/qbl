@@ -53,7 +53,7 @@ Volumes: `public` (the built game and Laravel's public files), `editor-dist`, `c
 3. Generates an `APP_KEY` once into the `app-data` volume, unless one is set.
 4. `php artisan migrate --force`. **Nothing is seeded**: run `php artisan qbl:seed` by hand.
 5. Copies `apps/api/public` to Apache's volume (so changes there need `docker compose restart app`) and empties the editor's.
-6. Installs the client's and the editor's npm packages into `client-modules` when one of their `package.json` files changed (a hash is kept in `node_modules/.qbl-installed`).
+6. Installs the client's and the editor's npm packages into `client-modules` when one of their `package.json` files changed (a hash is kept in `node_modules/.qbl-installed`). With the watcher on, the hash is checked again every 15 seconds while the container runs: on a change the Vite watchers are stopped, the packages installed and the watchers started again. Without this, a pull that adds a package would make every rebuild fail and Vite would keep serving the build from before the pull.
 7. Builds the game and the marketing page (`apps/client`) and the editor (`apps/editor`) with Vite, **watching them** with `QBL_CLIENT_WATCH=true` (the default; output in `docker compose logs -f app`, labelled `client:` and `editor:`). The build skips the type check, so a typing mistake cannot take the site down: run `npm run typecheck` yourself. A failed build is reported and the API keeps running.
 8. Starts the queue worker (`php artisan queue:work`, restarted if it stops; `QBL_QUEUE_WORKER=false` turns it off), then PHP-FPM.
 
@@ -64,6 +64,7 @@ You changed | Then
 `apps/api` PHP | Nothing: it is mounted, and picked up within seconds
 `apps/api/public` | `docker compose restart app`
 `apps/client` or `apps/editor` | Nothing with the watcher on: reload the page. With `QBL_CLIENT_WATCH=false`, `docker compose restart app`
+A `package.json` (new npm packages) | Nothing with the watcher on: they are installed within about 15 seconds and the builds restart. With `QBL_CLIENT_WATCH=false`, `docker compose restart app`
 `packages/shared` | The game and the editor rebuild by themselves; **the game server does not**: `docker compose up -d --build colyseus`
 `apps/server` | `docker compose up -d --build colyseus`
 `docs/` | `docker compose up -d --build docs`
