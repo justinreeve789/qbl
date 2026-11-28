@@ -163,7 +163,7 @@ The game and the marketing page are not copied into the image either. `app` moun
 docker compose logs -f app
 ```
 
-- The client's npm packages are installed in the `client-modules` volume on the first start, and again whenever one of those `package.json` files changes. A `node_modules` on your machine is not used, so it can be for another system.
+- The client's npm packages are installed in the `client-modules` volume on the first start, and again whenever one of those `package.json` files changes. With the watcher on, that is noticed while the container runs too (checked every 15 seconds): the builds stop, the packages are installed, and the builds start again, so a `git pull` that adds a package needs no restart. A `node_modules` on your machine is not used, so it can be for another system.
 - The build skips the type check, so a typing mistake cannot keep the site down; run `npm run typecheck` yourself. A build that fails outright is reported in the log and the API keeps running.
 - On a server, `QBL_CLIENT_WATCH=false` in `.env` builds once per start and saves the memory the watcher uses. After `git pull`, `docker compose restart app` rebuilds.
 - Scenario pictures and sounds in `scenarios/assets` are served by Apache straight from the checkout, as `/scenario-assets`.

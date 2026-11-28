@@ -86,16 +86,23 @@ build() {
 
 # The npm packages of the client and the editor are installed in the "client-modules" volume, apart
 # from any node_modules on the host (which may be for another system). Installed again when a
-# package.json changes.
+# package.json changes: at start, and with the watcher on, also while running (see below).
+manifests() {
+  m="/repo/package.json /repo/packages/shared/package.json /repo/apps/client/package.json"
+  [ -f /repo/apps/editor/package.json ] && m="$m /repo/apps/editor/package.json"
+  echo "$m"
+}
+packages_stamp() {
+  cat $(manifests) | sha256sum
+}
+packages_current() {
+  [ "$(cat /repo/node_modules/.qbl-installed 2>/dev/null)" = "$(packages_stamp)" ]
+}
 packages() {
   workspaces="--workspace @qbl/shared --workspace @qbl/client"
-  manifests="/repo/package.json /repo/packages/shared/package.json /repo/apps/client/package.json"
-  if [ -f /repo/apps/editor/package.json ]; then
-    workspaces="$workspaces --workspace @qbl/editor"
-    manifests="$manifests /repo/apps/editor/package.json"
-  fi
-  stamp="$(cat $manifests | sha256sum)"
-  if [ "$(cat /repo/node_modules/.qbl-installed 2>/dev/null)" != "$stamp" ]; then
+  [ -f /repo/apps/editor/package.json ] && workspaces="$workspaces --workspace @qbl/editor"
+  stamp="$(packages_stamp)"
+  if ! packages_current; then
     echo "qbl: installing the client's and the editor's packages (npm install)"
     (cd /repo && npm install $workspaces --include-workspace-root --no-audit --no-fund --loglevel=warn) || return 1
     echo "$stamp" > /repo/node_modules/.qbl-installed
@@ -112,11 +119,7 @@ fi
 # Built without the type check, so a typing complaint cannot keep the site down. Run
 # "npm run typecheck" on the host or in CI. The output is outside the source folders, so Vite does
 # not empty it: in watch mode old bundles stay until a restart, when both were emptied above.
-if [ ! -f /repo/apps/client/package.json ]; then
-  echo "qbl: no client in /repo/apps/client (is ./apps/client mounted?); the site will have no pages" >&2
-elif ! packages; then
-  echo "qbl: the packages could not be installed (see above); the API runs without the client and the editor" >&2
-else
+build_all() {
   if [ -d /shared/public ]; then
     build client client /shared/public || echo "qbl: the client could not be built (see above); the API runs without it" >&2
   fi
@@ -124,6 +127,32 @@ else
   if [ -d /shared/editor ] && [ -f /repo/apps/editor/package.json ]; then
     VITE_GAME_URL="${VITE_GAME_URL:-/}" build editor editor /shared/editor || echo "qbl: the editor could not be built (see above); /editor has no page" >&2
   fi
+}
+
+if [ ! -f /repo/apps/client/package.json ]; then
+  echo "qbl: no client in /repo/apps/client (is ./apps/client mounted?); the site will have no pages" >&2
+elif ! packages; then
+  echo "qbl: the packages could not be installed (see above); the API runs without the client and the editor" >&2
+else
+  build_all
+fi
+
+# With the watcher on, a "git pull" that adds a package would otherwise break every rebuild until
+# the next restart (the import cannot be found), and Vite would quietly keep serving the build from
+# before the pull. So the package.json files are checked every 15 seconds: when one has changed, the
+# watchers are stopped, the packages installed, and the watchers started again.
+if [ "$QBL_CLIENT_WATCH" = true ] && [ -f /repo/apps/client/package.json ]; then
+  (while sleep 15; do
+    packages_current && continue
+    echo "qbl: a package.json changed; installing the packages again, then restarting the builds"
+    pkill -f 'vite build' 2>/dev/null || true
+    sleep 1
+    if packages; then
+      build_all
+    else
+      echo "qbl: the packages could not be installed (see above); trying again in 15 seconds" >&2
+    fi
+  done) &
 fi
 
 # ---- the queue worker ------------------------------------------------------------------------------
