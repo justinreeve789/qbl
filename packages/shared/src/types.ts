@@ -1681,6 +1681,8 @@ export interface Scenario {
   narrator_voice?: string;
   /** [ext] Players may send typed messages to one other player. They are filtered and logged like chat. */
   private_messages?: boolean;
+  /** [ext] Players have a notebook (📒) for their own notes on this scenario. Default true; false hides it. See notebook.ts. */
+  notebook?: boolean;
   /** [ext] Spec version this document was written against. */
   spec_version?: number;
   /** [ext] Things players carry that can be put together to make something new (see `Item.carried_when`). */

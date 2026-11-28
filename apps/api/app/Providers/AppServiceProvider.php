@@ -13,6 +13,8 @@ use App\Qbl\Billing\Stripe;
 use App\Qbl\Billing\Subscriptions;
 use App\Qbl\Builds\BuildApi;
 use App\Qbl\Builds\BuildStore;
+use App\Qbl\Notebooks\NotebookApi;
+use App\Qbl\Notebooks\NotebookStore;
 use App\Qbl\Characters\WalkMaker;
 use App\Qbl\ClassApi;
 use App\Qbl\ClassStore;
@@ -77,6 +79,9 @@ class AppServiceProvider extends ServiceProvider
         // Student building (App\Qbl\Builds): what students add to scenes, beside their saves.
         $this->app->singleton(BuildStore::class, fn ($app) => new BuildStore(DB::connection()->getPdo(), '/api/builds/files', $app->make(ClassStore::class), fn () => $app->make(SpeechFactory::class)->voicer()));
         $this->app->singleton(BuildApi::class, fn ($app) => new BuildApi($app->make(BuildStore::class)));
+        // Players' notebooks (App\Qbl\Notebooks): their own notes, beside their saves.
+        $this->app->singleton(NotebookStore::class, fn ($app) => new NotebookStore(DB::connection()->getPdo(), $app->make(ClassStore::class)));
+        $this->app->singleton(NotebookApi::class, fn ($app) => new NotebookApi($app->make(NotebookStore::class)));
         $this->app->singleton(ActivityStore::class, fn () => new ActivityStore(DB::connection()->getPdo()));
         $this->app->singleton(ProgressStore::class, fn () => new ProgressStore(DB::connection()->getPdo(), config('qbl.ranks')));
         // The public API for schools and districts (/api/v1). Plain PHP as well.

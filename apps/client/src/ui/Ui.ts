@@ -8,6 +8,8 @@ import { Sidebar } from './Sidebar';
 import { infoboxView, type BoxView } from './infobox/view';
 import { benchPanel } from './benchPanel';
 import { buildPanel } from './buildPanel';
+import { openNotebook, type NotebookViewHandle } from './notebook/view';
+import type { NotebookModel } from '../core/Notebook';
 import type { BenchPanelActions, BenchPanelHandle, BenchPanelSpec, BuildPanelActions, BuildPanelHandle, BuildPanelSpec } from './UiPort';
 import type { AccountActions, AccountView, BagSlot, ChatLine, GlossaryRow, InfoboxButton, InfoboxHandle, InfoboxOptions, OverlayHandle, LaunchChoice, LaunchView, PlayerRow, ProfileView, TeamRow, ShopView, UiPort } from './UiPort';
 
@@ -774,6 +776,55 @@ export class Ui implements UiPort {
   }
 
   private narrationToggle: HTMLButtonElement | null = null;
+  private notebookButton: HTMLButtonElement | null = null;
+  private notebookView: NotebookViewHandle | null = null;
+  /** The page the notebook showed when it was closed, to open it there again. */
+  private notebookPage: string | null = null;
+
+  /** The notebook's button on the side rail: it opens the notebook over the game, which then ignores walking. */
+  notebook(book: NotebookModel | null, o: { title: string; owner: string } = { title: '', owner: '' }) {
+    if (!book) {
+      void this.notebookView?.close();
+      if (this.notebookButton) this.sidebar.removeTool(this.notebookButton);
+      this.notebookButton = null;
+      return;
+    }
+    if (!this.notebookButton) {
+      const b = (this.notebookButton = el('button', 'qbl-sidebar-tab qbl-notebook-tab'));
+      b.type = 'button';
+      b.append(icon('notebook', { size: 26 }));
+      b.setAttribute('aria-label', 'My notebook');
+      b.setAttribute('aria-haspopup', 'dialog');
+      b.setAttribute('aria-expanded', 'false');
+      b.title = 'My notebook';
+      b.addEventListener('pointerdown', (e) => e.stopPropagation());
+      this.sidebar.addTool(b);
+    }
+    const button = this.notebookButton;
+    button.onclick = (e) => {
+      e.stopPropagation();
+      if (this.notebookView) {
+        void this.notebookView.close();
+        return;
+      }
+      this.modals++;
+      button.setAttribute('aria-expanded', 'true');
+      button.classList.add('current');
+      this.notebookView = openNotebook(this.root, book, {
+        title: o.title,
+        owner: o.owner,
+        pageId: this.notebookPage,
+        from: button,
+        onClosed: (pageId) => {
+          this.modals--;
+          this.notebookView = null;
+          this.notebookPage = pageId;
+          button.setAttribute('aria-expanded', 'false');
+          button.classList.remove('current');
+        },
+      });
+    };
+  }
 
   /** The read-aloud switch, at the foot of the side rail. The player's choice is kept in this browser. */
   narration(available: boolean) {

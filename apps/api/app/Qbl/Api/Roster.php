@@ -246,7 +246,7 @@ class Roster
         }
         $gone('teacher_student', 'DELETE FROM teacher_student WHERE student_id = ?', [$id]);
         $gone('assignment_student', 'DELETE FROM assignment_student WHERE student_id = ?', [$id]);
-        foreach (['activity_log', 'chat_messages', 'user_badges', 'progress_ledger', 'user_items', 'scenario_sessions', 'launch_tokens', 'scene_builds', 'build_uploads', 'build_voices'] as $table) {
+        foreach (['activity_log', 'chat_messages', 'user_badges', 'progress_ledger', 'user_items', 'scenario_sessions', 'launch_tokens', 'scene_builds', 'build_uploads', 'build_voices', 'notebooks'] as $table) {
             $gone($table, "DELETE FROM `$table` WHERE user_id = ?", [$id]);
         }
         // Messages others sent them stay (they are the senders' records), without naming them.
@@ -283,6 +283,8 @@ class Roster
             // What they built in scenes, and the pictures they uploaded for it (listed by size; the pictures themselves are in the game).
             'builds' => $decode($this->all('SELECT scenario_id, scene_id, group_key, status, pieces, created_at, updated_at FROM scene_builds WHERE user_id = ? ORDER BY id', [$id]), 'pieces'),
             'build_pictures' => $this->all('SELECT id, scenario_id, group_key, mime, width, height, created_at FROM build_uploads WHERE user_id = ? ORDER BY id', [$id]),
+            // Their notebooks: what they wrote for themselves in each game.
+            'notebooks' => $decode($this->all('SELECT scenario_id, group_key, pages, created_at, updated_at FROM notebooks WHERE user_id = ? ORDER BY id', [$id]), 'pages'),
             'disclosures' => $this->clients->auditLog($rootId, 1000, null, $id),
         ];
     }

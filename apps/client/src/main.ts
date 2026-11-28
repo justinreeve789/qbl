@@ -4,6 +4,7 @@ import { pictureNode } from './ui/picture';
 import { config } from './config';
 import { GameContext } from './core/GameContext';
 import { Builds, pretendBuilds } from './core/Builds';
+import { browserNotebook, memoryNotebook, NotebookModel } from './core/Notebook';
 import { gameFeatures } from './features';
 import { buildHome, restartQuestion } from './home';
 import { Api, ApiError, takeSignInProblem, type SignUpRole } from './net/Api';
@@ -21,6 +22,7 @@ import { setSoundPrompt } from './audio/soundLock';
 import '../../../packages/shared/assets/twemoji-awesome.css';
 import './ui/ui.css';
 import './ui/infobox/infobox.css';
+import './ui/notebook/notebook.css';
 
 const app = document.getElementById('app')!;
 const gate = document.getElementById('gate')!;
@@ -501,6 +503,16 @@ async function start() {
       saveOther: (buildId, pieces) => api.editStudentBuild(buildId, pieces),
     });
     if (config.editBuild != null && config.preview == null) ctx.builds.openOnArrival = config.editBuild;
+  }
+  // The player's notebook for this instance of the scenario, unless the scenario turns it off. A
+  // preview's is kept in memory (nothing of a draft is saved); offline play keeps it in this browser.
+  if (scenario.notebook !== false) {
+    const group = scenario.instance?.group ?? config.group ?? 'public';
+    ctx.notebook = new NotebookModel(
+      config.preview != null ? memoryNotebook()
+        : config.offline ? browserNotebook(`${key}.${group}.${user.id}`)
+        : { load: () => api.notebook(String(key), group), save: (nb, o) => api.saveNotebook(String(key), group, nb, o.leaving) },
+    );
   }
   // Other players' profiles come from the API, which a preview and the standalone game server do not have.
   if (!config.offline) ctx.fetchProfile = (userId) => api.profile(userId);

@@ -85,6 +85,7 @@ export class Sidebar {
   private freshWords = new Set<string>();
   private wordFilter = '';
   private extras: HTMLElement[] = [];
+  private controls: HTMLElement[] = [];
 
   constructor() {
     this.root.setAttribute('aria-label', 'Game menu');
@@ -141,7 +142,21 @@ export class Sidebar {
   /** A control that sits at the foot of the rail, under the tabs: the read-aloud switch. */
   addControl(node: HTMLElement) {
     this.extras.push(node);
+    this.controls.push(node);
     this.rail.append(node);
+  }
+
+  /** A button among the tabs, after them, that opens something of its own instead of a panel: the notebook. */
+  addTool(node: HTMLElement) {
+    this.extras.push(node);
+    this.rail.insertBefore(node, this.controls[0] ?? null);
+    this.draw();
+  }
+
+  removeTool(node: HTMLElement) {
+    this.extras = this.extras.filter((n) => n !== node);
+    node.remove();
+    this.draw();
   }
 
   /** Which panel is open, if any. */

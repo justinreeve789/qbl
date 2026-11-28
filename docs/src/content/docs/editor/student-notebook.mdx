@@ -1,0 +1,45 @@
+---
+title: The student notebook
+description: Every player has a notebook for each mission, with pages, subpages, sticky notes, flip cards and to-dos, written in large, easy-to-read handwriting.
+host:
+  who: lucy
+  says: "Writing it down in your own words is how an idea sticks. Every mission comes with a notebook!"
+---
+import Host from '../../../components/Host.astro';
+
+Every player has a **notebook** for each mission. The **📒** button on the side of the game opens it: a spiral-bound book whose cover swings open, with the contents on the left page and the page being written on the right. On a phone, one page shows at a time and the **📑** button shows the contents.
+
+The notes belong to **that mission only**. Another mission has a notebook of its own, and so does the same mission in another class's game.
+
+## What students can do
+
+| | |
+| --- | --- |
+| **Pages** | Write on lined paper. Each page has a name, a picture beside its name (so a page can be found without reading) and a colour, which is also its tab on the edge of the book |
+| **Subpages** | A page can hold subpages, and those can hold their own: three levels in all. The contents lists each page with its subpages under it |
+| **Sticky notes** | Short notes stuck on the page |
+| **Flip cards** | A question on the front and the answer on the back, for practising: **Flip** turns the card over |
+| **To-dos** | Something to check off |
+| **Organising** | Drag a page in the contents to move it: drop it above or below another page, or onto the middle of a page to make it a subpage. ⚙️ on a page moves it up or down, puts it under the page above or takes it out again, changes its colour or throws it away (it asks first). Cards can be dragged into a new order, or onto a page in the contents to move them there; ⚙️ on a card does the same with buttons |
+
+Each page and card has a small note saying when it was last written: "just now", "today at 2:41 PM", "yesterday at 9:05 AM", "on Tuesday".
+
+A notebook holds up to 50 pages, each with up to 5,000 letters and 30 cards.
+
+## Easy to read
+
+The writing is in **Neat writing** (Playpen Sans), a handwriting designed for children who are learning to read: clear letter shapes, a single-storey *a*, and lots of space. The **Aa** button lets each student choose **Quick writing** (a looser handwriting) or **Book letters** (plain print), and **Big** or **Bigger** text. That choice is kept on their device, for every mission.
+
+## What is kept, and who sees it
+
+- What a student writes is kept as they write, a moment after they stop typing, and again when they close the notebook or leave the page. "✓ Saved" at the foot of the contents says it is kept; if the connection drops, it says so and tries again.
+- **Only the student sees their notebook** in the game. Teachers do not see it in the game or on the Classes page.
+- It is kept **with the student's save**. [Resetting a student's progress](/docs/editor/reports/#starting-a-student-again) empties their notebook for that game, and deleting a student deletes all of theirs. A records request ([`/api/v1` export](/docs/api-v1/)) includes it.
+- Guests have a notebook too, for as long as their guest account lasts.
+- When you **test** a scene from the editor, the notebook works but nothing in it is kept.
+
+## Turning it off
+
+The notebook is on in every mission. To turn it off, open **Settings**, find **💬 Talking and reading**, and untick **Players have a notebook**. The 📒 button no longer shows; what players wrote is kept, and shows again if you turn it back on.
+
+<Host who="lucy">Ask students to keep a page for each question they are investigating, and a flip card for each new word. At the end, they have a study guide they made themselves.</Host>

@@ -63,7 +63,7 @@ export function resetQuestion(student: Pick<StudentReport, 'name' | 'team'>, mis
   return [
     `Reset ${student.name}’s progress in ${mission}?`,
     '',
-    'Their saved game in this assignment is deleted: next time they play, they start again from the beginning. If they are playing now, they are sent back to the start within a minute.',
+    'Their saved game in this assignment is deleted: next time they play, they start again from the beginning. If they are playing now, they are sent back to the start within a minute. What they built and wrote in their notebook here goes too.',
     '',
     'What stays:',
     '• the step-by-step log and their messages (the report counts again from the reset),',

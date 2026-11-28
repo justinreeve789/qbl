@@ -11,6 +11,7 @@ use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\InternalController;
 use App\Http\Controllers\LibraryController;
+use App\Http\Controllers\NotebookController;
 use App\Http\Controllers\PlayController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\SsoController;
@@ -49,6 +50,9 @@ Route::any('/{path}', ClassController::class)->where('path', 'missions|avatars|m
 // Their uploaded pictures are served by an unguessable key, without a token, so the game can load them.
 Route::get('/builds/files/{key}', [BuildController::class, 'file'])->where('key', '[a-f0-9]{24}')->middleware('throttle:600,1');
 Route::any('/builds/{path}', BuildController::class)->where('path', '.+')->middleware(['auth:sanctum', 'throttle:120,1']);
+
+// Players' notebooks: their own notes on a scenario (App\Qbl\Notebooks\NotebookApi lists the routes).
+Route::any('/notebooks/{path}', NotebookController::class)->where('path', '.+')->middleware(['auth:sanctum', 'throttle:120,1']);
 
 // Auth is optional here: scenarios with require_login=false can be played without a token.
 Route::get('/scenarios/{key}/play', [PlayController::class, 'show'])->where('key', '[A-Za-z][A-Za-z0-9_-]*');

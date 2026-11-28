@@ -1,3 +1,4 @@
+import type { NotebookModel } from '../src/core/Notebook';
 import { readFileSync } from 'node:fs';
 import { normalizeScenario, type CharacterPicture, type ObjectiveStatus, type Scenario, type User } from '@qbl/shared';
 import { queueScene } from '../src/core/assets';
@@ -222,6 +223,9 @@ export class HeadlessUi implements UiPort {
   /** The Build button's label while it is shown, and what pressing it does. */
   build: { label: string; open: () => void } | null = null;
   buildButton(label: string | null, onOpen: () => void) { this.build = label ? { label, open: onOpen } : null; }
+  /** The notebook the rail's button opens, and what its cover says; null: no button. */
+  notebookShown: { book: NotebookModel; title: string; owner: string } | null = null;
+  notebook(book: NotebookModel | null, o = { title: '', owner: '' }) { this.notebookShown = book ? { book, ...o } : null; }
   /** The build palette while it is open: what it offers, what it shows, and its actions. */
   builder: { spec: BuildPanelSpec; on: BuildPanelActions; view: BuildPanelView | null; open: boolean } | null = null;
   buildPanel(spec: BuildPanelSpec, on: BuildPanelActions): BuildPanelHandle {

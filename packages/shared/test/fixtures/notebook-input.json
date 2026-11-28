@@ -1,0 +1,25 @@
+{
+  "now": "2026-11-27T21:00:00Z",
+  "notebook": {
+    "pages": [
+      { "id": "p1", "parent": null, "title": "  My   plants\t", "icon": "🌻", "color": "mint", "text": "Sun\r\nWater\u0007 and soil", "created_at": "2026-11-27T20:00:00Z", "updated_at": "2026-11-27T20:30:00Z",
+        "cards": [
+          { "id": "c1", "kind": "note", "text": "Leaves are green", "color": "sun", "created_at": "2026-11-27T20:01:00Z", "updated_at": "2026-11-27T20:01:00Z", "back": "dropped", "done": true },
+          { "id": "c2", "kind": "flash", "text": "What do roots do?", "back": "Drink water", "color": "rose", "created_at": "2026-11-27T20:02:00Z", "updated_at": "2026-11-27T20:03:00Z" },
+          { "id": "c3", "kind": "check", "text": "Water the bean", "done": true, "color": "purple", "created_at": "2026-11-27T20:04:00Z", "updated_at": "2099-01-01T00:00:00Z" },
+          { "id": "c1", "kind": "note", "text": "same id twice", "color": "sun", "created_at": "2026-11-27T20:01:00Z", "updated_at": "2026-11-27T20:01:00Z" },
+          { "id": "bad id!", "kind": "note", "text": "bad id", "color": "sun" },
+          { "id": "c4", "kind": "poster", "text": 42, "color": "sky", "created_at": "soon", "updated_at": "2026-11-27T20:05:00.123Z" }
+        ] },
+      { "id": "p2", "parent": "p1", "title": "Beans 🫘", "icon": "🐉", "color": "sky", "text": "", "cards": "none", "created_at": "2026-11-27T20:10:00Z", "updated_at": "2026-11-27T20:10:00Z" },
+      { "id": "p3", "parent": "p2", "title": "Day one", "icon": "☀️", "color": "peach", "text": "Tiny sprout", "cards": [], "created_at": "2026-11-27T20:11:00Z", "updated_at": "2026-11-27T20:11:00Z" },
+      { "id": "p4", "parent": "p3", "title": "Too deep", "icon": "❤️", "color": "grape", "text": "", "cards": [], "created_at": "2026-11-27T20:12:00Z", "updated_at": "2026-11-27T20:12:00Z" },
+      { "id": "p5", "parent": "gone", "title": "Lost parent", "icon": "⭐", "color": "sun", "text": "", "cards": [], "created_at": "2026-11-27T20:13:00Z", "updated_at": "2026-11-27T20:13:00Z" },
+      { "id": "p6", "parent": "p7", "title": "Loop A", "icon": "⭐", "color": "sun", "text": "", "cards": [], "created_at": "2026-11-27T20:14:00Z", "updated_at": "2026-11-27T20:14:00Z" },
+      { "id": "p7", "parent": "p6", "title": "Loop B", "icon": "⭐", "color": "sun", "text": "", "cards": [], "created_at": "2026-11-27T20:15:00Z", "updated_at": "2026-11-27T20:15:00Z" },
+      { "id": "p1", "parent": null, "title": "Duplicate", "icon": "⭐", "color": "sun", "text": "", "cards": [] },
+      "not a page",
+      { "id": "p8", "parent": null, "title": "A very long title that goes on and on and on past sixty characters for sure", "icon": "🗺️", "color": "rose", "text": "ok", "cards": [], "created_at": "2026-11-27T20:16:00Z", "updated_at": "2026-11-27T20:16:00Z" }
+    ]
+  }
+}

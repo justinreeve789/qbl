@@ -571,6 +571,10 @@ export const SCENARIO_SETTINGS_FIELDS: Field[] = [
     hint: 'A typed message for one other player, wherever in the scenario they are. Private messages are filtered like chat, and every message, private or not, is kept: a teacher can read them on the Classes page.',
   },
   {
+    key: 'notebook', label: 'Players have a notebook', kind: 'bool', wide: true, default: true,
+    hint: 'A 📒 button on the side of the game opens each player’s own notebook for this mission: pages and subpages, sticky notes, flip cards and to-dos, in large, easy-to-read handwriting. Only the player sees what they write; it is kept with their save, so starting their game again empties it.',
+  },
+  {
     key: 'narration', label: 'Read text aloud', kind: 'select', placeholder: 'Only where an action says so', options: [['on', 'Everything: dialogue, infoboxes and text overlays'], ['off', 'Only where an action says so']], wide: true,
     hint: 'The browser’s own voice reads the text and highlights each word as it is spoken. It needs no recordings. Any action can say otherwise for itself, and players can switch it off.',
   },
