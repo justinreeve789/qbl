@@ -227,7 +227,7 @@ Every frame, `update()` ticks the connection (offline, that moves roaming charac
 
 **Awards.** An `award` action sends `award` with the action id. The room asks the API (`POST /api/internal/scenarios/{id}/awards`); `ProgressStore::award` finds the action **in the published document**, grants its stars and XP once (unless `repeatable`) through `progress_ledger`, and the answer comes back as `progress` to the player.
 
-**Shown events.** An event with `audience: 'scene'` sends `show` for each action in `SHOWN_TO_SCENE` as it reaches it (and any event sends it for a `shake` whose own `audience` is `scene`). `World.show` checks, with `sharesWithScene`, that the action really may be shown: it belongs to such an event in the sender's scene and returns who can see the sender; the room sends them `show`, and their `SceneEngine.watch` presents the same action, with the sender as the actor.
+**Shown events.** An event with `audience: 'scene'` sends `show` for each action in `SHOWN_TO_SCENE` as it reaches it (and any event sends it for a `shake` whose own `audience` is `scene`). `World.show` checks, with `sharesWithScene`, that the action really may be shown: it belongs to such an event in the sender's scene and returns who can see the sender; the room sends them `show`, and their `SceneEngine.watch` presents the same action, with the sender as the actor. A watched `shake` with no `duration` runs until stopped, so the engine keeps it by actor (`endlessActors`); each frame `PlayScene.forgetDeparted` calls `engine.forget(actor)` for any sender no longer in the scene or no longer seen.
 
 ## 10. Going through a door
 

@@ -1,7 +1,7 @@
 import { lineToSay, offeredChoices, startLineId } from './conversation.js';
 import { ScenarioIndex } from './scenario.js';
 import {
-  SHOWN_TO_SCENE,
+  SHOWN_TO_SCENE, shakesUntilStopped,
   type Action, type AnimateAction, type AwardAction, type BenchAction, type ConversationAction, type ConversationChoice, type ConversationLine, type GameEvent, type GlossaryAction, type Hotspot, type Id, type Scene,
   type CameraAction, type ShakeAction, type TranslateAction, type TravelAction, type OpenUrlAction, type WalkAction, type WeatherAction,
 } from './types.js';
@@ -309,14 +309,35 @@ export class SceneEngine {
     this.actions.set(action.id, handle);
     const h = handle;
     this.watched.add(h);
+    // A shake with no duration has nothing else to end it here once its player has gone.
+    const endless = action.type === 'shake' && shakesUntilStopped(action);
+    let theirs = this.endlessFrom.get(actor);
+    if (endless && !theirs) this.endlessFrom.set(actor, (theirs = new Set()));
+    if (endless) theirs!.add(h);
     void h.done.finally(() => {
       this.watched.delete(h);
       if (this.actions.get(action.id) === h) this.actions.delete(action.id);
+      const left = this.endlessFrom.get(actor);
+      if (left?.delete(h) && left.size === 0) this.endlessFrom.delete(actor);
     });
   }
 
   /** What this player is being shown of other players' events (see watch()). */
   private watched = new Set<ActionHandle>();
+
+  /** What other players have started here that runs until stopped (a shake with no duration), by who started it. */
+  private endlessFrom = new Map<string, Set<ActionHandle>>();
+
+  /** The players whose until-stopped actions are running here: the host checks they are still in the scene. */
+  get endlessActors(): string[] {
+    return [...this.endlessFrom.keys()];
+  }
+
+  /** Another player has left the scene (or can no longer be seen): stop what they set going here that would run on forever. */
+  forget(actor: string): void {
+    for (const h of [...(this.endlessFrom.get(actor) ?? [])]) h.cancel();
+    this.endlessFrom.delete(actor);
+  }
 
   /** Events that have frozen the player and are still running. */
   private frozenBy = new Set<Id>();
@@ -370,6 +391,7 @@ export class SceneEngine {
     this.actions.clear();
     this.runs.clear();
     this.shownBy.clear();
+    this.endlessFrom.clear();
   }
 
   private cancelRun(run: Run): void {
@@ -517,7 +539,8 @@ export class SceneEngine {
           const h = this.host.shake?.(action) ?? null;
           if (h) {
             this.track(run, action, h);
-            if (action.blocking !== false) await this.wait(run, h);
+            // One with no duration would hold the event forever: it shakes on while the rest runs.
+            if (action.blocking !== false && !shakesUntilStopped(action)) await this.wait(run, h);
           }
           break;
         }

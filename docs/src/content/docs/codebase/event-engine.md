@@ -122,6 +122,7 @@ Type | Handled by | Waits? (when blocking)
 `animate` | `host.animate(action)`, tracked | Yes, for a one-pass animation; a loop returns no handle
 `walk` | `host.walk(action)`, tracked | Yes, until they arrive
 `weather`, `camera` | `host.weather(action)` / `host.camera(action)`, tracked | Yes, until the change is done
+`shake` | `host.shake(action)`, tracked | Yes, for its `duration`; one with no `duration` shakes until cancelled and never waits (`shakesUntilStopped`)
 `translate` | Only if the target action (`target_id`) is still live in `actions`; then `host.translate(action)`, tracked | Yes, for `duration`
 everything else | `host.present(action, engine)`, tracked: `audio`, `dialogue`, `narration`, `shop`, `image_fixed`, `image_overlay`, `infobox`, `spritemap`, `text_overlay`, `video` (the `PresentedAction` union) | Yes, **unless it is indefinite**
 

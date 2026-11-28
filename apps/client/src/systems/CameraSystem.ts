@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { sceneBench, shakeAmount, type ActionHandle, type CameraAction, type Id, type Point, type ShakeAction } from '@qbl/shared';
+import { sceneBench, shakeAmount, shakesUntilStopped, type ActionHandle, type CameraAction, type Id, type Point, type ShakeAction } from '@qbl/shared';
 import { deferred } from '../actions/Presenter';
 import type { SceneRuntime, SceneSystem } from '../core/SceneRuntime';
 import { LocalPlayerSystem } from './LocalPlayerSystem';
@@ -44,6 +44,12 @@ export class CameraSystem implements SceneSystem {
   private closeness = 1;
   /** A change of closeness under way. */
   private zooming: { from: number; to: number; ms: number; t: number } | null = null;
+
+  /**
+   * The shake under way: how far the view may jolt, as a share of the window (shakeAmount). Each
+   * frame the whole view is moved by up to that much in screen pixels, then put back when it ends.
+   */
+  private shaking: { amount: number } | null = null;
   /** The zoom that fills the window with the scene, and the usual view's zoom. */
   private cover = 1;
   private base = 1;
@@ -137,21 +143,42 @@ export class CameraSystem implements SceneSystem {
   }
 
   /**
-   * A shake action: the view jolts about where it is, then settles. A player whose system asks for
-   * reduced motion is not shaken, but the handle still lasts as long, so the event keeps its timing.
+   * A shake action: the whole view jolts about where it is, then settles. A player whose system asks
+   * for reduced motion is not shaken, but the handle still lasts as long, so the event keeps its
+   * timing. With no duration it shakes until the handle is cancelled (a cancel, a cancel_event,
+   * leaving the scene). A new shake takes over from one under way.
+   *
+   * Not Phaser's camera.shake: in Phaser 4 that offset is scaled by the zoom twice, and the view is
+   * zoomed out (about 0.6 on a laptop), so a middling shake moved the picture by 2 or 3 pixels.
+   * Moving the camera's viewport is in screen pixels whatever the zoom, and moves everything drawn.
    */
   shake(action: ShakeAction): ActionHandle {
-    const ms = Math.max(0, action.duration ?? 500);
-    const cam = this.rt.scene.cameras.main as Phaser.Cameras.Scene2D.Camera;
+    const endless = shakesUntilStopped(action);
+    const ms = endless ? Infinity : Math.max(0, action.duration!);
     const still = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    // force: a shake already under way gives way to this one.
-    if (ms > 0 && !still) cam.shake?.(ms, shakeAmount(action.intensity), true);
-    const handle = this.after(ms);
-    return { done: handle.done, cancel: () => (cam.shakeEffect?.reset(), handle.cancel()) };
+    const mine = ms > 0 && !still ? { amount: shakeAmount(action.intensity) } : null;
+    if (mine) this.shaking = mine;
+    const settle = () => {
+      if (mine && this.shaking === mine) this.stopShaking();
+    };
+    const handle = endless ? (() => { const d = deferred(); return { done: d.done, cancel: d.resolve }; })() : this.after(ms);
+    void handle.done.then(settle);
+    return { done: handle.done, cancel: () => (settle(), handle.cancel()) };
+  }
+
+  /** Put the view back where it belongs. */
+  private stopShaking() {
+    this.shaking = null;
+    this.rt.scene.cameras.main.setPosition(0, 0);
   }
 
   update(_time: number, delta: number) {
     const dt = Math.min(delta, 100);
+    if (this.shaking) {
+      const { width, height } = this.rt.scene.scale.gameSize;
+      const a = this.shaking.amount;
+      this.rt.scene.cameras.main.setPosition(Math.round((Math.random() * 2 - 1) * a * width), Math.round((Math.random() * 2 - 1) * a * height));
+    }
     if (this.zooming) {
       const z = this.zooming;
       z.t = Math.min(1, z.t + dt / z.ms);
@@ -180,6 +207,7 @@ export class CameraSystem implements SceneSystem {
   }
 
   destroy() {
+    if (this.shaking) this.stopShaking();
     this.glide?.done();
     this.glide = null;
     this.rt.scene.scale.off(Phaser.Scale.Events.RESIZE, this.fit, this);

@@ -174,6 +174,21 @@ export class PlayScene extends Phaser.Scene {
     this.ctx.connection.tick();
     this.ctx.syncRoomVariables();
     for (const system of this.systems) system.update?.(time, delta);
+    this.forgetDeparted();
+  }
+
+  /**
+   * A shake with no duration that another player set going here ends when they leave the scene
+   * (or stop being seen): nothing else would stop it on this screen.
+   */
+  private forgetDeparted() {
+    const actors = this.engine.endlessActors;
+    if (actors.length === 0) return;
+    const { state } = this.ctx.connection;
+    for (const id of actors) {
+      const rec = state.players.get(id);
+      if (!rec || rec.scene_id !== this.def.id || !this.ctx.sees(rec)) this.engine.forget(id);
+    }
   }
 
   // ------------------------------------------------------- SceneRuntime

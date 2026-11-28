@@ -716,6 +716,10 @@ export interface CameraAction extends ActionBase {
  * about where it is for `duration` and settles back; nothing in the scene moves. A player whose
  * system asks for reduced motion is not shaken (the action still takes as long).
  *
+ * With no `duration` it shakes until stopped: a cancel of the action, a cancel_event of its event,
+ * or leaving the scene. Such a shake never makes the next action wait, whatever `blocking` says,
+ * and on other players' screens it also stops when the player whose event it is leaves the scene.
+ *
  * `audience` says who feels it. It is the one action that may differ from its event: a shake for
  * `scene` reaches everyone in the scene (those who can see this player, as for an event whose
  * audience is the scene) even from an event that is the player's own, and one for `player` stays
@@ -725,13 +729,18 @@ export interface ShakeAction extends ActionBase {
   type: 'shake';
   /** How hard, from 1 (a tremble) to 10 (an earthquake). Default 3. */
   intensity?: number;
-  /** Milliseconds it lasts. Default 500. With `blocking`, the next action waits for it. */
+  /** Milliseconds it lasts; with `blocking`, the next action waits for it. Absent: until stopped (see above). */
   duration?: number;
   /** Who feels it: `player`, the one whose event it is; `scene`, everyone in the scene. Default: as the event's audience. */
   audience?: EventAudience;
 }
 
-/** ShakeAction.intensity, 1 to 10, as a share of the view's size (Phaser's camera shake intensity). */
+/** True for a shake with no duration: it goes on until it is cancelled or the scene is left. */
+export function shakesUntilStopped(action: Pick<ShakeAction, 'duration'>): boolean {
+  return typeof action.duration !== 'number' || !Number.isFinite(action.duration);
+}
+
+/** ShakeAction.intensity, 1 to 10, as the most the view may move each frame, as a share of the window's width (sideways) and height (up and down). */
 export function shakeAmount(intensity: number | undefined): number {
   const n = typeof intensity === 'number' && Number.isFinite(intensity) ? Math.min(10, Math.max(1, intensity)) : 3;
   return n * 0.003;
