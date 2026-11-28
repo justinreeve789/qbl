@@ -1,7 +1,7 @@
 import type * as Phaser from 'phaser';
 import {
   isLaunchUrlOnly, LAUNCH_URL_PLACEHOLDER, resolvedHandle,
-  type Action, type ActionHandle, type CameraAction, type ChoiceHandle, type TravelAction, type OpenUrlAction, type WeatherAction, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
+  type Action, type ActionHandle, type CameraAction, type ShakeAction, type ChoiceHandle, type TravelAction, type OpenUrlAction, type WeatherAction, type ConversationAction, type ConversationChoice, type ConversationLine, type EngineHost, type GameEvent, type Id, type PresentedAction, type SceneEngine, type TranslateAction, type WalkAction,
 } from '@qbl/shared';
 import type { AnimateAction, AwardAction, BenchAction, GlossaryAction } from '@qbl/shared';
 import type { GameContext } from '../core/GameContext';
@@ -120,6 +120,13 @@ export class ActionHost implements EngineHost, PresenterContext {
     const handle = this.cameraControl?.(action) ?? null;
     if (!handle) this.warn(`camera ${action.id}: nothing to look at`);
     return handle;
+  }
+
+  /** Set by the scene: shakes the player's view. */
+  shakeControl: ((action: ShakeAction) => ActionHandle | null) | null = null;
+
+  shake(action: ShakeAction): ActionHandle | null {
+    return this.shakeControl?.(action) ?? null;
   }
 
   /** Set by the scene: stops the local player from walking, or lets them walk again. */

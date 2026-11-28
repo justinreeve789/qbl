@@ -1,5 +1,5 @@
 import { distance, isWalkable, MoveBudget, nearestWalkable, walkContext, type Circle, type WalkContext } from './geometry.js';
-import { isShownToScene } from './engine.js';
+import { sharesWithScene } from './engine.js';
 import type { AnimateMessage, AvatarMessage, ItemMessage, MoveMessage, ProgressMessage, SceneMessage, ShowMessage, VariableMessage, WalkMessage } from './protocol.js';
 import { Roamers, type NpcRec, type SavedNpc, type WalkSpec } from './roaming.js';
 import { forEachAction, sceneCompany, sceneSize, ScenarioIndex, type SceneCompany } from './scenario.js';
@@ -335,14 +335,14 @@ export class World {
   /** The player changed what they wear. `look` comes from the backend, never from the client. */
   /**
    * May this player show this action to the others in their scene? Only an action of an event
-   * whose audience is the scene, in the scene the player is in. Returns the session ids to tell.
+   * whose audience is the scene (or a shake meant for the scene), in the scene the player is in. Returns the session ids to tell.
    */
   show(sessionId: string, msg: ShowMessage): string[] | null {
     const p = this.deps.state.players.get(sessionId);
     const found = this.index.events.get(Number(msg?.event_id));
-    if (!p || !found || found.scene.id !== p.scene_id || found.event.audience !== 'scene') return null;
+    if (!p || !found || found.scene.id !== p.scene_id) return null;
     const action = found.event.actions.find((a) => a.id === Number(msg.action_id));
-    if (!action || !isShownToScene(action)) return null;
+    if (!action || !sharesWithScene(found.event, action)) return null;
     return this.audience(sessionId);
   }
 

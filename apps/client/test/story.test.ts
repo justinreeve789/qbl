@@ -122,6 +122,30 @@ test('a camera action can follow a character or glide to a spot, outside stories
   assert.equal(cam.following, true, 'and back to the player');
 });
 
+test('a shake action shakes the view, as hard as asked, and the event waits for it', async () => {
+  const s = story();
+  const scene = s.scenes[0]!;
+  scene.story = false;
+  scene.show_avatars = true;
+  scene.characters = [];
+  scene.start_events = [{ id: 10, actions: [
+    { id: 11, type: 'shake', intensity: 8, duration: 600 },
+    { id: 12, type: 'shake' },
+    { id: 13, type: 'variable', name: 'story_done', operator: 'set', operand: 1 },
+  ] }] as never;
+  const g = new Game(s);
+  const cam = (g.scene as any).cameras.main;
+  await g.wait(100);
+  assert.deepEqual(cam.shakes.map(([ms]: [number]) => ms), [600], 'one at a time: the first is blocking');
+  assert.equal(cam.shaking, true);
+  await g.wait(600);
+  assert.deepEqual(cam.shakes.map(([ms]: [number]) => ms), [600, 500], 'then the second, with the default length');
+  assert.ok(cam.shakes[0][1] > cam.shakes[1][1], 'intensity 8 is shakier than the default 3');
+  await g.wait(600);
+  assert.equal(cam.shaking, false);
+  assert.equal(g.ctx.vars.get('story_done'), 1, 'and the event goes on');
+});
+
 test('on an ultrawide window the view is raised, so the top is not cut off', async () => {
   const s = story();
   const scene = s.scenes[0]!;

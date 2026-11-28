@@ -107,6 +107,7 @@ export class PlayScene extends Phaser.Scene {
     };
     this.host.weatherControl = (action) => this.byClass.has(WeatherSystem) ? this.runtime.system(WeatherSystem).change(action) : null;
     this.host.cameraControl = (action) => this.byClass.has(CameraSystem) ? this.runtime.system(CameraSystem).point(action) : null;
+    this.host.shakeControl = (action) => this.byClass.has(CameraSystem) ? this.runtime.system(CameraSystem).shake(action) : null;
     this.host.actingControl = (id) => (this.byClass.get(CameraSystem) as CameraSystem | undefined)?.acting(id);
     this.host.freezeControl = (frozen) => this.runtime.system(LocalPlayerSystem).setFrozen(frozen);
     this.host.avatarControl = (visible, duration) => this.runtime.system(LocalPlayerSystem).setAvatarVisible(visible, duration);

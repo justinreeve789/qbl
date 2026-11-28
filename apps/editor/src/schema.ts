@@ -379,6 +379,22 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
       { key: 'duration', label: 'Glide (ms)', kind: 'number', min: 0, placeholder: '1200' },
     ],
   },
+  shake: {
+    label: 'Shake',
+    about: 'Shake the screen: a rockfall, an explosion, a slammed door.',
+    fields: [
+      {
+        key: 'intensity', label: 'How shaky (1 to 10)', kind: 'number', min: 1, max: 10, step: 1, placeholder: '3', slider: { min: 1, max: 10 },
+        hint: '1 is a faint tremble, 3 a door slamming, 6 a rockfall, 10 an earthquake. Players whose device is set to reduce motion are not shaken.',
+      },
+      { key: 'duration', label: 'For (ms)', kind: 'number', min: 0, placeholder: '500', hint: 'Half a second to a second is usually enough. With “Wait for this to finish”, the next action starts when the shaking stops.' },
+      {
+        key: 'audience', label: 'Who feels it', kind: 'select', wide: true, placeholder: 'As the event’s “Who sees it”',
+        options: [['player', 'Only the player whose event it is'], ['scene', 'Everyone in the scene']],
+        hint: 'Everyone in the scene: every player there is shaken at once, even when the rest of the event is only this player’s. Only the player: no one else feels it, even when the event is shown to the whole scene.',
+      },
+    ],
+  },
   translate: {
     label: 'Translate',
     about: 'Move, resize or fade something another action is showing.',
@@ -417,7 +433,7 @@ export const ACTION_GROUPS: ActionGroup[] = [
   { key: 'text', label: 'Boxes and words on screen', icon: '📝', tone: '#1b8bb4', types: ['infobox', 'text_overlay'] },
   { key: 'people', label: 'Characters and the player', icon: '🧑', tone: '#d6457a', types: ['walk', 'animate', 'freeze', 'avatar'] },
   { key: 'media', label: 'Pictures, video and sound', icon: '🎞️', tone: '#8e5bd6', types: ['image_fixed', 'image_overlay', 'spritemap', 'video', 'audio', 'translate'] },
-  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'travel', 'open_url', 'camera', 'weather', 'bench'] },
+  { key: 'scene', label: 'Scenes, camera, weather and bench', icon: '🎥', tone: '#0f9d8a', types: ['jump', 'travel', 'open_url', 'camera', 'shake', 'weather', 'bench'] },
   { key: 'flow', label: 'Timing and flow', icon: '⏱️', tone: '#c77b12', types: ['wait', 'run_event', 'repeat', 'cancel', 'cancel_event'] },
   { key: 'progress', label: 'Rewards and progress', icon: '🏆', tone: '#3b8f4a', types: ['award', 'glossary', 'variable', 'shop'] },
 ];
@@ -432,7 +448,7 @@ const ACTION_ICONS: Record<ActionType, string> = {
   infobox: '📋', text_overlay: '🔤',
   walk: '🚶', animate: '🤸', freeze: '✋', avatar: '👤',
   image_fixed: '📌', image_overlay: '🖼️', spritemap: '🎞️', video: '🎬', audio: '🔊', translate: '↔️',
-  jump: '🚪', travel: '🚀', open_url: '🔗', camera: '🎥', weather: '🌧️', bench: '🧪',
+  jump: '🚪', travel: '🚀', open_url: '🔗', camera: '🎥', shake: '📳', weather: '🌧️', bench: '🧪',
   wait: '⏳', run_event: '▶️', repeat: '🔁', cancel: '✖️', cancel_event: '⏹️',
   award: '⭐', glossary: '📖', variable: '🔢', shop: '🛍️',
 };
@@ -501,6 +517,8 @@ export function actionDefaults(type: ActionType): Record<string, unknown> {
       return { kind: 'rain', duration: 3000 };
     case 'camera':
       return { target: 'player' };
+    case 'shake':
+      return { intensity: 3, duration: 500 };
     default:
       return {};
   }

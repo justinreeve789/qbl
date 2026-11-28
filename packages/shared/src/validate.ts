@@ -619,6 +619,12 @@ export function validateScenario(doc: unknown): ValidationResult {
         if (a.zoom != null && !(typeof a.zoom === 'number' && a.zoom >= 0.5 && a.zoom <= 3)) err(`${path}.zoom`, 'zoom is a number from 0.5 to 3 (1: the usual view)');
         break;
       }
+      case 'shake':
+        if (a.intensity != null && !(typeof a.intensity === 'number' && a.intensity >= 1 && a.intensity <= 10)) err(`${path}.intensity`, 'intensity is a number from 1 (a tremble) to 10 (an earthquake)');
+        if (a.duration != null && !(typeof a.duration === 'number' && a.duration >= 0)) err(`${path}.duration`, 'duration is a number of milliseconds');
+        else if ((a.duration ?? 0) > 5000) warn(`${path}.duration`, 'A shake of more than 5 seconds is hard to watch: keep it short, and repeat it if it must go on');
+        if (a.audience != null && a.audience !== 'player' && a.audience !== 'scene') err(`${path}.audience`, 'audience is "player" or "scene"');
+        break;
       case 'image_overlay':
         if (a.motion != null && !(OVERLAY_MOTIONS as string[]).includes(a.motion)) err(`${path}.motion`, `motion is one of ${OVERLAY_MOTIONS.join(', ')}`);
         if (a.tone != null && a.tone !== 'memory' && a.tone !== 'dream') err(`${path}.tone`, 'tone is "memory" or "dream"');
