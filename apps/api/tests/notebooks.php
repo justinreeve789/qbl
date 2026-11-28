@@ -128,6 +128,49 @@ same($status, 200, 'PUT {scenario}?group= keeps it');
 same($api->handle('DELETE', $code, [], $ann, ['group' => $group])[0], 405, 'nothing else is offered');
 same($api->handle('GET', "$code/pages", [], $ann, ['group' => $group])[0], 404, 'nor any other path');
 
+// ------------------------------------------------------------------ teachers reading their students' notebooks
+
+$pdo->exec("INSERT INTO users (id, name, email, role) VALUES (2, 'Mr Ode', 'ode@school.test', 'teacher'), (3, 'Head', 'head@school.test', 'admin'), (13, 'Quick Fox', 'cy@school.test', 'student')");
+$pdo->exec('INSERT INTO teacher_student (teacher_id, student_id) VALUES (1, 13)');
+$ode = ['id' => 2, 'name' => 'Mr Ode', 'role' => 'teacher'];
+$head = ['id' => 3, 'name' => 'Head', 'role' => 'admin'];
+$cy = ['id' => 13, 'name' => 'Quick Fox', 'role' => 'student'];
+// A second assignment of the same mission, in teams: Quick Fox plays in team Otters' game.
+$b = $classes->assign(1, $mid, [11, 13], null, null, [['name' => 'Otters', 'student_ids' => [13]]]);
+$otters = 't'.$b['teams'][0]['id'];
+$notebooks->save($cy, $code, $otters, ['pages' => [$page, ['id' => 'p2', 'parent' => 'p1', 'title' => 'Eggs', 'cards' => [['id' => 'c9', 'kind' => 'check', 'text' => 'Count them']]] + $page]]);
+// Brave Otter wrote in the first assignment's game; in this one, nothing.
+$list = $notebooks->forAssignment($tan, (int) $a['id']);
+same($list['assignment'], ['id' => (int) $a['id'], 'title' => 'Pond Life'], 'the list names the assignment');
+same(array_map(fn ($s) => [$s['name'], $s['pages'], $s['cards'], $s['updated_at'] !== null], $list['students']),
+    [['Brave Otter', 1, 1, true], ['Calm Heron', 0, 0, false]], "a teacher sees how much each of the assignment's students wrote, and when");
+$list = $notebooks->forAssignment($tan, (int) $b['id']);
+same(array_map(fn ($s) => [$s['name'], $s['team'], $s['pages'], $s['cards']], $list['students']),
+    [['Brave Otter', null, 0, 0], ['Quick Fox', 'Otters', 2, 2]], "in the game each plays in there: a team's for those in one; notes in the other assignment's game are not counted");
+$read = $notebooks->studentNotebook($tan, (int) $b['id'], 13);
+same([$read['student'], array_column($read['notebook']['pages'], 'title'), $read['notebook']['pages'][1]['parent']],
+    [['id' => 13, 'name' => 'Quick Fox', 'team' => 'Otters'], ['Frogs and toads', 'Eggs'], 'p1'], "the teacher reads a student's whole notebook, its subpages too");
+same($notebooks->studentNotebook($tan, (int) $b['id'], 11), ['student' => ['id' => 11, 'name' => 'Brave Otter', 'team' => null], 'notebook' => ['pages' => []], 'updated_at' => null], 'a student who wrote nothing there has an empty notebook');
+same(count($notebooks->studentNotebook($head, (int) $b['id'], 13)['notebook']['pages']), 2, 'an admin may read it too');
+refused(fn () => $notebooks->studentNotebook($tan, (int) $b['id'], 12), 404, 'not a student who is not in that assignment');
+refused(fn () => $notebooks->forAssignment($ode, (int) $a['id']), 404, "another teacher cannot read this teacher's class");
+refused(fn () => $notebooks->studentNotebook($ode, (int) $b['id'], 13), 404, 'nor one notebook in it');
+refused(fn () => $notebooks->forAssignment($ann, (int) $a['id']), 403, "a student cannot read classmates' notebooks");
+refused(fn () => $notebooks->forAssignment($tan, 999), 404, 'nor is there an assignment that does not exist');
+$notebooks->save($cy, $open['code'], 'public', ['pages' => [$page]]);
+same(array_column($notebooks->forAssignment($tan, (int) $b['id'])['students'], 'pages'), [0, 2], 'notes kept in a public game stay private');
+
+[$status, $body] = $api->handle('GET', 'teach/'.$b['id'], [], $tan);
+same([$status, count($body['students'] ?? [])], [200, 2], 'GET teach/{assignment} lists its students');
+[$status, $body] = $api->handle('GET', 'teach/'.$b['id'].'/13', [], $tan);
+same([$status, count($body['notebook']['pages'] ?? [])], [200, 2], 'GET teach/{assignment}/{student} is that notebook');
+same($api->handle('PUT', 'teach/'.$b['id'].'/13', ['notebook' => ['pages' => []]], $tan)[0], 405, 'which a teacher cannot change');
+same(count($notebooks->forPlayer($cy, $code, $otters)['notebook']['pages']), 2, 'and it is as the student left it');
+same($api->handle('GET', 'teach', [], $tan)[0], 404, 'teach needs an assignment');
+same($api->handle('GET', 'teach/x/13', [], $tan)[0], 404, 'given by its number');
+same($api->handle('GET', 'teach/'.$b['id'], [], $cy)[0], 403, 'over HTTP students are refused');
+same($api->handle('GET', 'teach/'.$b['id'], [], null)[0], 401, 'and so is anyone signed out');
+
 // ------------------------------------------------------------------ starting again, deleting, exporting
 
 $notebooks->save($ben, $code, $group, ['pages' => [$page]]);

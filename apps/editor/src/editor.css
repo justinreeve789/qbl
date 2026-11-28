@@ -1761,3 +1761,60 @@ dialog.modal.panel[data-panel='media-choose'] .panel-body { padding-top: 0; }
 .sp-current { background: var(--ok); color: #0b2415; }
 .sp-choose { color: var(--accent); opacity: 0; transition: opacity 0.12s ease; }
 .sp-row:hover .sp-choose, .sp-row:focus-visible .sp-choose { opacity: 1; }
+
+/* -------------------------------------------------------------- students' notebooks (views/notebooks.ts)
+ * Read only, on the Classes page. The pages look like the game's notebook (apps/client/src/ui/notebook):
+ * lined paper with a margin, sticky notes and index cards, in the same colours. */
+.notebooks { --nbr-paper: #fffdf6; --nbr-ink: #1f2a44; --nbr-rule: #c6daf1; --nbr-margin: #f2a6a6; --nbr-line: 28px; }
+.notebooks [data-color='sun'] { --tab: #ffe27a; --tint: #fff4c2; }
+.notebooks [data-color='sky'] { --tab: #a6dcff; --tint: #e1f3ff; }
+.notebooks [data-color='mint'] { --tab: #a8ebbf; --tint: #e0f8e8; }
+.notebooks [data-color='rose'] { --tab: #ffbfd0; --tint: #ffe6ed; }
+.notebooks [data-color='grape'] { --tab: #d6c2ff; --tint: #efe6ff; }
+.notebooks [data-color='peach'] { --tab: #ffcb94; --tint: #ffecd8; }
+.nbr-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 18px; margin-top: 18px; align-items: start; }
+.nbr-students ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; position: sticky; top: 8px; }
+.nbr-students button { white-space: normal; box-sizing: border-box; display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.nbr-students button:hover { background: var(--surface-2); }
+.nbr-students button.current { background: var(--surface-2); border-color: var(--accent); }
+.nbr-who { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.nbr-who small { color: var(--muted); font-size: 12px; opacity: 0.85; }
+.nbr-reader { min-width: 0; }
+.nbr-reader-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.nbr-reader-head h3, .nbr-page-head h3, .nbr-page-head h4 { text-transform: none; letter-spacing: normal; }
+.nbr-reader-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 20px; color: var(--text); }
+.nbr-reader-head p { margin: 0; }
+.nbr-book { display: grid; gap: 14px; color: var(--nbr-ink); }
+.nbr-contents { padding: 14px 18px; border-radius: 10px; background: var(--nbr-paper); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+.nbr-contents h3 { color: var(--nbr-ink); margin: 0 0 6px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+.nbr-contents ol { list-style: none; margin: 0; padding: 0; }
+.nbr-contents li { padding-left: calc(var(--depth, 0) * 22px); }
+.nbr-contents a { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; color: var(--nbr-ink); text-decoration: none; }
+.nbr-contents a:hover { text-decoration: underline; }
+.nbr-page { position: relative; padding: 16px 20px 18px 56px; border-radius: 6px 10px 10px 6px; background: var(--nbr-paper); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border-left: 8px solid var(--tab, #a6dcff); }
+.nbr-page::before { content: ''; position: absolute; top: 0; bottom: 0; left: 40px; width: 2px; background: var(--nbr-margin); opacity: 0.7; }
+.nbr-page-head h3, .nbr-page-head h4 { color: var(--nbr-ink); display: flex; align-items: center; gap: 8px; margin: 0; font-size: 20px; line-height: 1.3; }
+.nbr-page-head h4 { font-size: 17px; }
+.nbr-trail { margin: 0 0 2px; font-size: 12px; opacity: 0.65; }
+.nbr-when { margin: 2px 0 8px; font-size: 12px; opacity: 0.6; }
+.nbr-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: var(--nbr-line); min-height: var(--nbr-line);
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--nbr-line) - 1px), var(--nbr-rule) calc(var(--nbr-line) - 1px), var(--nbr-rule) var(--nbr-line)); }
+.nbr-blank { font-style: italic; opacity: 0.55; }
+.nbr-cards { list-style: none; margin: 14px 0 0; padding: 0; display: grid; align-items: start; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.nbr-card { padding: 10px 12px; border-radius: 4px; background: var(--tab, #ffe27a); color: var(--nbr-ink); box-shadow: 1px 3px 6px -2px rgba(0, 0, 0, 0.35); overflow-wrap: anywhere; white-space: pre-wrap; font-size: 14.5px; line-height: 1.4; }
+.nbr-card p { margin: 0; }
+.nbr-card.note { transform: rotate(-0.6deg); }
+.nbr-card.note:nth-child(2n) { transform: rotate(0.7deg); }
+.nbr-card.flash { display: grid; gap: 6px; background: #fff; border-top: 6px solid var(--tab, #ffe27a); }
+.nbr-card-kind { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+.nbr-flash-side { display: grid; gap: 1px; padding-top: 6px; border-top: 1px dashed rgba(31, 42, 68, 0.2); }
+.nbr-flash-side b { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; }
+.nbr-card.check { display: flex; align-items: flex-start; gap: 8px; background: var(--tint, #fff4c2); }
+.nbr-check { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 1px; border: 2px solid var(--nbr-ink); border-radius: 4px; font-weight: 800; font-size: 14px; line-height: 1; }
+.nbr-card.check.done p { text-decoration: line-through; opacity: 0.7; }
+@media (max-width: 760px) {
+  .nbr-layout { grid-template-columns: 1fr; }
+  .nbr-students ul { position: static; }
+  .nbr-page { padding-left: 40px; }
+  .nbr-page::before { left: 26px; }
+}

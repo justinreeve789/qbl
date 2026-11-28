@@ -164,7 +164,7 @@ export interface UiPort {
    * The notebook button on the side rail, which opens the player's notebook for this scenario
    * (see core/Notebook.ts). Null takes it away (and closes the notebook if it is open).
    */
-  notebook(book: NotebookModel | null, o?: { title: string; owner: string }): void;
+  notebook(book: NotebookModel | null, o?: { title: string; owner: string; readBy?: string }): void;
   /** Offer the read-aloud switch: the scenario has text that is read aloud. */
   narration(available: boolean): void;
   toast(message: string, ms?: number): void;
