@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  normalizeActionType, normalizeScenario, ScenarioIndex, SceneEngine, shakeAmount, sharesWithScene, validateScenario, VariableStore, World,
+  normalizeActionType, normalizeScenario, ScenarioIndex, SceneEngine, shakeAmount, shakesUntilStopped, sharesWithScene, validateScenario, VariableStore, World,
   type Action, type ActionHandle, type EngineHost, type GameEvent, type ItemRec, type PlayerRec, type ShakeAction, type User, type WorldState,
 } from '../src/index.js';
 
 const floor = [[{ x: 0, y: 300 }, { x: 1000, y: 300 }, { x: 1000, y: 600 }, { x: 0, y: 600 }]];
 
-/** Event 10: the player's own, with a shake for everyone (2) and one following the event (3). Event 20: the scene's, with a shake kept to the player (22) and one following (23). */
+/**
+ * Event 10: the player's own, with a shake for everyone (2) and one following the event (3). Event 20: the scene's, with a shake kept to the player (22) and one following (23).
+ * Event 30: a shake for everyone with no duration (31), then a variable. Event 40: cancels action 31. Event 50: stops event 30.
+ */
 const doc = () => normalizeScenario({
   id: 1, shortname: 't', title: 'T', start_scene_id: 1, global_variables: [{ variable_name: 'n', default_value: 0 }],
   scenes: [{
@@ -20,9 +23,15 @@ const doc = () => normalizeScenario({
         { id: 3, type: 'shake', duration: 200 },
       ] },
       { id: 20, audience: 'scene', actions: [
-        { id: 22, type: 'shake', audience: 'player' },
-        { id: 23, type: 'shake', intensity: 2 },
+        { id: 22, type: 'shake', audience: 'player', duration: 300 },
+        { id: 23, type: 'shake', intensity: 2, duration: 300 },
       ] },
+      { id: 30, actions: [
+        { id: 31, type: 'shake', intensity: 2, audience: 'scene', blocking: true },
+        { id: 32, type: 'variable', name: 'n', operator: '+', operand: 1 },
+      ] },
+      { id: 40, actions: [{ id: 41, type: 'cancel', action_id: 31 }] },
+      { id: 50, actions: [{ id: 51, type: 'cancel_event', target_event_id: 30 }] },
     ],
   }],
 });
@@ -37,12 +46,15 @@ function engineWith(log: string[], finishers: Array<() => void>) {
     share: (_e: GameEvent, a: Action) => log.push(`share:${a.id}`),
     shake: (a: ShakeAction) => {
       log.push(`shake:${a.id}`);
-      return { done: new Promise<void>((r) => finishers.push(r)), cancel() {} };
+      let end = () => {};
+      const done = new Promise<void>((r) => finishers.push((end = r)));
+      return { done, cancel() { log.push(`stop:${a.id}`); end(); } };
     },
   };
   const scenario = doc();
   const index = new ScenarioIndex(scenario);
-  return new SceneEngine(index.scene(1)!, index, new VariableStore([{ variable_name: 'n', default_value: 0 }]), host);
+  const vars = new VariableStore([{ variable_name: 'n', default_value: 0 }]);
+  return Object.assign(new SceneEngine(index.scene(1)!, index, vars, host), { vars });
 }
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
@@ -127,4 +139,50 @@ test('the server passes on a shake only where it may be shown', () => {
   assert.equal(world.show('a', { event_id: 10, action_id: 1 }), null, 'nor anything else of that event');
   assert.equal(world.show('a', { event_id: 20, action_id: 22 }), null, 'one kept to the player');
   assert.deepEqual(world.show('a', { event_id: 20, action_id: 23 }), ['b']);
+});
+
+test('no duration: shakes until stopped', () => {
+  assert.equal(shakesUntilStopped({}), true);
+  assert.equal(shakesUntilStopped({ duration: undefined }), true);
+  assert.equal(shakesUntilStopped({ duration: 500 }), false);
+  assert.equal(shakesUntilStopped({ duration: 0 }), false, '0 is a length (no shake), not "until stopped"');
+  assert.deepEqual(validateScenario(doc()).warnings.filter((w) => /duration/.test(w.path)), [], 'and it is not warned about as too long');
+});
+
+test('a shake with no duration never holds up its event, and runs on after it', async () => {
+  const log: string[] = [];
+  const engine = engineWith(log, []);
+  await engine.triggerById(30);
+  assert.deepEqual(log, ['share:31', 'shake:31'], 'blocking or not, the next action did not wait');
+  assert.equal(engine.vars.get('n'), 1);
+  await tick();
+  assert.ok(!log.includes('stop:31'), 'the event is over, but the shake goes on');
+});
+
+test('a cancel of the action, a cancel_event of its event, or leaving stops it', async () => {
+  for (const [how, stop] of [
+    ['cancel', (e: ReturnType<typeof engineWith>) => e.triggerById(40)],
+    ['cancel_event', (e: ReturnType<typeof engineWith>) => e.triggerById(50)],
+    ['leaving', (e: ReturnType<typeof engineWith>) => e.stop()],
+  ] as const) {
+    const log: string[] = [];
+    const engine = engineWith(log, []);
+    await engine.triggerById(30);
+    await stop(engine);
+    await tick();
+    assert.ok(log.includes('stop:31'), how);
+  }
+});
+
+test('on watchers\' screens it also stops when the player who started it leaves', async () => {
+  const log: string[] = [];
+  const engine = engineWith(log, []);
+  engine.watch(30, 31, 'ann');
+  engine.watch(10, 2, 'bob');
+  assert.deepEqual(engine.endlessActors, ['ann'], 'only shakes with no duration are kept by who started them');
+  engine.forget('bob');
+  engine.forget('ann');
+  await tick();
+  assert.deepEqual(log, ['shake:31', 'shake:2', 'stop:31']);
+  assert.deepEqual(engine.endlessActors, []);
 });

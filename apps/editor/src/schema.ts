@@ -387,7 +387,7 @@ export const ACTIONS: Record<ActionType, ActionDef> = {
         key: 'intensity', label: 'How shaky (1 to 10)', kind: 'number', min: 1, max: 10, step: 1, placeholder: '3', slider: { min: 1, max: 10 },
         hint: '1 is a faint tremble, 3 a door slamming, 6 a rockfall, 10 an earthquake. Players whose device is set to reduce motion are not shaken.',
       },
-      { key: 'duration', label: 'For (ms)', kind: 'number', min: 0, placeholder: '500', hint: 'Half a second to a second is usually enough. With “Wait for this to finish”, the next action starts when the shaking stops.' },
+      { key: 'duration', label: 'For (ms)', kind: 'number', min: 0, placeholder: 'Until stopped', hint: 'Half a second to a second is usually enough. With “Wait for this to finish”, the next action starts when the shaking stops. Left empty, it shakes until a Cancel of this action, a Stop of its event, or leaving the scene stops it, and the next action starts straight away.' },
       {
         key: 'audience', label: 'Who feels it', kind: 'select', wide: true, placeholder: 'As the event’s “Who sees it”',
         options: [['player', 'Only the player whose event it is'], ['scene', 'Everyone in the scene']],

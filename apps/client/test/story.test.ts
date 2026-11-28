@@ -122,7 +122,12 @@ test('a camera action can follow a character or glide to a spot, outside stories
   assert.equal(cam.following, true, 'and back to the player');
 });
 
-test('a shake action shakes the view, as hard as asked, and the event waits for it', async () => {
+/** How far the view has been jolted since `from` (an index into the camera's positions), in screen pixels. */
+function jolt(cam: { positions: Array<[number, number]> }, from = 0): number {
+  return Math.max(0, ...cam.positions.slice(from).map(([x, y]) => Math.max(Math.abs(x), Math.abs(y))));
+}
+
+test('a shake action jolts the whole view, as hard as asked, and the event waits for it', async () => {
   const s = story();
   const scene = s.scenes[0]!;
   scene.story = false;
@@ -130,20 +135,50 @@ test('a shake action shakes the view, as hard as asked, and the event waits for 
   scene.characters = [];
   scene.start_events = [{ id: 10, actions: [
     { id: 11, type: 'shake', intensity: 8, duration: 600 },
-    { id: 12, type: 'shake' },
+    { id: 12, type: 'shake', intensity: 1, duration: 500 },
     { id: 13, type: 'variable', name: 'story_done', operator: 'set', operand: 1 },
   ] }] as never;
   const g = new Game(s);
   const cam = (g.scene as any).cameras.main;
+  await g.wait(550);
+  const hard = jolt(cam);
+  // Screen pixels whatever the zoom: 8/10 is up to 2.4% of the 1280 by 720 window.
+  assert.ok(hard >= 10 && hard <= Math.ceil(0.024 * 1280), `a hard shake moves the view well (${hard}px)`);
+  assert.equal(g.ctx.vars.get('story_done'), 0, 'the next action waits');
   await g.wait(100);
-  assert.deepEqual(cam.shakes.map(([ms]: [number]) => ms), [600], 'one at a time: the first is blocking');
-  assert.equal(cam.shaking, true);
+  const at = cam.positions.length;
+  await g.wait(450);
+  const faint = jolt(cam, at);
+  assert.ok(faint > 0 && faint < hard, `then the faint one (${faint}px)`);
   await g.wait(600);
-  assert.deepEqual(cam.shakes.map(([ms]: [number]) => ms), [600, 500], 'then the second, with the default length');
-  assert.ok(cam.shakes[0][1] > cam.shakes[1][1], 'intensity 8 is shakier than the default 3');
-  await g.wait(600);
-  assert.equal(cam.shaking, false);
+  assert.deepEqual([cam.x, cam.y], [0, 0], 'and the view is put back');
   assert.equal(g.ctx.vars.get('story_done'), 1, 'and the event goes on');
+});
+
+test('a shake with no duration shakes until it is cancelled, and the event goes on meanwhile', async () => {
+  const s = story();
+  const scene = s.scenes[0]!;
+  scene.story = false;
+  scene.show_avatars = true;
+  scene.characters = [];
+  scene.start_events = [{ id: 10, actions: [
+    { id: 11, type: 'shake', intensity: 3 },
+    { id: 13, type: 'variable', name: 'story_done', operator: 'set', operand: 1 },
+  ] }] as never;
+  scene.indirect_events = [{ id: 90, actions: [{ id: 91, type: 'cancel', action_id: 11 }] }] as never;
+  const g = new Game(s);
+  const cam = (g.scene as any).cameras.main;
+  await g.wait(100);
+  assert.equal(g.ctx.vars.get('story_done'), 1, 'the next action did not wait for it');
+  await g.wait(10_000);
+  const at = cam.positions.length;
+  await g.wait(300);
+  assert.ok(jolt(cam, at) > 0, 'still shaking long after');
+  await g.scene.engine.triggerById(90);
+  assert.deepEqual([cam.x, cam.y], [0, 0], 'a cancel stops it and puts the view back');
+  const after = cam.positions.length;
+  await g.wait(300);
+  assert.equal(jolt(cam, after), 0, 'and it stays still');
 });
 
 test('on an ultrawide window the view is raised, so the top is not cut off', async () => {

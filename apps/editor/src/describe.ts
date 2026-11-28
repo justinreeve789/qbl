@@ -100,7 +100,9 @@ export function actionSummary(store: Store, type: string, values: Record<string,
       const n = Number(values.intensity ?? 3);
       const how = n <= 2 ? 'trembles' : n <= 4 ? 'shakes' : n <= 7 ? 'shakes hard' : 'quakes';
       const who = values.audience === 'scene' ? ' for everyone in the scene' : values.audience === 'player' ? ' for this player only' : '';
-      return `The screen ${how} (${n}/10) for ${Number(values.duration ?? 500) / 1000}s${who}`;
+      const ms = values.duration == null || values.duration === '' ? NaN : Number(values.duration);
+      const long = Number.isFinite(ms) ? ` for ${ms / 1000}s` : ' until stopped';
+      return `The screen ${how} (${n}/10)${long}${who}`;
     }
     case 'cancel':
       return `Cancel action ${values.action_id ?? '?'}`;
