@@ -32,7 +32,7 @@ Folder | What is in it
 `Generation/Design/` | Writing the **blueprint**: `MissionDesigner` (write and correct until valid), `BlueprintSchema`, `BlueprintValidator`, `BlueprintCritic`, `DesignRules`, `SceneDesigner`, `Connections`, `Cutscenes`, story formats (`StorySchema`, `StoryValidator`, `StoryPlan`), `Sizes`, `TwistIdeas`
 `Generation/Art/` | Drawing: `AssetDirector` (every picture in one style, judged against anchors, redrawn below the bar), `ArtStyle`, `StyleJudge`, `ImageTools`, `ObjectCutter` and `BackgroundCleaner` (cutting things out), `FloorTracer` and `SceneSurveyor` (finding the floor), `SortLine`, `CharacterAnimator`, `LibraryCritters`, and `Providers/*` (Gemini, OpenAI, Scenario, AutoSprite, a placeholder and an offline source)
 `Generation/Build/` | Rows from the blueprint: `MissionBuilder` (every interaction becomes events and actions by a known pattern, so the model is never trusted to write runtime JSON), `SceneBuilder`, `StoryBuilder`, `StoryStaging`
-`Generation/Curriculum/` | Standards: `StandardsImporter`, `StandardsStore`, `StandardsAligner`
+`Generation/Curriculum/` | Standards: `MissionStandards` (the library's standards a mission can be aligned to, and the ones it is: framework selectors, candidates, codes, `standard_alignments`), `StandardsAligner`. The library itself is `App\\Qbl\\Standards` ([Curriculum standards library](/docs/codebase/standards-library/))
 `Generation/Llm/`, `Generation/Http/` | `LanguageModel` and `AnthropicModel`; `HttpClient` and `CurlHttpClient` (recorded responses in tests)
 
 ### How a run flows

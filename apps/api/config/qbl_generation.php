@@ -186,14 +186,17 @@ return [
     'library_critters' => filter_var($env('QBL_GEN_LIBRARY_CRITTERS', true), FILTER_VALIDATE_BOOL),
     'library_dir' => $env('QBL_LIBRARY_DIR', null),
 
-    // Curriculum standards come from the curriculum_standards table, filled by `php artisan qbl:standards`.
+    // Missions are aligned to standards from the standards library (standard_* tables), loaded with
+    // `php artisan qbl:standards all --bulk`. See docs: Codebase guide > Curriculum standards library.
     'standards' => [
+        // What to align to when the request names no framework (--framework): selectors as in
+        // App\Qbl\Generation\Curriculum\MissionStandards. QBL is the sets imported with `qbl:standards file`.
+        'default_frameworks' => array_values(array_filter(array_map('trim', explode(',', (string) $env('QBL_GEN_STANDARDS', 'US-CCSS,US-NGSS,QBL'))))),
         // https://platform.learningcommons.org: every US state's standards and CCSS, with CASE identifiers.
         'learning_commons_api_key' => (string) $env('LEARNING_COMMONS_API_KEY', ''),
         'learning_commons_base_url' => $env('LEARNING_COMMONS_BASE_URL', 'https://api.learningcommons.org/knowledge-graph/v0'),
-        // https://commonstandardsproject.com: standard sets by id.
+        // https://commonstandardsproject.com: sent as Api-Key by `qbl:standards csp` when set.
         'csp_api_key' => (string) $env('CSP_API_KEY', ''),
-        'csp_base_url' => $env('CSP_BASE_URL', 'https://api.commonstandardsproject.com/api/v1'),
     ],
 
     // How many missions, out of 1, may have a big tense moment (a character falls, is trapped or swept

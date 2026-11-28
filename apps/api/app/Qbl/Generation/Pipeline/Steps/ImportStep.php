@@ -2,7 +2,7 @@
 
 namespace App\Qbl\Generation\Pipeline\Steps;
 
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
 use App\Qbl\Generation\Pipeline\GenerationRun;
 use App\Qbl\Generation\Pipeline\Step;
 use App\Qbl\ScenarioArchive;
@@ -37,7 +37,7 @@ final class ImportStep extends Step
     }
 
     /** Import a package (this run's, or one from elsewhere) as a private draft, and record its standards. */
-    public static function importZip(ScenarioStore $store, StandardsStore $standards, string $zip, ?int $userId, array $alignment, array $evidence, bool $publish, callable $say): int
+    public static function importZip(ScenarioStore $store, MissionStandards $standards, string $zip, ?int $userId, array $alignment, array $evidence, bool $publish, callable $say): int
     {
         $scenarioId = (new ScenarioArchive($store))->import($zip, $userId);
         if (! empty($alignment['standards'])) {

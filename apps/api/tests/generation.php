@@ -25,8 +25,9 @@ use App\Qbl\Generation\Art\Providers\PlaceholderImageGenerator;
 use App\Qbl\Generation\Art\Reference;
 use App\Qbl\Generation\Art\StyleJudge;
 use App\Qbl\Generation\Build\MissionBuilder;
-use App\Qbl\Generation\Curriculum\StandardsImporter;
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
+use App\Qbl\Standards\Importer as StandardsImporter;
+use App\Qbl\Standards\Sources\StandardsList;
 use App\Qbl\Generation\Design\BlueprintValidator;
 use App\Qbl\Generation\Design\Connections;
 use App\Qbl\Generation\Design\DesignRules;
@@ -101,7 +102,7 @@ $work = sys_get_temp_dir().'/qbl-generation-test-'.bin2hex(random_bytes(4));
 mkdir($work, 0775, true);
 $pdo = new PDO('sqlite::memory:');
 $store = new ScenarioStore($pdo, "$work/media", '/media');
-foreach ([...ScenarioStore::sqliteSchema(), ...StandardsStore::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
+foreach ([...ScenarioStore::sqliteSchema(), ...MissionStandards::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
     $pdo->exec($sql);
 }
 // Every progress report a run makes, in order, to check the editor's progress bar against.
@@ -123,12 +124,17 @@ $model = new FakeModel($blueprint);
 $style = ArtStyle::load($config['styles_dir'], 'qbl-cartoon');
 
 // ------------------------------------------------------------------ standards
-$standards = new StandardsStore($pdo);
-$imported = (new StandardsImporter($standards, new NoNetwork))->fromFile(__DIR__.'/fixtures/generation/standards.json', 'test-sci', 'Test State');
-same($imported, 4, 'standards are imported from a JSON file');
-same((new StandardsImporter($standards, new NoNetwork))->fromFile(__DIR__.'/fixtures/generation/standards.json', 'TEST-SCI'), 4, 'importing again updates');
-same((int) $pdo->query('SELECT COUNT(*) FROM curriculum_standards')->fetchColumn(), 4, 'importing again does not duplicate');
-same(StandardsStore::grades(['5', 'K', '6-8', 'grade 3', 'HS']), ['05', 'K', '06', '07', '08', '03', '09', '10', '11', '12'], 'grade levels are normalised');
+$standards = new MissionStandards($pdo);
+$standardsList = json_decode(file_get_contents(__DIR__.'/fixtures/generation/standards.json'), true);
+$imported = StandardsImporter::importAll($pdo, [StandardsList::package($standardsList, 'test-sci', 'Test State')]);
+same($imported['items_added'], 4, 'standards are imported from a JSON list, into the standards library');
+same(StandardsImporter::importAll($pdo, [StandardsList::package($standardsList, 'TEST-SCI', 'Test State')])['documents_unchanged'], 1, 'importing again changes nothing');
+same((int) $pdo->query("SELECT COUNT(*) FROM standard_items WHERE code LIKE 'TEST-%'")->fetchColumn(), 4, 'importing again does not duplicate');
+same($standards->frameworkIds(['TEST-SCI']), $standards->frameworkIds(['qbl-test-sci']), 'an imported set is found by its name or its slug');
+same($standards->frameworkIds(['NO-SUCH-SET']), [], 'an unknown framework matches nothing');
+same($standards->unknown, ['NO-SUCH-SET'], 'and is reported');
+same(array_column($standards->byCodes(['test-3-ls1-1']), 'code'), ['test-3-ls1-1'], 'a standard is found by its code, in any case');
+same(MissionStandards::grades(['5', 'K', '6-8', 'grade 3', 'HS']), ['05', 'K', '06', '07', '08', '03', '09', '10', '11', '12'], 'grade levels are normalised');
 $candidates = $standards->candidates(['TEST-SCI'], '3', 'pollinators flowers fruit orchard');
 same(count($candidates), 3, 'candidates are limited to the grade');
 same($candidates[0]['code'], 'TEST-3-LS1-1', 'the candidate sharing the most words comes first');

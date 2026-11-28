@@ -14,7 +14,7 @@ use App\Qbl\Generation\Art\Providers\OfflineImageGenerator;
 use App\Qbl\Generation\Art\Providers\OpenAiImageGenerator;
 use App\Qbl\Generation\Art\Providers\PlaceholderImageGenerator;
 use App\Qbl\Generation\Art\Providers\ScenarioImageGenerator;
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
 use App\Qbl\Generation\Http\CurlHttpClient;
 use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Llm\AnthropicModel;
@@ -148,9 +148,11 @@ class GenerationFactory
         );
     }
 
-    public function standards(): StandardsStore
+    public function standards(): MissionStandards
     {
-        return new StandardsStore($this->store->pdo());
+        $defaults = (array) $this->config('standards.default_frameworks', ['US-CCSS', 'US-NGSS', 'QBL']);
+
+        return new MissionStandards($this->store->pdo(), $defaults ?: ['US-CCSS', 'US-NGSS', 'QBL']);
     }
 
     public function style(?string $key = null): ArtStyle

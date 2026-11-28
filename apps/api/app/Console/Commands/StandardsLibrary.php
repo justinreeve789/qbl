@@ -2,41 +2,55 @@
 
 namespace App\Console\Commands;
 
-use App\Qbl\Standards\Sql;
 use App\Qbl\Standards\Importer;
+use App\Qbl\Standards\LegacyStandards;
 use App\Qbl\Standards\Reference;
 use App\Qbl\Standards\Sources\CasePackage;
 use App\Qbl\Standards\Sources\CommonStandardsProject;
+use App\Qbl\Standards\Sources\LearningCommons;
+use App\Qbl\Standards\Sources\StandardsList;
 use App\Qbl\Standards\Sources\UnitedKingdom;
+use App\Qbl\Standards\Sql;
 use App\Qbl\Standards\StandardsStore;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * php artisan qbl:standards-library seed
- * php artisan qbl:standards-library csp [--jurisdiction=US-TX --jurisdiction=CA-ON] [--refresh] [--cache=DIR]
- * php artisan qbl:standards-library uk [--nation=GB-ENG] [--refresh] [--cache=DIR]
- * php artisan qbl:standards-library case <CFPackage URL or file> --jurisdiction=US-GA [--framework-slug=]
- * php artisan qbl:standards-library file <package.json>
- * php artisan qbl:standards-library status
- * php artisan qbl:standards-library search "<words>" [--jurisdiction=] [--grade=3] [--subject=mathematics]
- * php artisan qbl:standards-library history <uuid or code>
- * php artisan qbl:standards-library all   (seed, then every source)
+ * The standards library (App\Qbl\Standards). Missions are aligned to what it holds.
+ *
+ * php artisan qbl:standards                  (status: what is loaded, and recent imports)
+ * php artisan qbl:standards all --bulk       (seed, then every source; the first big load)
+ * php artisan qbl:standards csp [--jurisdiction=US-TX --jurisdiction=CA-ON] [--refresh] [--cache=DIR]
+ * php artisan qbl:standards uk [--nation=GB-ENG] [--refresh] [--cache=DIR]
+ * php artisan qbl:standards case <CFPackage URL or file> --jurisdiction=US-GA [--framework-slug=]
+ * php artisan qbl:standards learning-commons <framework CASE uuid> --framework=CA-MATH [--grade=5]
+ * php artisan qbl:standards file <package.json>                       a package, or a list of packages
+ * php artisan qbl:standards file <standards.json> --framework=TEST-SCI [--jurisdiction=US-TX]
+ *                                                (a plain list: [{code, description, grades, subject}])
+ * php artisan qbl:standards relink               (alignments to imported copies -> the library's own items)
+ * php artisan qbl:standards search "<words>" [--jurisdiction=] [--grade=3] [--subject=mathematics]
+ * php artisan qbl:standards history <uuid or code> [--jurisdiction=US-CCSS]
+ * php artisan qbl:standards seed
+ *
+ * qbl:standards-library is the same command (its name before the old curriculum_standards table went).
  */
 class StandardsLibrary extends Command
 {
-    protected $signature = 'qbl:standards-library {action : seed|csp|uk|case|file|all|status|search|history} {target? : URL, file, words, uuid or code}
+    protected $signature = 'qbl:standards {action=status : status|all|csp|uk|case|learning-commons|file|relink|search|history|seed} {target? : URL, file, CASE uuid, words, uuid or code}
+        {--framework= : the name missions refer to a plain list or Learning Commons framework by (file, learning-commons)}
+        {--grade=* : Learning Commons: only these grades; search: the US-grade equivalent (K=0)}
         {--jurisdiction=* : jurisdiction codes, e.g. US-TX, CA-ON (csp, search) or the one jurisdiction (case)}
         {--nation=* : GB-ENG, GB-SCT, GB-WLS, GB-NIR (uk)}
         {--framework-slug= : framework slug for a CASE package}
         {--refresh : download again instead of using the cache}
         {--cache= : cache directory (default storage/app/standards)}
         {--api-key= : Common Standards Project API key, if required}
-        {--grade= : US-grade equivalent to search at (K=0)}
         {--subject= : subject slug to search in}
         {--limit=20 : search results}
         {--bulk : first big load on MariaDB: drop the full-text index during the load and rebuild it after (much faster)}';
+
+    protected $aliases = ['qbl:standards-library'];
 
     protected $description = 'Standards library: import and look up the standards of every US state, the Common Core, NGSS, Canada and the UK';
 
@@ -73,7 +87,9 @@ class StandardsLibrary extends Command
             'uk' => $this->uk($pdo, $cache, $say),
             'case' => $this->case($pdo),
             'file' => $this->file($pdo),
-            'all' => max($this->seed($pdo), $this->csp($pdo, $cache, $say), $this->uk($pdo, $cache, $say)),
+            'learning-commons' => $this->learningCommons($pdo),
+            'relink' => $this->relink($pdo),
+            'all' => max($this->seed($pdo), $this->csp($pdo, $cache, $say), $this->uk($pdo, $cache, $say), $this->relink($pdo)),
             'status' => $this->status($pdo),
             'search' => $this->search($pdo),
             'history' => $this->history($pdo),
@@ -92,7 +108,7 @@ class StandardsLibrary extends Command
     private function csp(\PDO $pdo, string $cache, \Closure $say): int
     {
         Reference::seed($pdo);
-        $csp = new CommonStandardsProject("$cache/csp", (bool) $this->option('refresh'), $this->option('api-key'), $say);
+        $csp = new CommonStandardsProject("$cache/csp", (bool) $this->option('refresh'), $this->option('api-key') ?: (config('qbl_generation.standards.csp_api_key') ?: null), $say);
         $wanted = $this->option('jurisdiction');
         $byCode = CommonStandardsProject::byCode();
         $codes = $wanted ?: array_keys($byCode);
@@ -176,8 +192,26 @@ class StandardsLibrary extends Command
 
     private function file(\PDO $pdo): int
     {
-        $path = $this->argument('target') ?? $this->fail('Give a package JSON file');
-        $data = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+        $path = $this->argument('target') ?? $this->fail('Give a JSON file');
+        $data = json_decode((string) @file_get_contents($path), true);
+        if (! is_array($data)) {
+            $this->error("$path is not a JSON file of standards.");
+
+            return 1;
+        }
+        if (StandardsList::isList($data)) {
+            $framework = (string) $this->option('framework');
+            if ($framework === '') {
+                $this->error('A plain list of standards needs --framework=NAME (the name missions refer to it by).');
+
+                return 1;
+            }
+            $package = StandardsList::package($data, $framework, $this->option('jurisdiction')[0] ?? null);
+            Importer::importAll($pdo, [$package], basename($path));
+            $this->info(sprintf('Imported %d standards into %s.', count($package['items']), strtoupper($framework)));
+
+            return 0;
+        }
         $packages = isset($data['items']) ? [$data] : $data;   // one package or a list
         Reference::seed($pdo);
         $importer = new Importer($pdo);
@@ -191,6 +225,32 @@ class StandardsLibrary extends Command
         return 0;
     }
 
+    private function learningCommons(\PDO $pdo): int
+    {
+        $uuid = (string) ($this->argument('target') ?? '');
+        $framework = (string) $this->option('framework');
+        if ($uuid === '' || $framework === '') {
+            $this->error('Give the framework\'s CASE uuid and --framework=NAME.');
+
+            return 1;
+        }
+        $lc = new LearningCommons((string) config('qbl_generation.standards.learning_commons_api_key', ''),
+            (string) config('qbl_generation.standards.learning_commons_base_url', LearningCommons::BASE));
+        $package = $lc->package($uuid, $framework, $this->option('grade'), $this->option('jurisdiction')[0] ?? null);
+        Importer::importAll($pdo, [$package], "learning-commons $uuid");
+        $this->info(sprintf('Imported %d standards into %s.', count($package['items']), strtoupper($framework)));
+
+        return 0;
+    }
+
+    private function relink(\PDO $pdo): int
+    {
+        $moved = LegacyStandards::relink($pdo);
+        $this->info($moved ? "Moved $moved alignments to the library's own standards." : 'Nothing to move.');
+
+        return 0;
+    }
+
     private function status(\PDO $pdo): int
     {
         $rows = Sql::rows($pdo, "SELECT j.code, COUNT(DISTINCT f.id) frameworks, COUNT(DISTINCT d.id) documents,
@@ -198,7 +258,14 @@ class StandardsLibrary extends Command
             FROM standard_jurisdictions j LEFT JOIN standard_frameworks f ON f.jurisdiction_id = j.id LEFT JOIN standard_documents d ON d.framework_id = f.id
             GROUP BY j.code ORDER BY j.code");
         $this->table(['jurisdiction', 'frameworks', 'documents', 'current', 'items', 'last import'], $rows);
-        $runs = Sql::rows($pdo, 'SELECT r.id, s.slug, r.scope, r.status, r.started_at, r.finished_at FROM standard_import_runs r JOIN standard_sources s ON s.id = r.source_id ORDER BY r.id DESC LIMIT 10');
+        // sets imported by hand, by the name missions use (--framework on qbl:generate)
+        $own = Sql::rows($pdo, "SELECT f.title, f.slug, COALESCE(SUM(d.item_count), 0) items FROM standard_frameworks f
+            JOIN standard_jurisdictions j ON j.id = f.jurisdiction_id LEFT JOIN standard_documents d ON d.framework_id = f.id
+            WHERE j.code = 'QBL' OR f.slug LIKE 'qbl-%' GROUP BY f.id, f.title, f.slug ORDER BY f.title");
+        if ($own) {
+            $this->table(['imported set (--framework)', 'slug', 'standards'], $own);
+        }
+        $runs =Sql::rows($pdo, 'SELECT r.id, s.slug, r.scope, r.status, r.started_at, r.finished_at FROM standard_import_runs r JOIN standard_sources s ON s.id = r.source_id ORDER BY r.id DESC LIMIT 10');
         $this->table(['run', 'source', 'scope', 'status', 'started', 'finished'], $runs);
 
         return 0;
@@ -208,7 +275,7 @@ class StandardsLibrary extends Command
     {
         $store = new StandardsStore($pdo);
         $hits = $store->search((string) $this->argument('target'), [
-            'jurisdictions' => $this->option('jurisdiction'), 'grade' => $this->option('grade') !== null ? (int) $this->option('grade') : null,
+            'jurisdictions' => $this->option('jurisdiction'), 'grade' => ($g = $this->option('grade')[0] ?? null) !== null ? ($g === 'K' ? 0 : (int) $g) : null,
             'subject' => $this->option('subject'), 'limit' => (int) $this->option('limit'),
         ]);
         $this->table(['jurisdiction', 'code', 'levels', 'statement'], array_map(fn ($h) => [

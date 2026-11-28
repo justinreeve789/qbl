@@ -19,6 +19,8 @@ final class Reference
         'US' => ['United States', 'country', null, 'US', 'GRADE'],
         'CA' => ['Canada', 'country', null, 'CA', 'GRADE'],
         'GB' => ['United Kingdom', 'country', null, 'GB', null],
+        // Sets imported by hand (a JSON list, Learning Commons) and an organization's own standards
+        'QBL' => ['Imported into QBL', 'organization', null, null, 'GRADE'],
         'US-CCSS' => ['Common Core State Standards', 'consortium', 'US', 'US', 'GRADE'],
         'US-NGSS' => ['Next Generation Science Standards', 'consortium', 'US', 'US', 'GRADE'],
         'US-AL' => ['Alabama', 'state', 'US', 'US', 'GRADE'], 'US-AK' => ['Alaska', 'state', 'US', 'US', 'GRADE'],

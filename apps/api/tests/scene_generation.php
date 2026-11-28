@@ -32,7 +32,9 @@ use App\Qbl\Generation\Http\HttpClient;
 use App\Qbl\Generation\Http\HttpResponse;
 use App\Qbl\Generation\Llm\LanguageModel;
 use App\Qbl\Generation\Pipeline\Steps\SceneDesignStep;
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
+use App\Qbl\Standards\Importer as StandardsImporter;
+use App\Qbl\Standards\Sources\StandardsList;
 use App\Qbl\ScenarioStore;
 use App\Qbl\StoreError;
 
@@ -76,7 +78,7 @@ $work = sys_get_temp_dir().'/qbl-scene-gen-'.bin2hex(random_bytes(4));
 mkdir("$work/media", 0775, true);
 $pdo = new PDO('sqlite::memory:');
 $store = new ScenarioStore($pdo, "$work/media", '/media');
-foreach ([...ScenarioStore::sqliteSchema(), ...StandardsStore::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
+foreach ([...ScenarioStore::sqliteSchema(), ...MissionStandards::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
     $pdo->exec($sql);
 }
 $pdo->exec('CREATE TABLE progress_log (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `run` INTEGER, `status`, `progress`)');

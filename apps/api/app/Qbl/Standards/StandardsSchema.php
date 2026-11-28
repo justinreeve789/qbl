@@ -6,7 +6,8 @@ use PDO;
 
 /**
  * The standard_* tables for SQLite (the plain-PHP dev server and tests that don't boot Laravel).
- * Generated from migration 2026_11_27_200000_create_standards_library_tables; regenerate when it changes.
+ * Generated from migrations 2026_11_27_200000_create_standards_library_tables and
+ * 2026_11_28_000000_merge_curriculum_standards_into_library; regenerate when they change.
  */
 final class StandardsSchema
 {
@@ -55,7 +56,7 @@ CREATE TABLE IF NOT EXISTS "standard_document_levels" ("document_id" integer not
 CREATE TABLE IF NOT EXISTS "standard_associations" ("id" integer primary key autoincrement not null, "type" varchar not null, "origin_item_id" integer not null, "destination_item_id" integer, "destination_uri" varchar, "destination_code" varchar, "source_id" integer, "confidence" numeric, "note" varchar, "user_id" integer, "created_at" datetime, "updated_at" datetime, foreign key("origin_item_id") references "standard_items"("id") on delete cascade, foreign key("destination_item_id") references "standard_items"("id") on delete cascade, foreign key("source_id") references "standard_sources"("id") on delete set null);
 CREATE INDEX IF NOT EXISTS "standard_associations_origin_item_id_type_index" on "standard_associations" ("origin_item_id", "type");
 CREATE INDEX IF NOT EXISTS "standard_associations_destination_item_id_type_index" on "standard_associations" ("destination_item_id", "type");
-CREATE TABLE IF NOT EXISTS "standard_alignments" ("id" integer primary key autoincrement not null, "item_id" integer not null, "alignable_type" varchar not null, "alignable_id" integer not null, "scenario_id" integer, "strength" varchar not null default 'primary', "item_revision" integer, "user_id" integer, "created_at" datetime, "updated_at" datetime, foreign key("item_id") references "standard_items"("id") on delete cascade);
+CREATE TABLE IF NOT EXISTS "standard_alignments" ("id" integer primary key autoincrement not null, "item_id" integer not null, "alignable_type" varchar not null, "alignable_id" integer not null, "scenario_id" integer, "strength" varchar not null default 'primary', "item_revision" integer, "user_id" integer, "created_at" datetime, "updated_at" datetime, "rationale" text, "evidence" text, foreign key("item_id") references "standard_items"("id") on delete cascade);
 CREATE UNIQUE INDEX IF NOT EXISTS "standard_alignments_unique" on "standard_alignments" ("item_id", "alignable_type", "alignable_id");
 CREATE INDEX IF NOT EXISTS "standard_alignments_alignable_type_alignable_id_index" on "standard_alignments" ("alignable_type", "alignable_id");
 CREATE INDEX IF NOT EXISTS "standard_alignments_scenario_id_index" on "standard_alignments" ("scenario_id");

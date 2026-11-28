@@ -5,6 +5,7 @@ namespace App\Qbl\Api;
 use App\Qbl\ActivityStore;
 use App\Qbl\ClassStore;
 use App\Qbl\ProgressStore;
+use App\Qbl\Standards\StandardsStore;
 use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
@@ -594,7 +595,7 @@ class Reports
     {
         $out = [];
         try {
-            foreach ($this->all('SELECT c.code, c.framework, c.description, ss.alignment FROM scenario_standards ss JOIN curriculum_standards c ON c.id = ss.curriculum_standard_id WHERE ss.scenario_id = ? ORDER BY c.code', [$scenarioId]) as $s) {
+            foreach (array_map([StandardsStore::class, 'present'], $this->all(StandardsStore::SCENARIO_SQL, [$scenarioId])) as $s) {
                 $out[$s['code']] = ['code' => $s['code'], 'framework' => $s['framework'], 'description' => $s['description'], 'alignment' => $s['alignment']];
             }
         } catch (\PDOException) {

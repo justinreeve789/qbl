@@ -3,7 +3,7 @@
 namespace App\Qbl\Generation\Pipeline;
 
 use App\Qbl\Generation\Art\AssetDirector;
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
 use App\Qbl\Generation\Design\DesignRules;
 use App\Qbl\Generation\GenerationEvents;
 use App\Qbl\Generation\GenerationProgress;
@@ -113,7 +113,7 @@ final class GenerationRun
         // The services steps use. They are the generator's own, shared by every step of the run.
         public readonly GenerationRuns $runs,
         public readonly ScenarioStore $store,
-        public readonly StandardsStore $standards,
+        public readonly MissionStandards $standards,
         public readonly GenerationProgress $progress,
         public readonly ?Spend $spend,
         public readonly ?GenerationEvents $events,

@@ -3,7 +3,7 @@
 namespace App\Qbl\Generation;
 
 use App\Qbl\Generation\Art\AssetDirector;
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
 use App\Qbl\Generation\Design\Connections;
 use App\Qbl\Generation\Methods\GenerationMethod;
 use App\Qbl\Generation\Pipeline\GenerationRun;
@@ -57,7 +57,7 @@ class ScenarioGenerator
 
     public function __construct(
         private GenerationRuns $runs,
-        private StandardsStore $standards,
+        private MissionStandards $standards,
         /** How scenarios are made: the steps, and who does each job. */
         private GenerationMethod $method,
         private ScenarioStore $store,
