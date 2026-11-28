@@ -11,6 +11,7 @@ use App\Qbl\Api\Privacy;
 use App\Qbl\Api\Reports;
 use App\Qbl\Api\Roster;
 use App\Qbl\ClassStore;
+use App\Qbl\Standards\StandardsStore;
 use App\Qbl\StoreError;
 use PDO;
 
@@ -497,7 +498,10 @@ class Api
             $doc = json_decode((string) $s['document'], true) ?: [];
             $standards = [];
             try {
-                $standards = $this->all('SELECT c.code, c.framework, c.description, ss.alignment FROM scenario_standards ss JOIN curriculum_standards c ON c.id = ss.curriculum_standard_id WHERE ss.scenario_id = ? ORDER BY c.code', [$s['id']]);
+                // same fields as before the standards library (code, framework, description, alignment), plus the standard's uuid
+                $standards = array_map(fn ($r) => ['code' => $r['code'], 'framework' => $r['framework'], 'description' => $r['description'],
+                    'alignment' => $r['alignment'], 'uuid' => $r['uuid'], 'jurisdiction' => $r['jurisdiction']],
+                    array_map([StandardsStore::class, 'present'], $this->all(StandardsStore::SCENARIO_SQL, [$s['id']])));
             } catch (\PDOException) {
                 // a development database without the standards tables
             }

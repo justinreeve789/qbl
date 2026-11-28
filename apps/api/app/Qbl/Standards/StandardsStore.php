@@ -7,6 +7,31 @@ use PDO;
 /** Read side of the standards library, plus aligning QBL content to standards. */
 final class StandardsStore
 {
+    /**
+     * A mission's standards (one placeholder: the scenario id) as reports and the public API show them,
+     * the fields scenario_standards had: framework (the jurisdiction code, or an imported set's name),
+     * code, description, alignment, plus rationale, evidence, uuid, status, framework_slug, jurisdiction.
+     */
+    public const SCENARIO_SQL = "SELECT CASE WHEN j.code = 'QBL' THEN f.title ELSE j.code END AS framework, i.code, i.statement AS description,
+            a.strength AS alignment, a.rationale, a.evidence, i.uuid, i.status, f.slug AS framework_slug, j.code AS jurisdiction
+        FROM standard_alignments a JOIN standard_items i ON i.id = a.item_id JOIN standard_documents d ON d.id = i.document_id
+        JOIN standard_frameworks f ON f.id = d.framework_id JOIN standard_jurisdictions j ON j.id = f.jurisdiction_id
+        WHERE a.scenario_id = ? AND a.alignable_type = 'scenario' ORDER BY a.strength, i.code";
+
+    /** An uncoded statement's reference: its jurisdiction and the start of its uuid (GB-ENG-1a2b3c4d). */
+    public static function ref(array $row): string
+    {
+        return ($row['jurisdiction'] ?? 'STD') . '-' . substr((string) $row['uuid'], 0, 8);
+    }
+
+    /** A SCENARIO_SQL row with its code filled in for uncoded statements. */
+    public static function present(array $row): array
+    {
+        $row['code'] ??= self::ref($row);
+
+        return $row;
+    }
+
     public function __construct(private PDO $db)
     {
     }
@@ -68,8 +93,9 @@ final class StandardsStore
             array_push($args, $f['subject'], $f['subject']);
         }
         if (isset($f['grade'])) {
-            $where[] = 'EXISTS (SELECT 1 FROM standard_item_levels il JOIN standard_education_levels el ON el.id = il.level_id
-                WHERE il.item_id = i.id AND el.grade_from <= ? AND el.grade_to >= ?)';
+            // a correlated count, not EXISTS: MariaDB turns EXISTS into a semi-join over every standard at the grade
+            $where[] = '(SELECT COUNT(*) FROM standard_item_levels il JOIN standard_education_levels el ON el.id = il.level_id
+                WHERE il.item_id = i.id AND el.grade_from <= ? AND el.grade_to >= ?) > 0';
             array_push($args, (int) $f['grade'], (int) $f['grade']);
         }
         if ($text !== '' && Sql::isMysql($this->db)) {
@@ -94,9 +120,16 @@ final class StandardsStore
         }
         $ids = array_map(fn ($r) => (int) $r['id'], $rows);
         $levels = [];
-        foreach (Sql::rows($this->db, 'SELECT il.item_id, el.system, el.code FROM standard_item_levels il JOIN standard_education_levels el ON el.id = il.level_id
-            WHERE il.item_id IN (' . implode(',', $ids) . ') ORDER BY el.sort') as $l) {
-            $levels[$l['item_id']][] = $l['code'];
+        $names = [];
+        foreach (Sql::rows($this->db, 'SELECT id, code FROM standard_education_levels ORDER BY sort, id') as $l) {
+            $names[(int) $l['id']] = $l['code'];
+        }
+        // item ids alone: joining the levels table here makes MariaDB scan every item_levels row
+        foreach (Sql::rows($this->db, 'SELECT item_id, level_id FROM standard_item_levels WHERE item_id IN (' . implode(',', $ids) . ')') as $l) {
+            $levels[$l['item_id']][(int) $l['level_id']] = true;
+        }
+        foreach ($levels as $id => $set) {
+            $levels[$id] = array_values(array_intersect_key($names, $set));
         }
         foreach ($rows as &$r) {
             $r['levels'] = implode(',', $levels[$r['id']] ?? []);
@@ -177,13 +210,18 @@ final class StandardsStore
 
     // ---------------------------------------------------------------- alignments
 
-    public function align(int $itemId, string $type, int $id, ?int $scenarioId = null, string $strength = 'primary', ?int $userId = null): int
+    /**
+     * @param  string  $strength  primary | supporting (what the generator writes), or introduces | practices | assesses
+     */
+    public function align(int $itemId, string $type, int $id, ?int $scenarioId = null, string $strength = 'primary', ?int $userId = null,
+        ?string $rationale = null, ?array $evidence = null): int
     {
         $now = date('Y-m-d H:i:s');
         $revision = Sql::scalar($this->db, 'SELECT d.revision FROM standard_items i JOIN standard_documents d ON d.id = i.document_id WHERE i.id = ?', [$itemId]);
 
         return Sql::upsert($this->db, 'standard_alignments', ['item_id' => $itemId, 'alignable_type' => $type, 'alignable_id' => $id], [
-            'scenario_id' => $scenarioId, 'strength' => $strength, 'item_revision' => $revision, 'user_id' => $userId, 'updated_at' => $now,
+            'scenario_id' => $scenarioId, 'strength' => $strength, 'rationale' => $rationale, 'evidence' => Sql::json($evidence),
+            'item_revision' => $revision, 'user_id' => $userId, 'updated_at' => $now,
         ], ['created_at' => $now]);
     }
 
@@ -198,7 +236,7 @@ final class StandardsStore
      */
     public function alignmentsForScenario(int $scenarioId): array
     {
-        return Sql::rows($this->db, "SELECT a.alignable_type, a.alignable_id, a.strength, i.uuid, i.code, i.statement, i.status, j.code AS jurisdiction,
+        return Sql::rows($this->db, "SELECT a.alignable_type, a.alignable_id, a.strength, a.rationale, i.uuid, i.code, i.statement, i.status, j.code AS jurisdiction,
                 d.title AS document, d.version_label, (i.last_revision > COALESCE(a.item_revision, 0)) AS changed_since,
                 (SELECT r.uuid FROM standard_associations x JOIN standard_items r ON r.id = x.destination_item_id WHERE x.origin_item_id = i.id AND x.type = 'replacedBy' LIMIT 1) AS replaced_by
             FROM standard_alignments a JOIN standard_items i ON i.id = a.item_id JOIN standard_documents d ON d.id = i.document_id

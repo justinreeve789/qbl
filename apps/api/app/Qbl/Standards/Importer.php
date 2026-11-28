@@ -58,6 +58,26 @@ final class Importer
         return $this->stats;
     }
 
+    /**
+     * Import packages in one run (reference rows seeded first). The packages share the first one's source.
+     *
+     * @return array the run's stats
+     */
+    public static function importAll(PDO $db, array $packages, ?string $scope = null): array
+    {
+        if (! $packages) {
+            return [];
+        }
+        Reference::seed($db);
+        $importer = new self($db);
+        $run = $importer->startRun($packages[0]['source'], $scope);
+        foreach ($packages as $p) {
+            $importer->import($p, $run);
+        }
+
+        return $importer->finishRun($run);
+    }
+
     // ---------------------------------------------------------------- runs
 
     public function source(array $s): int

@@ -24,7 +24,7 @@ class GenerateScenario extends Command
         {--redo= : With --resume: do this step again, and every step after it (align, design, draw...)}
         {--grade= : Grade level: K, 1-12, "6-8"}
         {--subject= : Science, Mathematics, English Language Arts, Social Studies...}
-        {--framework=* : Standards framework(s) to align to, as imported with qbl:standards (NGSS, CCSS-MATH...)}
+        {--framework=* : Standards to align to: a jurisdiction (US-TX), jurisdiction:subject (US-TX:science), a framework slug, NGSS, CCSS-MATH, or a set imported with qbl:standards file}
         {--standard=* : Exact standard codes to build the mission around (instead of choosing)}
         {--scenes= : Number of scenes (default: the designer decides, usually 3-6)}
         {--players=2-6 : How many students play together, "min-max"}

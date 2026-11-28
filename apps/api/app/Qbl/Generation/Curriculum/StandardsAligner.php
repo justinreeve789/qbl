@@ -10,13 +10,13 @@ use App\Qbl\Generation\Llm\LanguageModel;
  * Decides which curriculum standards a mission teaches, before the mission is written, so the
  * mission is designed around them rather than labelled afterwards.
  *
- * The model can only choose standards that are in the curriculum_standards table: the codes it may
+ * The model can only choose standards that are in the standards library: the codes it may
  * answer with are an enum in the answer's schema, built from the candidates. It never invents a code.
  * It also writes the measurable learning objectives the mission designer must cover.
  */
 class StandardsAligner
 {
-    public function __construct(private StandardsStore $store, private LanguageModel $llm) {}
+    public function __construct(private MissionStandards $store, private LanguageModel $llm) {}
 
     /**
      * @param  array{grade?: ?string, subject?: ?string, frameworks?: string[], standards?: string[]}  $options
@@ -34,14 +34,17 @@ class StandardsAligner
             $found = array_map(fn ($c) => strtolower((string) $c['code']), $candidates);
             $missing = array_filter($options['standards'], fn ($c) => ! in_array(strtolower(trim($c)), $found, true));
             if ($missing) {
-                throw new GenerationError('These standards are not in the curriculum_standards table: '.implode(', ', $missing).'. Import them first with `php artisan qbl:standards`.');
+                throw new GenerationError('These standards are not in the standards library: '.implode(', ', $missing).($frameworks ? ' (looked in '.implode(', ', $frameworks).')' : '').'. Load the library with `php artisan qbl:standards all --bulk`, or import your own with `php artisan qbl:standards file`.');
             }
             $required = true;
         } else {
             $candidates = $this->store->candidates($frameworks, $grade, $prompt.' '.($options['subject'] ?? ''));
             $required = false;
+            foreach ($this->store->unknown as $selector) {
+                $warnings[] = "No framework in the standards library matches \"$selector\".";
+            }
             if (! $candidates) {
-                $warnings[] = 'No standards are imported for '.($frameworks ? implode(', ', $frameworks) : 'any framework').($grade ? " at grade $grade" : '').'; the mission has learning objectives but is not aligned to standards. Run `php artisan qbl:standards` to import some.';
+                $warnings[] = 'No standards are loaded for '.($frameworks ? implode(', ', $frameworks) : 'the default frameworks').($grade ? " at grade $grade" : '').'; the mission has learning objectives but is not aligned to standards. Load the library with `php artisan qbl:standards all --bulk`.';
             }
         }
 

@@ -4,8 +4,7 @@ description: How QBL stores the standards of every US state, the Common Core, NG
 ---
 
 :::note[In short]
-Standards live in the `standard_*` tables. (This is separate from `curriculum_standards`, the small set the
-mission generator aligns to, filled by `qbl:standards`; linking the two is a follow-up.) Every source (an API, a CASE server, a government web page) is turned
+Standards live in the `standard_*` tables, and missions (generated or not) are aligned to them. Every source (an API, a CASE server, a government web page) is turned
 into a **package** by an adapter in `App\Qbl\Standards\Sources`, and `App\Qbl\Standards\Importer` is the only code
 that writes the tables. Importing is idempotent: an unchanged document is skipped, a changed one gets a new
 **revision**, and standards are never deleted, only retired, so alignments to missions survive updates.
@@ -67,6 +66,8 @@ with the replacement when the publisher named one, so the editor can ask an auth
 | Wales: Curriculum for Wales statements of what matters + descriptions of learning, PS1–PS5 | hwb.gov.wales HTML | `Sources\UnitedKingdom::wales` |
 | Northern Ireland: minimum content, SR 2007/46 Schedule 2, FS–KS4 | legislation.gov.uk XML | `Sources\UnitedKingdom::northernIreland` |
 | Anything published as CASE (e.g. Georgia's own server) | any CASE 1.0/1.1 server | `Sources\CasePackage` |
+| A framework from Learning Commons (CASE identifiers) | Learning Commons API (`LEARNING_COMMONS_API_KEY`) | `Sources\LearningCommons` |
+| Your own list of standards | a JSON file | `Sources\StandardsList` |
 
 Not covered yet: Newfoundland and Labrador, Prince Edward Island and the territories (they are seeded as
 jurisdictions; NWT/Nunavut follow Alberta's or BC's curricula, Yukon BC's); England's EYFS and GCSE subject content;
@@ -75,19 +76,62 @@ Scotland's benchmarks and senior phase; Wales's literacy/numeracy/digital framew
 ## Commands
 
 ```bash
-php artisan qbl:standards-library seed            # jurisdictions, subjects, education levels (also run by every import)
-php artisan qbl:standards-library all --bulk      # everything below; ~7 min of loading after downloads, re-runs only touch what changed
-php artisan qbl:standards-library csp [--jurisdiction=US-TX ...] [--refresh]
-php artisan qbl:standards-library uk  [--nation=GB-ENG ...] [--refresh]
-php artisan qbl:standards-library case https://case.georgiastandards.org/ims/case/v1p0/CFPackages/<id> --jurisdiction=US-GA
-php artisan qbl:standards-library file my-standards.json    # a package (or a list of packages) written by hand
-php artisan qbl:standards-library status
-php artisan qbl:standards-library search "fractions on a number line" --grade=3 [--jurisdiction=GB-ENG] [--subject=mathematics]
-php artisan qbl:standards-library history "CCSS.Math.Content.3.NF.A.2"
+php artisan qbl:standards seed            # jurisdictions, subjects, education levels (also run by every import)
+php artisan qbl:standards all --bulk      # everything below; ~7 min of loading after downloads, re-runs only touch what changed
+php artisan qbl:standards csp [--jurisdiction=US-TX ...] [--refresh]
+php artisan qbl:standards uk  [--nation=GB-ENG ...] [--refresh]
+php artisan qbl:standards case https://case.georgiastandards.org/ims/case/v1p0/CFPackages/<id> --jurisdiction=US-GA
+php artisan qbl:standards file my-standards.json    # a package (or a list of packages) written by hand
+php artisan qbl:standards file list.json --framework=MY-DISTRICT-SCI [--jurisdiction=US-TX]   # a plain list, see below
+php artisan qbl:standards learning-commons <framework CASE uuid> --framework=CA-MATH [--grade=5]
+php artisan qbl:standards relink                     # move alignments from imported copies to the library's own items
+php artisan qbl:standards status
+php artisan qbl:standards search "fractions on a number line" --grade=3 [--jurisdiction=GB-ENG] [--subject=mathematics]
+php artisan qbl:standards history "CCSS.Math.Content.3.NF.A.2" --jurisdiction=US-CCSS
 ```
 
 Downloads are cached in `storage/app/standards` (`--cache=` to change); `--refresh` downloads again. To pick up
-publishers' updates, schedule `qbl:standards-library all --refresh` monthly.
+publishers' updates, schedule `qbl:standards all --refresh` monthly.
+
+`qbl:standards` with no action shows the status. `qbl:standards-library` is the same command (its name for a
+day, while the generator's old `curriculum_standards` table still existed).
+
+## Missions and the generator
+
+A mission's standards are `standard_alignments` rows with `alignable_type` `scenario` (`strength` `primary` or
+`supporting`, the generator's `rationale` and `evidence`). `App\Qbl\Generation\Curriculum\MissionStandards` is
+what the generator uses:
+
+- **Framework selectors** (`--framework` on `qbl:generate`): a jurisdiction (`US-TX`), a jurisdiction and subject
+  (`US-TX:science`), a framework slug, a shorthand (`NGSS`, `CCSS`, `CCSS-MATH`, `CCSS-ELA`), or the name of a set
+  imported by hand. None: `qbl_generation.standards.default_frameworks` (`QBL_GEN_STANDARDS`, default
+  `US-CCSS,US-NGSS,QBL`).
+- **`candidates()`** offers active standards of current documents at the grade, ranked by words in common with the
+  request. Scopes up to 20,000 standards are scored whole; bigger ones (all of Texas) take their pool from the
+  full-text index. Uncoded statements (England, Wales) are offered under a reference, `GB-ENG-1a2b3c4d`
+  (jurisdiction + start of the uuid), which is also what reports show for them.
+- **`byCodes()`** finds standards a teacher names: code, short code (`3.NF.2`) or reference, case-insensitive;
+  without frameworks, anywhere, preferring the defaults, and the Common Core's own item over a state's copy.
+- Reports and the public API read `StandardsStore::SCENARIO_SQL`: the same fields `scenario_standards` gave
+  (`code`, `framework`, `description`, `alignment`), where `framework` is the jurisdiction code (`US-CCSS`), or an
+  imported set's name.
+
+### Sets of your own: the QBL jurisdiction
+
+`qbl:standards file list.json --framework=NAME` takes the plain list the generator always took,
+`[{"code", "description", "grades", "subject", "parent_code"}]`, as a framework with the slug `qbl-<name>` under the
+`QBL` jurisdiction (or under a real one, when `--jurisdiction` is a code such as `US-TX`). Learning Commons
+frameworks are imported the same way, keyed by their CASE identifiers.
+
+### Where the old tables went
+
+Until 2026-11-28 the generator had its own `curriculum_standards` / `scenario_standards`. Migration
+`2026_11_28_000000_merge_curriculum_standards_into_library` (`LegacyStandards::migrate`) moved them in and dropped
+them: each old standard was matched to a library item (its CSP id, its CASE id, or a code only one current item
+has, the Common Core's/NGSS's own winning over states' copies, then the jurisdiction the old row named), and the
+rest were imported as sets of their own, so every mission kept its alignments, rationale and evidence. On a server
+that migrated before loading the library, `qbl:standards all` ends with `relink`, which moves alignments from those
+copies to the library's items once a unique match exists.
 
 ## Adding a source
 
@@ -117,6 +161,12 @@ standards are displayed.
   name). Each copy is its own item; `exactMatchOf` links them to the Common Core item.
 - `standard_items` has a FULLTEXT index on MariaDB only; on SQLite, search falls back to `LIKE`.
 - `change_type` and `previous` (not `change`/`before`): those are reserved words in MariaDB.
+- Filter by grade with a correlated `(SELECT COUNT(*) ...) > 0`, not `EXISTS`: MariaDB turns `EXISTS` into a
+  semi-join that walks every standard at that grade in the library (hundreds of thousands). Likewise, look levels
+  up by `item_id` alone and name them in PHP; joining `standard_education_levels` there scans every
+  `standard_item_levels` row.
+- MariaDB's `uuid` column type does not sort as text, so a uuid prefix is not an index range; `byCodes()` looks
+  references up within their jurisdiction's documents instead.
 - InnoDB full-text only sees committed rows, so `search()` finds nothing inside an uncommitted transaction
   (`RefreshDatabase` tests on MariaDB).
 - Re-adding the FULLTEXT index after dropping it leaves most rows out unless the table is rebuilt first

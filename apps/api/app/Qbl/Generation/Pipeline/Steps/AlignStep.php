@@ -10,7 +10,7 @@ use App\Qbl\Generation\Pipeline\Step;
  * objectives, vocabulary and the misconceptions it should confront.
  *
  * How: StandardsAligner offers the language model only the standards of the run's grade and subject
- * (from the curriculum_standards table, as a JSON-schema enum, so it cannot invent a code), and asks
+ * (from the standards library, as a JSON-schema enum, so it cannot invent a code), and asks
  * it to choose the ones the teacher's request fits and write objectives for them.
  *
  * It also settles the format: a "mission" students play, or a "story" that plays by itself. The

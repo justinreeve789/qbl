@@ -174,7 +174,7 @@ Command | What it does
 `qbl:seed [--reset] [--password=]` | Avatars, the marketplace catalogue, the asset library and the shipped scenarios (the Starship Explorer demo, the Science Lab); `--password` also makes demo accounts
 `qbl:user`, `qbl:update-role`, `qbl:reset-link` | Make an account; show or change a role; print a password link
 `qbl:publish [key] [--print]` | Compile and publish from the tables (no validation)
-`qbl:generate`, `qbl:generation-log`, `qbl:generation-trace`, `qbl:art-style`, `qbl:standards` | The AI generator, its logs and traces, art styles, curriculum standards
+`qbl:generate`, `qbl:generation-log`, `qbl:generation-trace`, `qbl:art-style`, `qbl:standards` (alias `qbl:standards-library`) | The AI generator, its logs and traces, art styles, the curriculum standards library
 `qbl:voice`, `qbl:tts`, `qbl:chatterbox-clips` | Recording characters' lines, trying voices, Chatterbox reference clips
 `qbl:walk` | Make walking animations from standing pictures
 `qbl:library` | List, import, add and keep library assets

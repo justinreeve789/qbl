@@ -39,7 +39,7 @@ Step | What | Kept in
 4\. Build | Turns the blueprint into rows of the QuestLab tables, using the patterns from [Patterns](/docs/developers/extensions/patterns/#patterns). Gives each character a voice from what the blueprint says of them, a different one each | 
 4½\. Voice | Records every line the characters say, with the time of every word, on the server's text-to-speech service ([Characters' voices](/docs/developers/voices/)). Free with Kokoro. If the service is down this is a warning, not a failure | `voices/` in the work folder
 5\. Package | Compiles the rows into `scenario.json` and packs it with its pictures as an import ZIP, plus a preview of each scene | `scenario.zip`, `previews/`
-6\. Import | Imports the ZIP exactly as the editor's "Import a ZIP" does, as a private draft owned by `--owner`; records its standards; publishes it if `--publish` | `scenarios` and the rest; `scenario_standards`
+6\. Import | Imports the ZIP exactly as the editor's "Import a ZIP" does, as a private draft owned by `--owner`; records its standards; publishes it if `--publish` | `scenarios` and the rest; `standard_alignments`
 
 Those steps are the **classic** method's. The pipeline is pluggable: a *generation method* is a class that decides which steps run and which services do each job, and every run writes a trace of every step and AI call to its work folder. See [Generation methods and traces](/docs/developers/generation-methods/) to compare approaches or write your own.
 
@@ -244,20 +244,28 @@ Missions and stories alike can use them, where the place has them:
 
 ## Curriculum standards
 
-Missions are only aligned to standards in the `curriculum_standards` table: the codes the model may choose from are an enum built from that table, so a code is never invented. Import standards first:
+Missions are only aligned to standards in the [standards library](/docs/codebase/standards-library/) (every US state, the Common Core, NGSS, Canada and the UK nations): the codes the model may choose from are an enum built from it, so a code is never invented. Load the library once, and add sets of your own when you need to:
 
 ```sh
-php artisan qbl:standards                                   # what is imported
+php artisan qbl:standards all --bulk                                  # once: the whole library
+php artisan qbl:standards                                             # what is loaded
 php artisan qbl:standards file standards.json --framework=MY-DISTRICT-SCI
 php artisan qbl:standards learning-commons <framework uuid> --framework=CA-MATH --grade=5
-php artisan qbl:standards csp <standard set id> --framework=NGSS
 ```
+
+`--framework` on `qbl:generate` says what to align to, and can be given more than once:
+
+- a jurisdiction, `US-TX`, `CA-ON`, `GB-ENG`; or one subject of it, `US-TX:science`;
+- a framework's slug, `us-tx-science` (`qbl:standards status` and the library's tables list them);
+- a shorthand, `NGSS`, `CCSS`, `CCSS-MATH`, `CCSS-ELA`;
+- the name of a set imported with `qbl:standards file` or `learning-commons`, `MY-DISTRICT-SCI`.
+
+With no `--framework`, missions are aligned to the Common Core, NGSS and your own sets (`QBL_GEN_STANDARDS`, default `US-CCSS,US-NGSS,QBL`). A teacher can also name standards outright (`standards` in the request): a code (`CCSS.Math.Content.3.NF.A.2`), a short code (`3.NF.2`), or for England and Wales, whose statements have no codes, the reference they are offered under (`GB-ENG-1a2b3c4d`).
 
 - **A JSON file** needs no account: `[{"code": "...", "description": "...", "grades": ["05"], "subject": "Science"}]`.
 - **Learning Commons** (`LEARNING_COMMONS_API_KEY`, from platform.learningcommons.org) has every US state's standards and CCSS, with CASE identifiers.
-- **Common Standards Project** (`CSP_API_KEY`) serves standard sets by id.
 
-Importing again updates rows in place. Without any standards for the grade and framework, a mission is still made, with learning objectives but no alignment, and the command says so.
+Importing again updates in place, with the library's revisions. Without any standards for the grade and framework, a mission is still made, with learning objectives but no alignment, and the command says so.
 
 ## Keeping every picture in one style
 

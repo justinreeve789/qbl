@@ -17,8 +17,9 @@ use App\Qbl\Generation\Art\ArtStyle;
 use App\Qbl\Generation\Art\AssetDirector;
 use App\Qbl\Generation\Art\ImageTools;
 use App\Qbl\Generation\Build\StoryBuilder;
-use App\Qbl\Generation\Curriculum\StandardsImporter;
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
+use App\Qbl\Standards\Importer as StandardsImporter;
+use App\Qbl\Standards\Sources\StandardsList;
 use App\Qbl\Generation\Design\BlueprintSchema;
 use App\Qbl\Generation\Design\BlueprintValidator;
 use App\Qbl\Generation\Design\MissionDesigner;
@@ -140,7 +141,7 @@ $work = sys_get_temp_dir().'/qbl-story-test-'.bin2hex(random_bytes(4));
 mkdir($work, 0775, true);
 $pdo = new PDO('sqlite::memory:');
 $store = new ScenarioStore($pdo, "$work/media", '/media');
-foreach ([...ScenarioStore::sqliteSchema(), ...StandardsStore::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
+foreach ([...ScenarioStore::sqliteSchema(), ...MissionStandards::sqliteSchema(), ...GenerationRuns::sqliteSchema(), ...GenerationEvents::sqliteSchema()] as $sql) {
     $pdo->exec($sql);
 }
 $story = require __DIR__.'/fixtures/generation/story.php';
@@ -153,8 +154,8 @@ $config = [
     'judge' => ['enabled' => true, 'min_score' => 7, 'max_attempts' => 2],
     'limits' => ['max_scenes' => 8, 'max_characters' => 6, 'max_items' => 18],
 ];
-$standards = new StandardsStore($pdo);
-(new StandardsImporter($standards, new NoNetwork))->fromFile(__DIR__.'/fixtures/generation/standards.json', 'TEST-SCI', 'Test State');
+$standards = new MissionStandards($pdo);
+StandardsImporter::importAll($pdo, [StandardsList::package(json_decode(file_get_contents(__DIR__.'/fixtures/generation/standards.json'), true), 'TEST-SCI', 'Test State')]);
 $has = fn (array $errors, string $text) => (bool) array_filter($errors, fn ($e) => str_contains($e, $text));
 
 // ------------------------------------------------------------------ the game and the generator agree

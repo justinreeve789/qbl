@@ -2,7 +2,7 @@
 
 namespace App\Qbl\Generation\Design;
 
-use App\Qbl\Generation\Curriculum\StandardsStore;
+use App\Qbl\Generation\Curriculum\MissionStandards;
 
 /**
  * The scenario design rules from research on educational games, as the generator uses them, and the
@@ -150,7 +150,7 @@ final class DesignRules
     public static function stage(?string $grade): ?string
     {
         $numbers = [];
-        foreach (StandardsStore::grades([(string) $grade]) as $g) {
+        foreach (MissionStandards::grades([(string) $grade]) as $g) {
             if (in_array($g, ['K', 'Pre-K'], true)) {
                 $numbers[] = 0;
             } elseif (ctype_digit($g) && (int) $g <= 12) {

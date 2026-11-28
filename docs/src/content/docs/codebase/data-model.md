@@ -134,7 +134,7 @@ Classes | `teacher_student`, `assignments` (teacher, scenario, due date, note, `
 What players did | `activity_log` (also reset lines), `chat_messages`
 Student building | `scene_builds` (one per student, scene and instance; `status`, `pieces`), `build_uploads`
 The asset library | `library_assets`, `library_asset_files`
-The AI generator | `scenario_generations` (prompt, options, status, alignment, blueprint, manifest, progress), `generation_events` (an audit log of time and money), `curriculum_standards`, `scenario_standards`
+The AI generator | `scenario_generations` (prompt, options, status, alignment, blueprint, manifest, progress), `generation_events` (an audit log of time and money). Standards: the `standard_*` tables ([Curriculum standards library](/docs/codebase/standards-library/)); a mission's standards are `standard_alignments` rows with `alignable_type` `scenario`
 Organizations and the public API | `organizations` (with `parent_id` for schools, settings, license, `integrations_enabled`), `organization_admins`, `org_integrations`, `integration_runs`, `api_clients`, `api_tokens`, `launch_tokens`, `api_audit_log`
 Billing | `subscriptions`, `credit_accounts`, `credit_ledger`, `stripe_events`, `quote_requests`
 

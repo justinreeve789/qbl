@@ -140,7 +140,8 @@ services:
       LEARNING_COMMONS_API_KEY: ${LEARNING_COMMONS_API_KEY:-}
       LEARNING_COMMONS_BASE_URL: ${LEARNING_COMMONS_BASE_URL:-}
       CSP_API_KEY: ${CSP_API_KEY:-}
-      CSP_BASE_URL: ${CSP_BASE_URL:-}
+      # What missions are aligned to when no framework is named (default US-CCSS,US-NGSS,QBL)
+      QBL_GEN_STANDARDS: ${QBL_GEN_STANDARDS:-}
       # Each run's pictures, blueprint and ZIP, kept so a run can be resumed.
       QBL_GEN_WORK_DIR: /data/generations
       # The queue worker in this container runs the editor's AI generations and the district panel's

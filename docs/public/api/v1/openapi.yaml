@@ -555,7 +555,18 @@ components:
         owner_teacher_id: { type: [integer, 'null'] }
         max_players: { type: [integer, 'null'] }
         play_url: { type: string }
-        standards: { type: array, items: { type: object, properties: { code: { type: string }, framework: { type: string }, description: { type: string }, alignment: { type: string } } } }
+        standards:
+          type: array
+          description: The curriculum standards the mission is aligned to, from QBL's standards library.
+          items:
+            type: object
+            properties:
+              code: { type: string, description: "The publisher's code (CCSS.Math.Content.3.NF.A.2); for statements without one (England, Wales), QBL's reference such as GB-ENG-1a2b3c4d" }
+              framework: { type: string, description: 'The jurisdiction (US-CCSS, US-TX, GB-ENG), or the name of a set the school imported' }
+              description: { type: string }
+              alignment: { type: string, enum: [primary, supporting] }
+              uuid: { type: string, format: uuid, description: "The standard's identifier in QBL's library (its CASE identifier when it came from CASE)" }
+              jurisdiction: { type: string, description: 'ISO-style jurisdiction code, or QBL for imported sets' }
         objectives: { type: integer }
         glossary_terms: { type: integer }
         published_at: { type: string, format: date-time }

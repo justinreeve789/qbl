@@ -38,16 +38,17 @@ class GenerateScenarioTest extends TestCase
 
     public function test_standards_are_imported_and_listed(): void
     {
-        $this->artisan('qbl:standards', ['source' => 'file', 'id' => __DIR__.'/../fixtures/generation/standards.json', '--framework' => 'TEST-SCI'])
+        $this->artisan('qbl:standards', ['action' => 'file', 'target' => __DIR__.'/../fixtures/generation/standards.json', '--framework' => 'TEST-SCI'])
             ->expectsOutputToContain('Imported 4 standards into TEST-SCI.')
             ->assertSuccessful();
         $this->artisan('qbl:standards')->expectsOutputToContain('TEST-SCI')->assertSuccessful();
+        $this->artisan('qbl:standards-library', ['action' => 'status'])->assertSuccessful();   // the old name still works
     }
 
     public function test_a_mission_is_generated_imported_as_a_private_draft_and_aligned(): void
     {
         $teacher = User::create(['name' => 'Teacher', 'email' => 'teacher@example.test', 'password' => 'secret-password', 'role' => 'teacher']);
-        $this->artisan('qbl:standards', ['source' => 'file', 'id' => __DIR__.'/../fixtures/generation/standards.json', '--framework' => 'TEST-SCI'])->assertSuccessful();
+        $this->artisan('qbl:standards', ['action' => 'file', 'target' => __DIR__.'/../fixtures/generation/standards.json', '--framework' => 'TEST-SCI'])->assertSuccessful();
 
         $this->artisan('qbl:generate', [
             'prompt' => 'Why does the orchard have flowers but no fruit?', '--grade' => '3', '--framework' => ['TEST-SCI'], '--owner' => 'teacher@example.test', '--images' => 'placeholder',
@@ -58,7 +59,10 @@ class GenerateScenarioTest extends TestCase
         $this->assertSame($teacher->id, (int) $scenario->user_id);
         $this->assertNull($scenario->published_at);
         $this->assertSame(5, \DB::table('scenes')->where('scenario_id', $scenario->id)->count());
-        $this->assertSame('TEST-3-LS1-1', \DB::table('scenario_standards')->join('curriculum_standards', 'curriculum_standards.id', '=', 'scenario_standards.curriculum_standard_id')->where('scenario_id', $scenario->id)->value('code'));
+        $aligned = \DB::table('standard_alignments')->join('standard_items', 'standard_items.id', '=', 'standard_alignments.item_id')
+            ->where('scenario_id', $scenario->id)->where('alignable_type', 'scenario')->first();
+        $this->assertSame('TEST-3-LS1-1', $aligned->code);
+        $this->assertStringContainsString('q_pollen', (string) $aligned->evidence);
         $run = \DB::table('scenario_generations')->first();
         $this->assertSame('done', $run->status);
         $this->assertSame((int) $scenario->id, (int) $run->scenario_id);
