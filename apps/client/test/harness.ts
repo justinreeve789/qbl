@@ -233,6 +233,8 @@ export class HeadlessUi implements UiPort {
     return { update: (view) => (panel.view = view), close: () => (panel.open = false) };
   }
   status(message: string | null) { this.statusText = message; }
+  loadingSpinner = false;
+  loading(on: boolean) { this.loadingSpinner = on; }
 }
 
 export function loadScenario(name = 'starship'): Scenario {

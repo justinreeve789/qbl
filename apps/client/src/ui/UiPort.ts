@@ -184,6 +184,8 @@ export interface UiPort {
   buildPanel(spec: BuildPanelSpec, on: BuildPanelActions): BuildPanelHandle;
   /** A persistent message such as "Reconnecting…". Pass null to clear it. */
   status(message: string | null): void;
+  /** A small spinning icon in the upper left corner while a scene's pictures and sounds arrive. */
+  loading(on: boolean): void;
 }
 
 /** Who is playing, for the account menu. */

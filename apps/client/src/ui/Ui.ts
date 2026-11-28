@@ -52,19 +52,23 @@ export class Ui implements UiPort {
   private bagBar = el('div', 'qbl-bagbar');
   private story = el('div', 'qbl-storybar');
   private banner = el('div', 'qbl-banner');
+  private spinner = el('div', 'qbl-spinner');
   private modals = 0;
   private video: HTMLVideoElement | null = null;
 
   constructor(parent: HTMLElement) {
     this.root = el('div', 'qbl-ui');
     this.banner.hidden = true;
+    this.spinner.hidden = true;
+    this.spinner.setAttribute('role', 'status');
+    this.spinner.setAttribute('aria-label', 'Loading');
     this.bagBar.hidden = true;
     this.story.hidden = true;
     this.story.setAttribute('role', 'toolbar');
     this.story.setAttribute('aria-label', 'Story');
     this.bagBar.setAttribute('role', 'toolbar');
     this.bagBar.setAttribute('aria-label', 'Things you carry');
-    this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.bagBar, this.story, this.toasts, this.banner);
+    this.root.append(this.overlays, this.corner, this.sidebar.root, this.hud, this.bagBar, this.story, this.toasts, this.banner, this.spinner);
     parent.appendChild(this.root);
     this.followKeyboard();
   }
@@ -1162,6 +1166,11 @@ export class Ui implements UiPort {
   status(message: string | null) {
     this.banner.hidden = message == null;
     this.banner.textContent = message ?? '';
+  }
+
+  /** Show or hide the small loading spinner in the upper left corner. */
+  loading(on: boolean) {
+    this.spinner.hidden = !on;
   }
 
   clearOverlays() {
