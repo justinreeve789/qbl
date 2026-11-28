@@ -36,7 +36,7 @@ The site's addresses:
 | Address | What it is |
 | ------- | ---------- |
 | `/` | The marketing page (`apps/client/index.html`, Tailwind compiled at build time). Its "Log in" button goes to `/missions` |
-| `/missions` | The game: the sign-in screen if needed, then the missions page. Everyone who signs in lands here, **teachers and admins too**; the Editor and Classes are in the page's menu (the marketing page's button, for someone already signed in, still goes to a teacher's editor). Students see their missions; teachers and admins see their teaching page (shortcuts into the editor, their assignments with "Look in" per team, their scenarios), then missions to try |
+| `/missions` | The game: the sign-in screen if needed, then the missions page. Everyone who signs in lands here, **teachers and admins too**; the Editor and Classes are in the page's menu (the marketing page's button, for someone already signed in, still goes to a teacher's editor). It lists each mission once: a student's assignments first (soonest due), then the others to browse; a teacher's or admin's own assignments first (with "Look in" per team), then the others to browse, with **Edit** on their own scenarios. The editor, Classes and Docs are in the bar at the top |
 | `/{code}` | One scenario, by its code (16 random letters, or one chosen on the Publish page) |
 | `/play?…` | The game with the parameters below (editor previews use `/play?preview=…`) |
 | `/editor/`, `/docs/` | The editor and the documentation |
