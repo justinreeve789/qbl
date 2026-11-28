@@ -1,0 +1,25 @@
+---
+// What each blueprint says about other curricula (frontmatter `alsoFits`), in one table.
+import { blueprints, href } from './lib';
+
+const all = (await blueprints()).filter((e) => e.data.blueprint.alsoFits);
+---
+
+<table class="bp-crosswalk">
+  <thead>
+    <tr><th scope="col">Blueprint</th><th scope="col">Also fits, by topic</th></tr>
+  </thead>
+  <tbody>
+    {all.map((e) => (
+      <tr>
+        <th scope="row"><a href={href(e.id)}><span aria-hidden="true">{e.data.blueprint.icon}</span> {e.data.title}</a></th>
+        <td data-label="Also fits, by topic">{e.data.blueprint.alsoFits}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+<style>
+  .bp-crosswalk th[scope='row'] { font-weight: 600; vertical-align: top; min-width: 11rem; }
+  .bp-crosswalk td { vertical-align: top; }
+</style>

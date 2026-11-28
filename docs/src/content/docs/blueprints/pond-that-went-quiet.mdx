@@ -1,0 +1,123 @@
+---
+title: "The Pond That Went Quiet"
+description: "The frogs at Heron Pond have stopped singing. Students trace where matter and energy go in the pond, break a model pond in every way they can think of, and find that a kind volunteer who tidied away the dead logs took out the one group nobody thought mattered."
+host:
+  who: lucy
+  says: "Let them break the pond ten ways. The pile of rotten logs turns out to be the hero."
+  side: right
+blueprint:
+  number: 12
+  band: "3-5"
+  grades: "Grade 5"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🐸"
+  mechanic: "Switch groups of living things on and off in a pond model"
+  edge: [D, A]
+  standards:
+    - code: "5-LS2-1"
+      asks: "Model the movement of matter among plants, animals, decomposers and the environment"
+      evidence: "Runs the pond model with each group switched off; labels each piece's job in the rebuilt pond"
+    - code: "5-PS3-1"
+      asks: "Show that the energy in animals' food was once energy from the sun"
+      evidence: "Follows the heron's energy back, link by link, to sunlight"
+    - code: "5-LS1-1"
+      asks: "Argue that plants get their materials chiefly from air and water"
+      evidence: "Predicts, then reads the five-year willow record"
+    - code: "5.G.A.2"
+      asks: "Graph points to represent a real problem and interpret them"
+      evidence: "Reads the frog count graph to find the year the drop began"
+  alsoFits: "Also fits England Year 4 Living things and their habitats (environments can change) and food chains, and Ontario Grade 4 Habitats and Communities."
+  settings:
+    grade: "5"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Year 4 Living things and their habitats (environments can change) and food chains, and Ontario Grade 4 Habitats and Communities. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Pond That Went Quiet: generator prompt"
+Make a mission called The Pond That Went Quiet for grade 5. Teach and assess NGSS 5-LS2-1, 5-PS3-1 and 5-LS1-1 and Common Core 5.G.A.2. Students are wetland ecologists working with Ranger Wiremu to find out why the frogs at Heron Pond stopped singing this spring. Scenes: a boardwalk, a reed bed, an underwater scene beneath the lily pads, a bare patch where old logs used to lie, a ranger hut and a greenhouse corner. In the ranger hut an instrument called the pond model has a switch each for plants and algae, insects, frogs, herons and decomposers (fungi, worms and bacteria), a slider for sunlight, and a Run one year button; meters show each group and a pile of dead matter. Students explore it freely before any goal. Wrong ideas to surprise, each with a prediction first: decomposers are not needed; plants get most of their material from soil; a food chain's energy starts with the animals. For the second, show a willow grown in a pot for five years: the tree gained 74 kg and the soil lost 57 g. For the third, students follow the heron's energy back through frog, insect and plant to the sun by collecting an energy tag from each. A graph of frog counts by year lets students find when the drop began. The cause, found through clues spread across scenes: a well-meaning volunteer, Mr. Bram, raked away the leaf litter and hauled off the dead logs to make the park neat, so the decomposers lost their home and the plants lost their nutrients. Nobody is a villain. Invent a twist where students first suspect the herons, then find the herons are going hungry too. Build scene: students put back logs, leaves and reeds and label what each one passes on. Payoff: the frogs sing again. Debrief: why does a pond need rot?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Boardwalk.** On-ramp. It is spring and silent. Wiremu hands over a count sheet. “Listen first. What is missing?”
+2. **Reed Bed and Under the Lily Pads.** Collect energy tags from plant, insect, frog and heron. Few tadpoles, thin reeds.
+3. **Ranger Hut.** The pond model. Students switch things off for fun before they are asked anything.
+4. **Greenhouse Corner.** The willow. Predict where 74 kg of tree came from.
+5. **The Bare Patch.** Rake marks and wheelbarrow tracks. Mr. Bram explains, proudly, how tidy he made it.
+6. **Restoration.** Build scene. Then a short time skip, and the chorus starts.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Ranger Wiremu" role="Guide.">“You switched off the worms and nothing happened in year one. Run it again. What is piling up?”</Speaker>
+
+<Speaker name="Mr. Bram" role="Volunteer.">“Rotten logs everywhere, it was a mess. I cleared the lot. Does it not look better?”</Speaker>
+
+<Speaker name="Dr. Salome" role="Plant scientist, on the willow.">“The soil barely changed. So what went into the tree? What else touched it every day?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The pond model's goal is a pond that still has frogs after five years. Students who remove decomposers see the dead-matter meter climb and the plants fall a year later.
+- Sunlight at zero crashes everything, whatever else is switched on. That fixes where the chain starts.
+- The energy tags must be placed in order on the hut wall. A heron-first chain gets: “Where did the heron's energy come from?”
+- The frog graph: counts hold for two years, then fall. The rake marks date from the same year.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Find the smallest change that saves the model pond without adding any animals.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “A tree weighs as much as a car. Where did all that stuff come from?” Record the answers; most say soil.
+  </Card>
+  <Card title="During" icon="laptop">
+    Give ten minutes of free play on the pond model before steering. Ask teams to predict aloud before each run.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Return to the tree question. The report shows the willow prediction, and whether each student tried removing decomposers before being told to.
+  </Card>
+  <Card title="Example" icon="star">
+    Start a sealed bottle ecosystem the same week. The mission shows what happens over five years; the bottle shows that it is real.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+Nobody may strip the decomposers from a real pond, and nobody can wait five years to see what follows. A bottle ecosystem is real and worth keeping on the windowsill, but it shows one outcome over many weeks. A food-web yarn activity shows who eats whom, not where matter goes after death. Here a student can break the pond ten ways in ten minutes and watch each consequence. The two wrong ideas, that plants eat soil and that rot is waste, each meet a result the student predicted wrongly, which a lecture or video cannot arrange.
+
+</BlueprintWhy>

@@ -1,0 +1,71 @@
+---
+// Every standard of one framework that a blueprint teaches, with a link to where it is published and
+// to the blueprints: <StandardsIndex framework="ngss" />
+import StandardCode from './StandardCode.astro';
+import { blueprints, href } from './lib';
+import { standard, type FrameworkKey } from './standards';
+
+interface Props {
+  framework: FrameworkKey;
+}
+
+const { framework } = Astro.props;
+const all = await blueprints();
+
+interface Row {
+  code: string;
+  asks: string[];
+  taught: Array<{ id: string; title: string; icon: string; number: number; part?: string; bonus?: boolean }>;
+}
+const rows = new Map<string, Row>();
+for (const e of all) {
+  for (const s of e.data.blueprint.standards) {
+    if (standard(s.code).framework !== framework) continue;
+    const row = rows.get(s.code) ?? { code: s.code, asks: [], taught: [] };
+    const asks = s.part ? `${s.part[0]!.toUpperCase()}${s.part.slice(1)}: ${s.asks}` : s.asks;
+    if (!row.asks.includes(asks)) row.asks.push(asks);
+    if (!row.taught.some((t) => t.id === e.id)) {
+      row.taught.push({ id: e.id, title: e.data.title, icon: e.data.blueprint.icon, number: e.data.blueprint.number, bonus: s.bonus });
+    }
+    rows.set(s.code, row);
+  }
+}
+// In the order a teacher reads a framework: by grade, then by code.
+const grade = (code: string) => {
+  if (/^(HS|HSA|HSF|HSN|HSS|HSG)\b/.test(code)) return 9;
+  if (/^MS\b/.test(code)) return 6;
+  if (/^K\b/.test(code)) return 0;
+  const m = code.match(/(?:^|\.)(\d+)(?:[-.]|$)/) ?? code.match(/(\d+)/);
+  return m ? Number(m[1]) : 99;
+};
+const list = [...rows.values()].sort((a, b) => grade(a.code) - grade(b.code) || a.code.localeCompare(b.code, 'en', { numeric: true }));
+---
+
+<table class="bp-index">
+  <thead>
+    <tr><th scope="col">Standard</th><th scope="col">What it asks</th><th scope="col">Taught in</th></tr>
+  </thead>
+  <tbody>
+    {list.map((row) => (
+      <tr>
+        <th scope="row"><StandardCode code={row.code} bare /></th>
+        <td data-label="What it asks">{row.asks.map((a, i) => <Fragment>{i > 0 && <br />}{a}</Fragment>)}</td>
+        <td data-label="Taught in">
+          {row.taught.map((t) => (
+            <a class="bp-index__mission" href={href(t.id)}>
+              <span aria-hidden="true">{t.icon}</span> {t.title}{t.bonus && <em> (optional objective)</em>}
+            </a>
+          ))}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+<style>
+  .bp-index th[scope='row'] { vertical-align: top; }
+  .bp-index td { vertical-align: top; }
+  .bp-index__mission { display: block; width: fit-content; }
+  .bp-index__mission + .bp-index__mission { margin-top: 0.3rem; }
+  .bp-index__mission em { font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); }
+</style>

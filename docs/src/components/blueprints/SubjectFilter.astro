@@ -1,0 +1,66 @@
+---
+// A row of subject buttons for the overview page. Picking one hides the cards (BlueprintGrid.astro)
+// that do not carry that subject. Without JavaScript every card simply stays.
+import { SUBJECTS, SUBJECT_ORDER, blueprints } from './lib';
+
+const all = await blueprints();
+const count = (s: string) => all.filter((e) => (e.data.blueprint.subjects as string[]).includes(s)).length;
+---
+
+<div class="bp-filter not-content" data-bp-filter role="group" aria-label="Show blueprints for one subject">
+  <button type="button" data-subject="" aria-pressed="true">All <span>{all.length}</span></button>
+  {SUBJECT_ORDER.map((s) => (
+    <button type="button" data-subject={s} aria-pressed="false" style={`--chip: ${SUBJECTS[s].color}`}>
+      <i aria-hidden="true"></i>{SUBJECTS[s].label} <span>{count(s)}</span>
+    </button>
+  ))}
+</div>
+
+<script>
+  // One pressed button at a time; a card stays when it carries that subject.
+  for (const bar of document.querySelectorAll<HTMLElement>('[data-bp-filter]')) {
+    const buttons = [...bar.querySelectorAll<HTMLButtonElement>('button')];
+    for (const button of buttons) {
+      button.addEventListener('click', () => {
+        const subject = button.dataset.subject ?? '';
+        for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
+        for (const grid of document.querySelectorAll<HTMLElement>('[data-bp-grid]')) {
+          let shown = 0;
+          for (const card of grid.querySelectorAll<HTMLElement>('[data-bp-card]')) {
+            const keep = !subject || (card.dataset.subjects ?? '').split(' ').includes(subject);
+            card.hidden = !keep;
+            if (keep) shown += 1;
+          }
+          const none = grid.querySelector<HTMLElement>('.bp-grid__none');
+          if (none) none.hidden = shown > 0;
+        }
+      });
+    }
+  }
+</script>
+
+<style>
+  .bp-filter { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-block: 1.25rem 0.5rem; }
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--sl-color-gray-5);
+    background: var(--sl-color-bg);
+    color: var(--sl-color-white);
+    font: inherit;
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--chip); }
+  button span { font-size: var(--sl-text-xs); font-weight: 700; color: var(--sl-color-gray-3); }
+  :global([data-theme='light']) button span { color: var(--sl-color-gray-2); }
+  button:hover { border-color: var(--chip, var(--sl-color-accent)); }
+  button[aria-pressed='true'] {
+    border-color: var(--chip, var(--sl-color-accent));
+    background: color-mix(in srgb, var(--chip, var(--sl-color-accent)) 20%, var(--sl-color-bg));
+  }
+</style>

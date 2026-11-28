@@ -1,0 +1,124 @@
+---
+title: "Festival Colors"
+description: "A dye works must make five banners in one exact green: 2 cups of blue to 3 cups of yellow. Students mix a pot, then scale it up. Anyone who adds the same amount to both colours gets a visibly wrong green and a reason why."
+host:
+  who: sam
+  says: "Add three to both and the green goes wrong. That pot on the rack is the lesson."
+  side: right
+blueprint:
+  number: 14
+  band: "6-8"
+  grades: "Grades 6-7"
+  subjects: [maths]
+  about: "maths"
+  minutes: 45
+  players: "1 to 4"
+  icon: "🎨"
+  mechanic: "Mix dye by ratio; scale the batch; see a wrong ratio as a wrong colour"
+  edge: [E, C]
+  standards:
+    - code: "6.RP.A.1"
+      asks: "Use ratio language to describe a relationship"
+      evidence: "States the recipe as a ratio and reads others off the vat"
+    - code: "6.RP.A.2"
+      asks: "Understand the unit rate for a ratio"
+      evidence: "Finds the yellow needed for 1 cup of blue"
+    - code: "6.RP.A.3"
+      asks: "Use tables of equivalent ratios and unit rates to solve problems"
+      evidence: "Fills the banner table to five banners; picks the better buy on dye"
+    - code: "7.RP.A.2"
+      bonus: true
+      asks: "Decide whether two quantities are proportional"
+      evidence: "Tests two merchants' price lists by table and graph"
+  alsoFits: "Also fits Texas 6.4B, 6.5A and 7.4A, and England Year 6 Ratio and proportion."
+  settings:
+    grade: "6"
+    subject: "Mathematics"
+    frameworks: [CCSS-MATH]
+    players: "1-4"
+    opening: action
+    focus: balanced
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits Texas 6.4B, 6.5A and 7.4A, and England Year 6 Ratio and proportion. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Festival Colors: generator prompt"
+Make a mission called Festival Colors for grades 6 to 7. Teach and assess Common Core 6.RP.A.1, 6.RP.A.2 and 6.RP.A.3, with 7.RP.A.2 as the optional harder objective. Students are dyers' apprentices working for Master Dyer Farida at a riverside dye works. The invented Lantern Fair needs five banners in one exact colour, fair green, which is 2 cups of blue to 3 cups of yellow per banner. Scenes: a dye yard, a mixing shed, a pigment market, drying lines, a storehouse and the fair gate. In the mixing shed an instrument called the vat has a slider for cups of blue from 0 to 20 and a slider for cups of yellow from 0 to 30; a meter shows how close the mix is to fair green, a readout says too blue or too yellow, and another shows total cups. Students mix one banner's worth first, with no explanation. Then ask for a prediction: to make five banners, what do we do to each colour? The key wrong idea to surprise is adding the same amount to both, for example going from 2 and 3 to 5 and 6; the miss explains that blue more than doubled while yellow only doubled. A second wrong idea: a bigger batch must look darker. On the drying lines a table of banners, blue and yellow fills in as the team succeeds. Ask for the yellow needed for 1 cup of blue. At the market, compare 3 jars for 12 coins with 5 jars for 18 coins. Invent a twist where a barrel leaks and only 9 cups of yellow remain, so students work out the blue to match and how many banners that makes. Optional harder objective: one merchant's price list is proportional and the other's hides a fee; students decide which by table and graph. Build scene at the fair gate: students place a banner and label their own colour recipe with one equal ratio. Debrief: why does adding the same to both change the colour?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Dye Yard.** On-ramp. Farida hands over two blue cups and three yellow. Pour, stir, and the first banner comes out right.
+2. **Mixing Shed.** The vat. Predict, then scale. The 5 and 6 pot comes out bluish and stays on the rack as a reminder.
+3. **Drying Lines.** The table grows one banner at a time. Unit rate question.
+4. **Pigment Market.** Better buy. Bonus: the two price lists.
+5. **Storehouse.** The twist. Nine cups of yellow and a deadline.
+6. **Fair Gate.** Payoff. Five matching banners rise at dusk with lanterns behind them. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Master Dyer Farida" role="Guide.">“You gave each colour three more cups. Fair enough. Now tell me, did you treat them the same?”</Speaker>
+
+<Speaker name="Jun" role="An older apprentice, gives the hints.">“I think of it as pots. One pot is 2 and 3. How many pots do you need?”</Speaker>
+
+<Speaker name="Merchant Okello" role="At the market.">“Five jars for eighteen. A bargain. Or is it? Work it out for one jar.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The vat goal for five banners accepts only 10 and 15. A 5 and 6 mix reads too blue, with the reason.
+- A student who doubles to 4 and 6 gets a perfect match at a smaller size, which shows the colour did not get darker.
+- With 9 cups of yellow, the matching blue is 6 and the banners are 3. Two more banners need 6 more cups of yellow.
+- Better buy: 4 coins a jar against 3.6 coins a jar.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+2 kg for 9, 4 kg for 18, 6 kg for 27 is proportional. 2 for 10, 4 for 18, 6 for 26 is not, and the graph misses zero.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Pose it cold: “The recipe is 2 blue to 3 yellow. I want more, so I use 5 blue and 6 yellow. Same colour?” Count the yeses.
+  </Card>
+  <Card title="During" icon="laptop">
+    Solo first, so every student commits to their own scaling. Then pair up to explain the rack of failed pots to each other.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Return to the cold question. The report lists each student's first scaled mix, which shows exactly who added instead of multiplied.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it as lesson one of the ratio unit. The banner table becomes the class's first ratio table, already understood.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+Adding the same amount to both parts is the best-known wrong turn in ratio work, and it feels fair, so being told it is wrong rarely sticks. Here the student's own 5 and 6 pot comes out the wrong green, with a meter to confirm it. Real paint is the natural rival, but 5 to 6 and 2 to 3 are too close for the eye to judge in a paper cup, measuring is rough, and each try costs paint and time. A video can show the right method and never touches the student's own mistake. Here the mistake is made, seen and fixed in under a minute.
+
+</BlueprintWhy>

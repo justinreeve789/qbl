@@ -1,0 +1,130 @@
+---
+title: "Market Day at Three Rivers"
+description: "Three villages each make different things, and the festival needs something from all of them. Students first trade goods for goods and get stuck, then receive coins and feel the difference. A frost then makes apples scarce and forces a choice."
+host:
+  who: buck
+  says: "Let them get stuck holding a pot nobody wants. Then hand out the coins."
+  side: left
+blueprint:
+  number: 5
+  band: "3-5"
+  grades: "Grades 3-4"
+  subjects: [economics, maths]
+  about: "economics and maths"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🪙"
+  mechanic: "A barter chain that frustrates, then coins that fix it"
+  edge: [C, G]
+  standards:
+    - code: "D2.Eco.5.3-5"
+      asks: "Explain the role of money in making exchange easier"
+      evidence: "Compares the barter chain with the coin round in the debrief"
+    - code: "D2.Eco.4.3-5"
+      asks: "Explain why people specialise and trade"
+      evidence: "Matches each village's goods to its land and skills"
+    - code: "D2.Eco.1.3-5"
+      asks: "Compare the benefits and costs of choices"
+      evidence: "Chooses between apples and lanterns and names what was given up"
+    - code: "3.OA.D.8"
+      asks: "Solve two-step word problems"
+      evidence: "Works out totals and change at the stalls"
+    - code: "4.MD.A.2"
+      asks: "Solve word problems involving money"
+      evidence: "Buys the festival list with 20 tokens on the counting table"
+  alsoFits: "Also fits Texas Math 3.9B (scarcity and cost) and Ontario Mathematics strand F, Financial Literacy."
+  settings:
+    grade: "3"
+    subject: "Social Studies"
+    frameworks: [CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: play
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits Texas Math 3.9B (scarcity and cost) and Ontario Mathematics strand F, Financial Literacy. These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+Check that the C3 Framework is loaded in the library; if it is not, align to the state's own economics strand.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Market Day at Three Rivers: generator prompt"
+Make a mission called Market Day at Three Rivers for grades 3 to 4. Teach and assess C3 economics D2.Eco.1.3-5, D2.Eco.4.3-5 and D2.Eco.5.3-5 and Common Core 3.OA.D.8 and 4.MD.A.2. Students are young traders helping Ferrywoman Mirembe gather a feast for the river festival. Scenes: a ferry landing, Hilltop village (sheep and wool), Riverbend village (fish and reed baskets), Orchard village (apples and honey) and the festival green. Part one is a barter chain with no money. Students start with one clay pot. The fisher will only take a pot and gives fish; the weaver will only take fish and gives a blanket; the beekeeper will only take a blanket and gives honey; the baker will only take honey and gives the festival cake. Everyone politely refuses anything else and says what they do want. Part two: Mirembe hands out 20 river tokens and now every stall takes tokens and shows prices. An instrument called the counting table has sliders for how many of each item to buy and shows the total and tokens left; the goal is to buy the festival list without going over. Add two-step questions about totals and change. Wrong idea to surprise: trading goods for goods is just as easy as using money. Invent a twist where a frost leaves only five apples, the price rises, and students must choose between apples and lanterns with no right answer. Ask why Hilltop sells wool and not fish. Build scene on the festival green: students set up their own stall and label prices. Debrief: what did money change?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Ferry Landing.** On-ramp. Mirembe hands over the clay pot. “The baker has the cake. Go and ask.”
+2. **The barter chain.** Three villages, four trades, in an order students must discover by being refused.
+3. **Token round.** Same stalls, now with price boards. The counting table and the two-step problems live here.
+4. **The frost.** Snow falls in the orchard. Five apples, a new price, and a real choice.
+5. **Festival Green.** Payoff. Lanterns or apple pies appear, depending on the team's choice. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Ferrywoman Mirembe" role="Guide.">“You walked to three villages for one cake. How many stops would it take with these?”</Speaker>
+
+<Speaker name="Weaver Halima" role="Hilltop.">“Honey is lovely, but I cannot eat a blanket's worth. Bring me fish and we will talk.”</Speaker>
+
+<Speaker name="Tane the fisher" role="Riverbend.">“We have the river, so we fish. Up the hill they have grass, so they keep sheep. Why would I knit?”</Speaker>
+
+<Speaker name="Beekeeper Suda" role="Orchard, after the frost.">“Five apples left, and three villages want them. What should I do with the price?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The chain is the puzzle. Each refusal names what that person wants, so students piece the order together.
+- Four lanterns at 3 tokens each, paid with 20: how much change? A wrong answer shows the coins laid out and asks which step was missed.
+- The counting table rejects a basket that costs 23 tokens and shows by how much.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Find the cheapest way to feed twelve guests using the price boards in all three villages.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “Could we live without money and just swap things?” Most say yes.
+  </Card>
+  <Card title="During" icon="laptop">
+    Expect groans in the barter chain. That is the lesson, so do not hand out the order. Teams that split up finish it faster.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Ask what was annoying and what fixed it. Then: “What did your team give up at the frost, and was it worth it?” The report shows each team's choice.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it to open an economics unit. The words scarcity, trade and opportunity cost go on the wall afterwards, attached to moments students remember.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A definition of money as a medium of exchange is only words until a child has been refused four times with a pot in their hands. A live classroom trading game teaches the same thing and is worth running once a year, but it takes a full period to set up, quiet students trade little, and the rules bend. Here every student walks the whole chain, the rules are the same for all, and the relief when tokens arrive is personal. The frost then makes scarcity a decision the student made, with a cost they can name.
+
+</BlueprintWhy>

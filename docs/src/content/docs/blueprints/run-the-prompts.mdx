@@ -1,0 +1,71 @@
+---
+title: "Running the prompts"
+description: "How to turn a mission blueprint into a draft mission: what to paste where on the Generate page, the command line version that stops before any picture is drawn, and the shared footer every prompt needs."
+host:
+  who: riona
+  says: "Paste the prompt, add the footer, and read the plan before anything is drawn. Then fix what the generator got wrong."
+---
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Every [blueprint](/docs/blueprints/) has a prompt written for the [AI mission generator](/docs/editor/plans-and-generator/#the-ai-mission-generator). The prompt carries what is special to that mission. A short **shared footer**, the same for all 24, carries the design rules the generator does not check by itself.
+
+## On the Generate page
+
+<Steps>
+
+1. Open **Generate** in the editor and paste the blueprint's prompt into **What is the mission about?** The box takes 2,000 characters, and every prompt fits.
+
+2. Set **Make** to **A mission students play**.
+
+3. Open **Grade, subject, players and length**. Fill in the grade, subject, fewest and most players and minutes from the blueprint's **Settings for the generator** box.
+
+4. Paste the [shared footer](#the-shared-footer) into **Anything else**. That box takes 1,000 characters and the footer is 854.
+
+5. Open **Design approach** and choose the blueprint's **Opening**, **Focus** and **Freedom**.
+
+6. Press **Generate**. The draft lands in your scenarios in about ten minutes.
+
+</Steps>
+
+<Aside type="note" title="Which standards it aligns to">
+The Generate page chooses standards from the site's default frameworks, the Common Core and NGSS unless your administrator changed them. Each prompt names its codes to steer that choice. To build a mission around exact codes, use the command line.
+</Aside>
+
+## On the command line
+
+The command line can stop after the plan, before any picture is drawn, and can be told the exact standards. This is the way to review a blueprint cheaply. The example is [The Pier of Parts](/docs/blueprints/pier-of-parts/), with the prompt and footer saved in two text files.
+
+```bash
+php artisan qbl:generate "$(cat pier-of-parts.txt)" \
+  --notes="$(cat shared-footer.txt)" \
+  --grade=3 --subject=Mathematics --players=1-4 --minutes=40 \
+  --framework=CCSS-MATH \
+  --standard=3.NF.A.1 --standard=3.NF.A.2 --standard=3.NF.A.3 --standard=4.NF.A.2 \
+  --format=mission --opening=action --focus=balanced --freedom=guided \
+  --method=critic --design-only
+```
+
+- **`--design-only`** stops after the blueprint and prints how many pictures the mission will need and roughly what they will cost. Read the plan, then carry on with `--resume=<id>`.
+- **`--standard=`** names the codes to build around. Each must already be in the [standards library](/docs/codebase/standards-library/). Every blueprint's settings box lists its own.
+- **`--method=critic`** adds a review of the plan against the design rules. It is worth the extra calls here, because the predict-and-surprise beats are checked only by that review. [Generation methods](/docs/developers/generation-methods/) compares them all.
+- For a playable draft with stand-in pictures, use `--method=draft` in place of `--design-only`.
+
+All the options are in [Generating missions with AI](/docs/developers/generation/#options).
+
+## The shared footer
+
+Add this to every prompt: in **Anything else** on the Generate page, or as `--notes=` on the command line. It asks for the things the generator's own checks do not count: the practitioner role, layered hints, the values check and the payoff.
+
+```text wrap title="Shared footer for every blueprint"
+Give students the role named above and have the guide talk like that kind of expert. Do before naming: no key term appears until students have used the idea. For each wrong idea named above, ask for a prediction, let students see it fail, then have a character ask questions that lead to the better idea. Wrong answers say why and loop back. Hints come from characters in three steps: nudge, pointer, worked example. Spread clues, items and measurements across scenes so teammates need each other; no crew roles. Include one invented twist that teaches, one optional harder objective, a shared team goal with a visible payoff, one build scene near the end whose prompt uses the idea, and a debrief with a why question and a real-life link. Check every fact and number. Vary who the characters are and who holds the knowledge; nobody is a villain by type.
+```
+
+## After it is generated
+
+The generator's draft is a starting point. Before you assign it:
+
+1. **Compare it with the blueprint.** Is each standard's evidence there? Does each wrong idea meet its surprise? Is there a build scene and a debrief?
+2. **Check the facts and the numbers.** Several blueprints carry real science and real sums, and each says which.
+3. **Read it at the students' level.** Player-facing words should sit one grade below the target grade. The generator does not measure this yet.
+4. **Add the hand-built scenes.** Some blueprints need a close-up bench, fog or a conversation tree that the generator cannot make. [Before you build](/docs/blueprints/build-notes/) lists them.
+5. **Playtest it** with a mixed group, then read the [reports](/docs/editor/reports/) for where students stalled.

@@ -1,0 +1,123 @@
+---
+title: "The Case of the Vanishing Grams"
+description: "A fizzy lemon drink at the town fair weighs less after it is mixed than its ingredients did before. The weights inspector wants an explanation by noon. Students weigh changes to a hundredth of a gram, with the lid off and on, and find where the missing grams went."
+host:
+  who: sam
+  says: "Where did 1.65 grams go? Put the lid on and find out."
+  side: left
+blueprint:
+  number: 13
+  band: "3-5"
+  grades: "Grade 5"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 45
+  players: "1 to 4"
+  icon: "⚖️"
+  mechanic: "Weigh before and after on an exact balance, open and sealed"
+  edge: [C, E]
+  standards:
+    - code: "5-PS1-2"
+      asks: "Measure and graph to show total weight is conserved when heating, cooling or mixing"
+      evidence: "Weighs before and after for dissolving, melting and fizzing, open and sealed; reads the weight-over-time graph"
+    - code: "5-PS1-4"
+      asks: "Investigate whether mixing substances makes new substances"
+      evidence: "Sorts mixes into new substance or not, citing gas, temperature change or getting the solid back"
+    - code: "5-PS1-3"
+      asks: "Identify materials from their properties"
+      evidence: "Names three unlabelled white powders from simple tests"
+    - code: "5.NBT.B.7"
+      asks: "Add and subtract decimals to hundredths"
+      evidence: "Totals ingredients and finds the size of each loss"
+  alsoFits: "Also touches 5-PS1-1 (particles too small to see). Fits England Year 5 Properties and changes of materials and Ontario Grade 5 Properties of and Changes in Matter."
+  settings:
+    grade: "5"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "1-4"
+    opening: action
+    focus: rigor
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also touches 5-PS1-1 (particles too small to see). Fits England Year 5 Properties and changes of materials and Ontario Grade 5 Properties of and Changes in Matter. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Case of the Vanishing Grams: generator prompt"
+Make a mission called The Case of the Vanishing Grams for grade 5. Teach and assess NGSS 5-PS1-2, 5-PS1-4 and 5-PS1-3 and Common Core 5.NBT.B.7. Students are food chemists helping Chemist Yuki at a soda stall at the town fair. Inspector Brandt has found that the stall's fizzy lemon drink weighs less after mixing than its ingredients weighed before, and she wants an explanation by noon. Scenes: the fair stall, a pantry, a weigh station, a back kitchen and the inspector's desk. In the pantry three white powders have lost their labels: sugar, salt and baking soda. Students use vinegar, a magnifier and a warm pan on each and identify them from what fizzes, the crystal shape and what melts and browns. At the weigh station an instrument has a chooser for the change (dissolve sugar in water, melt ice, mix baking soda with vinegar), a switch for lid off or lid on, and a Run button; meters show weight before and weight after to the hundredth of a gram, and a graph shows weight over time. Ask for a prediction before each run. Wrong ideas to surprise: dissolved sugar is gone; melted ice weighs less; gas weighs nothing; any mixing makes something new. Use decimal sums such as 250.00 + 12.50 + 3.75 and losses such as 266.25 - 264.60. The back kitchen is a placeholder scene we will replace by hand with a close-up bench, so give it only an arrival line and an exit. Invent a twist where a lid that is not quite tight shows a slow leak on the graph. Students then choose the claim the evidence supports and present it to the inspector. Build scene at the stall: students place and label a sign showing where the grams went. Debrief: if you cannot see the gas, how do you know it has weight?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Fair Stall.** On-ramp. Yuki mixes a drink on the scale. The number drops as it fizzes. “Did you see that?”
+2. **Pantry.** Three powders, three tests. Which jar is the baking soda?
+3. **Weigh Station.** Six runs: three changes, lid off and lid on. Sugar water and melted ice do not lose a hundredth. Open fizz loses 1.65 g. Sealed fizz loses nothing.
+4. **The loose lid.** The twist. A slow slope on the graph instead of a drop.
+5. **Back Kitchen.** The close-up bench: pour, stir, heat, and boil sugar water dry to get the sugar back.
+6. **Inspector's Desk.** Make the claim. The stall gets its stamp. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Chemist Yuki" role="Guide.">“You say the sugar is gone. Then why does the scale still count it?”</Speaker>
+
+<Speaker name="Inspector Brandt" role="Firm and fair.">“I am not accusing anyone. I am asking where one point six five grams went.”</Speaker>
+
+<Speaker name="Deshawn" role="Runs the balloon stall next door and gives the hints.">“I fill balloons all day. Trust me, what is inside them is not nothing.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Powder tests: only one fizzes with vinegar, only one melts and browns in the pan, and the salt crystals are tiny cubes under the magnifier.
+- Prediction board: before each run students mark heavier, lighter or the same. The misses stay on the board.
+- The balloon: with the lid swapped for a balloon, the weight holds and the balloon swells.
+- New or not: sugar water is not new, because the sugar comes back. Fizz is new, because a gas appeared that was in neither jar.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Predict the weight after fizzing with twice the baking soda, lid on, then test it.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “If I stir a spoon of sugar into water until I cannot see it, does the cup weigh more, less or the same?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Solo or pairs. Insist on a prediction before each Run. Pause after the first sealed run and ask what the lid changed.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Students write one sentence to the inspector. The report shows each prediction and the decimal answers, which splits science gaps from arithmetic gaps.
+  </Card>
+  <Card title="Example" icon="star">
+    Do the real fizz in a zip bag the next day for the feel and the sound. Use the mission's numbers, not the classroom balance, as the evidence.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+This standard is hard to show honestly in a real classroom. School balances read to the gram, cups leak gas, and spills happen, so the real lab often seems to prove that matter vanished. Here the balance reads to a hundredth and the lid is a switch, so the only difference between losing 1.65 g and losing nothing is whether the gas could leave. A lecture states conservation and a video shows it, and students nod until they watch a real drink go flat. The real fizz is still worth doing for the senses, as the plan says.
+
+</BlueprintWhy>

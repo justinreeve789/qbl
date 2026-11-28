@@ -1,0 +1,126 @@
+---
+title: "One Sky, Two Views"
+description: "An island observatory must finish the fishing fleet's almanac. One teammate stands in the Orbit Room and moves a model Moon around the Earth; another stands on the Ground Deck and reports what the Moon looks like in the sky. Then two sliders, tilt and distance, settle what really causes the seasons."
+host:
+  who: gil
+  says: "One of you moves the Moon and the other reports the sky. Keep the wrong guesses, they are useful."
+  side: right
+blueprint:
+  number: 18
+  band: "6-8"
+  grades: "Grades 6-8"
+  subjects: [science, english]
+  about: "science and technical reading"
+  minutes: 50
+  players: "2 to 4"
+  icon: "🌗"
+  mechanic: "One teammate moves the Moon; another reports the sky"
+  edge: [D, F, A]
+  standards:
+    - code: "MS-ESS1-1"
+      part: "phases"
+      asks: "Use an Earth-sun-moon model to describe the cycle of lunar phases"
+      evidence: "Sets the Moon's position to produce each phase the deck observer calls for"
+    - code: "MS-ESS1-1"
+      part: "eclipses"
+      asks: "Use the model to describe eclipses"
+      evidence: "Finds why a flat orbit gives an eclipse every month and a tilted one does not"
+    - code: "MS-ESS1-1"
+      part: "seasons"
+      asks: "Use the model to describe seasons"
+      evidence: "Shows that tilt alone makes seasons and distance alone does not"
+    - code: "RST.6-8.7"
+      asks: "Combine information in words with a diagram or model"
+      evidence: "Matches almanac entries to the space-view diagram"
+  alsoFits: "Also fits 5-ESS1-2 for a grade 5 run, England Year 5 Earth and space and Key Stage 3 (seasons and the Earth's tilt), and Ontario Grade 6 Space."
+  settings:
+    grade: "6"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-ELA]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits 5-ESS1-2 for a grade 5 run, England Year 5 Earth and space and Key Stage 3 (seasons and the Earth's tilt), and Ontario Grade 6 Space. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="One Sky, Two Views: generator prompt"
+Make a mission called One Sky, Two Views for grades 6 to 8. Teach and assess NGSS MS-ESS1-1 (lunar phases, eclipses and seasons) and Common Core RST.6-8.7. Students are almanac makers working with Astronomer Leila at Lantern Rock Observatory, which must tell the island's fishing fleet when the nights will be bright and when the days will be long. Scenes: a ground deck outdoors at night, an orbit room, a season hall and an almanac desk. In the orbit room an instrument called the orrery shows the Sun, Earth and Moon from above; it has a slider that moves the Moon to eight positions around the Earth and a switch that makes the Moon's path flat or tilted by 5 degrees. It shows how much of the Moon's face is lit as seen from Earth and whether Earth's shadow falls on the Moon. The ground deck shows the Moon in the sky for the position the team has set, so one teammate moves the Moon while another reports what they see; show the shapes first and name the phases afterwards. In the season hall a second instrument has a slider for Earth's tilt from 0 to 30 degrees, a slider for Earth's distance from the Sun from 147 to 152 million kilometres and a chooser for the month; meters show the height of the noon Sun and the hours of daylight for a northern island and a southern island. Ask for predictions. Wrong ideas to surprise: phases are caused by Earth's shadow; the Moon between Earth and Sun looks full; summer comes when Earth is closest to the Sun (Earth is closest in early January); the Moon makes its own light. Invent a twist where fog hides the sky on the night the fleet sails, students predict the Moon from the model, and the fog clears to prove it. Build scene at the almanac desk: students place the eight Moon shapes in order and label where the Moon is for each. Debrief: why is there not an eclipse every month?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Ground Deck.** On-ramp. Look up. Tonight's Moon is a thin curve. Leila asks what it will look like in a week, and takes guesses.
+2. **Orbit Room.** The orrery. Free play, then the relay: “Give me a half Moon, lit on the right.”
+3. **Shadow test.** Students who blame Earth's shadow switch the path to flat and get an eclipse every single month.
+4. **Season Hall.** Tilt to zero, slide the distance, and nothing happens to the daylight. Tilt back, and north and south swap seasons.
+5. **Fog night.** The twist. Predict from the model, write it in the almanac, wait for the fog to lift.
+6. **Almanac Desk.** Build the phase chart. The fleet sails under the Moon the students predicted. Debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Astronomer Leila" role="Guide.">“You say the Earth's shadow takes a bite out of it. Fine. Where is the Earth's shadow pointing right now? Go and check.”</Speaker>
+
+<Speaker name="Skipper Onawa" role="Of the fleet.">“I do not need the reason. I need to know which night is bright. But my grandmother always knew the reason.”</Speaker>
+
+<Speaker name="Bram" role="The night assistant, gives the hints.">“Half the Moon is always lit. The question is how much of that half is facing us.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The relay: the deck observer describes a shape, and the orbit room teammate must find the position that makes it.
+- Position zero, Moon between Earth and Sun. Predicted full by most; seen as nothing at all.
+- Flat path against tilted path: count eclipses in twelve turns of the slider.
+- Seasons: find a setting where the northern island has long days in June. Then try to do it with distance alone.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+The almanac needs the date of the next full Moon after tonight's thin curve. Use the 29.5 day cycle.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Two questions on paper, no names: what causes the Moon's phases, and what causes summer? Keep the slips.
+  </Card>
+  <Card title="During" icon="laptop">
+    Pairs or fours, with partners in different scenes for the relay. Let students hold the shadow idea until the flat-path test breaks it.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Hand the slips back for students to correct their own. The report shows the predictions at position zero and in the season hall.
+  </Card>
+  <Card title="Example" icon="star">
+    Run it before the lamp-and-ball lesson. Students then use the real model to confirm what they found, instead of meeting it cold.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+The shadow idea for phases and the distance idea for seasons are famously durable, and many adults still hold them after years of being told otherwise. A lamp and a ball in a dark room is the standard hands-on answer and should stay in the unit. Its limits are that each student holds one viewpoint at a time, and nobody can switch the tilt off or pull the Earth closer to see what changes. Here the space view and the ground view are joined live between teammates, and tilt and distance are separate sliders. A month passes in a minute, and the student's own wrong prediction is the thing being tested.
+
+</BlueprintWhy>

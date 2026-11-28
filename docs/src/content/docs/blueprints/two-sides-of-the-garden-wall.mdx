@@ -1,0 +1,128 @@
+---
+title: "Two Sides of the Garden Wall"
+description: "A prize pumpkin was cracked the night before the fair. An old gardener and the girl next door each tell what happened, and both are honest, and both are wrong about part of it. Students walk the two gardens, stand where each narrator stood, and work out what each could not have seen."
+host:
+  who: pinta
+  says: "Two honest people, two different stories. Go and stand where each of them stood."
+  side: left
+blueprint:
+  number: 9
+  band: "3-5"
+  grades: "Grades 4-5"
+  subjects: [english]
+  about: "reading and writing"
+  minutes: 45
+  players: "1 to 4"
+  icon: "🎃"
+  mechanic: "Hear one night told twice; check each telling against the place"
+  edge: [E, G]
+  standards:
+    - code: "RL.4.6"
+      asks: "Compare points of view, including first and third person"
+      evidence: "Names who is telling each part and which words show it"
+    - code: "RL.5.6"
+      asks: "Describe how a narrator's point of view shapes how events are told"
+      evidence: "Separates what Mr. Okafor saw from what he guessed"
+    - code: "RL.4.3"
+      asks: "Describe a character in depth from thoughts, words and actions"
+      evidence: "Picks the details that show why Lita ran"
+    - code: "RL.4.1"
+      asks: "Refer to details when drawing inferences"
+      evidence: "Backs each conclusion with an object found in the gardens"
+    - code: "W.4.3"
+      asks: "Write a narrative with a clear narrator"
+      evidence: "Adds a narrated hotspot telling the night as the cat"
+  alsoFits: "Also fits England Years 5-6 reading (inferring feelings, thoughts and motives, and justifying with evidence)."
+  settings:
+    grade: "4"
+    subject: "English Language Arts"
+    frameworks: [CCSS-ELA]
+    players: "1-4"
+    opening: balanced
+    focus: balanced
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Years 5-6 reading (inferring feelings, thoughts and motives, and justifying with evidence). These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Two Sides of the Garden Wall: generator prompt"
+Make a mission called Two Sides of the Garden Wall for grades 4 to 5. Teach and assess Common Core RL.4.6, RL.5.6, RL.4.3, RL.4.1 and W.4.3. Students are fair stewards, whose job is to hear both sides and check each telling against the place, working for Steward Pilar on the morning of the harvest fair. The night before, Mr. Okafor's giant pumpkin was cracked. Scenes: Mr. Okafor's garden, his porch with a window, Lita's yard on the other side of a stone wall with a gate, and the fair tent. Use two short cutscenes with a memory tone. In the first, Mr. Okafor tells it in first person: at dusk he saw the girl next door in his garden, heard a crash, and decided she did it out of jealousy. In the second, ten-year-old Lita tells it in first person: her kite caught on his trellis, she climbed over to free it, the pumpkin was already cracked, and she ran because she was scared. Both are honest and both leave things out. The truth, found through evidence: the wind blew the old trellis down onto the pumpkin before Lita arrived. Evidence to find and inspect: a snapped trellis post, a dent that matches the beam, kite string on the trellis, footprints that stop at the wall, scattered leaves, and the view from Mr. Okafor's window, where a shed hides the trellis. Questions ask who is telling a part and how we know, what a narrator saw and what they guessed, and which detail shows a feeling. Wrong idea to surprise: if two tellings differ, one person is lying. Invent a twist where each narrator turns out to have left out one true detail. End with a third-person narrator telling the whole night. Build scene: students add a narrated hotspot that tells the night as Pepper the cat, using I. Debrief: why did two honest people tell it differently?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Fair Tent.** On-ramp. Pilar sets the job: “Hear both. Then go and look.” Students choose whom to hear first.
+2. **Mr. Okafor's porch.** His telling, as a memory. Then stand at his window. The shed blocks the trellis.
+3. **Lita's yard.** Her telling. The kite spool, the scuffed wall, her muddy shoes by the door.
+4. **The garden.** The snapped post, the dent, the leaves. Evidence is spread across both sides of the wall.
+5. **What they left out.** The twist. He skipped the storm warning he ignored. She skipped that she tugged the string hard.
+6. **Fair Tent again.** The third-person telling plays. The two neighbours repair the trellis together. Build and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Mr. Okafor">“I know what I saw. That girl was in my garden, and then I heard it go.”</Speaker>
+
+<Speaker name="Lita">“I was only getting my kite. I ran because I knew what he would think.”</Speaker>
+
+<Speaker name="Steward Pilar" role="Guide.">“He says he saw her. Did he say he saw her break it? Read his words again.”</Speaker>
+
+<Speaker name="Pepper" role="The cat, watches from the wall and says nothing until the students give her a voice." />
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Saw or guessed: students sort six of Mr. Okafor's sentences. “She was jealous” is a guess; “I heard a crash” is not.
+- The window: clicking it shows his exact view. Students answer what he could not see from there.
+- The ladder in Lita's yard reaches the kite, and the string leads back to the trellis post.
+- Who is telling? A line with I and my against a line with he and she.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Find the storm notice Mr. Okafor forgot to mention and decide whether it changes his story.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “If two people tell the same event differently, is one of them lying?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Half the class hears Mr. Okafor first and half hears Lita. Stop after the first telling and poll who is to blame. The split is the lesson.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Compare the polls. Read two or three approved cat hotspots aloud from the Student builds page. The report shows first-try rate on the saw-or-guessed sort.
+  </Card>
+  <Card title="Example" icon="star">
+    Use it before a novel with a strong first-person narrator, then ask of each chapter: what can this narrator not see?
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+On a page, point of view is an abstract label. Here it is a spot to stand on: from the porch window the trellis is hidden, so students see for themselves why an honest man got it wrong. Two printed passages and a comparison chart cover the same standards but give no way to check a narrator against the world. Drama and hot-seating are the strongest classroom rival and pair well with this. The mission adds evidence each student must find alone, and a spoken piece of first-person writing that stays in the garden for classmates to hear.
+
+</BlueprintWhy>

@@ -1,0 +1,127 @@
+---
+title: "Drift"
+description: "Aboard a 1960s research ship, students gather the evidence that continents move: the same fossil reptile on two coasts an ocean apart, a rock band that stops on one shore and starts again on the other, coal under Antarctic ice, and a young ridge down the middle of the sea floor. Then they face a respected professor who says a land bridge explains it all."
+host:
+  who: riona
+  says: "Collect the evidence on three coasts, then convince a professor who is sure you are wrong."
+  side: left
+blueprint:
+  number: 19
+  band: "6-8"
+  grades: "Grades 6-8"
+  subjects: [science, english]
+  about: "science and argument from evidence"
+  minutes: 50
+  players: "2 to 4"
+  icon: "🌍"
+  mechanic: "Collect matching fossils on far coasts; map the sea floor; win a debate"
+  edge: [B, A, F]
+  standards:
+    - code: "MS-ESS2-3"
+      asks: "Interpret data on fossils, rocks, continental shapes and sea-floor structures as evidence of plate motion"
+      evidence: "Matches samples across coasts; maps the ridge and rock ages by sonar"
+    - code: "MS-ESS2-2"
+      asks: "Explain how slow processes change Earth's surface over long times"
+      evidence: "Works out the distance moved at 2.5 cm a year over 100 million years"
+    - code: "MS-ESS1-4"
+      asks: "Use rock strata and the geologic time scale to organise Earth's history"
+      evidence: "Places the fossils and rock ages on a time ribbon"
+    - code: "RST.6-8.1"
+      asks: "Cite specific evidence to support analysis"
+      evidence: "Chooses the evidence that answers each of the professor's objections"
+  alsoFits: "Also fits England Key Stage 3 geography (plate tectonics and geological timescales)."
+  settings:
+    grade: "7"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-ELA]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Key Stage 3 geography (plate tectonics and geological timescales). These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+The fossils are real: Mesosaurus, a freshwater reptile, is found in southern Africa and South America, and Glossopteris leaves are found across the southern continents, Antarctica included.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Drift: generator prompt"
+Make a mission called Drift for grades 6 to 8. Teach and assess NGSS MS-ESS2-3, MS-ESS2-2 and MS-ESS1-4 and Common Core RST.6-8.1. Students are young geologists on the research ship Meridian in the 1960s, working with Chief Scientist Dr. Marisol Quispe. Scenes: the ship's deck with a map table, a cliff on the coast of Brazil, a cliff on the coast of south-west Africa, an icy ridge in Antarctica, a sonar room and a science society hall. The three shore scenes are reached by launch in any order and evidence is spread across them so teams split up. On the Brazil cliff students collect a cast of Mesosaurus, a small freshwater reptile, and half of a banded rock sample. On the African cliff they collect a matching Mesosaurus cast and the other half of the banded rock. The two casts combine into one evidence card and so do the two rock halves. In Antarctica they find Glossopteris leaf fossils and a coal seam under the ice. In the sonar room an instrument has a slider for the ship's position across the Atlantic and shows sea-floor depth and the age of the rock below; students discover a ridge in the middle with the youngest rock and older rock toward both coasts. Do all this before naming plate tectonics. Wrong ideas to surprise: continents have always been where they are; the reptile swam across; movement of a few centimetres a year is too slow to matter. Have students calculate 2.5 cm a year for 100 million years. Invent a twist in the hall where Professor Hale, a fair and respected sceptic, argues that a sunken land bridge explains the fossils; students use the sonar data to test it, and he changes his mind. Students choose which evidence answers each objection. Build scene at the map table: students fit continent pieces together and label each join with its evidence. Debrief: which single piece of evidence would you show a doubter first, and why?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Ship's Deck.** On-ramp. The map table shows today's Atlantic. Dr. Quispe slides two paper coasts together. “Coincidence?”
+2. **Brazil, Africa, Antarctica.** Any order. Casts, rock halves, leaf fossils, coal. Penguins walk by; the launch rocks at anchor.
+3. **Back aboard.** Combine the halves. The bands line up across an ocean.
+4. **Sonar Room.** Sweep the Atlantic. A mountain range nobody has seen, with the youngest rock at its crest.
+5. **Society Hall.** The twist. Professor Hale's land bridge. Students answer with data.
+6. **Map Table.** Build the old supercontinent, then the debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Dr. Marisol Quispe" role="Guide.">“A freshwater reptile the size of a cat. Do you think it swam three thousand miles of salt sea?”</Speaker>
+
+<Speaker name="Professor Hale" role="Sceptic.">“A bridge of land, since sunk. It is the simplest answer. Show me why I should give it up.” And later: “I was wrong, and I am glad to know it.”</Speaker>
+
+<Speaker name="Kofi" role="Sonar operator, gives the hints.">“If a bridge had sunk here, what would my screen show? And what does it show?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Two half-samples from two continents make one rock when combined. The item's description changes to say so.
+- Coal forms from swamp plants. Students explain what coal under ice means.
+- Sonar: find the shallowest point, then read the rock ages on each side of it. They mirror each other.
+- The sum: 2.5 cm a year for 100 million years is 2,500 km. Small steps, large result.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Use the rock ages to estimate when Brazil and Africa were last joined.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Show a world map. “Has it always looked like this? How would anyone know?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Split teams across the three shores. Before the hall, ask each team to rank their evidence from strongest to weakest.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Hold the debrief question as a class vote. The report shows which evidence each student chose against each objection.
+  </Card>
+  <Card title="Example" icon="star">
+    Give out the paper continent puzzle afterwards. Students now label every join with the evidence they collected themselves.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+The evidence for plate motion sits on four continents and under three kilometres of water, and it took scientists half a century to accept. The usual classroom activity, fitting paper continents together, covers the shapes and hands the rest over on a sheet. Here students collect each piece, split across coasts so that no one holds the whole case, and then have to defend it against a good counter-argument. That is the practice the standard names: interpreting data as evidence. A documentary tells the story well, but it gives the conclusion away before the student has had to argue for it.
+
+</BlueprintWhy>

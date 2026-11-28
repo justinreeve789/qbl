@@ -1,0 +1,73 @@
+---
+// The seven advantages, one card each, with the blueprints that lean on it. Each card can be linked
+// to as #advantage-a ... #advantage-g (BlueprintWhy.astro does).
+import { ADVANTAGES, EDGE_ORDER, blueprints, href } from './lib';
+
+const all = await blueprints();
+---
+
+<ul class="bp-adv not-content">
+  {EDGE_ORDER.map((letter) => {
+    const a = ADVANTAGES[letter];
+    const used = all.filter((e) => e.data.blueprint.edge.includes(letter));
+    return (
+      <li id={`advantage-${letter.toLowerCase()}`}>
+        <div class="bp-adv__head">
+          <span class="bp-adv__icon" aria-hidden="true">{a.icon}</span>
+          <p class="bp-adv__name"><span>Advantage {letter}</span>{a.name}</p>
+        </div>
+        <p class="bp-adv__means">{a.means}</p>
+        <p class="bp-adv__features"><strong>In the engine:</strong> {a.features}</p>
+        <p class="bp-adv__used">
+          <strong>{used.length} blueprints:</strong>{' '}
+          {used.map((e, i) => (
+            <Fragment>{i > 0 && ', '}<a href={href(e.id)} title={e.data.title}>{e.data.blueprint.icon} {e.data.blueprint.number}</a></Fragment>
+          ))}
+        </p>
+      </li>
+    );
+  })}
+</ul>
+
+<style>
+  .bp-adv {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 1rem;
+    margin: 1.25rem 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--sl-color-gray-6) 55%, transparent);
+    scroll-margin-top: 5rem;
+  }
+  li:target { border-color: var(--sl-color-accent-high); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sl-color-accent) 40%, transparent); }
+  .bp-adv__head { display: flex; align-items: center; gap: 0.7rem; }
+  .bp-adv__icon {
+    display: grid;
+    place-items: center;
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 0.8rem;
+    font-size: 1.6rem;
+    line-height: 1;
+    background: color-mix(in srgb, var(--sl-color-accent-low) 60%, var(--sl-color-bg));
+    border: 1.5px solid color-mix(in srgb, var(--sl-color-accent) 60%, transparent);
+  }
+  .bp-adv__name { margin: 0; font-size: var(--sl-text-lg); font-weight: 700; line-height: 1.2; color: var(--sl-color-white); }
+  .bp-adv__name span {
+    display: block;
+    font-size: var(--sl-text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sl-color-accent-high);
+  }
+  .bp-adv__means { margin: 0.7rem 0 0; color: var(--sl-color-white); line-height: 1.5; }
+  .bp-adv__features, .bp-adv__used { margin: 0.5rem 0 0; font-size: var(--sl-text-sm); color: var(--sl-color-gray-2); line-height: 1.6; }
+  .bp-adv__used a { white-space: nowrap; }
+</style>

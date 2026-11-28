@@ -1,0 +1,122 @@
+---
+title: "Signal Hill"
+description: "A boat is waiting outside a rocky bay at night. Students learn that nothing can be seen without light, test what light passes through, and then build a signal between two towers that only works when teammates stand at both lamps."
+host:
+  who: asimov
+  says: "Real darkness, a real bay, and a teammate you cannot shout to. The light has to do the talking."
+  side: right
+blueprint:
+  number: 2
+  band: "K-2"
+  grades: "Grade 1"
+  subjects: [science, engineering]
+  about: "science and engineering"
+  minutes: 40
+  players: "2 to 4"
+  icon: "🔦"
+  mechanic: "True darkness; materials in a light beam; signal a teammate across a bay"
+  edge: [B, F]
+  standards:
+    - code: "1-PS4-2"
+      asks: "Objects in darkness can be seen only when lit"
+      evidence: "Finds the crate in the sea cave only after hanging the lantern"
+    - code: "1-PS4-3"
+      asks: "Test the effect of different materials in a beam of light"
+      evidence: "Predicts, then tests glass, wax paper, wood and a mirror"
+    - code: "1-PS4-4"
+      asks: "Build a device that uses light or sound to communicate over a distance"
+      evidence: "Sends the two-flash code tower to tower, then by bell in fog"
+    - code: "K-2-ETS1-1"
+      asks: "Define a simple problem from a situation people want to change"
+      evidence: "Picks out the problem: the rock blocks the beam"
+  alsoFits: "Also fits England Year 3 Light (dark is the absence of light; light is reflected from surfaces). Supports Common Core SL.1.1 through partner talk."
+  settings:
+    grade: "1"
+    subject: "Science"
+    frameworks: [NGSS]
+    players: "2-4"
+    opening: action
+    focus: play
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Year 3 Light (dark is the absence of light; light is reflected from surfaces). Supports Common Core SL.1.1 through partner talk. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Signal Hill: generator prompt"
+Make a mission called Signal Hill for grade 1. Teach and assess NGSS 1-PS4-2, 1-PS4-3, 1-PS4-4 and K-2-ETS1-1. Students are junior lighthouse keepers helping Keeper Bao guide Captain Rosa's boat into a rocky bay at night. Scenes: a lantern shed, a pitch-dark sea cave, a beam bench room, the North Tower top and the South Tower top at night, and a harbour wall. Use lights that switch on only after an interaction, so the cave shows nothing until students hang the lantern on a hook. At the beam bench students use four things in the path of a light beam, one at a time: clear glass, wax paper, a wood board and a mirror. The far lamp glows bright, dim, not at all, or the beam bounces to the side wall. Ask for a prediction before each. A tall rock blocks the straight line between the towers, so students place the mirror on the rock to bounce the beam. A team task needs one player at each tower lamp at the same time to send the code: one flash means come in, two flashes mean wait. Wrong ideas to surprise: eyes can see in total dark after a while; light goes through anything thin. Invent a twist where fog rolls in and the light fails, so the team must switch to the bell. Build scene on the harbour wall: students place lamps, mirrors and labels to show their own signal code. Every line is very short and read aloud. Debrief: why did the bell work when the light did not?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Lantern Shed.** On-ramp. The shed is dim. Click the lamp and the tools appear. Take the lantern.
+2. **Sea Cave.** Black screen except the avatar. Hang the lantern on the hook and the crate of lamp glass shows.
+3. **Beam Bench.** Four materials, four predictions, four tests. The mirror surprise sets up the tower puzzle.
+4. **North Tower and South Tower.** Night, sea far below. The rock blocks the beam. Place the mirror. Send the code together.
+5. **Fog.** The twist. The far lamp fades out. Ring the bell: one ring, two rings.
+6. **Harbour Wall.** The boat docks, lamps light along the wall, then the build scene and debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Keeper Bao" role="Guide.">“It is dark in the cave. What do you think you will see? Go and look.”</Speaker>
+
+<Speaker name="Scuttle" role="A crab who gives the hints.">“Click, click. The light hit the wood and stopped. What could send it around?”</Speaker>
+
+<Speaker name="Captain Rosa" role="Heard by radio.">“I see one flash! Is that come in or wait? Tell me again.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The cave crate cannot be clicked until the lantern is lit, because unlit hotspots do not exist yet.
+- At the bench, the wax paper gives a dim glow. Students sort the four materials into all, some and none.
+- The tower code fails if only one lamp is staffed. The other player's lamp is shown as a far light that turns on when they act.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Make up a third signal for “storm coming” and teach it to a teammate without using chat.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “If we turned off every light and covered the windows, could you still see your hand?” Most say yes, after a while.
+  </Card>
+  <Card title="During" icon="laptop">
+    Seat teammates apart so they must use the signal. Stop after the Beam Bench and sort real objects from the room into all, some, none.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Ask the fog question. In the report, check the four bench predictions against first tries to see who still thinks thin means see-through.
+  </Card>
+  <Card title="Example" icon="star">
+    Run it mid-unit, then hand out torches and the same four materials so children repeat the bench test for real.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A classroom cannot be made truly dark, and one glowing exit sign teaches the wrong lesson: children conclude they can see without light. The cave here is completely black until the lantern is lit. A classroom also cannot put a bay, a rock and fog between two partners, so a real signalling task ends in shouting across the room. Here the teammate is in another scene and the signal is the only link. Torches and wax paper are the better tool for the materials test itself, which is why the plan repeats it for real.
+
+</BlueprintWhy>

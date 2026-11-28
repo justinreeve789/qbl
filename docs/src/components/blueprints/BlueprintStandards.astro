@@ -1,0 +1,44 @@
+---
+// The standards a blueprint teaches and what students do that shows each one, from the page's
+// frontmatter. Use it once in a blueprint page: <BlueprintStandards />
+import StandardCode from './StandardCode.astro';
+
+const b = Astro.locals.starlightRoute.entry.data.blueprint;
+if (!b) throw new Error('BlueprintStandards: this page has no `blueprint:` in its frontmatter');
+---
+
+<table class="bp-standards">
+  <thead>
+    <tr><th scope="col">Standard</th><th scope="col">What it asks</th><th scope="col">Evidence in the mission</th></tr>
+  </thead>
+  <tbody>
+    {b.standards.map((s) => (
+      <tr>
+        <th scope="row">
+          <StandardCode code={s.code} />
+          {s.part && <span class="bp-standards__tag">{s.part}</span>}
+          {s.bonus && <span class="bp-standards__tag bp-standards__tag--bonus">optional harder objective</span>}
+        </th>
+        <td data-label="What it asks">{s.asks}</td>
+        <td data-label="Evidence in the mission">{s.evidence}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+<style>
+  .bp-standards th[scope='row'] { font-weight: 400; vertical-align: top; }
+  .bp-standards td { vertical-align: top; }
+  .bp-standards__tag {
+    display: block;
+    width: fit-content;
+    margin-top: 0.3rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    font-size: var(--sl-text-xs);
+    font-weight: 600;
+    color: var(--sl-color-white);
+    background: var(--sl-color-gray-5);
+  }
+  .bp-standards__tag--bonus { background: color-mix(in srgb, #f59f00 30%, transparent); border: 1px solid color-mix(in srgb, #f59f00 60%, transparent); }
+</style>

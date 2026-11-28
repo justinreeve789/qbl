@@ -1,0 +1,125 @@
+---
+title: "The Moths of Ashgrove"
+description: "Students step from a museum into a mill town in 1850 and again in 1900. In each wood they play a hungry robin and catch the moths they can see. Their own catches change which moths are left to breed, and over generations the wood's moths change colour without any single moth changing at all."
+host:
+  who: mallory
+  says: "Your class will be the hungry birds. Nobody plans to change the moths, and they change anyway."
+  side: left
+blueprint:
+  number: 15
+  band: "6-8"
+  grades: "Grades 6-8"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🦋"
+  mechanic: "Play the hungry bird; watch the population shift over generations"
+  edge: [A, D]
+  standards:
+    - code: "MS-LS4-4"
+      asks: "Explain how variation in traits changes the chance of surviving and reproducing in a given environment"
+      evidence: "Explains the catch tallies in clean and sooty woods"
+    - code: "MS-LS4-6"
+      asks: "Use mathematical representations to show how natural selection shifts traits in a population over time"
+      evidence: "Reads and predicts the percent-dark graph across generations"
+    - code: "7.SP.C.6"
+      asks: "Estimate a probability from collected data and predict a relative frequency"
+      evidence: "Uses 16 dark out of 20 caught to predict the catch in 200"
+  alsoFits: "Also fits England Key Stage 3 biology (variation and natural selection) and Year 6 Evolution and inheritance, and links to the Industrial Revolution in history."
+  settings:
+    grade: "7"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: rigor
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Key Stage 3 biology (variation and natural selection) and Year 6 Evolution and inheritance, and links to the Industrial Revolution in history. These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+The story follows the real peppered moth; a biology teacher should check the model before publishing.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Moths of Ashgrove: generator prompt"
+Make a mission called The Moths of Ashgrove for grades 6 to 8. Teach and assess NGSS MS-LS4-4 and MS-LS4-6 and Common Core 7.SP.C.6. Students are field naturalists working with Dr. Farouk at a museum, who sends them through a time door to the invented mill town of Ashgrove. Scenes: a museum drawer room; Clean Wood in 1850, with pale lichen on the tree trunks; Mill Lane in 1900, smoky; Sooty Wood in 1900, with black trunks; a study; and the same wood in 1970 after clean-air laws. In each wood students play a hungry robin and must collect ten moths for the nest. Moths come in two forms, pale and dark. Make the form that matches the bark hidden, found only from close up, and the other form easy to see. The team's catches go into a shared tally. Do this before any explanation. In the study an instrument has a slider for bark colour from pale to sooty, a slider for the starting percent of dark moths, and a Next generation button; a graph shows percent dark over ten generations. Ask for predictions. Wrong ideas to surprise: a single moth turns dark because of the soot or because it needs to; the dark form first appeared after the mills came; the strongest survive. For the first, students release a marked pale moth on a sooty trunk and return the next day to find it still pale, and gone the day after. For the second, the 1848 museum drawer already holds two dark moths among many pale ones. Use the tally for probability: 16 dark out of 20 caught, so how many in 200? Invent a twist in 1970 where the air is clean again and students predict which way the moths will go. Build scene in the museum: students place moths along a timeline and label what changed and what did not. Debrief: did any moth change colour?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Drawer Room.** On-ramp. Open the 1848 drawer. Mostly pale moths, two dark. Dr. Farouk only says: “Remember those two.”
+2. **Clean Wood, 1850.** The hunt. Dark moths stand out on pale bark and fill the tally.
+3. **Mill Lane and Sooty Wood, 1900.** The hunt again. Now the pale ones are the easy meal.
+4. **The marked moth.** Release, wait a day, check. It never changes.
+5. **Study.** The generations instrument. Students drive the graph both ways.
+6. **Ashgrove, 1970.** The twist. Lichen is back. Predict, then run it.
+7. **Museum.** Build the timeline display, then the debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Dr. Farouk" role="Guide.">“Nobody told you to pick the dark ones. So why is your bag full of them?”</Speaker>
+
+<Speaker name="Hettie" role="A mill girl in 1900, voices the common view.">“Everyone knows the smoke turns them black. Same as it does the washing.”</Speaker>
+
+<Speaker name="Mr. Alder" role="An old collector, gives the hints.">“Count what you caught. Then count what you left behind. Who gets to lay the eggs?”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The hunt has no trick. Students simply take what they can see, and the tally does the teaching.
+- Hettie's claim becomes a test: the marked pale moth on the sooty trunk.
+- Probability: 16 of 20 is 0.8, so about 160 of 200. Then compare with the team's real tally and discuss the gap.
+- On the instrument, start at 5 percent dark on sooty bark. How many generations to pass 50 percent?
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Set a bark colour where neither form wins, and explain why the graph goes flat.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “A white moth lives in a sooty town. What happens to it over its life?” Collect answers without comment.
+  </Card>
+  <Card title="During" icon="laptop">
+    Teams hunt together; the shared tally needs everyone's catches. Stop after Sooty Wood and compare tallies across teams.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Put Hettie's sentence on the board and have pairs rewrite it so it is true. The report shows each student's prediction for the marked moth.
+  </Card>
+  <Card title="Example" icon="star">
+    Pair it with the paper-dot hunt on newspaper. The paper version gives the feel in one generation; the mission gives ten generations and the reversal.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+The idea that individuals change because they need to survives most explanations, because it matches everyday sense. Here students are the cause of the change and never intended it, which is hard to argue with afterwards. Real generations take years. The paper-dot activity is a good classroom rival for a single round, but breeding the survivors by hand eats a lesson per generation and small counts wobble. Here ten generations run in a minute, the bark can be changed back, and the tally belongs to the students. A video tells the moth story well and leaves the wrong idea untouched.
+
+</BlueprintWhy>

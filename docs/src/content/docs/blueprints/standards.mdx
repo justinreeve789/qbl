@@ -1,0 +1,67 @@
+---
+title: "Standards and objectives"
+description: "Every standard the 24 mission blueprints teach, with a link to where each one is published and to the blueprints that teach it."
+host:
+  who: gil
+  says: "Every code on a blueprint is a link. Here they all are in one place, with the missions that teach each one."
+  side: right
+---
+import { Aside } from '@astrojs/starlight/components';
+import Crosswalk from '../../../components/blueprints/Crosswalk.astro';
+import StandardsIndex from '../../../components/blueprints/StandardsIndex.astro';
+import { FRAMEWORKS, OTHER_CURRICULA } from '../../../components/blueprints/standards';
+
+The blueprints are written to four frameworks: the <a href={FRAMEWORKS.ngss.home}>Next Generation Science Standards</a>, the <a href={FRAMEWORKS['ccss-math'].home}>Common Core</a> for mathematics and for English language arts and literacy, and the <a href={FRAMEWORKS.c3.home}>C3 Framework</a> for social studies. Each table below lists the standards the set teaches, in grade order.
+
+**What it asks** is a short paraphrase. Follow the code for the standard's own words.
+
+<Aside type="note" title="Where the links go">
+- **NGSS** codes open that performance expectation on nextgenscience.org.
+- **Common Core** codes open the official PDF at the page the standard is printed on. The Common Core site no longer has a page for each standard.
+- **C3** indicators have no pages of their own, so each code opens the framework.
+
+Every NGSS address was opened, and every Common Core standard was found in the PDF by its own wording, on 27 November 2026.
+</Aside>
+
+## Next Generation Science Standards
+
+<StandardsIndex framework="ngss" />
+
+## Common Core: Mathematics
+
+<StandardsIndex framework="ccss-math" />
+
+## Common Core: English Language Arts and Literacy
+
+This table includes the literacy standards for history (RH) and for science and technical subjects (RST).
+
+<StandardsIndex framework="ccss-ela" />
+
+## C3 Framework for social studies
+
+<StandardsIndex framework="c3" />
+
+The C3 indicator codes were written from the framework and have not been checked against a loaded copy. If the C3 Framework is not in your standards library, align [Market Day at Three Rivers](/docs/blueprints/market-day-at-three-rivers/) to your own economics strand.
+
+## Other curricula
+
+Most blueprints also name the part of another curriculum they fit. These are matches **by topic**, written from the published curricula, and no codes have been checked. Look each one up before you rely on it.
+
+<ul>
+  {OTHER_CURRICULA.map((c) => <li><a href={c.url}>{c.name}</a></li>)}
+</ul>
+
+<Crosswalk />
+
+## In the standards library
+
+QuestLab keeps the standards of every US state, the Common Core, NGSS, Canada and the UK in its [standards library](/docs/codebase/standards-library/), and a mission is aligned to items in it. The blueprints have **not** been aligned yet, because none has been generated.
+
+When you generate one from the command line, name its codes with `--standard=` and the generator builds the mission around exactly those. [Running the prompts](/docs/blueprints/run-the-prompts/#on-the-command-line) shows how. To look a code up first:
+
+```bash
+php artisan qbl:standards search "fraction as a number on the number line" --grade=3 --subject=mathematics
+php artisan qbl:standards history 3.NF.A.2 --jurisdiction=US-CCSS
+```
+
+The library also holds each state's own copy of the Common Core and NGSS standards, linked to the original, so one alignment can serve many states.

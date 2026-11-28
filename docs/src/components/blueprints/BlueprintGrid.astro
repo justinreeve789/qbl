@@ -1,0 +1,116 @@
+---
+// The cards for one grade band on the overview page: <BlueprintGrid band="K-2" />
+// SubjectFilter.astro hides the cards that do not match the subject a reader picks.
+import { SUBJECTS, blueprints, href, tones, type Band } from './lib';
+
+interface Props {
+  band: Band;
+}
+
+const { band } = Astro.props;
+const list = (await blueprints()).filter((e) => e.data.blueprint.band === band);
+---
+
+<ul class="bp-grid not-content" data-bp-grid>
+  {list.map((e) => {
+    const b = e.data.blueprint;
+    const codes = b.standards.map((s) => s.code).filter((c, i, all) => all.indexOf(c) === i);
+    return (
+      <li class="bp-card" style={tones(b)} data-bp-card data-subjects={b.subjects.join(' ')}>
+        <a href={href(e.id)}>
+          <span class="bp-card__top">
+            <span class="bp-card__icon" aria-hidden="true">{b.icon}</span>
+            <span class="bp-card__num">{String(b.number).padStart(2, '0')}</span>
+          </span>
+          <span class="bp-card__title">{e.data.title}</span>
+          <span class="bp-card__meta">{b.grades} · {b.minutes} min · {b.players} players</span>
+          <span class="bp-card__mechanic">{b.mechanic}</span>
+          <span class="bp-card__subjects">
+            {b.subjects.map((s) => <span style={`--chip: ${SUBJECTS[s].color}`}>{SUBJECTS[s].label}</span>)}
+          </span>
+          <span class="bp-card__codes">{codes.slice(0, 4).join(' · ')}{codes.length > 4 ? ` · +${codes.length - 4}` : ''}</span>
+        </a>
+      </li>
+    );
+  })}
+  <li class="bp-grid__none" hidden>No blueprint in this band for that subject yet.</li>
+</ul>
+
+<style>
+  .bp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr));
+    gap: 1rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .bp-card[hidden] { display: none; }
+  .bp-card a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    height: 100%;
+    padding: 1rem 1.05rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--tone) 40%, var(--sl-color-gray-5));
+    border-radius: 1rem;
+    background:
+      radial-gradient(130% 90% at 0% 0%, color-mix(in srgb, var(--tone) 22%, transparent), transparent 62%),
+      radial-gradient(110% 80% at 100% 100%, color-mix(in srgb, var(--tone2) 16%, transparent), transparent 60%),
+      var(--sl-color-bg);
+    box-shadow: 0 3px 0 color-mix(in srgb, var(--tone) 26%, transparent);
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+    transition: translate 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .bp-card a:hover, .bp-card a:focus-visible {
+    translate: 0 -3px;
+    border-color: var(--tone);
+    box-shadow: 0 6px 0 color-mix(in srgb, var(--tone) 34%, transparent);
+  }
+  .bp-card__top { display: flex; align-items: flex-start; justify-content: space-between; }
+  .bp-card__icon {
+    display: grid;
+    place-items: center;
+    width: 3.1rem;
+    height: 3.1rem;
+    border-radius: 0.9rem;
+    font-size: 1.75rem;
+    line-height: 1;
+    background: color-mix(in srgb, var(--tone) 16%, var(--sl-color-bg));
+    border: 1.5px solid color-mix(in srgb, var(--tone) 50%, transparent);
+    rotate: -4deg;
+  }
+  .bp-card__num {
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-sm);
+    font-weight: 700;
+    color: color-mix(in srgb, var(--tone) 60%, var(--sl-color-gray-3));
+  }
+  .bp-card__title { margin-top: 0.35rem; font-size: var(--sl-text-lg); font-weight: 700; line-height: 1.25; color: var(--sl-color-white); }
+  .bp-card__meta { font-size: var(--sl-text-xs); font-weight: 600; color: var(--sl-color-gray-2); }
+  .bp-card__mechanic { flex: 1; font-size: var(--sl-text-sm); line-height: 1.45; }
+  .bp-card__subjects { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }
+  .bp-card__subjects span {
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    font-size: var(--sl-text-xs);
+    font-weight: 600;
+    color: var(--sl-color-white);
+    background: color-mix(in srgb, var(--chip) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--chip) 55%, transparent);
+  }
+  .bp-card__codes {
+    margin-top: 0.15rem;
+    font-family: var(--__sl-font-mono);
+    font-size: 0.7rem;
+    line-height: 1.5;
+    color: var(--sl-color-gray-3);
+  }
+  :global([data-theme='light']) .bp-card__codes { color: var(--sl-color-gray-2); }
+  .bp-grid__none { grid-column: 1 / -1; padding: 0.75rem 0; color: var(--sl-color-gray-3); font-size: var(--sl-text-sm); }
+  @media (prefers-reduced-motion: reduce) {
+    .bp-card a { transition: none; }
+    .bp-card a:hover, .bp-card a:focus-visible { translate: none; }
+  }
+</style>

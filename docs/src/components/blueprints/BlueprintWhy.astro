@@ -1,0 +1,59 @@
+---
+// The closing argument of a blueprint page: the advantages it leans on (frontmatter `edge`), each
+// linked to its place on the "why" page, then the case in words.
+//   <BlueprintWhy> A real day takes a day... </BlueprintWhy>
+import { ADVANTAGES, href } from './lib';
+
+const b = Astro.locals.starlightRoute.entry.data.blueprint;
+if (!b) throw new Error('BlueprintWhy: this page has no `blueprint:` in its frontmatter');
+---
+
+<div class="bp-why">
+  <ul class="bp-why__edges not-content">
+    {b.edge.map((letter) => (
+      <li>
+        <a href={href('blueprints/why-questlab', `advantage-${letter.toLowerCase()}`)}>
+          <span class="bp-why__icon" aria-hidden="true">{ADVANTAGES[letter].icon}</span>
+          <span><span class="bp-why__letter">Advantage {letter}</span>{ADVANTAGES[letter].name}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+  <slot />
+</div>
+
+<style>
+  .bp-why {
+    margin-block: 1rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--sl-color-accent) 55%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--sl-color-accent-low) 45%, var(--sl-color-bg));
+  }
+  .bp-why__edges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.9rem; padding: 0; list-style: none; }
+  .bp-why__edges a {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.4rem 0.8rem 0.4rem 0.55rem;
+    border-radius: 0.8rem;
+    border: 1.5px solid color-mix(in srgb, var(--sl-color-accent) 60%, transparent);
+    background: var(--sl-color-bg);
+    color: var(--sl-color-white);
+    font-weight: 700;
+    font-size: var(--sl-text-sm);
+    line-height: 1.25;
+    text-decoration: none;
+  }
+  .bp-why__edges a:hover, .bp-why__edges a:focus-visible { border-color: var(--sl-color-accent-high); }
+  .bp-why__icon { font-size: 1.5rem; line-height: 1; }
+  .bp-why__letter {
+    display: block;
+    font-size: var(--sl-text-xs);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--sl-color-gray-2);
+  }
+  .bp-why :global(> p:last-child) { margin-bottom: 0; }
+</style>

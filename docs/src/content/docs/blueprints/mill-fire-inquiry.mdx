@@ -1,0 +1,128 @@
+---
+title: "The Mill Fire Inquiry"
+description: "A museum plaque from 1954 blames a night watchman for the 1904 Calder Mill fire. His great-granddaughter asks the museum to look again. Students find seven sources in an archive, a ruin and a newspaper office, work out who wrote each and why, and write a new plaque that claims only what the evidence supports."
+host:
+  who: pinta
+  says: "Before you tell me what it says, tell me who wrote it and what they wanted."
+  side: left
+blueprint:
+  number: 21
+  band: "6-8"
+  grades: "Grades 6-8"
+  subjects: [history, english]
+  about: "history and literacy"
+  minutes: 50
+  players: "2 to 4"
+  icon: "📜"
+  mechanic: "Find, source and cross-check documents about a 1904 fire"
+  edge: [B, F, G]
+  standards:
+    - code: "RH.6-8.1"
+      asks: "Cite specific evidence from primary and secondary sources"
+      evidence: "Attaches a source to every line of the new plaque"
+    - code: "RH.6-8.6"
+      asks: "Identify what reveals an author's point of view or purpose"
+      evidence: "Spots the loaded words and the motive in the owner's letter"
+    - code: "RH.6-8.8"
+      asks: "Tell fact from opinion from reasoned judgment"
+      evidence: "Sorts nine sentences drawn from the sources"
+    - code: "RH.6-8.9"
+      asks: "Analyse how a primary and a secondary source on one topic relate"
+      evidence: "Finds that the 1954 history copied the owner's letter"
+  alsoFits: "Also fits the C3 Framework's history indicators on sourcing and evidence, England Key Stage 3 history (methods of historical enquiry), and the Ontario Grades 7-8 historical inquiry process."
+  settings:
+    grade: "7"
+    subject: "Social Studies"
+    frameworks: [CCSS-ELA]
+    players: "2-4"
+    opening: balanced
+    focus: rigor
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits the C3 Framework's history indicators on sourcing and evidence, England Key Stage 3 history (methods of historical enquiry), and the Ontario Grades 7-8 historical inquiry process. These are matches by topic, not checked codes.
+
+<Aside type="note" title="Good to know">
+The fire and the town are invented so the case carries no local baggage.
+</Aside>
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Mill Fire Inquiry: generator prompt"
+Make a mission called The Mill Fire Inquiry for grades 6 to 8. Teach and assess Common Core RH.6-8.1, RH.6-8.6, RH.6-8.8 and RH.6-8.9. Students are junior archivists working with Archivist Roshan at a town museum. A 1954 plaque blames the 1904 Calder Mill fire on the carelessness of the night watchman, Tomasz Wolski. His great-granddaughter asks the museum to look again. Scenes: the museum hall, an archive basement underground, the mill ruins, a newspaper office and the great-granddaughter's porch, where family memory is one more voice to weigh. Seven sources are spread across the scenes so teams split up; each is an item with a short text: the mill owner's letter to his insurer, full of loaded words; the fire brigade log with times and a note that the yard had no water; a newspaper editorial that is all opinion; a mill girl's diary, first-hand but from one room; a payroll ledger showing the watchman on a second sixteen-hour night and the barrels removed on the owner's order; a 1954 town history that copies the owner's letter; and an insurance map showing the fire began far from the watchman's hut. Bag puzzles: a hidden cabinet key, a magnifier for a faded date, two torn letter halves to combine. Questions ask who wrote it and why, what they could not see, and whether a sentence is fact, opinion or reasoned judgment. A timeline exposes a clash: the letter says the watchman slept until ten; the log records the alarm at 9:40. Wrong ideas to surprise: older and official sources are the most reliable; a printed history is independent of the sources it used; if the watchman was not to blame, the owner must have done it. Invent a twist where a lost diary page upsets the team's favourite theory. The best-supported conclusion is modest: cause unknown, the watchman raised the alarm, the missing water made it worse. Build scene: students write the new plaque and add a hotspot citing their best source. Debrief: why did the 1954 book get it wrong?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Museum Hall.** On-ramp. Read the plaque. Meet Mrs. Wolska-Reed, who says only: “That is not the story my family tells.”
+2. **Archive Basement.** Lantern light, locked cabinets, the letter in two halves, the ledger.
+3. **Newspaper Office.** The editorial and, on a high shelf, the 1954 history.
+4. **Mill Ruins.** The insurance map laid over what is left. The watchman's hut is at the wrong end.
+5. **The Porch.** Family memory. Students decide what weight it can bear.
+6. **The lost page.** The twist. The diarist saw the owner carrying buckets too.
+7. **Museum Hall.** Timeline, conclusion, new plaque, debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Archivist Roshan" role="Guide.">“Before you tell me what it says, tell me who wrote it, when, and what they wanted.”</Speaker>
+
+<Speaker name="Mrs. Wolska-Reed">“They say he rang that bell until his hands bled. I was not there. Neither was the man who wrote your plaque.”</Speaker>
+
+<Speaker name="Imre" role="A retired printer at the newspaper office, gives the hints.">“Put the old book next to the letter. Read them out loud, one line each.”</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Loaded words: students pick the five words in the owner's letter that judge instead of describe, then say what he stood to gain.
+- Copy or confirmation: the 1954 history and the letter share whole phrases. Two sources that agree may be one source counted twice.
+- The clock: the letter's ten o'clock against the log's 9:40 and the diary's half past nine.
+- Conclusion: three options, scored by how much evidence each has. Blaming the owner scores lowest of all.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Find the one fact every source agrees on, and explain why that matters.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Ask: “If a museum plaque and a family story disagree, which do you believe, and why?”
+  </Card>
+  <Card title="During" icon="laptop">
+    Split teams across the scenes so each student holds different sources. Before the conclusion, have teams lay out who wrote what and when.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Vote on the conclusion and discuss why the modest one is strongest. The report shows the fact and opinion sort, and each student's conclusion.
+  </Card>
+  <Card title="Example" icon="star">
+    Run it the week before the first real document study of the year. The questions on Roshan's wall become the class's standing checklist.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+A document packet gives students the sources already chosen, cleaned and stapled in order, with the author and date in a helpful header. Half of a historian's work has been done for them. Here the sources must be found, their makers and motives worked out, and one of them caught copying another. Different teammates hold different documents, so corroboration is a conversation. Few classes can visit an archive, and a lecture can only report someone else's verdict. The mission also lets students be wrong in the tempting direction, by swapping one villain for another, and shows them the evidence does not stretch that far.
+
+</BlueprintWhy>

@@ -1,0 +1,122 @@
+---
+title: "Hitchhiker Seeds"
+description: "A hill burned last summer and nothing has grown back. Students become the animals that carry seeds, find out what a seed needs to grow, and replant the hill together."
+host:
+  who: lucy
+  says: "A burr on your sock is a model of how seeds travel. Nobody has to say so first!"
+  side: left
+blueprint:
+  number: 3
+  band: "K-2"
+  grades: "Grade 2"
+  subjects: [science, maths]
+  about: "science and maths"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🌱"
+  mechanic: "Seeds stick to you as you walk; fair-test plant needs; regrow a hill"
+  edge: [A, G]
+  standards:
+    - code: "2-LS2-2"
+      asks: "Develop a model that mimics an animal dispersing seeds"
+      evidence: "Carries burrs on their own avatar; maps a seed's trip in the build"
+    - code: "2-LS2-1"
+      asks: "Investigate whether plants need sunlight and water"
+      evidence: "Runs the four-pot fair test in the potting shed"
+    - code: "2-LS4-1"
+      asks: "Compare the diversity of life in different habitats"
+      evidence: "Notes which plants and animals live in meadow, river and grove"
+    - code: "2.MD.D.10"
+      asks: "Draw and read picture and bar graphs with up to four categories"
+      evidence: "Sorts seeds by how they travel and answers how-many-more questions"
+  alsoFits: "Also fits England Year 2 Plants (water, light and warmth) and Year 3 seed dispersal, and Ontario Grade 3 Growth and Changes in Plants."
+  settings:
+    grade: "2"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-MATH]
+    players: "2-4"
+    opening: action
+    focus: balanced
+    freedom: open
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Year 2 Plants (water, light and warmth) and Year 3 seed dispersal, and Ontario Grade 3 Growth and Changes in Plants. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="Hitchhiker Seeds: generator prompt"
+Make a mission called Hitchhiker Seeds for grade 2. Teach and assess NGSS 2-LS2-2, 2-LS2-1 and 2-LS4-1 and Common Core 2.MD.D.10. Students are seed scouts helping Ranger Dalia bring plants back to Burnt Hill after a fire. Scenes: a meadow gate, a riverside, an oak grove, a windy ridge, a potting shed and Burnt Hill. Seeds travel four ways and students collect one of each in any order: a burr that sticks to them when they walk through the meadow grass, a floating pod they fish from the river with a net, a berry seed a bird drops, and a winged seed caught on the ridge. In the potting shed an instrument has four pots with a light switch and a water switch each and a Grow one week button; a meter shows each plant's height. Ask for a prediction first. Wrong ideas to surprise: a plant in a dark cupboard grows fine if it has water; seeds only grow where people plant them. A wall chart sorts the team's seeds into wind, water, fur and food as a picture graph, with how-many-more questions. On Burnt Hill students use seeds on sunny wet patches and shady dry patches, then a short cutscene skips a season to show which grew. Shared goal: twelve patches replanted by the team. Invent a twist where a squirrel takes an acorn, buries it and forgets it. Build scene on the hill: students place plants and label how each seed got there. Debrief: why do plants need their seeds to travel?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Meadow Gate.** On-ramp. Walk through the grass. “Something is stuck to your sock!” The burr goes in the bag before anyone names it.
+2. **Riverside, Oak Grove, Windy Ridge.** Open order. Each has one seed to win and one habitat to notice. Birds land, a squirrel climbs, leaves blow.
+3. **Potting Shed.** The fair test. One switch at a time. Then the picture graph.
+4. **Burnt Hill.** Plant, wait a season, see what came up. The team counter reaches twelve and the hill turns green.
+5. **The Squirrel's Oak.** Payoff. A seedling stands where the squirrel dug.
+6. **Build and debrief** on the hill.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Ranger Dalia" role="Guide.">“You did not plant that burr. So how did it get from the meadow to here?”</Speaker>
+
+<Speaker name="Old Mo" role="The potting shed keeper, gives the hints.">“You changed the light and the water at once. Now which one made it droop?”</Speaker>
+
+<Speaker name="The squirrel" role="Never speaks. It is the twist." />
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- The floating pod drifts out of reach. Combine a stick and a sieve to make a net.
+- The cupboard pot grows tall, thin and yellow, then falls over. Students expected tall to mean healthy.
+- A seed used on a shady dry patch does not sprout. Dalia asks what the shed test showed.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Find the fifth way a seed travels, a pod that pops, hidden on the ridge.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Hold up an apple. “How could the seeds inside end up growing far from the tree?” List the ideas.
+  </Card>
+  <Card title="During" icon="laptop">
+    Let teams split up to collect; the graph needs all four kinds. Pause before the Grow button and take predictions aloud.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Compare the class list with what they found. The report shows who changed two switches at once, a sign the fair-test idea has not landed.
+  </Card>
+  <Card title="Example" icon="star">
+    Start real beans in a cupboard and on the sill the same day. The mission gives the result now; the beans confirm it in two weeks.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+Plants take weeks and a class gets one result per pot, so a mistake in the test cannot be redone. Seed dispersal by animals cannot be staged indoors at all. Here the child is the animal: the burr rides on their sock before anyone explains it, which is the model the standard asks for. A video shows popping pods beautifully and makes a good closing clip, but it asks for no prediction. The real bean test and a sock walk through long grass are the right partners, and the plan includes both.
+
+</BlueprintWhy>

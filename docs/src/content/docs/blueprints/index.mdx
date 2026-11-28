@@ -1,0 +1,94 @@
+---
+title: "Mission blueprints"
+description: "Twenty-four missions planned from the standards outward, for grades 1 to 11. Each teaches several standards at once and comes with a generator prompt, a scene-by-scene design, characters, puzzles and a teacher plan."
+host:
+  who: lucy
+  says: "Twenty-four missions, each teaching several standards in one go. Pick a subject, find your grade, and take one!"
+  side: right
+---
+import { Aside, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import Flow from '../../../components/diagrams/Flow.astro';
+import BlueprintGrid from '../../../components/blueprints/BlueprintGrid.astro';
+import BlueprintStats from '../../../components/blueprints/BlueprintStats.astro';
+import SubjectFilter from '../../../components/blueprints/SubjectFilter.astro';
+
+A **blueprint** is a mission worked out on paper before anything is drawn. Each one starts from the standards a teacher has to cover, picks the ones that belong together, and builds one story that teaches them all. Every blueprint was chosen because the mission does something a classroom cannot: squeeze a year into a lesson, visit a canyon floor, or let a bridge fall down for free.
+
+<BlueprintStats />
+
+<Aside type="tip" title="Plans, not finished missions">
+Nothing here has been generated yet. Each page gives you a prompt for the [AI generator](/docs/editor/plans-and-generator/#the-ai-mission-generator) and the full design to check its draft against. Treat what the generator makes as a first draft: test it, fix it, and check the facts and the reading level before you assign it.
+</Aside>
+
+## Find a blueprint
+
+Pick a subject to narrow the list. Every card opens the full blueprint.
+
+<SubjectFilter />
+
+### Grades K to 2
+
+<BlueprintGrid band="K-2" />
+
+### Grades 3 to 5
+
+<BlueprintGrid band="3-5" />
+
+### Grades 6 to 8
+
+<BlueprintGrid band="6-8" />
+
+### Grades 8 to 12
+
+<BlueprintGrid band="8-12" />
+
+## What is on each page
+
+Every blueprint has the same seven parts, in the same order.
+
+<Flow
+  caption="A blueprint page, top to bottom"
+  steps={[
+    { icon: '🎯', title: 'Standards', text: 'Each code, what it asks, and what students do that shows it. Every code links to its source.' },
+    { icon: '✨', title: 'Prompt', text: 'Ready to paste into the generator, with the settings to choose.' },
+    { icon: '🗺️', title: 'Scenes', text: 'The mission from the first click to the debrief.' },
+    { icon: '💬', title: 'Characters', text: 'Who students meet, with a line each says.' },
+    { icon: '🧩', title: 'Puzzles', text: 'What students solve, and the optional harder objective.' },
+    { icon: '🍎', title: 'Teacher plan', text: 'Before, during and after, with an example of where it fits a unit.' },
+    { icon: '⚖️', title: 'The case', text: 'Why a mission beats a lecture, a video or hands-on work here, and what to pair it with.' },
+  ]}
+/>
+
+## How the set was chosen
+
+A mission made the list only if it passed four tests.
+
+1. **The standards are widely shared.** Most jurisdictions teach them, and teachers report them as hard to teach.
+2. **The standards belong together.** One story covers them all, with no quiz bolted on.
+3. **The mission adds something no other method can.** Compressed time, unreachable places, free failure, changed rules of nature, or teammates who truly need each other. [Why a mission, and when not](/docs/blueprints/why-questlab/) names all seven.
+4. **QuestLab can build it today.** Parts that need hand work in the editor are listed in [Before you build](/docs/blueprints/build-notes/).
+
+## What every blueprint has in common
+
+All 24 follow the [game design rules](/docs/educators/game-design-rules/). The pages only point out what is special to each mission, so here is the spine they share.
+
+- **A safe first scene** with something to click inside two minutes ([rule 2](/docs/educators/game-design-rules/#2-make-the-first-scene-a-safe-on-ramp)).
+- **A named role** with a profession's way of checking evidence: geologist, archivist, lake manager ([rule 9](/docs/educators/game-design-rules/#9-give-students-a-role)).
+- **Doing before naming.** Students use an idea before a character names it ([rule 25](/docs/educators/game-design-rules/#25-explore-before-you-explain)).
+- **A surprise for each wrong idea.** Students predict, see the prediction fail, then rebuild the idea with a character who asks questions ([rule 26](/docs/educators/game-design-rules/#26-let-a-surprise-change-their-minds)).
+- **A place to try things** at no cost, where a miss says why ([rules 10](/docs/educators/game-design-rules/#10-give-them-a-place-to-experiment) and [11](/docs/educators/game-design-rules/#11-give-feedback-right-away-and-say-why)).
+- **Hints from characters** in three steps: a nudge, a pointer, a worked example ([rule 13](/docs/educators/game-design-rules/#13-layer-the-help-and-let-characters-give-it)).
+- **A shared goal, a payoff and one optional harder objective** ([rules 14](/docs/educators/game-design-rules/#14-let-students-choose-their-challenge) and [15](/docs/educators/game-design-rules/#15-give-the-group-a-goal-and-a-payoff)).
+- **Clues spread across scenes** so teammates need each other, with no fixed crew roles ([rule 16](/docs/educators/game-design-rules/#16-make-teammates-need-each-other)).
+- **One build scene near the end**, where students make something that uses the idea ([rule 24](/docs/educators/game-design-rules/#24-let-students-make)).
+- **A debrief** with a why question and a link to real life ([rule 19](/docs/educators/game-design-rules/#19-end-with-an-after-action-review)).
+- **Words one grade below the target grade**, and never above grade 9. The curriculum stays at the target grade.
+
+## Go further
+
+<CardGrid>
+  <LinkCard title="Why a mission, and when not" description="The seven things a simulated world can do that a classroom cannot, and where real materials still win." href="/docs/blueprints/why-questlab/" />
+  <LinkCard title="Standards and objectives" description="Every standard the blueprints teach, linked to where it is published and to the missions that teach it." href="/docs/blueprints/standards/" />
+  <LinkCard title="Running the prompts" description="What to paste where on the Generate page, the command line version, and the shared footer." href="/docs/blueprints/run-the-prompts/" />
+  <LinkCard title="Before you build" description="The scenes to add by hand, what is not tested yet, and which five to build first." href="/docs/blueprints/build-notes/" />
+</CardGrid>

@@ -1,0 +1,124 @@
+---
+title: "The Canyon That Kept a Diary"
+description: "Students climb down a canyon one rock layer at a time. Each layer holds fossils from a different world: dunes, then a sea, then a swamp. At the bottom they run the river that cut it all."
+host:
+  who: mallory
+  says: "Every ladder down is a step back in time. Wait for the gasp at the shell wall."
+  side: left
+blueprint:
+  number: 7
+  band: "3-5"
+  grades: "Grade 4"
+  subjects: [science, english]
+  about: "science and reading"
+  minutes: 45
+  players: "2 to 4"
+  icon: "🏜️"
+  mechanic: "Climb down through rock layers; read fossils; run a stream table"
+  edge: [A, B]
+  standards:
+    - code: "4-ESS1-1"
+      asks: "Use patterns in rock layers and fossils to explain how a landscape changed"
+      evidence: "Orders the three layer rubbings oldest to newest and names each past landscape"
+    - code: "3-LS4-1"
+      asks: "Use fossils as evidence of organisms and environments of long ago"
+      evidence: "Matches shells, ferns and tracks to sea, swamp and desert"
+    - code: "4-ESS2-1"
+      asks: "Give evidence of weathering and the rate of erosion by water"
+      evidence: "Runs the river instrument with flow, rock type and years"
+    - code: "RI.4.7"
+      asks: "Interpret information shown in diagrams and timelines"
+      evidence: "Reads the canyon cross-section and the time ribbon to answer questions"
+  alsoFits: "Also fits England Year 3 Rocks (how fossils form) and Ontario Grade 4 Rocks, Minerals and Geological Processes."
+  settings:
+    grade: "4"
+    subject: "Science"
+    frameworks: [NGSS, CCSS-ELA]
+    players: "2-4"
+    opening: action
+    focus: balanced
+    freedom: guided
+---
+import { Aside, Card, CardGrid, Steps } from '@astrojs/starlight/components';
+import BlueprintSettings from '../../../components/blueprints/BlueprintSettings.astro';
+import BlueprintStandards from '../../../components/blueprints/BlueprintStandards.astro';
+import BlueprintWhy from '../../../components/blueprints/BlueprintWhy.astro';
+import Speaker from '../../../components/blueprints/Speaker.astro';
+
+## Standards and evidence
+
+<BlueprintStandards />
+
+**Other curricula.** Also fits England Year 3 Rocks (how fossils form) and Ontario Grade 4 Rocks, Minerals and Geological Processes. These are matches by topic, not checked codes.
+
+## Generator prompt
+
+Paste the prompt into **What is the mission about?** on the Generate page, and the [shared footer](/docs/blueprints/run-the-prompts/#the-shared-footer) into **Anything else**. [Running the prompts](/docs/blueprints/run-the-prompts/) has every step.
+
+<BlueprintSettings />
+
+```text wrap title="The Canyon That Kept a Diary: generator prompt"
+Make a mission called The Canyon That Kept a Diary for grade 4. Teach and assess NGSS 4-ESS1-1, 3-LS4-1 and 4-ESS2-1 and Common Core RI.4.7. Students are junior geologists working with Dr. Noor, who says the canyon keeps a diary and each rock layer is a page. Scenes, joined by ladders going down: Rim Camp up high; Red Ledge, a sandstone layer with ripple marks and small reptile tracks; Shell Wall, a pale limestone layer packed with seashells and coral; Fern Hollow, a dark shale overhang with fern and fish fossils; and River Floor with a flowing river. Before the climb ask for a prediction: where is the oldest page, top or bottom? In each layer students use a brush on fossil spots to collect a rubbing, and a character asks what kind of place leaves that behind. On River Floor an instrument has a slider for water flow, a switch for hard or soft rock and a slider for years from 100 to 1,000,000; a meter shows how deep the river cuts. Wrong ideas to surprise: the top layer is the oldest; the canyon cracked open in one day; seashells cannot be found far from the sea. Bag puzzles: a rope and a hook combine to reach a ledge; a lantern lights the overhang. Invent a small twist where rain upstream turns the river brown and students catch a jar of it and watch it settle into layers. Include a cross-section diagram and a time ribbon to read. Build scene at Rim Camp: students place the rubbings in layer order on a diary wall and label each past landscape. Debrief: how can a sea leave shells on a dry cliff?
+```
+
+## Scenario design
+
+<Steps>
+
+1. **Rim Camp.** On-ramp. Take the brush, make the top-or-bottom prediction, start down.
+2. **Red Ledge.** Ripples in stone and three-toed tracks. Students see dunes before anyone says desert.
+3. **Shell Wall.** The surprise. Seashells in a cliff with no sea for a thousand miles.
+4. **Fern Hollow.** Lantern needed. Ferns and a fish pressed in black rock.
+5. **River Floor.** The instrument. A hundred years barely scratches the rock; a million years cuts the canyon.
+6. **Brown water.** The twist. The jar settles into bands while students watch.
+7. **Rim Camp again.** Build the diary wall, then the debrief.
+
+</Steps>
+
+## Characters and dialogue
+
+<Speaker name="Dr. Noor" role="Guide.">“You found a clam shell up here. Clams do not climb. So what was this place?”</Speaker>
+
+<Speaker name="Tobi" role="Leads the pack mule Biscuit and gives the hints.">“Biscuit steps on the newest dust first. Which dust on this trail got here last?”</Speaker>
+
+<Speaker name="A prospector's old notebook" role="Found at camp, holds the wrong idea in period words:">“The ground split in a single night.” Students test it at the river.</Speaker>
+
+## Puzzles
+
+<div class="bp-puzzles">
+
+- Three rubbings, three landscapes. A wrong match gets a reason: “Ferns need wet ground. Would they grow on a dune?”
+- Ordering the pages: students who said the top is oldest see their guess beside the cross-section and try again.
+- The river goal is a cut 300 metres deep. No flow setting gets there in 100 years, which is the point.
+- The jar: which band settled first? It links the river back to the layers above.
+
+</div>
+
+<Aside type="tip" title="Optional harder objective">
+Find the hidden track that crosses from one layer into the next and explain why it cannot.
+</Aside>
+
+## Teacher plan
+
+<CardGrid>
+  <Card title="Before" icon="comment">
+    Show a photo of a layered cliff. “Which stripe was made first?” Record the split.
+  </Card>
+  <Card title="During" icon="laptop">
+    Teammates can brush different layers at once; the ordering task needs all three rubbings. Pause at Shell Wall for a one-minute partner talk.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Students explain the shells to a partner using the word evidence. The report shows first-try rate on the ordering and how many years each student tried at the river.
+  </Card>
+  <Card title="Example" icon="star">
+    Follow it with a layered-sand jar, so students build the diary they have just read.
+  </Card>
+</CardGrid>
+
+## Why QuestLab is the best tool here
+
+<BlueprintWhy>
+
+The two obstacles in this topic are a place no class can visit and a span of time no class can watch. Here going down is going back in time, and students find the shells themselves instead of being told about them. A sand jar models layering well and a stream table models erosion well, and both belong in the unit, but neither holds fossils in place or lets a student dial up a million years. A canyon video is striking, yet it narrates the answer before the student has guessed.
+
+</BlueprintWhy>

@@ -1,0 +1,74 @@
+---
+title: "Before you build"
+description: "What stands between the 24 mission blueprints and a classroom: scenes to add by hand, things not tested in the engine yet, the subject checks to make, and which five to build first."
+host:
+  who: mallory
+  says: "The generator gets you most of the way. Here is the part you finish by hand, and the part nobody has tested yet."
+  side: right
+---
+import { Aside } from '@astrojs/starlight/components';
+
+Every blueprint's prompt can be run today. Four things stand between its draft and a classroom: scenes the generator cannot make, assumptions about the engine that nobody has tested, subject checks, and playtesting.
+
+<Aside type="caution" title="Two blueprints wait on physics scenes">
+[Bridge the Gap at Kessa Gorge](/docs/blueprints/bridge-the-gap-at-kessa-gorge/) and [Gravity Games](/docs/blueprints/gravity-games/) are designed around physics scenes: a shared bridge builder and a bounce lab with gravity you can change. Physics scenes are not part of QuestLab yet. Both blueprints still generate, with an instrument standing in, but they are not worth piloting until the physics work lands.
+</Aside>
+
+## Scenes to finish by hand
+
+The generator writes walk-around scenes, characters, bag puzzles, questions, instruments and one build scene. It does not make the things below, so add them in the editor after the draft is imported.
+
+| Work in the editor | Blueprints | What to do |
+| --- | --- | --- |
+| [Close-up bench](/docs/editor/bench/) | [13](/docs/blueprints/case-of-the-vanishing-grams/), [24](/docs/blueprints/titration-at-tarn-lake/) | Replace the placeholder kitchen with a bench using the kitchen and dissolve sets. Add a bench with the acids set and Record to the field tent. Check the bench can show total mass |
+| Physics scene | [10](/docs/blueprints/bridge-the-gap-at-kessa-gorge/), [17](/docs/blueprints/gravity-games/) | Waits on physics scenes. A shared bridge builder with a 6 metre gap, a budget of 3,000 and 20 and 100 kg weights; a bounce lab in each dome |
+| Fog, and lights or pictures that follow a shared variable | [2](/docs/blueprints/signal-hill/), [4](/docs/blueprints/pier-of-parts/), [18](/docs/blueprints/one-sky-two-views/) | The far tower lamp and the Moon on the Ground Deck must follow what a teammate does in another scene. Add drifting fog to the three finales |
+| [Conversations](/docs/editor/conversations/) | [9](/docs/blueprints/two-sides-of-the-garden-wall/), [21](/docs/blueprints/mill-fire-inquiry/), [22](/docs/blueprints/glimmerfruit-rumor/) | Turn the interviews into branching conversations, so students choose what to ask each source |
+| [Graphs in infoboxes](/docs/editor/infoboxes/) | [12](/docs/blueprints/pond-that-went-quiet/), [15](/docs/blueprints/moths-of-ashgrove/), [20](/docs/blueprints/well-on-brackwater-lane/), [23](/docs/blueprints/the-bloom/) | Draw the frog counts, the percent of dark moths, the case chart and the planner's curve as graph blocks |
+| Bag items that are kept | [8](/docs/blueprints/word-forge/) | Check the root stones stay in the bag after they are combined, and that all eleven pairs make their tool |
+
+## Not tested in the engine yet
+
+- **What an instrument can work out.** The prompts ask instruments to model a colour match, breeding by chance, sampling and growth that levels off. Where an instrument cannot express one, build it from worked-out values and graphs in an [infobox](/docs/editor/infoboxes/).
+- **Shared tallies.** A team counter needs a shared variable. A tally for the whole class, as in [The Moths of Ashgrove](/docs/blueprints/moths-of-ashgrove/) and [The Snapdragon Greenhouse](/docs/blueprints/snapdragon-greenhouse/), needs the whole class in one game, which means an assignment with no teams.
+- **Camouflage.** The moth hunt uses hidden things that only show from close up. Playtest whether that feels like hunting or like luck.
+- **Reading level.** The rule of one grade below the target grade is decided, and the generator does not measure it yet. The prompts for the youngest and oldest grades say it in words.
+- **Build scenes.** All 24 end with [student building](/docs/editor/student-building/). Three ask students to make hotspots, and one of those uses the narrator's voice. Check the generated build scene offers the tools the blueprint names.
+
+## Subject checks
+
+[Rule 8](/docs/educators/game-design-rules/#8-make-sure-the-rules-are-right) asks for someone who knows the subject to try to break each model. These blueprints carry real numbers or real science, so check them first:
+
+| Blueprint | What to check |
+| --- | --- |
+| [The Pond That Went Quiet](/docs/blueprints/pond-that-went-quiet/) | The willow record: 74 kg gained by the tree, 57 g lost by the soil |
+| [The Case of the Vanishing Grams](/docs/blueprints/case-of-the-vanishing-grams/) | The masses, and which powder tests tell sugar, salt and baking soda apart |
+| [The Moths of Ashgrove](/docs/blueprints/moths-of-ashgrove/) | The peppered moth story and the generations model |
+| [The Snapdragon Greenhouse](/docs/blueprints/snapdragon-greenhouse/) | Snapdragon colour and the one to two to one split |
+| [Gravity Games](/docs/blueprints/gravity-games/) | Gravity on each world, and the bounce and fall results |
+| [One Sky, Two Views](/docs/blueprints/one-sky-two-views/) | The orrery positions, the 5 degree tilt, Earth closest in early January |
+| [Drift](/docs/blueprints/drift/) | The fossils, the rock ages and 2.5 cm a year |
+| [Titration at Tarn Lake](/docs/blueprints/titration-at-tarn-lake/) | Every worked number, from the flask to the 10 tonnes |
+
+## Standards
+
+- The Common Core wording and the NGSS pages are checked. [Standards and objectives](/docs/blueprints/standards/) says how.
+- The C3 codes and every match to another curriculum are **not** checked.
+- No blueprint is aligned in the [standards library](/docs/codebase/standards-library/) yet. Name the codes with `--standard=` when you generate, and use each page's evidence column as the reason for the alignment.
+
+## Which to build first
+
+Build five first. These cover five subjects and five kinds of play, and need little or no hand work.
+
+1. **[The Pier of Parts](/docs/blueprints/pier-of-parts/)** (maths). Tests the idea that a walk can be a number line.
+2. **[Market Day at Three Rivers](/docs/blueprints/market-day-at-three-rivers/)** (economics). All bag puzzles. Tests whether being refused teaches what money is for.
+3. **[The Word Forge](/docs/blueprints/word-forge/)** (English). Tests combining items as a way to teach meaning.
+4. **[The Moths of Ashgrove](/docs/blueprints/moths-of-ashgrove/)** (science). Tests hidden things and a shared tally.
+5. **[The Mill Fire Inquiry](/docs/blueprints/mill-fire-inquiry/)** (history). Tests reading-heavy play, sources split between teammates and student hotspots.
+
+Playtest each with a mixed group. Read the [reports](/docs/editor/reports/) for the scenes where students stall and for first-try rates before you build the rest. [Festival Colors](/docs/blueprints/festival-colors/) is a good sixth: one instrument carries its whole lesson.
+
+## Still open
+
+- Should a blueprint also get a story opener, a two-minute scene students watch before the mission starts?
+- A kindergarten blueprint. The one idea considered was dropped, because real materials teach it better.
