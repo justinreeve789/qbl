@@ -16,6 +16,7 @@ import { isBuiltInSound } from './sounds.js';
 import { audioCrop, type AudioCrop } from './audioCrop.js';
 import { FLOW_KINDS, WEATHER_KINDS } from './weather.js';
 import { WATER_LIGHT_KINDS, WATER_LIGHT_MAX_CORNERS } from './waterLight.js';
+import { FOG_DIRECTIONS, FOG_MAX_CORNERS, fogRadial } from './fog.js';
 import { ABILITY_PREFIX, currentName, isReserved, RESERVED_VARIABLES, toNumber } from './variables.js';
 import { BUILD_LIMITS, BUILD_TOOLS, buildingRules } from './builds.js';
 
@@ -742,6 +743,27 @@ export function validateScenario(doc: unknown): ValidationResult {
       if (w.figures != null && w.kind === 'shafts') warn(`${p}.figures`, 'Only rippling light has a setting for how it lights people and things; shafts are in front of them and light them anyway');
       if (w.conditions != null && !Array.isArray(w.conditions)) err(`${p}.conditions`, 'conditions is a list');
       else checkConditions(w.conditions ?? undefined, p);
+    });
+    (scene.fogs ?? []).forEach((f, i) => {
+      const p = `${sp}.fogs[${i}]`;
+      if (!Array.isArray(f.shape) || f.shape.length < 3 || f.shape.length > FOG_MAX_CORNERS) err(`${p}.shape`, `Fog needs an outline (shape) of 3 to ${FOG_MAX_CORNERS} corners`);
+      else f.shape.forEach((c, ci) => (typeof c?.x !== 'number' || typeof c?.y !== 'number') && err(`${p}.shape[${ci}]`, 'A corner needs x and y'));
+      if (f.color != null && !COLOR.test(f.color)) err(`${p}.color`, 'color is #rrggbb');
+      for (const key of ['opacity', 'density'] as const) {
+        const v = f[key];
+        if (v != null && !(typeof v === 'number' && v >= 0 && v <= 100)) err(`${p}.${key}`, `${key} is a percentage from 0 to 100`);
+      }
+      if (f.size != null && !(typeof f.size === 'number' && f.size > 0)) err(`${p}.size`, 'size is a number of pixels greater than 0');
+      if (f.speed != null && !(typeof f.speed === 'number' && f.speed >= 0)) err(`${p}.speed`, 'speed is a number of pixels per second, 0 or more');
+      if (f.direction != null && !FOG_DIRECTIONS.includes(f.direction)) err(`${p}.direction`, `direction is one of ${FOG_DIRECTIONS.join(', ')}`);
+      if (f.origin != null) {
+        if (typeof f.origin.x !== 'number' || typeof f.origin.y !== 'number') err(`${p}.origin`, 'origin is a point with x and y');
+        else if (!fogRadial(f.direction ?? 'right')) warn(`${p}.origin`, 'The point is used only by fog spreading outward or gathering inward');
+      }
+      if (f.layer != null && f.layer !== 'front' && f.layer !== 'behind') err(`${p}.layer`, 'layer is "front" or "behind"');
+      if (f.opacity === 0) warn(`${p}.opacity`, 'Fog with an opacity of 0 cannot be seen');
+      if (f.conditions != null && !Array.isArray(f.conditions)) err(`${p}.conditions`, 'conditions is a list');
+      else checkConditions(f.conditions ?? undefined, p);
     });
     (scene.critters ?? []).forEach((c, i) => {
       const p = `${sp}.critters[${i}]`;

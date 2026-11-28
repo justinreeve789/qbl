@@ -1486,6 +1486,40 @@ export interface SceneWaterLight {
   conditions?: Condition[] | null;
 }
 
+/** [ext] Which way fog drifts (SceneFog.direction): across, or outward from (inward to) a point. */
+export type FogDirection = 'right' | 'left' | 'up' | 'down' | 'outward' | 'inward';
+
+/**
+ * [ext] A patch of fog, drawn live by the game (a shader): soft, see-through wisps of mist drifting
+ * across an outline of the scene, or spreading out from a point in it (steam from a vent, smoke from
+ * a cauldron) or gathering in to one. It fades out softly at its edges. A scene may have any number.
+ * `front` (the default) hangs it in front of everyone; `behind` lays it on the floor behind them, as
+ * ground mist. Unlike the weather's fog, which covers the whole scene, it stays inside its outline.
+ */
+export interface SceneFog {
+  name?: string;
+  /** Its outline, as corners in scene pixels (3 to 16). */
+  shape: Point[];
+  /** The fog's colour, #rrggbb. Default a pale grey #e8edf2. */
+  color?: string;
+  /** How see-through it is where it is thickest, from 0 (invisible) to 100 (solid). Default 60. */
+  opacity?: number;
+  /** How much of the outline the fog covers, from 0 (a few thin wisps) to 100 (a thick bank, hardly a gap). Default 55. */
+  density?: number;
+  /** How big its wisps and puffs are, in pixels. Default 220. */
+  size?: number;
+  /** How fast it drifts, in pixels per second. 0: it only churns slowly where it is. Default 25. */
+  speed?: number;
+  /** Which way it drifts. `outward` and `inward` are from and to `origin`. Default right. */
+  direction?: FogDirection;
+  /** Outward and inward: the point it spreads from or gathers to, in scene pixels. Default the middle of the outline. */
+  origin?: Point | null;
+  /** `front` (in front of everyone, the default) or `behind` (on the floor, behind every figure). */
+  layer?: 'front' | 'behind';
+  /** Shown only while all of these hold. It fades in and out as variables change. None: always there. */
+  conditions?: Condition[] | null;
+}
+
 /**
  * [ext] Scenes that belong together: the rooms of the starship, the places on one planet. A group
  * can say that its scenes show a player only their own team, which a scene may still override.
@@ -1555,6 +1589,8 @@ export interface Scene {
   flows?: SceneFlow[] | null;
   /** [ext] Light under water: rippling light on the floor, shafts of light from above (see SceneWaterLight). */
   water_lights?: SceneWaterLight[] | null;
+  /** [ext] Patches of fog drifting across the scene or spreading from a point (see SceneFog). */
+  fogs?: SceneFog[] | null;
   /** [ext] Birds, squirrels, rabbits and other little life that come and go, and scatter (see SceneCritter). */
   critters?: SceneCritter[] | null;
   /**

@@ -7,7 +7,8 @@ import { RIPPLES_FRAG, SHAFTS_FRAG, waterLightArea, waterLightCornerData, waterL
  * would soon run out). Animated while on the page, held still for people who ask for less motion.
  */
 
-const VERTEX = `
+/** The vertex shader of every preview: one quad, outTexCoord 0 to 1 with y = 1 at the top, as Phaser's. */
+export const VERTEX = `
 attribute vec2 inPosition;
 varying vec2 outTexCoord;
 void main() {
@@ -33,17 +34,18 @@ const previews = new Map<string, Preview>();
 let frame = 0;
 let last = 0;
 
-function stillMotion(): boolean {
+export function stillMotion(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-function compile(gl: WebGLRenderingContext, fragment: string): WebGLProgram | null {
+/** A preview's program, or null (with a warning) if the shader does not compile here. */
+export function compile(gl: WebGLRenderingContext, fragment: string): WebGLProgram | null {
   const shader = (type: number, source: string) => {
     const sh = gl.createShader(type)!;
     gl.shaderSource(sh, source);
     gl.compileShader(sh);
     if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-      console.warn('[qbl] underwater light preview:', gl.getShaderInfoLog(sh));
+      console.warn('[qbl] shader preview:', gl.getShaderInfoLog(sh));
       return null;
     }
     return sh;
@@ -59,7 +61,7 @@ function compile(gl: WebGLRenderingContext, fragment: string): WebGLProgram | nu
   return gl.getProgramParameter(program, gl.LINK_STATUS) ? program : null;
 }
 
-function rgb(hex: string): [number, number, number] {
+export function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }

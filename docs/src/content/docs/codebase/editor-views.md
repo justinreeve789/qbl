@@ -36,12 +36,12 @@ Reads and writes the parts of a scene kept as JSON in its row, through the store
 
 - `row`, `exists`;
 - `layers(which)` / `setLayers(which, layers)` for `background_media` and `foreground_media` (bare media objects from older documents are read as layers);
-- `layout(key)` / `setLayout(key, list)` for the lists in the `layout` column: `spawn_points`, `items`, `characters`, `walkable_areas`, `blocked_areas`, `scale_areas`, `shadow_spots`, `lights`, `flows`, `water_lights`;
+- `layout(key)` / `setLayout(key, list)` for the lists in the `layout` column: `spawn_points`, `items`, `characters`, `walkable_areas`, `blocked_areas`, `scale_areas`, `shadow_spots`, `lights`, `flows`, `water_lights`, `fogs`;
 - `bench()` / `setBench()` / `setBenchPart()` for `layout.bench`;
 - `events(kind?)`: the scene's event rows, ordered;
-- `resize(from, width, height)`: changes the scene's size and moves everything in it to match (areas, spawn points, lights, flows, water light shapes...).
+- `resize(from, width, height)`: changes the scene's size and moves everything in it to match (areas, spawn points, lights, flows, water light shapes, fog outlines and their points...).
 
-`Selection` is a union: `scene`, `layer`, `event`, `spawn`, `item`, `character`, `area`, `scale`, `shadow`, `light`, `flow`, `water_light`, `bench`, `bench-vessel`, `bench-tool`.
+`Selection` is a union: `scene`, `layer`, `event`, `spawn`, `item`, `character`, `area`, `scale`, `shadow`, `light`, `flow`, `water_light`, `fog`, `bench`, `bench-vessel`, `bench-tool`.
 
 ### `sceneEditor()` (`sceneEditor.ts`)
 
@@ -52,7 +52,7 @@ What | How
 Hotspots (click, walk-in) | `addEvent('hotspot', …)` at the centre of the view
 Exits along an edge | A walk-in hotspot spanning the edge (`position_x` or `position_y` null) with a `jump` action to the next scene (`addEdge`)
 Start, end, indirect events | `addEvent(kind)`
-Spawn points, items, characters, areas, scale areas, shadow spots, lights, flows, water lights | `addToLayout(key, entry)`
+Spawn points, items, characters, areas, scale areas, shadow spots, lights, flows, water lights, fogs | `addToLayout(key, entry)`
 Bench containers and tools | `addToBench`
 Layers | A new entry in `background_media` or `foreground_media`
 

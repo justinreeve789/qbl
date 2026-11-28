@@ -146,6 +146,7 @@ class ScenarioCompiler
                 'weather' => is_array(self::json($sc['params'] ?? null)['weather'] ?? null) ? self::json($sc['params'] ?? null)['weather'] : null,
                 'flows' => ($layout['flows'] ?? []) ?: null,
                 'water_lights' => ($layout['water_lights'] ?? []) ?: null,
+                'fogs' => ($layout['fogs'] ?? []) ?: null,
                 'critters' => ($layout['critters'] ?? []) ?: null,
                 'story' => ! empty(self::json($sc['params'] ?? null)['story']) ? true : null,
                 // Use as a scenario launcher scene: true or false; absent, a scene with a travel action is one.

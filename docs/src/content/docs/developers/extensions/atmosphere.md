@@ -119,6 +119,37 @@ name | string | | For the editor.
 
 Without WebGL (Phaser's canvas renderer) nothing is drawn. With reduced motion it is held still.
 
+## Fog
+
+**`fogs`** (kept in the scene's `layout`): patches of soft, see-through fog, each inside an outline of its own, drawn live on the GPU (`FogSystem` in the client; the shader is `FOG_FRAG` in `packages/shared/src/fog.ts`, which the editor's canvas also runs to preview it). A scene may have any number. Unlike the weather's fog (`weather.kind: "fog"`), which covers the whole scene, it stays inside its outline, fading out raggedly at the edges.
+
+The fog is fractal noise whose shape is bent by a slower noise, so its wisps curl and churn even when it does not drift. Drifting across (`right`, `left`, `up`, `down`), the whole pattern is carried along at `speed`. Spreading `outward` from a point (steam from a vent, smoke from a cauldron) or gathering `inward` to one (a portal, a drain), two layers are each carried a little way and faded as the other takes over (as a flow map is), so it streams out for ever without stretching; near the point it moves more slowly, so nothing is carried across it. Fog is drawn with the usual blend, so it can hide what is behind it, and it is drawn `front` (just behind labels and names: in front of every figure and the foreground layers) or `behind` (just above the floor art, behind every figure: ground mist).
+
+Parameter | Type | Default | Description
+--------- | ---- | ------- | -----------
+shape | array | | Required: its outline, `[{x, y}, ...]` in scene pixels, 3 to 16 corners. The game draws over the outline's bounds; the shader takes the corners as `uPoly` (two to a vec4) and `uCorners`, as underwater light's.
+color | string | #e8edf2 | `#rrggbb`.
+opacity | decimal | 60 | How much it hides where it is thickest, 0 (invisible) to 100 (solid).
+density | decimal | 55 | How much of the outline it covers: 0 (a few thin wisps) to 100 (a thick bank, hardly a gap).
+size | decimal | 220 | Pixels: how big its wisps and puffs are.
+speed | decimal | 25 | Pixels per second. 0: it does not drift, only churns slowly.
+direction | string | right | `right`, `left`, `up`, `down`, `outward` or `inward`.
+origin | object | the middle of the outline | `outward` and `inward`: the point, `{x, y}` in scene pixels. It may be outside the outline (fog blowing in from beyond the edge).
+layer | string | front | `front` or `behind`.
+conditions | array | | There only while all of these hold. It rolls in and clears over 2.5 s as they start or stop holding. None: always there.
+name | string | | For the editor.
+
+```json
+{ "fogs": [
+  { "name": "moor mist", "shape": [{ "x": 0, "y": 480 }, { "x": 1280, "y": 440 }, { "x": 1280, "y": 720 }, { "x": 0, "y": 720 }], "direction": "left", "speed": 20, "layer": "behind" },
+  { "name": "steam", "shape": [{ "x": 820, "y": 60 }, { "x": 1180, "y": 60 }, { "x": 1180, "y": 380 }, { "x": 820, "y": 380 }],
+    "direction": "outward", "origin": { "x": 1000, "y": 360 }, "speed": 45, "color": "#ffffff", "size": 140,
+    "conditions": [{ "variable": "vent_open", "operator": "=", "operand": 1 }] }
+] }
+```
+
+Without WebGL (Phaser's canvas renderer) nothing is drawn. With reduced motion it is held still. How far fog has drifted is wrapped (`fogTravelWrap`) so the GPU's floats stay exact: fog spreading from a point never jumps, and fog drifting across jumps once, after drifting over a thousand of its sizes.
+
 ## Critters
 
 `scene.critters`: a little life that has nothing to do with the lesson. Each player sees their own (they are not shared through the room), now and then: `CritterSystem` in the client. A shy critter scatters early when anyone comes near (the player, another player or a character): birds take off, a squirrel bolts for its tree, a rabbit dives into the nearest bush. There are none with reduced motion.

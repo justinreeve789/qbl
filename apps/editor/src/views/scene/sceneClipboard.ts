@@ -12,13 +12,13 @@ import type { Bag, Point, SceneModel, Selection } from './model';
 /** The lists kept in a scene's JSON that hold what can be selected on the canvas. */
 type JsonList =
   | 'background_media' | 'foreground_media'
-  | 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | 'water_lights'
+  | 'spawn_points' | 'items' | 'characters' | 'walkable_areas' | 'blocked_areas' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | 'water_lights' | 'fogs'
   | 'bench:vessels' | 'bench:tools';
 
 const NAMES: Record<JsonList, string> = {
   background_media: 'background layer', foreground_media: 'foreground layer', spawn_points: 'spawn point', items: 'placed item',
   characters: 'placed character', walkable_areas: 'walkable area', blocked_areas: 'blocked area', scale_areas: 'scale area',
-  shadow_spots: 'shadow spot', lights: 'light', flows: 'flowing water', water_lights: 'underwater light', 'bench:vessels': 'container', 'bench:tools': 'tool',
+  shadow_spots: 'shadow spot', lights: 'light', flows: 'flowing water', water_lights: 'underwater light', fogs: 'fog', 'bench:vessels': 'container', 'bench:tools': 'tool',
 };
 
 /** Lists whose entries are points or small things: a copy pasted beside its original is moved a little. */
@@ -36,6 +36,7 @@ function jsonOf(sel: Selection): { list: JsonList; index: number } | null {
     case 'light': return { list: 'lights', index: sel.index };
     case 'flow': return { list: 'flows', index: sel.index };
     case 'water_light': return { list: 'water_lights', index: sel.index };
+    case 'fog': return { list: 'fogs', index: sel.index };
     case 'bench-vessel': return { list: 'bench:vessels', index: sel.index };
     case 'bench-tool': return { list: 'bench:tools', index: sel.index };
     default: return null;
@@ -56,6 +57,7 @@ function selectionOf(list: JsonList, index: number): Selection {
     case 'lights': return { kind: 'light', index };
     case 'flows': return { kind: 'flow', index };
     case 'water_lights': return { kind: 'water_light', index };
+    case 'fogs': return { kind: 'fog', index };
     case 'bench:vessels': return { kind: 'bench-vessel', index };
     case 'bench:tools': return { kind: 'bench-tool', index };
   }

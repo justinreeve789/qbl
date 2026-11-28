@@ -71,7 +71,7 @@ Example: `shake` (shake the screen; it is in the code, so follow it through with
 
 The compiler treats the scene's two JSON columns differently, and this catches people out:
 
-- **`layout`**: only the keys the compiler names are copied into the document (`walkable_areas`, `blocked_areas`, `spawn_points`, `scale_areas`, `shadow_spots`, `lights`, `flows`, `water_lights`, `critters`, `items`, `characters`, `bench`). **A new key in `layout` is dropped** unless you add it to `ScenarioCompiler::compile`.
+- **`layout`**: only the keys the compiler names are copied into the document (`walkable_areas`, `blocked_areas`, `spawn_points`, `scale_areas`, `shadow_spots`, `lights`, `flows`, `water_lights`, `fogs`, `critters`, `items`, `characters`, `bench`). **A new key in `layout` is dropped** unless you add it to `ScenarioCompiler::compile`.
 - **`params`**: named keys are lifted to the scene's top level (`sky`, `atmosphere`, `weather`, `story`, `launcher`, `team_only`, `building`, music) and removed from `params`; **any other key stays under `scene.params`** in the document.
 
 So, for a new scene-level attribute:

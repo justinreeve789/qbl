@@ -17,6 +17,7 @@ export type Selection =
   | { kind: 'light'; index: number }
   | { kind: 'flow'; index: number }
   | { kind: 'water_light'; index: number }
+  | { kind: 'fog'; index: number }
   /** The scene's close-up bench: its settings, substances, reactions, readouts, watches and graph. */
   | { kind: 'bench' }
   | { kind: 'bench-vessel'; index: number }
@@ -24,7 +25,7 @@ export type Selection =
 
 export type LayerList = 'background_media' | 'foreground_media';
 export type AreaList = 'walkable_areas' | 'blocked_areas';
-export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | 'water_lights' | AreaList;
+export type LayoutList = 'spawn_points' | 'items' | 'characters' | 'scale_areas' | 'shadow_spots' | 'lights' | 'flows' | 'water_lights' | 'fogs' | AreaList;
 
 export interface Point { x: number; y: number }
 export type Side = 'left' | 'right' | 'top' | 'bottom';
@@ -103,7 +104,8 @@ export class SceneModel {
     const x = (v: unknown) => (v == null ? v : Math.round(Number(v) * sx));
     const y = (v: unknown) => (v == null ? v : Math.round(Number(v) * sy));
     const moved = <T extends Bag>(e: T): T => ({ ...e, position_x: x(e.position_x), position_y: y(e.position_y) });
-    const area = (polygon: Point[]) => polygon.map((p) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) }));
+    const area1 = (p: Point) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) });
+    const area = (polygon: Point[]) => polygon.map(area1);
     const layout = params(this.row, 'layout');
     await this.store.patch('scenes', this.sceneId, {
       width,
@@ -118,6 +120,11 @@ export class SceneModel {
         lights: this.layout('lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), ...(a.radius != null ? { radius: x(a.radius) } : {}) })),
         flows: this.layout('flows').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height) })),
         water_lights: this.layout('water_lights').map((a) => ({ ...a, x: x(a.x), y: y(a.y), width: x(a.width), height: y(a.height), ...(Array.isArray(a.shape) ? { shape: (a.shape as Point[]).map((p) => ({ x: Math.round(p.x * sx), y: Math.round(p.y * sy) })) } : {}) })),
+        fogs: this.layout('fogs').map((a) => ({
+          ...a,
+          ...(Array.isArray(a.shape) ? { shape: (a.shape as Point[]).map(area1) } : {}),
+          ...(a.origin && typeof a.origin === 'object' ? { origin: area1(a.origin as Point) } : {}),
+        })),
         items: this.layout('items').map(moved),
         characters: this.layout('characters').map(moved),
         // A bench's containers and tools move with the scene; their sizes stay: a beaker stays a beaker.
