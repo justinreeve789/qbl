@@ -138,7 +138,11 @@ test('a light is placed and edited; the scene gets a living sky and fireflies', 
   await page.waitForFunction(() => !document.querySelector('svg [data-light-switch]'));
   assert.equal((await draft()).scenes[0]!.lights![0]!.conditions, undefined, 'no conditions left: the key is gone');
   assert.match(await page.innerText('.outline'), /Lights/);
+  // Its glow (how far it reaches) is drawn only while it is selected; the marker stays.
+  assert.equal(await page.locator('svg .light-glow').count(), 3);
   await page.click('.outline >> text=Scene settings');
+  await page.waitForFunction(() => !document.querySelector('svg .light-glow'));
+  assert.equal(await page.locator('svg .light-spot').count(), 1);
   await page.locator('.inspector [data-field=time] select').selectOption('golden');
   await page.locator('.inspector [data-field=until] select').selectOption('dusk');
   // What is in the air comes first; the weather's kind is below it.

@@ -490,7 +490,8 @@ export class SceneCanvas {
   // ------------------------------------------------------------------ lights
 
   /**
-   * Lights, drawn as soft glows in their colour. The selected one can be dragged, and its reach changed.
+   * Lights, drawn as a marker each. Only the selected one shows its glow (how far it reaches, in its
+   * colour), so a scene with many lights stays readable; it can be dragged, and its reach changed.
    * One with conditions (on only some of the time) has a switch badge beside it.
    */
   private drawLights(selected: Selection, u: number, shapes: SVGElement[], top: SVGElement[]) {
@@ -503,7 +504,7 @@ export class SceneCanvas {
       const radius = Number(light.radius ?? 90);
       const color = light.color ?? '#ffc46b';
       const strength = Math.min(1, Math.max(0, Number(light.strength ?? 70) / 100));
-      for (const [k, share] of [[1, 0.18], [0.6, 0.3], [0.25, 0.6]] as const) {
+      for (const [k, share] of isSelected ? [[1, 0.18], [0.6, 0.3], [0.25, 0.6]] as const : []) {
         shapes.push(s('circle', { class: 'light-glow', cx: light.x, cy: light.y, r: radius * k, fill: color, 'fill-opacity': strength * share }));
       }
       const name = light.name || `Light ${index + 1}`;
